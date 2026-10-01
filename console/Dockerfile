@@ -15,6 +15,12 @@ ARG ENVIRONMENT=production
 ARG DISABLE_FLEETBASE_ATTRIBUTION=false
 ENV DISABLE_FLEETBASE_ATTRIBUTION=$DISABLE_FLEETBASE_ATTRIBUTION
 
+# Production builds disable /fleetbase.config.json by default (config/environment.js), so the
+# API/socket hosts would have to be baked in. Keep it on: the hosts come from env vars at start
+# (nginx-entrypoint/40-fleetbase-runtime-config.sh).
+ARG DISABLE_RUNTIME_CONFIG=false
+ENV DISABLE_RUNTIME_CONFIG=$DISABLE_RUNTIME_CONFIG
+
 # Add the pnpm global bin to the PATH
 ENV PATH=/root/.pnpm/bin:$PATH
 
