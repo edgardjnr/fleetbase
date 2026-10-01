@@ -1,0 +1,68 @@
+<div class="form-wrapper" ...attributes>
+    <ContentPanel @title={{t "fleet-ops.ui.warranty.form.warranty-details"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+            <InputGroup @name={{t "fleet-ops.ui.warranty.form.provider"}} @wrapperClass="col-span-2">
+                <Input @value={{@resource.provider}} @type="text" class="w-full form-input" placeholder={{t "fleet-ops.ui.warranty.form.provider"}} disabled={{cannot-write @resource}} />
+            </InputGroup>
+
+            <InputGroup @name={{t "fleet-ops.ui.warranty.form.policy-number"}}>
+                <Input @value={{@resource.policy_number}} @type="text" class="w-full form-input" placeholder={{t "fleet-ops.ui.warranty.form.policy-number"}} disabled={{cannot-write @resource}} />
+            </InputGroup>
+
+            <InputGroup @name={{t "fleet-ops.ui.warranty.form.vendor"}}>
+                <ModelSelect
+                    @modelName="vendor"
+                    @selectedModel={{@resource.vendor}}
+                    @placeholder={{t "fleet-ops.ui.warranty.form.select-vendor"}}
+                    @triggerClass="form-select form-input"
+                    @infiniteScroll={{false}}
+                    @renderInPlace={{true}}
+                    @onChange={{fn (mut @resource.vendor)}}
+                    @onChangeId={{fn (mut @resource.vendor_uuid)}}
+                    @disabled={{cannot-write @resource}}
+                    as |model|
+                >
+                    {{model.name}}
+                </ModelSelect>
+            </InputGroup>
+
+            <InputGroup @name={{t "fleet-ops.ui.warranty.form.start-date"}}>
+                <DatePicker
+                    @value={{@resource.start_date}}
+                    @onChange={{fn (mut @resource.start_date)}}
+                    @placeholder={{t "fleet-ops.ui.warranty.form.select-start-date"}}
+                    @disabled={{cannot-write @resource}}
+                    class="w-full form-input"
+                />
+            </InputGroup>
+
+            <InputGroup @name={{t "fleet-ops.ui.warranty.form.end-date"}}>
+                <DatePicker
+                    @value={{@resource.end_date}}
+                    @onChange={{fn (mut @resource.end_date)}}
+                    @placeholder={{t "fleet-ops.ui.warranty.form.select-end-date"}}
+                    @disabled={{cannot-write @resource}}
+                    class="w-full form-input"
+                />
+            </InputGroup>
+
+            <InputGroup @name={{t "fleet-ops.ui.warranty.form.terms"}} @wrapperClass="col-span-2">
+                <Textarea @value={{@resource.terms}} aria-label={{t "fleet-ops.ui.warranty.form.terms"}} class="w-full form-input" disabled={{cannot-write @resource}} placeholder={{t "fleet-ops.ui.warranty.form.warranty-terms"}} rows={{5}} />
+            </InputGroup>
+
+            <InputGroup @name={{t "fleet-ops.ui.warranty.form.policy-document"}} @wrapperClass="col-span-2">
+                <Textarea @value={{@resource.policy}} aria-label={{t "fleet-ops.ui.warranty.form.policy"}} class="w-full form-input" disabled={{cannot-write @resource}} placeholder={{t "fleet-ops.ui.warranty.form.policy-document"}} rows={{5}} />
+            </InputGroup>
+
+            <RegistryYield @registry="fleet-ops:component:warranty:form:details" as |RegistryComponent|>
+                <RegistryComponent @resource={{@resource}} @controller={{@controller}} @permission={{get-write-permission @resource}} />
+            </RegistryYield>
+        </div>
+    </ContentPanel>
+
+    <CustomField::Yield @subject={{@resource}} @wrapperClass="bordered-top" />
+
+    <RegistryYield @registry="fleet-ops:component:warranty:form" as |RegistryComponent|>
+        <RegistryComponent @resource={{@resource}} @controller={{@controller}} @permission={{get-write-permission @resource}} />
+    </RegistryYield>
+</div>

@@ -1,0 +1,26 @@
+<ContentPanel @title={{t "fleet-ops.ui.admin.map-settings.configure-map"}} @open={{true}} @wrapperClass="bordered-classic">
+    <InputGroup @name={{t "fleet-ops.ui.admin.map-settings.default-map-provider"}} @helpText={{t "fleet-ops.ui.admin.map-settings.sets-the-default-map-provider-for"}}>
+        <Select
+            class="w-full flex-1"
+            @value={{this.mapProvider}}
+            @options={{this.mapProviderOptions}}
+            @optionLabel="label"
+            @optionValue="value"
+            @placeholder={{t "fleet-ops.ui.admin.map-settings.select-default-map-provider"}}
+            @onSelect={{this.selectMapProvider}}
+        />
+    </InputGroup>
+    <InputGroup @name={{t "fleet-ops.ui.admin.map-settings.google-map-id"}} @value={{this.googleMapsMapId}} @helpText={{t "fleet-ops.ui.admin.map-settings.required-for-google-advanced-markers-and"}} />
+</ContentPanel>
+
+<EmberWormhole @to="next-view-section-subheader-actions">
+    <Button
+        @type="primary"
+        @size="sm"
+        @icon="save"
+        @text={{t "fleet-ops.ui.admin.map-settings.save-changes"}}
+        @onClick={{perform this.saveSettings}}
+        @isLoading={{or this.saveSettings.isRunning this.loadSettings.isRunning}}
+        @disabled={{this.saveSettings.isRunning}}
+    />
+</EmberWormhole>

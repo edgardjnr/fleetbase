@@ -1,0 +1,45 @@
+<div class="ledger-dashboard-widget flex h-full flex-col rounded-md border bg-white shadow-sm dark:bg-gray-800" ...attributes>
+    <div class="ledger-widget-header">
+        <div class="min-w-0">
+            <div class="ledger-widget-title">{{t "ledger.ui.widget.wallet-balances"}}</div>
+            <div class="ledger-widget-subtitle">{{t "ledger.ui.widget.wallet-balances-subtitle"}}</div>
+        </div>
+        <button type="button" class="ledger-icon-button" title={{t "ledger.ui.widget.refresh"}} {{on "click" (perform this.loadData)}}><FaIcon @icon="rotate" /></button>
+    </div>
+
+    <div class="ledger-widget-body">
+        {{#if this.error}}
+            <div class="ledger-widget-empty">{{this.error}}</div>
+        {{else if this.loadData.isRunning}}
+            <div class="ledger-widget-empty"><Spinner /></div>
+        {{else if this.totals.length}}
+            <div class="ledger-animated-list space-y-3">
+                {{#each this.totals as |row|}}
+                    <div class="ledger-animated-row ledger-balance-row">
+                        <div>
+                            <div class="font-mono text-xs font-bold text-gray-700 dark:text-gray-200">{{row.currency}}</div>
+                            <div class="text-[11px] text-gray-400">{{t "ledger.ui.widget.wallets-count" count=row.count}}</div>
+                        </div>
+                        <div class="text-sm font-bold text-gray-900 dark:text-gray-100">{{format-currency row.total (or row.currency this.companyCurrency)}}</div>
+                    </div>
+                {{/each}}
+            </div>
+            {{#if this.topWallets.length}}
+                <div class="mt-5 border-t border-gray-100 pt-4 dark:border-gray-700">
+                    <div class="mb-2 text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400">{{t "ledger.ui.widget.top-wallets"}}</div>
+                    <div class="ledger-animated-list space-y-2">
+                        {{#each this.topWallets as |wallet index|}}
+                            <div class="ledger-animated-row flex items-center gap-3 text-xs">
+                                <span class="w-5 text-center font-mono text-gray-400">{{add index 1}}</span>
+                                <span class="min-w-0 flex-1 truncate font-semibold text-gray-700 dark:text-gray-200">{{n-a (or wallet.subject.name wallet.name wallet.wallet_public_id)}}</span>
+                                <span class="font-bold text-emerald-600 dark:text-emerald-400">{{format-currency wallet.balance (or wallet.currency this.companyCurrency)}}</span>
+                            </div>
+                        {{/each}}
+                    </div>
+                </div>
+            {{/if}}
+        {{else}}
+            <div class="ledger-widget-empty">{{t "ledger.ui.widget.no-wallet-data"}}</div>
+        {{/if}}
+    </div>
+</div>

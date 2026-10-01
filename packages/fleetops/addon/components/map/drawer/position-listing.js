@@ -1,0 +1,552 @@
+import Component from '@glimmer/component';
+import { tracked } from '@glimmer/tracking';
+import { inject as service } from '@ember/service';
+import { action } from '@ember/object';
+import { task } from 'ember-concurrency';
+import { isArray } from '@ember/array';
+import { htmlSafe } from '@ember/template';
+import { startOfWeek, endOfWeek, format } from 'date-fns';
+import getModelName from '@fleetbase/ember-core/utils/get-model-name';
+import ensureLeafletDrawEditNamespace from '../../../utils/leaflet-draw-namespace-guard';
+import { buildTrackableOption } from '../../../utils/trackable-option';
+
+const L = window.leaflet || window.L;
+
+export default class MapDrawerPositionListingComponent extends Component {
+    @service mapManager;
+    @service leafletMapManager;
+    @service store;
+    @service fetch;
+    @service positionPlayback;
+    @service hostRouter;
+    @service notifications;
+    @service intl;
+
+    /** Tracked properties - only what's NOT managed by service */
+    @tracked positions = [];
+    @tracked resource = null;
+    @tracked selectedOrder = null;
+    @tracked dateFilter = [format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'), format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')];
+    @tracked replaySpeed = '1';
+    @tracked positionsLayer = null;
+    @tracked positionOverlayIds = [];
+    @tracked selectedTrackableModelName = null;
+
+    /** Computed properties - read state from service */
+    get isReplaying() {
+        return this.positionPlayback.isPlaying;
+    }
+
+    get isPaused() {
+        return this.positionPlayback.isPaused;
+    }
+
+    get currentReplayIndex() {
+        return this.positionPlayback.currentIndex;
+    }
+
+    get trackables() {
+        const vehicles = this.mapManager.livemap?.vehicles ?? [];
+        const drivers = this.mapManager.livemap?.drivers ?? [];
+
+        return [...vehicles.map((vehicle) => buildTrackableOption(vehicle, 'vehicle')), ...drivers.map((driver) => buildTrackableOption(driver, 'driver'))];
+    }
+
+    get selectedTrackable() {
+        if (!this.resource) {
+            return null;
+        }
+
+        const resourceType = this.resourceType;
+
+        return this.trackables.find((trackable) => trackable.resource?.id === this.resource?.id && trackable.modelName === resourceType) ?? null;
+    }
+
+    get replayProgressWidth() {
+        return htmlSafe(`width: ${this.replayProgress}%;`);
+    }
+
+    get orderFilters() {
+        const params = {};
+
+        if (this.resourceType === 'vehicle') {
+            params.vehicle_assigned_uuid = this.resource?.id;
+        }
+
+        if (this.resourceType === 'driver') {
+            params.driver_assigned_uuid = this.resource?.id;
+        }
+
+        return params;
+    }
+
+    get resourceType() {
+        if (!this.resource) {
+            return 'resource';
+        }
+        return this.selectedTrackableModelName || getModelName(this.resource) || 'resource';
+    }
+
+    get hasPositions() {
+        return this.positions.length > 0;
+    }
+
+    get totalPositions() {
+        return this.positions.length;
+    }
+
+    get replayProgress() {
+        if (this.totalPositions === 0) {
+            return 0;
+        }
+        return Math.round((this.currentReplayIndex / this.totalPositions) * 100);
+    }
+
+    get speedOptions() {
+        return [
+            { label: '0.5x', value: '0.5' },
+            { label: '1x', value: '1' },
+            { label: '2x', value: '2' },
+            { label: '5x', value: '5' },
+            { label: '10x', value: '10' },
+            { label: '20x', value: '20' },
+            { label: '30x', value: '30' },
+            { label: '40x', value: '40' },
+            { label: '50x', value: '50' },
+            { label: '100x', value: '100' },
+            { label: '80x', value: '80' },
+            { label: '120x', value: '120' },
+            { label: '160x', value: '160' },
+            { label: '180x', value: '180' },
+            { label: '200x', value: '200' },
+            { label: '250x', value: '250' },
+            { label: '280x', value: '280' },
+            { label: '300x', value: '300' },
+            { label: '350x', value: '350' },
+            { label: '400x', value: '400' },
+            { label: '500x', value: '500' },
+            { label: '600x', value: '600' },
+            { label: '1000x', value: '1000' },
+        ];
+    }
+
+    /** columns */
+    get columns() {
+        return [
+            {
+                label: '#',
+                valuePath: 'index',
+                width: '80px',
+                cellComponent: 'table/cell/anchor',
+                onClick: this.onPositionClicked,
+            },
+            {
+                label: this.intl.t('fleet-ops.ui.map.drawer-position-listing.timestamp'),
+                valuePath: 'timestamp',
+                cellComponent: 'table/cell/anchor',
+                onClick: this.onPositionClicked,
+            },
+            {
+                label: this.intl.t('fleet-ops.ui.map.drawer-position-listing.latitude'),
+                valuePath: 'latitude',
+                cellComponent: 'table/cell/anchor',
+                onClick: this.onPositionClicked,
+            },
+            {
+                label: this.intl.t('fleet-ops.ui.map.drawer-position-listing.longitude'),
+                valuePath: 'longitude',
+                cellComponent: 'table/cell/anchor',
+                onClick: this.onPositionClicked,
+            },
+            {
+                label: this.intl.t('fleet-ops.ui.map.drawer-position-listing.speed-km-h'),
+                valuePath: 'speedKmh',
+            },
+            {
+                label: this.intl.t('fleet-ops.ui.map.drawer-position-listing.heading'),
+                valuePath: 'heading',
+            },
+            {
+                label: this.intl.t('fleet-ops.ui.map.drawer-position-listing.altitude-m'),
+                valuePath: 'altitude',
+            },
+        ];
+    }
+
+    constructor() {
+        super(...arguments);
+        this.loadPositions.perform();
+    }
+
+    willDestroy() {
+        super.willDestroy?.();
+
+        // Clean up replay tracker
+        this.positionPlayback.reset();
+        this.#resumeViewportReload();
+
+        // Remove our layer group from the map
+        this.#clearPositionsLayer(true);
+        this.positionsLayer = null;
+        this.positionOverlayIds = [];
+    }
+
+    @action onResourceSelected(trackable) {
+        this.resource = trackable?.resource ?? null;
+        this.selectedTrackableModelName = trackable?.modelName ?? null;
+        this.loadPositions.perform();
+    }
+
+    @action onOrderSelected(order) {
+        this.selectedOrder = order;
+        this.loadPositions.perform();
+    }
+
+    @action onDateRangeChanged({ formattedDate }) {
+        if (isArray(formattedDate) && formattedDate.length === 2) {
+            this.dateFilter = formattedDate;
+            this.loadPositions.perform();
+        }
+    }
+
+    @action onSpeedChanged(speed) {
+        this.replaySpeed = speed;
+
+        // Update replay speed in real-time if currently playing
+        if (this.isReplaying) {
+            this.positionPlayback.setSpeed(parseFloat(speed));
+        }
+    }
+
+    @action startReplay() {
+        if (this.positions.length === 0) {
+            this.notifications.warning(this.intl.t('fleet-ops.ui.map.drawer-position-listing.no-positions-to-replay'));
+            return;
+        }
+
+        if (this.isReplaying && !this.isPaused) {
+            this.notifications.info(this.intl.t('fleet-ops.ui.map.drawer-position-listing.replay-is-already-running'));
+            return;
+        }
+
+        // If paused, resume
+        if (this.isPaused) {
+            this.positionPlayback.play();
+            return;
+        }
+
+        // Start new replay
+        this.#suspendViewportReload();
+        this.#initializeReplay();
+        this.positionPlayback.play();
+    }
+
+    @action pauseReplay() {
+        if (!this.isReplaying) {
+            return;
+        }
+
+        this.positionPlayback.pause();
+    }
+
+    @action stopReplay() {
+        this.positionPlayback.stop();
+        this.#resumeViewportReload();
+    }
+
+    @action stepForward() {
+        this.#suspendViewportReload();
+        if (this.isReplaying) {
+            this.pauseReplay();
+        }
+        this.positionPlayback.stepForward(1);
+    }
+
+    @action stepBackward() {
+        this.#suspendViewportReload();
+        if (this.isReplaying) {
+            this.pauseReplay();
+        }
+        this.positionPlayback.stepBackward(1);
+    }
+
+    @action clearFilters() {
+        this.selectedOrder = null;
+        this.dateFilter = null;
+        this.loadPositions.perform();
+    }
+
+    @action onPositionClicked(position) {
+        if (position.latitude && position.longitude) {
+            this.mapManager.setCenter(position.latitude, position.longitude, 16);
+        }
+    }
+
+    @action focusResource(resource) {
+        const hasValidCoordinates = resource?.hasValidCoordinates || (Number.isFinite(resource?.latitude) && Number.isFinite(resource?.longitude));
+        if (hasValidCoordinates) {
+            this.mapManager.focusResource(resource, 18);
+        }
+    }
+
+    @task *loadPositions() {
+        if (!this.resource) return;
+
+        try {
+            const params = {
+                limit: 900,
+                sort: 'created_at',
+                subject_uuid: this.resource.id,
+            };
+
+            if (this.selectedOrder) {
+                params.order_uuid = this.selectedOrder.id;
+            }
+
+            if (isArray(this.dateFilter) && this.dateFilter.length === 2) {
+                params.created_at = this.dateFilter.join(',');
+            }
+
+            const positions = yield this.store.query('position', params);
+            this.positions = isArray(positions)
+                ? positions.map((pos, index) => {
+                      pos.set('index', index + 1);
+                      return pos;
+                  })
+                : [];
+
+            if (this.positions.length > 0) {
+                this.#renderPositionsOnMap({ fitLast: 5 });
+            } else if (this.resource) {
+                this.focusResource(this.resource);
+            }
+
+            // Reset replay state when positions change
+            this.stopReplay();
+        } catch (error) {
+            this.notifications.serverError(error);
+        }
+    }
+
+    /**
+     * Initialize replay tracker with current positions and settings
+     * This replaces the socket-based backend replay approach
+     *
+     * @private
+     */
+    #initializeReplay() {
+        if (!this.resource) {
+            this.notifications.warning(this.intl.t('fleet-ops.ui.map.drawer-position-listing.no-resource-provided-for-replay'));
+            return;
+        }
+
+        if (this.positions.length === 0) {
+            this.notifications.warning(this.intl.t('fleet-ops.ui.map.drawer-position-listing.no-positions-to-replay'));
+            return;
+        }
+
+        // Initialize replay tracker with positions
+        this.positionPlayback.initialize({
+            subject: this.resource,
+            positions: this.positions,
+            speed: parseFloat(this.replaySpeed),
+            map: this.mapManager.isGoogleMaps ? null : this.leafletMapManager.map,
+            callback: (data) => {
+                if (data.type === 'complete') {
+                    // Replay completed
+                    this.#resumeViewportReload();
+                    this.notifications.success(this.intl.t('fleet-ops.ui.map.drawer-position-listing.replay-completed'));
+                }
+            },
+        });
+    }
+
+    #suspendViewportReload() {
+        this.mapManager.livemap?.suspendViewportReload?.(`position-playback:${this.id}`);
+    }
+
+    #resumeViewportReload() {
+        this.mapManager.livemap?.resumeViewportReload?.(`position-playback:${this.id}`);
+    }
+
+    /** Position Rendering */
+    #ensurePositionsLayer() {
+        if (this.mapManager.isGoogleMaps) {
+            return true;
+        }
+
+        if (!this.leafletMapManager.map) return null;
+
+        if (!this.positionsLayer) {
+            this.positionsLayer = L.layerGroup();
+            this.positionsLayer.addTo(this.leafletMapManager.map);
+        }
+        return this.positionsLayer;
+    }
+
+    #clearPositionsLayer(removeFromMap = false) {
+        if (this.mapManager.isGoogleMaps) {
+            for (const overlayId of this.positionOverlayIds) {
+                this.mapManager.removeMarker(overlayId);
+            }
+            this.positionOverlayIds = [];
+            return;
+        }
+
+        if (this.positionsLayer) {
+            if (removeFromMap && this.leafletMapManager.map) {
+                this.positionsLayer.removeFrom(this.leafletMapManager.map);
+            } else {
+                try {
+                    this.positionsLayer.clearLayers();
+                } catch {
+                    // Ignore teardown race when Leaflet renderer is already gone.
+                }
+            }
+        }
+    }
+
+    #addPositionMarker(pos, index) {
+        const lat = parseFloat(pos.latitude);
+        const lng = parseFloat(pos.longitude);
+        if (!this.#isValidLatLng(lat, lng)) return;
+
+        if (this.mapManager.isGoogleMaps) {
+            const overlayId = `position-history:${this.resource?.id ?? 'resource'}:${index}`;
+            const dot = document.createElement('div');
+            dot.className = 'fleetops-position-history-dot';
+            dot.title = `Position ${index + 1}`;
+
+            this.mapManager.addMarker(overlayId, lat, lng, {
+                content: dot,
+                title: this.intl.t('fleet-ops.ui.map.drawer-position-listing.position', { value: index + 1 }),
+                onClick: () => this.onPositionClicked(pos),
+            });
+            this.positionOverlayIds = [...this.positionOverlayIds, overlayId];
+            return;
+        }
+
+        ensureLeafletDrawEditNamespace(L);
+        ensureLeafletDrawEditNamespace();
+        const marker = L.circleMarker([lat, lng], {
+            radius: 3,
+            color: '#3b82f6',
+            fillColor: '#3b82f6',
+            fillOpacity: 0.6,
+        });
+
+        // Popup content (mirrors your template)
+        const html = `<div class="text-xs">
+        <div><strong>Position ${index + 1}</strong></div>
+        <div>Time: ${pos.timestamp ?? ''}</div>
+        <div>Speed: ${pos.speedKmh ?? 'N/A'} km/h</div>
+        <div>Heading: ${pos.heading ?? 'N/A'}°</div>
+        <div>Altitude: ${pos.altitude ?? 'N/A'} m</div>
+        </div>`;
+
+        marker.bindPopup(html);
+
+        // Click handler -> reuse your action
+        marker.on('click', () => this.onPositionClicked(pos));
+
+        marker.addTo(this.positionsLayer);
+    }
+
+    #isValidLatLng(lat, lng) {
+        return Number.isFinite(lat) && Number.isFinite(lng) && lat <= 90 && lat >= -90 && lng <= 180 && lng >= -180 && lat !== 0 && lng !== 0;
+    }
+
+    #renderPositionsOnMap({ fitLast = 0, minZoom = 15, maxZoom = 18 } = {}) {
+        if ((!this.mapManager.isGoogleMaps && !this.leafletMapManager.map) || !this.positions?.length) {
+            this.#clearPositionsLayer(false);
+            return;
+        }
+
+        this.#ensurePositionsLayer();
+        this.#clearPositionsLayer(false);
+
+        const latlngs = [];
+        this.positions.forEach((pos, i) => {
+            const lat = parseFloat(pos.latitude);
+            const lng = parseFloat(pos.longitude);
+            if (this.#isValidLatLng(lat, lng)) {
+                this.#addPositionMarker(pos, i);
+                latlngs.push([lat, lng]);
+            }
+        });
+
+        if (!latlngs.length) return;
+
+        // choose subset (e.g., last 5 points) to bias the view local
+        const slice = fitLast > 0 ? latlngs.slice(-fitLast) : latlngs;
+        const zoomBounds = this.#getReplayViewportZoomBounds({ minZoom, maxZoom });
+
+        // Clamp zoom to neighborhood-level
+        this.#fitNeighborhood(slice, { zoom: 16, minZoom: zoomBounds.minZoom, maxZoom: zoomBounds.maxZoom, padding: [24, 24], animate: true });
+    }
+
+    #fitNeighborhood(latlngs, { zoom = null, minZoom = 15, maxZoom = 18, padding = [16, 16], animate = true } = {}) {
+        if (!latlngs?.length) return;
+
+        if (this.mapManager.isGoogleMaps) {
+            if (latlngs.length === 1) {
+                this.mapManager.setCenter(latlngs[0][0], latlngs[0][1], minZoom);
+                return;
+            }
+
+            const lats = latlngs.map(([lat]) => lat);
+            const lngs = latlngs.map(([, lng]) => lng);
+            this.mapManager.fitBounds(
+                [
+                    [Math.min(...lats), Math.min(...lngs)],
+                    [Math.max(...lats), Math.max(...lngs)],
+                ],
+                { paddingBottomRight: padding, animate, maxZoom, minZoom }
+            );
+            return;
+        }
+
+        if (!this.leafletMapManager.map) return;
+
+        const map = this.leafletMapManager.map;
+
+        if (latlngs.length === 1) {
+            // Single point → center on it at minZoom
+            map.setView(latlngs[0], minZoom, { animate });
+            return;
+        }
+
+        const bounds = L.latLngBounds(latlngs);
+        // Compute the zoom that would fit the bounds, then clamp it
+        // Leaflet getBoundsZoom may be (bounds, inside, padding) depending on version
+        let targetZoom = zoom;
+        if (!zoom) {
+            try {
+                // Try newer signature
+                targetZoom = map.getBoundsZoom(bounds, true, padding);
+            } catch {
+                // Fallback without padding param
+                targetZoom = map.getBoundsZoom(bounds, true);
+            }
+            targetZoom = Math.max(minZoom, Math.min(maxZoom, targetZoom));
+        }
+
+        // Center on bounds center with clamped zoom
+        const center = bounds.getCenter();
+        map.setView(center, targetZoom, { animate });
+    }
+
+    #getReplayViewportZoomBounds({ minZoom = 15, maxZoom = 18 } = {}) {
+        if (this.mapManager.isGoogleMaps) {
+            return {
+                minZoom,
+                maxZoom: Math.min(maxZoom, 16),
+            };
+        }
+
+        return {
+            minZoom,
+            maxZoom,
+        };
+    }
+}

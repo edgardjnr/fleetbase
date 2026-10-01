@@ -1,0 +1,40 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="modal-body-container">
+        <p class="text-sm mb-4 text-gray-900 dark:text-gray-200">
+            {{t "registry-bridge.ui.install-intro"}}
+            <a href="https://github.com/fleetbase/fleetbase-cli" target="fleetbase-cli" class="text-blue-400 hover:opacity-50">
+                <FaIcon @icon="arrow-up-right-from-square" class="text-xs" />
+                {{t "registry-bridge.ui.cli-github-page"}}</a>.
+        </p>
+        <ol class="self-managed-install-instructions">
+            <li>
+                <div class="flex">
+                    {{t "registry-bridge.ui.install-first"}}
+                    <LinkTo @route="console.extensions.developers.credentials" class="ml-1 text-blue-400 hover:opacity-50">{{t "registry-bridge.ui.generate-registry-token"}}</LinkTo>
+                </div>
+            </li>
+            <li>
+                <div class="flex flex-col">
+                    <div class="mb-2">{{t "registry-bridge.ui.install-cli"}}</div>
+                    <ClickToCopy @value={{concat "npm i -g @fleetbase/cli"}}><code>npm i -g @fleetbase/cli</code></ClickToCopy>
+                </div>
+            </li>
+            <li>
+                <div class="flex flex-col">
+                    <div class="mb-2">{{t "registry-bridge.ui.set-auth-token"}}</div>
+                    <ClickToCopy @value={{concat "flb set-auth {YOUR_TOKEN}"}}><code>flb set-auth {YOUR_TOKEN}</code></ClickToCopy>
+                </div>
+            </li>
+            <li>
+                <div class="flex flex-col">
+                    <div class="mb-2">{{t "registry-bridge.ui.install-finally"}}</div>
+                    <div>
+                        <ClickToCopy @value={{concat "flb install fleetbase/" @options.extension.slug}}><code>flb install fleetbase/{{@options.extension.slug}}</code></ClickToCopy>
+                        <div class="my-1 pl-2">{{t "registry-bridge.ui.or"}}</div>
+                        <ClickToCopy @value={{concat "flb install " @options.extension.public_id}}><code>flb install {{@options.extension.public_id}}</code></ClickToCopy>
+                    </div>
+                </div>
+            </li>
+        </ol>
+    </div>
+</Modal::Default>

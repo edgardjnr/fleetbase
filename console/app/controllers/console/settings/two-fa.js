@@ -19,6 +19,7 @@ export default class ConsoleSettingsTwoFaController extends Controller {
      * @type {notifications}
      */
     @service notifications;
+    @service intl;
 
     /**
      * System-wide two-factor authentication configuration.
@@ -175,7 +176,7 @@ export default class ConsoleSettingsTwoFaController extends Controller {
         yield this.fetch
             .post('companies/two-fa', { twoFaSettings })
             .then(() => {
-                this.notifications.success('2FA Settings saved for organization successfully.');
+                this.notifications.success(this.intl.t('console.ui.two-fa.saved-organization'));
             })
             .catch((error) => {
                 this.notifications.serverError(error);

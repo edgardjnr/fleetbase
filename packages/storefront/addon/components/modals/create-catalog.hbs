@@ -1,0 +1,96 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="modal-body-container">
+        <InputGroup @name={{t "storefront.ui.catalog.name"}} @value={{@options.catalog.name}} @disabled={{cannot "storefront create catalog"}} />
+        <InputGroup @name={{t "storefront.ui.catalog.description"}} @value={{@options.catalog.description}} @disabled={{cannot "storefront create catalog"}} />
+        <InputGroup @name={{t "storefront.ui.catalog.status"}}>
+            <Select
+                class="w-full"
+                @value={{@options.catalog.status}}
+                @placeholder={{t "storefront.ui.catalog.select-status"}}
+                @options={{@options.statusOptions}}
+                @onSelect={{fn (mut @options.catalog.status)}}
+                @humanize={{true}}
+            />
+        </InputGroup>
+        <InputGroup>
+            <div class="rounded-lg flex flex-col px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <div class="mb-2 flex justify-between">
+                    <div class="text-sm font-semibold dark:text-gray-100">{{t "storefront.ui.catalog.product-catalog"}}</div>
+                    <div>
+                        <Button @icon="plus" @text={{t "storefront.ui.catalog.add-category"}} @onClick={{@options.createCategory}} />
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    {{#each @options.catalog.categories as |category|}}
+                        <div>
+                            <div
+                                class="{{if category.deleting 'opacity-50'}}
+                                    {{if category.expanded 'rounded-t-lg' 'rounded-lg'}}
+                                    flex flex-row items-center justify-between px-2 py-1 bg-gray-200 dark:bg-gray-700 border border-gray-100 dark:border-gray-900 shadow-sm"
+                            >
+                                <div>
+                                    <div class="text-sm dark:text-gray-100">{{category.name}}</div>
+                                </div>
+                                <div class="flex flex-row items-center space-x-1">
+                                    <Button
+                                        @icon={{if category.expanded "compress" "expand"}}
+                                        @onClick={{fn @options.toggleCategory category}}
+                                        @helpText={{t "storefront.ui.catalog.toggle-category"}}
+                                        @size="xs"
+                                    />
+                                    <Button @icon="tags" @onClick={{fn @options.addProducts category}} @helpText={{t "storefront.ui.catalog.manage-category-products"}} @size="xs" />
+                                    <Button @icon="pencil" @onClick={{fn @options.editCategory category}} @helpText={{t "storefront.ui.catalog.edit-category-name"}} @size="xs" />
+                                    <Button @type="danger" @icon="trash" @onClick={{fn @options.deleteCategory category}} @helpText={{t "storefront.ui.catalog.delete-category"}} @size="xs" />
+                                </div>
+                            </div>
+                            {{#if category.expanded}}
+                                <div class="rounded-b-lg flex flex-col px-2 py-1 bg-gray-300 dark:bg-gray-900 border border-gray-100 dark:border-gray-900 shadow-sm">
+                                    {{#if category.adding_products}}
+                                        <div>
+                                            <ComboBox
+                                                @options={{@options.allProducts}}
+                                                @selected={{category.products}}
+                                                @optionLabel="name"
+                                                @comparator="name"
+                                                @selectionBoxLabel={{t "storefront.ui.common.selected"}}
+                                                @onChange={{fn @options.confirmSelectedProducts category}}
+                                            />
+                                            <div class="mt-2">
+                                                <Button @icon="check" @type="primary" @text={{t "storefront.ui.common.done"}} @onClick={{fn @options.finishAddingProducts category}} />
+                                            </div>
+                                        </div>
+                                    {{else}}
+                                        <div class="flex flex-row mb-2">
+                                            <Button @icon="edit" @text={{t "storefront.ui.catalog.edit-products"}} @onClick={{fn @options.addProducts category}} @size="xs" />
+                                        </div>
+                                        <div class="grid grid-cols-4 gap-2">
+                                            {{#each category.products as |product|}}
+                                                <div class="rounded-lg bg-gray-100 dark:bg-gray-800 border dark:border-gray-700 border-gray-200">
+                                                    <Image src={{product.primary_image_url}} class="rounded-t-lg w-full h-32" />
+                                                    <div class="flex flex-col p-2">
+                                                        <div class="text-sm truncate font-semibold dark:text-gray-100">{{product.name}}</div>
+                                                        <div class="text-sm truncate dark:text-gray-200">{{n-a product.description}}</div>
+                                                        <div class="text-sm dark:text-gray-200">{{format-currency product.price product.currency}}</div>
+                                                        <div class="mt-2">
+                                                            <Button @type="danger" @icon="trash" @text={{t "storefront.common.remove"}} @onClick={{fn @options.removeProduct category product}} @size="xs" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {{/each}}
+                                        </div>
+                                    {{/if}}
+                                </div>
+                            {{/if}}
+                        </div>
+                    {{/each}}
+                </div>
+            </div>
+        </InputGroup>
+
+        {{!-- <ContentPanel @title={{t "storefront.ui.common.availability"}} @open={{@options.catalog.hours.length}} @pad={{false}} @panelBodyClass="bg-white dark:bg-gray-800">
+            <div class="p-2">
+                <ScheduleManager @subject={{@options.catalog}} @subjectKey="catalog_uuid" @hourModelType="catalog-hour" class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-2" />
+            </div>
+        </ContentPanel> --}}
+    </div>
+</Modal::Default>

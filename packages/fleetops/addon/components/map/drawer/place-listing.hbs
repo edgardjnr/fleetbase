@@ -1,0 +1,19 @@
+<div class="flex flex-row items-center px-5 py-2 border-b border-gray-200 dark:border-gray-700">
+    <div>
+        <Input @value={{this.query}} @type="text" class="form-input form-input-sm w-60" placeholder={{t "live-map-drawer.place-listing.message"}} />
+    </div>
+</div>
+<Table
+    @rows={{this.filteredPlaces}}
+    @columns={{this.columns}}
+    @searchQuery={{this.query}}
+    @emptyStateComponent={{component
+        "table/empty-state"
+        variant="compact"
+        icon="location-dot"
+        title=(t "fleet-ops.ui.map.drawer-place-listing.no-places-visible")
+        description=(t "fleet-ops.ui.map.drawer-place-listing.places-appear-here-when-they-are")
+        filteredTitle=(t "fleet-ops.ui.map.drawer-place-listing.no-places-match-this-search")
+        filteredDescription=(t "fleet-ops.ui.map.drawer-place-listing.adjust-the-search-to-find-another")
+    }}
+/>

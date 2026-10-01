@@ -76,8 +76,8 @@ services:
   console:
     restart: unless-stopped
     build:
-      context: ./console
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: console/Dockerfile
       args:
         ENVIRONMENT: development
     ports:

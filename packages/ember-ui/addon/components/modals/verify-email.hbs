@@ -1,0 +1,25 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="modal-body-container">
+        <InfoBlock @type="info" @icon="lightbulb" @iconSize="lg" class="mb-5">
+            <div class="font-extrabold">{{t "ember-ui.modals.verify-email.title"}}</div>
+            <div>{{t "ember-ui.modals.verify-email.message"}}</div>
+        </InfoBlock>
+        {{#if @options.sent}}
+            <InputGroup
+                @type="tel"
+                @name={{t "ember-ui.modals.verify-email.code-label"}}
+                @value={{@options.code}}
+                @helpText={{t "ember-ui.modals.verify-email.code-help"}}
+                @inputClass="input-lg"
+            />
+        {{else}}
+            <InputGroup
+                @type="email"
+                @name={{t "ember-ui.modals.verify-email.email-label"}}
+                @value={{@options.email}}
+                @helpText={{t "ember-ui.modals.verify-email.email-help"}}
+                @inputClass="input-lg"
+            />
+        {{/if}}
+    </div>
+</Modal::Default>

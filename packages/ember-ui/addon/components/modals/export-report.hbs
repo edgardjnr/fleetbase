@@ -1,0 +1,44 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}} as |options|>
+    <div class="modal-body-container">
+        <div class="mb-4">
+            <p class="text-sm text-gray-600 dark:text-gray-300">
+                {{t "ember-ui.modals.export-report.intro" count=@options.rowCount}}
+            </p>
+        </div>
+
+        <InputGroup @name={{t "ember-ui.modals.export-report.export-format"}} @required={{true}}>
+            <Select @value={{@options.format}} @options={{@options.formatOptions}} @placeholder={{t "ember-ui.modals.export-report.select-format"}} @onChange={{@options.setFormat}} class="form-input" />
+        </InputGroup>
+
+        {{#if (eq @options.format "csv")}}
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                <div class="flex items-start">
+                    <FaIcon @icon="info-circle" class="text-blue-500 mt-0.5 mr-2" />
+                    <div class="text-sm text-blue-700 dark:text-blue-300">
+                        <p class="font-medium">{{t "ember-ui.modals.export-report.csv-title"}}</p>
+                        <p>{{t "ember-ui.modals.export-report.csv-help"}}</p>
+                    </div>
+                </div>
+            </div>
+        {{/if}}
+
+        {{#if (eq @options.format "json")}}
+            <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                <div class="flex items-start">
+                    <FaIcon @icon="info-circle" class="text-green-500 mt-0.5 mr-2" />
+                    <div class="text-sm text-green-700 dark:text-green-300">
+                        <p class="font-medium">{{t "ember-ui.modals.export-report.json-title"}}</p>
+                        <p>{{t "ember-ui.modals.export-report.json-help"}}</p>
+                    </div>
+                </div>
+            </div>
+        {{/if}}
+
+        <InputGroup @name={{t "ember-ui.modals.export-report.file-name"}}>
+            <Input @value={{@options.fileName}} placeholder="report-export" class="form-input" />
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {{t "ember-ui.modals.export-report.file-extension-help"}}
+            </div>
+        </InputGroup>
+    </div>
+</Modal::Default>

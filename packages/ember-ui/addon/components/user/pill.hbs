@@ -1,0 +1,16 @@
+<Pill
+    @resource={{this.resource}}
+    @imageSrc={{avatar-url this.resource.avatar_url}}
+    @titleFallback={{or @titleFallback (t "ember-ui.user.pill.no-user")}}
+    @subtitle={{n-a this.resource.email (if this.resource (t "ember-ui.user.pill.no-email") "-")}}
+    @fallbackImageType="userImage"
+    @noTooltip={{not this.resource}}
+    @onClick={{@onClick}}
+    @anchorClass={{@anchorClass}}
+    @imageClass={{@imageClass}}
+    @imageWrapperClass={{@imageWrapperClass}}
+    @contentWrapperClass={{@contentWrapperClass}}
+    @titleClass={{@titleClass}}
+    @subtitleClass={{@subtitleClass}}
+    ...attributes
+/>

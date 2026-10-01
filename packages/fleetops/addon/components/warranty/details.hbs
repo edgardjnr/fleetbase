@@ -1,0 +1,81 @@
+<div class="details-wrapper" ...attributes>
+    <ContentPanel @title={{t "fleet-ops.ui.warranty.details.details"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-2">
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.warranty.details.provider"}}</div>
+                <div class="field-value">{{n-a @resource.provider}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.warranty.details.policy-number"}}</div>
+                <div class="field-value">{{n-a @resource.policy_number}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.warranty.details.status"}}</div>
+                <div class="field-value">
+                    {{#if @resource.is_active}}
+                        <Badge @status="success">{{t "fleet-ops.ui.warranty.details.active"}}</Badge>
+                    {{else if @resource.is_expired}}
+                        <Badge @status="danger">{{t "fleet-ops.ui.warranty.details.expired"}}</Badge>
+                    {{else}}
+                        <Badge @status="default">{{t "fleet-ops.ui.warranty.details.inactive"}}</Badge>
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.warranty.details.vendor"}}</div>
+                <div class="field-value">{{n-a @resource.vendor_name}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.warranty.details.subject"}}</div>
+                <div class="field-value">{{n-a @resource.subject_name}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.warranty.details.coverage-summary"}}</div>
+                <div class="field-value">{{n-a @resource.coverage_summary}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.warranty.details.start-date"}}</div>
+                <div class="field-value">{{format-date @resource.start_date}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.warranty.details.end-date"}}</div>
+                <div class="field-value">{{format-date @resource.end_date}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.warranty.details.days-remaining"}}</div>
+                <div class="field-value">
+                    {{#if @resource.is_expired}}
+                        <Badge @status="danger">{{t "fleet-ops.ui.warranty.details.expired"}}</Badge>
+                    {{else if @resource.days_remaining}}
+                        {{t "fleet-ops.ui.warranty.details.days" daysRemaining=@resource.days_remaining}}
+                        {{#if (lt @resource.days_remaining 30)}}
+                            <Badge @status="warning">{{t "fleet-ops.ui.warranty.details.expiring-soon"}}</Badge>
+                        {{/if}}
+                    {{else}}
+                        N/A
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container col-span-3">
+                <div class="field-name">{{t "fleet-ops.ui.warranty.details.terms"}}</div>
+                <div class="field-value">{{n-a @resource.terms}}</div>
+            </div>
+
+            <div class="field-info-container col-span-3">
+                <div class="field-name">{{t "fleet-ops.ui.warranty.details.policy-document"}}</div>
+                <div class="field-value">{{n-a @resource.policy}}</div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    <CustomField::Yield @subject={{@resource}} @viewMode={{true}} @wrapperClass="bordered-top" />
+</div>

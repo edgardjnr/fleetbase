@@ -1,0 +1,25 @@
+<ContentPanel @title={{t "customer-portal.ui.support.details"}} @open={{true}} @wrapperClass="bordered-top">
+    <div class="grid grid-cols-1 gap-3">
+        <InputGroup @name={{t "customer-portal.ui.order.order-type"}} @required={{true}}>
+            <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                <PowerSelect @options={{@orderConfigs}} @selected={{@draft.orderConfig}} @onChange={{this.setOrderConfig}} @placeholder={{t "customer-portal.ui.order.select-order-type"}} @triggerClass="form-select form-input" @renderInPlace={{true}} as |orderConfig|>
+                    <div class="text-sm">
+                        <div class="font-semibold normalize-in-trigger">{{orderConfig.name}}</div>
+                        <div class="hide-from-trigger">{{n-a orderConfig.description}}</div>
+                    </div>
+                </PowerSelect>
+            </div>
+        </InputGroup>
+        <InputGroup @name={{t "customer-portal.ui.order.scheduled-at"}}>
+            <Input @value={{@draft.scheduledAt}} @type="datetime-local" class="form-input w-full" {{on "input" (fn this.setInput "scheduledAt")}} />
+        </InputGroup>
+        <InputGroup>
+            <Toggle @label={{t "customer-portal.ui.order.require-pod"}} @isToggled={{@draft.podRequired}} @onToggle={{this.togglePodRequired}} />
+        </InputGroup>
+        {{#if @draft.podRequired}}
+            <InputGroup @name={{t "customer-portal.ui.order.proof-method"}}>
+                <Select class="w-full" @options={{this.podOptions}} @optionLabel="label" @optionValue="value" @value={{@draft.podMethod}} @onSelect={{this.setPodMethod}} @placeholder={{t "customer-portal.ui.order.select-proof-method"}} />
+            </InputGroup>
+        {{/if}}
+    </div>
+</ContentPanel>

@@ -29,7 +29,7 @@ if tem api; then
 fi
 if tem console; then
   echo "==> build entregas-console"
-  docker build -t entregas-console:latest --build-arg ENVIRONMENT=production ./console
+  docker build -t entregas-console:latest --build-arg ENVIRONMENT=production -f console/Dockerfile .
 fi
 if tem socket; then
   echo "==> build entregas-socket"

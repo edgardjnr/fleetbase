@@ -12,6 +12,7 @@ export default class ConsoleSettingsIndexController extends Controller {
      * @memberof ConsoleSettingsIndexController
      */
     @service currentUser;
+    @service intl;
 
     /**
      * Inject the `notifications` service
@@ -63,7 +64,7 @@ export default class ConsoleSettingsIndexController extends Controller {
 
         try {
             yield this.model.save();
-            this.notifications.success('Organization changes successfully saved.');
+            this.notifications.success(this.intl.t('console.ui.settings.organization-saved'));
         } catch (error) {
             debug(`Unable to save organization settings : ${error.message}`);
         }

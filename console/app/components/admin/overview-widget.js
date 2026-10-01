@@ -5,6 +5,7 @@ import { task } from 'ember-concurrency';
 
 export default class AdminOverviewWidgetComponent extends Component {
     @service fetch;
+    @service intl;
 
     @tracked metrics = {};
     @tracked error = null;
@@ -15,15 +16,15 @@ export default class AdminOverviewWidgetComponent extends Component {
     }
 
     get title() {
-        return 'Admin Overview';
+        return this.intl.t('console.ui.admin.overview-widget.title');
     }
 
     get items() {
         return [
-            { label: 'Users', value: this.metrics.usersTotal?.value ?? 0 },
-            { label: 'Organizations', value: this.metrics.organizationsTotal?.value ?? 0 },
-            { label: 'Active admins', value: this.metrics.activeAdmins?.value ?? 0 },
-            { label: 'Needs attention', value: this.metrics.organizationsAttention?.value ?? 0 },
+            { label: this.intl.t('common.users'), value: this.metrics.usersTotal?.value ?? 0 },
+            { label: this.intl.t('console.ui.account.organizations.title'), value: this.metrics.organizationsTotal?.value ?? 0 },
+            { label: this.intl.t('console.ui.admin.overview-widget.active-admins'), value: this.metrics.activeAdmins?.value ?? 0 },
+            { label: this.intl.t('console.ui.admin.overview-widget.needs-attention'), value: this.metrics.organizationsAttention?.value ?? 0 },
         ];
     }
 
@@ -43,7 +44,7 @@ export default class AdminOverviewWidgetComponent extends Component {
             };
             this.error = null;
         } catch (error) {
-            this.error = error?.message ?? 'Unable to load admin overview.';
+            this.error = error?.message ?? this.intl.t('console.ui.admin.overview-widget.load-error');
         }
     }
 }

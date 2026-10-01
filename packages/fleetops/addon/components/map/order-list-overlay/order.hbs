@@ -1,0 +1,122 @@
+<a
+    href="javascript:;"
+    class="order-listings-row-container {{@wrapperClass}} {{if @isSelected 'selected'}}"
+    {{on "click" (fn this.onClick @order)}}
+    {{on "dblclick" (fn this.onDoubleClick @order)}}
+    {{on "mouseenter" (fn this.onMouseEnter @order)}}
+    {{on "mouseleave" (fn this.onMouseLeave @order)}}
+    {{did-insert this.setupIntersectionObserver}}
+    ...attributes
+>
+    <div class="order-listing-row">
+        <div class="order-listing-row-header">
+            <div class="order-listing-row-prefix">
+                <div class="order-listing-row-index">
+                    {{@index}}
+                </div>
+                <div class="order-listing-row-icon-container">
+                    <FaIcon @icon="map-marker" />
+                </div>
+            </div>
+            <div class="order-listing-row-subheader">
+                <div class="order-listing-row-header-title truncate">{{@order.tracking}}</div>
+                <Badge @status={{@order.status}} />
+            </div>
+        </div>
+        <div class="order-listing-row-details">
+            <div class="order-listing-row-progress">
+                <OrderProgressBar
+                    @order={{@order}}
+                    @progress={{@order.tracker_data.progress.percentage}}
+                    @firstWaypointCompleted={{gt @order.tracker_data.progress.completed_stops 0}}
+                    @lastWaypointCompleted={{eq @order.tracker_data.progress.percentage 100}}
+                />
+                {{#if @order.tracker_data.insights.is_location_stale}}
+                    <div class="flex mt-1">
+                        <Badge @status="warning" @hideStatusDot={{true}}>{{t "fleet-ops.ui.map.order-list-overlay-order.stale-gps"}}</Badge>
+                    </div>
+                {{else if @order.tracker_data.fallback_provider}}
+                    <div class="flex mt-1">
+                        <Badge @status="warning" @hideStatusDot={{true}}>{{t "fleet-ops.ui.map.order-list-overlay-order.fallback-eta"}}</Badge>
+                    </div>
+                {{else if @order.tracker_data.confidence}}
+                    {{#unless (eq @order.tracker_data.confidence "high")}}
+                        <div class="flex mt-1">
+                            <Badge @status="warning" @hideStatusDot={{true}}>{{t "fleet-ops.ui.map.order-list-overlay-order.low-eta-confidence"}}</Badge>
+                        </div>
+                    {{/unless}}
+                {{/if}}
+            </div>
+            <div class="order-listing-row-body">
+                <div class="order-listing-row-body-address start">
+                    <div class="font-semibold">{{t "fleet-ops.ui.map.order-list-overlay-order.pickup"}}</div>
+                    <div class="address-text">
+                        {{#if @order.payload.isMultiDrop}}
+                            {{@order.payload.firstWaypoint.address}}
+                        {{else}}
+                            {{@order.payload.pickup.address}}
+                        {{/if}}
+                    </div>
+                </div>
+                <div class="order-listing-row-body-address end">
+                    <div class="font-semibold">{{t "fleet-ops.ui.map.order-list-overlay-order.dropoff"}}</div>
+                    <div class="address-text">
+                        {{#if @order.payload.isMultiDrop}}
+                            {{@order.payload.lastWaypoint.address}}
+                        {{else}}
+                            {{@order.payload.dropoff.address}}
+                        {{/if}}
+                    </div>
+                </div>
+            </div>
+            <div class="order-listing-row-footer">
+                <div class="flex flex-row">
+                    <div class="flex-1">
+                        <div class="resource-assigned">
+                            <div class="resource-assigned-photo">
+                                <Image
+                                    src={{resource-image @order.customer.photo_url "customer"}}
+                                    @fallbackSrc={{(placeholder-image "customer")}}
+                                    width="32"
+                                    height="32"
+                                    class="w-8 h-8 rounded-lg shadow-sm mr-2"
+                                    alt={{@order.customer.name}}
+                                />
+                            </div>
+                            <div class="resource-assigned-details">
+                                <div class="font-semibold">{{t "fleet-ops.ui.map.order-list-overlay-order.customer"}}</div>
+                                <div>{{n-a @order.customer.name (t "fleet-ops.ui.map.order-list-overlay-order.no-customer")}}</div>
+                                <div>{{n-a @order.customer.phone (t "fleet-ops.ui.map.order-list-overlay-order.no-phone")}}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <div class="resource-assigned">
+                            <div class="resource-assigned-photo">
+                                <Image
+                                    src={{resource-image @order.driver_assigned.photo_url "driver"}}
+                                    @fallbackSrc={{(placeholder-image "driver")}}
+                                    width="32"
+                                    height="32"
+                                    class="w-8 h-8 rounded-lg shadow-sm mr-2"
+                                    alt={{@order.driver_assigned.name}}
+                                />
+                                <FaIcon
+                                    @icon="circle"
+                                    @size="2xs"
+                                    class="absolute left-0 top-0 h-2 w-2 -ml-1 -mt-1 {{if @order.driver_assigned.online 'text-green-500' 'text-yellow-200'}}"
+                                />
+                            </div>
+                            <div class="resource-assigned-details">
+                                <div class="font-semibold">{{t "fleet-ops.ui.map.order-list-overlay-order.driver-assigned"}}</div>
+                                <div>{{n-a @order.driver_assigned.name (t "fleet-ops.ui.map.order-list-overlay-order.no-driver")}}</div>
+                                <div>{{n-a @order.driver_assigned.phone (t "fleet-ops.ui.map.order-list-overlay-order.no-phone")}}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{yield @isSelected}}
+    </div>
+</a>

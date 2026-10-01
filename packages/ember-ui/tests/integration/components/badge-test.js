@@ -1,0 +1,39 @@
+import { module, test } from 'qunit';
+import { setupRenderingTest } from 'dummy/tests/helpers';
+import { render } from '@ember/test-helpers';
+import { hbs } from 'ember-cli-htmlbars';
+
+module('Integration | Component | badge', function (hooks) {
+    setupRenderingTest(hooks);
+
+    test('it renders', async function (assert) {
+        // Set any properties with this.set('myProperty', 'value');
+        // Handle any actions with this.set('myAction', function(val) { ... });
+
+        await render(hbs`<Badge />`);
+
+        assert.dom(this.element).hasText('');
+
+        // Template block usage:
+        await render(hbs`
+      <Badge>
+        template block text
+      </Badge>
+    `);
+
+        assert.dom(this.element).hasText('template block text');
+    });
+
+    test('it applies compact size classes', async function (assert) {
+        this.set('status', 'available');
+
+        await render(hbs`<Badge @status={{this.status}} @size="xxs" />`);
+        assert.dom('.status-badge').hasClass('status-badge-xxs');
+
+        await render(hbs`<Badge @status={{this.status}} @size="xs" />`);
+        assert.dom('.status-badge').hasClass('status-badge-xs');
+
+        await render(hbs`<Badge @status={{this.status}} @size="sm" />`);
+        assert.dom('.status-badge').hasClass('status-badge-sm');
+    });
+});

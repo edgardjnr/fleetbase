@@ -1,0 +1,11 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="modal-body-container">
+        <InfoBlock @type="info" @icon="lightbulb" @iconSize="lg" class="mb-5">
+            <div class="font-extrabold">{{t "ember-ui.modals.verify-by-sms.title"}}</div>
+            <div>{{t "ember-ui.modals.verify-by-sms.message"}}</div>
+        </InfoBlock>
+        <InputGroup @name={{t "ember-ui.modals.verify-by-sms.phone-label"}} @helpText={{t "ember-ui.modals.verify-by-sms.phone-help"}}>
+            <PhoneInput @value={{@options.phone}} @onInput={{fn (mut @options.phone)}} class="form-input input-lg w-full" />
+        </InputGroup>
+    </div>
+</Modal::Default>

@@ -1,0 +1,14 @@
+<Layout::Section::Body class="overflow-y-scroll h-full">
+    <Dashboard
+        @defaultDashboardId="developers"
+        @defaultDashboardName={{t "developers.component.widget.dashboard.name"}}
+        @extension="developers"
+        @leftHeaderWrapperClass="developers-dashboard-title"
+        @rightHeaderWrapperClass="developers-dashboard-actions"
+        @createWrapperClass="developers-dashboard-create-wrapper"
+        @stickyHeader={{true}}
+        class="developers-dashboard-page"
+    />
+    <Spacer @height="300px" />
+    {{outlet}}
+</Layout::Section::Body>

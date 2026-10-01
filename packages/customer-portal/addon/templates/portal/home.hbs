@@ -1,0 +1,34 @@
+<div class="portal-dashboard-page">
+    <div class="portal-dashboard-hero">
+        <div>
+            <div class="portal-dashboard-eyebrow">{{this.accountTypeLabel}}</div>
+            <h1>{{t "customer-portal.ui.home.welcome" name=this.customerName}}</h1>
+            <p>{{t "customer-portal.ui.home.description"}}</p>
+        </div>
+        <div class="portal-dashboard-quick-actions">
+            <LinkTo @route="portal.support" class="portal-quick-link primary">
+                <FaIcon @icon="headset" />
+                <span>{{t "customer-portal.ui.support.new-ticket"}}</span>
+            </LinkTo>
+            <LinkTo @route="portal.billing" class="portal-quick-link">
+                <FaIcon @icon="file-invoice-dollar" />
+                <span>{{t "customer-portal.ui.home.view-billing"}}</span>
+            </LinkTo>
+            <LinkTo @route="portal.documents" class="portal-quick-link">
+                <FaIcon @icon="folder-open" />
+                <span>{{t "customer-portal.ui.nav.documents"}}</span>
+            </LinkTo>
+        </div>
+    </div>
+
+    <Dashboard
+        @defaultDashboardId="customer-portal-overview-v2"
+        @defaultDashboardName="Overview"
+        @showPanelWhenZeroWidgets={{true}}
+        @stickyHeader={{true}}
+        @leftHeaderWrapperClass="portal-dashboard-title"
+        @rightHeaderWrapperClass="portal-dashboard-actions"
+        @createWrapperClass="portal-dashboard-create-wrapper"
+        class="portal-dashboard-grid"
+    />
+</div>

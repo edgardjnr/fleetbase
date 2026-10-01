@@ -17,6 +17,7 @@ export default class ConsoleAccountAuthController extends Controller {
     @service notifications;
     @service router;
     @service modalsManager;
+    @service intl;
 
     /**
      * The new email address the user wants to verify.
@@ -136,11 +137,11 @@ export default class ConsoleAccountAuthController extends Controller {
                 password: this.currentPassword,
             });
 
-            this.notifications.success('Email change verification sent. Confirm the new address before your login email changes.');
+            this.notifications.success(this.intl.t('console.ui.account.auth.email-change-sent'));
             this.newEmail = undefined;
             this.currentPassword = undefined;
         } catch (error) {
-            this.notifications.serverError(error, 'Failed to request email change.');
+            this.notifications.serverError(error, this.intl.t('console.ui.account.auth.email-change-failed'));
         }
     }
 
@@ -169,9 +170,9 @@ export default class ConsoleAccountAuthController extends Controller {
                 password_confirmation: this.newConfirmPassword,
             });
 
-            this.notifications.success('Password change successfully.');
+            this.notifications.success(this.intl.t('console.ui.account.auth.password-changed'));
         } catch (error) {
-            this.notifications.serverError(error, 'Failed to change password.');
+            this.notifications.serverError(error, this.intl.t('console.ui.account.auth.password-change-failed'));
         }
 
         this.newPassword = undefined;
@@ -187,7 +188,7 @@ export default class ConsoleAccountAuthController extends Controller {
         let isPasswordValid = false;
 
         yield this.modalsManager.show('modals/validate-password', {
-            body: 'You must validate your current password before it can be changed.',
+            body: this.intl.t('console.ui.account.auth.validate-password-body'),
             onValidated: (isValid) => {
                 isPasswordValid = isValid;
             },
@@ -205,7 +206,7 @@ export default class ConsoleAccountAuthController extends Controller {
     @task *saveUserTwoFaSettings(twoFaSettings = {}) {
         try {
             yield this.fetch.post('users/two-fa', { twoFaSettings });
-            this.notifications.success('2FA Settings saved successfully.');
+            this.notifications.success(this.intl.t('console.ui.account.auth.two-fa-saved'));
         } catch (error) {
             this.notifications.serverError(error);
         }

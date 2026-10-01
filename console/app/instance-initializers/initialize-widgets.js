@@ -28,8 +28,8 @@ export function initialize(appInstance) {
         const widgets = [
             new Widget({
                 id: 'fleetbase-blog',
-                name: 'Fleetbase Blog',
-                description: 'Lists latest news and events from the Fleetbase official team.',
+                name: 'console.ui.widgets.fleetbase-blog.name',
+                description: 'console.ui.widgets.fleetbase-blog.description',
                 icon: 'newspaper',
                 component: 'fleetbase-blog',
                 grid_options: { w: 7, h: 9, minW: 7, minH: 9 },
@@ -37,8 +37,8 @@ export function initialize(appInstance) {
             }),
             new Widget({
                 id: 'fleetbase-github-card',
-                name: 'Github Card',
-                description: 'Displays current Github stats from the official Fleetbase repo.',
+                name: 'console.ui.widgets.github-card.name',
+                description: 'console.ui.widgets.github-card.description',
                 icon: faGithub,
                 component: 'github-card',
                 grid_options: { w: 5, h: 9, minW: 5, minH: 9 },
@@ -49,8 +49,10 @@ export function initialize(appInstance) {
         const adminKpiTile = (id, name, description, icon, slug, options = {}) =>
             new Widget({
                 id,
-                name,
-                description,
+                // name/description are translation keys (resolved by the widget panel); the English
+                // strings passed in stay as the fallback title stored in the widget options.
+                name: `console.ui.widgets.admin.${slug}.title`,
+                description: `console.ui.widgets.admin.${slug}.description`,
                 icon,
                 component: 'admin/widget/kpi-tile',
                 category: 'KPI Tiles',
@@ -94,8 +96,8 @@ export function initialize(appInstance) {
             }),
             new Widget({
                 id: 'admin-system-diagnostics',
-                name: 'System Diagnostics',
-                description: 'Configuration health for mail, queue, filesystem, socket, notifications, and scheduler.',
+                name: 'console.ui.widgets.admin.system-diagnostics.title',
+                description: 'console.ui.widgets.admin.system-diagnostics.description',
                 icon: 'heart-pulse',
                 component: 'admin/widget/list-panel',
                 category: 'Diagnostics',
@@ -105,8 +107,8 @@ export function initialize(appInstance) {
             }),
             new Widget({
                 id: 'admin-activity',
-                name: 'Admin Activity',
-                description: 'Recent sensitive activity across admin-managed resources.',
+                name: 'console.ui.widgets.admin.admin-activity.title',
+                description: 'console.ui.widgets.admin.admin-activity.description',
                 icon: 'clock-rotate-left',
                 component: 'admin/widget/list-panel',
                 category: 'Security',
@@ -116,8 +118,8 @@ export function initialize(appInstance) {
             }),
             new Widget({
                 id: 'admin-organization-risk-queue',
-                name: 'Organization Risk Queue',
-                description: 'Organizations that need support, ownership, onboarding, or status review.',
+                name: 'console.ui.widgets.admin.organization-risk-queue.title',
+                description: 'console.ui.widgets.admin.organization-risk-queue.description',
                 icon: 'building-shield',
                 component: 'admin/widget/list-panel',
                 category: 'Operations',
@@ -127,8 +129,8 @@ export function initialize(appInstance) {
             }),
             new Widget({
                 id: 'admin-configuration-gaps',
-                name: 'Configuration Gaps',
-                description: 'Missing or risky system configuration detected by the console host.',
+                name: 'console.ui.widgets.admin.configuration-gaps.title',
+                description: 'console.ui.widgets.admin.configuration-gaps.description',
                 icon: 'screwdriver-wrench',
                 component: 'admin/widget/list-panel',
                 category: 'Diagnostics',
@@ -138,8 +140,8 @@ export function initialize(appInstance) {
             }),
             new Widget({
                 id: 'admin-platform-growth-chart',
-                name: 'Platform Growth Trend',
-                description: 'User and organization creation trend for the current and previous 30-day windows.',
+                name: 'console.ui.widgets.admin.platform-growth.title',
+                description: 'console.ui.widgets.admin.platform-growth.description',
                 icon: 'chart-line',
                 component: 'admin/widget/chart-panel',
                 category: 'Operations',

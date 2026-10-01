@@ -1,0 +1,68 @@
+name: PHP CI
+
+# Release work lands on a release/v* or dev-v* branch before reaching main via the release
+# PR, so a main-only filter leaves every PR targeting a release branch with no CI at
+# all — the release is then assembled from unverified commits.
+on:
+  push:
+    branches: [ main, 'dev-v*', 'release/v*' ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, 'dev-v*', 'release/v*' ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, gd, zip, pdo_mysql, sockets, intl, bcmath, gmp 
+        coverage: xdebug
+
+    - name: Update and Install additional packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libzip-dev libgd-dev libfreetype6-dev libjpeg-dev libpng-dev imagemagick libmagickwand-dev libmemcached-dev libgeos-dev libgmp-dev default-mysql-client libicu-dev
+
+    - name: Configure Composer Auth for Github
+      run: composer config --global github-oauth.github.com ${{ secrets._GITHUB_AUTH_TOKEN }}
+
+    - name: Validate composer.json and composer.lock
+      run: composer validate
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
+
+    - name: Run Lint
+      run: composer test:lint
+
+    - name: Check Test Date Drift
+      run: composer test:date-drift
+
+    - name: Run Tests
+      run: composer test:unit
+
+    - name: Generate Coverage Baseline
+      run: composer coverage:baseline
+
+    - name: Upload Coverage Baseline
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-baseline
+        path: coverage/clover.xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: coverage/clover.xml
+        disable_search: true
+        flags: backend
+        fail_ci_if_error: false

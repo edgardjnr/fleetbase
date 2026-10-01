@@ -1,0 +1,52 @@
+<aside class="storefront-product-sidebar" data-test-storefront-product-category-sidebar>
+    <div class="storefront-product-sidebar__header">
+        <div>
+            <h3>{{t "storefront.ui.product.categories"}}</h3>
+            <p>{{t "storefront.ui.product.categories-help"}}</p>
+        </div>
+        <Button
+            @type="default"
+            @size="xs"
+            @icon="plus"
+            @iconPrefix="fas"
+            @onClick={{@onCreate}}
+            @permission="storefront create product-category"
+        />
+    </div>
+
+    <button type="button" class="storefront-product-category {{unless @activeCategory "is-active"}}" data-test-storefront-product-category="all" {{on "click" @onViewAll}}>
+        <span class="storefront-product-category__icon"><FaIcon @icon="th-large" /></span>
+        <span class="storefront-product-category__content">
+            <strong>{{t "storefront.ui.product.all-products"}}</strong>
+            <small>{{t "storefront.ui.product.full-catalog"}}</small>
+        </span>
+    </button>
+
+    <div class="storefront-product-sidebar__list">
+        {{#each this.categories as |category|}}
+            <button
+                type="button"
+                class="storefront-product-category {{if (eq @activeCategory.id category.id) "is-active"}}"
+                data-test-storefront-product-category={{category.id}}
+                disabled={{cannot "storefront list product"}}
+                {{on "click" (fn @onSelect category)}}
+            >
+                <Image
+                    src={{category.icon_url}}
+                    @fallbackSrc={{config "defaultValues.categoryImage"}}
+                    alt={{category.name}}
+                    class="storefront-product-category__image"
+                />
+                <span class="storefront-product-category__content">
+                    <strong>{{category.name}}</strong>
+                    <small>{{n-a category.description (t "storefront.ui.order.no-description")}}</small>
+                </span>
+            </button>
+        {{else}}
+            <div class="storefront-product-sidebar__empty">
+                <FaIcon @icon="folder-open" />
+                <span>{{t "storefront.ui.product.no-categories"}}</span>
+            </div>
+        {{/each}}
+    </div>
+</aside>

@@ -1,24 +1,24 @@
-<ContentPanel @title="Mail" @open={{true}} @wrapperClass="bordered-classic">
-    <InputGroup @name="Mailer" @helpText="Select the default mailer for Fleetbase to use.">
-        <Select @options={{this.mailers}} @value={{this.mailer}} @onSelect={{this.setMailer}} @placeholder="Select mailer" class="w-full" />
+<ContentPanel @title={{t "console.ui.configure.mail.title"}} @open={{true}} @wrapperClass="bordered-classic">
+    <InputGroup @name={{t "console.ui.configure.mail.mailer"}} @helpText={{t "console.ui.configure.mail.mailer-help"}}>
+        <Select @options={{this.mailers}} @value={{this.mailer}} @onSelect={{this.setMailer}} @placeholder={{t "console.ui.configure.mail.mailer-placeholder"}} class="w-full" />
     </InputGroup>
     {{#if (eq this.mailer "smtp")}}
         <InputGroup @name="SMTP Host" @value={{this.smtpHost}} disabled={{this.loadConfigValues.isRunning}} />
         <InputGroup @name="SMTP Port" @type="number" @value={{this.smtpPort}} disabled={{this.loadConfigValues.isRunning}} />
         <InputGroup>
-            <Toggle @isToggled={{eq this.smtpEncryption "tls"}} @onToggle={{this.enableSmtpEncryption}} @label="SMTP Encryption" @helpText="Enabled TLS Encryption" />
+            <Toggle @isToggled={{eq this.smtpEncryption "tls"}} @onToggle={{this.enableSmtpEncryption}} @label={{t "console.ui.configure.mail.smtp-encryption"}} @helpText={{t "console.ui.configure.mail.smtp-encryption-help"}} />
         </InputGroup>
-        <InputGroup @name="SMTP Username" @value={{this.smtpUsername}} disabled={{this.loadConfigValues.isRunning}} />
-        <InputGroup @name="SMTP Password" @value={{this.smtpPassword}} disabled={{this.loadConfigValues.isRunning}} />
-        <InputGroup @name="SMTP Timeout" @value={{this.smtpTimeout}} disabled={{this.loadConfigValues.isRunning}} />
-        <InputGroup @name="SMTP Auth Mode" @value={{this.smtpAuth_mode}} disabled={{this.loadConfigValues.isRunning}} />
+        <InputGroup @name={{t "console.ui.configure.mail.smtp-username"}} @value={{this.smtpUsername}} disabled={{this.loadConfigValues.isRunning}} />
+        <InputGroup @name={{t "console.ui.configure.mail.smtp-password"}} @value={{this.smtpPassword}} disabled={{this.loadConfigValues.isRunning}} />
+        <InputGroup @name={{t "console.ui.configure.mail.smtp-timeout"}} @value={{this.smtpTimeout}} disabled={{this.loadConfigValues.isRunning}} />
+        <InputGroup @name={{t "console.ui.configure.mail.smtp-auth-mode"}} @value={{this.smtpAuth_mode}} disabled={{this.loadConfigValues.isRunning}} />
     {{/if}}
     {{#if (eq this.mailer "microsoft-graph")}}
         <InputGroup @name="Client ID" @value={{this.microsoftGraphClient_id}} disabled={{this.loadConfigValues.isRunning}} />
         <InputGroup @name="Client Secret" @value={{this.microsoftGraphClient_secret}} disabled={{this.loadConfigValues.isRunning}} />
         <InputGroup @name="Tenant ID" @value={{this.microsoftGraphTenant_id}} disabled={{this.loadConfigValues.isRunning}} />
         <InputGroup>
-            <Toggle @isToggled={{this.microsoftGraphSave_to_sent_items}} @onToggle={{fn (mut this.microsoftGraphSave_to_sent_items)}} @label="Save to sent items"  />
+            <Toggle @isToggled={{this.microsoftGraphSave_to_sent_items}} @onToggle={{fn (mut this.microsoftGraphSave_to_sent_items)}} @label={{t "console.ui.configure.mail.save-to-sent-items"}}  />
         </InputGroup>
     {{/if}}
     {{#if (eq this.mailer "mailgun")}}
@@ -36,13 +36,13 @@
         <InputGroup @name="Resend API Key" @value={{this.resendKey}} disabled={{this.loadConfigValues.isRunning}} />
     {{/if}}
     <InputGroup
-        @name="From Address"
-        @helpText="Input the email address for Fleetbase to send emails from."
+        @name={{t "console.ui.configure.mail.from-address"}}
+        @helpText={{t "console.ui.configure.mail.from-address-help"}}
         @value={{this.fromAddress}}
-        @placeholder="From Address"
+        @placeholder={{t "console.ui.configure.mail.from-address"}}
         disabled={{this.isLoading}}
     />
-    <InputGroup @name="From Name" @helpText="Input the name for Fleetbase to send emails from." @value={{this.fromName}} @placeholder="From Name" disabled={{this.isLoading}} />
+    <InputGroup @name={{t "console.ui.configure.mail.from-name"}} @helpText={{t "console.ui.configure.mail.from-name-help"}} @value={{this.fromName}} @placeholder={{t "console.ui.configure.mail.from-name"}} disabled={{this.isLoading}} />
     {{#if this.testResponse}}
         <div
             class="flex flex-row items-center rounded-lg border
@@ -56,9 +56,9 @@
             <span class="text-xs">{{this.testResponse.message}}</span>
         </div>
     {{/if}}
-    <Button @wrapperClass="mt-3" @icon="plug" @text="Test Config" @onClick={{perform this.test}} @isLoading={{this.test.isRunning}} />
+    <Button @wrapperClass="mt-3" @icon="plug" @text={{t "console.ui.configure.test-config"}} @onClick={{perform this.test}} @isLoading={{this.test.isRunning}} />
 </ContentPanel>
 
 <EmberWormhole @to="next-view-section-subheader-actions">
-    <Button @type="primary" @size="sm" @icon="save" @text="Save Changes" @onClick={{perform this.save}} @disabled={{this.save.isRunning}} @isLoading={{this.save.isRunning}} />
+    <Button @type="primary" @size="sm" @icon="save" @text={{t "common.save-changes"}} @onClick={{perform this.save}} @disabled={{this.save.isRunning}} @isLoading={{this.save.isRunning}} />
 </EmberWormhole>

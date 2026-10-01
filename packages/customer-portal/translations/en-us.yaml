@@ -1,0 +1,582 @@
+starter:
+  extension-name: Starter
+customer-portal:
+  ui:
+    nav:
+      support: Support
+      documents: Documents
+      account-settings: Account Settings
+      logout: Logout
+      workspace: Workspace
+      dashboard: Dashboard
+      orders: Orders
+      billing: Billing
+      preferences: Preferences
+      address-book: Address Book
+      notifications: Notifications
+    common:
+      actions: Actions
+      type: Type
+      order: Order
+      created: Created
+      updated: Updated
+      status: Status
+      description: Description
+      notes: Notes
+      none: None
+      cancel: Cancel
+      email: Email
+      name: Name
+      create: Create
+      edit: Edit
+      optional: Optional
+      reload: Reload
+      remove: Remove
+      delete: Delete
+      save-changes: Save Changes
+    address-book:
+      eyebrow: Saved locations
+      description: Manage pickup, dropoff, billing, and recurring delivery locations for this customer account.
+      new-place: New Place
+      place: Place
+      address: Address
+      phone: Phone
+      edit-place: Edit place
+      remove-place: Remove place
+      empty-title: No saved places yet
+      empty-text: Add frequently used pickup and delivery locations so order creation is faster.
+      save-place: Save Place
+      edit-place-title: Edit Place
+      delete-title: Delete saved place?
+      delete-body: This removes the place from your customer portal address book.
+      removed: Place removed.
+      updated: Place updated.
+      saved: Place saved.
+    documents:
+      eyebrow: Document Library
+      description: Download labels, PODs, photos, invoices, receipts, and order files.
+      document: Document
+      unavailable: Unavailable
+      empty-title: No documents yet
+      empty-text: Labels, PODs, photos, invoices, receipts, and order files will appear here when they become available.
+    home:
+      welcome: "Welcome, {name}"
+      description: Track deliveries, invoices, documents, and support activity from one customer workspace.
+      view-billing: View Billing
+      company-workspace: Company customer workspace
+      customer-workspace: Customer workspace
+    notifications:
+      eyebrow: Communication settings
+      title: Notification Preferences
+      description: Choose which customer portal events should be saved as communication preferences for this account.
+      info: These preferences are stored on your portal account. Delivery of actual event notifications depends on operator notification rules configured in Fleetbase.
+      save: Save Preferences
+      saved: Notification preferences saved.
+      groups:
+        orders:
+          title: Orders
+          description: Operational updates while your shipments move through dispatch and delivery.
+        billing:
+          title: Billing
+          description: Invoice and payment status updates from your account ledger.
+        support:
+          title: Support
+          description: Updates when your customer support tickets change.
+        documents:
+          title: Documents
+          description: Alerts when labels, PODs, receipts, or related files are available.
+      preferences:
+        order_created: Order Created
+        order_dispatched: Order Dispatched
+        order_delayed: Order Delayed
+        driver_nearby: Driver Nearby
+        order_delivered: Order Delivered
+        invoice_due: Invoice Due
+        invoice_paid: Invoice Paid
+        ticket_updated: Ticket Updated
+        document_available: Document Available
+    settings:
+      eyebrow: Settings
+      account: Account
+      members: Members
+    auth:
+      customer-login: Customer Login
+      back-to-console: Back to Console
+      verify-continue: Verify & Continue
+      email-verified: Email successfully verified!
+      welcome-to: "Welcome to {appName}"
+      verify-by-phone: Verify Account by Phone
+      send: Send
+      no-phone: No phone number provided.
+      sms-sent: Verification code SMS sent!
+      resend-code: Resend Verification Code
+      no-email: No email number provided.
+      email-sent: Verification code email sent!
+      two-fa-init-failed: 2FA failed to initialize.
+      two-fa-expired: 2FA authentication session has expired.
+      no-customer: No customer found for user account.
+    billing:
+      details-description: Invoice details, line item preview, and payment status.
+      open-payment-link: Open Payment Link
+      invoice-date: Invoice Date
+      due-date: Due Date
+      balance: Balance
+      preview: Preview
+      qty: Qty
+      unit: Unit
+      amount: Amount
+      no-line-items: No line items recorded for this invoice.
+      subtotal: Subtotal
+      tax: Tax
+      total: Total
+      paid: Paid
+      balance-due: Balance Due
+      eyebrow: Billing Center
+      description: View invoices, balances, receipts, and payment status.
+      invoice: Invoice
+      due: Due
+      empty-title: No invoices yet
+      empty-text: Invoices, receipts, and balances will appear here when billing records are available for this account.
+    support:
+      back: Back to Support
+      eyebrow: Support Center
+      last-updated: Last updated
+      attachments-count: "{count, plural, one {# Attachment} other {# Attachments}}"
+      correspondence: Correspondence
+      correspondence-text: Reply here to keep every update attached to this support ticket.
+      no-replies: No replies yet. The support team response will appear here.
+      ticket-details: Ticket Details
+      ticket: Ticket
+      priority: Priority
+      related-order: Related order
+      tags: Tags
+      timeline: Timeline
+      not-found-title: Ticket not found
+      not-found-text: This support ticket could not be loaded or is no longer available for this account.
+      title: Support Tickets
+      description: Track order, billing, document, and account support requests.
+      new-ticket: New Support Ticket
+      empty-title: No support tickets yet
+      empty-text: Create a ticket when you need help with an order, invoice, document, or account question.
+      create-ticket: Create Ticket
+      new-description: Send order, billing, document, or account questions to the support team.
+      subject: Subject
+      subject-placeholder: What do you need help with?
+      order-help: Optional order reference.
+      select-order: Select related order
+      category: Category
+      select-category: Select category
+      select-priority: Select priority
+      tags-help: Optional labels that help the support team route your request.
+      add-tags: Add tags
+      details: Details
+      details-placeholder: Add details for the support team.
+      ticket-fallback: Support Ticket
+      customer: Customer
+      reply-posted: Reply posted.
+      comment-updated: Comment updated.
+      comment-deleted: Comment deleted.
+      created: Support ticket created.
+    admin:
+      title: Customer Portal Settings
+      access: Customer Portal Access
+      access-help: Input a URL slug where your customer portal can be accessed.
+      url-placeholder: Your Customer Portal URL
+      order-types: Available Order Types
+      order-types-help: Choose which order types customers can create from the portal. Deselect all to disable customer order creation.
+      no-order-types: No order types are available for this organization.
+      service-rates: Quoteable Service Rates
+      service-rates-help: Choose which service rates can be queried when customers request quotes. Deselect all to return no service quotes.
+      no-service-rates: No service rates are available for this organization.
+      enable-stripe: Enable Stripe Payments
+      require-stripe: Require Stripe checkout when a customer selects a service quote
+      onboarding-required: Stripe onboarding must be completed before customer portal payments can be enabled.
+      complete-onboarding: Complete Payments Onboarding
+      stripe-configured: Stripe is configured.
+      stripe-not-configured: Stripe is not configured. The system administrator must configure Stripe before customer payments can be accepted.
+      save-settings: Save Settings
+      saved: Customer portal settings saved.
+      stripe-required: Stripe must be configured before customer portal payments can be enabled.
+    convert:
+      heading: Create a company workspace
+      text: Company accounts can add members while keeping orders, billing, documents, and support history attached to the same customer workspace.
+      company-name: Company Name
+      company-name-placeholder: Company name
+      accept: Convert Account
+      created: Company account created.
+    place:
+      street1: Street 1
+      street2: Street 2
+      searching: Searching addresses...
+      neighborhood: Neighborhood
+      building: Building
+      security-access-code: Security Access Code
+      postal-code: Postal Code
+      city: City
+      state: State
+      country: Country
+      coordinates: Coordinates
+      address-label: Address Label
+      address-label-placeholder: Warehouse, office, home...
+      street-address: Street Address
+      street-address-placeholder: Enter the pickup or delivery address
+      contact-phone: Contact Phone
+      phone-placeholder: Optional phone number
+      latitude: Latitude
+      longitude: Longitude
+      save-address: Save Address
+      edit-address: Edit address
+      new-address: New Address
+      edit-address-title: Edit Address
+      address-updated: Address updated.
+      address-saved: Address saved.
+    reschedule:
+      new-time: New delivery time
+      help: Choose the preferred delivery date and time for this order.
+      placeholder: Select date and time
+    order:
+      activity: Activity
+      no-activity: No activity yet.
+      order-id: Order ID
+      tracking-number: Tracking Number
+      scheduled: Scheduled
+      proof-of-delivery: Proof of Delivery
+      not-required: Not required
+      no-notes: No notes provided.
+      payload: Payload
+      unnamed-item: Unnamed item
+      no-description: No description
+      weight: Weight
+      dimensions: Dimensions
+      no-items: No items
+      no-payload-items: No payload items were added to this order.
+      no-proof: No proof of delivery
+      no-proof-text: Captured proof of delivery will show up here.
+      route: Route
+      all-stops: "All Stops - {count}"
+      purchase-rate: Purchase Rate
+      breakdown: Breakdown
+      no-purchase-items: No purchase line items available.
+      tracking: Tracking
+      current-eta: Current ETA
+      live: Live
+      pending: Pending
+      eta-estimated: Estimated from the latest delivery route information.
+      remaining-route: Remaining Route
+      distance-remaining: "{distance} remaining"
+      distance-pending: Distance will appear once tracking is available.
+      current-stop: Current stop
+      eta-confidence: ETA confidence
+      updated-at: "Updated {date}"
+      new-order: New Order
+      order-type: Order Type
+      select-order-type: Select order type
+      scheduled-at: Scheduled At
+      require-pod: Require proof of delivery
+      proof-method: Proof Method
+      select-proof-method: Select proof method
+      notes-placeholder: Anything the operations team should know.
+      items: Items
+      item-n: "Item {n}"
+      item-name-placeholder: Package, pallet, envelope
+      item-type: Item Type
+      select-item-type: Select item type
+      item-description-placeholder: Optional handling notes or item description
+      length: Length
+      width: Width
+      height: Height
+      no-items-added: No items added
+      no-items-added-text: Add items when the carrier needs package details, dimensions, or references.
+      multiple-dropoff: Multiple dropoff order
+      required: Required
+      waypoint-n: "Waypoint {n}"
+      select-waypoint-n: "Select waypoint {n}"
+      pickup: Pickup
+      dropoff: Dropoff
+      return: Return
+      select-pickup: Select pickup place
+      select-dropoff: Select dropoff place
+      select-return: Select return place
+      service: Service
+      loading-quotes: Loading service quotes...
+      no-quotes: No service quotes
+      no-quotes-text: No available service rates matched this order.
+      add-route-details: Add route details
+      add-route-details-text: Select an order type, pickup, and dropoff to view service quotes.
+      waypoints: Waypoints
+      additional-stops: "{count, plural, one {# additional stop} other {# additional stops}}"
+      dispatched-at: "Dispatched at {date}"
+      date-created: "Date Created: {date}"
+      type-value: "Type: {type}"
+      completed: Completed
+      expand: Expand
+      collapse: Collapse
+      more-stops: "{count, plural, one {# more stop} other {# more stops}}"
+      workspace-description: Track deliveries, review route activity, and create new delivery requests.
+      order-view: Order view
+      map: Map
+      table: Table
+      order-list: Order List
+      recent-orders: Recent Orders
+      search-orders: Search orders
+      no-orders: No orders yet
+      no-orders-text: Create a delivery request when you are ready.
+      new-order-route: New order route
+      view-order: View order
+      no-orders-table-text: Create a new order when you are ready to request a delivery.
+      create-order: Create Order
+      view-label: View Label
+      create-support-ticket: Create Support Ticket
+      reschedule: Reschedule
+      cancel-order: Cancel Order
+      no-label: No label is available for this order yet.
+      reschedule-order: Reschedule Order
+      cancel-title: Cancel this order?
+      cancel-body: This will cancel the delivery request for this order.
+      canceled: Order canceled.
+      choose-time: Choose a new delivery time before rescheduling.
+      rescheduled: Order rescheduled.
+      add-item: Add Item
+      add-waypoint: Add Waypoint
+      stop-n: "Stop {n}"
+      validation-warning: Select an order type and at least two route stops before creating the order.
+      created: Order created.
+      complete-payment: "Complete Payment for {name} Service"
+      checkout-failed: Unable to initialize secure checkout. Please try again.
+      finalizing-purchase: Finalizing Purchase
+      completing-purchase: Completing purchase do not refresh or exit window...
+      purchase-failed: Something went wrong trying to complete purchase.
+    files:
+      uploading: Uploading...
+      drop-to-attach: Drop files to attach them.
+      not-supported: This file type is not supported.
+      ready-to-upload: "{count, plural, one {# file ready to upload} other {# files ready to upload}}"
+      upload-documents: Upload documents
+      detail-drop-text: Drop files here to add labels, receipts, delivery documents, or supporting files to this order.
+      select-files: Select files
+      upload-queue: Upload queue
+      detail-empty-text: Labels, receipts, and order files will show up here when available.
+      attach-order-documents: Attach order documents
+      form-drop-text: Drop labels, packing slips, reference photos, or supporting documents here.
+      not-available: This file is not available for download yet.
+      attach-failed: Unable to attach this file to the order.
+      attached: File attached.
+      delete-title: Delete file?
+      delete-body: This removes the file from this order.
+      unidentified: Unable to identify this file.
+      removed: File removed.
+    account:
+      date-of-birth: Date of Birth
+      profile-settings: Profile settings
+      account-type: Account type
+      personal-account: Personal customer account
+      company-account: Company account
+      convert: Convert to Company Account
+      change-password: Change password
+      change-password-text: Update the password used to sign in to this customer portal.
+      current-password: Current Password
+      new-password: New Password
+      confirm-password: Confirm New Password
+      change-password-button: Change Password
+      profile-saved: Profile changes saved.
+      validate-password: You must validate your password to update the account email address.
+      password-mismatch: New password and confirmation do not match.
+      password-changed: Password changed successfully.
+      password-change-failed: Failed to change password.
+      customer-account: Customer account
+    members:
+      description: Manage people who can access this company customer workspace.
+      existing-contact: Existing Contact
+      new-contact: New Contact
+      add-member: Add Member
+      contact: Contact
+      select-contact: Select existing contact
+      role: Role
+      select-role: Select role
+      member-name: Member name
+      create-login: Create login
+      empty: No members added yet.
+      company-required: Add members with a company account
+      company-required-text: Convert your customer account to a company account to invite additional people into this workspace.
+      select-contact-warning: Select a contact that is not already a member.
+      select-contact-to-add: Select a contact to add.
+      name-email-required: Name and email are required.
+      added: Personnel added.
+      removed: Personnel removed.
+    widget:
+      active-orders: Active Orders
+      completed-orders: Completed Orders
+      open-tickets: Open Tickets
+      unpaid-invoices: Unpaid Invoices
+      pending-actions: Pending Actions
+      pending-actions-subtitle: Items that may need attention
+      pending-actions-empty: Nothing needs attention right now.
+      recent-orders-subtitle: Latest shipments for this account
+      no-recent-orders: No recent orders.
+      load-active-failed: Unable to load active orders.
+      load-completed-failed: Unable to load completed orders.
+      load-tickets-failed: Unable to load support tickets.
+      load-pending-failed: Unable to load pending actions.
+      load-recent-failed: Unable to load recent orders.
+      load-invoices-failed: Unable to load invoices.
+    tracking:
+      dispatched-title: Your order has been dispatched
+      dispatched-body: The delivery team has accepted this order. Live ETA appears once the route is started.
+      created-title: Your order has not started yet
+      created-body: The request has been received and is waiting for dispatch. Tracking updates will appear here as the order moves.
+      unavailable-title: Tracking is not available yet
+      unavailable-body: Live ETA and route progress will appear as soon as movement data is available for this order.
+    payment:
+      not-initialized: Stripe not initialized!
+      not-configured: Stripe is not configured for customer portal payments.
+      load-failed: Stripe could not be loaded. Please refresh and try again.
+      load-failed-connection: Stripe could not be loaded. Please check your connection and try again.
+    roles:
+      admin:
+        label: Admin
+        description: Can manage account settings and personnel.
+      member:
+        label: Member
+        description: Can access the customer workspace.
+    pod-methods:
+      scan: Scan
+      signature: Signature
+      photo: Photo
+    issue-values:
+      open: Open
+      pending: Pending
+      triage: Triage
+      backlogged: Backlogged
+      in-progress: In Progress
+      requires-update: Requires Update
+      in-review: In Review
+      re-opened: Re-opened
+      awaiting-parts: Awaiting Parts
+      awaiting-vendor: Awaiting Vendor
+      monitoring: Monitoring
+      escalated: Escalated
+      duplicate: Duplicate
+      pending-review: Pending Review
+      resolved: Resolved
+      closed: Closed
+      canceled: Canceled
+      cancelled: Cancelled
+      low: Low
+      medium: Medium
+      normal: Normal
+      high: High
+      urgent: Urgent
+      critical: Critical
+      scheduled-maintenance: Scheduled Maintenance
+      operational-suggestion: Operational Suggestion
+    entity-types:
+      entity:
+        label: Entity
+        description: Standard generic entity representing an item.
+      parcel:
+        label: Parcel
+        description: Standard parcel or package used by parcel-based pricing.
+      package:
+        label: Package
+        description: Box, parcel, envelope, or general package.
+      product:
+        label: Product
+        description: Sellable product or catalog item.
+      item:
+        label: Item
+        description: Generic inventory item when no stronger type applies.
+      sku:
+        label: SKU / Inventory Unit
+        description: Stock keeping unit or tracked inventory piece.
+      document:
+        label: Document
+        description: Paperwork, labels, or documents.
+      envelope:
+        label: Envelope
+        description: Flat document mailer or envelope.
+      box:
+        label: Box
+        description: Single boxed shipment unit.
+      carton:
+        label: Carton
+        description: Single carton, box, or case.
+      case:
+        label: Case
+        description: Case-packed goods or packaged case.
+      bundle:
+        label: Bundle
+        description: Bundled or strapped items shipped together.
+      bag:
+        label: Bag
+        description: Bagged goods, sacks, or pouches.
+      tote:
+        label: Tote
+        description: Reusable tote, bin, or container.
+      crate:
+        label: Crate
+        description: Rigid crate or caged shipment unit.
+      pallet:
+        label: Pallet
+        description: Palletized freight or grouped cargo.
+      container:
+        label: Container
+        description: Containerized shipment or storage container.
+      freight:
+        label: Freight
+        description: Loose freight or larger shipment unit.
+      cargo:
+        label: Cargo
+        description: General cargo not classified more specifically.
+      equipment:
+        label: Equipment
+        description: Tools, machines, or operational equipment.
+      machinery:
+        label: Machinery
+        description: Industrial machinery or large mechanical unit.
+      asset:
+        label: Asset
+        description: Tracked business asset or returnable item.
+      return:
+        label: Return
+        description: Returned goods or reverse-logistics item.
+      sample:
+        label: Sample
+        description: Sample item for trial, demo, or inspection.
+      spare_part:
+        label: Spare Part
+        description: Replacement component or service part.
+      medical_supply:
+        label: Medical Supply
+        description: Healthcare, lab, or medical delivery item.
+      food:
+        label: Food
+        description: Prepared food, meal, or grocery item.
+      beverage:
+        label: Beverage
+        description: Drink, liquid refreshment, or bottled shipment.
+      retail_goods:
+        label: Retail Goods
+        description: General consumer or retail merchandise.
+
+menu-text:
+  customer-portal:
+    title: Customer Portal
+widget-text:
+  customer-portal-active-orders:
+    name: Active Orders
+    description: Customer-visible orders that are not yet completed or canceled.
+  customer-portal-completed-orders:
+    name: Completed Orders
+    description: Orders completed for the active portal customer account.
+  customer-portal-unpaid-invoices:
+    name: Unpaid Invoices
+    description: Outstanding customer invoices when Ledger is installed.
+  customer-portal-open-tickets:
+    name: Open Support Tickets
+    description: Open customer support issues backed by FleetOps Issues.
+  customer-portal-recent-orders:
+    name: Recent Orders
+    description: Most recent orders for the active portal customer account.
+  customer-portal-pending-actions:
+    name: Pending Actions
+    description: Invoices, tickets, and orders that need customer attention.

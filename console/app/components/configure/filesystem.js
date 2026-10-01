@@ -6,6 +6,7 @@ import { action } from '@ember/object';
 export default class ConfigureFilesystemComponent extends Component {
     @service fetch;
     @service notifications;
+    @service intl;
     @service currentUser;
     // The constructor performs loadConfigValues, which assigns this before anything can read it,
     // so the initializer below never runs.
@@ -71,7 +72,7 @@ export default class ConfigureFilesystemComponent extends Component {
                 gcsBucket: this.gcsBucket,
             })
             .then(() => {
-                this.notifications.success('Filesystem configuration saved.');
+                this.notifications.success(this.intl.t('console.ui.configure.filesystem.saved'));
             })
             .finally(() => {
                 this.isLoading = false;

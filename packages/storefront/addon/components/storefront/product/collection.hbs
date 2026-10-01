@@ -1,0 +1,44 @@
+<div class="storefront-product-workspace has-floating-pagination" data-test-storefront-product-collection>
+    <div class="storefront-product-collection {{unless this.hasProducts 'is-empty'}} {{if this.isListView "is-list"}}">
+        {{#if this.hasProducts}}
+            {{#if this.isListView}}
+                <div class="storefront-product-table">
+                    <div class="storefront-product-row storefront-product-row--header">
+                        <span>{{t "storefront.ui.product.product"}}</span>
+                        <span>{{t "storefront.ui.product.price"}}</span>
+                        <span>{{t "storefront.ui.product.status"}}</span>
+                        <span>{{t "storefront.ui.product.options"}}</span>
+                        <span></span>
+                    </div>
+                    {{#each this.products as |product|}}
+                        <Storefront::Product::Card
+                            @product={{product}}
+                            @editRoute={{@editRoute}}
+                            @viewMode={{@viewMode}}
+                            @onDelete={{@onDeleteProduct}}
+                        />
+                    {{/each}}
+                </div>
+            {{else}}
+                {{#each this.products as |product|}}
+                    <Storefront::Product::Card
+                        @product={{product}}
+                        @editRoute={{@editRoute}}
+                        @viewMode={{@viewMode}}
+                        @onDelete={{@onDeleteProduct}}
+                    />
+                {{/each}}
+            {{/if}}
+        {{else}}
+            <div class="storefront-product-empty" data-test-storefront-product-empty>
+                <FaIcon @icon="box-open" />
+                <h3>{{t "storefront.ui.product.no-products-found"}}</h3>
+                <p>{{if @category (t "storefront.ui.product.empty-category-help") (t "storefront.ui.product.empty-catalog-help")}}</p>
+            </div>
+        {{/if}}
+    </div>
+
+    <div class="floating-pagination">
+        <Pagination @meta={{@products.meta}} @currentPage={{@page}} @onPageChange={{@onPageChange}} />
+    </div>
+</div>

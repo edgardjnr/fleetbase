@@ -64,11 +64,11 @@ common:
   panel: Painel
   card: Cartão
   tab: Aba
-  modal: Modal
+  modal: Janela modal
   dialog: Diálogo
   menu: Menu
-  dropdown: Dropdown
-  tooltip: Tooltip
+  dropdown: Lista suspensa
+  tooltip: Dica
   sidebar: Barra Lateral
   toolbar: Barra de Ferramentas
   footer: Rodapé
@@ -76,7 +76,7 @@ common:
   title: Título
   subtitle: Legenda
   description: Descrição
-  placeholder: Placeholder
+  placeholder: Texto de exemplo
   label: Etiqueta
   button: Botão
   icon: Ícone
@@ -138,7 +138,7 @@ common:
   change-password: Alterar Senha
   password: Senha
   confirm-password: Confirmar Senha
-  email: Email
+  email: E-mail
   username: Nome de Usuário
   remember-me: Lembrar-me
   welcome: Bem-vindo
@@ -322,7 +322,7 @@ common:
   select-field: Selecionar {field}
   columns: Colunas
   metadata: Metadados
-  meta: Meta
+  meta: Metadados
   resource-created-success: Novo {resource} criado com sucesso.
   resource-created-success-name: Novo {resource} ({resourceName}) criado com sucesso.
   resource-updated-success: '{resource} ({resourceName}) atualizado com sucesso.'
@@ -332,6 +332,21 @@ common:
   continue-without-saving: Continuar sem salvar?
   continue-without-saving-prompt: Você tem alterações não salvas neste {resource}.
     Continuar irá descartá-las. Clique em Continuar para prosseguir.
+  close-and-save: Fechar e salvar
+  your-profile: Seu perfil
+  date-of-birth: Data de nascimento
+  organization: Organização
+  two-factor: Dois fatores
+  activity: Atividade
+  phone: Telefone
+  filter-by-field: "Filtrar por {field}"
+  timezone: Fuso horário
+  yes: Sim
+  no: Não
+  resource-actions: "Ações de {resource}"
+  resource-location: "Localização de {resource}"
+  changelog: Novidades
+  reload: Recarregar
 resource:
   alert: Alerta
   alerts: Alertas
@@ -387,6 +402,7 @@ resource:
   user-devices: Dispositivos do Usuário
   user: Usuário
   users: Usuários
+  country: País
 dropzone:
   file: arquivo
   drop-to-upload: Solte para enviar
@@ -434,6 +450,14 @@ dashboard-widget-panel:
   widget-name: Widget {widgetName}
   select-widgets: Selecionar Widgets
   close-and-save: Fechar e Salvar
+  filter-widgets: Buscar widgets…
+  no-widgets-match: Nenhum widget corresponde aos filtros.
+  tab-all: Todos
+  tab-default: Recomendados
+  tab-added: No painel
+  badge-default: Padrão
+  add: Adicionar
+  add-another: Adicionar outro
 filters-picker:
   filters: Filtros
   filter-data: Filtrar Dados
@@ -497,6 +521,7 @@ component:
     you-cannot-delete-this-dashboard: Você não pode excluir este painel.
     are-you-sure-you-want-delete-dashboard: Tem certeza de que deseja excluir este
       {dashboardName}?
+    create-to-customize-hint: Crie um painel para personalizar os widgets.
   dashboard-widget-panel:
     widget-name: Widget {widgetName}
     select-widgets: Selecionar Widgets
@@ -592,16 +617,16 @@ auth:
       submit-button: Redefinir senha
       back-button: Voltar
   confirm-email-change:
-    success-message: Your email address has been updated.
-    invalid-verification-code: This email change link is invalid or expired.
-    title: Confirm email change
-    message-text: Confirm this change to update the login email for your Fleetbase account.
+    success-message: Seu endereço de e-mail foi atualizado.
+    invalid-verification-code: Este link de alteração de e-mail é inválido ou expirou.
+    title: Confirmar alteração de e-mail
+    message-text: Confirme esta alteração para atualizar o e-mail de login da sua conta Fleetbase.
     form:
       code:
-        label: Confirmation code
-        help-text: The confirmation code from your email.
-      submit-button: Confirm Email Change
-      back-button: Back
+        label: Código de confirmação
+        help-text: O código de confirmação enviado para o seu e-mail.
+      submit-button: Confirmar alteração de e-mail
+      back-button: Voltar
 
 console:
   create-or-join-organization:
@@ -633,6 +658,7 @@ console:
       queue: Fila
       socket: Socket
       push-notifications: Notificações Push
+      platform-api-token: Token da API da plataforma
     schedule-monitor:
       schedule-monitor: Monitor de Agendamento
       task-logs-for: 'Logs da Tarefa Para: '
@@ -685,9 +711,31 @@ console:
         owner-email-column: Email do Proprietário
         users-count-column: Usuários
         phone-column: Telefone
-        email-column: Email
+        email-column: E-mail
       users:
         title: Usuários
+    platform-api-token:
+      title: Token da API da plataforma
+      description: Gerencie o token da API da plataforma usado por integrações confiáveis para acessar endpoints protegidos, como o diretório de organizações.
+      loading: Carregando status do token da API da plataforma...
+      status: Situação
+      configured: Configurado
+      not-configured: Não configurado
+      last-rotated: Última renovação
+      last-used: Último uso
+      never: Nunca
+      generate-token: Gerar token
+      rotate-token: Renovar token
+      revoke-token: Revogar token
+      one-time-warning: Copie este token agora. Ele não será exibido novamente.
+      rotate-confirm-title: Renovar o token da API da plataforma?
+      rotate-warning: Renovar este token invalida imediatamente as integrações que usam o token anterior.
+      revoke-confirm-title: Revogar o token da API da plataforma?
+      revoke-warning: Revogar desativa o acesso por token da plataforma aos endpoints protegidos.
+      generated: Token da API da plataforma gerado.
+      rotated: Token da API da plataforma renovado.
+      revoked: Token da API da plataforma revogado.
+      copied: Token da API da plataforma copiado para a área de transferência.
   settings:
     index:
       title: Configurações da Organização
@@ -714,6 +762,411 @@ console:
     mark-as-read: Marcar como Lido
     received: 'Recebido:'
     message: Nenhuma notificação para exibir.
+  ui:
+    configure:
+      test-config: Testar configuração
+      driver: Driver
+      filesystem:
+        title: Sistema de arquivos
+        driver-help: Selecione o driver de sistema de arquivos padrão que o Fleetbase deve usar.
+        driver-placeholder: Selecione o driver de sistema de arquivos
+        gcs-env-warning: Atenção! O GCS já está configurado no ambiente do servidor. Alterar os valores abaixo pode quebrar essa configuração.
+        gcs-key-file: Arquivo de chave da conta de serviço do GCS
+        saved: Configuração do sistema de arquivos salva.
+      upload-service-account-json: Enviar JSON da conta de serviço
+      mail:
+        title: E-mail
+        mailer: Serviço de envio
+        mailer-help: Selecione o serviço de envio de e-mail padrão que o Fleetbase deve usar.
+        mailer-placeholder: Selecione o serviço de envio
+        smtp-encryption: Criptografia SMTP
+        smtp-encryption-help: Ativar criptografia TLS
+        smtp-username: Usuário SMTP
+        smtp-password: Senha SMTP
+        smtp-timeout: Tempo limite SMTP
+        smtp-auth-mode: Modo de autenticação SMTP
+        save-to-sent-items: Salvar nos itens enviados
+        from-address: Endereço do remetente
+        from-address-help: Informe o endereço de e-mail que o Fleetbase usará como remetente.
+        from-name: Nome do remetente
+        from-name-help: Informe o nome que o Fleetbase usará como remetente dos e-mails.
+        saved: Configuração de e-mail salva.
+      queue:
+        title: Fila
+        driver-help: Selecione o driver de fila padrão que o Fleetbase deve usar.
+        driver-placeholder: Selecione o driver de fila
+        saved: Configuração de fila salva.
+      socket:
+        title: Conexão SocketCluster
+        cannot-change: A configuração do SocketCluster não pode ser alterada no momento.
+        output: Saída
+        awaiting-events: Aguardando eventos...
+        test-connection: Testar conexão do socket
+        connection-error: Erro na conexão do socket!
+        connected: Socket conectado
+        subscribed: Socket inscrito no canal de teste
+      push:
+        apn-title: Configuração do APN
+        upload-p8: Enviar arquivo de chave P8
+        apn-production: APN em produção
+        firebase-title: Configuração do Firebase
+        test-title: Testar notificação push
+        title-label: "Título:"
+        message-label: "Mensagem:"
+        apn-token-label: "Token do dispositivo APN:"
+        fcm-token-label: "Token do dispositivo FCM:"
+        title-placeholder: Título da notificação push
+        message-placeholder: Mensagem da notificação push
+        apn-token-placeholder: Token do dispositivo APN
+        fcm-token-placeholder: Token do dispositivo FCM
+        test-message: Esta é uma notificação push de teste!
+        saved: Configuração dos canais de notificação salva.
+      services:
+        sms-providers: Provedores de SMS
+        default-provider: Provedor padrão
+        configure-provider: Configurar provedor
+        use-tls: Usar TLS
+        advanced-settings: Configurações avançadas
+        hide-advanced-settings: Ocultar configurações avançadas
+        method: Método
+        headers-json: Cabeçalhos (JSON)
+        query-params-json: Parâmetros de consulta (JSON)
+        body-template-json: Modelo do corpo (JSON)
+        send-test-sms-here: Enviar SMS de teste para
+        test-message: Mensagem de teste
+        test-sms-provider: Testar provedor de SMS
+        test-sentry: Testar configuração do Sentry
+        sms-test-message: Este é um SMS de teste do Fleetbase.
+        custom-http-gateway: Gateway HTTP personalizado
+        gateway-url: URL do gateway
+        from: Remetente
+    account:
+      auth:
+        title: Autenticação da conta
+        menu: Autenticação
+        change-email: Alterar e-mail
+        change-email-help: Informe o novo endereço de e-mail e sua senha atual. O e-mail de login só será alterado depois que você confirmar o e-mail de verificação enviado para o novo endereço.
+        current-email: E-mail atual
+        new-email: Novo e-mail
+        current-password: Senha atual
+        send-verification-email: Enviar e-mail de verificação
+        enter-new-password: Digite a nova senha
+        confirm-change-password: Confirmar e alterar senha
+        two-fa-settings: Configurações de 2FA
+        loading-two-fa: Carregando configurações de 2FA do usuário...
+        save-two-fa: Salvar configurações de 2FA
+        email-change-sent: Verificação de alteração de e-mail enviada. Confirme o novo endereço para que o e-mail de login seja alterado.
+        email-change-failed: Falha ao solicitar a alteração de e-mail.
+        password-changed: Senha alterada com sucesso.
+        password-change-failed: Falha ao alterar a senha.
+        validate-password-body: Você precisa validar sua senha atual antes de alterá-la.
+        two-fa-saved: Configurações de 2FA salvas com sucesso.
+      profile-saved: Alterações do perfil salvas.
+      organizations:
+        title: Organizações
+        create: Criar organização
+        yours: Suas organizações
+        member-since: "Membro desde:"
+        leave: Sair
+        switch: Alternar
+        delete-organization: Excluir organização
+        transfer-and-leave: Transferir propriedade e sair
+        leave-organization: Sair da organização
+        edit-organization: Editar organização
+        cannot-leave-only: Não é possível sair da sua única organização.
+        cannot-delete-only: Não é possível excluir sua única organização.
+        no-delete-rights: Você não tem permissão para excluir esta organização.
+        delete-confirm-title: "Tem certeza de que deseja excluir a organização {name}?"
+        delete-confirm-body: Esta ação removerá permanentemente todos os dados, incluindo pedidos, membros e configurações associados à organização. <br /><br /><strong>Esta ação não pode ser desfeita.</strong>
+    modals:
+      leave-organization:
+        owner-intro: "Como proprietário de <strong>{name}</strong>, para sair da organização você precisa indicar um novo proprietário."
+        select-member-help: Selecione um membro na lista abaixo para transferir a propriedade antes de continuar.
+        select-new-owner: Selecione um novo proprietário
+        select-member: Selecione um membro
+        sole-owner: "Você é o único proprietário de <strong>{name}</strong>."
+        will-be-deleted: Ao sair, a organização será excluída permanentemente junto com todos os seus dados.
+        proceed-question: Tem certeza de que deseja continuar?
+        cannot-undo: Esta ação não pode ser desfeita.
+        leave-question: "Tem certeza de que deseja sair da organização <strong>{name}</strong>?"
+        lose-access: Você não terá mais acesso aos recursos e configurações dela.
+      create-dashboard:
+        name: Nome do painel
+        name-help: Informe o nome do seu painel
+      validate-password:
+        title: Validar senha atual
+        accept: Validar senha
+        invalid: Senha atual inválida.
+    two-fa:
+      enable: Ativar autenticação em dois fatores
+      require-users: Exigir que os usuários configurem a 2FA
+      choose-method: Escolha um método de autenticação
+      choose-method-help: Além do usuário e da senha, você precisará informar um código (enviado por aplicativo ou SMS) para entrar na sua conta
+      recommended: Recomendado
+      methods:
+        sms:
+          name: SMS
+          description: Receba um código único por SMS
+        email:
+          name: E-mail
+          description: Receba um código único por e-mail
+        authenticator_app:
+          name: Aplicativo autenticador
+          description: Obtenha códigos em um aplicativo como Authy, 1Password, Microsoft Authenticator ou Google Authenticator
+      loading-config: Carregando configuração de 2FA...
+      title: 2FA
+      init-failed: Falha ao iniciar a 2FA.
+      session-expired: A sessão de autenticação 2FA expirou.
+      saved-organization: Configurações de 2FA da organização salvas com sucesso.
+      saved-admin: Configurações de 2FA da administração salvas com sucesso.
+    admin:
+      org:
+        onboarding: Integração
+        owner: Proprietário
+        owner-label: "Proprietário:"
+        no-owner-assigned: Nenhum proprietário atribuído
+        no-owner-is-assigned: Nenhum proprietário está atribuído a esta organização.
+        users-label: "Usuários:"
+        created-label: "Criada em:"
+        public-id: ID público
+        sections: Seções de administração da organização
+        extensions: Extensões
+        impersonate-owner: Personificar proprietário
+        copy-public-id: Copiar ID público
+        copy-uuid: Copiar UUID
+        edit-settings: Editar configurações
+        copied: "{label} copiado para a área de transferência."
+        updated: Organização atualizada.
+        no-owner-to-impersonate: Esta organização não tem um proprietário para personificar.
+        now-impersonating: "Personificando {name}..."
+        organization-owner: proprietário da organização
+        state:
+          active: ativa
+          inactive: inativa
+          suspended: suspensa
+          complete: concluída
+          incomplete: pendente
+        currency: Moeda
+        operational-state: Estado operacional
+        recent-activity: Atividade recente
+        assigned: Atribuído
+        missing: Ausente
+        members: Membros da organização
+        needs-assignment: Precisa de atribuição
+        ready-for-operations: Pronta para operar
+        needs-review: Precisa de revisão
+        platform-access: Acesso à plataforma
+        settings-help: Campos principais do perfil da organização, telefone e moeda.
+        lifecycle-controls: Controles de ciclo de vida
+        lifecycle-help: Alterações de status e de integração são registradas na atividade da organização.
+        organization-status: Status da organização
+        organization-status-help: Suspenda, reative ou marque o acesso como inativo.
+        activate: Ativar
+        suspend: Suspender
+        onboarding-state: Estado da integração
+        onboarding-state-help: Corrija manualmente o estado da integração para fluxos de suporte.
+        mark-complete: Marcar como concluída
+        mark-incomplete: Marcar como pendente
+        danger-zone: Zona de perigo
+        danger-zone-help: A exclusão da organização e a remoção definitiva de dados continuam indisponíveis de propósito até que contratos de remoção e fluxos de confirmação específicos sejam adicionados.
+        update-status-title: Atualizar status da organização
+        update-status-body: "Definir o status desta organização como {status}?"
+        update-status: Atualizar status
+        status-updated: Status da organização atualizado.
+        mark-onboarding-complete: Marcar integração como concluída
+        mark-onboarding-incomplete: Marcar integração como pendente
+        mark-onboarding-complete-body: Marcar a integração desta organização como concluída?
+        mark-onboarding-incomplete-body: Marcar a integração desta organização como pendente?
+        onboarding-updated: Integração da organização atualizada.
+        users:
+          title: Usuários da organização
+          help: Busque membros, revise o estado de acesso e gerencie ações de suporte aos usuários desta organização.
+          table-help: Filtre os usuários da organização e abra as ações da linha para personificação ou suporte de senha.
+          empty-title: Nenhum usuário encontrado
+          empty-description: Esta organização não tem usuários correspondentes à visualização atual.
+          filtered-title: Nenhum usuário corresponde aos filtros
+          filtered-description: Ajuste a busca ou os filtros para encontrar outro usuário da organização.
+          user-actions: Ações do usuário
+          impersonate: Personificar
+          verify: Verificar
+          deactivate: Desativar
+          transfer-ownership: Transferir propriedade
+          remove-from-organization: Remover da organização
+          verified: Usuário verificado.
+          activated: Usuário ativado.
+          deactivate-user: Desativar usuário
+          deactivate-body: "Desativar {name} nesta organização?"
+          deactivated: Usuário desativado.
+          transfer-ownership-body: "Transferir a propriedade da organização para {name}?"
+          ownership-transferred: Propriedade da organização transferida.
+          remove-user: Remover usuário
+          remove-body: "Remover {name} desta organização?"
+          removed: Usuário removido.
+        set-inactive: Inativar
+        onboarding-complete: Concluída
+        onboarding-incomplete: Pendente
+        activity-stream: Fluxo de atividades
+        activity-stream-help: Revise as atividades de toda a organização registradas para este UUID de empresa.
+        installed-extensions: Extensões instaladas
+        installed-extensions-help: Extensões usadas por esta organização. Controles específicos de cada pacote podem adicionar painéis extras pelo registro de administração.
+        installed-count: "{count, plural, one {# instalada} other {# instaladas}}"
+        no-extensions: Nenhuma extensão específica da organização está instalada.
+        extension: Extensão
+        extension-tab-unavailable: Esta aba de extensão de administração não está disponível.
+      branding-saved: Configurações de marca salvas.
+      overview-widget:
+        title: Visão geral da administração
+        active-admins: Administradores ativos
+        needs-attention: Precisam de atenção
+        load-error: Não foi possível carregar a visão geral da administração.
+        legacy: Widget de visão geral (legado)
+      view-all: Ver tudo
+      orgs:
+        empty-title: Nenhuma organização encontrada
+        empty-description: Nenhuma organização corresponde à visualização atual.
+        filtered-title: Nenhuma organização corresponde aos filtros
+        filtered-description: Ajuste a busca, os filtros ou a visualização salva para encontrar outra organização.
+        clear-view: Limpar visualização
+        views: Visualizações
+        needs-attention: Precisam de atenção
+        missing-owner: Sem proprietário
+        incomplete-onboarding: Integração pendente
+        inactive-status: Status inativo
+        export-selected: Exportar selecionadas
+        billing: Faturamento
+        last-activity: Última atividade
+        organization-actions: Ações da organização
+        view-organization: Ver organização
+        open-activity: Abrir atividade
+      nav:
+        overview: Acompanhe as métricas do painel de administração e a saúde da plataforma.
+        organizations: Gerencie organizações, usuários, extensões, atividades e configurações.
+        branding: Configure a marca do console, logotipos, cores e tema padrão.
+        two-fa: Configure a política de autenticação em dois fatores dos administradores.
+        platform-api-token: Gerencie o token da API da plataforma usado por integrações confiáveis.
+        schedule-monitor: Revise as tarefas agendadas e os registros de execução recentes.
+        panel-controls: "Controles de administração de {title}."
+        system-config: Configuração do sistema
+        system-config-description: Configure os serviços principais da plataforma, e-mail, armazenamento, filas, sockets e notificações.
+        services: Configure os provedores de serviço da plataforma.
+        mail: Configure o envio de e-mails.
+        filesystem: Configure o armazenamento de arquivos.
+        queue: Configure os processadores de fila em segundo plano.
+        socket: Configure o socket de tempo real.
+        notification-channels: Configure os canais de notificação.
+      unauthorized: Você não tem autorização para acessar a administração!
+    settings:
+      notifications:
+        select-notifiables: Selecione os destinatários...
+        sms-title: Configurações de notificação por SMS
+        enable-sender-id: Ativar ID de remetente alfanumérico
+        sender-id: ID de remetente alfanumérico
+        sender-id-help: Defina o nome alfanumérico personalizado que aparecerá como remetente de todos os SMS enviados pela sua organização. Até 11 letras ou números. Não é aceito em todos os países.
+        sender-id-info-1: "IDs de remetente alfanuméricos permitem que sua organização substitua o número de telefone tradicional por um nome de remetente em texto ao enviar notificações por SMS (ex.: Fleetbase, MinhaLoja, CentralDespacho). Isso pode melhorar o reconhecimento da marca, aumentar a confiança nas mensagens e melhorar a entrega em regiões onde as operadoras locais restringem remetentes numéricos."
+        sender-id-info-2: Quando ativado, o Fleetbase usará este ID de remetente em todos os SMS enviados em nome da sua organização, incluindo atualizações de pedidos, códigos de verificação, notificações de motoristas e outros alertas automáticos. IDs de remetente podem ter até 11 caracteres entre letras e números.
+        sender-id-info-3: Alguns países exigem regras específicas de mensagens, e certas operadoras só aceitam remetentes alfanuméricos. Usar um ID de remetente pode melhorar bastante a entrega de mensagens nessas regiões.
+        sender-id-warning: A entrega de SMS com IDs de remetente alfanuméricos depende das políticas das operadoras locais. Algumas regiões podem restringir ou bloquear remetentes numéricos ou exigir remetentes alfanuméricos para a entrega. Embora o Fleetbase tente entregar todas as mensagens usando o ID de remetente configurado, a entrega não pode ser garantida em países com filtragem pelas operadoras ou restrições regulatórias. Sua organização é responsável por cumprir as normas locais de mensagens nos países para os quais envia SMS.
+        saved: Configurações de notificação salvas com sucesso.
+      organization-saved: Alterações da organização salvas com sucesso.
+    page-titles:
+      cache: Cache
+      notification-channels: Configuração dos canais de notificação
+      system-configuration: Configuração do sistema
+      admin: Administração
+      catch: Página não encontrada
+      invite: Convite
+      for-driver: Convite de motorista
+    verification:
+      email-verified: E-mail verificado com sucesso!
+      verify-by-phone: Verificar conta por telefone
+      send: Enviar
+      no-phone: Nenhum número de telefone informado.
+      sms-sent: SMS com o código de verificação enviado!
+      resend-code: Reenviar código de verificação
+      no-email: Nenhum endereço de e-mail informado.
+      email-sent: E-mail com o código de verificação enviado!
+      welcome-to: "Bem-vindo ao {name}"
+    onboarding:
+      welcome: Bem-vindo ao Fleetbase!
+      failed: Falha no cadastro
+    invite:
+      accepted: Convite aceito, bem-vindo ao Fleetbase!
+      set-new-password: Defina uma nova senha
+    notifications:
+      marked-read: Notificação marcada como lida.
+    impersonator:
+      end: Encerrar personificação
+      ending: Encerrando a sessão de personificação.
+    github-card:
+      star: Dar estrela no Github
+      latest-release: "Última versão:"
+      stars: Estrelas
+      watchers: Observadores
+      forks: Forks
+      open: Abertas
+      issues: Issues
+    blog:
+      visit: Visitar blog
+      empty: Nenhuma publicação do blog disponível no momento.
+    widgets:
+      fleetbase-blog:
+        name: Blog do Fleetbase
+        description: Lista as últimas notícias e eventos da equipe oficial do Fleetbase.
+      github-card:
+        name: Cartão do Github
+        description: Exibe as estatísticas atuais do repositório oficial do Fleetbase no Github.
+      admin:
+        metric: Métrica
+        summary: Resumo da administração
+        vs-previous-30d: vs. 30 dias anteriores
+        missing-metric-slug: Identificador da métrica ausente.
+        load-metric-error: Não foi possível carregar a métrica.
+        no-items: Nenhum item precisa de atenção.
+        missing-widget-slug: Identificador do widget do painel ausente.
+        load-widget-error: Não foi possível carregar o widget do painel.
+        users-total:
+          title: Usuários
+          description: Total de usuários da plataforma com tendência de 30 dias.
+        organizations-total:
+          title: Organizações
+          description: Total de organizações com tendência de 30 dias.
+        active-admins:
+          title: Administradores ativos
+          description: Administradores do sistema ativos.
+          footnote: acesso de administrador
+        organizations-attention:
+          title: Aguardando atenção
+          description: Organizações com pendências de propriedade, integração ou status.
+          footnote: precisa de revisão
+        new-users:
+          title: Novos usuários
+          description: Usuários criados nos últimos 30 dias.
+        new-organizations:
+          title: Novas organizações
+          description: Organizações criadas nos últimos 30 dias.
+        failed-jobs:
+          title: Tarefas com falha
+          description: Tarefas da fila com falha aguardando revisão.
+          footnote: saúde da fila
+        suspicious-activity:
+          title: Atividade suspeita
+          description: Atividades sensíveis recentes de administração ou autenticação.
+          footnote: últimos 30 dias
+        system-diagnostics:
+          title: Diagnóstico do sistema
+          description: Saúde da configuração de e-mail, fila, sistema de arquivos, socket, notificações e agendador.
+        admin-activity:
+          title: Atividade administrativa
+          description: Atividades sensíveis recentes nos recursos gerenciados pela administração.
+        organization-risk-queue:
+          title: Fila de risco das organizações
+          description: Organizações que precisam de suporte ou de revisão de propriedade, integração ou status.
+        configuration-gaps:
+          title: Falhas de configuração
+          description: Configurações do sistema ausentes ou arriscadas detectadas pelo console.
+        platform-growth:
+          title: Tendência de crescimento da plataforma
+          description: Tendência de criação de usuários e organizações nos últimos 30 dias e nos 30 dias anteriores.
 invite:
   for-users:
     invitation-message: Você foi convidado para se juntar à {companyName}
@@ -757,11 +1210,11 @@ onboard:
       resend-email: Reenviar E-mail
       send-by-sms: Enviar por SMS
 install:
-  not-configured-title: Fleetbase is not installed or configured
-  not-configured-message: Complete setup from the Fleetbase CLI or application container, then reload this page once the database, migrations, and seed data are ready.
-  running-locally-docs: See running locally docs
-  cloud-docs: See cloud deployment docs
-  refreshing: Installation complete, refreshing...
+  not-configured-title: O Fleetbase não está instalado ou configurado
+  not-configured-message: Conclua a configuração pela CLI do Fleetbase ou pelo contêiner da aplicação e recarregue esta página quando o banco de dados, as migrações e os dados iniciais estiverem prontos.
+  running-locally-docs: Ver documentação de execução local
+  cloud-docs: Ver documentação de implantação em nuvem
+  refreshing: Instalação concluída, atualizando...
 layout:
   header:
     menus:
@@ -773,3 +1226,1106 @@ layout:
         view-profile: Ver perfil
         keyboard-shortcuts: Mostrar atalhos de teclado
         changelog: Registro de alterações
+
+modals:
+  set-password:
+    message: Sua conta foi criada a partir de um convite e ainda não tem senha. Defina uma agora para concluir a proteção da sua conta.
+    new-password: Nova senha
+    confirm-password: Confirmar senha
+    help-text: Digite uma senha com pelo menos 6 caracteres para continuar.
+
+ember-ui:
+  template-builder:
+    element-types:
+      text: Texto
+      image: Imagem
+      table: Tabela
+      line: Linha
+      shape: Forma
+      qr_code: QR Code
+      barcode: Código de barras
+    properties-panel:
+      element-properties: "Propriedades: {type}"
+      position: Posição
+      rotation: Rotação
+      z-index: Camada (Z)
+      opacity: Opacidade
+      size: Tamanho
+      width: Largura
+      height: Altura
+      content: Conteúdo
+      content-placeholder: "Digite um texto ou use a sintaxe '{variable.name}'..."
+      insert-variable-or-formula: Inserir variável ou fórmula
+      image-source: Origem da imagem
+      change-variable: Alterar variável
+      clear: Limpar
+      uploading: Enviando...
+      replace-image: Substituir imagem
+      click-to-upload-image: Clique para enviar uma imagem
+      or: ou
+      use-variable: "Usar variável (ex.: '{company.logo}')"
+      alt-text: Texto alternativo
+      object-fit: Ajuste da imagem
+      border-radius: Arredondamento da borda
+      columns: Colunas
+      column-label: Rótulo da coluna
+      remove-column: Remover coluna
+      no-columns: Nenhuma coluna definida. Adicione uma abaixo.
+      add-column: Adicionar coluna
+      data-source: Fonte de dados
+      variable: Variável
+      manual: Manual
+      data-variable: Variável de dados
+      insert-variable: Inserir variável
+      data-variable-help: A variável deve resultar em uma lista de objetos. As chaves de cada objeto devem corresponder às chaves das colunas definidas acima.
+      remove-row: Remover linha
+      define-columns-first: Defina as colunas primeiro.
+      no-rows: Nenhuma linha ainda.
+      add-row: Adicionar linha
+      table-style: Estilo da tabela
+      header-bg: Fundo do cabeçalho
+      header-text: Texto do cabeçalho
+      border-color: Cor da borda
+      cell-padding: Espaçamento da célula
+      row-alt-color: Cor da linha alternada
+      value: Valor
+      format: Formato
+      color: Cor
+      width-px: Largura (px)
+      style: Estilo
+      fill-color: Cor de preenchimento
+      font-family: Fonte
+      size-px: Tamanho (px)
+      weight: Peso
+      line-height: Altura da linha
+      letter-spacing: Espaçamento entre letras
+      alignment: Alinhamento
+      background: Fundo
+      padding-px: Espaçamento interno (px)
+      border: Borda
+      radius-px: Arredondamento (px)
+      canvas-settings: Configurações da tela
+      template-name: Nome do modelo
+      paper-size: Tamanho do papel
+      orientation: Orientação
+      background-color: Cor de fundo
+      description: Descrição
+      row-number: "Linha {number}"
+      font-weight-light: Fina
+      font-weight-regular: Normal
+      font-weight-medium: Média
+      font-weight-semi-bold: Seminegrito
+      font-weight-bold: Negrito
+      font-weight-extra-bold: Extranegrito
+      font-weight-black: Ultranegrito
+      line-style-solid: Sólida
+      line-style-dashed: Tracejada
+      line-style-dotted: Pontilhada
+      object-fit-cover: Cobrir
+      object-fit-contain: Conter
+      object-fit-fill: Preencher
+      object-fit-none: Nenhum
+      shape-rectangle: Retângulo
+      shape-circle: Círculo
+      paper-letter: Carta (216 × 279 mm)
+      paper-legal: Ofício (216 × 356 mm)
+      paper-custom: Personalizado
+      orientation-portrait: Retrato
+      orientation-landscape: Paisagem
+      image-upload-failed: "Falha no envio da imagem: {message}"
+    toolbar:
+      close: Fechar
+      add-element: "Adicionar {element}"
+      zoom-out: Diminuir zoom
+      reset-zoom: Redefinir zoom
+      zoom-in: Aumentar zoom
+      rotate-left: Girar 90° à esquerda
+      rotate-right: Girar 90° à direita
+      undo: Desfazer
+      redo: Refazer
+      preview-template: Pré-visualizar modelo
+      preview: Pré-visualizar
+      save: Salvar
+    query-form:
+      edit-query: Editar consulta
+      new-query: Nova consulta
+      basic-info: Informações básicas
+      label-placeholder: "ex.: Pedidos recentes"
+      variable-name: Nome da variável
+      variable-name-help: Gerado a partir do rótulo se ficar em branco.
+      description: Descrição
+      description-placeholder: Descrição opcional
+      resource-type: Tipo de recurso
+      resource-type-help: Selecione o modelo do Fleetbase consultado por esta query.
+      filter-conditions: Condições de filtro
+      add-condition: Adicionar condição
+      field-placeholder: campo
+      value-placeholder: "valor ou '{variable}'"
+      remove-condition: Remover condição
+      no-conditions: Sem condições — todos os registros serão retornados.
+      sort: Ordenação
+      add-sort: Adicionar ordenação
+      sort-field-placeholder: "campo (ex.: created_at)"
+      ascending: Crescente
+      descending: Decrescente
+      remove-sort: Remover ordenação
+      no-sort: Sem ordenação — será usada a ordem padrão do modelo.
+      limit: Limite
+      no-limit: Sem limite
+      limit-help: Número máximo de linhas a retornar.
+      eager-load: Carregar relações (with)
+      eager-load-placeholder: "ex.: driver,vehicle"
+      eager-load-help: Nomes das relações a carregar, separados por vírgula.
+      label: Rótulo
+      save-changes: Salvar alterações
+      create-query: Criar consulta
+      resource-types:
+        order: Pedido
+        driver: Motorista
+        place: Local
+        vendor: Fornecedor
+        contact: Contato
+        issue: Ocorrência
+        vehicle: Veículo
+        fuel-report: Relatório de combustível
+        purchase-rate: Tarifa de compra
+      op-equals: = igual a
+      op-not-equals: ≠ diferente de
+      op-gt: "> maior que"
+      op-gte: ≥ maior ou igual a
+      op-lt: < menor que
+      op-lte: ≤ menor ou igual a
+      op-contains: ~ contém
+      op-not-contains: "!~ não contém"
+      op-in: na lista
+      op-not-in: fora da lista
+      op-null: é nulo
+      op-not-null: não é nulo
+      label-required: O rótulo é obrigatório.
+      resource-type-required: Selecione um tipo de recurso.
+    variable-picker:
+      title: Inserir variável ou fórmula
+      search-variables: Buscar variáveis...
+      global: Globais
+      always-available: Sempre disponíveis
+      formula-syntax: Sintaxe de fórmula
+      use-variables-inside: "Use variáveis dentro da expressão:"
+      supported: "Suportado: + − × ÷ ( ) round() abs() ceil() floor()"
+      expression: Expressão
+      preview: Pré-visualização
+      quick-insert: Inserção rápida de variável
+      insert-formula: Inserir fórmula
+      variables: Variáveis
+      formula: Fórmula
+      variables-count: "{count, plural, one {# variável} other {# variáveis}}"
+      no-match: "Nenhuma variável corresponde a \"{query}\""
+      unbalanced-braces: Chaves desbalanceadas na fórmula.
+      globals:
+        company-name: Nome da empresa
+        company-email: E-mail da empresa
+        company-phone: Telefone da empresa
+        company-address: Endereço da empresa
+        company-logo: URL do logotipo da empresa
+        current-user: Usuário atual
+        user-email: E-mail do usuário
+        current-datetime: Data e hora atuais
+        today: Data de hoje
+        current-year: Ano atual
+    queries-panel:
+      queries: Consultas
+      add-query: Adicionar consulta
+      add: Adicionar
+      unsaved: não salva
+      edit-query: Editar consulta
+      delete-query: Excluir consulta
+      no-queries: Nenhuma consulta ainda.
+      no-queries-help: As consultas carregam dados dos modelos do Fleetbase na renderização e são salvas com o modelo.
+    layers-panel:
+      layers: Camadas
+      double-click-rename: Clique duas vezes para renomear
+      move-up: Mover camada para cima
+      move-down: Mover camada para baixo
+      delete-element: Excluir elemento
+      no-elements: Nenhum elemento ainda.
+      no-elements-help: Use a barra de ferramentas para adicionar elementos.
+      hide-element: Ocultar elemento
+      show-element: Mostrar elemento
+      element: Elemento
+    element-renderer:
+      no-columns: Nenhuma coluna definida
+  pagination:
+    previous: Anterior
+    next: Próxima
+    showing: Mostrando
+    to: a
+    of: de
+    results: resultados
+  layout:
+    section:
+      header:
+        search-input: Campo de busca
+    header:
+      home: Início
+      organization-settings: Configurações da organização
+      create-or-join-organizations: Criar ou entrar em organizações
+      explore-extensions: Explorar extensões
+      admin: Administração
+      logout: Sair
+      view-profile: Ver perfil
+      show-keyboard-shortcuts: Mostrar atalhos de teclado
+      changelog: Novidades
+      developers: Desenvolvedores
+      join-discord: Entrar na comunidade do Discord
+      help-support: Ajuda e suporte
+      documentation: Documentação
+      fleetbase-documentation: Documentação do Fleetbase
+      dark-mode: Modo escuro
+      smart-nav-menu:
+        customise-navigation: Personalizar navegação
+        customise-navigation-title: Personalizar navegação
+        close: Fechar
+        pinned-to-bar: Fixadas na barra
+        drag-to-reorder: Arraste para reordenar
+        remove-from-bar: Remover da barra
+        no-pinned: Nenhuma extensão fixada ainda.
+        add-from-list: Adicione extensões a partir da lista à direita.
+        all-extensions: Todas as extensões
+        reset-to-default: Restaurar padrão
+        cancel: Cancelar
+        apply: Aplicar
+        click-to-unpin: Clique para desafixar
+        click-to-pin: Clique para fixar na barra
+        more-extensions: Mais extensões
+        extensions: Extensões
+        search-extensions-placeholder: Buscar extensões...
+        search-extensions: Buscar extensões
+        clear-search: Limpar busca
+        extension-list: Lista de extensões
+        no-extensions-match: Nenhuma extensão encontrada
+        pin-to-bar: Fixar na barra de navegação
+        pin-item-to-bar: "Fixar {title} na barra de navegação"
+        from-parent: "de {parent}"
+        extension-navigation: Navegação de extensões
+    mobile-navbar:
+      menu: Menu
+    sidebar:
+      navigator:
+        clear-search: Limpar busca
+        close-search: Fechar busca
+        search-results: Resultados da busca de navegação
+        searching: Buscando...
+        no-results: Nenhum resultado de navegação encontrado.
+        start-typing: Comece a digitar para buscar
+        search-placeholder: Buscar ou ir para...
+        navigation: Navegação
+        search-navigation: Buscar na navegação
+  activity-log:
+    someone: Alguém
+    unknown: Desconhecido
+    verb:
+      updated: atualizou
+      changed: alterou
+      created: criou
+      deleted: excluiu
+      restored: restaurou
+    badge:
+      created: Criado
+      deleted: Excluído
+      restored: Restaurado
+      updated: Atualizado
+    target-phrase: "{type}{suffix}"
+    target-phrase-new: "novo(a) {type}{suffix}"
+    with: com
+    attributes-count: "{count, plural, one {# atributo} other {# atributos}}"
+    changed-attributes: Atributos alterados
+    attribute: Atributo
+    previous-value: Valor anterior
+    new-value: Novo valor
+    from: de
+    to: para
+    on: em
+    loading: Carregando atividades...
+    no-activity: Nenhuma atividade ainda
+  dashboard:
+    default-dashboard: Painel padrão
+    widget-card:
+      on-dashboard: No painel
+      on-dashboard-count: "No painel ×{count}"
+      added: Adicionado
+      added-count: "Adicionado ×{count}"
+    widget-panel:
+      clear-search: Limpar busca
+    create:
+      remove-widget: Remover widget do painel
+    widget-category:
+      general: Geral
+      actions: Ações
+      analytics: Análises
+      billing: Faturamento
+      diagnostics: Diagnóstico
+      extension-widgets: Widgets de extensões
+      governance: Governança
+      kpi-tiles: Indicadores (KPI)
+      legacy: Legado
+      maps: Mapas
+      operations: Operações
+      overview: Visão geral
+      reports: Relatórios
+      resources: Recursos
+      security: Segurança
+      support: Suporte
+  common:
+    loading: Carregando...
+    no-resources: "Sem {resource}"
+    no-resources-to-display: "Nenhum registro de {resource} para exibir"
+    create-resource: "Criar {resource}"
+    select-resource: "Selecionar {resource}"
+    create-new: Criar novo
+    save-changes: Salvar alterações
+    delete: Excluir
+    done: Concluído
+    edit: Editar
+    create-new-resource: "Criar {resource}"
+    resource-saved: "{resource} {name} salvo com sucesso."
+    resource-created: "{resource} criado com sucesso."
+    resource-updated: "{resource} atualizado com sucesso."
+    edit-named: "Editar: {name}"
+  array-input:
+    data-input: Entrada de dados
+    remove: Remover
+    add: Adicionar
+  bulk-search-dropdown:
+    clear: Limpar
+    search: Buscar
+    bulk-search: Busca em massa
+  chat-tray:
+    new-chat: Nova conversa
+    select-teammates: Selecione um ou mais colegas de equipe
+    close-new-chat: Fechar nova conversa
+    chat-name: Nome da conversa
+    optional: Opcional
+    contacts: Contatos
+    search-teammates: Buscar colegas de equipe
+    loading-contacts: Carregando contatos
+    no-contacts: Nenhum contato encontrado
+    try-different-contact: Tente outro nome, e-mail ou telefone.
+    cancel: Cancelar
+    create-chat: Criar conversa
+    remove-user: "Remover {name}"
+    attachment: Anexo
+    end-chat: Encerrar conversa
+    messages: Mensagens
+    close-inbox: Fechar caixa de conversas
+    search-conversations: Buscar conversas
+    loading-conversations: Carregando conversas
+    no-conversations: Nenhuma conversa encontrada
+    start-new-chat-hint: Inicie uma nova conversa ou ajuste sua busca.
+    open-inbox: Abrir caixa de conversas
+    fleetbase-user: Usuário do Fleetbase
+    no-messages-yet: Nenhuma mensagem ainda
+    attachment-count: "{count, plural, one {# anexo} other {# anexos}}"
+    sent-a-message: Enviou uma mensagem
+    end-chat-title: "Tem certeza de que deseja encerrar esta conversa ({title})?"
+    end-chat-body: Depois de encerrada, esta conversa não ficará mais acessível para ninguém.
+    unable-to-create: Não foi possível criar a conversa.
+  chat-window:
+    click-to-download: Clique para baixar o anexo
+    add-attachment: Adicionar anexo
+    type-message: Digite sua mensagem aqui
+    send: Enviar
+    read-at: "Lida em {time}"
+    untitled-chat: Conversa sem título
+    leave-title: Tem certeza de que deseja sair desta conversa?
+    remove-participant-title: "Tem certeza de que deseja remover este participante ({name}) da conversa?"
+    leave-body: Ao sair desta conversa, você não poderá acessá-la novamente a menos que seja adicionado como participante outra vez
+    remove-participant-body: Continuar removerá este participante da conversa.
+    edit-name-title: Editar nome do canal de conversa
+    name-required: Informe um nome para salvar as alterações.
+  click-to-copy:
+    copied: Copiado!
+    click-to-copy: Clique para copiar
+  click-to-reveal:
+    click-to-reveal: Clique para revelar
+  coordinates-input:
+    latitude: Latitude
+    longitude: Longitude
+    select-from-map: Selecionar no mapa
+    address-search: Busca de endereço
+    enter-address: Digite o endereço
+    lookup: Localizar
+    done: Concluído
+    map-marker: Marcador arrastável no mapa
+  aside-item-scroller:
+    search-input: Campo de busca
+    search: Buscar
+    directory: Diretório
+  kanban:
+    column:
+      no-items-yet: "Nenhum registro de {resource} ainda"
+      add-item: "+ Adicionar {resource}"
+      card: cartão
+      cards: cartões
+      untitled: Coluna sem título
+    board: Quadro Kanban
+  query-builder:
+    select-columns-in-fields-first: "Selecione colunas na seção \"Selecionar campos\" primeiro"
+    select-column: Selecione a coluna...
+    select-all: Selecionar tudo
+    actions:
+      title: Ações
+      subtitle: Operações da consulta
+      clear: Limpar
+      execute: Executar
+      save: Salvar
+    column-select:
+      title: Selecionar campos
+      search: Buscar uma coluna
+      alias: "Apelido:"
+      select-data-source: Selecione uma fonte de dados
+      choose-table: Escolha uma tabela para ver os campos disponíveis
+      selected-fields: "Campos selecionados:"
+      clear-all: Limpar tudo
+      selected-count: "{count} selecionado(s)"
+      none-selected: Nenhum selecionado
+    computed-columns:
+      title: Colunas calculadas
+      add: Adicionar coluna calculada
+      edit: Editar coluna calculada
+      remove: Remover coluna calculada
+      empty: Nenhuma coluna calculada definida ainda
+      empty-help: Colunas calculadas permitem criar campos calculados usando expressões SQL
+      add-first: Adicionar a primeira coluna calculada
+      edit-title: Editar coluna calculada
+      update: Atualizar
+      add-button: Adicionar
+      types:
+        string: Texto
+        integer: Inteiro
+        decimal: Decimal
+        date: Data
+        datetime: Data e hora
+        boolean: Booleano
+    conditions:
+      title: Condições
+      select-field: Selecione o campo...
+      operator: Operador...
+      from: De
+      to: Até
+      select-values: Selecione os valores...
+      select-value: Selecione o valor...
+      enter-value: Digite o valor...
+      add-condition: Adicionar condição
+      no-conditions-set: Nenhuma condição definida
+      no-conditions-help: Adicione condições para filtrar seus dados
+      add-inner-group: Adicionar grupo interno
+      select-fields-first: Selecione os campos primeiro
+      choose-columns: Escolha colunas para habilitar o filtro
+      no-conditions: Sem condições
+      group: Grupo
+      logic:
+        and: e
+        or: ou
+      summary-conditions: "{count, plural, one {# condição} other {# condições}}"
+      summary-groups: "{count, plural, one {# grupo} other {# grupos}}"
+      select-columns-first: Selecione colunas primeiro para habilitar o filtro
+      no-columns-available: Nenhuma coluna selecionada disponível para filtrar
+      true: Verdadeiro
+      false: Falso
+      operators:
+        equals: igual a
+        not-equals: diferente de
+        is-empty: está vazio
+        is-not-empty: não está vazio
+        contains: contém
+        not-contains: não contém
+        starts-with: começa com
+        ends-with: termina com
+        in: é um de
+        not-in: não é um de
+        gt: maior que
+        lt: menor que
+        gte: maior ou igual a
+        lte: menor ou igual a
+        between: entre
+        not-between: fora do intervalo
+        after: depois de
+        before: antes de
+        on-or-after: em ou depois de
+        on-or-before: em ou antes de
+        between-dates: entre as datas
+        not-between-dates: fora das datas
+    group-by:
+      title: Agrupar por
+      group-by-column: Coluna de agrupamento
+      calculate: Calcular
+      select-function: Selecione a função...
+      of-column: Da coluna
+      add-grouping: Adicionar agrupamento
+      active-groupings: Agrupamentos ativos
+      group-by: Agrupar por
+      of: de
+      rules: "Regras de agrupamento:"
+      rule-1: • Só é possível agrupar por colunas selecionadas
+      rule-2: • Funções de agregação calculam valores para cada grupo
+      rule-3: • Use COUNT(*) para contar os registros de cada grupo
+      groups-count: "{count, plural, one {# grupo} other {# grupos}}"
+      no-grouping: Sem agrupamento
+      all-records: Todos os registros
+      select-columns-first: Selecione colunas primeiro para habilitar o agrupamento
+      no-columns-available: Nenhuma coluna não agregada disponível para agrupar
+      functions:
+        count: Contagem
+        sum: Soma
+        avg: Média
+        min: Mínimo
+        max: Máximo
+        concat: Concatenar
+    joins:
+      title: Junções
+      available-relationships: Relações disponíveis
+      select-none: Desmarcar tudo
+      alias-optional: Apelido (opcional)
+      performance-warning: Aviso de desempenho
+      no-relationships: Nenhuma relação disponível
+      no-relationships-help: Esta tabela não tem relações definidas para juntar com outras tabelas
+      joins-count: "{count, plural, one {# junção} other {# junções}}"
+      no-joins: Sem junções
+      select-columns-from: "Selecionar colunas de {relationship}"
+      performance-warning-text: "Você tem {count} colunas de junção selecionadas. Considere selecionar apenas as colunas necessárias para um melhor desempenho."
+    limit:
+      title: Limitar resultados
+      maximum-rows: "Máximo de linhas:"
+      enter-limit: "Digite o limite (ex.: 100)"
+      quick-options: "Opções rápidas:"
+      remove-limit: Remover limite
+      performance-notice: Aviso de desempenho
+      performance-notice-text: Conjuntos de resultados grandes podem demorar mais para processar e exibir.
+      max-rows: "Máx. {count} linhas"
+      no-limit: Sem limite
+    sort-by:
+      title: Ordenar por
+      sort-column: Coluna de ordenação
+      direction: Direção
+      select-direction: Selecione a direção...
+      add-sort: Adicionar ordenação
+      sort-order: Ordem de classificação (arraste para reordenar)
+      toggle-direction: Alternar direção da ordenação
+      rules: "Regras de ordenação:"
+      rule-1: • Só é possível ordenar por colunas selecionadas
+      rule-2: • A ordem importa — arraste para reordenar a prioridade
+      rule-3: • Colunas comuns e agregadas podem ser ordenadas
+      sorts-count: "{count, plural, one {# ordenação} other {# ordenações}}"
+      no-sorting: Sem ordenação
+      ascending: Crescente
+      descending: Decrescente
+      select-columns-first: Selecione colunas primeiro para habilitar a ordenação
+    table-select:
+      title: Fonte de dados
+      select-data-source: Selecione a fonte de dados...
+      table-information: Informações da tabela
+      no-source: Nenhuma fonte selecionada
+      columns: "Colunas:"
+      relationships: "Relações:"
+  modals:
+    bulk-action:
+      confirm-title: "Tem certeza de que deseja {verb} estes registros ({resources})?"
+      selected-for: "Você selecionou {selection} para {verb}."
+    bulk-delete:
+      confirm-title: "Tem certeza de que deseja excluir estes registros ({resources})?"
+      selected-for-deletion: "Você selecionou {selection} para exclusão."
+    create-or-join-org:
+      join: Entrar em uma organização
+      create: Criar nova organização
+      organization-id: ID da organização
+      organization-id-help: Digite o ID da organização em que deseja entrar.
+      organization-name: Nome da organização
+      organization-description: Descrição da organização
+      organization-phone: Telefone da organização
+      organization-currency: Moeda da organização
+    edit-chat-name:
+      channel-name: Nome do canal
+      help-text: Digite um novo nome para o canal de conversa.
+    export-form:
+      format: Formato
+      select-format: Selecione o formato de exportação...
+    import-form:
+      download-template: Baixar modelo de importação (XLSX)
+      spreadsheet-count: "{count, plural, one {# planilha} other {# planilhas}}"
+    install-prompt:
+      message: "Você está prestes a instalar a extensão \"{extensionName}\". Tem certeza de que deseja continuar com a instalação?"
+      access-note: Algumas extensões precisam de acesso aos seus recursos.
+    verify-email:
+      title: Verifique seu endereço de e-mail.
+      message: Confirme novamente seu endereço de e-mail e clique em Enviar para continuar.
+      email-label: Verifique seu endereço de e-mail
+      email-help: Confira mais uma vez se o seu endereço de e-mail está correto.
+      code-label: Digite o código de verificação
+      code-help: Digite o código recebido por e-mail; se não estiver na caixa de entrada, verifique o spam.
+    verify-by-sms:
+      title: Vamos verificar seu número de telefone.
+      message: Confirme seu telefone abaixo e clique em Enviar para receber um código de verificação por SMS.
+      phone-label: Verifique seu número de telefone
+      phone-help: Confira mais uma vez se o seu número de telefone está correto.
+    legal-notice:
+      subtitle: Licenciamento de código aberto e comercial
+      open-source-title: Licença de código aberto
+      open-source-text: O Fleetbase é licenciado sob a GNU Affero General Public License v3.0 ou posterior, a menos que você tenha uma licença comercial separada do Fleetbase.
+      no-warranty-title: Sem garantia
+      no-warranty-text: Este programa é distribuído sem garantia. Você pode distribuí-lo e modificá-lo nos termos da AGPL-3.0 ou posterior.
+      commercial-title: Licença comercial
+      commercial-text: Precisa manter modificações proprietárias privadas, criar um produto SaaS ou usar o Fleetbase com sua própria marca? A Licença Comercial do Fleetbase remove as obrigações de copyleft da AGPL para o uso comercial coberto.
+      view-licensing: Ver opções de licenciamento
+      view-commercial: Ver licença comercial
+      view-source: Ver código-fonte
+      view-agpl: Ver licença AGPL
+    query-builder-computed-column-editor:
+      column-name: Nome da coluna
+      column-name-help: O nome interno desta coluna (minúsculas, apenas sublinhados)
+      display-label: Rótulo de exibição
+      display-label-help: O rótulo legível exibido nos relatórios
+      data-type: Tipo de dado
+      data-type-help: O tipo de dado esperado do valor calculado
+      select-data-type: Selecione o tipo de dado
+      expression: Expressão
+      expression-help: Expressão SQL usando funções permitidas e referências a colunas
+      expression-placeholder: "ex.: DATEDIFF(end_date, start_date) + 1"
+      validating: Validando expressão...
+      valid: A expressão é válida
+      description: Descrição
+      description-help: Descrição opcional do que esta coluna calcula
+      allowed-functions: Funções permitidas
+      example-expressions: Exemplos de expressões
+      use: Usar
+      examples:
+        days-between: Calcular dias entre datas
+        days-between-desc: Calcula o número de dias entre duas datas
+        concat: Concatenar campos
+        concat-desc: Combina vários campos de texto
+        conditional: Valor condicional
+        conditional-desc: Retorna valores diferentes conforme as condições
+        safe-division: Divisão segura
+        safe-division-desc: Divide com proteção contra divisão por zero
+      invalid: A expressão é inválida
+      validate-failed: Falha ao validar a expressão
+    export-report:
+      export-format: Formato de exportação
+      select-format: Selecione o formato de exportação...
+      csv-title: Opções de exportação CSV
+      csv-help: Os dados serão exportados como valores separados por vírgula, compatíveis com o Excel e outras planilhas.
+      json-title: Opções de exportação JSON
+      json-help: Os dados serão exportados como JSON estruturado, adequado para consumo por API e processamento de dados.
+      file-name: Nome do arquivo
+      file-extension-help: A extensão do arquivo será adicionada automaticamente
+      intro: "Exporte {count} linhas de dados no formato de sua preferência."
+    save-report:
+      report-title: Título do relatório
+      report-title-placeholder: Digite o título do relatório...
+      description: Descrição
+      description-placeholder: Descrição opcional...
+      category: Categoria
+      select-category: Selecione a categoria...
+      schedule: Agendar este relatório
+      frequency: Frequência
+      time: Horário
+    tip-tap-editor-insert-table:
+      rows: Linhas
+      rows-help: O número de linhas da tabela
+      columns: Colunas
+      columns-help: O número de colunas da tabela
+    tip-tap-editor-insert-youtube:
+      url: URL do vídeo do YouTube
+      url-help: A URL do vídeo do YouTube que você deseja inserir
+      height: Altura
+      height-help: A altura do vídeo do YouTube
+      width: Largura
+      width-help: A largura do vídeo do YouTube
+    custom-field-group-form:
+      name: Nome do grupo de campos
+  fleetbase-attribution:
+    powered-by: Desenvolvido com
+    legal: Aviso legal
+    legal-notices: Avisos legais do Fleetbase
+  custom-fields-manager:
+    empty-hint: "Adicione seu primeiro grupo de campos para começar a criar campos personalizados para {resource}"
+    new-field-group: Novo grupo de campos
+    create-custom-field: Criar novo campo personalizado
+    no-groups: Nenhum grupo de campos personalizados
+    title: Gerenciador de campos personalizados
+    new-group-title: Novo grupo de campos personalizados
+    delete-group-title: Excluir este grupo de campos?
+    delete-group-body: Depois de excluído, este grupo de campos não poderá ser recuperado e você perderá todos os campos personalizados dentro dele.
+    delete-field-title: Excluir este campo personalizado?
+    delete-field-body: Depois de excluído, este campo personalizado não poderá ser recuperado e você perderá todos os dados associados.
+  notification-tray:
+    received: "Recebida: {time}"
+    no-unread: Nenhuma notificação não lida
+    view-all: Ver todas as notificações
+    unread-count: "{count, plural, one {# notificação não lida} other {# notificações não lidas}}"
+  schedule-item-card:
+    duration: "Duração: {duration} min"
+  tab-navigation:
+    close-tab: "Fechar {label}"
+    more-tabs: Mais abas
+    add-tab: Adicionar nova aba
+  custom-field:
+    form:
+      field-required: Campo obrigatório
+      field-editable: Campo editável
+      select-field-type: Selecione o tipo de campo...
+      select-model-type: Selecione o tipo de modelo
+      field-label: Rótulo do campo
+      field-description: Descrição do campo
+      field-help-text: Texto de ajuda do campo
+      field-type: Tipo de campo
+      field-model-type: Tipo de modelo do campo
+    options-input:
+      field-options: Opções do campo
+      add-option: Adicionar nova opção
+    yield:
+      save-changes: Salvar alterações
+      cancel: Cancelar
+    input:
+      date-format: AAAA-MM-DD
+  date-time-input:
+    date-input: Campo de data
+    time-input: Campo de hora
+  docs-panel:
+    open-new-tab: Abrir documentação em uma nova aba
+    close: Fechar documentação
+    loading: Carregando documentação...
+    open-fleetbase-docs: Abrir documentação do Fleetbase
+    cannot-embed: Esta página não pode ser incorporada aqui, mas você pode abri-la em uma nova aba.
+    open-docs: Abrir documentação
+  extensions-list:
+    extensions: Extensões
+  filter:
+    string:
+      filter-input: Campo de filtro
+    multi-input:
+      add-values: Adicionar valores...
+    clear: Limpar
+    range:
+      min: Mín.
+      max: Máx.
+  modal:
+    close: Fechar
+    cancel: Cancelar
+    confirm: Confirmar
+    ok: OK
+  table:
+    cell:
+      driver-name:
+        no-driver: Nenhum motorista atribuído
+      dropdown:
+        actions: Ações
+    no-records: Nenhum registro encontrado
+    no-records-yet: Nenhum registro ainda
+    read-guide: Ler guia
+  translations-editor:
+    add-language: Adicionar idioma
+    add-translation: Adicionar nova tradução
+    translation-key: Chave da tradução
+    translation-value: Valor da tradução
+    translations: Traduções
+  upload-button:
+    uploading: Enviando...
+    upload-new: Enviar novo
+  report-builder:
+    query-builder:
+      title: Construtor de consultas
+      clear: Limpar
+      execute-query: Executar consulta
+      save-report: Salvar relatório
+      primary-table: Tabela principal
+      select-table: Selecione uma tabela...
+      select-columns: Selecionar colunas
+    report-details: Detalhes do relatório
+    title: Título
+    description: Descrição
+    tags: Etiquetas
+    add-tags: Adicione etiquetas ao relatório
+    execute: Executar
+    no-preview: Sem pré-visualização do relatório
+    no-preview-help: Configure o relatório e clique em executar para pré-visualizar os resultados.
+    configuration: Configuração
+    preview: Pré-visualização
+    load-sources-failed: Falha ao carregar as fontes de dados
+    export-options:
+      export-format: Formato de exportação...
+      export: Exportar
+    results-table:
+      executing: Executando consulta...
+      no-results: Nenhum resultado encontrado
+      no-results-help: Tente ajustar os filtros da consulta
+      results: resultados
+  report:
+    details:
+      date-created: Data de criação
+    find-select:
+      search: Buscar relatórios por palavra-chave...
+      select: Selecionar
+      empty: Nenhum relatório disponível
+      empty-help: O sistema não encontrou relatórios disponíveis.
+  widget:
+    report:
+      loading: Carregando relatório...
+      no-report: Nenhum relatório
+      select-help: Selecione um relatório para visualizar.
+      select-report: Selecionar relatório
+      select-report-title: Selecionar relatório
+  tip-tap-editor:
+    undo: Desfazer
+    redo: Refazer
+    format: Formatar
+    heading: Título
+    font: Fonte
+    clear-color: Limpar cor
+    align-left: Alinhar à esquerda
+    align-center: Centralizar
+    align-right: Alinhar à direita
+    paragraph: Parágrafo
+    blockquote: Citação
+    codeblock: Bloco de código
+    horizontal-rule: Inserir linha horizontal
+    bold: Negrito
+    italic: Itálico
+    strikethrough: Tachado
+    list: Lista
+    ordered-list: Lista numerada
+    insert-table: Inserir tabela
+    table: Tabela
+    modify-table: Modificar tabela atual
+    insert-image: Inserir imagem
+    insert-youtube: Inserir vídeo do YouTube
+    underline: Sublinhado
+    superscript: Sobrescrito
+    subscript: Subscrito
+    heading-1: Título 1
+    heading-2: Título 2
+    heading-3: Título 3
+    unset: Remover
+    add-column-before: Adicionar coluna antes
+    add-column-after: Adicionar coluna depois
+    delete-column: Excluir coluna
+    add-row-before: Adicionar linha antes
+    add-row-after: Adicionar linha depois
+    delete-row: Excluir linha
+    delete-table: Excluir tabela
+    insert-youtube-title: Inserir um vídeo do YouTube
+    youtube-invalid: A URL do vídeo do YouTube é inválida.
+    insert-table-title: Inserir uma tabela
+  metadata-editor:
+    metadata: Metadados
+    preview-metadata: Pré-visualizar metadados
+    done: Concluído
+    key-required: A chave é obrigatória
+    key-snake-case: Deve estar em snake_case (começar com uma letra, a-z0-9_)
+    key-unique: A chave deve ser única
+    filter-keys: Filtrar chaves…
+    key-example: "ex.: order_number"
+    add-button: + Adicionar
+    clear-all: Limpar tudo
+    key: Chave
+    value: Valor
+    type: Tipo
+    true-false: Verdadeiro / Falso
+    type-text: Texto
+    type-number: Número
+    type-boolean: Booleano
+    remove: Remover
+    empty-before: Nenhum metadado. Clique em
+    add: Adicionar
+    empty-after: para criar um.
+    fix-keys: Corrija as chaves inválidas/duplicadas acima.
+  metadata-viewer:
+    no-metadata: Nenhum metadado
+    no-metadata-to-display: Nenhum metadado para exibir
+    hide-raw: Ocultar metadados brutos
+    view-raw: Ver metadados brutos
+  user:
+    pill:
+      no-user: Nenhum usuário
+      no-email: Sem e-mail
+  currency-select:
+    search-placeholder: Buscar por código da moeda
+  unit-input:
+    enter-unit: "Digite {unit}"
+    units:
+      astonomical-unit: Unidade astronômica
+      centiliter: Centilitro
+      centimeter: Centímetro
+      deciliter: Decilitro
+      decimeter: Decímetro
+      dram: Dracma
+      foot: Pé
+      gallon-us: Galão (EUA)
+      grain: Grão
+      grams: Gramas
+      inch: Polegada
+      kilograms: Quilogramas
+      kilometer: Quilômetro
+      light-year: Ano-luz
+      liter: Litro
+      meter: Metro
+      milliliter: Mililitro
+      millimeter: Milímetro
+      ounce: Onça
+      pint-us: Pinta (EUA)
+      pound: Libra
+      quart-us: Quarto (EUA)
+      tonne: Tonelada
+      yard: Jarda
+  schedule-calendar:
+    scheduled-item: Item agendado
+    update-failed: Falha ao atualizar o item agendado
+  with-record:
+    load-failed: Falha ao carregar o registro.
+  join-column-list:
+    no-columns: Nenhuma coluna selecionada
+  point-coordinates:
+    invalid: Coordenadas inválidas
+  crud:
+    deleted: "{resource} foi excluído."
+    delete-confirm: "Tem certeza de que deseja excluir este registro ({resource})?"
+    bulk-updated: "{items} atualizados com sucesso."
+    bulk-title: "{verb} em massa: {resource}"
+    export-title: "Exportar {resource}"
+    download: Baixar
+    export-failed: Não foi possível baixar a exportação.
+    import-title: "Importar {resource} por planilhas"
+    start-import: Iniciar importação
+    import-columns:
+      type: Tipo
+      file-name: Nome do arquivo
+      file-size: Tamanho do arquivo
+      upload-date: Data de envio
+    no-spreadsheets: Nenhuma planilha enviada para processar a importação.
+    processing: Processando...
+    verbs:
+      delete: excluir
+      cancel: cancelar
+      dispatch: despachar
+      archive: arquivar
+      restore: restaurar
+      assign: atribuir
+      activate: ativar
+      deactivate: desativar
+      remove: remover
+      update: atualizar
+      export: exportar
+      import: importar
+      enable: habilitar
+      disable: desabilitar
+      suspend: suspender
+      verify: verificar
+  current-user:
+    location-unavailable: Não foi possível detectar sua localização. Alguns recursos podem usar as configurações padrão.
+  custom-fields-registry:
+    create-title: Criar novo campo personalizado
+    create-button: Criar campo personalizado
+    edit-title: "Editar campo personalizado: {name}"
+  report-actions:
+    create-title: Criar novo relatório
+    create-button: Criar relatório
+    overview: Visão geral
+  session:
+    auth-failed: Falha na autenticação da sessão...
+  status:
+    created: Criado
+    pending: Pendente
+    dispatched: Despachado
+    assigned: Atribuído
+    unassigned: Não atribuído
+    started: Iniciado
+    enroute: A caminho
+    en-route: A caminho
+    driver-enroute: Motorista a caminho
+    arrived: Chegou
+    driver-arrived: Motorista chegou
+    picked-up: Coletado
+    pickup: Coleta
+    dropoff: Entrega
+    in-progress: Em andamento
+    in-transit: Em trânsito
+    out-for-delivery: Saiu para entrega
+    completed: Concluído
+    delivered: Entregue
+    canceled: Cancelado
+    cancelled: Cancelado
+    failed: Falhou
+    incomplete: Incompleto
+    expired: Expirado
+    scheduled: Agendado
+    confirmed: Confirmado
+    preparing: Em preparo
+    ready: Pronto
+    returned: Devolvido
+    on-hold: Em espera
+    processing: Processando
+    queued: Na fila
+    active: Ativo
+    inactive: Inativo
+    draft: Rascunho
+    published: Publicado
+    unpublished: Não publicado
+    archived: Arquivado
+    paid: Pago
+    unpaid: Não pago
+    partially-paid: Parcialmente pago
+    overdue: Vencido
+    void: Anulado
+    voided: Anulado
+    refunded: Reembolsado
+    partially-refunded: Parcialmente reembolsado
+    sent: Enviado
+    viewed: Visualizado
+    success: Sucesso
+    successful: Bem-sucedido
+    succeeded: Bem-sucedido
+    error: Erro
+    approved: Aprovado
+    rejected: Rejeitado
+    declined: Recusado
+    reversed: Estornado
+    settled: Liquidado
+    authorized: Autorizado
+    open: Aberto
+    closed: Fechado
+    resolved: Resolvido
+    acknowledged: Reconhecido
+    online: Online
+    offline: Offline
+    available: Disponível
+    unavailable: Indisponível
+    busy: Ocupado
+    on-duty: Em serviço
+    off-duty: Fora de serviço
+    suspended: Suspenso
+    disabled: Desativado
+    enabled: Ativado
+    frozen: Congelado
+    locked: Bloqueado
+    blocked: Bloqueado
+    banned: Banido
+    verified: Verificado
+    unverified: Não verificado
+    invited: Convidado
+    accepted: Aceito
+    live: Produção
+    test: Teste
+    sandbox: Sandbox
+    new: Novo
+    maintenance: Manutenção
+    in-service: Em serviço
+    out-of-service: Fora de serviço
+    operational: Operacional
+    received: Recebido
+    ordered: Pedido feito
+    shipped: Enviado
+    deposit: Depósito
+    withdrawal: Saque
+    transfer: Transferência
+    payment: Pagamento
+    refund: Reembolso
+    charge: Cobrança
+    payout: Repasse

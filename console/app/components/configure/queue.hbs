@@ -1,6 +1,6 @@
-<ContentPanel @title="Queue" @open={{true}} @wrapperClass="bordered-classic">
-    <InputGroup @name="Driver" @helpText="Select the default queue driver for Fleetbase to use.">
-        <Select @options={{this.connections}} @value={{this.driver}} @onSelect={{this.setDriver}} @placeholder="Select queue driver" disabled={{this.isLoading}} class="w-full" />
+<ContentPanel @title={{t "console.ui.configure.queue.title"}} @open={{true}} @wrapperClass="bordered-classic">
+    <InputGroup @name={{t "console.ui.configure.driver"}} @helpText={{t "console.ui.configure.queue.driver-help"}}>
+        <Select @options={{this.connections}} @value={{this.driver}} @onSelect={{this.setDriver}} @placeholder={{t "console.ui.configure.queue.driver-placeholder"}} disabled={{this.isLoading}} class="w-full" />
     </InputGroup>
     {{#if (eq this.driver "beanstalkd")}}
         <InputGroup @name="Beanstalk Host" @value={{this.beanstalkdHost}} disabled={{this.isLoading}} />
@@ -17,9 +17,9 @@
             <span class="text-xs">{{this.this.testResponse.message}}</span>
         </div>
     {{/if}}
-    <Button @wrapperClass="mt-3" @icon="plug" @text="Test Config" @onClick={{this.test}} @isLoading={{this.isLoading}} />
+    <Button @wrapperClass="mt-3" @icon="plug" @text={{t "console.ui.configure.test-config"}} @onClick={{this.test}} @isLoading={{this.isLoading}} />
 </ContentPanel>
 
 <EmberWormhole @to="next-view-section-subheader-actions">
-    <Button @type="primary" @size="sm" @icon="save" @text="Save Changes" @onClick={{this.save}} @disabled={{this.isLoading}} @isLoading={{this.isLoading}} />
+    <Button @type="primary" @size="sm" @icon="save" @text={{t "common.save-changes"}} @onClick={{this.save}} @disabled={{this.isLoading}} @isLoading={{this.isLoading}} />
 </EmberWormhole>

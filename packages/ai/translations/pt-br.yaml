@@ -1,0 +1,127 @@
+ai:
+  extension-name: IA
+  ui:
+    common:
+      search: Buscar
+      status: Status
+      provider: Provedor
+      model: Modelo
+      organization: Organização
+      user: Usuário
+      date: Data
+      date-placeholder: Data exata ou período
+      any-status: Qualquer status
+      any-provider: Qualquer provedor
+      any-model: Qualquer modelo
+      select-organization: Selecione a organização
+      select-user: Selecione o usuário
+      clear: Limpar
+      title: Título
+      tokens: Tokens
+      total-tokens: Total de tokens
+      tasks: Tarefas
+      new-chat: Nova conversa com IA
+      unknown: Desconhecido
+      unknown-lower: desconhecido
+    status:
+      active: Ativa
+      ended: Encerrada
+      completed: Concluída
+      failed: Falhou
+      cancelled: Cancelada
+      running: Em execução
+    audit-logs:
+      title: Registros de tarefas e conversas da IA
+      search-placeholder: Buscar título, resumo do prompt, provedor, modelo...
+      search-logs: Buscar registros
+      chat-sessions: Sessões de conversa
+      shown: "{count} exibidas"
+      turns: Interações
+      turns-count: "{count, plural, one {# interação} other {# interações}}"
+      last-message: Última mensagem
+      no-sessions: Nenhuma sessão de IA encontrada.
+      session-tasks: Tarefas da sessão
+      untitled-prompt: Prompt sem título
+      no-response-summary: Sem resumo da resposta
+      no-tasks: Esta sessão não tem tarefas.
+      select-session: Selecione uma sessão de conversa para ver suas tarefas.
+      task-detail: Detalhes da tarefa
+      created: Criada em
+      completed: Concluída em
+      prompt: Prompt
+      response: Resposta
+      content-redacted: O conteúdo do prompt e da resposta está oculto.
+      reveal-content: Revelar conteúdo
+      step: Etapa
+      step-lower: etapa
+      tool: Ferramenta
+      no-steps: Nenhuma etapa registrada.
+      select-task: Selecione uma tarefa para ver os detalhes.
+      confirm-reveal: Revelar o conteúdo bruto do prompt e da resposta da IA? Este acesso será registrado.
+      content-revealed: Conteúdo da tarefa de IA revelado.
+    settings:
+      enable: Ativar Fleetbase AI
+      select-provider: Selecione o provedor de IA
+      default-model: Modelo padrão
+      select-model: Selecione o modelo de IA
+      api-key: "Chave de API {provider}"
+      base-url: "URL base {provider}"
+      advanced-settings: Configurações avançadas
+      test-provider: Testar provedor
+      saved: Configurações de IA salvas.
+      test-completed: Teste do provedor de IA concluído.
+    usage:
+      title: Análise de uso da IA
+      update: Atualizar análise
+      by-organization: Por organização
+      by-user: Por usuário
+      by-provider: Por provedor
+      by-model: Por modelo
+      by-status: Por status
+      by-day: Por dia
+      top-50: Top 50
+      day: Dia
+      input: Entrada
+      output: Saída
+      total: Total
+      input-tokens: Tokens de entrada
+      output-tokens: Tokens de saída
+      no-usage: Nenhum uso encontrado.
+    preview:
+      ready: Pronto
+      needs-info: Faltam informações
+      not-set: Não definido
+      required-before-apply: Obrigatório antes de aplicar
+      apply: Aplicar
+      cancel: Cancelar
+    prompt:
+      open-ai: Abrir Fleetbase AI
+      close-ai: Fechar Fleetbase AI
+      ai-chats: Conversas com IA
+      loading-chats: Carregando conversas...
+      delete-chat: Excluir conversa
+      no-chats: Nenhuma conversa com IA ainda.
+      attachment: Anexo
+      thinking: Pensando...
+      scroll-to-latest: Ir para a mais recente
+      drop-files: Solte os arquivos para anexar
+      remove-attachment: Remover anexo
+      new-chat: Nova conversa
+      attach-files: Anexar arquivos
+      placeholder: Pergunte à Fleetbase AI...
+      send: Enviar
+      close: Fechar
+      confirm-delete: Excluir esta conversa com IA?
+      upload-failed: Não foi possível enviar o anexo.
+    home:
+      description: A Fleetbase AI funciona em todo o sistema pelo botão no cabeçalho ou pelo atalho de teclado.
+
+menu-text:
+  ai-config:
+    title: Configuração de IA
+  ai-config-provider-settings:
+    title: Configurações do provedor
+  ai-config-task-&-chat-logs:
+    title: Logs de tarefas e conversas
+  ai-config-usage-analytics:
+    title: Análise de uso

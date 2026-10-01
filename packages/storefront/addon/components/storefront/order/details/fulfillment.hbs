@@ -1,0 +1,57 @@
+<ContentPanel @title={{t "storefront.ui.order.fulfillment"}} @open={{true}} @isLoading={{@isLoading}} @wrapperClass="bordered-top" ...attributes>
+    <div class="storefront-order-fulfillment">
+        <div class="storefront-order-card-grid">
+            <div class="storefront-order-detail-card">
+                <div class="storefront-order-detail-card__label">{{t "storefront.common.driver"}}</div>
+                <div class="storefront-order-person storefront-order-person--compact">
+                    <Image
+                        src={{avatar-url @resource.driver_assigned.photo_url}}
+                        @fallbackSrc={{config "defaultValues.driverImage"}}
+                        class="storefront-order-person__avatar"
+                        alt={{@resource.driver_assigned.name}}
+                    />
+                    <div class="min-w-0">
+                        <div class="storefront-order-person__name">{{n-a (or @resource.driver_assigned.displayName @resource.driver_assigned.name) (t "storefront.ui.order.no-driver-assigned")}}</div>
+                        <div class="storefront-order-person__meta">{{n-a @resource.driver_assigned.phone (t "storefront.ui.order.no-phone")}}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="storefront-order-detail-card">
+                <div class="storefront-order-detail-card__label">{{t "storefront.ui.order.schedule"}}</div>
+                <div class="storefront-order-facts">
+                    <div><span>{{t "storefront.ui.order.scheduled"}}</span><strong>{{n-a @resource.scheduledAt "-"}}</strong></div>
+                    <div><span>{{t "storefront.ui.order.dispatched"}}</span><strong>{{n-a @resource.dispatchedAt "-"}}</strong></div>
+                    <div><span>{{t "storefront.ui.order.started"}}</span><strong>{{n-a @resource.startedAt "-"}}</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="storefront-order-detail-block">
+            <div class="storefront-order-detail-block__label">{{if @resource.meta.is_pickup (t "storefront.common.pickup") (t "storefront.ui.order.route")}}</div>
+            {{#if @resource.meta.is_pickup}}
+                <DisplayPlace @place={{@resource.payload.pickup}} @type="pickup" @addressClass="text-sm dark:text-gray-100" @noAddressClass="text-sm" />
+            {{else if @resource.payload.hasWaypoints}}
+                <RouteList @order={{@resource}} />
+            {{else}}
+                <div class="order-route-list storefront flex-1">
+                    <div class="order-route-stop">
+                        <div class="order-route-stop-index">
+                            <div class="index-count"><FaIcon @prefix="fas" @icon="store-alt" /></div>
+                        </div>
+                        <div class="order-route-location dark:text-gray-100">
+                            <DisplayPlace @place={{@resource.payload.pickup}} @type="pickup" @addressClass="text-sm dark:text-gray-100" @noAddressClass="text-sm" />
+                        </div>
+                    </div>
+                    <div class="order-route-stop">
+                        <div class="order-route-stop-index">
+                            <div class="index-count"><FaIcon @prefix="fas" @icon="map-marker-alt" /></div>
+                        </div>
+                        <div class="order-route-location dark:text-gray-100">
+                            <DisplayPlace @place={{@resource.payload.dropoff}} @type="dropoff" @addressClass="text-sm dark:text-gray-100" @noAddressClass="text-sm" />
+                        </div>
+                    </div>
+                </div>
+            {{/if}}
+        </div>
+    </div>
+</ContentPanel>

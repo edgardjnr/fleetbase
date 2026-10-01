@@ -1,0 +1,83 @@
+<div class="space-y-6">
+    <InfoBlock @type="info" @icon="circle-info" class="mb-4">
+        {{t "fleet-ops.ui.admin.routing-settings.configure-system-wide-routing-engine-defaults"}}
+    </InfoBlock>
+
+    <ContentPanel @title={{t "fleet-ops.ui.admin.routing-settings.tracking-defaults"}} @open={{true}} @wrapperClass="bordered-classic">
+        <InputGroup @name={{t "fleet-ops.ui.admin.routing-settings.default-tracking-provider"}} @helpText={{t "fleet-ops.ui.admin.routing-settings.default-provider-for-organization-level-tracking"}}>
+            <Select
+                class="w-full"
+                @value={{this.trackingProvider}}
+                @options={{this.trackingProviderOptions}}
+                @optionLabel="label"
+                @optionValue="value"
+                @placeholder={{t "fleet-ops.ui.admin.routing-settings.select-default-tracking-provider"}}
+                @onSelect={{fn (mut this.trackingProvider)}}
+            />
+        </InputGroup>
+        <InputGroup @name={{t "fleet-ops.ui.admin.routing-settings.default-fallback-providers"}} @helpText={{t "fleet-ops.ui.admin.routing-settings.providers-used-when-the-selected-tracking"}}>
+            <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                <PowerSelectMultiple
+                    @searchEnabled={{true}}
+                    @searchField="label"
+                    @options={{this.trackingProviderOptions}}
+                    @selected={{this.selectedTrackingFallbackOptions}}
+                    @onChange={{this.setTrackingFallbacks}}
+                    @placeholder={{t "fleet-ops.ui.admin.routing-settings.select-default-fallback-providers"}}
+                    @triggerClass="form-select form-input form-input-sm flex-1"
+                    as |provider|
+                >
+                    {{provider.label}}
+                </PowerSelectMultiple>
+            </div>
+        </InputGroup>
+        <div class="flex justify-end">
+            <Button
+                @type="default"
+                @size="xs"
+                @icon={{if this.showTrackingAdvancedSettings "chevron-up" "chevron-down"}}
+                @text={{t "fleet-ops.ui.admin.routing-settings.advanced-settings"}}
+                @onClick={{this.toggleTrackingAdvancedSettings}}
+            />
+        </div>
+        {{#if this.showTrackingAdvancedSettings}}
+            <div class="mt-4 space-y-4 rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
+                <InputGroup @name={{t "fleet-ops.ui.admin.routing-settings.traffic-aware-eta"}} @helpText={{t "fleet-ops.ui.admin.routing-settings.use-traffic-aware-provider-calculations-when"}}>
+                    <Toggle @isToggled={{this.trackingTrafficEnabled}} @onToggle={{fn (mut this.trackingTrafficEnabled)}} />
+                </InputGroup>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputGroup @name={{t "fleet-ops.ui.admin.routing-settings.summary-cache-ttl"}}>
+                        <Input @type="number" @value={{this.trackingCacheTtlSeconds}} min="15" max="300" class="form-input w-full" />
+                    </InputGroup>
+                    <InputGroup @name={{t "fleet-ops.ui.admin.routing-settings.route-cache-ttl"}}>
+                        <Input @type="number" @value={{this.trackingRouteCacheTtlSeconds}} min="60" max="1800" class="form-input w-full" />
+                    </InputGroup>
+                    <InputGroup @name={{t "fleet-ops.ui.admin.routing-settings.stale-location-threshold"}}>
+                        <Input @type="number" @value={{this.trackingStaleLocationThresholdSeconds}} min="30" max="3600" class="form-input w-full" />
+                    </InputGroup>
+                    <InputGroup @name={{t "fleet-ops.ui.admin.routing-settings.fallback-speed"}}>
+                        <Input @type="number" @value={{this.trackingDefaultVehicleSpeedKph}} min="1" max="160" class="form-input w-full" />
+                    </InputGroup>
+                </div>
+            </div>
+        {{/if}}
+    </ContentPanel>
+
+    <RegistryYield @registry="fleet-ops:component:admin:routing-settings" as |RegistryComponent|>
+        <div>
+            <RegistryComponent />
+        </div>
+    </RegistryYield>
+</div>
+
+<EmberWormhole @to="next-view-section-subheader-actions">
+    <Button
+        @type="primary"
+        @size="sm"
+        @icon="save"
+        @text={{t "fleet-ops.ui.admin.routing-settings.save-changes"}}
+        @onClick={{perform this.saveSettings}}
+        @isLoading={{or this.saveSettings.isRunning this.loadSettings.isRunning}}
+        @disabled={{this.saveSettings.isRunning}}
+    />
+</EmberWormhole>

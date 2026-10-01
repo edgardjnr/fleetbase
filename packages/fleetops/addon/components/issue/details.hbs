@@ -1,0 +1,175 @@
+<div class="issue-detail-surface" ...attributes>
+    <section class="issue-detail-summary-card">
+        <div class="issue-detail-section-header">
+            <div>
+                <div class="issue-detail-section-title">{{t "fleet-ops.ui.issue.details.issue-details"}}</div>
+                <p>{{t "fleet-ops.ui.issue.details.classification-ownership-and-reporting-date"}}</p>
+            </div>
+        </div>
+        <dl class="issue-detail-summary-grid">
+            <div class="issue-detail-summary-item">
+                <dt>{{t "fleet-ops.ui.issue.details.type"}}</dt>
+                <dd>{{n-a (smart-humanize @resource.type)}}</dd>
+            </div>
+            <div class="issue-detail-summary-item">
+                <dt>{{t "fleet-ops.ui.issue.details.category"}}</dt>
+                <dd>{{n-a (smart-humanize @resource.category)}}</dd>
+            </div>
+            <div class="issue-detail-summary-item">
+                <dt>{{t "fleet-ops.ui.issue.details.reporter"}}</dt>
+                <dd><User::Pill @user={{@resource.reporter}} @titleFallback={{this.reporterName}} /></dd>
+            </div>
+            <div class="issue-detail-summary-item">
+                <dt>{{t "fleet-ops.ui.issue.details.assignee"}}</dt>
+                <dd><User::Pill @user={{@resource.assignee}} @titleFallback={{this.assigneeName}} /></dd>
+            </div>
+            <div class="issue-detail-summary-item">
+                <dt>{{t "fleet-ops.ui.issue.details.date-reported"}}</dt>
+                <dd>{{n-a @resource.createdAt}}</dd>
+            </div>
+        </dl>
+    </section>
+
+    <div class="issue-detail-grid">
+        <main class="issue-detail-main">
+            <article class="issue-detail-message issue-detail-message-original">
+                <div class="issue-detail-avatar">{{this.reporterInitial}}</div>
+                <div class="issue-detail-message-content">
+                    <div class="issue-detail-message-meta">
+                        <div>
+                            <div class="issue-detail-message-author">{{this.reporterName}}</div>
+                            <div class="issue-detail-message-subtitle">{{t "fleet-ops.ui.issue.details.original-report"}}</div>
+                        </div>
+                        <time>{{n-a @resource.createdAt}}</time>
+                    </div>
+                    <div class="issue-detail-report">{{n-a @resource.report (t "fleet-ops.ui.issue.details.no-report-was-provided")}}</div>
+
+                    <Issue::Details::Documents @resource={{@resource}} />
+                </div>
+            </article>
+
+            <section class="issue-detail-correspondence">
+                <div class="issue-detail-section-header">
+                    <div>
+                        <div class="issue-detail-section-title">{{t "fleet-ops.ui.issue.details.correspondence"}}</div>
+                        <p>{{t "fleet-ops.ui.issue.details.keep-operator-updates-customer-replies-and"}}</p>
+                    </div>
+                </div>
+                <Issue::Details::Correspondence @resource={{@resource}} />
+            </section>
+
+            <section class="issue-detail-side-card">
+                <div class="issue-detail-section-title">{{t "fleet-ops.ui.issue.details.timeline"}}</div>
+                <Issue::Timeline @resource={{@resource}} />
+            </section>
+
+            <RegistryYield @registry="fleet-ops:component:issue:details" as |RegistryComponent|>
+                <RegistryComponent @resource={{@resource}} />
+            </RegistryYield>
+        </main>
+
+        <aside class="issue-detail-side-rail">
+            <section class="issue-detail-side-card issue-detail-resolution-card">
+                <div class="issue-detail-section-title">{{t "fleet-ops.ui.issue.details.resolution-details"}}</div>
+                <div class="issue-detail-resolution-state {{if this.isResolved 'is-resolved'}} {{if this.isReopened 'is-reopened'}}">
+                    <div class="issue-detail-resolution-icon">
+                        <FaIcon @icon={{this.resolutionIcon}} />
+                    </div>
+                    <div>
+                        <div class="issue-detail-resolution-title">{{this.resolutionTitle}}</div>
+                        <p>{{this.resolutionDescription}}</p>
+                    </div>
+                </div>
+                <dl class="issue-detail-meta-list">
+                    {{#if this.resolutionDate}}
+                        <div>
+                            <dt>{{if this.isReopened (t "fleet-ops.ui.issue.details.previous-close-date") (t "fleet-ops.ui.issue.details.closed-date")}}</dt>
+                            <dd>{{this.resolutionDate}}</dd>
+                        </div>
+                    {{/if}}
+                    {{#if this.resolutionActor}}
+                        <div>
+                            <dt>{{if this.isReopened (t "fleet-ops.ui.issue.details.previously-closed-by") (t "fleet-ops.ui.issue.details.closed-by")}}</dt>
+                            <dd>{{this.resolutionActor}}</dd>
+                        </div>
+                    {{/if}}
+                    {{#if this.resolutionNote}}
+                        <div>
+                            <dt>{{t "fleet-ops.ui.issue.details.note"}}</dt>
+                            <dd>{{this.resolutionNote}}</dd>
+                        </div>
+                    {{/if}}
+                    {{#if this.timeToResolve}}
+                        <div>
+                            <dt>{{t "fleet-ops.ui.issue.details.time-to-resolve"}}</dt>
+                            <dd>{{this.timeToResolve}}</dd>
+                        </div>
+                    {{/if}}
+                    <div>
+                        <dt>{{t "fleet-ops.ui.issue.details.status"}}</dt>
+                        <dd><Badge @status={{@resource.status}} /></dd>
+                    </div>
+                    <div>
+                        <dt>{{t "fleet-ops.ui.issue.details.priority"}}</dt>
+                        <dd><Badge @status={{@resource.priority}} /></dd>
+                    </div>
+                    <div>
+                        <dt>{{t "fleet-ops.ui.issue.details.type"}}</dt>
+                        <dd>{{n-a (smart-humanize @resource.type)}}</dd>
+                    </div>
+                    <div>
+                        <dt>{{t "fleet-ops.ui.issue.details.category"}}</dt>
+                        <dd>{{n-a (smart-humanize @resource.category)}}</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="issue-detail-side-card">
+                <div class="issue-detail-section-title">{{t "fleet-ops.ui.issue.details.linked-resources"}}</div>
+                <div class="issue-detail-resource-stack">
+                    <div class="issue-detail-resource-row">
+                        <div class="issue-detail-resource-label">{{t "fleet-ops.ui.issue.details.vehicle"}}</div>
+                        <Vehicle::Pill @vehicle={{@resource.vehicle}} @titleFallback={{n-a @resource.vehicle_name (t "fleet-ops.ui.issue.details.no-vehicle-linked")}} @onClick={{this.viewVehicle}} />
+                    </div>
+                    <div class="issue-detail-resource-row">
+                        <div class="issue-detail-resource-label">{{t "fleet-ops.ui.issue.details.driver"}}</div>
+                        <Driver::Pill @driver={{@resource.driver}} @titleFallback={{n-a @resource.driver_name (t "fleet-ops.ui.issue.details.no-driver-linked")}} @onClick={{this.viewDriver}} />
+                    </div>
+                </div>
+            </section>
+
+            <section class="issue-detail-side-card">
+                <div class="issue-detail-section-title">{{t "order.card.linked-order"}}</div>
+                {{#if this.order}}
+                    <Order::Card @order={{this.order}} @variant="default" @interactive={{true}} @onClick={{this.viewOrder}} />
+                {{else}}
+                    <div class="issue-detail-empty">
+                        <FaIcon @icon="route" />
+                        <span>{{t "order.card.no-order-linked"}}</span>
+                    </div>
+                {{/if}}
+            </section>
+
+            {{#if this.tags.length}}
+                <section class="issue-detail-side-card">
+                    <div class="issue-detail-section-title">{{t "fleet-ops.ui.issue.details.tags"}}</div>
+                    <div class="issue-detail-tags">
+                        {{#each this.tags as |tag|}}
+                            <Badge @status="info" @text={{tag}} @hideStatusDot={{true}} />
+                        {{/each}}
+                    </div>
+                </section>
+            {{/if}}
+
+            {{#if this.hasLocation}}
+                <section class="issue-detail-side-card">
+                    <div class="issue-detail-section-title">{{t "fleet-ops.ui.issue.details.location"}}</div>
+                    <div class="issue-detail-coordinate">{{point-coordinates @resource.location}}</div>
+                </section>
+            {{/if}}
+
+            <CustomField::Yield @subject={{@resource}} @viewMode={{true}} @wrapperClass="issue-detail-custom-fields" />
+        </aside>
+    </div>
+    <Spacer @height="200px" />
+</div>

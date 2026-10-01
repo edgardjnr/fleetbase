@@ -1,0 +1,56 @@
+import Route from '@ember/routing/route';
+import { inject as service } from '@ember/service';
+
+export default class OrdersIndexRoute extends Route {
+    @service storefront;
+    @service fetch;
+    @service intl;
+    @service abilities;
+    @service hostRouter;
+    @service notifications;
+
+    queryParams = {
+        page: { refreshModel: true },
+        limit: { refreshModel: true },
+        sort: { refreshModel: true },
+        query: { refreshModel: true },
+        status: { refreshModel: true },
+        public_id: { refreshModel: true },
+        internal_id: { refreshModel: true },
+        payload: { refreshModel: true },
+        tracking: { refreshModel: true },
+        facilitator: { refreshModel: true },
+        driver: { refreshModel: true },
+        customer: { refreshModel: true },
+        pickup: { refreshModel: true },
+        dropoff: { refreshModel: true },
+        after: { refreshModel: true },
+        before: { refreshModel: true },
+    };
+
+    beforeModel() {
+        if (this.abilities.cannot('storefront list order')) {
+            this.notifications.warning(this.intl.t('storefront.ui.unauthorized-access'));
+            return this.hostRouter.transitionTo('console.storefront');
+        }
+    }
+
+    async model(params) {
+        const response = await this.fetch.get('orders', this.buildQueryParams(params), { namespace: 'storefront/int/v1' });
+        const orders = this.fetch.normalizeModel(response, 'orders');
+
+        orders.meta = response.meta;
+
+        return orders;
+    }
+
+    buildQueryParams(params = {}) {
+        return Object.entries({ ...params, storefront: this.storefront.getActiveStore('public_id') }).reduce((queryParams, [key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                queryParams[key] = value;
+            }
+
+            return queryParams;
+        }, {});
+    }
+}

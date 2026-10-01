@@ -1,0 +1,40 @@
+<ContentPanel @title={{t "fleet-ops.ui.order.form-orchestrator-constraints.orchestrator-constraints"}} @open={{true}} @wrapperClass="bordered-top">
+    <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+        <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+            {{t "fleet-ops.ui.order.form-orchestrator-constraints.delivery-window"}}
+        </div>
+        <InputGroup
+            @name={{t "fleet-ops.ui.order.form-orchestrator-constraints.time-window-start"}}
+            @helpText={{t "fleet-ops.ui.order.form-orchestrator-constraints.earliest-acceptable-arrival-time-at-the"}}
+        >
+            <DateTimeInput class="form-input" @value={{@resource.time_window_start}} @onUpdate={{fn this.setTimeWindow "time_window_start"}} @disabled={{cannot-write @resource}} />
+        </InputGroup>
+        <InputGroup
+            @name={{t "fleet-ops.ui.order.form-orchestrator-constraints.time-window-end"}}
+            @helpText={{t "fleet-ops.ui.order.form-orchestrator-constraints.latest-acceptable-arrival-time-at-the"}}
+        >
+            <DateTimeInput class="form-input" @value={{@resource.time_window_end}} @onUpdate={{fn this.setTimeWindow "time_window_end"}} @disabled={{cannot-write @resource}} />
+        </InputGroup>
+        <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+            {{t "fleet-ops.ui.order.form-orchestrator-constraints.requirements-priority"}}
+        </div>
+        <div class="col-span-1 lg:col-span-2">
+            <InputGroup @name={{t "fleet-ops.ui.order.form-orchestrator-constraints.required-skills"}} @helpText={{t "fleet-ops.ui.order.form-orchestrator-constraints.skills-the-assigned-driver-and-vehicle"}}>
+                <MultiSelect
+                    @options={{get-fleet-ops-options "driverSkills"}}
+                    @selected={{@resource.required_skills}}
+                    @onChange={{fn (mut @resource.required_skills)}}
+                    @placeholder={{t "fleet-ops.ui.order.form-orchestrator-constraints.select-required-skills"}}
+                    @triggerClass="form-select form-input"
+                    @disabled={{cannot-write @resource}}
+                    as |option|
+                >
+                    {{option.label}}
+                </MultiSelect>
+            </InputGroup>
+        </div>
+        <InputGroup @name={{t "fleet-ops.ui.order.form-orchestrator-constraints.orchestrator-priority"}} @helpText={{t "fleet-ops.ui.order.form-orchestrator-constraints.priority-score-0-100-higher-values"}}>
+            <Input @value={{@resource.orchestrator_priority}} @type="number" class="form-input w-full" placeholder="0-100" disabled={{cannot-write @resource}} />
+        </InputGroup>
+    </div>
+</ContentPanel>

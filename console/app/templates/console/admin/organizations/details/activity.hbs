@@ -1,9 +1,9 @@
-{{page-title "Activity"}}
+{{page-title (t "common.activity")}}
 
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 md:p-6">
     <div class="flex flex-col gap-1">
-        <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Activity Stream</h2>
-        <p class="text-sm text-gray-500 dark:text-gray-300">Review organization-wide activity captured for this company UUID.</p>
+        <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">{{t "console.ui.admin.org.activity-stream"}}</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-300">{{t "console.ui.admin.org.activity-stream-help"}}</p>
     </div>
 
     <RegistryYield @registry="console:admin:organization:activity" @context={{hash organization=@model}} as |RegistryComponent context|>

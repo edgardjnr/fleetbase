@@ -1,0 +1,52 @@
+{{#if this.docsPanel.isOpen}}
+    <Overlay
+        @isOpen={{this.docsPanel.isOpen}}
+        @position="right"
+        @fullHeight={{true}}
+        @isResizable={{false}}
+        @width="450px"
+        @onClose={{this.close}}
+        @overlayClass="fleetbase-docs-panel-overlay"
+    >
+        <Overlay::Header @title={{this.docsPanel.title}} @hideStatusDot={{true}}>
+            <:actions>
+                <div class="flex flex-1 justify-end gap-2">
+                    <Button @type="default" @icon="arrow-up-right-from-square" @size="xs" @helpText={{t "ember-ui.docs-panel.open-new-tab"}} @onClick={{this.openExternal}} />
+                    <Button @type="default" @icon="times" @size="xs" @helpText={{t "ember-ui.docs-panel.close"}} @onClick={{this.close}} />
+                </div>
+            </:actions>
+        </Overlay::Header>
+        <Overlay::Body class="no-padding" @wrapperClass={{this.docsPanel.bodyWrapperClass}}>
+            {{#if (and this.docsPanel.canEmbed (not this.docsPanel.iframeFailed))}}
+                {{#if this.docsPanel.isIframeLoading}}
+                    <div class="fleetbase-docs-panel-loading">
+                        <Spinner @iconClass="text-sky-500 fa-spin-800ms" />
+                        <span>{{t "ember-ui.docs-panel.loading"}}</span>
+                    </div>
+                {{/if}}
+                <iframe
+                    src={{this.docsPanel.url}}
+                    title={{this.docsPanel.title}}
+                    class="h-full w-full border-0 {{if this.docsPanel.isIframeThemeDark "bg-gray-900" "bg-white"}}"
+                    loading="lazy"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    {{on "load" this.markIframeLoaded}}
+                    {{on "error" this.markIframeFailed}}
+                ></iframe>
+            {{else}}
+                <div class="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300">
+                        <FaIcon @icon="book-open" />
+                    </div>
+                    <div>
+                        <div class="text-sm font-bold text-gray-900 dark:text-gray-100">{{t "ember-ui.docs-panel.open-fleetbase-docs"}}</div>
+                        <div class="mt-1 max-w-sm text-xs text-gray-500 dark:text-gray-400">
+                            {{t "ember-ui.docs-panel.cannot-embed"}}
+                        </div>
+                    </div>
+                    <Button @type="primary" @icon="arrow-up-right-from-square" @text={{t "ember-ui.docs-panel.open-docs"}} @onClick={{this.openExternal}} />
+                </div>
+            {{/if}}
+        </Overlay::Body>
+    </Overlay>
+{{/if}}

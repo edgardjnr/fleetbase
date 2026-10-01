@@ -1,0 +1,12 @@
+<Widget::IamDashboardWidget @endpoint="group-coverage" @title={{t "iam.ui.widgets.group-coverage.title"}} @subtitle={{t "iam.ui.widgets.group-coverage.subtitle"}} @icon="people-group" as |data|>
+    <div class="iam-stat-grid iam-stat-grid-3">
+        <div class="iam-stat-card"><span>{{data.total_groups}}</span><small>{{t "iam.ui.widgets.group-coverage.groups"}}</small></div>
+        <div class="iam-stat-card"><span>{{data.total_memberships}}</span><small>{{t "iam.ui.widgets.group-coverage.memberships"}}</small></div>
+        <div class="iam-stat-card"><span>{{data.empty_groups}}</span><small>{{t "iam.ui.widgets.group-coverage.empty"}}</small></div>
+    </div>
+    <div class="iam-row-list mt-3">
+        {{#each data.buckets as |bucket|}}
+            <div class="iam-row"><span>{{bucket.label}}</span><strong>{{bucket.value}}</strong></div>
+        {{/each}}
+    </div>
+</Widget::IamDashboardWidget>

@@ -1,0 +1,222 @@
+import Model, { attr, belongsTo, hasMany } from '@ember-data/model';
+import { computed } from '@ember/object';
+import { notEmpty } from '@ember/object/computed';
+import { format as formatDate, isValid as isValidDate, formatDistanceToNow } from 'date-fns';
+
+export default class PayloadModel extends Model {
+    /** @ids */
+    @attr('string') public_id;
+    @attr('string') current_waypoint_uuid;
+    @attr('string') pickup_uuid;
+    @attr('string') dropoff_uuid;
+    @attr('string') return_uuid;
+
+    /** @relationships */
+    @belongsTo('place', { async: false }) pickup;
+    @belongsTo('place', { async: false }) dropoff;
+    @belongsTo('place', { async: false }) return;
+    @hasMany('waypoint', { async: false }) waypoints;
+    @hasMany('entity', { async: false }) entities;
+
+    /** @attributes */
+    @attr('raw') meta;
+    @attr('string') cod_amount;
+    @attr('string') cod_currency;
+    @attr('string') cod_payment_method;
+    @attr('string') payment_method;
+    @attr('string') type;
+    @attr('number') entities_count;
+    @attr('number') waypoints_count;
+    @attr('date') deleted_at;
+    @attr('date') created_at;
+    @attr('date') updated_at;
+
+    /** @computed */
+    @notEmpty('entities') hasEntities;
+    @notEmpty('waypoints') hasWaypoints;
+    @notEmpty('pickup_uuid') hasPickup;
+    @notEmpty('dropoff_uuid') hasDropoff;
+    @notEmpty('return_uuid') hasReturn;
+
+    @computed('waypoints.[]') get hasIntermediateWaypoints() {
+        return this.waypoints.length > 0;
+    }
+
+    @computed('waypoints_count') get waypoint_count() {
+        return this.waypoints_count;
+    }
+
+    @computed('waypoints.[]', 'pickup_uuid', 'dropoff_uuid') get isMultiDrop() {
+        return this.waypoints.length > 0 && !this.pickup_uuid && !this.dropoff_uuid;
+    }
+
+    @computed('waypoints.firstObject') get firstWaypoint() {
+        return this.waypoints.firstObject;
+    }
+
+    @computed('waypoints.{lastObject,length}') get lastWaypoint() {
+        if (1 >= this.waypoints.length) {
+            return null;
+        }
+
+        return this.waypoints.lastObject;
+    }
+
+    @computed('current_waypoint_uuid', 'waypoints.@each.id') get currentWaypoint() {
+        return this.waypoints.find((waypoint) => waypoint.id === this.current_waypoint_uuid);
+    }
+
+    @computed('currentWaypoint', 'firstWaypoint', 'isMultiDrop', 'dropoff') get nextStop() {
+        const { currentWaypoint, firstWaypoint, isMultiDrop, dropoff } = this;
+
+        if (isMultiDrop) {
+            return currentWaypoint ?? firstWaypoint;
+        }
+
+        return dropoff;
+    }
+
+    // eslint-disable-next-line ember/use-brace-expansion
+    @computed('waypoints.[]', 'waypoints.@each.id') get middleWaypoints() {
+        const waypoints = this.waypoints;
+        const middleWaypoints = waypoints.slice(1, waypoints.length - 1);
+
+        return middleWaypoints;
+    }
+
+    @computed('entities.@each.id', 'waypoints.@each.id') get entitiesByDestination() {
+        const groups = [];
+
+        // create groups
+        this.waypoints.forEach((waypoint) => {
+            const destinationId = waypoint.id;
+            if (destinationId) {
+                const entities = this.entities.filter((entity) => entity.destination_uuid === destinationId);
+                if (entities.length === 0) {
+                    return;
+                }
+
+                const group = {
+                    destinationId,
+                    waypoint,
+                    entities,
+                };
+
+                groups.pushObject(group);
+            }
+        });
+
+        return groups;
+    }
+
+    @computed('waypoints.[]') get orderWaypoints() {
+        return this.waypoints.toArray();
+    }
+
+    // eslint-disable-next-line ember/use-brace-expansion
+    @computed('{dropoff,pickup,waypoints}', 'waypoints.[]') get places() {
+        return [this.pickup, ...this.waypoints.toArray(), this.dropoff].filter(Boolean);
+    }
+
+    // eslint-disable-next-line ember/use-brace-expansion
+    @computed('waypoints.@each.place', 'waypoints.[]') get waypointPlaces() {
+        return this.waypoints.toArray().map((wp) => wp.place ?? wp);
+    }
+
+    @computed('{dropoff,pickup,waypoints}', 'waypoints.[]') get payloadCoordinates() {
+        let waypoints = [];
+        let coordinates = [];
+
+        waypoints.pushObjects([this.pickup, ...this.waypoints.toArray(), this.dropoff]);
+        waypoints.forEach((place) => {
+            if (place && place.get('longitude') && place.get('latitude')) {
+                if (place.hasInvalidCoordinates) {
+                    return;
+                }
+
+                coordinates.pushObject([place.get('longitude'), place.get('latitude')]);
+            }
+        });
+
+        return coordinates;
+    }
+
+    @computed('dropoff', 'model.payload.{dropoff,pickup,waypoints}', 'pickup', 'waypoints') get routeWaypoints() {
+        let waypoints = [];
+        let coordinates = [];
+
+        waypoints.pushObjects([this.pickup, ...this.waypoints.toArray(), this.dropoff]);
+        waypoints.forEach((place) => {
+            if (place && place.get('longitude') && place.get('latitude')) {
+                if (place.hasInvalidCoordinates) {
+                    return;
+                }
+
+                coordinates.pushObject([place.get('latitude'), place.get('longitude')]);
+            }
+        });
+
+        return coordinates;
+    }
+
+    /** computed dates */
+    @computed('updated_at') get updatedAgo() {
+        if (!isValidDate(this.updated_at)) {
+            return null;
+        }
+        return formatDistanceToNow(this.updated_at);
+    }
+
+    @computed('updated_at') get updatedAt() {
+        if (!isValidDate(this.updated_at)) {
+            return null;
+        }
+        return formatDate(this.updated_at, 'yyyy-MM-dd HH:mm');
+    }
+
+    @computed('updated_at') get updatedAtShort() {
+        if (!isValidDate(this.updated_at)) {
+            return null;
+        }
+        return formatDate(this.updated_at, 'dd, MMM');
+    }
+
+    @computed('created_at') get createdAgo() {
+        if (!isValidDate(this.created_at)) {
+            return null;
+        }
+        return formatDistanceToNow(this.created_at);
+    }
+
+    @computed('created_at') get createdAt() {
+        if (!isValidDate(this.created_at)) {
+            return null;
+        }
+        return formatDate(this.created_at, 'yyyy-MM-dd HH:mm');
+    }
+
+    @computed('created_at') get createdAtShort() {
+        if (!isValidDate(this.created_at)) {
+            return null;
+        }
+        return formatDate(this.created_at, 'dd, MMM');
+    }
+
+    /** @methods */
+    setWaypoints(_waypoints = []) {
+        let waypoints = [..._waypoints];
+
+        waypoints.forEach((waypoint, index) => waypoint.set('order', index));
+
+        this.setProperties({ waypoints });
+
+        return this;
+    }
+
+    setEntities(_entities = []) {
+        let entities = [..._entities];
+
+        this.setProperties({ entities });
+        return this;
+    }
+}

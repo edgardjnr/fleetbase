@@ -5,6 +5,7 @@ import { task } from 'ember-concurrency';
 
 export default class AdminWidgetKpiTileComponent extends Component {
     @service fetch;
+    @service intl;
 
     @tracked data = null;
     @tracked error = null;
@@ -18,8 +19,14 @@ export default class AdminWidgetKpiTileComponent extends Component {
         return this.args.options?.slug;
     }
 
+    /** Translated text for a known admin widget slug (e.g. title, footnote), when one exists. */
+    slugText(field) {
+        const key = `console.ui.widgets.admin.${this.slug}.${field}`;
+        return this.slug && this.intl.exists(key) ? this.intl.t(key) : null;
+    }
+
     get title() {
-        return this.args.options?.title ?? this.data?.title ?? 'Metric';
+        return this.slugText('title') ?? this.args.options?.title ?? this.data?.title ?? this.intl.t('console.ui.widgets.admin.metric');
     }
 
     get icon() {
@@ -47,7 +54,7 @@ export default class AdminWidgetKpiTileComponent extends Component {
     }
 
     get footnote() {
-        return this.args.options?.footnote ?? this.data?.footnote ?? 'vs previous 30d';
+        return this.slugText('footnote') ?? this.args.options?.footnote ?? this.data?.footnote ?? this.intl.t('console.ui.widgets.admin.vs-previous-30d');
     }
 
     get formattedValue() {
@@ -150,7 +157,7 @@ export default class AdminWidgetKpiTileComponent extends Component {
 
     @task *load() {
         if (!this.slug) {
-            this.error = 'Missing metric slug.';
+            this.error = this.intl.t('console.ui.widgets.admin.missing-metric-slug');
             return;
         }
 
@@ -158,7 +165,7 @@ export default class AdminWidgetKpiTileComponent extends Component {
             this.data = yield this.fetch.get(`metrics/admin/kpis/${this.slug}`);
             this.error = null;
         } catch (error) {
-            this.error = error?.message ?? 'Unable to load metric.';
+            this.error = error?.message ?? this.intl.t('console.ui.widgets.admin.load-metric-error');
         }
     }
 }

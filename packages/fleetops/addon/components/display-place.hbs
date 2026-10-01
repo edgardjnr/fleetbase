@@ -1,0 +1,68 @@
+<div {{did-insert this.setupComponent}} ...attributes>
+    {{#if (is-empty this.place)}}
+        <div class={{@noAddressClass}}>
+            <span class="text-red-500">
+                {{#if @type}}
+                    {{t "display-panel.no-address" htmlSafe=true type=@type}}
+                {{else}}
+                    {{t "display-panel.no-address-message"}}
+                {{/if}}
+            </span>
+        </div>
+    {{else}}
+        {{#if @waypointActions}}
+            <div class="flex flex-row item-center space-x-2 {{if (or this.place.status_code @eta) 'mb-2'}}">
+                {{#unless @hideBadges}}
+                    {{#if this.place.status_code}}
+                        <Badge @status={{this.place.status_code}} />
+                    {{/if}}
+                    {{#if @eta}}
+                        <Badge @status="warning" @hideStatusDot={{true}}><span class="font-bold">{{t "common.eta"}}:</span> {{format-duration @eta}}</Badge>
+                    {{/if}}
+                {{/unless}}
+                {{#if @waypointActions}}
+                    <DropdownButton @iconClass="icon-text-height" @size="xs" @buttonClass="fleetops-btn-xxs" @icon="ellipsis-h" @iconPrefix="fas" @contentClass="dropdown-menu" as |dd|>
+                        <div class="next-dd-menu mt-1 mx-0" aria-labelledby="user-menu">
+                            <div class="px-1">
+                                <div class="text-sm flex flex-row items-center px-3 py-1 rounded-md my-1 text-gray-300">
+                                    {{t "order.fields.waypoint-actions"}}
+                                </div>
+                            </div>
+                            <div class="next-dd-menu-seperator"></div>
+                            {{#each-in @waypointActions as |actionId action|}}
+                                <div class="px-1">
+                                    <a href="javascript:;" class="next-dd-item" disabled={{cannot "fleet-ops view order"}} {{on "click" (dropdown-fn dd action.fn (or @waypointActionContext this.place))}}>
+                                        {{action.label}}
+                                    </a>
+                                </div>
+                            {{/each-in}}
+                        </div>
+                    </DropdownButton>
+                {{/if}}
+            </div>
+        {{/if}}
+        <address class={{@addressClass}}>
+            {{#if this.name}}
+                <div class="font-semibold">{{this.name}}</div>
+                <div>{{this.place.street1}}</div>
+            {{else}}
+                <div class="font-semibold">{{this.place.street1}}</div>
+            {{/if}}
+            {{#if this.place.street2}}
+                <div>{{this.place.street2}}</div>
+            {{/if}}
+            {{#if this.cityStatePostalCode}}
+                <div>{{this.cityStatePostalCode}}</div>
+            {{/if}}
+            {{#if this.neighborhoodDistrictBuilding}}
+                <div>{{this.neighborhoodDistrictBuilding}}</div>
+            {{/if}}
+            {{#if this.place.country}}
+                <div>{{this.place.country_name}}</div>
+            {{/if}}
+            {{#if this.place.phone}}
+                <a href="tel:{{this.place.phone}}" class="text-blue-500 hover:text-blue-400">{{this.place.phone}}</a><br />
+            {{/if}}
+        </address>
+    {{/if}}
+</div>

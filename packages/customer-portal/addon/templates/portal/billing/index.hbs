@@ -1,0 +1,55 @@
+<Portal::ContentWrapper class="portal-page-card portal-table-page-card">
+    <div class="portal-section-header">
+        <div>
+            <div class="portal-section-eyebrow">{{t "customer-portal.ui.billing.eyebrow"}}</div>
+            <h1>{{t "customer-portal.ui.nav.billing"}}</h1>
+            <p>{{t "customer-portal.ui.billing.description"}}</p>
+        </div>
+    </div>
+    <div class="next-table-wrapper no-scroll h-auto table-fluid portal-table-panel mt-5">
+        <table class="table table-fixed portal-table">
+            <thead>
+                <tr>
+                    <th class="text-left">{{t "customer-portal.ui.billing.invoice"}}</th>
+                    <th class="text-left">{{t "customer-portal.ui.common.order"}}</th>
+                    <th class="text-left">{{t "customer-portal.ui.billing.due"}}</th>
+                    <th class="text-left">{{t "customer-portal.ui.common.status"}}</th>
+                    <th class="text-right">{{t "customer-portal.ui.billing.balance"}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each this.model.invoices as |invoice|}}
+                    <tr>
+                        <td class="font-semibold">
+                            <LinkTo @route="portal.billing.details" @model={{or invoice.public_id invoice.id}} class="portal-table-link">
+                                {{or invoice.number invoice.public_id invoice.id}}
+                            </LinkTo>
+                        </td>
+                        <td>
+                            {{#if (or invoice.order_public_id invoice.order_uuid)}}
+                                <LinkTo @route="portal.orders.details" @model={{or invoice.order_public_id invoice.order_uuid}} class="portal-table-link">
+                                    {{or invoice.order_tracking_number invoice.order_public_id invoice.order_uuid}}
+                                </LinkTo>
+                            {{else}}
+                                <span class="text-gray-400">-</span>
+                            {{/if}}
+                        </td>
+                        <td>{{n-a (format-date-fns invoice.due_date "yyyy-MM-dd")}}</td>
+                        <td><Badge @status={{invoice.status}} /></td>
+                        <td class="text-right">{{format-currency (or invoice.balance 0) invoice.currency}}</td>
+                    </tr>
+                {{else}}
+                    <tr>
+                        <td colspan="5">
+                            <div class="portal-empty-state portal-table-empty-state">
+                                <div class="portal-empty-state-icon"><FaIcon @icon="file-invoice-dollar" /></div>
+                                <div class="portal-empty-state-title">{{t "customer-portal.ui.billing.empty-title"}}</div>
+                                <p>{{t "customer-portal.ui.billing.empty-text"}}</p>
+                            </div>
+                        </td>
+                    </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+</Portal::ContentWrapper>

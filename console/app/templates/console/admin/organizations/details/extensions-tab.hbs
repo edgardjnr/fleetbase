@@ -1,4 +1,4 @@
-{{page-title (or this.tab.label "Extension")}}
+{{page-title (or this.tab.label (t "console.ui.admin.org.extension"))}}
 
 <div class="mx-auto w-full max-w-7xl p-4 md:p-6">
     {{#if this.tab.component}}
@@ -7,7 +7,7 @@
         </LazyEngineComponent>
     {{else}}
         <section class="rounded-md border bg-white p-4 text-sm text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
-            This admin extension tab is unavailable.
+            {{t "console.ui.admin.org.extension-tab-unavailable"}}
         </section>
     {{/if}}
 </div>

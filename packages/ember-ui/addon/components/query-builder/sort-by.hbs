@@ -1,0 +1,153 @@
+<div class="query-builder-panel" ...attributes>
+    <div class="query-builder-panel-header">
+        <div class="query-builder-panel-title">
+            <FaIcon @icon="sort" @size="sm" class="mr-2" />
+            {{t "ember-ui.query-builder.sort-by.title"}}
+        </div>
+        <div class="text-xs text-gray-500">
+            {{if this.sortByItems.length (t "ember-ui.query-builder.sort-by.sorts-count" count=this.sortByItems.length) (t "ember-ui.query-builder.sort-by.no-sorting")}}
+        </div>
+    </div>
+
+    <div class="query-builder-panel-content">
+        {{#if this.canSort}}
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {{t "ember-ui.query-builder.sort-by.sort-column"}}
+                        </label>
+                        <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                            <PowerSelect
+                                @options={{this.availableSortColumns}}
+                                @selected={{this.selectedSortBy}}
+                                @onChange={{this.selectSortColumn}}
+                                @placeholder={{t "ember-ui.query-builder.select-column"}}
+                                @triggerClass="form-select form-input"
+                                @searchEnabled={{true}}
+                                @searchField="sortLabel"
+                                as |option|
+                            >
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-medium">{{option.sortLabel}}</span>
+                                    <span class="text-xs text-gray-500 font-mono">{{option.type}}</span>
+                                </div>
+                            </PowerSelect>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {{t "ember-ui.query-builder.sort-by.direction"}}
+                        </label>
+                        <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                            <PowerSelect
+                                @options={{this.directions}}
+                                @selected={{this.selectedSortDirection}}
+                                @onChange={{this.selectSortDirection}}
+                                @placeholder={{t "ember-ui.query-builder.sort-by.select-direction"}}
+                                @triggerClass="form-select form-input"
+                                as |option|
+                            >
+                                <div class="flex items-center space-x-2">
+                                    <FaIcon @icon={{option.icon}} @size="sm" class="text-gray-500" />
+                                    <span>{{option.label}}</span>
+                                </div>
+                            </PowerSelect>
+                        </div>
+                    </div>
+                </div>
+
+                <Button @text={{t "ember-ui.query-builder.sort-by.add-sort"}} @type="primary" @icon="save" @size="xs" @onClick={{this.addSortBy}} @disabled={{not (and this.selectedSortBy this.selectedSortDirection)}} />
+            </div>
+
+            {{#if this.sortByItems.length}}
+                <div class="mt-6 space-y-3">
+                    <div class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {{t "ember-ui.query-builder.sort-by.sort-order"}}
+                    </div>
+
+                    <DragSortList @items={{this.sortByItems}} @dragEndAction={{this.reorderSortBy}} class="drag-sort-list" as |item index|>
+                        <div class="group-sort-item">
+                            <div class="drag-handle">
+                                <FaIcon @icon="grip-vertical" @size="sm" />
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center space-x-2 text-sm">
+                                    <span class="text-xs text-gray-500 font-mono">
+                                        {{add index 1}}.
+                                    </span>
+                                    <span class="font-medium text-gray-900 dark:text-gray-100">
+                                        {{item.column.sortLabel}}
+                                    </span>
+                                    <span class="text-gray-500">→</span>
+                                    <div class="flex items-center space-x-1">
+                                        <FaIcon @icon={{item.direction.icon}} @size="sm" class="text-indigo-600 dark:text-indigo-400" />
+                                        <span class="text-indigo-600 dark:text-indigo-400 font-medium">
+                                            {{item.direction.label}}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center space-x-2">
+
+                                <button
+                                    type="button"
+                                    class="text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors duration-200 p-1"
+                                    {{on "click" (fn this.toggleSortDirection index)}}
+                                    title={{t "ember-ui.query-builder.sort-by.toggle-direction"}}
+                                >
+                                    <FaIcon @icon="arrows-up-down" @size="sm" />
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors duration-200 p-1"
+                                    {{on "click" (fn this.removeSortBy index)}}
+                                >
+                                    <FaIcon @icon="trash" @size="sm" />
+                                </button>
+                            </div>
+                        </div>
+                    </DragSortList>
+                </div>
+            {{/if}}
+        {{else}}
+
+            <div class="min-h-24 p-4">
+                <div class="flex items-center justify-center border border-dashed border-gray-300 dark:border-gray-600 p-6 rounded-xl bg-gray-50 dark:bg-gray-800">
+                    <div class="text-center">
+                        <FaIcon @icon="sort" @size="2x" class="text-gray-400 mb-2" />
+                        <div class="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                            {{this.sortingMessage}}
+                        </div>
+                        {{#unless @selectedColumns.length}}
+                            <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                {{t "ember-ui.query-builder.select-columns-in-fields-first"}}
+                            </div>
+                        {{/unless}}
+                    </div>
+                </div>
+            </div>
+        {{/if}}
+
+        {{#if this.canSort}}
+            <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                <div class="flex items-start space-x-2">
+                    <FaIcon @icon="info-circle" @size="sm" class="text-blue-600 dark:text-blue-400 mt-0.5" />
+                    <div class="text-xs text-blue-800 dark:text-blue-200">
+                        <div class="font-medium mb-1">{{t "ember-ui.query-builder.sort-by.rules"}}</div>
+                        <ul class="space-y-1 text-blue-700 dark:text-blue-300">
+                            <li>{{t "ember-ui.query-builder.sort-by.rule-1"}}</li>
+                            <li>{{t "ember-ui.query-builder.sort-by.rule-2"}}</li>
+                            <li>{{t "ember-ui.query-builder.sort-by.rule-3"}}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        {{/if}}
+    </div>
+</div>

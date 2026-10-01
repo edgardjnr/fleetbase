@@ -1,0 +1,299 @@
+<?php
+
+namespace Fleetbase\Storefront\Http\Controllers;
+
+use Fleetbase\FleetOps\Http\Controllers\Internal\v1\OrderController as FleetbaseOrderController;
+use Fleetbase\FleetOps\Models\Order;
+use Fleetbase\Storefront\Http\Resources\Index\Order as StorefrontOrderIndexResource;
+use Fleetbase\Storefront\Http\Resources\Order as StorefrontOrderResource;
+use Fleetbase\Storefront\Notifications\StorefrontOrderAccepted;
+use Fleetbase\Storefront\Support\Storefront;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+class OrderController extends FleetbaseOrderController
+{
+    /**
+     * The resource to query.
+     *
+     * @var string
+     */
+    public $resource = 'order';
+
+    /**
+     * Storefront order lists need checkout totals and customer context.
+     *
+     * @var string
+     */
+    public $indexResource = StorefrontOrderIndexResource::class;
+
+    /**
+     * The filter to use.
+     *
+     * @var \Fleetbase\Http\Filter\Filter
+     */
+    public $filter = \Fleetbase\Storefront\Http\Filter\OrderFilter::class;
+
+    public function onQueryRecord(Builder $query): void
+    {
+        $query->with(['customer', 'transaction', 'payload', 'driverAssigned', 'orderConfig', 'trackingNumber', 'trackingStatuses']);
+    }
+
+    public function findRecord(Request $request, $id)
+    {
+        try {
+            $order = $this->findOrderRecord($id);
+        } catch (ModelNotFoundException $exception) {
+            return response()->error('Order not found', 404);
+        }
+
+        return [
+            'order' => new StorefrontOrderResource($order),
+        ];
+    }
+
+    protected function findOrderRecord($id): Order
+    {
+        return Order::findRecordOrFail($id, $this->detailRelations());
+    }
+
+    protected function findOrderForAction($uuid, array $relations = []): ?Order
+    {
+        return Order::where('uuid', $uuid)->whereNull('deleted_at')->with($relations)->first();
+    }
+
+    protected function patchOrderConfig(Order $order)
+    {
+        return Storefront::patchOrderConfig($order);
+    }
+
+    protected function createAcceptedActivity($orderConfig)
+    {
+        return Storefront::createAcceptedActivity($orderConfig);
+    }
+
+    protected function notifyOrderAccepted(Order $order): void
+    {
+        $order->customer->notify(new StorefrontOrderAccepted($order));
+    }
+
+    protected function detailRelations(): array
+    {
+        return [
+            'customer',
+            'transaction',
+            'payload',
+            'payload.pickup',
+            'payload.dropoff',
+            'payload.return',
+            'payload.waypoints',
+            'payload.entities',
+            'driverAssigned',
+            'orderConfig',
+            'trackingNumber',
+            'trackingStatuses',
+            'purchaseRate',
+            'purchaseRate.serviceQuote',
+            'purchaseRate.serviceQuote.items',
+            'comments',
+            'files',
+        ];
+    }
+
+    protected function orderResponse(Order $order): array
+    {
+        return [
+            'status' => $order->status,
+            'order'  => new StorefrontOrderResource($order->fresh($this->detailRelations())),
+        ];
+    }
+
+    /**
+     * Accept an order by incrementing status to preparing.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function acceptOrder(Request $request)
+    {
+        $order = $this->findOrderForAction($request->order, ['customer']);
+
+        if (!$order) {
+            return response()->json([
+                'error' => 'No order to accept!',
+            ], 400);
+        }
+
+        // Patch order config
+        $orderConfig = $this->patchOrderConfig($order);
+        $activity    = $this->createAcceptedActivity($orderConfig);
+
+        // Dispatch already if order is a pickup
+        if ($order->isMeta('is_pickup')) {
+            $order->firstDispatchWithActivity();
+        }
+
+        // Set order as accepted
+        try {
+            $order->setStatus($activity->code);
+            $order->insertActivity($activity, $order->getLastLocation());
+        } catch (\Exception $e) {
+            Log::debug('[Storefront] was unable to accept an order.', ['order' => $order, 'activity' => $activity]);
+
+            return response()->error('Unable to accept order.');
+        }
+
+        // Notify customer order was accepted
+        try {
+            $this->notifyOrderAccepted($order);
+        } catch (\Exception $e) {
+        }
+
+        return $this->orderResponse($order);
+    }
+
+    /**
+     * Accept an order by incrementing status to preparing.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function markOrderAsReady(Request $request)
+    {
+        $adhoc  = $request->boolean('adhoc');
+        $driver = $request->input('driver');
+        /** @var Order $order */
+        $order = $this->findOrderForAction($request->order, ['customer']);
+
+        if (!$order) {
+            return response()->error('No order to update!');
+        }
+
+        // Patch order config
+        $this->patchOrderConfig($order);
+
+        if ($order->isMeta('is_pickup')) {
+            $order->updateStatus('pickup_ready');
+
+            return $this->orderResponse($order);
+        }
+
+        // toggle order to adhoc
+        if ($order->adhoc === false && $adhoc === true) {
+            $order->update(['adhoc' => true]);
+        }
+
+        // if driver then assign driver
+        if ($driver) {
+            $order->assignDriver($driver);
+        }
+
+        // Dispatch the order and move Storefront delivery orders into preparation.
+        $order->dispatchWithActivity();
+        $order->updateStatus('preparing');
+
+        return $this->orderResponse($order);
+    }
+
+    /**
+     * Accept an order by incrementing status to preparing.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function markOrderAsPreparing(Request $request)
+    {
+        /** @var Order $order */
+        $order = $this->findOrderForAction($request->order, ['customer']);
+
+        if (!$order) {
+            return response()->error('No order to update!');
+        }
+
+        // Patch order config
+        $orderConfig = $this->patchOrderConfig($order);
+
+        // Get preparing activity
+        $activity = $orderConfig->getActivityByCode('preparing');
+
+        try {
+            $order->setStatus($activity->code);
+            $order->insertActivity($activity, $order->getLastLocation());
+        } catch (\Exception $e) {
+            Log::debug('[Storefront] was unable to trigger order preparing.', ['order' => $order, 'activity' => $activity]);
+
+            return response()->error('Unable to trigger order preparing.');
+        }
+
+        return $this->orderResponse($order);
+    }
+
+    /**
+     * Accept an order by incrementing status to completed.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function markOrderAsCompleted(Request $request)
+    {
+        /** @var Order */
+        $order = $this->findOrderForAction($request->order, ['customer']);
+
+        if (!$order) {
+            return response()->json([
+                'error' => 'No order to update!',
+            ], 400);
+        }
+
+        // Patch order config
+        $this->patchOrderConfig($order);
+
+        $order->updateStatus($order->isMeta('is_pickup') ? 'picked_up' : 'completed');
+
+        return $this->orderResponse($order);
+    }
+
+    public function unassignDriver(Request $request)
+    {
+        /** @var Order */
+        $order = $this->findOrderForAction($request->order, ['driverAssigned']);
+
+        if (!$order) {
+            return response()->json([
+                'error' => 'No order to update!',
+            ], 400);
+        }
+
+        if ($order->driverAssigned) {
+            $order->driverAssigned->unassignCurrentOrder();
+        }
+
+        $order->forceFill([
+            'driver_assigned_uuid'  => null,
+            'vehicle_assigned_uuid' => null,
+        ])->save();
+
+        return $this->orderResponse($order);
+    }
+
+    /**
+     * Reject order and notify customer order is rejected/canceled.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function rejectOrder(Request $request)
+    {
+        $order = $this->findOrderForAction($request->order, ['customer']);
+
+        if (!$order) {
+            return response()->json([
+                'error' => 'No order to cancel!',
+            ], 400);
+        }
+
+        // Patch order config
+        $this->patchOrderConfig($order);
+
+        $order->updateStatus('canceled');
+
+        return $this->orderResponse($order);
+    }
+}

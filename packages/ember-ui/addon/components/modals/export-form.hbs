@@ -1,0 +1,10 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}} as |options|>
+    <div class="modal-body-container">
+        <div class="input-group">
+            <label>
+                {{t "ember-ui.modals.export-form.format"}}
+            </label>
+            <Select @value={{@options.format}} @options={{@options.formatOptions}} @placeholder={{t "ember-ui.modals.export-form.select-format"}} @onChange={{@options.setFormat}} class="w-full" />
+        </div>
+    </div>
+</Modal::Default>

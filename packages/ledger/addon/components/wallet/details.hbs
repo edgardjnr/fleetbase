@@ -1,0 +1,97 @@
+<div class="details-wrapper" ...attributes>
+    {{! WALLET DETAILS }}
+    <ContentPanel @title={{t "ledger.ui.wallet.details-title"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "ledger.ui.wallet.information"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.wallet.name"}}</div>
+                <div class="field-value">{{n-a @resource.name}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.payments.field.type"}}</div>
+                <div class="field-value">{{n-a (humanize @resource.type)}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.payments.field.currency"}}</div>
+                <div class="field-value uppercase">{{n-a @resource.currency}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.payments.field.status"}}</div>
+                <div class="field-value">
+                    {{#if @resource.status}}
+                        <Badge @status={{@resource.status}} />
+                    {{else}}
+                        —
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.wallet.frozen"}}</div>
+                <div class="field-value">{{if @resource.is_frozen (t "ledger.ui.payments.field.yes") (t "ledger.ui.payments.field.no")}}</div>
+            </div>
+
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "ledger.ui.wallet.balance"}}
+            </div>
+
+            <div class="field-info-container col-span-2">
+                <div class="field-name">{{t "ledger.ui.wallet.current-balance"}}</div>
+                <div class="field-value text-lg font-bold text-gray-900 dark:text-white">{{format-currency @resource.balance @resource.currency}}</div>
+            </div>
+
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "ledger.ui.wallet.owner-details"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.wallet.owner"}}</div>
+                <div class="field-value">{{n-a @resource.ownerName}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.wallet.owner-type"}}</div>
+                <div class="field-value">{{n-a (humanize @resource.type)}}</div>
+            </div>
+
+            {{! Show email/phone only for user-type wallets }}
+            {{#if (eq @resource.type "user")}}
+                <div class="field-info-container">
+                    <div class="field-name">{{t "ledger.ui.wallet.email-phone"}}</div>
+                    <div class="field-value">{{n-a @resource.ownerContact}}</div>
+                </div>
+            {{/if}}
+
+        </div>
+    </ContentPanel>
+
+    {{! RECORD INFO }}
+    <ContentPanel @title={{t "ledger.ui.payments.field.record-info"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.wallet.internal-id"}}</div>
+                <div class="field-value font-mono">{{n-a @resource.public_id}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.payments.field.created"}}</div>
+                <div class="field-value">{{n-a @resource.createdAt}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.payments.field.last-updated"}}</div>
+                <div class="field-value">{{n-a @resource.updatedAt}}</div>
+            </div>
+
+        </div>
+    </ContentPanel>
+    <Spacer @height="200px" />
+</div>

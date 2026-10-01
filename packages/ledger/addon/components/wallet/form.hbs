@@ -1,0 +1,143 @@
+<div class="form-wrapper" ...attributes>
+    {{! WALLET DETAILS }}
+    <ContentPanel @title={{t "ledger.ui.wallet.details-title"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+
+            {{! Identification }}
+            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "ledger.ui.wallet.information"}}
+            </div>
+
+            <InputGroup @name={{t "ledger.ui.wallet.name"}} @wrapperClass="col-span-2">
+                <Input @value={{@resource.name}} @type="text" class="w-full form-input" placeholder={{t "ledger.ui.wallet.name-placeholder"}} disabled={{cannot-write @resource}} />
+            </InputGroup>
+
+            <InputGroup @name={{t "ledger.ui.payments.field.type"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{array "driver" "customer" "company" "system"}}
+                        @selected={{@resource.type}}
+                        @onChange={{fn (mut @resource.type)}}
+                        @placeholder={{t "ledger.ui.wallet.select-type"}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |option|
+                    >
+                        <div class="capitalize text-sm">{{option}}</div>
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+
+            <InputGroup @name={{t "ledger.ui.payments.field.currency"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{array
+                            "USD"
+                            "EUR"
+                            "GBP"
+                            "AED"
+                            "SAR"
+                            "QAR"
+                            "KWD"
+                            "BHD"
+                            "OMR"
+                            "JOD"
+                            "EGP"
+                            "NGN"
+                            "KES"
+                            "GHS"
+                            "ZAR"
+                            "INR"
+                            "PKR"
+                            "BDT"
+                            "MYR"
+                            "SGD"
+                            "IDR"
+                            "PHP"
+                            "THB"
+                            "CNY"
+                            "JPY"
+                            "KRW"
+                            "AUD"
+                            "CAD"
+                            "NZD"
+                            "CHF"
+                            "SEK"
+                            "NOK"
+                            "DKK"
+                            "BRL"
+                            "MXN"
+                        }}
+                        @selected={{@resource.currency}}
+                        @onChange={{fn (mut @resource.currency)}}
+                        @placeholder={{t "ledger.ui.payments.field.select-currency"}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |option|
+                    >
+                        <div class="text-sm">{{option}}</div>
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+
+            <InputGroup @name={{t "ledger.ui.payments.field.status"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{array "active" "inactive" "frozen" "suspended"}}
+                        @selected={{@resource.status}}
+                        @onChange={{fn (mut @resource.status)}}
+                        @placeholder={{t "ledger.ui.payments.field.select-status"}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |option|
+                    >
+                        <div class="capitalize text-sm">{{option}}</div>
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+
+            {{! Owner }}
+            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "ledger.ui.wallet.owner"}}
+            </div>
+
+            <InputGroup @name={{t "ledger.ui.wallet.owner-uuid"}} @wrapperClass="col-span-2">
+                <Input @value={{@resource.owner_uuid}} @type="text" class="w-full form-input" placeholder={{t "ledger.ui.wallet.owner-uuid"}} disabled={{cannot-write @resource}} />
+            </InputGroup>
+
+            <InputGroup @name={{t "ledger.ui.wallet.owner-type"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{array "contact" "vendor" "user" "driver"}}
+                        @selected={{@resource.owner_type}}
+                        @onChange={{fn (mut @resource.owner_type)}}
+                        @placeholder={{t "ledger.ui.wallet.select-owner-type"}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |option|
+                    >
+                        <div class="capitalize text-sm">{{option}}</div>
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+
+            {{! Settings }}
+            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "ledger.ui.wallet.settings"}}
+            </div>
+
+            <InputGroup @name={{t "ledger.ui.wallet.frozen"}} @wrapperClass="col-span-2">
+                <Toggle
+                    @isToggled={{@resource.is_frozen}}
+                    @label={{t "ledger.ui.wallet.freeze-label"}}
+                    @helpText={{t "ledger.ui.wallet.freeze-toggle-help"}}
+                    @onToggle={{fn (mut @resource.is_frozen)}}
+                    @disabled={{cannot-write @resource}}
+                />
+            </InputGroup>
+
+        </div>
+    </ContentPanel>
+
+    <Spacer @height="100px" />
+</div>

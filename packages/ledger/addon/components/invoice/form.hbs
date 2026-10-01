@@ -1,0 +1,145 @@
+<div class="invoice-form" ...attributes>
+
+    {{! ── INVOICE DETAILS ─────────────────────────────────────────────────── }}
+    <ContentPanel @title={{t "ledger.ui.invoice.invoice-details"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+
+            {{! Invoice Number — auto-generated on create; read-only on edit }}
+            <InputGroup @name={{t "ledger.ui.invoice.invoice-number"}}>
+                <Input
+                    @value={{@resource.number}}
+                    @type="text"
+                    class="w-full form-input"
+                    placeholder={{t "ledger.ui.invoice.number-placeholder"}}
+                    disabled={{or (cannot-write @resource) (not @resource.isNew)}}
+                />
+            </InputGroup>
+
+            {{! Status }}
+            <InputGroup @name={{t "ledger.ui.invoice.status"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{array "draft" "sent" "viewed" "partial" "paid" "partial_refund_pending" "refund_pending" "refunded" "overdue" "cancelled"}}
+                        @selected={{@resource.status}}
+                        @onChange={{fn (mut @resource.status)}}
+                        @placeholder={{t "ledger.ui.invoice.select-status"}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |option|
+                    >
+                        <div class="capitalize text-sm">{{t (concat "ledger.ui.invoice.statuses." option)}}</div>
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+
+            {{! Currency }}
+            <InputGroup @name={{t "ledger.ui.invoice.currency"}}>
+                <CurrencySelect @currency={{this.currency}} @onCurrencyChange={{this.onCurrencyChange}} @triggerClass="w-full form-select form-input" @disabled={{cannot-write @resource}} />
+            </InputGroup>
+
+            {{! Template }}
+            <InputGroup @name={{t "ledger.ui.invoice.invoice-template"}}>
+                <ModelSelect
+                    @modelName="template"
+                    @selectedModel={{@resource.template}}
+                    @placeholder={{t "ledger.ui.invoice.select-template"}}
+                    @triggerClass="form-select form-input"
+                    @infiniteScroll={{false}}
+                    @renderInPlace={{true}}
+                    @allowClear={{true}}
+                    @disabled={{cannot-write @resource}}
+                    @onChange={{this.onTemplateChange}}
+                    as |model|
+                >
+                    <div class="flex items-center gap-2">
+                        <FaIcon @icon="file-invoice" class="text-gray-400" />
+                        <span>{{model.name}}</span>
+                    </div>
+                </ModelSelect>
+            </InputGroup>
+
+        </div>
+    </ContentPanel>
+
+    {{! ── CUSTOMER ────────────────────────────────────────────────────────── }}
+    <ContentPanel @title={{t "ledger.ui.invoice.customer"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 no-input-group-padding text-xs">
+
+            <InputGroup @name={{t "ledger.ui.invoice.customer"}}>
+                <ModelSelect
+                    @modelName="customer"
+                    @selectedModel={{@resource.customer}}
+                    @placeholder={{t "ledger.ui.invoice.search-customer"}}
+                    @triggerClass="form-select form-input"
+                    @infiniteScroll={{false}}
+                    @renderInPlace={{true}}
+                    @allowClear={{true}}
+                    @disabled={{cannot-write @resource}}
+                    @onChange={{this.onCustomerChange}}
+                    as |model|
+                >
+                    <div class="flex items-center gap-2">
+                        <FaIcon @icon={{if model.isVendor "warehouse" "user"}} class="text-gray-400" />
+                        <span class="uppercase">{{model.name}}</span>
+                    </div>
+                </ModelSelect>
+            </InputGroup>
+
+        </div>
+    </ContentPanel>
+
+    {{! ── DATES ───────────────────────────────────────────────────────────── }}
+    <ContentPanel @title={{t "ledger.ui.invoice.dates"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+
+            <InputGroup @name={{t "ledger.ui.invoice.invoice-date"}}>
+                <DatePicker
+                    @value={{or (format-date-fns @resource.date "yyyy-MM-dd") null}}
+                    @onChange={{fn (mut @resource.date)}}
+                    @placeholder="yyyy-mm-dd"
+                    class="w-full"
+                    disabled={{cannot-write @resource}}
+                />
+            </InputGroup>
+
+            <InputGroup @name={{t "ledger.ui.invoice.due-date"}}>
+                <DatePicker
+                    @value={{or (format-date-fns @resource.due_date "yyyy-MM-dd") null}}
+                    @onChange={{fn (mut @resource.due_date)}}
+                    @placeholder="yyyy-mm-dd"
+                    class="w-full"
+                    disabled={{cannot-write @resource}}
+                />
+            </InputGroup>
+
+        </div>
+    </ContentPanel>
+
+    {{! ── LINE ITEMS ──────────────────────────────────────────────────────── }}
+    <ContentPanel @title={{t "ledger.ui.invoice.line-items"}} @open={{true}} @wrapperClass="bordered-top">
+        <Invoice::LineItems @items={{this.initialItems}} @invoice={{@resource}} @currency={{this.currency}} @disabled={{cannot-write @resource}} @registerRef={{this.registerLineItemsRef}} />
+    </ContentPanel>
+
+    {{! ── NOTES & TERMS ───────────────────────────────────────────────────── }}
+    <ContentPanel @title={{t "ledger.ui.invoice.notes-terms"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 no-input-group-padding text-xs">
+
+            <InputGroup @name={{t "ledger.ui.invoice.notes"}}>
+                <Textarea
+                    @value={{@resource.notes}}
+                    class="w-full form-input"
+                    rows="3"
+                    placeholder={{t "ledger.ui.invoice.notes-placeholder"}}
+                    disabled={{cannot-write @resource}}
+                />
+            </InputGroup>
+
+            <InputGroup @name={{t "ledger.ui.invoice.terms"}}>
+                <Textarea @value={{@resource.terms}} class="w-full form-input" rows="3" placeholder={{t "ledger.ui.invoice.terms-placeholder"}} disabled={{cannot-write @resource}} />
+            </InputGroup>
+
+        </div>
+    </ContentPanel>
+
+    <Spacer @height="100px" />
+</div>

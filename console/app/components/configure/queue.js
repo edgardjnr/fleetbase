@@ -6,6 +6,7 @@ import { action } from '@ember/object';
 export default class ConfigureQueueComponent extends Component {
     @service fetch;
     @service notifications;
+    @service intl;
     // The constructor performs loadConfigValues, which assigns this before anything can read it,
     // so the initializer below never runs.
     /* istanbul ignore next -- always assigned before first read */
@@ -70,7 +71,7 @@ export default class ConfigureQueueComponent extends Component {
                 },
             })
             .then(() => {
-                this.notifications.success('Queue configuration saved.');
+                this.notifications.success(this.intl.t('console.ui.configure.queue.saved'));
             })
             .finally(() => {
                 this.isLoading = false;

@@ -1,0 +1,136 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div>
+        <ContentPanel @title={{if (eq @options.selectedLayerType "Zone") (t "fleet-ops.ui.modals.map-layer-form.zone-details") (t "fleet-ops.ui.modals.map-layer-form.service-area-details")}} @open={{true}} @wrapperClass="bordered-top">
+            <div class="space-y-2">
+                <InputGroup @name={{t "modals.map-layer-form.layer-type"}} @helpText={{t "modals.map-layer-form.layer-type-text"}}>
+                    <Select
+                        @options={{@options.layerTypes}}
+                        @value={{@options.selectedLayerType}}
+                        @onSelect={{fn (mut @options.selectedLayerType)}}
+                        @placeholder={{t "modals.map-layer-form.select-layer-type"}}
+                        class="w-full"
+                    />
+                </InputGroup>
+
+                {{#if (eq @options.selectedLayerType "Zone")}}
+                    <InputGroup @name={{t "modals.map-layer-form.service-area"}} @helpText={{t "modals.map-layer-form.service-area-text"}}>
+                        <ModelSelect
+                            @modelName="service-area"
+                            @selectedModel={{@options.layerOptions.service_area}}
+                            @placeholder={{t "modals.map-layer-form.select-service-area"}}
+                            @triggerClass="form-select form-input"
+                            @infiniteScroll={{false}}
+                            @renderInPlace={{true}}
+                            @onChange={{fn (mut @options.layerOptions.service_area)}}
+                            as |model|
+                        >
+                            {{model.name}}
+                        </ModelSelect>
+                    </InputGroup>
+                {{/if}}
+
+                <InputGroup
+                    @value={{@options.layerOptions.name}}
+                    @name={{t "fleet-ops.ui.modals.map-layer-form.layer-name" type=(if (eq @options.selectedLayerType "Zone") (t "fleet-ops.ui.modals.map-layer-form.layer-type-zone") (t "fleet-ops.ui.modals.map-layer-form.layer-type-service-area"))}}
+                    @helpText={{t "modals.map-layer-form.set-name" htmlSafe=true options=@options.selectedLayerType}}
+                    @required={{true}}
+                />
+
+                {{#if (eq @options.selectedLayerType "Service Area")}}
+                    <InputGroup @name={{t "modals.map-layer-form.service-type"}} @helpText={{t "modals.map-layer-form.service-type-text"}}>
+                        <Select
+                            @options={{@options.serviceAreaTypes}}
+                            @value={{@options.layerOptions.type}}
+                            @onSelect={{fn (mut @options.layerOptions.type)}}
+                            @placeholder={{t "modals.map-layer-form.select-service-type"}}
+                            class="w-full"
+                        />
+                    </InputGroup>
+                {{/if}}
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                    <InputGroup
+                        @type="color"
+                        @value={{@options.layerOptions.stroke_color}}
+                        @name={{t "fleet-ops.ui.modals.map-layer-form.layer-border-color" type=(if (eq @options.selectedLayerType "Zone") (t "fleet-ops.ui.modals.map-layer-form.layer-type-zone") (t "fleet-ops.ui.modals.map-layer-form.layer-type-service-area"))}}
+                        @helpText={{t "modals.map-layer-form.customize-border" htmlSafe=true options=@options.selectedLayerType}}
+                        class="p-0 border-0 m-0 w-8 h-8 bg-transparent rounded-none"
+                    />
+                    <InputGroup
+                        @type="color"
+                        @value={{@options.layerOptions.color}}
+                        @name={{t "fleet-ops.ui.modals.map-layer-form.layer-color" type=(if (eq @options.selectedLayerType "Zone") (t "fleet-ops.ui.modals.map-layer-form.layer-type-zone") (t "fleet-ops.ui.modals.map-layer-form.layer-type-service-area"))}}
+                        @helpText={{t "modals.map-layer-form.customize-fill-color" htmlSafe=true options=@options.selectedLayerType}}
+                        class="p-0 border-0 m-0 w-8 h-8 bg-transparent rounded-none"
+                    />
+                </div>
+
+                {{#if (eq @options.selectedLayerType "Service Area")}}
+                    <InputGroup @name={{t "modals.map-layer-form.service-area-country"}} @helpText={{t "modals.map-layer-form.service-area-country-text"}}>
+                        <CountrySelect class="w-full form-input" @value={{@options.layerOptions.country}} @onChange={{fn (mut @options.layerOptions.country)}} />
+                    </InputGroup>
+                {{else}}
+                    <InputGroup @name={{t "modals.zone-form.description-zone"}} @helpText={{t "modals.zone-form.optionally"}}>
+                        <Textarea @value={{@options.layerOptions.description}} rows={{3}} type="text" class="w-full form-input" placeholder={{t "modals.zone-form.description-zone"}} />
+                    </InputGroup>
+                {{/if}}
+            </div>
+        </ContentPanel>
+
+        <ContentPanel @title={{t "fleet-ops.ui.modals.map-layer-form.geofence-triggers"}} @open={{true}} @wrapperClass="bordered-top">
+            <div class="space-y-4">
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {{t "fleet-ops.ui.modals.map-layer-form.configure-when-this"}} {{if (eq @options.selectedLayerType "Zone") (t "fleet-ops.ui.modals.map-layer-form.zone") (t "fleet-ops.ui.modals.map-layer-form.service-area")}} {{t "fleet-ops.ui.modals.map-layer-form.fires-active-geofence-events-entry-and"}}
+                </p>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="flex items-start space-x-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div class="flex-shrink-0 mt-0.5">
+                            <Toggle
+                                @isToggled={{@options.layerOptions.trigger_on_entry}}
+                                @onToggle={{fn (mut @options.layerOptions.trigger_on_entry)}}
+                            />
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{t "fleet-ops.ui.modals.map-layer-form.trigger-on-entry"}}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                {{t "fleet-ops.ui.modals.map-layer-form.fire-a"}} <code class="font-mono">geofence.entered</code> {{t "fleet-ops.ui.modals.map-layer-form.event-when-a-driver-enters-this"}} {{if (eq @options.selectedLayerType "Zone") (t "fleet-ops.ui.modals.map-layer-form.zone") (t "fleet-ops.ui.modals.map-layer-form.service-area")}}.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div class="flex-shrink-0 mt-0.5">
+                            <Toggle
+                                @isToggled={{@options.layerOptions.trigger_on_exit}}
+                                @onToggle={{fn (mut @options.layerOptions.trigger_on_exit)}}
+                            />
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{t "fleet-ops.ui.modals.map-layer-form.trigger-on-exit"}}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                {{t "fleet-ops.ui.modals.map-layer-form.fire-a"}} <code class="font-mono">geofence.exited</code> {{t "fleet-ops.ui.modals.map-layer-form.event-when-a-driver-leaves-this"}} {{if (eq @options.selectedLayerType "Zone") (t "fleet-ops.ui.modals.map-layer-form.zone") (t "fleet-ops.ui.modals.map-layer-form.service-area")}}.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <InputGroup
+                    @name={{t "fleet-ops.ui.modals.map-layer-form.dwell-threshold-minutes"}}
+                    @value={{@options.layerOptions.dwell_threshold_minutes}}
+                    @type="number"
+                    @placeholder={{t "fleet-ops.ui.modals.map-layer-form.eg-10"}}
+                    @helpText={{t "fleet-ops.ui.modals.map-layer-form.fire-a-geofence-dwelled-event-after"}}
+                />
+
+                <InputGroup
+                    @name={{t "fleet-ops.ui.modals.map-layer-form.speed-limit-km-h"}}
+                    @value={{@options.layerOptions.speed_limit_kmh}}
+                    @type="number"
+                    @placeholder={{t "fleet-ops.ui.modals.map-layer-form.eg-50"}}
+                    @helpText={{t "fleet-ops.ui.modals.map-layer-form.optional-speed-limit-enforced-within-this"}}
+                />
+            </div>
+        </ContentPanel>
+    </div>
+</Modal::Default>

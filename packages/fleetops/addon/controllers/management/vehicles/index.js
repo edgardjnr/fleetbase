@@ -1,0 +1,456 @@
+import Controller from '@ember/controller';
+import { action, get } from '@ember/object';
+import { inject as service } from '@ember/service';
+import { tracked } from '@glimmer/tracking';
+
+export default class ManagementVehiclesIndexController extends Controller {
+    @service vehicleActions;
+    @service issueActions;
+    @service driverActions;
+    @service tableContext;
+    @service intl;
+    @service appCache;
+
+    /** query params */
+    @tracked queryParams = [
+        'page',
+        'limit',
+        'sort',
+        'query',
+        'public_id',
+        'status',
+        'created_at',
+        'updated_at',
+        'created_by',
+        'updated_by',
+        'name',
+        'plate_number',
+        'year',
+        'vehicle_make',
+        'vehicle_model',
+        'display_name',
+        'trailer',
+        'device',
+        'has_trailer',
+        'has_driver',
+        'has_device',
+    ];
+    @tracked query = null;
+    @tracked page = 1;
+    @tracked limit;
+    @tracked sort = '-created_at';
+    @tracked public_id;
+    @tracked status;
+    @tracked name;
+    @tracked plate_number;
+    @tracked vehicle_make;
+    @tracked vehicle_model;
+    @tracked year;
+    @tracked country;
+    @tracked fleet;
+    @tracked vendor;
+    @tracked driver;
+    @tracked trailer;
+    @tracked device;
+    @tracked has_trailer;
+    @tracked has_driver;
+    @tracked has_device;
+    @tracked display_name;
+    @tracked table;
+    @tracked layout = this.appCache.get('fleetops:vehicles:layout', 'table');
+
+    /** action buttons */
+    /* eslint-disable ember/no-side-effects */
+    get actionButtons() {
+        return [
+            {
+                component: 'dropdown-button',
+                icon: 'display',
+                size: 'xs',
+                items: [
+                    {
+                        label: this.intl.t('common.table-view'),
+                        icon: 'table-list',
+                        onClick: () => {
+                            this.layout = 'table';
+                            this.appCache.set('fleetops:vehicles:layout', 'table');
+                        },
+                    },
+                    {
+                        label: this.intl.t('common.grid-view'),
+                        icon: 'grip',
+                        onClick: () => {
+                            this.layout = 'grid';
+                            this.appCache.set('fleetops:vehicles:layout', 'grid');
+                        },
+                    },
+                ],
+                renderInPlace: true,
+                helpText: this.intl.t('fleet-ops.ui.controller.management-vehicles-index.change-the-layout'),
+            },
+            {
+                icon: 'refresh',
+                onClick: this.vehicleActions.refresh,
+                helpText: this.intl.t('common.refresh'),
+            },
+            {
+                text: this.intl.t('common.new'),
+                type: 'primary',
+                icon: 'plus',
+                onClick: this.vehicleActions.transition.create,
+            },
+            {
+                text: this.intl.t('common.import'),
+                type: 'magic',
+                icon: 'upload',
+                onClick: this.vehicleActions.import,
+            },
+            {
+                text: this.intl.t('common.export'),
+                icon: 'long-arrow-up',
+                iconClass: 'rotate-icon-45',
+                wrapperClass: 'hidden md:flex',
+                onClick: this.vehicleActions.export,
+            },
+        ];
+    }
+
+    /** bulk actions */
+    get bulkActions() {
+        const selected = this.tableContext.getSelectedRows();
+
+        return [
+            {
+                label: this.intl.t('common.delete-selected-count', { count: selected.length }),
+                class: 'text-red-500',
+                fn: this.vehicleActions.bulkDelete,
+            },
+        ];
+    }
+
+    /**
+     * Yes/no choices for the "has trailer / driver / device" filters. `kind` picks the
+     * wording: assets are attached, drivers are assigned.
+     */
+    presenceOptions(kind) {
+        return [
+            { value: 'true', label: this.intl.t(`vehicle.filters.${kind}`) },
+            { value: 'false', label: this.intl.t(`vehicle.filters.not-${kind}`) },
+        ];
+    }
+
+    /** columns */
+    get columns() {
+        return [
+            {
+                sticky: true,
+                label: this.intl.t('column.name'),
+                valuePath: 'displayName',
+                photoPath: 'avatar_url',
+                cellComponent: 'cell/vehicle-identity',
+                compact: true,
+                permission: 'fleet-ops view vehicle',
+                action: this.vehicleActions.transition.view,
+                resizable: true,
+                sortable: true,
+                filterable: true,
+                filterComponent: 'filter/string',
+                filterParam: 'name',
+                showOnlineIndicator: true,
+                showStatus: false,
+            },
+            {
+                label: this.intl.t('column.plate-number'),
+                valuePath: 'plate_number',
+                cellComponent: 'table/cell/base',
+                action: this.vehicleActions.transition.view,
+                resizable: true,
+                sortable: true,
+                filterable: true,
+                filterComponent: 'filter/string',
+                filterParam: 'plate_number',
+            },
+            {
+                label: this.intl.t('column.internal-id'),
+                valuePath: 'internal_id',
+                cellComponent: 'table/cell/base',
+                resizable: true,
+                sortable: true,
+                filterable: true,
+                hidden: true,
+                filterComponent: 'filter/multi-input',
+                filterComponentPlaceholder: this.intl.t('vehicle.placeholders.filter-internal-id'),
+                filterParam: 'internal_id',
+            },
+            {
+                label: this.intl.t('column.driver-assigned'),
+                cellComponent: 'cell/driver-identity',
+                compact: true,
+                assignedVehicleLabel: (_driver, vehicle) => get(vehicle, 'displayName') ?? get(vehicle, 'display_name') ?? get(vehicle, 'name'),
+                permission: 'fleet-ops view driver',
+                action: async (driver) => {
+                    const resolvedDriver = get(driver, 'id') ? driver : await driver?.loadResource?.();
+
+                    if (resolvedDriver) {
+                        return this.driverActions.panel.view(resolvedDriver);
+                    }
+                },
+                valuePath: 'driver_name',
+                emptyText: '-',
+                resourcePath: (vehicle) => {
+                    const driver = get(vehicle, 'driver');
+
+                    if (driver) {
+                        return driver;
+                    }
+
+                    const driverName = get(vehicle, 'driver_name');
+
+                    if (driverName) {
+                        return {
+                            name: driverName,
+                            display_name: driverName,
+                            status: 'assigned',
+                            loadResource: () => vehicle.loadDriver?.(),
+                        };
+                    }
+
+                    return null;
+                },
+                resizable: true,
+                filterable: true,
+                filterComponent: 'filter/multi-model',
+                filterComponentPlaceholder: this.intl.t('common.select-resource-filter-by', { resource: this.intl.t('resource.driver') }),
+                filterParam: 'driver',
+                model: 'driver',
+            },
+            {
+                label: this.intl.t('resource.trailers'),
+                valuePath: 'trailers',
+                hidden: true,
+                filterable: true,
+                filterComponent: 'filter/multi-model',
+                filterComponentPlaceholder: this.intl.t('common.select-resource-filter-by', { resource: this.intl.t('resource.trailer') }),
+                filterParam: 'trailer',
+                model: 'trailer',
+                modelNamePath: 'displayName',
+            },
+            {
+                label: this.intl.t('resource.devices'),
+                valuePath: 'devices',
+                hidden: true,
+                filterable: true,
+                filterComponent: 'filter/multi-model',
+                filterComponentPlaceholder: this.intl.t('common.select-resource-filter-by', { resource: this.intl.t('resource.device') }),
+                filterParam: 'device',
+                model: 'device',
+                modelNamePath: 'displayName',
+            },
+            {
+                label: this.intl.t('vehicle.filters.has-trailer'),
+                valuePath: 'has_trailer',
+                hidden: true,
+                filterable: true,
+                filterComponent: 'filter/select',
+                filterComponentPlaceholder: this.intl.t('vehicle.filters.any'),
+                filterOptions: this.presenceOptions('attached'),
+                filterParam: 'has_trailer',
+            },
+            {
+                label: this.intl.t('vehicle.filters.has-driver'),
+                valuePath: 'has_driver',
+                hidden: true,
+                filterable: true,
+                filterComponent: 'filter/select',
+                filterComponentPlaceholder: this.intl.t('vehicle.filters.any'),
+                filterOptions: this.presenceOptions('assigned'),
+                filterParam: 'has_driver',
+            },
+            {
+                label: this.intl.t('vehicle.filters.has-device'),
+                valuePath: 'has_device',
+                hidden: true,
+                filterable: true,
+                filterComponent: 'filter/select',
+                filterComponentPlaceholder: this.intl.t('vehicle.filters.any'),
+                filterOptions: this.presenceOptions('attached'),
+                filterParam: 'has_device',
+            },
+            {
+                label: this.intl.t('column.id'),
+                valuePath: 'public_id',
+                cellComponent: 'click-to-copy',
+                resizable: true,
+                sortable: true,
+                filterable: true,
+                filterComponent: 'filter/string',
+            },
+            {
+                label: this.intl.t('column.make'),
+                valuePath: 'make',
+                cellComponent: 'table/cell/base',
+                resizable: true,
+                sortable: true,
+                hidden: true,
+                filterable: true,
+                filterParam: 'make',
+                filterComponent: 'filter/string',
+            },
+            {
+                label: this.intl.t('column.model'),
+                valuePath: 'model',
+                cellComponent: 'table/cell/base',
+                resizable: true,
+                sortable: true,
+                hidden: true,
+                filterable: true,
+                filterParam: 'model',
+                filterComponent: 'filter/string',
+            },
+            {
+                label: this.intl.t('column.year'),
+                valuePath: 'year',
+                cellComponent: 'table/cell/base',
+                resizable: true,
+                sortable: true,
+                hidden: true,
+                filterable: true,
+                filterComponent: 'filter/string',
+            },
+            {
+                label: this.intl.t('column.vendor'),
+                cellComponent: 'table/cell/anchor',
+                permission: 'fleet-ops view vendor',
+                action: async ({ vendor_uuid }) => {
+                    const vendor = await this.store.findRecord('vendor', vendor_uuid);
+
+                    this.vendorActions.viewVendor(vendor);
+                },
+                valuePath: 'vendor_name',
+                hidden: true,
+                resizable: true,
+                filterable: true,
+                filterComponent: 'filter/model',
+                filterComponentPlaceholder: this.intl.t('common.select-resource-filter-by', { resource: this.intl.t('resource.vendor') }),
+                filterParam: 'vendor',
+                model: 'vendor',
+            },
+            {
+                label: this.intl.t('column.status'),
+                valuePath: 'status',
+                cellComponent: 'table/cell/status',
+                resizable: true,
+                sortable: true,
+                filterable: true,
+                filterComponent: 'filter/multi-option',
+                filterFetchOptions: 'vehicles/statuses',
+            },
+            {
+                label: this.intl.t('column.created-at'),
+                valuePath: 'createdAt',
+                sortParam: 'created_at',
+                resizable: true,
+                sortable: true,
+                filterable: true,
+                filterParam: 'created_at',
+                filterLabel: 'Created Between',
+                filterComponent: 'filter/date',
+            },
+            {
+                label: this.intl.t('column.updated-at'),
+                valuePath: 'updatedAt',
+                sortParam: 'updated_at',
+                resizable: true,
+                sortable: true,
+                hidden: true,
+                filterParam: 'updated_at',
+                filterLabel: 'Last Updated Between',
+                filterable: true,
+                filterComponent: 'filter/date',
+            },
+            {
+                label: '',
+                cellComponent: 'table/cell/dropdown',
+                ddButtonText: false,
+                ddButtonIcon: 'ellipsis-h',
+                ddButtonIconPrefix: 'fas',
+                ddMenuLabel: this.intl.t('common.resource-actions', { resource: this.intl.t('resource.vehicle') }),
+                cellClassNames: 'overflow-visible',
+                wrapperClass: 'flex items-center justify-end mx-2',
+                sticky: 'right',
+                width: 60,
+                actions: [
+                    {
+                        label: this.intl.t('common.view-resource', { resource: this.intl.t('resource.vehicle') }),
+                        fn: this.vehicleActions.transition.view,
+                        permission: 'fleet-ops view vehicle',
+                    },
+                    {
+                        label: this.intl.t('common.edit-resource', { resource: this.intl.t('resource.vehicle') }),
+                        fn: this.vehicleActions.transition.edit,
+                        permission: 'fleet-ops update vehicle',
+                    },
+                    {
+                        label: this.intl.t('vehicle.actions.locate-vehicle'),
+                        fn: this.vehicleActions.locate,
+                        permission: 'fleet-ops view vehicle',
+                    },
+                    {
+                        label: this.intl.t('vehicle.actions.attach-device'),
+                        fn: this.vehicleActions.attachDevice,
+                        permission: 'fleet-ops update vehicle',
+                    },
+                    {
+                        label: this.intl.t('vehicle.actions.unassign-orders'),
+                        fn: this.vehicleActions.unassignOrders,
+                        permission: 'fleet-ops update vehicle',
+                        isVisible: (vehicle) => Number(vehicle.assigned_orders_count) > 0,
+                    },
+                    {
+                        separator: true,
+                    },
+                    {
+                        label: this.intl.t('vehicle.actions.schedule-maintenance'),
+                        fn: this.vehicleActions.scheduleMaintenance,
+                        permission: 'fleet-ops create maintenance-schedule',
+                    },
+                    {
+                        label: this.intl.t('vehicle.actions.create-work-order'),
+                        fn: this.vehicleActions.createWorkOrder,
+                        permission: 'fleet-ops create work-order',
+                    },
+                    {
+                        label: this.intl.t('vehicle.actions.log-maintenance'),
+                        fn: this.vehicleActions.logMaintenance,
+                        permission: 'fleet-ops create maintenance',
+                    },
+                    {
+                        label: this.intl.t('vehicle.actions.create-issue'),
+                        fn: this.createIssue,
+                        permission: 'fleet-ops create issue',
+                    },
+                    {
+                        separator: true,
+                    },
+                    {
+                        label: this.intl.t('common.delete-resource', { resource: this.intl.t('resource.vehicle') }),
+                        fn: this.vehicleActions.delete,
+                        permission: 'fleet-ops delete vehicle',
+                    },
+                ],
+                sortable: false,
+                filterable: false,
+                resizable: false,
+                searchable: false,
+            },
+        ];
+    }
+
+    @action createIssue(vehicle) {
+        this.issueActions.modal.create({
+            vehicle,
+            vehicle_uuid: vehicle.id,
+            title: this.intl.t('vehicle.prompts.issue-title', { vehicleName: vehicle.displayName ?? vehicle.name }),
+        });
+    }
+}

@@ -1,0 +1,153 @@
+<Layout::Section::Header @title={{t "ledger.ui.settings.accounting.title"}}>
+    <Button
+        @type="primary"
+        @size="sm"
+        @icon="save"
+        @text={{t "ledger.ui.settings.save-changes"}}
+        @onClick={{perform this.saveSettings}}
+        @disabled={{this.saveSettings.isRunning}}
+        @isLoading={{or this.saveSettings.isRunning this.getSettings.isRunning}}
+    />
+</Layout::Section::Header>
+
+<Layout::Section::Body class="overflow-y-scroll h-full">
+    <div class="container mx-auto h-screen">
+        <div class="max-w-3xl my-10 mx-auto space-y-6">
+
+            {{! ── Base Currency & Fiscal Year ────────────────────────────────────── }}
+            <ContentPanel @title={{t "ledger.ui.settings.accounting.currency-fiscal-year"}} @open={{true}} @wrapperClass="bordered-classic">
+                <InputGroup @name={{t "ledger.ui.settings.accounting.base-currency"}} @helpText={{t "ledger.ui.settings.accounting.base-currency-help"}}>
+                    <CurrencySelect
+                        @currency={{this.effectiveCurrency}}
+                        @currencyData={{this.selectedCurrency}}
+                        @onCurrencyChange={{this.onSelectCurrency}}
+                        @triggerClass="form-select form-input"
+                        @placeholder={{t "ledger.ui.settings.accounting.default-currency" currency=this.companyCurrency}}
+                        @allowClear={{true}}
+                    />
+                    {{#unless this.base_currency}}
+                        <p class="text-xs text-gray-400 mt-1">{{t "ledger.ui.settings.accounting.using-default" currency=this.companyCurrency}}</p>
+                    {{/unless}}
+                </InputGroup>
+
+                <InputGroup @name={{t "ledger.ui.settings.accounting.fiscal-year-start"}} @helpText={{t "ledger.ui.settings.accounting.fiscal-year-start-help"}}>
+                    <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                        <PowerSelect
+                            @options={{this.fiscalYearMonthOptions}}
+                            @selected={{find-by "value" this.fiscal_year_start_month this.fiscalYearMonthOptions}}
+                            @onChange={{this.onSelectFiscalYearMonth}}
+                            @placeholder={{t "ledger.ui.settings.accounting.select-start-month"}}
+                            @triggerClass="form-select form-input"
+                            as |opt|
+                        >
+                            <div class="text-sm">{{opt.label}}</div>
+                        </PowerSelect>
+                    </div>
+                </InputGroup>
+            </ContentPanel>
+
+            {{! ── Default Accounts ────────────────────────────────────────────────── }}
+            <ContentPanel @title={{t "ledger.ui.settings.accounting.default-accounts"}} @open={{true}} @wrapperClass="bordered-classic">
+                <div class="text-xs text-gray-500 mb-3">
+                    {{t "ledger.ui.settings.accounting.default-accounts-desc"}}
+                </div>
+
+                <InputGroup @name={{t "ledger.ui.settings.accounting.revenue-account"}} @helpText={{t "ledger.ui.settings.accounting.revenue-account-help"}}>
+                    <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                        <PowerSelect
+                            @options={{this.revenueAccounts}}
+                            @selected={{this.selectedRevenueAccount}}
+                            @onChange={{this.onSelectRevenueAccount}}
+                            @placeholder={{t "ledger.ui.settings.accounting.select-revenue-account"}}
+                            @triggerClass="form-select form-input"
+                            @allowClear={{true}}
+                            as |account|
+                        >
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="font-medium">{{account.name}}</span>
+                                {{#if account.code}}
+                                    <span class="text-gray-400 text-xs ml-2 font-mono">{{account.code}}</span>
+                                {{/if}}
+                            </div>
+                        </PowerSelect>
+                    </div>
+                </InputGroup>
+
+                <InputGroup @name={{t "ledger.ui.settings.accounting.expense-account"}} @helpText={{t "ledger.ui.settings.accounting.expense-account-help"}}>
+                    <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                        <PowerSelect
+                            @options={{this.expenseAccounts}}
+                            @selected={{this.selectedExpenseAccount}}
+                            @onChange={{this.onSelectExpenseAccount}}
+                            @placeholder={{t "ledger.ui.settings.accounting.select-expense-account"}}
+                            @triggerClass="form-select form-input"
+                            @allowClear={{true}}
+                            as |account|
+                        >
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="font-medium">{{account.name}}</span>
+                                {{#if account.code}}
+                                    <span class="text-gray-400 text-xs ml-2 font-mono">{{account.code}}</span>
+                                {{/if}}
+                            </div>
+                        </PowerSelect>
+                    </div>
+                </InputGroup>
+
+                <InputGroup @name={{t "ledger.ui.settings.accounting.ar-account"}} @helpText={{t "ledger.ui.settings.accounting.ar-account-help"}}>
+                    <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                        <PowerSelect
+                            @options={{this.arAccounts}}
+                            @selected={{this.selectedArAccount}}
+                            @onChange={{this.onSelectArAccount}}
+                            @placeholder={{t "ledger.ui.settings.accounting.select-ar-account"}}
+                            @triggerClass="form-select form-input"
+                            @allowClear={{true}}
+                            as |account|
+                        >
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="font-medium">{{account.name}}</span>
+                                {{#if account.code}}
+                                    <span class="text-gray-400 text-xs ml-2 font-mono">{{account.code}}</span>
+                                {{/if}}
+                            </div>
+                        </PowerSelect>
+                    </div>
+                </InputGroup>
+
+                <InputGroup @name={{t "ledger.ui.settings.accounting.ap-account"}} @helpText={{t "ledger.ui.settings.accounting.ap-account-help"}}>
+                    <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                        <PowerSelect
+                            @options={{this.apAccounts}}
+                            @selected={{this.selectedApAccount}}
+                            @onChange={{this.onSelectApAccount}}
+                            @placeholder={{t "ledger.ui.settings.accounting.select-ap-account"}}
+                            @triggerClass="form-select form-input"
+                            @allowClear={{true}}
+                            as |account|
+                        >
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="font-medium">{{account.name}}</span>
+                                {{#if account.code}}
+                                    <span class="text-gray-400 text-xs ml-2 font-mono">{{account.code}}</span>
+                                {{/if}}
+                            </div>
+                        </PowerSelect>
+                    </div>
+                </InputGroup>
+            </ContentPanel>
+
+            {{! ── Journal Entry Behaviour ────────────────────────────────────────────── }}
+            <ContentPanel @title={{t "ledger.ui.settings.accounting.journal-behaviour"}} @open={{true}} @wrapperClass="bordered-classic">
+                <InputGroup @name={{t "ledger.ui.settings.accounting.auto-post"}}>
+                    <Toggle
+                        @isToggled={{this.auto_post_journal_entries}}
+                        @label={{t "ledger.ui.settings.accounting.auto-post-help"}}
+                        @onToggle={{fn (mut this.auto_post_journal_entries)}}
+                    />
+                </InputGroup>
+            </ContentPanel>
+        </div>
+        <Spacer @height="600px" />
+    </div>
+</Layout::Section::Body>

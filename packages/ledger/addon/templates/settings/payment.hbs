@@ -1,0 +1,86 @@
+<Layout::Section::Header @title={{t "ledger.ui.settings.payment.title"}}>
+    <Button
+        @type="primary"
+        @size="sm"
+        @icon="save"
+        @text={{t "ledger.ui.settings.save-changes"}}
+        @onClick={{perform this.saveSettings}}
+        @disabled={{this.saveSettings.isRunning}}
+        @isLoading={{or this.saveSettings.isRunning this.getSettings.isRunning}}
+    />
+</Layout::Section::Header>
+
+<Layout::Section::Body class="overflow-y-scroll h-full">
+    <div class="container mx-auto h-screen">
+        <div class="max-w-3xl my-10 mx-auto space-y-6">
+
+            {{! ── Default Gateway ─────────────────────────────────────────────── }}
+            <ContentPanel @title={{t "ledger.ui.settings.payment.default-gateway-title"}} @open={{true}} @wrapperClass="bordered-classic">
+                <InputGroup @name={{t "ledger.ui.settings.payment.default-gateway"}} @helpText={{t "ledger.ui.settings.payment.default-gateway-help"}}>
+                    <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                        <PowerSelect
+                            @options={{this.availableGateways}}
+                            @selected={{this.selectedGateway}}
+                            @onChange={{this.onSelectDefaultGateway}}
+                            @placeholder={{t "ledger.ui.settings.payment.select-gateway"}}
+                            @triggerClass="form-select form-input"
+                            @allowClear={{true}}
+                            as |gateway|
+                        >
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="font-medium">{{gateway.name}}</span>
+                                <span class="text-gray-400 text-xs capitalize ml-2">{{gateway.driver}} &middot; {{gateway.environment}}</span>
+                            </div>
+                        </PowerSelect>
+                    </div>
+                    {{#if this.selectedGateway}}
+                        <div class="mt-1 text-[11px] text-gray-500">
+                            {{t "ledger.ui.settings.invoice.selected"}}
+                            <span class="font-medium">{{this.selectedGateway.name}}</span>
+                            &mdash;
+                            <span class="capitalize">{{this.selectedGateway.environment}}</span>
+                        </div>
+                    {{/if}}
+                    {{#unless this.availableGateways.length}}
+                        <div class="mt-1 text-[11px] text-amber-600">
+                            {{t "ledger.ui.settings.payment.no-gateways"}}
+                            <LinkTo @route="payments.gateways.new" class="underline">{{t "ledger.ui.settings.payment.add-gateway"}}</LinkTo>
+                            {{t "ledger.ui.settings.payment.enable-online"}}
+                        </div>
+                    {{/unless}}
+                </InputGroup>
+            </ContentPanel>
+
+            {{! ── Payment Behaviour ───────────────────────────────────────────── }}
+            <ContentPanel @title={{t "ledger.ui.settings.payment.behaviour"}} @open={{true}} @wrapperClass="bordered-classic">
+                <InputGroup @name={{t "ledger.ui.settings.payment.partial"}}>
+                    <Toggle
+                        @isToggled={{this.allow_partial_payments}}
+                        @label={{t "ledger.ui.settings.payment.partial-help"}}
+                        @onToggle={{fn (mut this.allow_partial_payments)}}
+                    />
+                </InputGroup>
+
+                <InputGroup @name={{t "ledger.ui.settings.payment.wallet-credit"}}>
+                    <Toggle
+                        @isToggled={{this.auto_apply_wallet_credit}}
+                        @label={{t "ledger.ui.settings.payment.wallet-credit-help"}}
+                        @onToggle={{fn (mut this.auto_apply_wallet_credit)}}
+                    />
+                </InputGroup>
+            </ContentPanel>
+
+            {{! ── Notifications ───────────────────────────────────────────────── }}
+            <ContentPanel @title={{t "ledger.ui.settings.payment.notifications"}} @open={{true}} @wrapperClass="bordered-classic">
+                <InputGroup @name={{t "ledger.ui.settings.payment.receipt"}}>
+                    <Toggle
+                        @isToggled={{this.send_payment_receipt}}
+                        @label={{t "ledger.ui.settings.payment.receipt-help"}}
+                        @onToggle={{fn (mut this.send_payment_receipt)}}
+                    />
+                </InputGroup>
+            </ContentPanel>
+        </div>
+        <Spacer @height="600px" />
+    </div>
+</Layout::Section::Body>

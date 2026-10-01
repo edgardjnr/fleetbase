@@ -1,0 +1,379 @@
+iam:
+  extension-name: IAM
+  common:
+    address: Address
+    bulk-action: Bulk Action
+    country: Country
+    create: Created
+    dashboard: Dashboard 
+    description: Description
+    email: Email
+    export: Export
+    group: Groups
+    member: Members
+    name: Name
+    new: New
+    permission: Permission
+    phone: Phone
+    photo: Photo
+    policy: Policy
+    policies: Policies
+    attach-policies: Attach Policies
+    select-policy: Select Policy
+    attach-permissions: Attach Permissions
+    attach-inline-permissions: Attach Inline Permissions
+    select-permissions: Select Permissions
+    primary: Primary
+    role: Role
+    roles: Roles
+    status: Status
+    type: Type
+    user: Users
+    service: Service
+    reload: Reload
+    reload-data: Reload data
+  components:
+    widget:
+      metrics:
+        title: IAM Metrics
+    modals:
+      group-details:    
+        group-name: Group Name
+      group-form:
+        group-name: Group Name
+        group-description: Group Description
+        select-users-add-group: Select users to add to group
+        search-select-users-add-group: Search and select users to add to this group.
+        select-user-add-group: Select user to add to group
+        no-user-add-group: No users added to group
+      policy-form:
+        policy-name: Policy Name
+        enter-name-your-policy: Enter a name for your policy
+        policy-description: Policy Description
+        enter-description-your-policy: Enter a description for your policy
+        select-permissions: Select Permissions
+      view-policy-permissions:
+        view-permissions: >-
+          Policy: {policyName} Permissions
+      view-role-permissions:
+        view-permissions: >-
+          Role: {roleName} Permissions
+      view-user-permissions:
+        view-permissions: >-
+          User: {userName} Permissions
+      change-user-email:
+        title: Change User Email
+        heading: Change email for {userName}
+        prompt: Enter the new email address. The user must verify the new address before it becomes their login email.
+        current-email: Current Email
+        new-email: New Email
+        send-verification: Send Verification
+        email-required: A new email address is required.
+        verification-sent: Email change verification sent. The user must confirm the new address before their login email changes.
+      role-form:
+        role-name: Role Name
+        enter-name-for-this-role: Enter a name for this role
+        role-description: Role Description
+        enter-description-your-role: Enter a description for your role
+        select-permission: Select Permissions
+    table:
+      group-members:
+        no-member: No Members
+    permission-picker:
+      selected: >-
+        Selected: 
+      search-permissions-keyword: Search permissions by keywords
+      loading-permission: Loading permissions...
+  groups:
+    index:
+      untitled: Untitled
+      delete-group-title: Delete {groupName} group
+      delete-group-success-message: Group {name} deleted.
+      delete-group: Delete Groups
+      created: Created
+      edit-group: Edit group...
+      delete-group-label: Delete group...
+      new-group: New Group
+      new-group-created: New group created.
+      edit-group-title: Edit Group
+      group-actions: Group Actions
+      changes-group-save: Changes to group saved.
+      data-assosciated-this-group-deleted: Are you sure you want to delete this group? All data assosciated with this group will also be deleted. This action cannot be undone.
+  policies:
+    index:
+      title: Policies
+      delete-policies: Delete Policies
+      contact-action: Contact Actions
+      edit-policy: Edit policy...
+      delete-policy: Delete policy...
+      new-policy: New Policy
+      new-policy-created: New policy created.
+      unable-changes-policy-warning: Unable to make changes to a {policyType} policy.
+      edit-policy-title: Edit Policy
+      policy-actions: Policy Actions
+      changes-policy-saved-success: Changes to policy saved.
+      unable-delete-policy-warning: Unable to delete a {policyType} policy.
+      data-assosciated-this-policy-deleted: Are you sure you want to delete this policy? All data assosciated with this policy will also be deleted. This action cannot be undone.
+      policy-deleted: Policy {policyName} deleted.
+  roles:
+    index:
+      delete-roles: Delete Roles
+      contact-action: Contact Actions
+      edit-role: Edit role...
+      delete-role: Delete role...
+      new-role: New Role
+      new-role-create: New role created
+      edit-role-title: Edit Role
+      role-actions: Role Actions
+      changes-role-saved: Changes to role saved.
+      data-assosciated-this-role-deleted: Are you sure you want to delete this role? All data assosciated with this role will also be deleted. This action cannot be undone.
+      role-deleted: Role {roleName} deleted.
+      unable-changes-role-warning: Unable to make changes to a {roleType} role.
+      unable-delete-role-warning: Unable to delete a {roleType} role.
+  users:
+    index:
+      delete-user-title: Delete {userName} user
+      delete-user-success-message: User {userName} deleted.
+      deactivate-user-title: Deactivate {userName} user's account
+      deactivate-user-success-message: User {userName} deactivated.
+      re-activate-user-title: Re-activate {userName} user's account
+      re-activate-user-success-message: User {userName} activated.
+      verify-user-title: Manually Verify user {userName} account
+      verify-user-manually-prompt: By clicking confirm this action will manually verify the users email address. Are you sure you want to bypass verification for this user?
+      user-verified-success-message: User {userName} verified.
+      delete-users: Delete Users
+      last-login: Last Login
+      created-at: Created At
+      updated-at: Updated At
+      user-actions: User Actions
+      edit-user: Edit user...
+      view-user-permissions: View permissions...
+      re-send-invitation: Re-send invitation...
+      deactivate-user: Deactivate user...
+      activate-user: Activate user...
+      delete-user: Delete user...
+      verify-user: Verify user...
+      change-user-password: Change user password...
+      change-user-email: Change user email...
+      new-user: New User
+      user-invited-join-your-organization-success: User has been invited to join your organization.
+      edit-user-title: Edit User
+      new-user-created: New user added to organization.
+      user-changes-saved-success: User changes saved.
+      error-you-cant-delete-yourself: You can't delete yourself
+      data-assosciated-user-delete: Are you sure you want to delete this user? All data assosciated with this user will also be deleted. This action cannot be undone.
+      access-account-or-resources-unless-re-activated: Are you sure you want to deactivate this user? This user will no longer be able to access their account or resources unless re-activated.
+      this-user-will-regain-access-to-your-organization: Are you sure you want to re-activate this user? This user will regain access to your organization.
+      resend-invitation-to-join-organization: Resend invitation to join organization
+      confirming-fleetbase-will-re-send-invitation-for-user-to-join-your-organization: By confirming Fleetbase will re-send the invitation for this user to join your organization.
+      invitation-resent: Invitation resent.
+      invite-user: Invite User
+    invite:
+      title: Invite User
+      description: >-
+        Enter the email address of the person you want to invite. If they already
+        have a Fleetbase account they will receive an invitation to join your
+        organisation. If they are new, a pending account will be created and they
+        will be asked to set a password on acceptance.
+      email-placeholder: colleague@example.com
+      name-placeholder: Full name (required for new users)
+      name-help: Required only if the person does not yet have a Fleetbase account.
+      send-invitation: Send Invitation
+      email-required: Please enter an email address.
+      invitation-sent-existing: Invitation sent. The user will receive an email to join your organisation.
+      invitation-sent-new: Invitation sent. A pending account has been created and the user will be asked to set a password.
+  application:
+      access-management: Access Management
+  home:
+      identity-access-management: Identity & Access Management
+  ui:
+    unauthorized-access: You are not authorized to access this resource.
+    permissions-required-for-changes: You do not have the permissions required to make changes.
+    unable-open-resource: Unable to open the selected IAM resource.
+    dashboard-name: IAM Dashboard
+    search-placeholder: Search IAM...
+    scheme-types:
+      flb-managed: FLB Managed
+      org-managed: Organization Managed
+    nav:
+      dashboard-description: Identity and access overview.
+      users-description: Manage identities and account types.
+      users: Users
+      all-users-description: All console users.
+      drivers: Drivers
+      drivers-description: Driver accounts.
+      customers: Customers
+      customers-description: Customer accounts.
+      groups-description: Organize users into access groups.
+      roles-description: Define reusable permission bundles.
+      policies-description: Manage fine-grained access policies.
+    groups:
+      delete-groups: Delete Groups
+    roles:
+      delete-role-title: Delete ({roleName}) role
+      name-required: Role name is required.
+      reserved-name: Creating a role with name "Administrator" or a role name that starts with "Admin" is prohibited, as the name is system reserved.
+    policies:
+      delete-policy-title: Delete ({policyName}) policy
+    users:
+      select-role: Select role
+    change-password:
+      title: Reset User Credentials
+      accept: Reset Credentials
+      heading: You are about to reset the password for {userName}
+      instructions: Please enter the new password and confirm it below. You have the option to send the new credentials to the user via email by selecting the checkbox.
+      new-password: New Password
+      confirm-new-password: Confirm New Password
+      send-credentials: Send password credentials to user
+      success: User password reset.
+    permission-picker:
+      toggle-selected: Toggle Selected
+    widgets:
+      unable-load-widget: Unable to load widget
+      unable-load-kpi: Unable to load KPI
+      coverage-unavailable: Coverage unavailable
+      current: Current
+      days: "{count, plural, one {# day} other {# days}}"
+      access-coverage:
+        title: Access Coverage
+        subtitle: Assignment coverage by user
+        hero: Users with access assignments
+        with-roles: With roles
+        with-groups: With groups
+        with-policies: With policies
+        direct-permissions: Direct permissions
+        no-assignments: No assignments
+      access-risk:
+        title: Access Risk
+        subtitle: Privileged exposure requiring review
+        empty: No privileged access risks detected
+      privileged-access:
+        title: Privileged Access
+        subtitle: High access exposure
+        empty: No privileged roles detected
+      admin-roles: Admin roles
+      wildcard-policies: Wildcard policies
+      direct-grants: Direct grants
+      group-coverage:
+        title: Group Coverage
+        subtitle: Membership distribution
+        groups: Groups
+        memberships: Memberships
+        empty: Empty
+      identity-health:
+        title: Identity Health
+        subtitle: Access posture snapshot
+        active: Active
+        pending: Pending
+        unverified: Unverified
+        dormant: Dormant
+        mfa-coverage: MFA coverage
+        unavailable: Unavailable
+        organization-2fa: Organization 2FA
+        enforced: Enforced
+        enabled: Enabled
+        "off": "Off"
+        dormant-threshold: Dormant threshold
+      kpi:
+        active-users: Active Users
+        current-access: Current access
+        dormant-users: Dormant Users
+        no-recent-login: No recent login
+        inactive-users: Inactive Users
+        disabled-access: Disabled access
+        mfa-coverage: MFA Coverage
+        org-enforcement-shown: Org enforcement shown
+        pending-invites: Pending Invites
+        awaiting-access: Awaiting access
+        policies: Policies
+        roles: Roles
+        organization-managed: Organization managed
+        verified-users: Verified Users
+        identity-verified: Identity verified
+      policy-surface:
+        title: Policy Surface
+        subtitle: Policies by service
+        total: Total
+        org-managed: Org managed
+        empty: No policies available
+      quick-actions:
+        title: IAM Quick Actions
+        subtitle: Jump into common access workflows
+        invite-user: Invite user
+        create-group: Create group
+        create-role: Create role
+        create-policy: Create policy
+      recent-activity:
+        title: Recent IAM Activity
+        subtitle: Latest identity and access changes
+        empty: No recent IAM activity
+      user-lifecycle:
+        title: User Lifecycle Trend
+        subtitle: Created, pending, and inactive users
+      user-type-creation:
+        title: Users by Type Created Over Time
+        subtitle: New identities grouped by user type
+
+
+menu-text:
+  iam:
+    title: IAM
+    description: 'Identity and access management: users, roles, policies, and permissions.'
+  iam-sc-users:
+    title: Users
+    description: Manage console user accounts and their access levels.
+  iam-sc-drivers:
+    title: Drivers
+    description: View and manage driver accounts linked to your organisation.
+  iam-sc-customers:
+    title: Customers
+    description: View and manage customer accounts linked to your organisation.
+  iam-sc-groups:
+    title: Groups
+    description: Organise users into groups for bulk permission management.
+  iam-sc-roles:
+    title: Roles
+    description: Define named roles that bundle sets of permissions.
+  iam-sc-policies:
+    title: Policies
+    description: Create fine-grained access control policies for resources.
+widget-text:
+  iam-kpi-active-users:
+    name: Active Users
+    description: Active users who can currently access the organization.
+  iam-kpi-pending-invites:
+    name: Pending Invites
+    description: Users invited or awaiting verification.
+  iam-kpi-inactive-users:
+    name: Inactive Users
+    description: Users whose organization access is inactive.
+  iam-kpi-dormant-users:
+    name: Dormant Users
+    description: Users with no recent login activity.
+  iam-kpi-mfa-coverage:
+    name: MFA Coverage
+    description: Share of users with two-factor authentication enabled when available.
+  iam-kpi-roles:
+    name: Roles
+    description: Organization-managed IAM roles.
+  iam-kpi-policies:
+    name: Policies
+    description: Organization-managed access policies.
+  iam-user-type-creation-trend:
+    name: Users by Type Created Over Time
+    description: New identities created by user type over the selected period.
+  iam-access-risk:
+    name: Access Risk
+    description: Privileged roles, wildcard policies, and direct privileged grants.
+  iam-policy-surface:
+    name: Policy Surface
+    description: Policies grouped by service and ownership.
+  iam-recent-activity:
+    name: Recent IAM Activity
+    description: Recent user, group, role, and policy changes.
+  iam-quick-actions:
+    name: IAM Quick Actions
+    description: Shortcuts for common IAM management tasks.
+  iam-metrics-widget:
+    name: IAM Metrics (Legacy)
+    description: Legacy grouped IAM usage metrics.

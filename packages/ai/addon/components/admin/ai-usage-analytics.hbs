@@ -1,0 +1,137 @@
+<ContentPanel @title={{t "ai.ui.usage.title"}} @open={{true}} @wrapperClass="bordered-classic">
+    <div class="fleetbase-ai-admin-panel">
+        <div class="fleetbase-ai-admin-filters">
+            <InputGroup @name={{t "ai.ui.common.status"}}>
+                <Select class="w-full" @value={{this.filters.status}} @options={{this.statusOptions}} @optionLabel="label" @optionValue="value" @onSelect={{fn this.setFilter "status"}} />
+            </InputGroup>
+            <InputGroup @name={{t "ai.ui.common.provider"}}>
+                <Select class="w-full" @value={{this.filters.provider}} @options={{this.providerOptions}} @optionLabel="label" @optionValue="value" @placeholder={{t "ai.ui.common.any-provider"}} @onSelect={{this.setProvider}} />
+            </InputGroup>
+            <InputGroup @name={{t "ai.ui.common.model"}}>
+                <Select class="w-full" @value={{this.filters.model}} @options={{this.modelOptions}} @optionLabel="label" @optionValue="value" @placeholder={{t "ai.ui.common.any-model"}} @onSelect={{fn this.setFilter "model"}} />
+            </InputGroup>
+            <InputGroup @name={{t "ai.ui.common.organization"}}>
+                <ModelSelect
+                    @modelName="company"
+                    @source={{this.companySource}}
+                    @selectedModel={{this.selectedCompany}}
+                    @placeholder={{t "ai.ui.common.select-organization"}}
+                    @triggerClass="form-select form-input"
+                    @allowClear={{true}}
+                    @renderInPlace={{true}}
+                    @onChange={{this.setCompany}}
+                    as |company|
+                >
+                    {{or company.name company.public_id company.uuid}}
+                </ModelSelect>
+            </InputGroup>
+            <InputGroup @name={{t "ai.ui.common.user"}}>
+                <ModelSelect
+                    @modelName="user"
+                    @source={{this.userSource}}
+                    @query={{this.userQuery}}
+                    @selectedModel={{this.selectedUser}}
+                    @placeholder={{t "ai.ui.common.select-user"}}
+                    @triggerClass="form-select form-input"
+                    @allowClear={{true}}
+                    @renderInPlace={{true}}
+                    @onChange={{this.setUser}}
+                    as |user|
+                >
+                    {{or user.name user.email user.public_id user.uuid}}
+                </ModelSelect>
+            </InputGroup>
+            <InputGroup @name={{t "ai.ui.common.date"}}>
+                <DatePicker @value={{this.dateRange}} @range={{true}} @onSelect={{this.setDateRange}} @autoClose={{true}} @buttons={{array "clear"}} @placeholder={{t "ai.ui.common.date-placeholder"}} class="w-full form-input-sm" />
+            </InputGroup>
+        </div>
+
+        <div class="fleetbase-ai-admin-actions">
+            <Button @type="primary" @icon="chart-column" @text={{t "ai.ui.usage.update"}} @isLoading={{this.loadUsage.isRunning}} @onClick={{perform this.loadUsage}} />
+            <Button @icon="xmark" @text={{t "ai.ui.common.clear"}} @onClick={{this.clearFilters}} />
+        </div>
+
+        <div class="fleetbase-ai-usage-cards">
+            {{#each this.usageCards as |card|}}
+                <div class="fleetbase-ai-usage-card">
+                    <FaIcon @icon={{card.icon}} />
+                    <span>{{card.label}}</span>
+                    <strong>{{card.value}}</strong>
+                </div>
+            {{/each}}
+        </div>
+
+        <div class="fleetbase-ai-admin-stack">
+            <div class="fleetbase-ai-admin-card">
+                <div class="fleetbase-ai-admin-card-header">
+                    <span>{{t "ai.ui.usage.by-organization"}}</span>
+                    <small>{{t "ai.ui.usage.top-50"}}</small>
+                </div>
+                <AiUsageGroupTable @rows={{this.usage.by_company}} @label={{t "ai.ui.common.organization"}} />
+            </div>
+
+            <div class="fleetbase-ai-admin-card">
+                <div class="fleetbase-ai-admin-card-header">
+                    <span>{{t "ai.ui.usage.by-user"}}</span>
+                    <small>{{t "ai.ui.usage.top-50"}}</small>
+                </div>
+                <AiUsageGroupTable @rows={{this.usage.by_user}} @label={{t "ai.ui.common.user"}} />
+            </div>
+
+            <div class="fleetbase-ai-admin-card">
+                <div class="fleetbase-ai-admin-card-header">
+                    <span>{{t "ai.ui.usage.by-provider"}}</span>
+                    <small>{{t "ai.ui.usage.top-50"}}</small>
+                </div>
+                <AiUsageGroupTable @rows={{this.usage.by_provider}} @label={{t "ai.ui.common.provider"}} />
+            </div>
+
+            <div class="fleetbase-ai-admin-card">
+                <div class="fleetbase-ai-admin-card-header">
+                    <span>{{t "ai.ui.usage.by-model"}}</span>
+                    <small>{{t "ai.ui.usage.top-50"}}</small>
+                </div>
+                <AiUsageGroupTable @rows={{this.usage.by_model}} @label={{t "ai.ui.common.model"}} />
+            </div>
+        </div>
+
+        <div class="fleetbase-ai-admin-stack">
+            <div class="fleetbase-ai-admin-card">
+                <div class="fleetbase-ai-admin-card-header">
+                    <span>{{t "ai.ui.usage.by-status"}}</span>
+                </div>
+                <AiUsageGroupTable @rows={{this.usage.by_status}} @label={{t "ai.ui.common.status"}} />
+            </div>
+
+            <div class="fleetbase-ai-admin-card">
+                <div class="fleetbase-ai-admin-card-header">
+                    <span>{{t "ai.ui.usage.by-day"}}</span>
+                </div>
+                <div class="fleetbase-ai-admin-table-wrap">
+                    <table class="fleetbase-ai-admin-table">
+                        <thead>
+                            <tr>
+                                <th>{{t "ai.ui.usage.day"}}</th>
+                                <th>{{t "ai.ui.common.tasks"}}</th>
+                                <th>{{t "ai.ui.common.total-tokens"}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each this.usage.by_day as |row|}}
+                                <tr>
+                                    <td>{{row.day}}</td>
+                                    <td>{{row.task_count}}</td>
+                                    <td>{{row.total_tokens}}</td>
+                                </tr>
+                            {{else}}
+                                <tr>
+                                    <td colspan="3" class="fleetbase-ai-admin-empty">{{t "ai.ui.usage.no-usage"}}</td>
+                                </tr>
+                            {{/each}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</ContentPanel>

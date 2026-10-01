@@ -1,0 +1,154 @@
+<div class="next-content-panel-wrapper" ...attributes>
+
+    {{! ===== OVERVIEW ===== }}
+    <ContentPanel @title={{t "fleet-ops.ui.part.details.overview"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+
+            {{! — Photo — }}
+            {{#if (or @resource.photo_url (config "defaultValues.placeholderImage"))}}
+                <div class="col-span-2 flex items-start gap-3 pb-2">
+                    <div class="border border-dashed border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-600 rounded-lg flex items-center justify-center w-16 h-16 flex-shrink-0">
+                        <Image
+                            alt={{@resource.name}}
+                            src={{or @resource.photo_url (config "defaultValues.placeholderImage")}}
+                            @fallbackSrc={{config "defaultValues.placeholderImage"}}
+                            class="w-12 h-12 object-contain"
+                        />
+                    </div>
+                    <div>
+                        <p class="font-semibold text-sm text-gray-800 dark:text-gray-100">{{n-a @resource.name}}</p>
+                        <p class="text-[11px] text-gray-400 dark:text-gray-500 font-mono">{{n-a @resource.public_id}}</p>
+                    </div>
+                </div>
+            {{/if}}
+
+            {{! — Identity & Classification — }}
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "fleet-ops.ui.part.details.identity-classification"}}
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">ID</div>
+                <ClickToCopy @value={{@resource.public_id}} class="field-value font-mono">{{n-a @resource.public_id}}</ClickToCopy>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">SKU</div>
+                <ClickToCopy @value={{@resource.sku}} class="field-value font-mono">{{n-a @resource.sku}}</ClickToCopy>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.part.details.name"}}</div>
+                <div class="field-value">{{n-a @resource.name}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.part.details.type"}}</div>
+                <div class="field-value">{{n-a (smart-humanize @resource.type)}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.part.details.barcode"}}</div>
+                <div class="field-value font-mono">{{n-a @resource.barcode}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.part.details.serial-number"}}</div>
+                <div class="field-value font-mono">{{n-a @resource.serial_number}}</div>
+            </div>
+
+            {{! — Make & Model — }}
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.part.details.make-model"}}
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.part.details.manufacturer"}}</div>
+                <div class="field-value">{{n-a @resource.manufacturer}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.part.details.model"}}</div>
+                <div class="field-value">{{n-a @resource.model}}</div>
+            </div>
+
+            {{! — Inventory — }}
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.part.details.inventory"}}
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.part.details.status"}}</div>
+                <div class="field-value">
+                    <Badge @status={{@resource.status}}>{{smart-humanize @resource.status}}</Badge>
+                </div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.part.details.quantity-on-hand"}}</div>
+                <div class="field-value flex items-center gap-2">
+                    {{n-a @resource.quantity_on_hand}}
+                    {{#if @resource.is_low_stock}}
+                        <Badge @status="warning">{{t "fleet-ops.ui.part.details.low-stock"}}</Badge>
+                    {{else if @resource.is_in_stock}}
+                        <Badge @status="success">{{t "fleet-ops.ui.part.details.in-stock"}}</Badge>
+                    {{else}}
+                        <Badge @status="danger">{{t "fleet-ops.ui.part.details.out-of-stock"}}</Badge>
+                    {{/if}}
+                </div>
+            </div>
+            {{#if @resource.asset_name}}
+                <div class="field-info-container">
+                    <div class="field-name">{{t "fleet-ops.ui.part.details.fitted-to"}}</div>
+                    <div class="field-value">{{n-a @resource.asset_name}}</div>
+                </div>
+            {{/if}}
+        </div>
+    </ContentPanel>
+
+    {{! ===== PRICING ===== }}
+    <ContentPanel @title={{t "fleet-ops.ui.part.details.pricing"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.part.details.unit-cost"}}</div>
+                <div class="field-value">{{format-currency @resource.unit_cost @resource.currency}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">MSRP</div>
+                <div class="field-value">{{format-currency @resource.msrp @resource.currency}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.part.details.total-inventory-value"}}</div>
+                <div class="field-value font-semibold">{{format-currency @resource.total_value @resource.currency}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.part.details.currency"}}</div>
+                <div class="field-value">{{n-a @resource.currency}}</div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    {{! ===== SUPPLIER & WARRANTY ===== }}
+    {{#if (or @resource.vendor_name @resource.warranty_name)}}
+        <ContentPanel @title={{t "fleet-ops.ui.part.details.supplier-warranty"}} @open={{true}} @wrapperClass="bordered-top">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+                {{#if @resource.vendor_name}}
+                    <div class="field-info-container">
+                        <div class="field-name">{{t "fleet-ops.ui.part.details.supplier-vendor"}}</div>
+                        <div class="field-value">{{n-a @resource.vendor_name}}</div>
+                    </div>
+                {{/if}}
+                {{#if @resource.warranty_name}}
+                    <div class="field-info-container">
+                        <div class="field-name">{{t "fleet-ops.ui.part.details.warranty"}}</div>
+                        <div class="field-value">{{n-a @resource.warranty_name}}</div>
+                    </div>
+                {{/if}}
+            </div>
+        </ContentPanel>
+    {{/if}}
+
+    {{! ===== DESCRIPTION ===== }}
+    {{#if @resource.description}}
+        <ContentPanel @title={{t "fleet-ops.ui.part.details.description"}} @open={{false}} @wrapperClass="bordered-top">
+            <div class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                {{@resource.description}}
+            </div>
+        </ContentPanel>
+    {{/if}}
+
+    {{! ===== CUSTOM FIELDS ===== }}
+    <CustomField::Yield @subject={{@resource}} @viewMode={{true}} @wrapperClass="bordered-top" />
+
+    <Spacer @height="200px" />
+</div>

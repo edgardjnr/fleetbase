@@ -787,6 +787,411 @@ console:
     received: >-
         Received:
     message: No notifications to display.
+  ui:
+    configure:
+      test-config: Test Config
+      driver: Driver
+      filesystem:
+        title: Filesystem
+        driver-help: Select the default filesystem driver for Fleetbase to use.
+        driver-placeholder: Select filesystem driver
+        gcs-env-warning: Warning! GCS is already configured in the server environment. Changing values below may break this.
+        gcs-key-file: GCS Service Account Key File
+        saved: Filesystem configuration saved.
+      upload-service-account-json: Upload Service Account JSON
+      mail:
+        title: Mail
+        mailer: Mailer
+        mailer-help: Select the default mailer for Fleetbase to use.
+        mailer-placeholder: Select mailer
+        smtp-encryption: SMTP Encryption
+        smtp-encryption-help: Enabled TLS Encryption
+        smtp-username: SMTP Username
+        smtp-password: SMTP Password
+        smtp-timeout: SMTP Timeout
+        smtp-auth-mode: SMTP Auth Mode
+        save-to-sent-items: Save to sent items
+        from-address: From Address
+        from-address-help: Input the email address for Fleetbase to send emails from.
+        from-name: From Name
+        from-name-help: Input the name for Fleetbase to send emails from.
+        saved: Mail configuration saved.
+      queue:
+        title: Queue
+        driver-help: Select the default queue driver for Fleetbase to use.
+        driver-placeholder: Select queue driver
+        saved: Queue configuration saved.
+      socket:
+        title: SocketCluster Connection
+        cannot-change: The SocketCluster configuration cannot be changed at this time.
+        output: Output
+        awaiting-events: Awaiting events...
+        test-connection: Test Socket Connection
+        connection-error: Socket connection error!
+        connected: Socket is connected
+        subscribed: Socket subscribed to test channel
+      push:
+        apn-title: APN Configuration
+        upload-p8: Upload P8 Key File
+        apn-production: APN Production
+        firebase-title: Firebase Configuration
+        test-title: Test Push Notification
+        title-label: "Title:"
+        message-label: "Message:"
+        apn-token-label: "APN Device Token:"
+        fcm-token-label: "FCM Device Token:"
+        title-placeholder: Push Notification Title
+        message-placeholder: Push Notification Message
+        apn-token-placeholder: APN Device Token
+        fcm-token-placeholder: FCM Device Token
+        test-message: This is a test push notification!
+        saved: "Notification channel's configuration saved."
+      services:
+        sms-providers: SMS Providers
+        default-provider: Default Provider
+        configure-provider: Configure Provider
+        use-tls: Use TLS
+        advanced-settings: Advanced Settings
+        hide-advanced-settings: Hide Advanced Settings
+        method: Method
+        headers-json: Headers JSON
+        query-params-json: Query Params JSON
+        body-template-json: Body Template JSON
+        send-test-sms-here: Send Test SMS Here
+        test-message: Test Message
+        test-sms-provider: Test SMS Provider
+        test-sentry: Test Sentry Config
+        sms-test-message: This is a Fleetbase SMS test.
+        custom-http-gateway: Custom HTTP Gateway
+        gateway-url: Gateway URL
+        from: From
+    account:
+      auth:
+        title: Account Auth
+        menu: Auth
+        change-email: Change Email
+        change-email-help: Enter a new email address and your current password. Your login email changes only after you confirm the verification email sent to the new address.
+        current-email: Current Email
+        new-email: New Email
+        current-password: Current Password
+        send-verification-email: Send Verification Email
+        enter-new-password: Enter new Password
+        confirm-change-password: Confirm & Change Password
+        two-fa-settings: 2FA Settings
+        loading-two-fa: Loading User 2FA Settings...
+        save-two-fa: Save 2FA Settings
+        email-change-sent: Email change verification sent. Confirm the new address before your login email changes.
+        email-change-failed: Failed to request email change.
+        password-changed: Password change successfully.
+        password-change-failed: Failed to change password.
+        validate-password-body: You must validate your current password before it can be changed.
+        two-fa-saved: 2FA Settings saved successfully.
+      profile-saved: Profile changes saved.
+      organizations:
+        title: Organizations
+        create: Create Organization
+        yours: Your Organizations
+        member-since: "Member Since:"
+        leave: Leave
+        switch: Switch
+        delete-organization: Delete Organization
+        transfer-and-leave: Transfer Ownership and Leave
+        leave-organization: Leave Organization
+        edit-organization: Edit Organization
+        cannot-leave-only: Unable to leave your only organization.
+        cannot-delete-only: Unable to delete your only organization.
+        no-delete-rights: You do not have rights to delete this organization.
+        delete-confirm-title: "Are you sure you want to delete the organization {name}?"
+        delete-confirm-body: This action will permanently remove all data, including orders, members, and settings associated with the organization. <br /><br /><strong>This action cannot be undone.</strong>
+    modals:
+      leave-organization:
+        owner-intro: "As the owner of <strong>{name}</strong>, leaving the organization requires you to nominate a new owner."
+        select-member-help: Please select a member from the dropdown below to transfer ownership before you can proceed.
+        select-new-owner: Select a New Owner
+        select-member: Select a member
+        sole-owner: "You are the sole owner of <strong>{name}</strong>."
+        will-be-deleted: By leaving, the organization will be permanently deleted along with all its data.
+        proceed-question: Are you sure you want to proceed?
+        cannot-undo: This action cannot be undone.
+        leave-question: "Are you sure you want to leave the organization <strong>{name}</strong>?"
+        lose-access: You will no longer have access to its resources and settings.
+      create-dashboard:
+        name: Dashboard name
+        name-help: Enter the name of your dashboard
+      validate-password:
+        title: Validate Current Password
+        accept: Validate Password
+        invalid: Invalid current password.
+    two-fa:
+      enable: Enable Two-Factor Authentication
+      require-users: Require Users to Set-Up 2FA
+      choose-method: Choose an authentication method
+      choose-method-help: "In addition to your username and password, you'll have to enter a code (delivered via app or SMS) to sign in to your account"
+      recommended: Recommended
+      methods:
+        sms:
+          name: SMS
+          description: Receive a unique code via SMS
+        email:
+          name: Email
+          description: Receive a unique code via Email
+        authenticator_app:
+          name: Authenticator App
+          description: Get codes from an app like Authy, 1Password, Microsoft Authenticator, or Google Authenticator
+      loading-config: Loading 2FA Config...
+      title: 2FA
+      init-failed: 2FA failed to initialize.
+      session-expired: 2FA authentication session has expired.
+      saved-organization: 2FA Settings saved for organization successfully.
+      saved-admin: 2FA Settings saved for admin successfully.
+    admin:
+      org:
+        onboarding: Onboarding
+        owner: Owner
+        owner-label: "Owner:"
+        no-owner-assigned: No owner assigned
+        no-owner-is-assigned: No owner is assigned to this organization.
+        users-label: "Users:"
+        created-label: "Created:"
+        public-id: Public ID
+        sections: Organization admin sections
+        extensions: Extensions
+        impersonate-owner: Impersonate Owner
+        copy-public-id: Copy Public ID
+        copy-uuid: Copy UUID
+        edit-settings: Edit Settings
+        copied: "{label} copied to clipboard."
+        updated: Organization updated.
+        no-owner-to-impersonate: This organization does not have an owner to impersonate.
+        now-impersonating: "Now impersonating {name}..."
+        organization-owner: organization owner
+        state:
+          active: active
+          inactive: inactive
+          suspended: suspended
+          complete: complete
+          incomplete: incomplete
+        currency: Currency
+        operational-state: Operational State
+        recent-activity: Recent Activity
+        assigned: Assigned
+        missing: Missing
+        members: Organization members
+        needs-assignment: Needs assignment
+        ready-for-operations: Ready for operations
+        needs-review: Needs review
+        platform-access: Platform access
+        settings-help: Core organization profile, phone, and currency fields.
+        lifecycle-controls: Lifecycle Controls
+        lifecycle-help: Status and onboarding changes are recorded in organization activity.
+        organization-status: Organization Status
+        organization-status-help: Suspend, reactivate, or flag inactive access.
+        activate: Activate
+        suspend: Suspend
+        onboarding-state: Onboarding State
+        onboarding-state-help: Manually correct onboarding state for support workflows.
+        mark-complete: Mark Complete
+        mark-incomplete: Mark Incomplete
+        danger-zone: Danger Zone
+        danger-zone-help: Destructive organization deletion and data purge actions remain intentionally unavailable until separate purge contracts and confirmation workflows are added.
+        update-status-title: Update Organization Status
+        update-status-body: "Set this organization status to {status}?"
+        update-status: Update Status
+        status-updated: Organization status updated.
+        mark-onboarding-complete: Mark Onboarding Complete
+        mark-onboarding-incomplete: Mark Onboarding Incomplete
+        mark-onboarding-complete-body: Mark this organization onboarding as complete?
+        mark-onboarding-incomplete-body: Mark this organization onboarding as incomplete?
+        onboarding-updated: Organization onboarding updated.
+        users:
+          title: Organization Users
+          help: Search members, review access state, and manage user support actions for this organization.
+          table-help: Filter organization users and open row actions for impersonation or password support.
+          empty-title: No users found
+          empty-description: This organization does not have users matching the current view.
+          filtered-title: No users match your filters
+          filtered-description: Adjust the search or filters to find another organization user.
+          user-actions: User Actions
+          impersonate: Impersonate
+          verify: Verify
+          deactivate: Deactivate
+          transfer-ownership: Transfer Ownership
+          remove-from-organization: Remove from Organization
+          verified: User verified.
+          activated: User activated.
+          deactivate-user: Deactivate User
+          deactivate-body: "Deactivate {name} for this organization?"
+          deactivated: User deactivated.
+          transfer-ownership-body: "Transfer organization ownership to {name}?"
+          ownership-transferred: Organization ownership transferred.
+          remove-user: Remove User
+          remove-body: "Remove {name} from this organization?"
+          removed: User removed.
+        set-inactive: Inactive
+        onboarding-complete: Complete
+        onboarding-incomplete: Incomplete
+        activity-stream: Activity Stream
+        activity-stream-help: Review organization-wide activity captured for this company UUID.
+        installed-extensions: Installed Extensions
+        installed-extensions-help: Extension footprint for this organization. Package-specific controls can mount additional panels through the admin registry.
+        installed-count: "{count} installed"
+        no-extensions: No organization-specific extensions are installed.
+        extension: Extension
+        extension-tab-unavailable: This admin extension tab is unavailable.
+      branding-saved: Branding settings saved.
+      overview-widget:
+        title: Admin Overview
+        active-admins: Active admins
+        needs-attention: Needs attention
+        load-error: Unable to load admin overview.
+        legacy: Legacy overview widget
+      view-all: View all
+      orgs:
+        empty-title: No organizations found
+        empty-description: No organizations match the current admin view.
+        filtered-title: No organizations match your filters
+        filtered-description: Adjust the search, filters, or saved view to find another organization.
+        clear-view: Clear View
+        views: Views
+        needs-attention: Needs Attention
+        missing-owner: Missing Owner
+        incomplete-onboarding: Incomplete Onboarding
+        inactive-status: Inactive Status
+        export-selected: Export selected
+        billing: Billing
+        last-activity: Last Activity
+        organization-actions: Organization Actions
+        view-organization: View Organization
+        open-activity: Open Activity
+      nav:
+        overview: Review admin dashboard metrics and platform health.
+        organizations: Manage organizations, users, extensions, activity, and settings.
+        branding: Configure console branding, logos, colors, and theme defaults.
+        two-fa: Configure administrator two-factor authentication policy.
+        platform-api-token: Manage the platform API token used by trusted platform integrations.
+        schedule-monitor: Review scheduled tasks and their recent execution logs.
+        panel-controls: "{title} admin controls."
+        system-config: System Config
+        system-config-description: Configure core platform services, mail, storage, queues, sockets, and notifications.
+        services: Configure platform service providers.
+        mail: Configure mail delivery.
+        filesystem: Configure file storage.
+        queue: Configure background queue workers.
+        socket: Configure realtime socket settings.
+        notification-channels: Configure notification channels.
+      unauthorized: You do not have authorization to access admin!
+    settings:
+      notifications:
+        select-notifiables: Select notifiables...
+        sms-title: SMS Notification Settings
+        enable-sender-id: Enable Alpha-Numeric Sender ID
+        sender-id: Alpha-Numeric Sender ID
+        sender-id-help: Set the custom alphanumeric name that will appear as the sender for all SMS sent by your organization. Up to 11 letters or numbers. Not supported in all countries.
+        sender-id-info-1: Alphanumeric Sender IDs allow your organization to replace a traditional phone number with a custom text-based sender name when sending SMS notifications (e.g., Fleetbase, MyStore, DispatchHQ). This can improve brand recognition, increase message trust, and enhance deliverability in regions where numeric senders are restricted by local carriers.
+        sender-id-info-2: When enabled, Fleetbase will use this sender ID for all outbound SMS messages sent on behalf of your organization, including order updates, verification codes, driver notifications, and other automated alerts. Sender IDs can contain up to 11 characters using letters and numbers.
+        sender-id-info-3: Some countries require or enforce specific messaging rules, and certain carriers may only support alphanumeric senders. Using a Sender ID can significantly improve message delivery in these regions.
+        sender-id-warning: Delivery of SMS using Alphanumeric Sender IDs depends on local carrier policies. Some regions may restrict or block numeric senders or require the use of alphanumeric senders for successful delivery. While Fleetbase will attempt to deliver all messages using your configured Sender ID, message delivery cannot be guaranteed in countries with carrier-level filtering or regulatory restrictions. Your organization is responsible for ensuring compliance with local messaging regulations in the countries you send SMS to.
+        saved: Notification settings successfully saved.
+      organization-saved: Organization changes successfully saved.
+    page-titles:
+      cache: Cache
+      notification-channels: Notification Channels Configuration
+      system-configuration: System Configuration
+      admin: Admin
+      catch: Catch
+      invite: Invite
+      for-driver: ForDriver
+    verification:
+      email-verified: Email successfully verified!
+      verify-by-phone: Verify Account by Phone
+      send: Send
+      no-phone: No phone number provided.
+      sms-sent: Verification code SMS sent!
+      resend-code: Resend Verification Code
+      no-email: No email address provided.
+      email-sent: Verification code email sent!
+      welcome-to: "Welcome to {name}"
+    onboarding:
+      welcome: Welcome to Fleetbase!
+      failed: Onboard failed
+    invite:
+      accepted: Invitation accepted, welcome to Fleetbase!
+      set-new-password: Set a new password
+    notifications:
+      marked-read: Notification marked as read.
+    impersonator:
+      end: End Impersonation
+      ending: Ending impersonation session.
+    github-card:
+      star: Star on Github
+      latest-release: "Latest Release:"
+      stars: Stars
+      watchers: Watchers
+      forks: Forks
+      open: Open
+      issues: Issues
+    blog:
+      visit: Visit Blog
+      empty: No blog posts are available right now.
+    widgets:
+      fleetbase-blog:
+        name: Fleetbase Blog
+        description: Lists latest news and events from the Fleetbase official team.
+      github-card:
+        name: Github Card
+        description: Displays current Github stats from the official Fleetbase repo.
+      admin:
+        metric: Metric
+        summary: Admin Summary
+        vs-previous-30d: vs previous 30d
+        missing-metric-slug: Missing metric slug.
+        load-metric-error: Unable to load metric.
+        no-items: No items require attention.
+        missing-widget-slug: Missing dashboard widget slug.
+        load-widget-error: Unable to load dashboard widget.
+        users-total:
+          title: Users
+          description: Total platform users with 30-day trend.
+        organizations-total:
+          title: Organizations
+          description: Total organizations with 30-day trend.
+        active-admins:
+          title: Active Admins
+          description: Active system administrators.
+          footnote: admin access
+        organizations-attention:
+          title: Pending Attention
+          description: Organizations with ownership, onboarding, or status concerns.
+          footnote: needs review
+        new-users:
+          title: New Users
+          description: Users created in the last 30 days.
+        new-organizations:
+          title: New Organizations
+          description: Organizations created in the last 30 days.
+        failed-jobs:
+          title: Failed Jobs
+          description: Failed queue jobs waiting for review.
+          footnote: queue health
+        suspicious-activity:
+          title: Suspicious Activity
+          description: Recent sensitive admin or auth activity.
+          footnote: last 30d
+        system-diagnostics:
+          title: System Diagnostics
+          description: Configuration health for mail, queue, filesystem, socket, notifications, and scheduler.
+        admin-activity:
+          title: Admin Activity
+          description: Recent sensitive activity across admin-managed resources.
+        organization-risk-queue:
+          title: Organization Risk Queue
+          description: Organizations that need support, ownership, onboarding, or status review.
+        configuration-gaps:
+          title: Configuration Gaps
+          description: Missing or risky system configuration detected by the console host.
+        platform-growth:
+          title: Platform Growth Trend
+          description: User and organization creation trend for the current and previous 30-day windows.
 
 modals:
   set-password:
@@ -852,3 +1257,1099 @@ layout:
         view-profile: View profile
         keyboard-shortcuts: Show keyboard shortcuts
         changelog: Changelog
+
+ember-ui:
+  template-builder:
+    element-types:
+      text: Text
+      image: Image
+      table: Table
+      line: Line
+      shape: Shape
+      qr_code: QR Code
+      barcode: Barcode
+    properties-panel:
+      element-properties: "Properties: {type}"
+      position: Position
+      rotation: Rotation
+      z-index: Z-Index
+      opacity: Opacity
+      size: Size
+      width: Width
+      height: Height
+      content: Content
+      content-placeholder: "Enter text or use '{variable.name}' syntax..."
+      insert-variable-or-formula: Insert variable or formula
+      image-source: Image Source
+      change-variable: Change variable
+      clear: Clear
+      uploading: Uploading...
+      replace-image: Replace image
+      click-to-upload-image: Click to upload image
+      or: or
+      use-variable: "Use variable (e.g. '{company.logo}')"
+      alt-text: Alt Text
+      object-fit: Object Fit
+      border-radius: Border Radius
+      columns: Columns
+      column-label: Column label
+      remove-column: Remove column
+      no-columns: No columns defined. Add one below.
+      add-column: Add column
+      data-source: Data Source
+      variable: Variable
+      manual: Manual
+      data-variable: Data Variable
+      insert-variable: Insert variable
+      data-variable-help: "The variable must resolve to an array of objects. Each object's keys should match the column keys defined above."
+      remove-row: Remove row
+      define-columns-first: Define columns first.
+      no-rows: No rows yet.
+      add-row: Add row
+      table-style: Table Style
+      header-bg: Header BG
+      header-text: Header Text
+      border-color: Border Color
+      cell-padding: Cell Padding
+      row-alt-color: Row Alt Color
+      value: Value
+      format: Format
+      color: Color
+      width-px: Width (px)
+      style: Style
+      fill-color: Fill Color
+      font-family: Font Family
+      size-px: Size (px)
+      weight: Weight
+      line-height: Line Height
+      letter-spacing: Letter Spacing
+      alignment: Alignment
+      background: Background
+      padding-px: Padding (px)
+      border: Border
+      radius-px: Radius (px)
+      canvas-settings: Canvas Settings
+      template-name: Template Name
+      paper-size: Paper Size
+      orientation: Orientation
+      background-color: Background Color
+      description: Description
+      row-number: "Row {number}"
+      font-weight-light: Light
+      font-weight-regular: Regular
+      font-weight-medium: Medium
+      font-weight-semi-bold: Semi Bold
+      font-weight-bold: Bold
+      font-weight-extra-bold: Extra Bold
+      font-weight-black: Black
+      line-style-solid: Solid
+      line-style-dashed: Dashed
+      line-style-dotted: Dotted
+      object-fit-cover: Cover
+      object-fit-contain: Contain
+      object-fit-fill: Fill
+      object-fit-none: None
+      shape-rectangle: Rectangle
+      shape-circle: Circle
+      paper-letter: Letter (216 × 279 mm)
+      paper-legal: Legal (216 × 356 mm)
+      paper-custom: Custom
+      orientation-portrait: Portrait
+      orientation-landscape: Landscape
+      image-upload-failed: "Image upload failed: {message}"
+    toolbar:
+      close: Close
+      add-element: "Add {element}"
+      zoom-out: Zoom out
+      reset-zoom: Reset zoom
+      zoom-in: Zoom in
+      rotate-left: Rotate left 90°
+      rotate-right: Rotate right 90°
+      undo: Undo
+      redo: Redo
+      preview-template: Preview template
+      preview: Preview
+      save: Save
+    query-form:
+      edit-query: Edit Query
+      new-query: New Query
+      basic-info: Basic Info
+      label-placeholder: e.g. Recent Orders
+      variable-name: Variable Name
+      variable-name-help: Auto-derived from label if left blank.
+      description: Description
+      description-placeholder: Optional description
+      resource-type: Resource Type
+      resource-type-help: Select the Fleetbase model this query runs against.
+      filter-conditions: Filter Conditions
+      add-condition: Add condition
+      field-placeholder: field
+      value-placeholder: "value or '{variable}'"
+      remove-condition: Remove condition
+      no-conditions: No conditions — all records will be returned.
+      sort: Sort
+      add-sort: Add sort
+      sort-field-placeholder: field (e.g. created_at)
+      ascending: Ascending
+      descending: Descending
+      remove-sort: Remove sort
+      no-sort: No sort — default model order will be used.
+      limit: Limit
+      no-limit: No limit
+      limit-help: Max number of rows to return.
+      eager-load: Eager Load (with)
+      eager-load-placeholder: e.g. driver,vehicle
+      eager-load-help: Comma-separated relationship names to eager-load.
+      label: Label
+      save-changes: Save Changes
+      create-query: Create Query
+      resource-types:
+        order: Order
+        driver: Driver
+        place: Place
+        vendor: Vendor
+        contact: Contact
+        issue: Issue
+        vehicle: Vehicle
+        fuel-report: Fuel Report
+        purchase-rate: Purchase Rate
+      op-equals: = equals
+      op-not-equals: ≠ not equals
+      op-gt: "> greater than"
+      op-gte: ≥ greater or equal
+      op-lt: < less than
+      op-lte: ≤ less or equal
+      op-contains: ~ contains
+      op-not-contains: "!~ not contains"
+      op-in: in list
+      op-not-in: not in list
+      op-null: is null
+      op-not-null: is not null
+      label-required: Label is required.
+      resource-type-required: Please select a resource type.
+    variable-picker:
+      title: Insert Variable or Formula
+      search-variables: Search variables...
+      global: Global
+      always-available: Always available
+      formula-syntax: Formula Syntax
+      use-variables-inside: "Use variables inside the expression:"
+      supported: "Supported: + − × ÷ ( ) round() abs() ceil() floor()"
+      expression: Expression
+      preview: Preview
+      quick-insert: Quick-insert variable
+      insert-formula: Insert Formula
+      variables: Variables
+      formula: Formula
+      variables-count: "{count, plural, one {# variable} other {# variables}}"
+      no-match: "No variables match \"{query}\""
+      unbalanced-braces: Unbalanced curly braces in formula.
+      globals:
+        company-name: Company Name
+        company-email: Company Email
+        company-phone: Company Phone
+        company-address: Company Address
+        company-logo: Company Logo URL
+        current-user: Current User
+        user-email: User Email
+        current-datetime: Current DateTime
+        today: "Today's Date"
+        current-year: Current Year
+    queries-panel:
+      queries: Queries
+      add-query: Add query
+      add: Add
+      unsaved: unsaved
+      edit-query: Edit query
+      delete-query: Delete query
+      no-queries: No queries yet.
+      no-queries-help: Queries load data from Fleetbase models at render time and are saved with the template.
+    layers-panel:
+      layers: Layers
+      double-click-rename: Double-click to rename
+      move-up: Move layer up
+      move-down: Move layer down
+      delete-element: Delete element
+      no-elements: No elements yet.
+      no-elements-help: Use the toolbar to add elements.
+      hide-element: Hide element
+      show-element: Show element
+      element: Element
+    element-renderer:
+      no-columns: No columns defined
+  pagination:
+    previous: Previous
+    next: Next
+    showing: Showing
+    to: to
+    of: of
+    results: results
+  layout:
+    section:
+      header:
+        search-input: Search input
+    header:
+      home: Home
+      organization-settings: Organization settings
+      create-or-join-organizations: Create or join organizations
+      explore-extensions: Explore extensions
+      admin: Admin
+      logout: Logout
+      view-profile: View Profile
+      show-keyboard-shortcuts: Show keyboard shortcuts
+      changelog: Changelog
+      developers: Developers
+      join-discord: Join Discord Community
+      help-support: Help & Support
+      documentation: Documentation
+      fleetbase-documentation: Fleetbase Documentation
+      dark-mode: Dark Mode
+      smart-nav-menu:
+        customise-navigation: Customise navigation
+        customise-navigation-title: Customise Navigation
+        close: Close
+        pinned-to-bar: Pinned to bar
+        drag-to-reorder: Drag to reorder
+        remove-from-bar: Remove from bar
+        no-pinned: No extensions pinned yet.
+        add-from-list: Add extensions from the list on the right.
+        all-extensions: All extensions
+        reset-to-default: Reset to default
+        cancel: Cancel
+        apply: Apply
+        click-to-unpin: Click to unpin
+        click-to-pin: Click to pin to bar
+        more-extensions: More extensions
+        extensions: Extensions
+        search-extensions-placeholder: Search extensions...
+        search-extensions: Search extensions
+        clear-search: Clear search
+        extension-list: Extension list
+        no-extensions-match: No extensions match
+        pin-to-bar: Pin to navigation bar
+        pin-item-to-bar: "Pin {title} to navigation bar"
+        from-parent: "from {parent}"
+        extension-navigation: Extension navigation
+    mobile-navbar:
+      menu: Menu
+    sidebar:
+      navigator:
+        clear-search: Clear search
+        close-search: Close search
+        search-results: Navigation search results
+        searching: Searching...
+        no-results: No navigation results found.
+        start-typing: Start typing to search
+        search-placeholder: Search or jump to...
+        navigation: Navigation
+        search-navigation: Search navigation
+  activity-log:
+    someone: Someone
+    unknown: Unknown
+    verb:
+      updated: updated
+      changed: changed
+      created: created
+      deleted: deleted
+      restored: restored
+    badge:
+      created: Created
+      deleted: Deleted
+      restored: Restored
+      updated: Updated
+    target-phrase: "{article} {type}{suffix}"
+    target-phrase-new: "{article} new {type}{suffix}"
+    with: with
+    attributes-count: "{count} attributes"
+    changed-attributes: Changed attributes
+    attribute: Attribute
+    previous-value: Previous value
+    new-value: New value
+    from: from
+    to: to
+    on: "on"
+    loading: Loading activity...
+    no-activity: No activity yet
+  dashboard:
+    default-dashboard: Default Dashboard
+    widget-card:
+      on-dashboard: On dashboard
+      on-dashboard-count: "On dashboard ×{count}"
+      added: Added
+      added-count: "Added ×{count}"
+    widget-panel:
+      clear-search: Clear search
+    create:
+      remove-widget: Remove widget from the dashboard
+    widget-category:
+      general: General
+      actions: Actions
+      analytics: Analytics
+      billing: Billing
+      diagnostics: Diagnostics
+      extension-widgets: Extension Widgets
+      governance: Governance
+      kpi-tiles: KPI Tiles
+      legacy: Legacy
+      maps: Maps
+      operations: Operations
+      overview: Overview
+      reports: Reports
+      resources: Resources
+      security: Security
+      support: Support
+  common:
+    loading: Loading...
+    no-resources: "No {resource}"
+    no-resources-to-display: "No {resource} to display"
+    create-resource: "Create {resource}"
+    select-resource: "Select {resource}"
+    create-new: Create New
+    save-changes: Save Changes
+    delete: Delete
+    done: Done
+    edit: Edit
+    create-new-resource: "Create new {resource}"
+    resource-saved: "{resource} {name} saved successfully."
+    resource-created: "{resource} created successfully."
+    resource-updated: "{resource} updated successfully."
+    edit-named: "Edit: {name}"
+  array-input:
+    data-input: Data Input
+    remove: Remove
+    add: Add
+  bulk-search-dropdown:
+    clear: Clear
+    search: Search
+    bulk-search: Bulk Search
+  chat-tray:
+    new-chat: New Chat
+    select-teammates: Select one or more teammates
+    close-new-chat: Close new chat
+    chat-name: Chat name
+    optional: Optional
+    contacts: Contacts
+    search-teammates: Search teammates
+    loading-contacts: Loading contacts
+    no-contacts: No contacts found
+    try-different-contact: Try a different name, email, or phone number.
+    cancel: Cancel
+    create-chat: Create Chat
+    remove-user: "Remove {name}"
+    attachment: Attachment
+    end-chat: End chat
+    messages: Messages
+    close-inbox: Close chat inbox
+    search-conversations: Search conversations
+    loading-conversations: Loading conversations
+    no-conversations: No conversations found
+    start-new-chat-hint: Start a new chat or adjust your search.
+    open-inbox: Open chat inbox
+    fleetbase-user: Fleetbase user
+    no-messages-yet: No messages yet
+    attachment-count: "{count, plural, one {# attachment} other {# attachments}}"
+    sent-a-message: Sent a message
+    end-chat-title: "Are you sure you wish to end this chat ({title})?"
+    end-chat-body: Once this chat is ended, it will no longer be accessible for anyone.
+    unable-to-create: Unable to create chat.
+  chat-window:
+    click-to-download: Click to download attachment
+    add-attachment: Add Attachment
+    type-message: Type your message here
+    send: Send
+    read-at: "Read at {time}"
+    untitled-chat: Untitled Chat
+    leave-title: Are you sure you would like to leave this chat?
+    remove-participant-title: "Are you sure you wish to remove this participant ({name}) from the chat?"
+    leave-body: Once you leave this chat you will not be able to access this chat unless you are added as a participant again
+    remove-participant-body: Proceeding remove this participant from the chat.
+    edit-name-title: Edit chat channel name
+    name-required: Name required to save changes.
+  click-to-copy:
+    copied: Copied!
+    click-to-copy: Click to copy
+  click-to-reveal:
+    click-to-reveal: Click to reveal
+  coordinates-input:
+    latitude: Latitude
+    longitude: Longitude
+    select-from-map: Select from map
+    address-search: Address Search
+    enter-address: Enter address
+    lookup: Lookup
+    done: Done
+    map-marker: Draggable map marker
+  aside-item-scroller:
+    search-input: Search Input
+    search: Search
+    directory: Directory
+  kanban:
+    column:
+      no-items-yet: "No {resource} yet"
+      add-item: "+ Add a {resource}"
+      card: card
+      cards: cards
+      untitled: Untitled Column
+    board: Kanban Board
+  query-builder:
+    select-columns-in-fields-first: "Select columns in the \"Select Fields\" section first"
+    select-column: Select column...
+    select-all: Select All
+    actions:
+      title: Actions
+      subtitle: Query operations
+      clear: Clear
+      execute: Execute
+      save: Save
+    column-select:
+      title: Select fields
+      search: Search for a column
+      alias: "Alias:"
+      select-data-source: Select a data source
+      choose-table: Choose a table to see available fields
+      selected-fields: "Selected Fields:"
+      clear-all: Clear All
+      selected-count: "{count} selected"
+      none-selected: None selected
+    computed-columns:
+      title: Computed Columns
+      add: Add Computed Column
+      edit: Edit computed column
+      remove: Remove computed column
+      empty: No computed columns defined yet
+      empty-help: Computed columns allow you to create calculated fields using SQL expressions
+      add-first: Add the first computed column
+      edit-title: Edit Computed Column
+      update: Update
+      add-button: Add
+      types:
+        string: Text
+        integer: Integer
+        decimal: Decimal
+        date: Date
+        datetime: Date & Time
+        boolean: Boolean
+    conditions:
+      title: Conditions
+      select-field: Select field...
+      operator: Operator...
+      from: From
+      to: To
+      select-values: Select values...
+      select-value: Select value...
+      enter-value: Enter value...
+      add-condition: Add condition
+      no-conditions-set: No conditions set
+      no-conditions-help: Add conditions to filter your data
+      add-inner-group: Add inner group
+      select-fields-first: Select fields first
+      choose-columns: Choose columns to enable filtering
+      no-conditions: No conditions
+      group: Group
+      logic:
+        and: and
+        or: or
+      summary-conditions: "{count, plural, one {# condition} other {# conditions}}"
+      summary-groups: "{count, plural, one {# group} other {# groups}}"
+      select-columns-first: Select columns first to enable filtering
+      no-columns-available: No selected columns available for filtering
+      true: "True"
+      false: "False"
+      operators:
+        equals: equals
+        not-equals: not equals
+        is-empty: is empty
+        is-not-empty: is not empty
+        contains: contains
+        not-contains: does not contain
+        starts-with: starts with
+        ends-with: ends with
+        in: is one of
+        not-in: is not one of
+        gt: greater than
+        lt: less than
+        gte: greater than or equal
+        lte: less than or equal
+        between: between
+        not-between: not between
+        after: after
+        before: before
+        on-or-after: on or after
+        on-or-before: on or before
+        between-dates: between dates
+        not-between-dates: not between dates
+    group-by:
+      title: Group By
+      group-by-column: Group By Column
+      calculate: Calculate
+      select-function: Select function...
+      of-column: Of Column
+      add-grouping: Add Grouping
+      active-groupings: Active Groupings
+      group-by: Group by
+      of: of
+      rules: "Grouping Rules:"
+      rule-1: • You can only group by columns that are selected
+      rule-2: • Aggregate functions calculate values for each group
+      rule-3: • Use COUNT(*) to count records in each group
+      groups-count: "{count, plural, one {# group} other {# groups}}"
+      no-grouping: No grouping
+      all-records: All Records
+      select-columns-first: Select columns first to enable grouping
+      no-columns-available: No non-aggregated columns available for grouping
+      functions:
+        count: Count
+        sum: Sum
+        avg: Average
+        min: Minimum
+        max: Maximum
+        concat: Concatenate
+    joins:
+      title: Joins
+      available-relationships: Available Relationships
+      select-none: Select None
+      alias-optional: Alias (optional)
+      performance-warning: Performance Warning
+      no-relationships: No relationships available
+      no-relationships-help: This table has no defined relationships to join with other tables
+      joins-count: "{count, plural, one {# join} other {# joins}}"
+      no-joins: No joins
+      select-columns-from: "Select columns from {relationship}"
+      performance-warning-text: "You have {count} joined columns selected. Consider selecting only the columns you need for better performance."
+    limit:
+      title: Limit Results
+      maximum-rows: "Maximum rows:"
+      enter-limit: Enter limit (e.g., 100)
+      quick-options: "Quick options:"
+      remove-limit: Remove Limit
+      performance-notice: Performance Notice
+      performance-notice-text: Large result sets may take longer to process and display.
+      max-rows: "Max {count} rows"
+      no-limit: No limit
+    sort-by:
+      title: Sort By
+      sort-column: Sort Column
+      direction: Direction
+      select-direction: Select direction...
+      add-sort: Add Sort
+      sort-order: Sort Order (drag to reorder)
+      toggle-direction: Toggle sort direction
+      rules: "Sorting Rules:"
+      rule-1: • You can only sort by columns that are selected
+      rule-2: • Sort order matters - drag to reorder priority
+      rule-3: • Both regular and aggregated columns can be sorted
+      sorts-count: "{count, plural, one {# sort} other {# sorts}}"
+      no-sorting: No sorting
+      ascending: Ascending
+      descending: Descending
+      select-columns-first: Select columns first to enable sorting
+    table-select:
+      title: Data Source
+      select-data-source: Select data source...
+      table-information: Table Information
+      no-source: No source selected
+      columns: "Columns:"
+      relationships: "Relationships:"
+  modals:
+    bulk-action:
+      confirm-title: "Are you sure you want to {verb} these {resources}?"
+      selected-for: "You have selected {selection} for {verb}."
+    bulk-delete:
+      confirm-title: "Are you sure you want to delete these {resources}?"
+      selected-for-deletion: "You have selected {selection} for deletion."
+    create-or-join-org:
+      join: Join an Organization
+      create: Create new Organization
+      organization-id: Organization ID
+      organization-id-help: Enter the ID of the organization you wish to join.
+      organization-name: Organization name
+      organization-description: Organization description
+      organization-phone: Organization phone number
+      organization-currency: Organization currency
+    edit-chat-name:
+      channel-name: Channel Name
+      help-text: Input a new name for your chat channel.
+    export-form:
+      format: Format
+      select-format: Select export format...
+    import-form:
+      download-template: Download Import Template (XLSX)
+      spreadsheet-count: "{count, plural, one {# spreadsheet} other {# spreadsheets}}"
+    install-prompt:
+      message: "You are attempting to install the extension \"{extensionName}\". Are you sure you wish to proceed with this installation?"
+      access-note: Some extensions require access to your resources.
+    verify-email:
+      title: Verify your email address.
+      message: Re-verify your email address and click Send to continue.
+      email-label: Verify your email address
+      email-help: Have a second look and confirm your email address is correct.
+      code-label: Enter verification code
+      code-help: Enter the code you received in your email, please check spam if not in inbox.
+    verify-by-sms:
+      title: "Let's verify your phone number instead."
+      message: Confirm your phone number below and click send to receive a verification code by SMS.
+      phone-label: Verify your phone number
+      phone-help: Have a second look and confirm your phone number is correct.
+    legal-notice:
+      subtitle: Open source and commercial licensing
+      open-source-title: Open Source License
+      open-source-text: Fleetbase is licensed under the GNU Affero General Public License v3.0 or later, unless you have a separate commercial license from Fleetbase.
+      no-warranty-title: No Warranty
+      no-warranty-text: This program is distributed without warranty. You may convey and modify it under the terms of the AGPL-3.0-or-later.
+      commercial-title: Commercial License
+      commercial-text: Need to keep proprietary modifications private, build a SaaS product, or white-label Fleetbase? A Fleetbase Commercial License removes AGPL copyleft obligations for covered commercial use.
+      view-licensing: View licensing options
+      view-commercial: View commercial license
+      view-source: View source code
+      view-agpl: View AGPL license
+    query-builder-computed-column-editor:
+      column-name: Column Name
+      column-name-help: The internal name for this column (lowercase, underscores only)
+      display-label: Display Label
+      display-label-help: The human-readable label shown in reports
+      data-type: Data Type
+      data-type-help: The expected data type of the computed value
+      select-data-type: Select data type
+      expression: Expression
+      expression-help: SQL expression using allowed functions and column references
+      expression-placeholder: e.g., DATEDIFF(end_date, start_date) + 1
+      validating: Validating expression...
+      valid: Expression is valid
+      description: Description
+      description-help: Optional description of what this column calculates
+      allowed-functions: Allowed Functions
+      example-expressions: Example Expressions
+      use: Use
+      examples:
+        days-between: Calculate Days Between Dates
+        days-between-desc: Calculate the number of days between two dates
+        concat: Concatenate Fields
+        concat-desc: Combine multiple text fields
+        conditional: Conditional Value
+        conditional-desc: Return different values based on conditions
+        safe-division: Safe Division
+        safe-division-desc: Divide with protection against division by zero
+      invalid: Expression is invalid
+      validate-failed: Failed to validate expression
+    export-report:
+      export-format: Export Format
+      select-format: Select export format...
+      csv-title: CSV Export Options
+      csv-help: Data will be exported as comma-separated values, suitable for Excel and other spreadsheet applications.
+      json-title: JSON Export Options
+      json-help: Data will be exported as structured JSON, suitable for API consumption and data processing.
+      file-name: File Name
+      file-extension-help: File extension will be added automatically
+      intro: "Export {count} rows of data in your preferred format."
+    save-report:
+      report-title: Report Title
+      report-title-placeholder: Enter report title...
+      description: Description
+      description-placeholder: Optional description...
+      category: Category
+      select-category: Select category...
+      schedule: Schedule this report
+      frequency: Frequency
+      time: Time
+    tip-tap-editor-insert-table:
+      rows: Rows
+      rows-help: The number of rows for the table
+      columns: Columns
+      columns-help: The number of columns for the table
+    tip-tap-editor-insert-youtube:
+      url: Youtube Video URL
+      url-help: The URL to the Youtube video you want to insert
+      height: Height
+      height-help: The Height of the Youtube video
+      width: Width
+      width-help: The Width of the Youtube video
+    custom-field-group-form:
+      name: Field Group Name
+  fleetbase-attribution:
+    powered-by: Powered by
+    legal: Legal
+    legal-notices: Fleetbase Legal Notices
+  custom-fields-manager:
+    empty-hint: "Add your first field group to start adding custom fields for {resource}"
+    new-field-group: New field group
+    create-custom-field: Create new custom field
+    no-groups: No custom field groups
+    title: Custom Fields Manager
+    new-group-title: New custom field group
+    delete-group-title: Delete this field group?
+    delete-group-body: Once this field group is deleted it will not be recoverable and you will lose all custom fields inside.
+    delete-field-title: Delete this custom field?
+    delete-field-body: Once this custom field is deleted it will not be recoverable and you will lose all data assosciated.
+  notification-tray:
+    received: "Received: {time}"
+    no-unread: No unread notifications
+    view-all: View all notifications
+    unread-count: "{count, plural, one {# Unread Notification} other {# Unread Notifications}}"
+  schedule-item-card:
+    duration: "Duration: {duration} min"
+  tab-navigation:
+    close-tab: "Close {label}"
+    more-tabs: More tabs
+    add-tab: Add new tab
+  custom-field:
+    form:
+      field-required: Field is Required
+      field-editable: Field is Editable
+      select-field-type: Select field type...
+      select-model-type: Select model type
+      field-label: Field Label
+      field-description: Field Description
+      field-help-text: Field Help Text
+      field-type: Field Type
+      field-model-type: Field Model Type
+    options-input:
+      field-options: Field Options
+      add-option: Add new option
+    yield:
+      save-changes: Save Changes
+      cancel: Cancel
+    input:
+      date-format: YYYY-MM-DD
+  date-time-input:
+    date-input: Date Input
+    time-input: Time Input
+  docs-panel:
+    open-new-tab: Open documentation in a new tab
+    close: Close documentation
+    loading: Loading documentation...
+    open-fleetbase-docs: Open Fleetbase documentation
+    cannot-embed: This page cannot be embedded here, but you can open it in a new tab.
+    open-docs: Open documentation
+  extensions-list:
+    extensions: Extensions
+  filter:
+    string:
+      filter-input: Filter Input
+    multi-input:
+      add-values: Add values...
+    clear: Clear
+    range:
+      min: Min
+      max: Max
+  modal:
+    close: Close
+    cancel: Cancel
+    confirm: Confirm
+    ok: Ok
+  table:
+    cell:
+      driver-name:
+        no-driver: No driver assigned
+      dropdown:
+        actions: Actions
+    no-records: No records found
+    no-records-yet: No records yet
+    read-guide: Read guide
+  translations-editor:
+    add-language: Add Language
+    add-translation: Add new translation
+    translation-key: Translation Key
+    translation-value: Translation Value
+    translations: Translations
+  upload-button:
+    uploading: Uploading...
+    upload-new: Upload new
+  report-builder:
+    query-builder:
+      title: Query Builder
+      clear: Clear
+      execute-query: Execute Query
+      save-report: Save Report
+      primary-table: Primary Table
+      select-table: Select a table...
+      select-columns: Select Columns
+    report-details: Report Details
+    title: Title
+    description: Description
+    tags: Tags
+    add-tags: Add tags to the report
+    execute: Execute
+    no-preview: No report preview
+    no-preview-help: Configure the report and press the execute button to preview the results.
+    configuration: Configuration
+    preview: Preview
+    load-sources-failed: Failed to load data sources
+    export-options:
+      export-format: Export format...
+      export: Export
+    results-table:
+      executing: Executing query...
+      no-results: No results found
+      no-results-help: Try adjusting your query filters
+      results: results
+  report:
+    details:
+      date-created: Date Created
+    find-select:
+      search: Search reports by keyword...
+      select: Select
+      empty: No reports available
+      empty-help: System found no reports available.
+  widget:
+    report:
+      loading: Loading report...
+      no-report: No report
+      select-help: Select a report to view.
+      select-report: Select Report
+      select-report-title: Select report
+  tip-tap-editor:
+    undo: Undo
+    redo: Redo
+    format: Format
+    heading: Heading
+    font: Font
+    clear-color: Clear Color
+    align-left: Align Left
+    align-center: Align Center
+    align-right: Align Right
+    paragraph: Paragraph
+    blockquote: Blockquote
+    codeblock: Codeblock
+    horizontal-rule: Insert Horizontal Rule
+    bold: Bold
+    italic: Italic
+    strikethrough: Strikethrough
+    list: List
+    ordered-list: Ordered List
+    insert-table: Insert Table
+    table: Table
+    modify-table: Modify Current Table
+    insert-image: Insert Image
+    insert-youtube: Insert Youtube Video
+    underline: Underline
+    superscript: Superscript
+    subscript: Subscript
+    heading-1: Heading 1
+    heading-2: Heading 2
+    heading-3: Heading 3
+    unset: Unset
+    add-column-before: Add Column Before
+    add-column-after: Add Column After
+    delete-column: Delete Column
+    add-row-before: Add Row Before
+    add-row-after: Add Row After
+    delete-row: Delete Row
+    delete-table: Delete Table
+    insert-youtube-title: Insert a Youtube Video
+    youtube-invalid: Youtube video URL is invalid.
+    insert-table-title: Insert a Table
+  metadata-editor:
+    metadata: Metadata
+    preview-metadata: Preview metadata
+    done: Done
+    key-required: Key is required
+    key-snake-case: Must be snake_case (start with a letter, a-z0-9_)
+    key-unique: Key must be unique
+    filter-keys: Filter keys…
+    key-example: e.g. order_number
+    add-button: + Add
+    clear-all: Clear all
+    key: Key
+    value: Value
+    type: Type
+    true-false: True / False
+    type-text: Text
+    type-number: Number
+    type-boolean: Boolean
+    remove: Remove
+    empty-before: No metadata. Click
+    add: Add
+    empty-after: to create one.
+    fix-keys: Please fix invalid/duplicate keys above.
+  metadata-viewer:
+    no-metadata: No metadata
+    no-metadata-to-display: No metadata to display
+    hide-raw: Hide raw metadata
+    view-raw: View raw metadata
+  user:
+    pill:
+      no-user: No user
+      no-email: No email
+  currency-select:
+    search-placeholder: Search by currency code
+  unit-input:
+    enter-unit: "Enter {unit}"
+    units:
+      astonomical-unit: Astonomical Unit
+      centiliter: Centiliter
+      centimeter: Centimeter
+      deciliter: Deciliter
+      decimeter: Decimeter
+      dram: Dram
+      foot: Foot
+      gallon-us: Gallon (US)
+      grain: Grain
+      grams: Grams
+      inch: Inch
+      kilograms: Kilograms
+      kilometer: Kilometer
+      light-year: Light Year
+      liter: Liter
+      meter: Meter
+      milliliter: Milliliter
+      millimeter: Millimeter
+      ounce: Ounce
+      pint-us: Pint (US)
+      pound: Pound
+      quart-us: Quart (US)
+      tonne: Tonne
+      yard: Yard
+  schedule-calendar:
+    scheduled-item: Scheduled Item
+    update-failed: Failed to update schedule item
+  with-record:
+    load-failed: Failed to load record.
+  join-column-list:
+    no-columns: No columns selected
+  point-coordinates:
+    invalid: Invalid coordinates
+  crud:
+    deleted: "{resource} has been deleted."
+    delete-confirm: "Are you sure to delete this {resource}?"
+    bulk-updated: "{items} were updated successfully."
+    bulk-title: "Bulk {verb} {resource}"
+    export-title: "Export {resource}"
+    download: Download
+    export-failed: Unable to download API credentials export.
+    import-title: "Import {resource} with spreadsheets"
+    start-import: Start Import
+    import-columns:
+      type: Type
+      file-name: File Name
+      file-size: File Size
+      upload-date: Upload Date
+    no-spreadsheets: No spreadsheets uploaded for import to process.
+    processing: Processing...
+    verbs:
+      delete: delete
+      cancel: cancel
+      dispatch: dispatch
+      archive: archive
+      restore: restore
+      assign: assign
+      activate: activate
+      deactivate: deactivate
+      remove: remove
+      update: update
+      export: export
+      import: import
+      enable: enable
+      disable: disable
+      suspend: suspend
+      verify: verify
+  current-user:
+    location-unavailable: Unable to detect your location. Some features may use default settings.
+  custom-fields-registry:
+    create-title: Create a new custom field
+    create-button: Create Custom Field
+    edit-title: "Edit custom field: {name}"
+  report-actions:
+    create-title: Create a new report
+    create-button: Create report
+    overview: Overview
+  session:
+    auth-failed: Session authentication failed...
+  status:
+    created: Created
+    pending: Pending
+    dispatched: Dispatched
+    assigned: Assigned
+    unassigned: Unassigned
+    started: Started
+    enroute: En Route
+    en-route: En Route
+    driver-enroute: Driver En Route
+    arrived: Arrived
+    driver-arrived: Driver Arrived
+    picked-up: Picked Up
+    pickup: Pickup
+    dropoff: Dropoff
+    in-progress: In Progress
+    in-transit: In Transit
+    out-for-delivery: Out for Delivery
+    completed: Completed
+    delivered: Delivered
+    canceled: Canceled
+    cancelled: Cancelled
+    failed: Failed
+    incomplete: Incomplete
+    expired: Expired
+    scheduled: Scheduled
+    confirmed: Confirmed
+    preparing: Preparing
+    ready: Ready
+    returned: Returned
+    on-hold: On Hold
+    processing: Processing
+    queued: Queued
+    active: Active
+    inactive: Inactive
+    draft: Draft
+    published: Published
+    unpublished: Unpublished
+    archived: Archived
+    paid: Paid
+    unpaid: Unpaid
+    partially-paid: Partially Paid
+    overdue: Overdue
+    void: Void
+    voided: Voided
+    refunded: Refunded
+    partially-refunded: Partially Refunded
+    sent: Sent
+    viewed: Viewed
+    success: Success
+    successful: Successful
+    succeeded: Succeeded
+    error: Error
+    approved: Approved
+    rejected: Rejected
+    declined: Declined
+    reversed: Reversed
+    settled: Settled
+    authorized: Authorized
+    open: Open
+    closed: Closed
+    resolved: Resolved
+    acknowledged: Acknowledged
+    online: Online
+    offline: Offline
+    available: Available
+    unavailable: Unavailable
+    busy: Busy
+    on-duty: On Duty
+    off-duty: Off Duty
+    suspended: Suspended
+    disabled: Disabled
+    enabled: Enabled
+    frozen: Frozen
+    locked: Locked
+    blocked: Blocked
+    banned: Banned
+    verified: Verified
+    unverified: Unverified
+    invited: Invited
+    accepted: Accepted
+    live: Live
+    test: Test
+    sandbox: Sandbox
+    new: New
+    maintenance: Maintenance
+    in-service: In Service
+    out-of-service: Out of Service
+    operational: Operational
+    received: Received
+    ordered: Ordered
+    shipped: Shipped
+    deposit: Deposit
+    withdrawal: Withdrawal
+    transfer: Transfer
+    payment: Payment
+    refund: Refund
+    charge: Charge
+    payout: Payout

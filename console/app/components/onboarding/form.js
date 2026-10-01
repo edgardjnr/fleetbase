@@ -10,6 +10,7 @@ import Changeset from 'ember-changeset';
 
 export default class OnboardingFormComponent extends Component {
     @service fetch;
+    @service intl;
     @service session;
     @service router;
     @service notifications;
@@ -50,7 +51,7 @@ export default class OnboardingFormComponent extends Component {
         try {
             const { status, skipVerification, token, session } = yield this.fetch.post('onboard/create-account', input);
             if (status !== 'success') {
-                this.notifications.error('Onboard failed');
+                this.notifications.error(this.intl.t('console.ui.onboarding.failed'));
                 return;
             }
 
@@ -62,7 +63,7 @@ export default class OnboardingFormComponent extends Component {
                 this.session.isOnboarding().manuallyAuthenticate(token);
 
                 yield this.router.transitionTo('console');
-                return this.notifications.success('Welcome to Fleetbase!');
+                return this.notifications.success(this.intl.t('console.ui.onboarding.welcome'));
             } else {
                 this.args.orchestrator.next();
                 this.urlSearchParams.setParamsToCurrentUrl({

@@ -1,0 +1,33 @@
+<Layout::Resource::Tabular
+    @resource="issue"
+    @title={{t "resource.issues"}}
+    @searchQuery={{this.query}}
+    @onSearch={{perform this.issueActions.controllerSearchTask this}}
+    @data={{@model}}
+    @columns={{this.columns}}
+    @page={{this.page}}
+    @onPageChange={{fn (mut this.page)}}
+    @setupTable={{fn (mut this.table)}}
+    @actionButtons={{this.actionButtons}}
+    @bulkActions={{this.bulkActions}}
+    @controller={{this}}
+    @emptyStateComponent={{component
+        "table/empty-state"
+        icon="triangle-exclamation"
+        title=(t "fleet-ops.ui.route.management-issues-index.no-issues-reported")
+        description=(t "fleet-ops.ui.route.management-issues-index.track-vehicle-driver-facility-and-service")
+        filteredTitle=(t "fleet-ops.ui.route.management-issues-index.no-issues-match-your-filters")
+        filteredDescription=(t "fleet-ops.ui.route.management-issues-index.clear-the-search-or-filters-to")
+        primaryText=(t "fleet-ops.ui.route.management-issues-index.new-issue")
+        primaryIcon="plus"
+        primaryAction=this.issueActions.transition.create
+        secondaryText=(t "fleet-ops.ui.route.management-issues-index.import")
+        secondaryIcon="upload"
+        secondaryAction=this.issueActions.import
+        docsSlug="fleet-ops/resources/issues/overview"
+        docsTitle=(t "fleet-ops.ui.route.management-issues-index.issues-guide")
+        docsText=(t "fleet-ops.ui.route.management-issues-index.issues-guide")
+        docsSource="fleet-ops-empty-issues"
+    }}
+/>
+{{outlet}}

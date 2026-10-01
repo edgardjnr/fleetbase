@@ -1,0 +1,95 @@
+import ApplicationSerializer from '@fleetbase/ember-core/serializers/application';
+import { EmbeddedRecordsMixin } from '@ember-data/serializer/rest';
+import { next } from '@ember/runloop';
+
+export default class ServiceRateSerializer extends ApplicationSerializer.extend(EmbeddedRecordsMixin) {
+    /**
+     * Embedded relationship attributes
+     *
+     * @var {Object}
+     */
+    get attrs() {
+        return {
+            order_config: { embedded: 'always' },
+            zone: { embedded: 'always' },
+            service_area: { embedded: 'always' },
+            parcel_fees: { embedded: 'always' },
+            rate_fees: { embedded: 'always' },
+        };
+    }
+
+    /**
+     * Normalize single response - called after save/create
+     * Directly set rate_fees relationship to only saved records from backend
+     */
+    normalizeSaveResponse(store, primaryModelClass, payload, id, requestType) {
+        const normalized = super.normalizeSaveResponse(store, primaryModelClass, payload, id, requestType);
+
+        // After normalization, replace rate_fees with only the saved records from backend
+        if (normalized.data && normalized.data.type === 'service-rate') {
+            const serviceRateId = normalized.data.id;
+
+            // Schedule after store update using Ember run loop
+            next(() => {
+                const serviceRate = store.peekRecord('service-rate', serviceRateId);
+                if (serviceRate) {
+                    // Cleanup rate_fees duplicates (for Fixed Rate and Per-Drop)
+                    const allRateFees = serviceRate.get('rate_fees').toArray();
+                    const savedRateFees = allRateFees.filter((f) => !f.isNew);
+                    const unsavedRateFees = allRateFees.filter((f) => f.isNew);
+
+                    // Key every fee by its shape, never by its id: a draft has no
+                    // id yet, so an id-keyed lookup could never match the row the
+                    // backend has just returned for it.
+                    const feeKey = (fee) => {
+                        if (fee.unit === 'waypoint') {
+                            return `drop:${fee.min}:${fee.max}:${fee.unit}`;
+                        }
+
+                        if (fee.unit === 'multi_zone_distance') {
+                            return `multi-zone:${fee.service_area_uuid}:${fee.zone_uuid}:${fee.is_fallback}:${fee.priority}:${fee.label}`;
+                        }
+
+                        return `distance:${fee.distance}`;
+                    };
+
+                    const savedFeeKeys = new Set(savedRateFees.map(feeKey));
+                    const hasSavedMultiZoneFees = savedRateFees.some((fee) => fee.unit === 'multi_zone_distance');
+
+                    // Only remove unsaved fees that duplicate saved fees
+                    unsavedRateFees.forEach((fee) => {
+                        if ((hasSavedMultiZoneFees && fee.unit === 'multi_zone_distance') || savedFeeKeys.has(feeKey(fee))) {
+                            serviceRate.get('rate_fees').removeObject(fee);
+                            fee.unloadRecord();
+                        }
+                    });
+
+                    // Cleanup parcel_fees duplicates
+                    const allParcelFees = serviceRate.get('parcel_fees').toArray();
+                    const savedParcelFees = allParcelFees.filter((f) => !f.isNew);
+                    const unsavedParcelFees = allParcelFees.filter((f) => f.isNew);
+
+                    // // Create a map of saved parcel fees by uuid (or another unique key)
+                    // const savedParcelByUuid = new Map(savedParcelFees.map((f) => [f.get('id'), f]));
+
+                    // Remove unsaved parcel fees that have a saved version
+                    unsavedParcelFees.forEach((fee) => {
+                        // For parcel fees, we need to check if there's a duplicate based on attributes
+                        // Since they don't have a simple key like distance, we'll just remove all unsaved ones
+                        // that don't have unique identifying attributes
+                        const hasDuplicate = savedParcelFees.some(
+                            (saved) => saved.size === fee.size && saved.length === fee.length && saved.width === fee.width && saved.height === fee.height
+                        );
+
+                        if (hasDuplicate) {
+                            serviceRate.get('parcel_fees').removeObject(fee);
+                            fee.unloadRecord();
+                        }
+                    });
+                }
+            });
+        }
+
+        return normalized;
+    }
+}

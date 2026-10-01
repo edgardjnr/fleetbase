@@ -7,6 +7,7 @@ import { task } from 'ember-concurrency';
 export default class ConfigureMailComponent extends Component {
     @service fetch;
     @service notifications;
+    @service intl;
     @tracked isLoading = false;
     @tracked testResponse;
     @tracked mailers = [];
@@ -151,7 +152,7 @@ export default class ConfigureMailComponent extends Component {
                 resend: this.serializeResendConfig(),
                 microsoftGraph: this.serializeMicrosoftGraphConfig(),
             });
-            this.notifications.success('Mail configuration saved.');
+            this.notifications.success(this.intl.t('console.ui.configure.mail.saved'));
         } catch (error) {
             this.notifications.serverError(error);
         }

@@ -1,0 +1,149 @@
+import Controller from '@ember/controller';
+import { action } from '@ember/object';
+import { inject as service } from '@ember/service';
+import { isArray } from '@ember/array';
+
+export default class ManagementVehiclesIndexDetailsController extends Controller {
+    @service vehicleActions;
+    @service issueActions;
+    @service('universe/menu-service') menuService;
+    @service hostRouter;
+    @service intl;
+
+    get tabs() {
+        const registeredTabs = this.menuService.getMenuItems('fleet-ops:component:vehicle:details');
+        return [
+            {
+                id: 'index',
+                route: 'management.vehicles.index.details.index',
+                label: this.intl.t('fleet-ops.ui.controller.management-vehicles-index-details.overview'),
+            },
+            {
+                id: 'positions',
+                route: 'management.vehicles.index.details.positions',
+                label: this.intl.t('fleet-ops.ui.controller.management-vehicles-index-details.positions'),
+            },
+            {
+                id: 'devices',
+                route: 'management.vehicles.index.details.devices',
+                label: this.intl.t('fleet-ops.ui.controller.management-vehicles-index-details.devices'),
+            },
+            {
+                id: 'trailers',
+                route: 'management.vehicles.index.details.trailers',
+                label: this.intl.t('resource.trailers'),
+            },
+            {
+                id: 'equipment',
+                route: 'management.vehicles.index.details.equipment',
+                label: this.intl.t('resource.equipment'),
+            },
+            {
+                id: 'schedules',
+                route: 'management.vehicles.index.details.schedules',
+                label: this.intl.t('fleet-ops.ui.controller.management-vehicles-index-details.schedules'),
+            },
+            {
+                id: 'work-orders',
+                route: 'management.vehicles.index.details.work-orders',
+                label: this.intl.t('fleet-ops.ui.controller.management-vehicles-index-details.work-orders'),
+            },
+            {
+                id: 'maintenance-history',
+                route: 'management.vehicles.index.details.maintenance-history',
+                label: this.intl.t('fleet-ops.ui.controller.management-vehicles-index-details.maintenance'),
+            },
+            ...(isArray(registeredTabs) ? registeredTabs : []),
+        ];
+    }
+
+    get actionButtons() {
+        return [
+            {
+                icon: 'pencil',
+                fn: () => this.hostRouter.transitionTo('console.fleet-ops.management.vehicles.index.edit', this.model),
+                permission: 'fleet-ops update vehicle',
+            },
+            {
+                // Actions dropdown — mirrors the row-level actions from the vehicles index table
+                icon: 'ellipsis-h',
+                iconPrefix: 'fas',
+                renderInPlace: true,
+                items: [
+                    {
+                        text: this.intl.t('vehicle.actions.locate-vehicle'),
+                        icon: 'location-dot',
+                        fn: () => this.vehicleActions.locate(this.model),
+                        permission: 'fleet-ops view vehicle',
+                    },
+                    {
+                        text: this.intl.t('vehicle.actions.attach-device'),
+                        icon: 'link',
+                        fn: () => this.vehicleActions.attachDevice(this.model),
+                        permission: 'fleet-ops update vehicle',
+                    },
+                    ...(Number(this.model.assigned_orders_count) > 0
+                        ? [
+                              {
+                                  text: this.intl.t('vehicle.actions.unassign-orders'),
+                                  icon: 'truck-ramp-box',
+                                  fn: () => this.vehicleActions.unassignOrders(this.model),
+                                  permission: 'fleet-ops update vehicle',
+                              },
+                          ]
+                        : []),
+                    {
+                        separator: true,
+                    },
+                    {
+                        text: this.intl.t('vehicle.actions.schedule-maintenance'),
+                        icon: 'calendar-check',
+                        fn: () => this.vehicleActions.scheduleMaintenance(this.model),
+                        permission: 'fleet-ops create maintenance-schedule',
+                    },
+                    {
+                        text: this.intl.t('vehicle.actions.create-work-order'),
+                        icon: 'clipboard-list',
+                        fn: () => this.vehicleActions.createWorkOrder(this.model),
+                        permission: 'fleet-ops create work-order',
+                    },
+                    {
+                        text: this.intl.t('vehicle.actions.log-maintenance'),
+                        icon: 'wrench',
+                        fn: () => this.vehicleActions.logMaintenance(this.model),
+                        permission: 'fleet-ops create maintenance',
+                    },
+                    {
+                        text: this.intl.t('vehicle.actions.create-issue'),
+                        icon: 'triangle-exclamation',
+                        fn: () => this.createIssue(this.model),
+                        permission: 'fleet-ops create issue',
+                    },
+                    {
+                        separator: true,
+                    },
+                    {
+                        text: this.intl.t('common.delete-resource', { resource: this.intl.t('resource.vehicle') }),
+                        icon: 'trash',
+                        fn: () =>
+                            this.vehicleActions.delete(this.model, {
+                                onConfirm: () => {
+                                    this.hostRouter.transitionTo('console.fleet-ops.management.vehicles.index');
+                                },
+                            }),
+                        permission: 'fleet-ops delete vehicle',
+                        class: 'text-red-500 hover:text-red-600',
+                    },
+                ],
+            },
+        ];
+    }
+
+    @action createIssue(vehicle) {
+        this.issueActions.modal.create({
+            vehicle,
+            vehicle_uuid: vehicle.id,
+            title: this.intl.t('vehicle.prompts.issue-title', { vehicleName: vehicle.displayName ?? vehicle.name }),
+        });
+    }
+}

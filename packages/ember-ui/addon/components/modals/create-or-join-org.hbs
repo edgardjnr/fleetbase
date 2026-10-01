@@ -1,0 +1,47 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}} as |options|>
+    <div class="modal-body-container">
+        <InputGroup>
+            <div class="space-x-4 flex">
+                <button
+                    type="button"
+                    class="outline-none flex-1 rounded-lg bg-white dark:bg-gray-900 border-2 px-4 py-2 flex items-center justify-center
+                        {{if (eq @options.action 'join') 'border-blue-500' 'border-transparent'}}"
+                    {{on "click" (fn @options.changeAction "join")}}
+                >
+                    <div class="mr-2.5">
+                        <FaIcon @icon="handshake" @size="xl" class="text-blue-500" />
+                    </div>
+                    <div>
+                        <span class="text-gray-900 dark:text-gray-100 text-lg">{{t "ember-ui.modals.create-or-join-org.join"}}</span>
+                    </div>
+                </button>
+                <button
+                    type="button"
+                    class="outline-none flex-1 rounded-lg bg-white dark:bg-gray-900 border-2 px-4 py-2 flex items-center justify-center
+                        {{if (eq @options.action 'create') 'border-blue-500' 'border-transparent'}}"
+                    {{on "click" (fn @options.changeAction "create")}}
+                >
+                    <div class="mr-2.5">
+                        <FaIcon @icon="building" @size="xl" class="text-blue-500" />
+                    </div>
+                    <div>
+                        <span class="text-gray-900 dark:text-gray-100 text-lg">{{t "ember-ui.modals.create-or-join-org.create"}}</span>
+                    </div>
+                </button>
+            </div>
+        </InputGroup>
+
+        {{#if (eq @options.action "join")}}
+            <InputGroup @name={{t "ember-ui.modals.create-or-join-org.organization-id"}} @value={{@options.next}} @helpText={{t "ember-ui.modals.create-or-join-org.organization-id-help"}} />
+        {{else}}
+            <InputGroup @name={{t "ember-ui.modals.create-or-join-org.organization-name"}} @value={{@options.name}} />
+            <InputGroup @name={{t "ember-ui.modals.create-or-join-org.organization-description"}} @value={{@options.description}} />
+            <InputGroup @name={{t "ember-ui.modals.create-or-join-org.organization-phone"}}>
+                <PhoneInput @value={{@options.phone}} @onInput={{fn (mut @options.phone)}} class="form-input w-full" />
+            </InputGroup>
+            <InputGroup @name={{t "ember-ui.modals.create-or-join-org.organization-currency"}}>
+                <CurrencySelect @currency={{@options.currency}} @onCurrencyChange={{fn (mut @options.currency)}} @triggerClass="w-full form-select" />
+            </InputGroup>
+        {{/if}}
+    </div>
+</Modal::Default>

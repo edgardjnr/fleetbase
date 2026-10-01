@@ -7,6 +7,7 @@ import { task } from 'ember-concurrency';
 export default class AdminWidgetListPanelComponent extends Component {
     @service fetch;
     @service router;
+    @service intl;
 
     @tracked data = null;
     @tracked error = null;
@@ -21,7 +22,12 @@ export default class AdminWidgetListPanelComponent extends Component {
     }
 
     get title() {
-        return this.args.options?.title ?? this.data?.title ?? 'Admin Summary';
+        const key = `console.ui.widgets.admin.${this.slug}.title`;
+        if (this.slug && this.intl.exists(key)) {
+            return this.intl.t(key);
+        }
+
+        return this.args.options?.title ?? this.data?.title ?? this.intl.t('console.ui.widgets.admin.summary');
     }
 
     get subtitle() {
@@ -37,7 +43,7 @@ export default class AdminWidgetListPanelComponent extends Component {
     }
 
     get emptyText() {
-        return this.data?.empty ?? 'No items require attention.';
+        return this.data?.empty ?? this.intl.t('console.ui.widgets.admin.no-items');
     }
 
     get drilldownRoute() {
@@ -79,7 +85,7 @@ export default class AdminWidgetListPanelComponent extends Component {
 
     @task *load() {
         if (!this.slug) {
-            this.error = 'Missing dashboard widget slug.';
+            this.error = this.intl.t('console.ui.widgets.admin.missing-widget-slug');
             return;
         }
 
@@ -87,7 +93,7 @@ export default class AdminWidgetListPanelComponent extends Component {
             this.data = yield this.fetch.get(this.endpoint);
             this.error = null;
         } catch (error) {
-            this.error = error?.message ?? 'Unable to load dashboard widget.';
+            this.error = error?.message ?? this.intl.t('console.ui.widgets.admin.load-widget-error');
         }
     }
 }

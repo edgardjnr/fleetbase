@@ -1,0 +1,329 @@
+import Model, { attr, hasMany, belongsTo } from '@ember-data/model';
+import { computed, action } from '@ember/object';
+import { getOwner } from '@ember/application';
+import { format as formatDate, isValid as isValidDate, formatDistanceToNow } from 'date-fns';
+
+/**
+ * Rank a fee for de-duplication: a fee the backend has persisted outranks an
+ * unsaved draft of the same shape.
+ *
+ * @param {Model} fee
+ * @return {Number}
+ */
+function rankFee(fee) {
+    return fee.isNew ? 1 : 2;
+}
+
+export default class ServiceRate extends Model {
+    /** @ids */
+    @attr('string') public_id;
+    @attr('string') company_uuid;
+    @attr('string') service_area_uuid;
+    @attr('string') zone_uuid;
+    @attr('string') order_config_uuid;
+
+    /** @relationships */
+    @hasMany('service-rate-fee') rate_fees;
+    @hasMany('service-rate-parcel-fee') parcel_fees;
+    @belongsTo('service-area') service_area;
+    @belongsTo('order-config') order_config;
+    @belongsTo('zone') zone;
+    @hasMany('custom-field-value', { async: false }) custom_field_values;
+
+    /** @attributes */
+    @attr('string') service_area_name;
+    @attr('string') zone_name;
+    @attr('string') service_name;
+    @attr('string') service_type;
+    @attr('string') base_fee;
+    @attr('string') per_meter_flat_rate_fee;
+    @attr('string') per_meter_unit;
+    @attr('string', { defaultValue: 'km' }) max_distance_unit;
+    @attr('number', { defaultValue: 1 }) max_distance;
+    @attr('string') algorithm;
+    @attr('string') rate_calculation_method;
+    @attr('string') cod_calculation_method;
+    @attr('string') cod_flat_fee;
+    @attr('string') cod_percent;
+    @attr('string') peak_hours_calculation_method;
+    @attr('string') peak_hours_flat_fee;
+    @attr('string') peak_hours_percent;
+    @attr('string') peak_hours_start;
+    @attr('string') peak_hours_end;
+    @attr('string') currency;
+    @attr('string') duration_terms;
+    @attr('string') estimated_days;
+    @attr('boolean') has_cod_fee;
+    @attr('boolean') has_peak_hours_fee;
+    @attr('raw') meta;
+
+    /** @dates */
+    @attr('date') deleted_at;
+    @attr('date') created_at;
+    @attr('date') updated_at;
+
+    /** @computed */
+    @computed('updated_at') get updatedAgo() {
+        if (!isValidDate(this.updated_at)) {
+            return null;
+        }
+        return formatDistanceToNow(this.updated_at);
+    }
+
+    @computed('updated_at') get updatedAt() {
+        if (!isValidDate(this.updated_at)) {
+            return null;
+        }
+        return formatDate(this.updated_at, 'yyyy-MM-dd HH:mm');
+    }
+
+    @computed('updated_at') get updatedAtShort() {
+        if (!isValidDate(this.updated_at)) {
+            return null;
+        }
+        return formatDate(this.updated_at, 'dd, MMM');
+    }
+
+    @computed('created_at') get createdAgo() {
+        if (!isValidDate(this.created_at)) {
+            return null;
+        }
+        return formatDistanceToNow(this.created_at);
+    }
+
+    @computed('created_at') get createdAt() {
+        if (!isValidDate(this.created_at)) {
+            return null;
+        }
+        return formatDate(this.created_at, 'yyyy-MM-dd HH:mm');
+    }
+
+    @computed('created_at') get createdAtShort() {
+        if (!isValidDate(this.created_at)) {
+            return null;
+        }
+        return formatDate(this.created_at, 'dd, MMM');
+    }
+
+    @computed('rate_calculation_method') get isFixedMeter() {
+        return this.rate_calculation_method === 'fixed_meter' || this.rate_calculation_method === 'fixed_rate';
+    }
+
+    @computed('rate_calculation_method') get isFixedRate() {
+        return this.rate_calculation_method === 'fixed_meter' || this.rate_calculation_method === 'fixed_rate';
+    }
+
+    @computed('rate_calculation_method') get isPerMeter() {
+        return this.rate_calculation_method === 'per_meter';
+    }
+
+    @computed('rate_calculation_method') get isMultiZoneDistance() {
+        return this.rate_calculation_method === 'multi_zone_distance';
+    }
+
+    @computed('rate_calculation_method') get isPerDrop() {
+        return this.rate_calculation_method === 'per_drop';
+    }
+
+    @computed('rate_calculation_method') get isAlgorithm() {
+        return this.rate_calculation_method === 'algo';
+    }
+
+    @computed('rate_calculation_method') get isParcelService() {
+        return this.rate_calculation_method === 'parcel';
+    }
+
+    @computed('peak_hours_calculation_method') get hasPeakHoursFlatFee() {
+        return this.peak_hours_calculation_method === 'flat';
+    }
+
+    @computed('peak_hours_calculation_method') get hasPeakHoursPercentageFee() {
+        return this.peak_hours_calculation_method === 'percentage';
+    }
+
+    @computed('cod_calculation_method') get hasCodFlatFee() {
+        return this.cod_calculation_method === 'flat';
+    }
+
+    @computed('cod_calculation_method') get hasCodPercentageFee() {
+        return this.cod_calculation_method === 'percentage';
+    }
+
+    @computed(
+        'rate_fees.@each.{id,uuid,distance,min,max,unit,fee,label,priority,is_fallback,zone_uuid,service_area_uuid,updated_at}',
+        'max_distance',
+        'rate_calculation_method',
+        'isPerDrop',
+        'isMultiZoneDistance'
+    )
+    get rateFees() {
+        const existing = this.rate_fees.toArray().filter((r) => !r.isDeleted);
+
+        if (this.isMultiZoneDistance) {
+            const deduped = new Map();
+            const updatedAtMs = (fee) => {
+                const value = fee.updated_at instanceof Date ? fee.updated_at : new Date(fee.updated_at);
+                const timestamp = value.getTime();
+
+                return Number.isNaN(timestamp) ? 0 : timestamp;
+            };
+            const geographyId = (fee) => {
+                if (fee.is_fallback) {
+                    return 'fallback';
+                }
+
+                return fee.zone_uuid || fee.zone?.id || fee.service_area_uuid || fee.service_area?.id || 'unassigned';
+            };
+
+            existing
+                .filter((r) => r.unit === 'multi_zone_distance')
+                .forEach((fee) => {
+                    const key = `multi-zone:${fee.is_fallback}:${geographyId(fee)}:${fee.priority}:${fee.label}`;
+                    const current = deduped.get(key);
+                    const feeRank = rankFee(fee);
+                    const currentRank = current ? rankFee(current) : 0;
+
+                    if (!current || feeRank > currentRank || (feeRank === currentRank && updatedAtMs(fee) >= updatedAtMs(current))) {
+                        deduped.set(key, fee);
+                    }
+                });
+
+            return Array.from(deduped.values()).sort((a, b) => (Number(b.priority) || 0) - (Number(a.priority) || 0));
+        }
+
+        if (this.isPerDrop) {
+            const deduped = new Map();
+
+            existing
+                .filter((r) => r.unit === 'waypoint')
+                .forEach((fee) => {
+                    const key = `drop:${fee.min}:${fee.max}:${fee.unit}`;
+                    const current = deduped.get(key);
+
+                    if (!current || rankFee(fee) >= rankFee(current)) {
+                        deduped.set(key, fee);
+                    }
+                });
+
+            return Array.from(deduped.values()).sort((a, b) => (a.min ?? 0) - (b.min ?? 0));
+        }
+
+        const n = Math.max(0, Number(this.max_distance) || 0);
+
+        return existing.filter((r) => r.distance !== null && r.distance !== undefined && r.distance >= 0 && r.distance < n).sort((a, b) => a.distance - b.distance);
+    }
+
+    @computed('parcel_fees.@each.{size,length,width,height,dimensions_unit,weight,weight_unit,fee,id}') get parcelFees() {
+        const existing = this.parcel_fees.toArray().filter((fee) => !fee.isDeleted);
+        const deduped = new Map();
+
+        const feeKey = (fee) => {
+            return [fee.size, fee.length, fee.width, fee.height, fee.dimensions_unit, fee.weight, fee.weight_unit].join(':');
+        };
+
+        existing.forEach((fee) => {
+            const key = feeKey(fee);
+            const current = deduped.get(key);
+
+            if (!current || rankFee(fee) >= rankFee(current)) {
+                deduped.set(key, fee);
+            }
+        });
+
+        return Array.from(deduped.values());
+    }
+
+    /** @methods */
+    @action createDefaultPerDropFee(attributes = {}) {
+        const store = getOwner(this).lookup('service:store');
+        return store.createRecord('service-rate-fee', {
+            min: 1,
+            max: 5,
+            fee: 0,
+            unit: 'waypoint',
+            currency: this.currency,
+            ...attributes,
+        });
+    }
+
+    @action addPerDropRateFee() {
+        const store = getOwner(this).lookup('service:store');
+        const existingFees = this.rate_fees.toArray();
+        const last = existingFees[existingFees.length - 1];
+        const lastMax = Number(last?.max) || 0;
+        const min = last ? lastMax + 1 : 1;
+        const max = min + 5;
+
+        const newFee = store.createRecord('service-rate-fee', {
+            min: min,
+            max: max,
+            unit: 'waypoint',
+            fee: 0,
+            currency: this.currency,
+        });
+
+        this.rate_fees.addObject(newFee);
+
+        return newFee;
+    }
+
+    @action removePerDropFee(fee) {
+        if (!fee || !fee.destroyRecord) return;
+        this.rate_fees.removeObject(fee);
+        fee.destroyRecord();
+    }
+
+    @action resetPerDropFees() {
+        // Remove all existing per-drop fees
+        const existingFees = this.rate_fees.toArray();
+        existingFees.forEach((fee) => {
+            if (fee.unit === 'waypoint') {
+                this.rate_fees.removeObject(fee);
+                fee.destroyRecord();
+            }
+        });
+
+        // Add a new default per-drop fee
+        const defaultFee = this.createDefaultPerDropFee();
+        this.rate_fees.addObject(defaultFee);
+    }
+
+    @action addMultiZoneDistanceRule(attributes = {}) {
+        const store = getOwner(this).lookup('service:store');
+        const existingFees = this.rate_fees.toArray();
+        const nextPriority = existingFees.filter((fee) => fee.unit === 'multi_zone_distance').reduce((highest, fee) => Math.max(highest, Number(fee.priority) || 0), 0) + 10;
+
+        const newFee = store.createRecord('service-rate-fee', {
+            label: 'Distance rule',
+            priority: nextPriority,
+            is_fallback: false,
+            distance_unit: 'km',
+            unit: 'multi_zone_distance',
+            fee: 0,
+            currency: this.currency,
+            ...attributes,
+        });
+
+        this.rate_fees.addObject(newFee);
+    }
+
+    @action addMultiZoneDistanceFallbackRule() {
+        const existingFallback = this.rate_fees.toArray().find((fee) => fee.unit === 'multi_zone_distance' && fee.is_fallback && !fee.isDeleted);
+
+        if (existingFallback) {
+            return existingFallback;
+        }
+
+        return this.addMultiZoneDistanceRule({
+            label: 'Fallback distance',
+            priority: 0,
+            is_fallback: true,
+        });
+    }
+
+    @action removeMultiZoneDistanceRule(fee) {
+        if (!fee || !fee.destroyRecord) return;
+        this.rate_fees.removeObject(fee);
+        fee.destroyRecord();
+    }
+}

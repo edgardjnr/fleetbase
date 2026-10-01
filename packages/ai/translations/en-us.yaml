@@ -1,0 +1,127 @@
+ai:
+  extension-name: AI
+  ui:
+    common:
+      search: Search
+      status: Status
+      provider: Provider
+      model: Model
+      organization: Organization
+      user: User
+      date: Date
+      date-placeholder: Exact date or range
+      any-status: Any status
+      any-provider: Any provider
+      any-model: Any model
+      select-organization: Select organization
+      select-user: Select user
+      clear: Clear
+      title: Title
+      tokens: Tokens
+      total-tokens: Total tokens
+      tasks: Tasks
+      new-chat: New AI chat
+      unknown: Unknown
+      unknown-lower: unknown
+    status:
+      active: Active
+      ended: Ended
+      completed: Completed
+      failed: Failed
+      cancelled: Cancelled
+      running: Running
+    audit-logs:
+      title: AI Task & Chat Logs
+      search-placeholder: Search title, prompt summary, provider, model...
+      search-logs: Search logs
+      chat-sessions: Chat Sessions
+      shown: "{count} shown"
+      turns: Turns
+      turns-count: "{count, plural, one {# turn} other {# turns}}"
+      last-message: Last message
+      no-sessions: No AI sessions found.
+      session-tasks: Session Tasks
+      untitled-prompt: Untitled prompt
+      no-response-summary: No response summary
+      no-tasks: This session has no tasks.
+      select-session: Select a chat session to inspect its tasks.
+      task-detail: Task Detail
+      created: Created
+      completed: Completed
+      prompt: Prompt
+      response: Response
+      content-redacted: Prompt and response content is redacted.
+      reveal-content: Reveal content
+      step: Step
+      step-lower: step
+      tool: Tool
+      no-steps: No task steps recorded.
+      select-task: Select a task to view its details.
+      confirm-reveal: Reveal raw AI prompt and response content? This access will be logged.
+      content-revealed: AI task content revealed.
+    settings:
+      enable: Enable Fleetbase AI
+      select-provider: Select AI provider
+      default-model: Default model
+      select-model: Select AI model
+      api-key: "{provider} API key"
+      base-url: "{provider} base URL"
+      advanced-settings: Advanced Settings
+      test-provider: Test provider
+      saved: AI settings saved.
+      test-completed: AI provider test completed.
+    usage:
+      title: AI Usage Analytics
+      update: Update analytics
+      by-organization: By Organization
+      by-user: By User
+      by-provider: By Provider
+      by-model: By Model
+      by-status: By Status
+      by-day: By Day
+      top-50: Top 50
+      day: Day
+      input: Input
+      output: Output
+      total: Total
+      input-tokens: Input tokens
+      output-tokens: Output tokens
+      no-usage: No usage found.
+    preview:
+      ready: Ready
+      needs-info: Needs info
+      not-set: Not set
+      required-before-apply: Required before apply
+      apply: Apply
+      cancel: Cancel
+    prompt:
+      open-ai: Open Fleetbase AI
+      close-ai: Close Fleetbase AI
+      ai-chats: AI chats
+      loading-chats: Loading chats...
+      delete-chat: Delete chat
+      no-chats: No AI chats yet.
+      attachment: Attachment
+      thinking: Thinking...
+      scroll-to-latest: Scroll to latest
+      drop-files: Drop files to attach
+      remove-attachment: Remove attachment
+      new-chat: New chat
+      attach-files: Attach files
+      placeholder: Ask Fleetbase AI...
+      send: Send
+      close: Close
+      confirm-delete: Delete this AI chat?
+      upload-failed: Unable to upload attachment.
+    home:
+      description: Fleetbase AI runs globally from the header button or keyboard shortcut.
+
+menu-text:
+  ai-config:
+    title: AI Config
+  ai-config-provider-settings:
+    title: Provider Settings
+  ai-config-task-&-chat-logs:
+    title: Task & Chat Logs
+  ai-config-usage-analytics:
+    title: Usage Analytics

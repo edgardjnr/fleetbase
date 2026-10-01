@@ -1,0 +1,115 @@
+<Layout::Section::Header @title={{t "ledger.ui.settings.invoice.title"}}>
+    <Button
+        @type="primary"
+        @size="sm"
+        @icon="save"
+        @text={{t "ledger.ui.settings.save-changes"}}
+        @onClick={{perform this.saveSettings}}
+        @disabled={{this.saveSettings.isRunning}}
+        @isLoading={{or this.saveSettings.isRunning this.getSettings.isRunning}}
+    />
+</Layout::Section::Header>
+
+<Layout::Section::Body class="overflow-y-scroll h-full">
+    <div class="container mx-auto h-screen">
+        <div class="max-w-3xl my-10 mx-auto space-y-6">
+
+            {{! ── Numbering ──────────────────────────────────────────────────── }}
+            <ContentPanel @title={{t "ledger.ui.settings.invoice.numbering"}} @open={{true}} @wrapperClass="bordered-classic">
+                <InputGroup @name={{t "ledger.ui.settings.invoice.prefix"}} @helpText={{t "ledger.ui.settings.invoice.prefix-help"}}>
+                    <Input @value={{this.invoice_prefix}} @type="text" class="w-full form-input" placeholder="INV" />
+                </InputGroup>
+            </ContentPanel>
+
+            {{! ── Currency & Payment Terms ────────────────────────────────────── }}
+            <ContentPanel @title={{t "ledger.ui.settings.invoice.currency-terms"}} @open={{true}} @wrapperClass="bordered-classic">
+                <InputGroup @name={{t "ledger.ui.settings.invoice.default-currency"}} @helpText={{t "ledger.ui.settings.invoice.default-currency-help"}}>
+                    <CurrencySelect
+                        @currency={{this.effectiveCurrency}}
+                        @currencyData={{this.selectedCurrency}}
+                        @onCurrencyChange={{this.onSelectCurrency}}
+                        @triggerClass="form-select form-input"
+                        @placeholder={{t "ledger.ui.settings.accounting.default-currency" currency=this.companyCurrency}}
+                        @allowClear={{true}}
+                    />
+                    {{#unless this.default_currency}}
+                        <p class="text-xs text-gray-400 mt-1">{{t "ledger.ui.settings.accounting.using-default" currency=this.companyCurrency}}</p>
+                    {{/unless}}
+                </InputGroup>
+
+                <InputGroup @name={{t "ledger.ui.settings.invoice.payment-terms"}} @helpText={{t "ledger.ui.settings.invoice.payment-terms-help"}}>
+                    <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                        <PowerSelect
+                            @options={{this.paymentTermsOptions}}
+                            @selected={{find-by "value" this.payment_terms_days this.paymentTermsOptions}}
+                            @onChange={{this.onSelectPaymentTerms}}
+                            @placeholder={{t "ledger.ui.settings.invoice.select-payment-terms"}}
+                            @triggerClass="form-select form-input"
+                            as |opt|
+                        >
+                            <div class="text-sm">{{opt.label}}</div>
+                        </PowerSelect>
+                    </div>
+                </InputGroup>
+            </ContentPanel>
+
+            {{! ── Default Text ─────────────────────────────────────────────────── }}
+            <ContentPanel @title={{t "ledger.ui.settings.invoice.default-text"}} @open={{true}} @wrapperClass="bordered-classic">
+                <InputGroup @name={{t "ledger.ui.settings.invoice.default-notes"}} @helpText={{t "ledger.ui.settings.invoice.default-notes-help"}}>
+                    <Textarea @value={{this.default_notes}} class="w-full form-input" rows="3" placeholder={{t "ledger.ui.settings.invoice.default-notes-placeholder"}} />
+                </InputGroup>
+
+                <InputGroup @name={{t "ledger.ui.settings.invoice.default-terms"}} @helpText={{t "ledger.ui.settings.invoice.default-terms-help"}}>
+                    <Textarea @value={{this.default_terms}} class="w-full form-input" rows="3" placeholder={{t "ledger.ui.settings.invoice.default-terms-placeholder"}} />
+                </InputGroup>
+            </ContentPanel>
+
+            {{! ── Default Template ─────────────────────────────────────────────── }}
+            <ContentPanel @title={{t "ledger.ui.settings.invoice.default-template-title"}} @open={{true}} @wrapperClass="bordered-classic">
+                <InputGroup
+                    @name={{t "ledger.ui.settings.invoice.default-template"}}
+                    @helpText={{t "ledger.ui.settings.invoice.default-template-help"}}
+                >
+                    <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                        <PowerSelect
+                            @options={{this.availableTemplates}}
+                            @selected={{this.selectedTemplate}}
+                            @onChange={{this.onSelectDefaultTemplate}}
+                            @placeholder={{t "ledger.ui.settings.invoice.select-template"}}
+                            @triggerClass="form-select form-input"
+                            @allowClear={{true}}
+                            as |template|
+                        >
+                            <div class="text-sm">{{template.name}}</div>
+                        </PowerSelect>
+                    </div>
+                    {{#if this.selectedTemplate}}
+                        <div class="mt-1 text-[11px] text-gray-500">
+                            {{t "ledger.ui.settings.invoice.selected"}}
+                            <span class="font-medium">{{this.selectedTemplate.name}}</span>
+                        </div>
+                    {{/if}}
+                    {{#unless this.availableTemplates.length}}
+                        <div class="mt-1 text-[11px] text-amber-600">
+                            {{t "ledger.ui.settings.invoice.no-templates"}}
+                            <LinkTo @route="billing.invoice-templates.index.new" class="underline">{{t "ledger.ui.settings.invoice.create-template"}}</LinkTo>
+                            {{t "ledger.ui.settings.invoice.enable-branding"}}
+                        </div>
+                    {{/unless}}
+                </InputGroup>
+            </ContentPanel>
+
+            {{! ── Automation ───────────────────────────────────────────────────── }}
+            <ContentPanel @title={{t "ledger.ui.settings.invoice.automation"}} @open={{true}} @wrapperClass="bordered-classic">
+                <InputGroup @name={{t "ledger.ui.settings.invoice.auto-send"}}>
+                    <Toggle
+                        @isToggled={{this.auto_send_on_creation}}
+                        @label={{t "ledger.ui.settings.invoice.auto-send-help"}}
+                        @onToggle={{fn (mut this.auto_send_on_creation)}}
+                    />
+                </InputGroup>
+            </ContentPanel>
+        </div>
+        <Spacer @height="600px" />
+    </div>
+</Layout::Section::Body>

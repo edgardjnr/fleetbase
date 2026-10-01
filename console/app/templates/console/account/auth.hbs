@@ -1,25 +1,25 @@
-{{page-title "Account Auth"}}
-<Layout::Section::Header @title="Account Auth" />
+{{page-title (t "console.ui.account.auth.title")}}
+<Layout::Section::Header @title={{t "console.ui.account.auth.title"}} />
 
 <Layout::Section::Body class="overflow-y-scroll h-full">
     <div class="container mx-auto h-screen">
         <div class="max-w-3xl my-10 mx-auto space-y-6">
-            <ContentPanel @title="Change Email" @open={{true}} @wrapperClass="bordered-classic">
+            <ContentPanel @title={{t "console.ui.account.auth.change-email"}} @open={{true}} @wrapperClass="bordered-classic">
                 <form id="change-email-form" aria-label="change-email" {{on "submit" (perform this.changeEmail)}}>
-                    <legend class="mb-3">Change Email</legend>
+                    <legend class="mb-3">{{t "console.ui.account.auth.change-email"}}</legend>
                     <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
-                        Enter a new email address and your current password. Your login email changes only after you confirm the verification email sent to the new address.
+                        {{t "console.ui.account.auth.change-email-help"}}
                     </p>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
-                        <InputGroup @name="Current Email" @type="email" @value={{this.currentUser.user.email}} @disabled={{true}} />
-                        <InputGroup @name="New Email" @type="email" @value={{this.newEmail}} />
-                        <InputGroup @name="Current Password" @type="password" @value={{this.currentPassword}} @wrapperClass="lg:col-span-2" />
+                        <InputGroup @name={{t "console.ui.account.auth.current-email"}} @type="email" @value={{this.currentUser.user.email}} @disabled={{true}} />
+                        <InputGroup @name={{t "console.ui.account.auth.new-email"}} @type="email" @value={{this.newEmail}} />
+                        <InputGroup @name={{t "console.ui.account.auth.current-password"}} @type="password" @value={{this.currentPassword}} @wrapperClass="lg:col-span-2" />
                     </div>
                     <div class="mt-3">
                         <Button
                             @type="primary"
                             @buttonType="submit"
-                            @text="Send Verification Email"
+                            @text={{t "console.ui.account.auth.send-verification-email"}}
                             @icon="envelope"
                             @disabled={{not (and this.newEmail this.currentPassword)}}
                             @isLoading={{this.changeEmail.isRunning}}
@@ -29,20 +29,20 @@
                 </form>
             </ContentPanel>
 
-            <ContentPanel @title="Change Password" @open={{true}} @wrapperClass="bordered-classic">
+            <ContentPanel @title={{t "common.change-password"}} @open={{true}} @wrapperClass="bordered-classic">
                 <form id="change-password-form" aria-label="change-password" {{on "submit" (perform this.changePassword)}}>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <InputGroup @name="Enter new Password" @type="password" @value={{this.newPassword}} />
-                        <InputGroup @name="Confirm Password" @type="password" @value={{this.newConfirmPassword}} />
+                        <InputGroup @name={{t "console.ui.account.auth.enter-new-password"}} @type="password" @value={{this.newPassword}} />
+                        <InputGroup @name={{t "common.confirm-password"}} @type="password" @value={{this.newConfirmPassword}} />
                     </div>
                     <div class="mt-3">
-                        <Button @type="primary" @buttonType="submit" @text="Confirm & Change Password" @icon="save" @disabled={{not (and this.newPassword this.newConfirmPassword)}} {{on "click" (perform this.changePassword)}} />
+                        <Button @type="primary" @buttonType="submit" @text={{t "console.ui.account.auth.confirm-change-password"}} @icon="save" @disabled={{not (and this.newPassword this.newConfirmPassword)}} {{on "click" (perform this.changePassword)}} />
                     </div>
                 </form>
             </ContentPanel>
 
             {{#if this.isSystemTwoFaEnabled}}
-                <ContentPanel @title="2FA Settings" @open={{true}} @wrapperClass="bordered-classic">
+                <ContentPanel @title={{t "console.ui.account.auth.two-fa-settings"}} @open={{true}} @wrapperClass="bordered-classic">
                     <div class="mb-3">
                         {{#if this.loadUserTwoFaSettings.isIdle}}
                             <TwoFaSettings
@@ -53,14 +53,14 @@
                             />
                         {{else}}
                             <div class="flex items-center justify-center p-4">
-                                <Spinner @loadingMessage="Loading User 2FA Settings..." @wrapperClass="flex flex-row" @iconClass="mr-2" />
+                                <Spinner @loadingMessage={{t "console.ui.account.auth.loading-two-fa"}} @wrapperClass="flex flex-row" @iconClass="mr-2" />
                             </div>
                         {{/if}}
                     </div>
                     <Button
                         @type="primary"
                         @buttonType="submit"
-                        @text="Save 2FA Settings"
+                        @text={{t "console.ui.account.auth.save-two-fa"}}
                         @icon="save"
                         @onClick={{this.saveTwoFactorAuthSettings}}
                         @isLoading={{this.saveUserTwoFaSettings.isRunning}}

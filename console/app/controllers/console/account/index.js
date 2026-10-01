@@ -27,6 +27,7 @@ export default class ConsoleAccountIndexController extends Controller {
      * @memberof ConsoleAccountIndexController
      */
     @service notifications;
+    @service intl;
 
     /**
      * Alias to the currentUser service user record.
@@ -88,7 +89,7 @@ export default class ConsoleAccountIndexController extends Controller {
 
         try {
             const user = yield this.user.save();
-            this.notifications.success('Profile changes saved.');
+            this.notifications.success(this.intl.t('console.ui.account.profile-saved'));
             this.currentUser.set('user', user);
         } catch (error) {
             this.notifications.serverError(error);

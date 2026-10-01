@@ -1,0 +1,165 @@
+<div class="form-wrapper" ...attributes>
+    <ContentPanel @title={{t "fleet-ops.ui.sensor.form.integration"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+            <InputGroup @name={{t "device.fields.telematic"}}>
+                <ModelSelect
+                    @modelName="telematic"
+                    @selectedModel={{@resource.telematic}}
+                    @placeholder={{t "fleet-ops.ui.sensor.form.select-telematic"}}
+                    @triggerClass="form-select form-input"
+                    @infiniteScroll={{false}}
+                    @renderInPlace={{true}}
+                    @onChange={{this.selectTelematic}}
+                    @disabled={{cannot-write @resource}}
+                    as |model|
+                >
+                    <div class="space-x-2 text-sm">
+                        <div class="inline-block align-top">
+                            <div class="hide-from-trigger h-1.5 w-full"></div>
+                            <Image src={{model.provider_descriptor.icon}} class="w-5 h-5" />
+                        </div>
+                        <div class="inline-block">
+                            <div class="font-semibold normalize-in-trigger">{{or model.name model.public_id}}</div>
+                            <div class="hide-from-trigger">{{n-a model.provider_descriptor.label (titleize model.provider)}}</div>
+                        </div>
+                    </div>
+                </ModelSelect>
+            </InputGroup>
+
+            <InputGroup @name={{t "fleet-ops.ui.sensor.form.device"}}>
+                <ModelSelect
+                    @modelName="device"
+                    @selectedModel={{@resource.device}}
+                    @placeholder={{t "fleet-ops.ui.sensor.form.select-device"}}
+                    @triggerClass="form-select form-input"
+                    @infiniteScroll={{false}}
+                    @renderInPlace={{true}}
+                    @onChange={{fn (mut @resource.device)}}
+                    @onChangeId={{fn (mut @resource.device_uuid)}}
+                    @disabled={{cannot-write @resource}}
+                    as |model|
+                >
+                    <div class="text-sm">
+                        <div class="font-semibold normalize-in-trigger">{{model.name}}</div>
+                        <div class="hide-from-trigger">{{n-a model.serial_number}}</div>
+                    </div>
+                </ModelSelect>
+            </InputGroup>
+
+            <InputGroup @name={{t "fleet-ops.ui.sensor.form.report-frequency-seconds"}} @type="number">
+                <Input
+                    @value={{@resource.report_frequency_sec}}
+                    @type="number"
+                    class="w-full form-input"
+                    placeholder={{t "fleet-ops.ui.sensor.form.frequency-of-sensor-reporting-in-seconds"}}
+                    disabled={{cannot-write @resource}}
+                />
+            </InputGroup>
+        </div>
+    </ContentPanel>
+
+    <ContentPanel @title={{t "fleet-ops.ui.sensor.form.identity"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+            <InputGroup @name={{t "fleet-ops.ui.sensor.form.name"}} @value={{@resource.name}} @wrapperClass="col-span-2" disabled={{cannot-write @resource}} />
+            <InputGroup @name={{t "fleet-ops.ui.sensor.form.serial-number"}} @value={{@resource.serial_number}} @wrapperClass="col-span-2" disabled={{cannot-write @resource}} />
+            <InputGroup @name={{t "fleet-ops.ui.sensor.form.internal-id"}} @value={{@resource.internal_id}} disabled={{cannot-write @resource}} />
+            <InputGroup @name={{t "fleet-ops.ui.sensor.form.unit"}} @value={{@resource.unit}} disabled={{cannot-write @resource}} />
+            <InputGroup @name={{t "fleet-ops.ui.sensor.form.type"}} @wrapperClass="col-span-2">
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{get-fleet-ops-options "sensorTypes"}}
+                        @selected={{find-by "value" @resource.type (get-fleet-ops-options "sensorTypes")}}
+                        @onChange={{set-model-attr @resource "type"}}
+                        @placeholder={{t "common.select-field" field=(t "common.type")}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |option|
+                    >
+                        <div class="text-sm">
+                            <div class="font-semibold normalize-in-trigger">{{option.label}}</div>
+                            <div class="hide-from-trigger">{{option.description}}</div>
+                        </div>
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+        </div>
+    </ContentPanel>
+
+    <ContentPanel @title={{t "fleet-ops.ui.sensor.form.threshold"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+            <InputGroup @name={{t "fleet-ops.ui.sensor.form.min-threshold"}} @type="number">
+                <Input
+                    @value={{@resource.min_threshold}}
+                    @type="number"
+                    class="w-full form-input"
+                    placeholder={{t "sensor.fields.min-threshold-placeholder"}}
+                    disabled={{cannot-write @resource}}
+                />
+            </InputGroup>
+
+            <InputGroup @name={{t "fleet-ops.ui.sensor.form.max-threshold"}} @type="number">
+                <Input
+                    @value={{@resource.max_threshold}}
+                    @type="number"
+                    class="w-full form-input"
+                    placeholder={{t "sensor.fields.max-threshold-placeholder"}}
+                    disabled={{cannot-write @resource}}
+                />
+            </InputGroup>
+
+            <div class="col-span-2">
+                <div class="mt-2">
+                    <Checkbox @value={{@resource.threshold_inclusive}} @onChange={{fn (mut @resource.threshold_inclusive)}}>{{t "fleet-ops.ui.sensor.form.threshold-inclusive"}}</Checkbox>
+                </div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    <ContentPanel @title={{t "fleet-ops.ui.sensor.form.warranty-status"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+            <InputGroup @name={{t "common.status"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{get-fleet-ops-options "sensorStatuses"}}
+                        @selected={{find-by "value" @resource.status (get-fleet-ops-options "sensorStatuses")}}
+                        @onChange={{set-model-attr @resource "status"}}
+                        @placeholder={{t "common.select-field" field=(t "common.status")}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |option|
+                    >
+                        <div class="text-sm">
+                            <div class="font-semibold normalize-in-trigger">{{option.label}}</div>
+                            <div class="hide-from-trigger">{{option.description}}</div>
+                        </div>
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+
+            <InputGroup @name={{t "fleet-ops.ui.sensor.form.warranty"}}>
+                <ModelSelect
+                    @modelName="warranty"
+                    @selectedModel={{@resource.warranty}}
+                    @placeholder={{t "fleet-ops.ui.sensor.form.select-warranty"}}
+                    @triggerClass="form-select form-input"
+                    @infiniteScroll={{false}}
+                    @renderInPlace={{true}}
+                    @onChange={{fn (mut @resource.warranty)}}
+                    @onChangeId={{fn (mut @resource.warranty_uuid)}}
+                    @disabled={{cannot-write @resource}}
+                    as |model|
+                >
+                    {{model.policy_number}}
+                    -
+                    {{model.provider}}
+                </ModelSelect>
+            </InputGroup>
+        </div>
+    </ContentPanel>
+
+    <CustomField::Yield @subject={{@resource}} @wrapperClass="bordered-top" />
+
+    <RegistryYield @registry="fleet-ops:component:sensor:form" as |RegistryComponent|>
+        <RegistryComponent @resource={{@resource}} @controller={{@controller}} @permission={{get-write-permission @resource}} />
+    </RegistryYield>
+</div>

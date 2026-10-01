@@ -1,0 +1,13 @@
+<Widget::IamDashboardWidget @endpoint="access-coverage" @title={{t "iam.ui.widgets.access-coverage.title"}} @subtitle={{t "iam.ui.widgets.access-coverage.subtitle"}} @icon="shield-user" as |data|>
+    <div class="iam-coverage-hero">
+        <span>{{data.coverage}}%</span>
+        <small>{{t "iam.ui.widgets.access-coverage.hero"}}</small>
+    </div>
+    <div class="iam-row-list mt-3">
+        <div class="iam-row"><span>{{t "iam.ui.widgets.access-coverage.with-roles"}}</span><strong>{{data.with_roles}}</strong></div>
+        <div class="iam-row"><span>{{t "iam.ui.widgets.access-coverage.with-groups"}}</span><strong>{{data.with_groups}}</strong></div>
+        <div class="iam-row"><span>{{t "iam.ui.widgets.access-coverage.with-policies"}}</span><strong>{{data.with_policies}}</strong></div>
+        <div class="iam-row"><span>{{t "iam.ui.widgets.access-coverage.direct-permissions"}}</span><strong>{{data.with_direct_permissions}}</strong></div>
+        <div class="iam-row iam-row-warning"><span>{{t "iam.ui.widgets.access-coverage.no-assignments"}}</span><strong>{{data.without_assignments}}</strong></div>
+    </div>
+</Widget::IamDashboardWidget>

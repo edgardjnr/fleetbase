@@ -1,0 +1,374 @@
+iam:
+  extension-name: IAM
+  common:
+    address: Endereço
+    bulk-action: Ação em Massa
+    country: País
+    create: Criado
+    dashboard: Painel
+    description: Descrição
+    email: E-mail
+    export: Exportar
+    group: Grupos
+    member: Membros
+    name: Nome
+    new: Novo
+    permission: Permissão
+    phone: Telefone
+    photo: Foto
+    policy: Política
+    policies: Políticas
+    attach-policies: Anexar Políticas
+    select-policy: Selecionar Política
+    attach-permissions: Anexar Permissões
+    attach-inline-permissions: Anexar Permissões Diretas
+    select-permissions: Selecionar Permissões
+    primary: Principal
+    role: Papel
+    roles: Papéis
+    status: Status
+    type: Tipo
+    user: Usuários
+    service: Serviço
+    reload: Recarregar
+    reload-data: Recarregar dados
+  components:
+    widget:
+      metrics:
+        title: Métricas de IAM
+    modals:
+      group-details:
+        group-name: Nome do Grupo
+      group-form:
+        group-name: Nome do Grupo
+        group-description: Descrição do Grupo
+        select-users-add-group: Selecione usuários para adicionar ao grupo
+        search-select-users-add-group: Busque e selecione usuários para adicionar a este grupo.
+        select-user-add-group: Selecione um usuário para adicionar ao grupo
+        no-user-add-group: Nenhum usuário adicionado ao grupo
+      policy-form:
+        policy-name: Nome da Política
+        enter-name-your-policy: Digite um nome para sua política
+        policy-description: Descrição da Política
+        enter-description-your-policy: Digite uma descrição para sua política
+        select-permissions: Selecionar Permissões
+      view-policy-permissions:
+        view-permissions: 'Política: permissões de {policyName}'
+      view-role-permissions:
+        view-permissions: 'Papel: permissões de {roleName}'
+      view-user-permissions:
+        view-permissions: 'Usuário: permissões de {userName}'
+      change-user-email:
+        title: Alterar E-mail do Usuário
+        heading: Alterar e-mail de {userName}
+        prompt: Digite o novo endereço de e-mail. O usuário precisa verificar o novo endereço antes que ele se torne seu e-mail de login.
+        current-email: E-mail Atual
+        new-email: Novo E-mail
+        send-verification: Enviar Verificação
+        email-required: É necessário informar um novo endereço de e-mail.
+        verification-sent: Verificação de alteração de e-mail enviada. O usuário precisa confirmar o novo endereço antes que seu e-mail de login seja alterado.
+      role-form:
+        role-name: Nome do Papel
+        enter-name-for-this-role: Digite um nome para este papel
+        role-description: Descrição do Papel
+        enter-description-your-role: Digite uma descrição para seu papel
+        select-permission: Selecionar Permissões
+    table:
+      group-members:
+        no-member: Sem Membros
+    permission-picker:
+      selected: 'Selecionadas: '
+      search-permissions-keyword: Buscar permissões por palavras-chave
+      loading-permission: Carregando permissões...
+  groups:
+    index:
+      untitled: Sem título
+      delete-group-title: Excluir grupo {groupName}
+      delete-group-success-message: Grupo {name} excluído.
+      delete-group: Excluir Grupos
+      created: Criado
+      edit-group: Editar grupo...
+      delete-group-label: Excluir grupo...
+      new-group: Novo Grupo
+      new-group-created: Novo grupo criado.
+      edit-group-title: Editar Grupo
+      group-actions: Ações do Grupo
+      changes-group-save: Alterações no grupo salvas.
+      data-assosciated-this-group-deleted: Tem certeza de que deseja excluir este grupo? Todos os dados associados a este grupo também serão excluídos. Esta ação não pode ser desfeita.
+  policies:
+    index:
+      title: Políticas
+      delete-policies: Excluir Políticas
+      contact-action: Ações
+      edit-policy: Editar política...
+      delete-policy: Excluir política...
+      new-policy: Nova Política
+      new-policy-created: Nova política criada.
+      unable-changes-policy-warning: Não é possível alterar uma política {policyType}.
+      edit-policy-title: Editar Política
+      policy-actions: Ações da Política
+      changes-policy-saved-success: Alterações na política salvas.
+      unable-delete-policy-warning: Não é possível excluir uma política {policyType}.
+      data-assosciated-this-policy-deleted: Tem certeza de que deseja excluir esta política? Todos os dados associados a esta política também serão excluídos. Esta ação não pode ser desfeita.
+      policy-deleted: Política {policyName} excluída.
+  roles:
+    index:
+      delete-roles: Excluir Papéis
+      contact-action: Ações
+      edit-role: Editar papel...
+      delete-role: Excluir papel...
+      new-role: Novo Papel
+      new-role-create: Novo papel criado
+      edit-role-title: Editar Papel
+      role-actions: Ações do Papel
+      changes-role-saved: Alterações no papel salvas.
+      data-assosciated-this-role-deleted: Tem certeza de que deseja excluir este papel? Todos os dados associados a este papel também serão excluídos. Esta ação não pode ser desfeita.
+      role-deleted: Papel {roleName} excluído.
+      unable-changes-role-warning: Não é possível alterar um papel {roleType}.
+      unable-delete-role-warning: Não é possível excluir um papel {roleType}.
+  users:
+    index:
+      delete-user-title: Excluir usuário {userName}
+      delete-user-success-message: Usuário {userName} excluído.
+      deactivate-user-title: Desativar a conta do usuário {userName}
+      deactivate-user-success-message: Usuário {userName} desativado.
+      re-activate-user-title: Reativar a conta do usuário {userName}
+      re-activate-user-success-message: Usuário {userName} ativado.
+      verify-user-title: Verificar manualmente a conta do usuário {userName}
+      verify-user-manually-prompt: Ao confirmar, o endereço de e-mail do usuário será verificado manualmente. Tem certeza de que deseja ignorar a verificação para este usuário?
+      user-verified-success-message: Usuário {userName} verificado.
+      delete-users: Excluir Usuários
+      last-login: Último Login
+      created-at: Criado em
+      updated-at: Atualizado em
+      user-actions: Ações do Usuário
+      edit-user: Editar usuário...
+      view-user-permissions: Ver permissões...
+      re-send-invitation: Reenviar convite...
+      deactivate-user: Desativar usuário...
+      activate-user: Ativar usuário...
+      delete-user: Excluir usuário...
+      verify-user: Verificar usuário...
+      change-user-password: Alterar senha do usuário...
+      change-user-email: Alterar e-mail do usuário...
+      new-user: Novo Usuário
+      user-invited-join-your-organization-success: O usuário foi convidado para entrar na sua organização.
+      edit-user-title: Editar Usuário
+      new-user-created: Novo usuário adicionado à organização.
+      user-changes-saved-success: Alterações do usuário salvas.
+      error-you-cant-delete-yourself: Você não pode excluir a si mesmo
+      data-assosciated-user-delete: Tem certeza de que deseja excluir este usuário? Todos os dados associados a este usuário também serão excluídos. Esta ação não pode ser desfeita.
+      access-account-or-resources-unless-re-activated: Tem certeza de que deseja desativar este usuário? Ele não poderá mais acessar a conta nem os recursos até ser reativado.
+      this-user-will-regain-access-to-your-organization: Tem certeza de que deseja reativar este usuário? Ele voltará a ter acesso à sua organização.
+      resend-invitation-to-join-organization: Reenviar convite para entrar na organização
+      confirming-fleetbase-will-re-send-invitation-for-user-to-join-your-organization: Ao confirmar, o Fleetbase reenviará o convite para este usuário entrar na sua organização.
+      invitation-resent: Convite reenviado.
+      invite-user: Convidar Usuário
+    invite:
+      title: Convidar Usuário
+      description: >-
+        Digite o endereço de e-mail da pessoa que você deseja convidar. Se ela já
+        tiver uma conta Fleetbase, receberá um convite para entrar na sua
+        organização. Se for nova, uma conta pendente será criada e ela precisará
+        definir uma senha ao aceitar.
+      email-placeholder: colega@exemplo.com
+      name-placeholder: Nome completo (obrigatório para novos usuários)
+      name-help: Obrigatório somente se a pessoa ainda não tiver uma conta Fleetbase.
+      send-invitation: Enviar Convite
+      email-required: Informe um endereço de e-mail.
+      invitation-sent-existing: Convite enviado. O usuário receberá um e-mail para entrar na sua organização.
+      invitation-sent-new: Convite enviado. Uma conta pendente foi criada e o usuário precisará definir uma senha.
+  application:
+    access-management: Gerenciamento de Acesso
+  home:
+    identity-access-management: Gerenciamento de Identidade e Acesso
+  ui:
+    unauthorized-access: Você não tem autorização para acessar este recurso.
+    permissions-required-for-changes: Você não tem as permissões necessárias para fazer alterações.
+    unable-open-resource: Não foi possível abrir o recurso de IAM selecionado.
+    dashboard-name: Painel de IAM
+    search-placeholder: Buscar no IAM...
+    scheme-types:
+      flb-managed: Gerenciado pelo Fleetbase
+      org-managed: Gerenciado pela organização
+    nav:
+      dashboard-description: Visão geral de identidade e acesso.
+      users-description: Gerencie identidades e tipos de conta.
+      users: Usuários
+      all-users-description: Todos os usuários do console.
+      drivers: Motoristas
+      drivers-description: Contas de motoristas.
+      customers: Clientes
+      customers-description: Contas de clientes.
+      groups-description: Organize usuários em grupos de acesso.
+      roles-description: Defina conjuntos reutilizáveis de permissões.
+      policies-description: Gerencie políticas de acesso detalhadas.
+    groups:
+      delete-groups: Excluir Grupos
+    roles:
+      delete-role-title: Excluir o papel ({roleName})
+      name-required: O nome do papel é obrigatório.
+      reserved-name: Não é permitido criar um papel com o nome "Administrator" ou com nome que comece com "Admin", pois esse nome é reservado pelo sistema.
+    policies:
+      delete-policy-title: Excluir a política ({policyName})
+    users:
+      select-role: Selecionar papel
+    change-password:
+      title: Redefinir Credenciais do Usuário
+      accept: Redefinir Credenciais
+      heading: Você está prestes a redefinir a senha de {userName}
+      instructions: Digite a nova senha e confirme-a abaixo. Você pode enviar as novas credenciais ao usuário por e-mail marcando a caixa de seleção.
+      new-password: Nova Senha
+      confirm-new-password: Confirmar Nova Senha
+      send-credentials: Enviar credenciais de senha ao usuário
+      success: Senha do usuário redefinida.
+    permission-picker:
+      toggle-selected: Mostrar/ocultar selecionadas
+    widgets:
+      unable-load-widget: Não foi possível carregar o widget
+      unable-load-kpi: Não foi possível carregar o indicador
+      coverage-unavailable: Cobertura indisponível
+      current: Atual
+      days: "{count, plural, one {# dia} other {# dias}}"
+      access-coverage:
+        title: Cobertura de Acesso
+        subtitle: Cobertura de atribuições por usuário
+        hero: Usuários com atribuições de acesso
+        with-roles: Com papéis
+        with-groups: Com grupos
+        with-policies: Com políticas
+        direct-permissions: Permissões diretas
+        no-assignments: Sem atribuições
+      access-risk:
+        title: Risco de Acesso
+        subtitle: Exposição privilegiada que requer revisão
+        empty: Nenhum risco de acesso privilegiado detectado
+      privileged-access:
+        title: Acesso Privilegiado
+        subtitle: Alta exposição de acesso
+        empty: Nenhum papel privilegiado detectado
+      admin-roles: Papéis de administrador
+      wildcard-policies: Políticas curinga
+      direct-grants: Concessões diretas
+      group-coverage:
+        title: Cobertura de Grupos
+        subtitle: Distribuição de membros
+        groups: Grupos
+        memberships: Associações
+        empty: Vazios
+      identity-health:
+        title: Saúde das Identidades
+        subtitle: Panorama da postura de acesso
+        active: Ativos
+        pending: Pendentes
+        unverified: Não verificados
+        dormant: Sem atividade
+        mfa-coverage: Cobertura de MFA
+        unavailable: Indisponível
+        organization-2fa: 2FA da organização
+        enforced: Obrigatório
+        enabled: Ativado
+        "off": Desativado
+        dormant-threshold: Limite de inatividade
+      kpi:
+        active-users: Usuários Ativos
+        current-access: Com acesso atual
+        dormant-users: Usuários Sem Atividade
+        no-recent-login: Sem login recente
+        inactive-users: Usuários Inativos
+        disabled-access: Acesso desativado
+        mfa-coverage: Cobertura de MFA
+        org-enforcement-shown: Exibindo obrigatoriedade da organização
+        pending-invites: Convites Pendentes
+        awaiting-access: Aguardando acesso
+        policies: Políticas
+        roles: Papéis
+        organization-managed: Gerenciados pela organização
+        verified-users: Usuários Verificados
+        identity-verified: Identidade verificada
+      policy-surface:
+        title: Superfície de Políticas
+        subtitle: Políticas por serviço
+        total: Total
+        org-managed: Da organização
+        empty: Nenhuma política disponível
+      quick-actions:
+        title: Ações Rápidas de IAM
+        subtitle: Acesse os fluxos de acesso mais comuns
+        invite-user: Convidar usuário
+        create-group: Criar grupo
+        create-role: Criar papel
+        create-policy: Criar política
+      recent-activity:
+        title: Atividade Recente de IAM
+        subtitle: Últimas alterações de identidade e acesso
+        empty: Nenhuma atividade recente de IAM
+      user-lifecycle:
+        title: Tendência do Ciclo de Vida dos Usuários
+        subtitle: Usuários criados, pendentes e inativos
+      user-type-creation:
+        title: Usuários Criados por Tipo ao Longo do Tempo
+        subtitle: Novas identidades agrupadas por tipo de usuário
+
+menu-text:
+  iam:
+    title: IAM
+    description: 'Gestão de identidade e acesso: usuários, papéis, políticas e permissões.'
+  iam-sc-users:
+    title: Usuários
+    description: Gerencie as contas de usuário do console e seus níveis de acesso.
+  iam-sc-drivers:
+    title: Motoristas
+    description: Veja e gerencie as contas de motoristas vinculadas à sua organização.
+  iam-sc-customers:
+    title: Clientes
+    description: Veja e gerencie as contas de clientes vinculadas à sua organização.
+  iam-sc-groups:
+    title: Grupos
+    description: Organize usuários em grupos para gerenciar permissões em conjunto.
+  iam-sc-roles:
+    title: Papéis
+    description: Defina papéis que agrupam conjuntos de permissões.
+  iam-sc-policies:
+    title: Políticas
+    description: Crie políticas de controle de acesso detalhadas para os recursos.
+widget-text:
+  iam-kpi-active-users:
+    name: Usuários ativos
+    description: Usuários ativos que podem acessar a organização no momento.
+  iam-kpi-pending-invites:
+    name: Convites pendentes
+    description: Usuários convidados ou aguardando verificação.
+  iam-kpi-inactive-users:
+    name: Usuários inativos
+    description: Usuários com acesso à organização inativo.
+  iam-kpi-dormant-users:
+    name: Usuários sem atividade
+    description: Usuários sem login recente.
+  iam-kpi-mfa-coverage:
+    name: Cobertura de MFA
+    description: Parcela de usuários com autenticação em dois fatores ativada, quando disponível.
+  iam-kpi-roles:
+    name: Papéis
+    description: Papéis de IAM gerenciados pela organização.
+  iam-kpi-policies:
+    name: Políticas
+    description: Políticas de acesso gerenciadas pela organização.
+  iam-user-type-creation-trend:
+    name: Usuários criados por tipo ao longo do tempo
+    description: Novas identidades criadas por tipo de usuário no período selecionado.
+  iam-access-risk:
+    name: Risco de acesso
+    description: Papéis privilegiados, políticas curinga e concessões privilegiadas diretas.
+  iam-policy-surface:
+    name: Panorama de políticas
+    description: Políticas agrupadas por serviço e responsável.
+  iam-recent-activity:
+    name: Atividade recente de IAM
+    description: Alterações recentes em usuários, grupos, papéis e políticas.
+  iam-quick-actions:
+    name: Ações rápidas de IAM
+    description: Atalhos para tarefas comuns de gestão de IAM.
+  iam-metrics-widget:
+    name: Métricas de IAM (legado)
+    description: Métricas de uso de IAM agrupadas (versão antiga).

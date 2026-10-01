@@ -1,0 +1,266 @@
+registry-bridge:
+  extension-name: Registry Bridge
+  common:
+    install: Instalar
+    uninstall: Desinstalar
+    approve: Aprovar
+    reject: Rejeitar
+    details: Detalhes
+    publish: Publicar
+    about: Sobre
+    about-extension: "Sobre {extensionName}"
+  component:
+    extension-details-modal:
+      extension: Extensão
+      author: Autor
+      description: Descrição
+      overview: Visão geral
+      details: Detalhes
+      version: Versão
+      updated: Atualizado
+      website: Site
+      self-managed: Autogerenciada
+      self-managed-help-text: Uma extensão autogerenciada é destinada a usuários que hospedam o Fleetbase em seus próprios servidores, fora do ambiente em nuvem/SaaS. Essas extensões exigem instalação e configuração manuais. Se você usa o Fleetbase em uma instância auto-hospedada, pode usar essas extensões para adicionar recursos. Elas não estão disponíveis para usuários da nuvem/SaaS.
+      self-hosted-install: Instalação auto-hospedada
+      self-hosted-install-help-text: Ver as instruções de instalação auto-hospedada.
+    extension-pending-publish-viewer:
+      content-panel-title: Extensões aguardando publicação
+      focused-extension-title: "Detalhes de {extensionName}"
+      download-bundle: Baixar pacote
+      view-details: Ver detalhes
+      publish: Publicar
+      no-extensions-awaiting-publish: Nenhuma extensão aguardando publicação
+    extension-reviewer-control:
+      content-panel-title: Extensões aguardando revisão
+      focused-extension-title: "Detalhes de {extensionName}"
+      approve-confirm-title: Tem certeza de que deseja aprovar esta extensão?
+      approve-confirm-body: Esta extensão deve ser testada a fundo em ambientes de desenvolvimento e de testes, inclusive quanto à conformidade e a questões de segurança. Depois de aprovada, a extensão precisará ser publicada manualmente no registro.
+      decline-confirm-title: Tem certeza de que deseja rejeitar esta extensão?
+      decline-confirm-body: Esta extensão será rejeitada, mas o autor poderá fazer correções e reenviá-la para revisão.
+      download-bundle: Baixar pacote
+      view-details: Ver detalhes
+      approve: Aprovar
+      reject: Rejeitar
+      no-extensions-awaiting-review: Nenhuma extensão aguardando revisão
+  installed:
+    title: Extensões instaladas
+  purchased:
+    title: Extensões compradas
+  developers:
+    payments:
+      manage-account: Gerenciar conta de recebimento
+      no-account-warning: Você precisa concluir o cadastro no Stripe antes de acessar as configurações da conta.
+      settings:
+        title: Gerenciar conta de recebimento
+        description: Gerencie os dados da sua conta Stripe, incluindo as informações da empresa e as contas bancárias para receber pagamentos.
+        loading: Carregando o gerenciamento da conta...
+    extensions:
+      extensions: Extensões
+      create-new-extension: Criar nova extensão
+      new-extension: Nova extensão
+      extension: Extensão
+      submission: Envio
+      details: Detalhes
+      bundles: Pacotes
+      monetize: Monetizar
+      explore:
+        explore-extensions: Explorar extensões
+        explore-category-extensions: "Extensões de {categoryName}"
+      extension-form:
+        package-name: Nome do pacote
+        package-json-name: nome no package.json
+        composer-json-name: nome no composer.json
+        submission-success-message: Extensão enviada e aguardando revisão.
+        extension-category: Categoria
+        extension-category-help-text: Selecione a categoria em que os usuários poderão encontrar sua extensão.
+        extension-select-category: Selecionar categoria
+        extension-name: Nome da extensão
+        extension-icon: Ícone da extensão
+        upload-extension-icon: Enviar ícone
+        extension-description: Descrição
+        extension-tags: Tags
+        extension-add-tags: Adicione palavras-chave e tags
+        extension-promotional-text: Texto promocional
+        details-content-block: Detalhes da extensão
+        extension-listing-details: Detalhes do anúncio
+        extension-subtitle: Subtítulo
+        extension-website-url: URL do site
+        extension-repo-url: URL do repositório
+        extension-support-url: URL de suporte
+        extension-privacy-policy-url: URL da política de privacidade
+        extension-tos-url: URL dos termos de serviço
+        extension-primary-language: Idioma principal
+        extension-version: Versão
+        extension-copyright: Direitos autorais
+        extension-copyright-help-text: Informe o aviso de direitos autorais da sua extensão. Normalmente inclui o ano e o nome do titular ou da empresa.
+        extension-payment-required: Pagamento obrigatório
+        extension-payment-required-help-text: Define se é necessário pagamento ou assinatura para os usuários instalarem esta extensão.
+        extension-price: Preço
+        extension-price-help-text: Informe o preço normal da extensão. É o valor padrão para os usuários comprarem ou acessarem a extensão.
+        extension-sale-price: Preço promocional
+        extension-sale-price-help-text: Se a extensão estiver com desconto, informe aqui o preço promocional. Ele deve ser menor que o preço normal.
+        extension-subscription-required: Assinatura obrigatória
+        extension-subscription-required-help-text: Define se o usuário precisa ter uma assinatura para instalar e usar esta extensão.
+        extension-subscription-billing-period: Período de cobrança da assinatura
+        extension-subscription-billing-period-placeholder: Selecionar período de cobrança
+        extension-subscription-billing-period-help-text: Informe o período de cobrança da assinatura, por exemplo mensal, trimestral, anual ou outros intervalos personalizados.
+        extension-subscription-amount: Valor da assinatura
+        extension-subscription-amount-help-text: Informe o valor padrão cobrado pela assinatura. Ele deve refletir o preço normal, antes de descontos ou ajustes por faixa.
+        extension-subscription-model: Modelo de assinatura
+        extension-subscription-model-help-text: Define o modelo de preço da assinatura. As opções são valor fixo, por faixas e por uso.
+        extension-subscription-tiers: Faixas de assinatura
+        extension-subscription-tiers-help-text: Defina as diferentes faixas de preço da assinatura, se houver. Inclua os níveis, o preço de cada faixa e os recursos ou limitações específicos de cada uma.
+        extension-name-help-text: Informe o nome oficial da extensão. Ele será exibido como identificador principal para os usuários.
+        extension-icon-help-text: Envie um ícone que represente a extensão. Ele será usado nas listagens e nos resultados de busca.
+        extension-description-help-text: Descreva em detalhes o que a extensão faz e seus principais recursos. Isso ajuda os usuários a entender a funcionalidade da extensão.
+        extension-tags-help-text: Adicione palavras-chave e tags relevantes que descrevam a extensão, ajudando os usuários a encontrá-la na busca.
+        extension-promotional-text-help-text: Escreva um texto promocional destacando os diferenciais da extensão. Ele será usado em seções de marketing ou de destaque.
+        extension-subtitle-help-text: Informe um subtítulo curto com contexto ou informações adicionais sobre a extensão.
+        extension-website-url-help-text: Informe a URL do site oficial ou da página do produto da extensão para mais informações.
+        extension-repo-url-help-text: Informe a URL do repositório de código da extensão (por exemplo, GitHub, GitLab), se houver.
+        extension-support-url-help-text: Informe a URL onde os usuários podem obter suporte, tirar dúvidas ou relatar problemas com a extensão.
+        extension-privacy-policy-url-help-text: Link para a política de privacidade que descreve como os dados dos usuários são tratados e protegidos.
+        extension-tos-url-help-text: Link para os termos de serviço que os usuários devem aceitar antes de usar a extensão.
+        extension-primary-language-help-text: Informe o idioma principal em que a extensão foi desenvolvida ou está disponível.
+        extension-version-help-text: Indique a versão atual da extensão. Isso é importante para acompanhar atualizações e a compatibilidade.
+        extension-payment-details: Detalhes de pagamento
+        extension-screenshots: Capturas de tela
+        upload-screenshots: Enviar capturas de tela
+        submit-for-review: Enviar para revisão
+        extension-bundle: Pacote da extensão
+        extension-upload-bundle: Enviar pacote da extensão
+        details: Detalhes
+        bundle-id: ID do pacote
+        bundle-id-help-text: O identificador do pacote publicado atualmente.
+        extension-id: ID da extensão
+        extension-id-help-text: O identificador único desta extensão.
+        bundles: Pacotes
+        upload-new-bundle: Enviar novo pacote
+        self-managed: Autogerenciada
+        self-managed-help-text: Ative esta opção se o seu módulo for destinado apenas a instâncias auto-hospedadas. Com ela, o módulo não ficará disponível para instalação na versão em nuvem/SaaS do Fleetbase e precisará ser instalado manualmente pelo usuário no próprio servidor.
+  ui:
+    unauthorized-access: "Você não tem autorização para acessar este recurso."
+    done: "Concluir"
+    cancel: "Cancelar"
+    continue: "Continuar"
+    create: "Criar"
+    select: "Selecionar"
+    selected: "Selecionado"
+    or: "ou"
+    free: "Grátis"
+    last-modified: "Última modificação"
+    save-changes: "Salvar alterações"
+    installed: "Instalada"
+    purchased: "Compradas"
+    explore: "Explorar"
+    explore-all: "Explorar tudo"
+    developers: "Desenvolvedores"
+    extensions: "Extensões"
+    analytics: "Análises"
+    payments: "Pagamentos"
+    credentials: "Credenciais"
+    sidebar-installed: "Instaladas"
+    purchase-for: "Comprar por {price}"
+    unauthorized-to-install: "Sem autorização para instalar"
+    awaiting-install: "Aguardando o início da instalação..."
+    install-step-1: "(1/3) Instalando extensão..."
+    install-step-2: "(2/3) Instalando extensão..."
+    install-step-3: "(3/3) Concluindo instalação..."
+    extension-installed: "{name} foi instalada."
+    self-hosted-install-title: "Instalar extensão em instância auto-hospedada"
+    purchase-extension-title: "Comprar a extensão ''{name}''"
+    finalizing-purchase: "Finalizando compra"
+    completing-purchase: "Concluindo a compra, não atualize nem feche a janela..."
+    payment-completed: "Pagamento concluído."
+    preview-listing: "Pré-visualizar anúncio"
+    select-bundle: "Selecionar pacote"
+    select-bundle-title: "Selecionar pacote da extensão"
+    no-bundles: "Nenhum pacote enviado."
+    bundle: "Pacote"
+    version: "Versão"
+    uploaded: "Enviado"
+    status: "Status"
+    filename: "Nome do arquivo"
+    date-uploaded: "Data de envio"
+    creating-bundle: "Criando um novo pacote..."
+    extension-details-saved: "Detalhes da extensão salvos."
+    new-bundle-required: "É preciso selecionar um novo pacote para a revisão."
+    field-required: "{field}: campo obrigatório para o envio."
+    uninstall-title: "Desinstalar {name}"
+    awaiting-uninstall: "Aguardando o início da desinstalação..."
+    uninstall-step-1: "(1/3) Desinstalando extensão..."
+    uninstall-step-2: "(2/3) Desinstalando extensão..."
+    uninstall-step-3: "(3/3) Concluindo desinstalação..."
+    extension-uninstalled: "{name} foi desinstalada."
+    proceed-uninstall: "Prosseguir com a desinstalação?"
+    uninstall-warning: "Deseja realmente desinstalar {name}? Ao prosseguir, todas as configurações e dados relacionados a esta extensão serão excluídos permanentemente. Você pode reinstalar a extensão quando quiser, mas as configurações e os dados não serão recuperados."
+    owner: "Proprietário"
+    fleetbase-token: "Token do Fleetbase"
+    registry-token: "Token do registro"
+    registry-host: "Host do registro"
+    registry-configuration: "Configuração do registro"
+    expiry: "Expira em"
+    created: "Criado em"
+    credential-actions: "Ações da credencial"
+    delete-credentials: "Excluir credenciais"
+    delete-credentials-title: "Excluir as credenciais do registro de extensões?"
+    delete-credentials-body: "Tem certeza de que deseja excluir estas credenciais? Depois de excluídas, qualquer serviço ou usuário que as utilize perderá o acesso ao registro."
+    credentials-deleted: "Credenciais do registro excluídas."
+    create-credentials-title: "Criar novas credenciais do registro"
+    create-new-credentials: "Criar novas credenciais"
+    password-required: "A senha não pode ficar em branco"
+    credentials-created: "Credenciais do registro criadas."
+    password: "Senha"
+    password-help-text: "Você precisa se autenticar com sua senha."
+    password-placeholder: "Digite sua senha"
+    extension: "Extensão"
+    category: "Categoria"
+    customer: "Cliente"
+    amount: "Valor"
+    date: "Data"
+    total-amount: "Valor total:"
+    already-onboarded: "Sua conta já está habilitada para receber pagamentos."
+    loading-monetization: "Carregando configurações de monetização..."
+    not-setup-title: "Sua conta ainda não está configurada para receber pagamentos."
+    not-setup-body: "Para receber pagamentos por extensões, você precisa concluir o cadastro pelo Stripe."
+    start-payments-onboard: "Iniciar cadastro de pagamentos"
+    payments-onboard: "Cadastro de pagamentos"
+    onboard-completed-title: "Cadastro concluído com sucesso!"
+    onboard-start-title: "Conclua este cadastro para receber pagamentos pelo Fleetbase."
+    onboard-completed-body: "Seu cadastro foi concluído e agora você pode vender e receber pagamentos pelas extensões publicadas."
+    onboard-start-body: "Autores de extensões que desejam receber pagamentos pelas extensões publicadas precisam concluir este cadastro."
+    onboard-in-progress: "Cadastro em andamento"
+    start-onboard-now: "Iniciar cadastro agora"
+    select-extension: "Selecionar extensão"
+    loading-analytics: "Carregando métricas analíticas de {name}"
+    analytics-viewer-title: "Visualizador de análises da extensão"
+    analytics-viewer-body: "Selecione uma extensão da lista para carregar e exibir as análises correspondentes. Depois de selecionada, as métricas detalhadas de desempenho e os insights de dados aparecerão aqui."
+    install-intro: "Inicie a instalação a partir do diretório base da sua instância do Fleetbase. Para instruções completas, acesse a"
+    cli-github-page: "página do Fleetbase CLI no GitHub"
+    install-first: "Primeiro,"
+    generate-registry-token: "gere um token de credenciais do registro do Fleetbase."
+    install-cli: "Instale o Fleetbase CLI globalmente com o npm:"
+    set-auth-token: "Defina seu token de autenticação com o CLI:"
+    install-finally: "Por fim, instale a extensão com um dos comandos a seguir:"
+
+menu-text:
+  registry-bridge:
+    title: Extensões
+    description: Descubra, instale e publique extensões no registro de extensões do Fleetbase.
+  registry-bridge-sc-explore:
+    title: Explorar
+    description: Navegue e descubra extensões disponíveis no registro.
+  registry-bridge-sc-installed:
+    title: Instaladas
+    description: Veja e gerencie as extensões instaladas no seu console.
+  registry-bridge-sc-purchased:
+    title: Compradas
+    description: Acesse as extensões que você comprou no registro.
+  extension-registry:
+    title: Registro de extensões
+  extension-registry-registry-config:
+    title: Configuração do registro
+  extension-registry-awaiting-review:
+    title: Aguardando revisão
+  extension-registry-pending-publish:
+    title: Publicação pendente

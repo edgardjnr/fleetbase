@@ -1,0 +1,16 @@
+<Pill
+    @resource={{this.resource}}
+    @imageSrc={{resource-image this.resource.photo_url "driver"}}
+    @titleFallback={{or @titleFallback (t "fleet-ops.ui.driver.pill.no-driver")}}
+    @subtitle={{n-a this.resource.phone (if this.resource (t "fleet-ops.ui.driver.pill.no-phone") "-")}}
+    @imageFallback={{(placeholder-image "driver")}}
+    @showOnlineIndicator={{if this.resource true false}}
+    @onClick={{@onClick}}
+    @anchorClass={{@anchorClass}}
+    @imageClass={{@imageClass}}
+    @imageWrapperClass={{@imageWrapperClass}}
+    @contentWrapperClass={{@contentWrapperClass}}
+    @titleClass={{@titleClass}}
+    @subtitleClass={{@subtitleClass}}
+    ...attributes
+/>

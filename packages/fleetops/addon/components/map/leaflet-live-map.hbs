@@ -1,0 +1,429 @@
+{{!
+    live-map component
+    ─────────────────────────────────────────────────────────────────────────
+    Supports two map providers:
+      • "leaflet" (default) — uses ember-leaflet / Leaflet.js
+      • "google"            — uses ember-google-maps / Google Maps JS API
+
+    The active provider is read from `this.mapManager.activeProvider`.
+    Set `ENV.mapProvider = 'google'` in environment.js to switch globally,
+    or pass `@mapProvider="google"` as a component argument to override.
+
+    Both branches share the same JS component class and all services route
+    through the provider-agnostic MapManagerService.
+}}
+
+<div class="live-map-component {{@wrapperClass}}" {{did-update this.syncServiceAreaContextMenus this.serviceAreaActions.serviceAreas this.serviceAreaActions.serviceAreas.length}}>
+
+    {{#if this.shouldUseGoogleMaps}}
+        {{! ─── Google Maps branch ──────────────────────────────────────────── }}
+        <Map::GoogleLiveMap
+            @latitude={{this.latitude}}
+            @longitude={{this.longitude}}
+            @zoom={{this.zoom}}
+            @drivers={{this.drivers}}
+            @vehicles={{this.vehicles}}
+            @places={{this.places}}
+            @serviceAreas={{this.serviceAreaActions.serviceAreas}}
+            @ready={{this.load.isIdle}}
+            @onLoad={{this.didLoadGoogleMap}}
+            @onViewportChanged={{perform this.reloadResourcesInViewport}}
+            @onDriverAdded={{fn this.trigger "onDriverAdded"}}
+            @onDriverClicked={{fn this.trigger "onDriverClicked"}}
+            @onVehicleAdded={{fn this.trigger "onVehicleAdded"}}
+            @onVehicleClicked={{fn this.trigger "onVehicleClicked"}}
+            @onPlaceAdded={{fn this.trigger "onPlaceAdded"}}
+            @onPlaceClicked={{fn this.trigger "onPlaceClicked"}}
+            @onServiceAreaLayerAdded={{fn this.trigger "onServiceAreaLayerAdded"}}
+            @onZoneLayerAdd={{fn this.trigger "onZoneLayerAdd"}}
+            @mapClass={{@mapClass}}
+            ...attributes
+        />
+    {{else if this.leafletPluginsReady}}
+        {{! ─── Leaflet branch (default) ────────────────────────────────────── }}
+        <LeafletMap
+            id={{this.id}}
+            class="next-leaflet-container-map {{@mapClass}}"
+            @lat={{this.latitude}}
+            @lng={{this.longitude}}
+            @zoom={{this.zoom}}
+            @zoomControl={{false}}
+            @contextmenu={{true}}
+            @contextmenuWidth={{140}}
+            @onLoad={{this.didLoad}}
+            {{set-container-dimensions}}
+            ...attributes
+            as |layers|
+        >
+            <layers.tile @url={{this.tileUrl}} />
+
+            <layers.draw-control
+                @position="topright"
+                @draw={{hash marker=false circlemarker=false polyline=false}}
+                @onDrawDrawstop={{fn this.trigger "onDrawDrawstop"}}
+                @onDrawDeleted={{fn this.trigger "onDrawDeleted"}}
+                @onDrawEdited={{fn this.trigger "onDrawEdited"}}
+                @onDrawDeletestart={{fn this.trigger "onDrawDeletestart"}}
+                @onDrawEditstop={{fn this.trigger "onDrawEditstop"}}
+                @onDrawControlCreated={{this.didCreateDrawControl}}
+                @onDrawFeatureGroupCreated={{this.didCreateDrawControlFeatureGroup}}
+            />
+
+            {{#if this.load.isIdle}}
+                {{#each this.drivers as |driver|}}
+                    <layers.tracking-marker
+                        @id={{driver.id}}
+                        @publicId={{driver.public_id}}
+                        @location={{point-to-coordinates driver.location}}
+                        @rotationAngle={{driver.heading}}
+                        @icon={{icon iconUrl=driver.vehicle_avatar iconSize=(array 24 24)}}
+                        @onAdd={{fn this.trigger "onDriverAdded" driver}}
+                        @onClick={{fn this.trigger "onDriverClicked" driver}}
+                        @draggable={{false}}
+                        as |marker|
+                    >
+                        <marker.popup @maxWidth="500" @minWidth="225">
+                            <div class="w-[280px] max-w-[calc(100vw-2rem)] rounded-lg bg-gray-900 shadow-lg p-1.5 text-white">
+                                <div class="flex items-center gap-1.5 text-xs font-semibold mb-1.5">
+                                    <span class="inline-block w-2 h-2 rounded-full {{if driver.online 'bg-green-400' 'bg-red-500'}}"></span>
+                                    <span>{{driver.name}}</span>
+                                    <div
+                                        class="status-badge
+                                            {{if driver.status (dasherize driver.status) 'default'}}-status-badge status-badge-{{if driver.status (dasherize driver.status) 'default'}}
+                                            shadow-none ml-auto"
+                                    >
+                                        <span class="rounded-full text-[9px] px-1.5 py-0.5">{{n-a driver.meta.status_label (smart-humanize driver.status)}}</span>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-1">
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">ID</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.public_id driver.id}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.phone"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.phone}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.vehicle"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.vehicle_name}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.email"}}</div>
+                                        <div class="text-[11px] text-white leading-tight truncate min-w-0 w-full">{{n-a driver.email}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.order"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.meta.current_order_reference}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.speed"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.meta.speed_label}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.heading"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.meta.heading_label}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.location"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a
+                                                driver.meta.location_coordinates
+                                                (point-coordinates driver.location)
+                                            }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </marker.popup>
+                        <marker.tooltip @permanent={{false}} @sticky={{true}}>
+                            <div class="w-[280px] max-w-[calc(100vw-2rem)]">
+                                <div class="flex items-center gap-1.5 text-xs font-semibold mb-1.5">
+                                    <span class="inline-block w-2 h-2 rounded-full {{if driver.online 'bg-green-400' 'bg-red-500'}}"></span>
+                                    <span>{{driver.name}}</span>
+                                    <div
+                                        class="status-badge
+                                            {{if driver.status (dasherize driver.status) 'default'}}-status-badge status-badge-{{if driver.status (dasherize driver.status) 'default'}}
+                                            shadow-none ml-auto"
+                                    >
+                                        <span class="rounded-full text-[9px] px-1.5 py-0.5">{{n-a driver.meta.status_label (smart-humanize driver.status)}}</span>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-1">
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">ID</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.public_id driver.id}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.phone"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.phone}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.vehicle"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.vehicle_name}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.email"}}</div>
+                                        <div class="text-[11px] text-white leading-tight truncate min-w-0 w-full">{{n-a driver.email}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.order"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.meta.current_order_reference}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.speed"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.meta.speed_label}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.heading"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.meta.heading_label}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.location"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a
+                                                driver.meta.location_coordinates
+                                                (point-coordinates driver.location)
+                                            }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </marker.tooltip>
+                    </layers.tracking-marker>
+                {{/each}}
+
+                {{#each this.vehicles as |vehicle|}}
+                    <layers.tracking-marker
+                        @id={{vehicle.id}}
+                        @publicId={{vehicle.public_id}}
+                        @location={{point-to-coordinates vehicle.location}}
+                        @rotationAngle={{vehicle.heading}}
+                        @icon={{icon iconUrl=vehicle.avatar_url iconSize=(array 24 24)}}
+                        @onAdd={{fn this.trigger "onVehicleAdded" vehicle}}
+                        @onClick={{fn this.trigger "onVehicleClicked" vehicle}}
+                        @draggable={{false}}
+                        as |marker|
+                    >
+                        <marker.popup @permanent={{false}} @sticky={{true}}>
+                            <div class="w-[280px] max-w-[calc(100vw-2rem)] rounded-lg bg-gray-900 shadow-lg p-1.5 text-white">
+                                <div class="flex items-center gap-1.5 text-xs font-semibold mb-1.5">
+                                    <span class="inline-block w-2 h-2 rounded-full {{if vehicle.online 'bg-green-400' 'bg-red-500'}}"></span>
+                                    <span>{{vehicle.displayName}}</span>
+                                    <div
+                                        class="status-badge
+                                            {{if vehicle.status (dasherize vehicle.status) 'default'}}-status-badge status-badge-{{if vehicle.status (dasherize vehicle.status) 'default'}}
+                                            shadow-none ml-auto"
+                                    >
+                                        <span class="rounded-full text-[9px] px-1.5 py-0.5">{{n-a vehicle.meta.status_label}}</span>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-1">
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.vehicle-2"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a
+                                                vehicle.internal_id
+                                                vehicle.public_id
+                                                vehicle.plate_number
+                                                vehicle.serial_number
+                                                vehicle.vin
+                                            }}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.driver"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a vehicle.driver_name}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "resource.trailers"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">
+                                            {{#each vehicle.trailers as |trailer|}}
+                                                <div class="flex items-center gap-1 min-w-0">
+                                                    <span class="inline-block w-1.5 h-1.5 rounded-full shrink-0 {{if trailer.online 'bg-green-400' 'bg-gray-500'}}"></span>
+                                                    <span class="truncate">{{or trailer.displayName trailer.display_name trailer.name trailer.public_id}}</span>
+                                                </div>
+                                            {{else}}
+                                                -
+                                            {{/each}}
+                                        </div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "resource.devices"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">
+                                            {{#each vehicle.devices as |device|}}
+                                                <div class="flex items-center gap-1 min-w-0">
+                                                    <span class="inline-block w-1.5 h-1.5 rounded-full shrink-0 {{if device.online 'bg-green-400' 'bg-gray-500'}}"></span>
+                                                    <span class="truncate">{{or device.displayName device.display_name device.name device.device_id device.public_id}}</span>
+                                                </div>
+                                            {{else}}
+                                                -
+                                            {{/each}}
+                                        </div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.order"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a vehicle.meta.current_order_reference}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.speed"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a vehicle.meta.speed_label}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.heading"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a vehicle.meta.heading_label}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.location"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a vehicle.meta.location_coordinates}}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </marker.popup>
+                        <marker.tooltip @permanent={{false}} @sticky={{true}}>
+                            <div class="w-[280px] max-w-[calc(100vw-2rem)]">
+                                <div class="flex items-center gap-1.5 text-xs font-semibold mb-1.5">
+                                    <span class="inline-block w-2 h-2 rounded-full {{if vehicle.online 'bg-green-400' 'bg-red-500'}}"></span>
+                                    <span>{{vehicle.displayName}}</span>
+                                    <div
+                                        class="status-badge
+                                            {{if vehicle.status (dasherize vehicle.status) 'default'}}-status-badge status-badge-{{if vehicle.status (dasherize vehicle.status) 'default'}}
+                                            shadow-none ml-auto"
+                                    >
+                                        <span class="rounded-full text-[9px] px-1.5 py-0.5">{{n-a vehicle.meta.status_label}}</span>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-1">
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.vehicle-2"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a
+                                                vehicle.internal_id
+                                                vehicle.public_id
+                                                vehicle.plate_number
+                                                vehicle.serial_number
+                                                vehicle.vin
+                                            }}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.driver"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a vehicle.driver_name}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "resource.trailers"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">
+                                            {{#each vehicle.trailers as |trailer|}}
+                                                <div class="flex items-center gap-1 min-w-0">
+                                                    <span class="inline-block w-1.5 h-1.5 rounded-full shrink-0 {{if trailer.online 'bg-green-400' 'bg-gray-500'}}"></span>
+                                                    <span class="truncate">{{or trailer.displayName trailer.display_name trailer.name trailer.public_id}}</span>
+                                                </div>
+                                            {{else}}
+                                                -
+                                            {{/each}}
+                                        </div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "resource.devices"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">
+                                            {{#each vehicle.devices as |device|}}
+                                                <div class="flex items-center gap-1 min-w-0">
+                                                    <span class="inline-block w-1.5 h-1.5 rounded-full shrink-0 {{if device.online 'bg-green-400' 'bg-gray-500'}}"></span>
+                                                    <span class="truncate">{{or device.displayName device.display_name device.name device.device_id device.public_id}}</span>
+                                                </div>
+                                            {{else}}
+                                                -
+                                            {{/each}}
+                                        </div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.order"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a vehicle.meta.current_order_reference}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.speed"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a vehicle.meta.speed_label}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.heading"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a vehicle.meta.heading_label}}</div>
+                                    </div>
+                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
+                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.location"}}</div>
+                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a vehicle.meta.location_coordinates}}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </marker.tooltip>
+                    </layers.tracking-marker>
+                {{/each}}
+
+                {{#each this.places as |place|}}
+                    <layers.marker
+                        @id={{place.id}}
+                        @publicId={{place.public_id}}
+                        @location={{point-to-coordinates place.location}}
+                        @icon={{icon iconUrl=(or place.avatar_url "/engines-dist/images/building-marker.png") iconSize=(array 16 16)}}
+                        @riseOnHover={{true}}
+                        @title={{place.address}}
+                        @alt={{place.address}}
+                        @onAdd={{fn this.trigger "onPlaceAdded" place}}
+                        @onClick={{fn this.trigger "onPlaceClicked" place}}
+                        @draggable={{false}}
+                        as |marker|
+                    >
+                        <marker.popup>
+                            <div>{{place.address}}</div>
+                            <div>{{format-point place.location}}</div>
+                        </marker.popup>
+                        <marker.tooltip @permanent={{false}} @sticky={{true}} @direction="bottom">{{or place.name place.address}}</marker.tooltip>
+                    </layers.marker>
+                {{/each}}
+
+                {{#each this.serviceAreaActions.serviceAreas as |serviceArea|}}
+                    <layers.polygon
+                        @id={{serviceArea.id}}
+                        @record={{serviceArea}}
+                        @locations={{unwrap-coordinates serviceArea.leafletCoordinates}}
+                        @fillColor={{or serviceArea.color "#3388ff"}}
+                        @color={{or serviceArea.stroke_color serviceArea.color "#3388ff"}}
+                        @onAdd={{fn this.trigger "onServiceAreaLayerAdded" serviceArea}}
+                        as |polygon|
+                    >
+                        <polygon.tooltip @permanent={{true}} @sticky={{true}}>{{serviceArea.name}} {{t "resource.service-area"}}</polygon.tooltip>
+                    </layers.polygon>
+
+                    {{#each serviceArea.zones as |zone|}}
+                        <layers.polygon
+                            @id={{zone.id}}
+                            @record={{zone}}
+                            @locations={{unwrap-coordinates zone.leafletCoordinates}}
+                            @fillColor={{or zone.color "#3388ff"}}
+                            @color={{or zone.stroke_color zone.color "#3388ff"}}
+                            @onAdd={{fn this.trigger "onZoneLayerAdd" zone}}
+                            as |polygon|
+                        >
+                            <polygon.tooltip @permanent={{true}} @sticky={{true}}>{{zone.name}} {{t "resource.zone"}}</polygon.tooltip>
+                        </layers.polygon>
+                    {{/each}}
+                {{/each}}
+            {{/if}}
+
+            {{yield layers}}
+        </LeafletMap>
+    {{/if}}
+
+    {{#unless this.ready}}
+        <div class="flex w-full h-full items-center justify-center">
+            <Spinner />
+        </div>
+    {{/unless}}
+</div>
+
+{{!-- {{#if (and this.isDataLoaded (not-eq @drawerTab false))}}
+    <LiveMapDrawer
+        @tab={{@drawerTab}}
+        @onTabChanged={{@onDrawerTabChanged}}
+        @onResizeEnd={{@onDrawerResizeEnd}}
+        @onResizeStart={{@onDrawerResizeStart}}
+        @isMinimized={{@isDrawerMinimized}}
+        @isOpen={{@isDrawerOpen}}
+        @vehicles={{this.vehicles}}
+        @drivers={{this.drivers}}
+        @places={{this.places}}
+        @liveMap={{this}}
+        @onDrawerReady={{this.setDrawerContext}}
+    />
+{{/if}} --}}

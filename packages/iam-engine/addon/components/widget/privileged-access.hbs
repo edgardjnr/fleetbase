@@ -1,0 +1,20 @@
+<Widget::IamDashboardWidget @endpoint="privileged-access" @title={{t "iam.ui.widgets.privileged-access.title"}} @subtitle={{t "iam.ui.widgets.privileged-access.subtitle"}} @icon="user-lock" as |data|>
+    <div class="iam-stat-grid iam-stat-grid-3">
+        <div class="iam-stat-card"><span>{{data.privileged_roles_count}}</span><small>{{t "iam.ui.widgets.admin-roles"}}</small></div>
+        <div class="iam-stat-card"><span>{{data.wildcard_policies_count}}</span><small>{{t "iam.ui.widgets.wildcard-policies"}}</small></div>
+        <div class="iam-stat-card"><span>{{data.direct_privileged_grants}}</span><small>{{t "iam.ui.widgets.direct-grants"}}</small></div>
+    </div>
+    <div class="iam-scroll-list mt-3">
+        {{#each data.roles as |role|}}
+            <div class="iam-list-row">
+                <div class="min-w-0">
+                    <div class="iam-list-title">{{role.name}}</div>
+                    <div class="iam-list-subtitle">{{role.type}}</div>
+                </div>
+                <strong>{{role.permissions_count}}</strong>
+            </div>
+        {{else}}
+            <div class="iam-widget-empty">{{t "iam.ui.widgets.privileged-access.empty"}}</div>
+        {{/each}}
+    </div>
+</Widget::IamDashboardWidget>

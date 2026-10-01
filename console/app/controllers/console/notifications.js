@@ -13,6 +13,7 @@ export default class NotificationsController extends Controller {
      * @memberof NotificationsController
      */
     @service socket;
+    @service intl;
 
     /**
      * Inject the `store` service
@@ -181,7 +182,7 @@ export default class NotificationsController extends Controller {
      */
     @action markNotificationAsRead(notification) {
         return notification.markAsRead().then(() => {
-            this.notifications.info('Notification marked as read.');
+            this.notifications.info(this.intl.t('console.ui.notifications.marked-read'));
             this.universe.trigger('notifications.read', [notification]);
         });
     }

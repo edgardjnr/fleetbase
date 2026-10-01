@@ -36,6 +36,7 @@ export default class ConfigureSocketComponent extends Component {
      * @memberof ConfigureSocketComponent
      */
     @service socket;
+    @service intl;
 
     /**
      * State of the test request.
@@ -110,7 +111,7 @@ export default class ConfigureSocketComponent extends Component {
                 // Push an event or notification for socket connection here
                 this.events.pushObject({
                     time: format(new Date(), this.consoleDateFormat),
-                    content: 'Socket connection error!',
+                    content: this.intl.t('console.ui.configure.socket.connection-error'),
                     color: 'red',
                 });
             }
@@ -123,7 +124,7 @@ export default class ConfigureSocketComponent extends Component {
                 // Push an event or notification for socket connection here
                 this.events.pushObject({
                     time: format(new Date(), this.consoleDateFormat),
-                    content: 'Socket is connected',
+                    content: this.intl.t('console.ui.configure.socket.connected'),
                     color: 'green',
                 });
             }
@@ -139,7 +140,7 @@ export default class ConfigureSocketComponent extends Component {
                 // Push an event or notification for channel subscription here
                 this.events.pushObject({
                     time: format(new Date(), this.consoleDateFormat),
-                    content: `Socket subscribed to test channel`,
+                    content: this.intl.t('console.ui.configure.socket.subscribed'),
                     color: 'blue',
                 });
             }

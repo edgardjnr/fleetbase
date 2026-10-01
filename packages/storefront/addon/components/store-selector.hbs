@@ -1,0 +1,18 @@
+{{#if @activeStore}}
+    <div class={{@wrapperClass}} {{did-insert this.setupTrigger}} {{will-destroy this.close}} ...attributes>
+        <Button
+            title={{@activeStore.name}}
+            class="{{concat "w-full " @buttonClass}} {{if this.isOpen "dd-is-open"}}"
+            @wrapperClass={{concat "w-full " @buttonWrapperClass}}
+            @size="xs"
+            @type="primary"
+            @icon="store"
+            @iconSize="sm"
+            @text={{@activeStore.name}}
+            @textClass="truncate"
+            @onClick={{this.toggle}}
+        />
+    </div>
+{{else if (has-block)}}
+    {{yield}}
+{{/if}}

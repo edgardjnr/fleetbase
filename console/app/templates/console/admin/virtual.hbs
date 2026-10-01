@@ -1,5 +1,5 @@
-{{page-title @model.title}}
-<Layout::Section::Header @title={{@model.title}} />
+{{page-title (menu-text @model "title")}}
+<Layout::Section::Header @title={{menu-text @model "title"}} />
 
 <Layout::Section::Body class={{this.bodyClass}}>
     <div class={{this.containerClass}}>

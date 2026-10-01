@@ -1,0 +1,72 @@
+<ContentPanel @title="Fleetbase AI" @open={{true}} @wrapperClass="bordered-classic">
+    <InputGroup class="mb-2">
+        <Toggle @isToggled={{this.config.enabled}} @onToggle={{fn this.setValue "enabled"}} @label={{t "ai.ui.settings.enable"}} />
+    </InputGroup>
+
+    {{#if this.isEnabled}}
+        <InputGroup @name={{t "ai.ui.common.provider"}}>
+            <Select
+                class="w-full"
+                @value={{this.config.provider}}
+                @options={{this.providerOptions}}
+                @optionLabel="label"
+                @optionValue="value"
+                @placeholder={{t "ai.ui.settings.select-provider"}}
+                @onSelect={{this.setProvider}}
+            />
+        </InputGroup>
+
+        <InputGroup @name={{t "ai.ui.settings.default-model"}}>
+            <Select
+                class="w-full"
+                @value={{this.config.default_model}}
+                @options={{this.modelOptions}}
+                @optionLabel="label"
+                @optionValue="value"
+                @placeholder={{t "ai.ui.settings.select-model"}}
+                @onSelect={{fn this.setValue "default_model"}}
+            />
+        </InputGroup>
+
+        {{#if this.isOpenAIProvider}}
+            <InputGroup @name={{t "ai.ui.settings.api-key" provider="OpenAI"}} @type="password" @value={{this.config.providers.openai.api_key}} @autocomplete="off" />
+        {{/if}}
+
+        {{#if this.isAnthropicProvider}}
+            <InputGroup @name={{t "ai.ui.settings.api-key" provider="Anthropic"}} @type="password" @value={{this.config.providers.anthropic.api_key}} @autocomplete="off" />
+        {{/if}}
+
+        {{#if this.hasProviderAdvancedSettings}}
+            <div>
+                <Button
+                    @icon={{if this.showAdvancedSettings "chevron-up" "chevron-down"}}
+                    @text={{t "ai.ui.settings.advanced-settings"}}
+                    @size="xs"
+                    @onClick={{this.toggleAdvancedSettings}}
+                />
+            </div>
+
+            {{#if this.showAdvancedSettings}}
+                <div class="mt-2">
+                    {{#if this.isOpenAIProvider}}
+                        <InputGroup @name={{t "ai.ui.settings.base-url" provider="OpenAI"}} @value={{this.config.providers.openai.base_url}} />
+                    {{/if}}
+                    {{#if this.isAnthropicProvider}}
+                        <InputGroup @name={{t "ai.ui.settings.base-url" provider="Anthropic"}} @value={{this.config.providers.anthropic.base_url}} />
+                    {{/if}}
+                </div>
+            {{/if}}
+        {{/if}}
+    {{/if}}
+
+    <div class="flex flex-row items-center space-x-2 mt-4">
+        <Button @type="primary" @icon="save" @text={{t "common.save-changes"}} @isLoading={{this.save.isRunning}} @onClick={{perform this.save}} />
+        {{#if this.isEnabled}}
+            <Button @icon="plug" @text={{t "ai.ui.settings.test-provider"}} @isLoading={{this.test.isRunning}} @onClick={{perform this.test}} />
+        {{/if}}
+    </div>
+
+    {{#if this.testResponse}}
+        <div class="text-sm text-gray-600 dark:text-gray-300">{{this.testResponse.message}}</div>
+    {{/if}}
+</ContentPanel>

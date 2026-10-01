@@ -1,0 +1,213 @@
+<div class="pallet-product-details" ...attributes>
+    <ContentPanel @title="Product overview" @open={{true}} @wrapperClass="bordered-top pallet-product-details-panel">
+        <div class="pallet-product-overview">
+            <div class="pallet-product-overview__media">
+                <Image src={{@resource.photo_url}} @fallbackSrc={{config "defaultValues.productImage"}} alt={{@resource.name}} />
+            </div>
+            <div class="pallet-product-overview__body">
+                <div class="pallet-product-overview__eyebrow">
+                    <span>{{n-a @resource.public_id}}</span>
+                    <span>{{n-a @resource.sku "No SKU"}}</span>
+                    <span>{{n-a @resource.barcode "No barcode"}}</span>
+                </div>
+                <h2>{{n-a @resource.name "Untitled product"}}</h2>
+                <p>{{n-a @resource.description "No product description has been added yet."}}</p>
+                <div class="pallet-product-overview__badges">
+                    <Badge @status={{@resource.status}}>{{smart-humanize @resource.status}}</Badge>
+                    <Badge @status={{this.stockStatus}} @hideStatusDot={{true}}>{{this.stockStatusLabel}}</Badge>
+                    {{#if @resource.has_variants}}
+                        <Badge @status="info" @hideStatusDot={{true}}>{{format-number this.variantCount}} variants</Badge>
+                    {{/if}}
+                    {{#if this.storefrontLinked}}
+                        <Badge @status="success" @hideStatusDot={{true}}>Storefront linked</Badge>
+                    {{else}}
+                        <Badge @status="warning" @hideStatusDot={{true}}>No Storefront link</Badge>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    <div class="pallet-product-details-grid">
+        <ContentPanel @title="Inventory health" @open={{true}} @wrapperClass="bordered-top pallet-product-details-panel">
+            {{#if this.hasInventory}}
+                <div class="pallet-product-stat-grid">
+                    <div>
+                        <span>{{format-number this.availableStock}}</span>
+                        <small>Available</small>
+                    </div>
+                    <div>
+                        <span>{{format-number this.reservedStock}}</span>
+                        <small>Reserved</small>
+                    </div>
+                    <div>
+                        <span>{{format-number this.totalStock}}</span>
+                        <small>Total stock</small>
+                    </div>
+                    <div>
+                        <span>{{format-number this.reorderPoint}}</span>
+                        <small>Reorder point</small>
+                    </div>
+                </div>
+            {{else}}
+                <div class="pallet-product-empty-panel">
+                    <FaIcon @icon="boxes-stacked" />
+                    <div>
+                        <div class="pallet-product-empty-title">No inventory received yet</div>
+                        <div class="pallet-product-empty-copy">Receive purchase orders or create inventory records to activate stock tracking.</div>
+                    </div>
+                </div>
+            {{/if}}
+        </ContentPanel>
+
+        <ContentPanel @title="Organization" @open={{true}} @wrapperClass="bordered-top pallet-product-details-panel">
+            <div class="pallet-product-info-list">
+                <div>
+                    <span>Category</span>
+                    <strong>{{n-a @resource.category.name "Uncategorized"}}</strong>
+                </div>
+                <div>
+                    <span>Supplier</span>
+                    <strong>{{n-a @resource.supplier.name "No supplier"}}</strong>
+                </div>
+                <div>
+                    <span>Internal ID</span>
+                    <strong>{{n-a @resource.internal_id "Not set"}}</strong>
+                </div>
+                <div>
+                    <span>Created</span>
+                    <strong>{{n-a @resource.createdAtShort}}</strong>
+                </div>
+            </div>
+        </ContentPanel>
+    </div>
+
+    <ContentPanel @title="Media" @open={{true}} @wrapperClass="bordered-top pallet-product-details-panel">
+        {{#if this.hasImages}}
+            <div class="pallet-product-detail-media-strip">
+                {{#each @resource.files as |file|}}
+                    <Image src={{file.url}} @fallbackSrc={{config "defaultValues.productImage"}} alt={{file.original_filename}} />
+                {{/each}}
+            </div>
+        {{else}}
+            <div class="pallet-product-empty-panel">
+                <FaIcon @icon="image" />
+                <div>
+                    <div class="pallet-product-empty-title">No product images</div>
+                    <div class="pallet-product-empty-copy">Images help warehouse teams identify the right item during receiving, picking, and cycle counts.</div>
+                </div>
+            </div>
+        {{/if}}
+    </ContentPanel>
+
+    <ContentPanel @title="Storefront Inventory" @open={{true}} @wrapperClass="bordered-top pallet-product-details-panel">
+        {{#if this.storefrontLinked}}
+            <Product::StorefrontInventory @product={{@resource}} />
+        {{else}}
+            <div class="pallet-product-empty-panel">
+                <FaIcon @icon="shop" />
+                <div>
+                    <div class="pallet-product-empty-title">Not linked to Storefront</div>
+                    <div class="pallet-product-empty-copy">Link this Pallet product to a Storefront product when checkout availability should be enforced by Pallet stock.</div>
+                </div>
+            </div>
+        {{/if}}
+    </ContentPanel>
+
+    <ContentPanel @title="Variants" @open={{true}} @wrapperClass="bordered-top pallet-product-details-panel">
+        {{#if this.hasVariants}}
+            <div class="pallet-product-variant-table">
+                <div class="pallet-product-variant-row pallet-product-variant-row--header">
+                    <span>Variant</span>
+                    <span>SKU / Barcode</span>
+                    <span>Stock</span>
+                    <span>Storefront</span>
+                </div>
+                {{#each @resource.variants as |variant|}}
+                    <div class="pallet-product-variant-row">
+                        <span>
+                            <strong>{{n-a variant.display_name variant.name}}</strong>
+                            <small>{{n-a variant.optionSummary "No options"}}</small>
+                        </span>
+                        <span>
+                            <strong>{{n-a variant.sku "No SKU"}}</strong>
+                            <small>{{n-a variant.barcode "No barcode"}}</small>
+                        </span>
+                        <span>
+                            <strong>{{format-number (or variant.available_stock 0)}} available</strong>
+                            <small>{{format-number (or variant.reserved_stock 0)}} reserved</small>
+                        </span>
+                        <span>
+                            <strong>{{if variant.storefront_variant_uuid "Linked" "Unlinked"}}</strong>
+                            <small>{{n-a variant.storefront_variant_uuid "No Storefront variant"}}</small>
+                        </span>
+                    </div>
+                {{/each}}
+            </div>
+        {{else}}
+            <div class="pallet-product-empty-panel">
+                <FaIcon @icon="layer-group" />
+                <div>
+                    <div class="pallet-product-empty-title">No variants</div>
+                    <div class="pallet-product-empty-copy">This product currently tracks stock as a single SKU.</div>
+                </div>
+            </div>
+        {{/if}}
+    </ContentPanel>
+
+    <div class="pallet-product-details-grid">
+        <ContentPanel @title="Pricing & value" @open={{true}} @wrapperClass="bordered-top pallet-product-details-panel">
+            <div class="pallet-product-info-list">
+                <div>
+                    <span>Unit cost</span>
+                    <strong>{{format-currency @resource.unit_cost @resource.currency}}</strong>
+                </div>
+                <div>
+                    <span>Unit price</span>
+                    <strong>{{format-currency @resource.unit_price @resource.currency}}</strong>
+                </div>
+                <div>
+                    <span>Sale price</span>
+                    <strong>{{format-currency @resource.sale_price @resource.currency}}</strong>
+                </div>
+                <div>
+                    <span>Declared value</span>
+                    <strong>{{format-currency @resource.declared_value @resource.currency}}</strong>
+                </div>
+            </div>
+        </ContentPanel>
+
+        <ContentPanel @title="Measurements & tracking" @open={{true}} @wrapperClass="bordered-top pallet-product-details-panel">
+            <div class="pallet-product-info-list">
+                <div>
+                    <span>Dimensions</span>
+                    <strong>{{n-a @resource.length 0}} x {{n-a @resource.width 0}} x {{n-a @resource.height 0}} {{n-a @resource.dimensions_unit}}</strong>
+                </div>
+                <div>
+                    <span>Weight</span>
+                    <strong>{{n-a @resource.weight 0}} {{n-a @resource.weight_unit}}</strong>
+                </div>
+                <div>
+                    <span>Shelf life</span>
+                    <strong>{{n-a @resource.shelf_life_days "Not set"}}</strong>
+                </div>
+                <div>
+                    <span>Tracking flags</span>
+                    <strong>
+                        {{#if @resource.is_serialized}}Serialized{{/if}}
+                        {{#if @resource.is_lot_tracked}} Lot tracked{{/if}}
+                        {{#if @resource.is_perishable}} Perishable{{/if}}
+                        {{#if @resource.requires_quality_check}} QC required{{/if}}
+                        {{#unless (or @resource.is_serialized @resource.is_lot_tracked @resource.is_perishable @resource.requires_quality_check)}}Standard{{/unless}}
+                    </strong>
+                </div>
+            </div>
+        </ContentPanel>
+    </div>
+
+    <CustomField::Yield @subject={{@resource}} @viewMode={{true}} @wrapperClass="bordered-top" />
+
+    <ContentPanel @title="Metadata" @open={{true}} @actionButtons={{this.metadataButtons}} @wrapperClass="bordered-top pallet-product-details-panel" @panelBodyWrapperClass={{unless (is-object-empty @resource.meta) "px-0i" ""}}>
+        <MetadataViewer @metadata={{@resource.meta}} />
+    </ContentPanel>
+</div>

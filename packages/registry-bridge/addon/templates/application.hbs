@@ -1,0 +1,59 @@
+<EmberWormhole @to="sidebar-menu-items">
+    <Layout::Sidebar::Item
+        @route="console.extensions.installed"
+        @icon="inbox"
+        @permission="registry-bridge list extension-install"
+        @visible={{can "registry-bridge see extension-install"}}
+    >{{t "registry-bridge.ui.sidebar-installed"}}</Layout::Sidebar::Item>
+    <Layout::Sidebar::Item
+        @route="console.extensions.purchased"
+        @icon="bag-shopping"
+        @permission="registry-bridge list extension-purchase"
+        @visible={{can "registry-bridge see extension-purchase"}}
+    >{{t "registry-bridge.ui.purchased"}}</Layout::Sidebar::Item>
+    <Layout::Sidebar::Panel @open={{true}} @title={{t "registry-bridge.ui.explore"}} @visible={{can "registry-bridge see extension"}}>
+        <Layout::Sidebar::Item @route="console.extensions.explore.index" @icon="shapes" @permission="registry-bridge list extension">{{t "registry-bridge.ui.explore-all"}}</Layout::Sidebar::Item>
+        {{#each @model as |category|}}
+            <LinkTo @route="explore.category" @model={{category.slug}} @disabled={{cannot "registry-bridge list extension"}} class="next-nav-item">
+                <div class="next-nav-item-icon-container">
+                    <FaIcon @icon={{category.icon}} @size="xs" />
+                </div>
+                <div class="truncate w-10/12">{{category.name}}</div>
+                <div class="next-nav-item-right-side" />
+            </LinkTo>
+        {{/each}}
+    </Layout::Sidebar::Panel>
+    {{#if this.selfHostedRegistry}}
+        <Layout::Sidebar::Panel @open={{true}} @title={{t "registry-bridge.ui.developers"}}>
+            <Layout::Sidebar::Item
+                @route="console.extensions.developers.extensions"
+                @icon="box-archive"
+                @permission="registry-bridge list extension-bundle"
+                @visible={{can "registry-bridge see extension-bundle"}}
+            >{{t "registry-bridge.ui.extensions"}}</Layout::Sidebar::Item>
+            <Layout::Sidebar::Item
+                @route="console.extensions.developers.analytics"
+                @icon="chart-simple"
+                @permission="registry-bridge list extension-analytic"
+                @visible={{can "registry-bridge see extension-analytic"}}
+            >{{t "registry-bridge.ui.analytics"}}</Layout::Sidebar::Item>
+            <Layout::Sidebar::Item
+                @route="console.extensions.developers.payments"
+                @icon="cash-register"
+                @permission="registry-bridge list extension-payment"
+                @visible={{can "registry-bridge see extension-payment"}}
+            >{{t "registry-bridge.ui.payments"}}</Layout::Sidebar::Item>
+            <Layout::Sidebar::Item
+                @route="console.extensions.developers.credentials"
+                @icon="key"
+                @permission="registry-bridge list registry-token"
+                @visible={{can "registry-bridge see registry-token"}}
+            >{{t "registry-bridge.ui.credentials"}}</Layout::Sidebar::Item>
+        </Layout::Sidebar::Panel>
+    {{/if}}
+    <Spacer @height="200px" />
+</EmberWormhole>
+
+<Layout::Section::Container>
+    {{outlet}}
+</Layout::Section::Container>

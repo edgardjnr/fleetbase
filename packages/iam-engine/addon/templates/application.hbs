@@ -1,0 +1,7 @@
+<EmberWormhole @to="sidebar-menu-items">
+    <Layout::Sidebar::Navigator @items={{this.navigationItems}} @searchPlaceholder={{t "iam.ui.search-placeholder"}} @searchProvider={{this.searchNavigation}} />
+</EmberWormhole>
+
+<Layout::Section::Container>
+    {{outlet}}
+</Layout::Section::Container>

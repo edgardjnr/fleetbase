@@ -1,0 +1,916 @@
+<?php
+
+namespace Fleetbase\Ledger\Gateways;
+
+use Fleetbase\Ledger\DTO\GatewayResponse;
+use Fleetbase\Ledger\DTO\PurchaseRequest;
+use Fleetbase\Ledger\DTO\RefundRequest;
+use Fleetbase\Ledger\Exceptions\WebhookSignatureException;
+use Fleetbase\Support\Utils;
+use Illuminate\Http\Client\Response as HttpResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use Milon\Barcode\Facades\DNS2DFacade as DNS2D;
+
+/**
+ * TalerDriver.
+ *
+ * Payment gateway driver for GNU Taler — a privacy-preserving electronic
+ * payment system that provides customer anonymity while ensuring merchants
+ * remain fully accountable.
+ *
+ * GNU Taler uses a Merchant Backend REST API. This driver communicates with
+ * a self-hosted or third-party Taler Merchant Backend to:
+ *
+ *   1. Create an order (purchase) and return a taler_pay_uri for the wallet.
+ *   2. Verify incoming webhook notifications by re-querying the private API.
+ *   3. Issue refunds against a previously paid order.
+ *
+ * Configuration (stored encrypted in ledger_gateways.config):
+ *   - backend_url   : Base URL of the Taler Merchant Backend (e.g. https://backend.demo.taler.net/)
+ *   - instance_id   : Merchant instance ID (defaults to "default")
+ *   - api_token     : Bearer token body for authenticating against the private API
+ *
+ * Amount encoding:
+ *   Fleetbase stores all monetary values as integers in the smallest currency
+ *   unit (e.g. 1050 = USD 10.50). Taler encodes amounts as strings in the
+ *   format "CURRENCY:UNITS.FRACTION" (e.g. "USD:10.50"). This driver converts
+ *   between the two representations in both directions.
+ *
+ * Payment flow:
+ *   purchase()      → POST /instances/{id}/private/orders
+ *                   → GET  /instances/{id}/private/orders/{order_id}  (for taler_pay_uri)
+ *                   → GatewayResponse::pending() with taler_pay_uri in data[]
+ *
+ *   handleWebhook() → POST /ledger/webhooks/taler  (receives order_id from Taler)
+ *                   → GET  /instances/{id}/private/orders/{order_id}  (verify payment)
+ *                   → GatewayResponse::success() dispatches HandleSuccessfulPayment
+ *
+ *   refund()        → POST /instances/{id}/private/orders/{order_id}/refund
+ *                   → GatewayResponse::success() dispatches HandleProcessedRefund
+ *
+ * @see https://docs.taler.net/core/api-merchant.html
+ */
+class TalerDriver extends AbstractGatewayDriver
+{
+    private const HOSTED_SANDBOX_MERCHANT_BACKEND_URL = 'https://merchant.taler.fleetbase.io';
+
+    // -------------------------------------------------------------------------
+    // Driver Identity & Metadata
+    // -------------------------------------------------------------------------
+
+    public function getName(): string
+    {
+        return 'GNU Taler';
+    }
+
+    public function getCode(): string
+    {
+        return 'taler';
+    }
+
+    /**
+     * {@inheritdoc}
+     *
+     * GNU Taler supports direct purchases (via wallet redirect), refunds, and
+     * webhook-based payment confirmation. It does not support card tokenization.
+     */
+    public function getCapabilities(): array
+    {
+        return [
+            'purchase',
+            'refund',
+            'webhooks',
+            'sandbox',
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     *
+     * Returns the configuration schema rendered dynamically by the Fleetbase
+     * Ledger gateway form component. All fields are stored encrypted.
+     */
+    public function getConfigSchema(): array
+    {
+        return [
+            [
+                'key'         => 'backend_url',
+                'label'       => 'Merchant Backend URL',
+                'type'        => 'text',
+                'required'    => false,
+                'default'     => self::HOSTED_SANDBOX_MERCHANT_BACKEND_URL,
+                'hint'        => 'Sandbox defaults to Fleetbase hosted Taler at https://merchant.taler.fleetbase.io. Live gateways require your production Merchant Backend URL.',
+                'description' => 'Base URL of your Taler Merchant Backend. Sandbox defaults to Fleetbase hosted Taler; live gateways require an explicit production URL.',
+            ],
+            [
+                'key'         => 'instance_id',
+                'label'       => 'Instance ID',
+                'type'        => 'text',
+                'required'    => true,
+                'default'     => 'default',
+                'hint'        => 'The Taler merchant instance identifier. Defaults to "default".',
+                'description' => 'The Taler merchant instance identifier. Defaults to "default".',
+            ],
+            [
+                'key'         => 'api_token',
+                'label'       => 'API Token',
+                'type'        => 'password',
+                'required'    => true,
+                'hint'        => 'Paste the instance token as secret-token:... or Bearer secret-token:.... The token must belong to the configured Merchant Backend instance.',
+                'description' => 'Private Merchant API token. Accepted formats: secret-token:... or Bearer secret-token:....',
+            ],
+        ];
+    }
+
+    // -------------------------------------------------------------------------
+    // Purchase
+    // -------------------------------------------------------------------------
+
+    /**
+     * {@inheritdoc}
+     *
+     * Creates a new Taler order via the Merchant Backend and returns a pending
+     * response containing the taler_pay_uri that the customer's Taler wallet
+     * must open to complete the payment.
+     *
+     * The Fleetbase invoice UUID is embedded in the order's contract terms
+     * under the key "invoice_uuid" so that it can be recovered during webhook
+     * processing without any additional storage.
+     *
+     * Steps:
+     *   1. Convert integer cents → Taler amount string.
+     *   2. POST to /instances/{id}/private/orders.
+     *   3. GET  /instances/{id}/private/orders/{order_id} to obtain taler_pay_uri.
+     *   4. Return GatewayResponse::pending() with order_id and taler_pay_uri.
+     *
+     * @param PurchaseRequest $request Immutable purchase request DTO
+     *
+     * @return GatewayResponse Pending response with taler_pay_uri in data[]
+     */
+    public function purchase(PurchaseRequest $request): GatewayResponse
+    {
+        if ($configurationFailure = $this->configurationFailureResponse()) {
+            return $configurationFailure;
+        }
+
+        $instanceId = $this->instanceId();
+
+        $talerAmount = $this->toTalerAmount($request->amount, $request->currency);
+        $orderId     = $this->orderIdForPurchase($request);
+
+        // Build the order payload. The invoice_uuid is stored as a top-level
+        // field in the order object so it is included in the signed contract
+        // terms and can be retrieved verbatim when the webhook fires.
+        $payload = [
+            'order_id' => $orderId,
+            'order'    => [
+                'amount'       => $talerAmount,
+                'summary'      => $request->description,
+                'invoice_uuid' => $request->invoiceUuid,
+                'metadata'     => array_filter([
+                    'invoice_uuid'      => $request->invoiceUuid,
+                    'invoice_public_id' => $request->metadata['invoice_public_id'] ?? null,
+                    'invoice_number'    => $request->metadata['invoice_number'] ?? null,
+                    'order_uuid'        => $request->orderUuid,
+                    'gateway_public_id' => $request->metadata['gateway_public_id'] ?? null,
+                    'gateway_uuid'      => $request->metadata['gateway_uuid'] ?? null,
+                    'company_uuid'      => $request->metadata['company_uuid'] ?? null,
+                ]),
+            ],
+        ];
+
+        // Append fulfillment / return URLs when provided by the caller.
+        if ($request->returnUrl) {
+            $payload['order']['fulfillment_url'] = $request->returnUrl;
+        }
+
+        $this->logInfo('Creating Taler order', [
+            'amount'       => $talerAmount,
+            'order_id'     => $orderId,
+            'invoice_uuid' => $request->invoiceUuid,
+        ]);
+
+        try {
+            $createResponse = $this->privateRequest('POST', "instances/{$instanceId}/private/orders", $payload);
+        } catch (\Throwable $e) {
+            $this->logError('Order creation HTTP error', ['error' => $e->getMessage()]);
+
+            return GatewayResponse::failure(
+                eventType: GatewayResponse::EVENT_PAYMENT_FAILED,
+                message: 'Taler order creation failed: ' . $e->getMessage(),
+                rawResponse: ['error' => $e->getMessage()],
+            );
+        }
+
+        if (!$createResponse->successful()) {
+            $this->logError('Order creation failed', [
+                'status' => $createResponse->status(),
+                'body'   => $createResponse->body(),
+            ]);
+
+            return GatewayResponse::failure(
+                eventType: GatewayResponse::EVENT_PAYMENT_FAILED,
+                message: 'Taler order creation failed: ' . $createResponse->body(),
+                rawResponse: $createResponse->json() ?? [],
+            );
+        }
+
+        $orderId = $createResponse->json('order_id');
+
+        if (!$orderId) {
+            return GatewayResponse::failure(
+                eventType: GatewayResponse::EVENT_PAYMENT_FAILED,
+                message: 'Taler returned no order_id in creation response.',
+                rawResponse: $createResponse->json() ?? [],
+            );
+        }
+
+        // Retrieve the order status to obtain the taler_pay_uri. The URI is
+        // only available on the status endpoint, not the creation response.
+        $talerPayUri    = null;
+        $orderStatusRaw = [];
+
+        try {
+            $statusResponse = $this->privateRequest('GET', "instances/{$instanceId}/private/orders/{$orderId}");
+
+            if ($statusResponse->successful()) {
+                $talerPayUri    = $statusResponse->json('taler_pay_uri');
+                $orderStatusRaw = $statusResponse->json() ?? [];
+            }
+        } catch (\Throwable $e) {
+            $this->logError('Could not retrieve taler_pay_uri after order creation', [
+                'order_id' => $orderId,
+                'error'    => $e->getMessage(),
+            ]);
+
+            return GatewayResponse::failure(
+                gatewayTransactionId: $orderId,
+                eventType: GatewayResponse::EVENT_PAYMENT_FAILED,
+                message: 'Taler order created, but payment URI retrieval failed: ' . $e->getMessage(),
+                rawResponse: ['error' => $e->getMessage(), 'order_id' => $orderId],
+            );
+        }
+
+        if (!$talerPayUri) {
+            return GatewayResponse::failure(
+                gatewayTransactionId: $orderId,
+                eventType: GatewayResponse::EVENT_PAYMENT_FAILED,
+                message: 'Taler order created, but no taler_pay_uri was returned.',
+                rawResponse: array_merge($createResponse->json() ?? [], ['status' => $orderStatusRaw]),
+            );
+        }
+
+        $this->logInfo('Taler order created', [
+            'order_id'     => $orderId,
+            'invoice_uuid' => $request->invoiceUuid,
+        ]);
+
+        return GatewayResponse::pending(
+            gatewayTransactionId: $orderId,
+            eventType: GatewayResponse::EVENT_PAYMENT_PENDING,
+            message: 'Taler order created. Open the GNU Taler wallet to complete payment.',
+            rawResponse: array_merge($createResponse->json() ?? [], ['status' => $orderStatusRaw]),
+            data: [
+                'taler_pay_uri' => $talerPayUri,
+                'payment_url'   => $talerPayUri,
+                'qr_image'      => $this->qrImageForUri($talerPayUri),
+                'qr_text'       => $talerPayUri,
+                'order_id'      => $orderId,
+                'invoice_uuid'  => $request->invoiceUuid,
+                'status'        => $orderStatusRaw['order_status'] ?? null,
+            ],
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Webhook
+    // -------------------------------------------------------------------------
+
+    /**
+     * {@inheritdoc}
+     *
+     * Handles an inbound webhook notification from the Taler Merchant Backend.
+     *
+     * Taler does not sign webhook payloads with an HMAC secret the way Stripe
+     * does. Instead, the recommended security practice is to verify the payment
+     * by re-querying the private Merchant API using the order_id received in
+     * the webhook body. This prevents replay and spoofing attacks because only
+     * the backend — authenticated with the API token — can confirm the status.
+     *
+     * Expected webhook body (JSON):
+     *   { "order_id": "2024-001-XYZ" }
+     *
+     * Steps:
+     *   1. Extract order_id from request body.
+     *   2. GET /instances/{id}/private/orders/{order_id} to verify status.
+     *   3. If order_status == "paid", parse amount and invoice_uuid.
+     *   4. Return GatewayResponse::success() or ::failure() accordingly.
+     *
+     * @param Request $request Incoming HTTP request from Taler
+     *
+     * @return GatewayResponse Normalized response for event dispatching
+     *
+     * @throws WebhookSignatureException never thrown by this driver (verification
+     *                                   is done via API re-query, not signature)
+     */
+    public function handleWebhook(Request $request): GatewayResponse
+    {
+        if ($configurationFailure = $this->configurationFailureResponse()) {
+            return $configurationFailure;
+        }
+
+        $orderId = $request->input('order_id');
+
+        if (!$orderId) {
+            $this->logError('Webhook received without order_id', [
+                'payload' => $request->all(),
+            ]);
+
+            return GatewayResponse::failure(
+                eventType: GatewayResponse::EVENT_UNKNOWN,
+                message: 'Taler webhook missing order_id.',
+                rawResponse: $request->all(),
+            );
+        }
+
+        $instanceId = $this->instanceId();
+
+        $this->logInfo('Webhook received, verifying order', ['order_id' => $orderId]);
+
+        try {
+            $response = $this->privateRequest('GET', "instances/{$instanceId}/private/orders/{$orderId}");
+        } catch (\Throwable $e) {
+            $this->logError('Webhook order verification HTTP error', [
+                'order_id' => $orderId,
+                'error'    => $e->getMessage(),
+            ]);
+
+            return GatewayResponse::failure(
+                gatewayTransactionId: $orderId,
+                eventType: GatewayResponse::EVENT_PAYMENT_FAILED,
+                message: 'Taler webhook verification failed: ' . $e->getMessage(),
+                rawResponse: ['error' => $e->getMessage()],
+            );
+        }
+
+        if (!$response->successful()) {
+            $this->logError('Webhook order verification returned non-2xx', [
+                'order_id' => $orderId,
+                'status'   => $response->status(),
+            ]);
+
+            return GatewayResponse::failure(
+                gatewayTransactionId: $orderId,
+                eventType: GatewayResponse::EVENT_PAYMENT_FAILED,
+                message: 'Taler order verification failed: ' . $response->body(),
+                rawResponse: $response->json() ?? [],
+            );
+        }
+
+        $data        = $response->json() ?? [];
+        $orderStatus = $data['order_status'] ?? null;
+
+        if ($orderStatus !== 'paid') {
+            $this->logInfo('Webhook received for unpaid order, ignoring', [
+                'order_id'     => $orderId,
+                'order_status' => $orderStatus,
+            ]);
+
+            return GatewayResponse::failure(
+                gatewayTransactionId: $orderId,
+                eventType: GatewayResponse::EVENT_PAYMENT_FAILED,
+                message: "Taler order [{$orderId}] is not paid (status: {$orderStatus}).",
+                rawResponse: $data,
+            );
+        }
+
+        // Extract the invoice_uuid that was embedded in the contract terms
+        // during order creation. The HandleSuccessfulPayment listener uses this
+        // to locate and mark the Fleetbase invoice as paid.
+        $contractTerms = $data['contract_terms'] ?? [];
+        $metadata      = $contractTerms['metadata'] ?? [];
+        $invoiceUuid   = $contractTerms['invoice_uuid'] ?? $metadata['invoice_uuid'] ?? null;
+
+        // Prefer the exchange deposit total when available, but fall back to
+        // the paid order amount. Some Merchant Backend responses report
+        // deposit_total as KUDOS:0 while the paid contract_terms.amount is the
+        // customer-facing amount Ledger must apply to the invoice.
+        $paidAmount               = $data['deposit_total'] ?? $contractTerms['amount'] ?? null;
+        [$currency, $amountCents] = $this->fromTalerAmount($paidAmount);
+
+        if (($amountCents ?? 0) <= 0 && !empty($contractTerms['amount'])) {
+            [$currency, $amountCents] = $this->fromTalerAmount($contractTerms['amount']);
+        }
+
+        $this->logInfo('Webhook verified: payment confirmed', [
+            'order_id'     => $orderId,
+            'invoice_uuid' => $invoiceUuid,
+            'amount_cents' => $amountCents,
+            'currency'     => $currency,
+        ]);
+
+        return GatewayResponse::success(
+            gatewayTransactionId: $orderId,
+            eventType: GatewayResponse::EVENT_PAYMENT_SUCCEEDED,
+            message: 'GNU Taler payment confirmed.',
+            amount: $amountCents,
+            currency: $currency,
+            rawResponse: $data,
+            data: [
+                'invoice_uuid' => $invoiceUuid,
+                'order_id'     => $orderId,
+                'metadata'     => $metadata,
+                'wired'        => $data['wired'] ?? false,
+                'last_payment' => $data['last_payment'] ?? null,
+            ],
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Refund
+    // -------------------------------------------------------------------------
+
+    /**
+     * {@inheritdoc}
+     *
+     * Issues a refund against a previously paid Taler order.
+     *
+     * Taler refunds are cumulative: each call to the refund endpoint increases
+     * the total refunded amount up to the original order total. The backend
+     * will reject a refund that exceeds the original amount.
+     *
+     * Steps:
+     *   1. Convert integer cents → Taler amount string.
+     *   2. POST to /instances/{id}/private/orders/{order_id}/refund.
+     *   3. Return GatewayResponse::success() with EVENT_REFUND_PROCESSED.
+     *
+     * @param RefundRequest $request Immutable refund request DTO
+     *
+     * @return GatewayResponse Success or failure response
+     */
+    public function refund(RefundRequest $request): GatewayResponse
+    {
+        if ($configurationFailure = $this->configurationFailureResponse(GatewayResponse::EVENT_REFUND_FAILED)) {
+            return $configurationFailure;
+        }
+
+        $instanceId = $this->instanceId();
+        $orderId    = $request->gatewayTransactionId;
+
+        $talerAmount = $this->toTalerAmount($request->amount, $request->currency);
+
+        $payload = [
+            'refund' => $talerAmount,
+            'reason' => $request->reason ?? 'Customer requested refund',
+        ];
+
+        $this->logInfo('Issuing Taler refund', [
+            'order_id'     => $orderId,
+            'amount'       => $talerAmount,
+            'invoice_uuid' => $request->invoiceUuid,
+        ]);
+
+        try {
+            $response = $this->privateRequest(
+                'POST',
+                "instances/{$instanceId}/private/orders/{$orderId}/refund",
+                $payload
+            );
+        } catch (\Throwable $e) {
+            $this->logError('Refund HTTP error', [
+                'order_id' => $orderId,
+                'error'    => $e->getMessage(),
+            ]);
+
+            return GatewayResponse::failure(
+                gatewayTransactionId: $orderId,
+                eventType: GatewayResponse::EVENT_REFUND_FAILED,
+                message: 'Taler refund failed: ' . $e->getMessage(),
+                rawResponse: ['error' => $e->getMessage()],
+            );
+        }
+
+        if (!$response->successful()) {
+            $this->logError('Refund request failed', [
+                'order_id' => $orderId,
+                'status'   => $response->status(),
+                'body'     => $response->body(),
+            ]);
+
+            return GatewayResponse::failure(
+                gatewayTransactionId: $orderId,
+                eventType: GatewayResponse::EVENT_REFUND_FAILED,
+                message: 'Taler refund failed: ' . $response->body(),
+                rawResponse: $response->json() ?? [],
+            );
+        }
+
+        $this->logInfo('Taler refund issued successfully', [
+            'order_id' => $orderId,
+            'amount'   => $talerAmount,
+        ]);
+
+        $rawResponse  = $response->json() ?? [];
+        $refundUri    = $rawResponse['taler_refund_uri'] ?? null;
+        $refundStatus = $refundUri ? 'wallet_uri_returned' : 'backend_approved';
+
+        return GatewayResponse::success(
+            gatewayTransactionId: $orderId,
+            eventType: GatewayResponse::EVENT_REFUND_PROCESSED,
+            message: 'GNU Taler refund processed.',
+            amount: $request->amount,
+            currency: $request->currency,
+            rawResponse: $rawResponse,
+            data: [
+                'invoice_uuid'     => $request->invoiceUuid,
+                'order_id'         => $orderId,
+                'taler_refund_uri' => $refundUri,
+                'refund_url'       => $refundUri,
+                'refund_amount'    => $talerAmount,
+                'refund_status'    => $refundStatus,
+                'wallet_status'    => $refundUri ? 'pending_wallet_acceptance' : 'not_observable',
+                'refund_kind'      => $request->metadata['refund_kind'] ?? null,
+            ],
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Admin / Diagnostics
+    // -------------------------------------------------------------------------
+
+    public function testCredentials(): array
+    {
+        if ($configurationFailure = $this->configurationFailureResponse()) {
+            return [
+                'ok'       => false,
+                'status'   => 'failed',
+                'message'  => $configurationFailure->message,
+                'metadata' => $this->credentialMetadata(),
+            ];
+        }
+
+        $instanceId = $this->instanceId();
+
+        try {
+            $response = $this->privateRequest('GET', "instances/{$instanceId}/private/orders");
+        } catch (\Throwable $e) {
+            return [
+                'ok'       => false,
+                'status'   => 'failed',
+                'message'  => 'Taler credential check failed: ' . $e->getMessage(),
+                'metadata' => $this->credentialMetadata(),
+            ];
+        }
+
+        $successful = $response->successful();
+        $metadata   = $this->credentialMetadata($response);
+
+        return [
+            'ok'          => $successful,
+            'status'      => $successful ? 'ok' : 'failed',
+            'http_status' => $response->status(),
+            'message'     => $successful ? 'Taler credentials accepted.' : $this->credentialFailureMessage($response, $metadata),
+            'metadata'    => $metadata,
+            'checked_at'  => now()->toISOString(),
+        ];
+    }
+
+    public function createTestOrder(array $options = []): GatewayResponse
+    {
+        $currency = strtoupper($options['currency'] ?? 'KUDOS');
+        $amount   = (int) ($options['amount'] ?? 1);
+        $orderId  = 'ledger-test-' . Str::lower(Str::random(16));
+
+        return $this->purchase(new PurchaseRequest(
+            amount: $amount,
+            currency: $currency,
+            description: $options['description'] ?? 'Ledger GNU Taler test order',
+            invoiceUuid: $options['invoice_uuid'] ?? null,
+            returnUrl: $options['return_url'] ?? null,
+            metadata: array_merge($options['metadata'] ?? [], [
+                'taler_order_id' => $orderId,
+                'test_order'     => true,
+            ]),
+        ));
+    }
+
+    public function registerWebhook(array $options = []): array
+    {
+        if ($configurationFailure = $this->configurationFailureResponse()) {
+            return [
+                'ok'      => false,
+                'status'  => 'failed',
+                'message' => $configurationFailure->message,
+            ];
+        }
+
+        $instanceId  = $this->instanceId();
+        $webhookId   = $options['webhook_id'] ?? 'fleetbase-ledger-pay';
+        $webhookUrl  = $options['webhook_url'] ?? Utils::apiUrl('/ledger/webhooks/taler');
+        $companyUuid = $options['company_uuid'] ?? '';
+        $gatewayId   = $options['gateway_id'] ?? $options['gateway_uuid'] ?? '';
+
+        $payload = [
+            'webhook_id'      => $webhookId,
+            'event_type'      => $options['event_type'] ?? 'pay',
+            'url'             => $webhookUrl,
+            'http_method'     => 'POST',
+            'header_template' => 'Content-Type: application/json',
+            'body_template'   => json_encode([
+                'order_id'     => '{{ order_id }}',
+                'event_type'   => '{{ webhook_type }}',
+                'company_uuid' => $companyUuid,
+                'gateway_id'   => $gatewayId,
+                'gateway_uuid' => $gatewayId,
+            ]),
+        ];
+
+        try {
+            $response = $this->privateRequest('POST', "instances/{$instanceId}/private/webhooks", $payload);
+
+            if ($response->status() === 409) {
+                $response = $this->privateRequest('PATCH', "instances/{$instanceId}/private/webhooks/{$webhookId}", $payload);
+            }
+        } catch (\Throwable $e) {
+            return [
+                'ok'      => false,
+                'status'  => 'failed',
+                'message' => 'Taler webhook registration failed: ' . $e->getMessage(),
+                'payload' => $payload,
+            ];
+        }
+
+        return [
+            'ok'          => in_array($response->status(), [200, 204], true),
+            'status'      => in_array($response->status(), [200, 204], true) ? 'registered' : 'failed',
+            'http_status' => $response->status(),
+            'message'     => in_array($response->status(), [200, 204], true) ? 'Taler webhook registered.' : 'Taler webhook registration failed.',
+            'payload'     => $payload,
+            'raw_response'=> $response->json() ?? [],
+            'checked_at'  => now()->toISOString(),
+        ];
+    }
+
+    public function fetchOrderStatus(string $orderId, array $query = []): array
+    {
+        $instanceId = $this->instanceId();
+        $response   = $this->privateRequest('GET', "instances/{$instanceId}/private/orders/{$orderId}", $query);
+
+        return [
+            'ok'          => $response->successful(),
+            'http_status' => $response->status(),
+            'data'        => $response->json() ?? [],
+        ];
+    }
+
+    public function fetchRefundStatus(string $orderId, ?int $refundAmount = null, ?string $currency = null, array $query = []): array
+    {
+        $params = array_merge([
+            'await_refund_obtained' => 'yes',
+            'timeout_ms'            => 3000,
+        ], $query);
+
+        if ($refundAmount !== null && $currency) {
+            $params['refund'] = $this->toTalerAmount($refundAmount, $currency);
+        }
+
+        return $this->fetchOrderStatus($orderId, $params);
+    }
+
+    // -------------------------------------------------------------------------
+    // Private Helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Return the trimmed Merchant Backend base URL from config.
+     */
+    private function backendUrl(): string
+    {
+        $configuredUrl = rtrim($this->config('backend_url', ''), '/');
+
+        if ($configuredUrl) {
+            return $configuredUrl;
+        }
+
+        if ($this->isSandbox()) {
+            return self::HOSTED_SANDBOX_MERCHANT_BACKEND_URL;
+        }
+
+        return '';
+    }
+
+    /**
+     * Return the configured Taler merchant instance ID, defaulting to "default".
+     */
+    private function instanceId(): string
+    {
+        return $this->config('instance_id', 'default');
+    }
+
+    private function configurationFailureResponse(string $eventType = GatewayResponse::EVENT_PAYMENT_FAILED): ?GatewayResponse
+    {
+        if (!$this->backendUrl()) {
+            return GatewayResponse::failure(
+                eventType: $eventType,
+                message: 'Taler Merchant Backend URL is not configured.',
+            );
+        }
+
+        if (!$this->apiToken()) {
+            return GatewayResponse::failure(
+                eventType: $eventType,
+                message: 'Taler API token is not configured.',
+            );
+        }
+
+        return null;
+    }
+
+    private function orderIdForPurchase(PurchaseRequest $request): string
+    {
+        if (!empty($request->metadata['taler_order_id'])) {
+            return $this->sanitizeOrderId($request->metadata['taler_order_id']);
+        }
+
+        $source = implode('|', array_filter([
+            'ledger',
+            $request->invoiceUuid,
+            $request->metadata['invoice_public_id'] ?? null,
+            $request->amount,
+            strtoupper($request->currency),
+        ]));
+
+        return 'ledger-' . substr(hash('sha256', $source ?: Str::uuid()->toString()), 0, 32);
+    }
+
+    private function sanitizeOrderId(string $orderId): string
+    {
+        $sanitized = preg_replace('/[^A-Za-z0-9_.:-]/', '-', $orderId) ?: Str::uuid()->toString();
+
+        return Str::limit($sanitized, 64, '');
+    }
+
+    /**
+     * Execute an authenticated HTTP request against the Taler Merchant Backend.
+     *
+     * All private API endpoints require a Bearer token. In sandbox mode the
+     * driver still uses the configured token; the sandbox distinction is
+     * handled entirely by the backend_url pointing to a test instance.
+     *
+     * @param string $method  HTTP method (GET, POST, PATCH, DELETE)
+     * @param string $path    Relative API path (no leading slash)
+     * @param array  $payload Optional JSON body for POST/PATCH requests
+     *
+     * @return HttpResponse Laravel HTTP client response
+     */
+    private function privateRequest(string $method, string $path, array $payload = []): HttpResponse
+    {
+        $url     = $this->backendUrl() . '/' . ltrim($path, '/');
+        $token   = $this->apiToken();
+        $pending = Http::withToken($token)
+                       ->acceptJson()
+                       ->contentType('application/json');
+
+        return match (strtoupper($method)) {
+            'POST'   => $pending->post($url, $payload),
+            'PATCH'  => $pending->patch($url, $payload),
+            'DELETE' => $pending->delete($url, $payload),
+            default  => $pending->get($url, $payload),
+        };
+    }
+
+    /**
+     * Convert a Fleetbase integer amount (smallest currency unit) to a Taler
+     * amount string in the format "CURRENCY:UNITS.FRACTION".
+     *
+     * Examples:
+     *   toTalerAmount(1050, 'USD') → "USD:10.50"
+     *   toTalerAmount(100,  'JPY') → "JPY:100.00"
+     *   toTalerAmount(0,    'EUR') → "EUR:0.00"
+     *
+     * @param int    $amountCents Integer amount in smallest currency unit
+     * @param string $currency    ISO 4217 currency code
+     *
+     * @return string Taler amount string
+     */
+    private function toTalerAmount(int $amountCents, string $currency): string
+    {
+        $units    = (int) floor($amountCents / 100);
+        $fraction = $amountCents % 100;
+
+        return sprintf('%s:%d.%02d', strtoupper($currency), $units, $fraction);
+    }
+
+    private function apiToken(): string
+    {
+        return trim(preg_replace('/^Bearer\s+/i', '', trim((string) $this->config('api_token', ''))));
+    }
+
+    private function credentialMetadata(?HttpResponse $response = null): array
+    {
+        $metadata = [
+            'backend_url' => $this->backendUrl(),
+            'instance_id' => $this->instanceId(),
+        ];
+
+        if ($response) {
+            $metadata['http_status'] = $response->status();
+            $metadata                = array_merge($metadata, $this->talerErrorMetadata($response));
+        }
+
+        return array_filter($metadata, fn ($value) => $value !== null && $value !== '');
+    }
+
+    private function talerErrorMetadata(HttpResponse $response): array
+    {
+        $body = $response->json();
+
+        if (!is_array($body)) {
+            return [];
+        }
+
+        $details = $body['details'] ?? $body['detail'] ?? null;
+
+        if (is_array($details)) {
+            $details = json_encode($details);
+        }
+
+        return array_filter([
+            'taler_error_code' => $body['code'] ?? $body['error_code'] ?? null,
+            'hint'             => $body['hint'] ?? null,
+            'detail'           => $details,
+            'request_uid'      => $body['request_uid'] ?? null,
+        ], fn ($value) => $value !== null && $value !== '');
+    }
+
+    private function credentialFailureMessage(HttpResponse $response, array $metadata): string
+    {
+        $message = 'Taler credentials rejected.';
+
+        if ($response->status()) {
+            $message .= ' HTTP ' . $response->status() . '.';
+        }
+
+        if (!empty($metadata['hint'])) {
+            return $message . ' ' . $metadata['hint'];
+        }
+
+        if (!empty($metadata['detail'])) {
+            return $message . ' ' . $metadata['detail'];
+        }
+
+        return $message . ' Check the API token and Merchant Backend instance ID.';
+    }
+
+    private function qrImageForUri(string $uri): ?string
+    {
+        try {
+            return DNS2D::getBarcodePNG($uri, 'QRCODE', 8, 8);
+        } catch (\Throwable $e) {
+            $this->logError('Unable to generate Taler QR code', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Parse a Taler amount string back into a [currency, integer cents] tuple.
+     *
+     * Returns ['USD', 0] if the string is null, empty, or malformed.
+     *
+     * Examples:
+     *   fromTalerAmount("USD:10.50") → ['USD', 1050]
+     *   fromTalerAmount("EUR:0.99")  → ['EUR', 99]
+     *   fromTalerAmount(null)        → ['USD', 0]
+     *
+     * @param string|null $talerAmount Taler amount string
+     *
+     * @return array{0: string, 1: int} [currency, amountCents]
+     */
+    private function fromTalerAmount(?string $talerAmount): array
+    {
+        if (!$talerAmount) {
+            return ['USD', 0];
+        }
+
+        // Match "CURRENCY:UNITS.FRACTION" — fraction is optional.
+        if (!preg_match('/^([A-Z]{2,8}):(\d+)(?:\.(\d{1,2}))?$/', $talerAmount, $m)) {
+            $this->logError('Could not parse Taler amount string', ['value' => $talerAmount]);
+
+            return ['USD', 0];
+        }
+
+        $currency    = $m[1];
+        $units       = (int) $m[2];
+        $fractionStr = $m[3] ?? '00';
+
+        // Normalise fraction to exactly 2 digits (pad right if needed).
+        $fraction = (int) str_pad($fractionStr, 2, '0');
+
+        return [$currency, ($units * 100) + $fraction];
+    }
+}

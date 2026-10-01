@@ -20,7 +20,7 @@ export default class ConsoleAccountOrganizationsController extends Controller {
         const willBeDeleted = isOwner && organization.users_count === 1;
 
         if (this.model.length === 1) {
-            return this.notifications.warning('Unable to leave your only organization.');
+            return this.notifications.warning(this.intl.t('console.ui.account.organizations.cannot-leave-only'));
         }
 
         if (hasOtherMembers) {
@@ -28,8 +28,8 @@ export default class ConsoleAccountOrganizationsController extends Controller {
         }
 
         this.modalsManager.show('modals/leave-organization', {
-            title: isOwner ? (willBeDeleted ? 'Delete Organization' : 'Transfer Ownership and Leave') : 'Leave Organization',
-            acceptButtonText: isOwner ? (willBeDeleted ? 'Delete Organization' : 'Transfer Ownership and Leave') : 'Leave Organization',
+            title: this.intl.t(isOwner ? (willBeDeleted ? 'console.ui.account.organizations.delete-organization' : 'console.ui.account.organizations.transfer-and-leave') : 'console.ui.account.organizations.leave-organization'),
+            acceptButtonText: this.intl.t(isOwner ? (willBeDeleted ? 'console.ui.account.organizations.delete-organization' : 'console.ui.account.organizations.transfer-and-leave') : 'console.ui.account.organizations.leave-organization'),
             acceptButtonScheme: 'danger',
             acceptButtonIcon: isOwner ? (willBeDeleted ? 'trash' : 'person-walking-arrow-right') : 'person-walking-arrow-right',
             acceptButtonDisabled: isOwner && hasOtherMembers,
@@ -105,19 +105,17 @@ export default class ConsoleAccountOrganizationsController extends Controller {
         const isOwner = this.currentUser.id === organization.owner_uuid;
 
         if (this.model.length === 1) {
-            return this.notifications.warning('Unable to delete your only organization.');
+            return this.notifications.warning(this.intl.t('console.ui.account.organizations.cannot-delete-only'));
         }
 
         if (!isOwner) {
-            return this.notifications.warning('You do not have rights to delete this organization.');
+            return this.notifications.warning(this.intl.t('console.ui.account.organizations.no-delete-rights'));
         }
 
         this.crud.delete(organization, {
-            title: `Are you sure you want to delete the organization ${organization.name}?`,
-            body: htmlSafe(
-                `This action will permanently remove all data, including orders, members, and settings associated with the organization. <br /><br /><strong>This action cannot be undone.</strong>`
-            ),
-            acceptButtonText: 'Delete Organization',
+            title: this.intl.t('console.ui.account.organizations.delete-confirm-title', { name: organization.name }),
+            body: htmlSafe(this.intl.t('console.ui.account.organizations.delete-confirm-body')),
+            acceptButtonText: this.intl.t('console.ui.account.organizations.delete-organization'),
             acceptButtonScheme: 'danger',
             acceptButtonIcon: 'trash',
             confirm: async (modal) => {
@@ -135,8 +133,8 @@ export default class ConsoleAccountOrganizationsController extends Controller {
 
     @action editOrganization(organization) {
         this.modalsManager.show('modals/edit-organization', {
-            title: 'Edit Organization',
-            acceptButtonText: 'Save Changes',
+            title: this.intl.t('console.ui.account.organizations.edit-organization'),
+            acceptButtonText: this.intl.t('common.save-changes'),
             acceptButtonIcon: 'save',
             isOwner: this.currentUser.id === organization.owner_uuid,
             organization,
@@ -158,7 +156,7 @@ export default class ConsoleAccountOrganizationsController extends Controller {
         const country = this.currentUser.country;
 
         this.modalsManager.show('modals/edit-organization', {
-            title: 'Create Organization',
+            title: this.intl.t('console.ui.account.organizations.create'),
             acceptButtonText: this.intl.t('common.confirm'),
             acceptButtonIcon: 'check',
             acceptButtonIconPrefix: 'fas',

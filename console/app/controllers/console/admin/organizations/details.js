@@ -12,15 +12,16 @@ export default class ConsoleAdminOrganizationsDetailsController extends Controll
     @service notifications;
     @service modalsManager;
     @service session;
+    @service intl;
     @service('universe/menu-service') menuService;
 
     get tabs() {
         const coreTabs = [
-            { route: 'console.admin.organizations.details.index', label: 'Overview', icon: 'chart-simple', priority: 0 },
-            { route: 'console.admin.organizations.details.users', label: 'Users', icon: 'users', priority: 10 },
-            { route: 'console.admin.organizations.details.extensions', label: 'Extensions', icon: 'puzzle-piece', priority: 20 },
-            { route: 'console.admin.organizations.details.activity', label: 'Activity', icon: 'clock-rotate-left', priority: 30 },
-            { route: 'console.admin.organizations.details.settings', label: 'Settings', icon: 'gear', priority: 40 },
+            { route: 'console.admin.organizations.details.index', label: this.intl.t('common.overview'), icon: 'chart-simple', priority: 0 },
+            { route: 'console.admin.organizations.details.users', label: this.intl.t('common.users'), icon: 'users', priority: 10 },
+            { route: 'console.admin.organizations.details.extensions', label: this.intl.t('console.ui.admin.org.extensions'), icon: 'puzzle-piece', priority: 20 },
+            { route: 'console.admin.organizations.details.activity', label: this.intl.t('common.activity'), icon: 'clock-rotate-left', priority: 30 },
+            { route: 'console.admin.organizations.details.settings', label: this.intl.t('common.settings'), icon: 'gear', priority: 40 },
         ];
         const registeredTabs = this.visibleRegisteredTabs.map((tab) => ({
             ...tab,
@@ -77,28 +78,28 @@ export default class ConsoleAdminOrganizationsDetailsController extends Controll
     get actionMenuItems() {
         return [
             {
-                label: 'Impersonate Owner',
+                label: this.intl.t('console.ui.admin.org.impersonate-owner'),
                 icon: 'user-secret',
                 perform: this.impersonateOwner,
                 disabled: !this.ownerId,
             },
             {
-                label: 'Copy Public ID',
+                label: this.intl.t('console.ui.admin.org.copy-public-id'),
                 icon: 'copy',
-                onClick: () => this.copyId(this.organization?.public_id, 'Public ID'),
+                onClick: () => this.copyId(this.organization?.public_id, this.intl.t('console.ui.admin.org.public-id')),
             },
             {
-                label: 'Copy UUID',
+                label: this.intl.t('console.ui.admin.org.copy-uuid'),
                 icon: 'fingerprint',
                 onClick: () => this.copyId(this.organization?.uuid, 'UUID'),
             },
             {
-                label: 'Refresh',
+                label: this.intl.t('common.refresh'),
                 icon: 'refresh',
                 onClick: this.refresh,
             },
             {
-                label: 'Edit Settings',
+                label: this.intl.t('console.ui.admin.org.edit-settings'),
                 icon: 'edit',
                 onClick: this.editOrganization,
             },
@@ -121,6 +122,19 @@ export default class ConsoleAdminOrganizationsDetailsController extends Controll
 
     get onboardingStatus() {
         return this.organization?.onboarding_completed ? 'complete' : 'incomplete';
+    }
+
+    get organizationStatusText() {
+        return this.translateState(this.organizationStatus);
+    }
+
+    get onboardingStatusText() {
+        return this.translateState(this.onboardingStatus);
+    }
+
+    translateState(value) {
+        const key = `console.ui.admin.org.state.${value}`;
+        return this.intl.exists(key) ? this.intl.t(key) : value;
     }
 
     get billingStatus() {
@@ -188,13 +202,13 @@ export default class ConsoleAdminOrganizationsDetailsController extends Controll
         }
 
         navigator.clipboard?.writeText(value);
-        this.notifications.success(`${label} copied to clipboard.`);
+        this.notifications.success(this.intl.t('console.ui.admin.org.copied', { label }));
     }
 
     @action editOrganization() {
         this.modalsManager.show('modals/edit-organization', {
-            title: 'Edit Organization',
-            acceptButtonText: 'Save Changes',
+            title: this.intl.t('console.ui.account.organizations.edit-organization'),
+            acceptButtonText: this.intl.t('common.save-changes'),
             acceptButtonIcon: 'save',
             organization: this.organization,
             confirm: async (modal) => {
@@ -202,7 +216,7 @@ export default class ConsoleAdminOrganizationsDetailsController extends Controll
 
                 try {
                     await this.organization.save();
-                    this.notifications.success('Organization updated.');
+                    this.notifications.success(this.intl.t('console.ui.admin.org.updated'));
                     return this.router.refresh();
                 } catch (error) {
                     this.notifications.serverError(error);
@@ -227,14 +241,14 @@ export default class ConsoleAdminOrganizationsDetailsController extends Controll
 
     @task *impersonateOwner() {
         if (!this.ownerId) {
-            return this.notifications.error('This organization does not have an owner to impersonate.');
+            return this.notifications.error(this.intl.t('console.ui.admin.org.no-owner-to-impersonate'));
         }
 
         try {
             const { token } = yield this.fetch.post('auth/impersonate', { user: this.ownerId });
             yield this.router.transitionTo('console');
             this.session.manuallyAuthenticate(token);
-            this.notifications.info(`Now impersonating ${this.ownerEmail || 'organization owner'}...`);
+            this.notifications.info(this.intl.t('console.ui.admin.org.now-impersonating', { name: this.ownerEmail || this.intl.t('console.ui.admin.org.organization-owner') }));
             later(() => window.location.reload(), 600);
         } catch (error) {
             this.notifications.serverError(error);

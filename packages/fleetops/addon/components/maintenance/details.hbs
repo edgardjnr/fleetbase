@@ -1,0 +1,186 @@
+<div class="next-content-panel-wrapper" ...attributes>
+
+    {{! ===== OVERVIEW ===== }}
+    <ContentPanel @title={{t "fleet-ops.ui.maintenance.details.overview"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+
+            {{! — Identity & Classification — }}
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "fleet-ops.ui.maintenance.details.identity-classification"}}
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">ID</div>
+                <div class="field-value">{{n-a @resource.public_id}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.maintenance.details.type"}}</div>
+                <div class="field-value">{{n-a (smart-humanize @resource.type)}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.maintenance.details.status"}}</div>
+                <div class="field-value">
+                    <Badge @status={{@resource.status}}>{{smart-humanize @resource.status}}</Badge>
+                </div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.maintenance.details.priority"}}</div>
+                <div class="field-value">
+                    {{#if (eq @resource.priority "critical")}}
+                        <Badge @status="danger">{{t "fleet-ops.ui.maintenance.details.critical"}}</Badge>
+                    {{else if (eq @resource.priority "high")}}
+                        <Badge @status="warning">{{t "fleet-ops.ui.maintenance.details.high"}}</Badge>
+                    {{else if (eq @resource.priority "medium")}}
+                        <Badge @status="info">{{t "fleet-ops.ui.maintenance.details.medium"}}</Badge>
+                    {{else}}
+                        <Badge @status="default">{{t "fleet-ops.ui.maintenance.details.low"}}</Badge>
+                    {{/if}}
+                </div>
+            </div>
+
+            {{! — Asset & Assignment — }}
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.maintenance.details.asset-assignment"}}
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.maintenance.details.maintainable-asset"}}</div>
+                <div class="field-value">{{n-a (or @resource.maintainable.displayName @resource.maintainable.name @resource.maintainable_name)}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.maintenance.details.performed-by"}}</div>
+                <div class="field-value">{{n-a (or @resource.performed_by.displayName @resource.performed_by.name @resource.performed_by_name)}}</div>
+            </div>
+            {{#if (or @resource.work_order_uuid @resource.work_order_subject)}}
+                <div class="field-info-container">
+                    <div class="field-name">{{t "fleet-ops.ui.maintenance.details.linked-work-order"}}</div>
+                    <div class="field-value">{{n-a @resource.work_order_subject}}</div>
+                </div>
+            {{/if}}
+
+            {{! — Timeline — }}
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.maintenance.details.timeline"}}
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.maintenance.details.scheduled-at"}}</div>
+                <div class="field-value">{{n-a (format-date-fns @resource.scheduled_at "dd MMM yyyy, HH:mm")}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.maintenance.details.started-at"}}</div>
+                <div class="field-value">{{n-a (format-date-fns @resource.started_at "dd MMM yyyy, HH:mm")}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.maintenance.details.completed-at"}}</div>
+                <div class="field-value">{{n-a (format-date-fns @resource.completed_at "dd MMM yyyy, HH:mm")}}</div>
+            </div>
+            {{#if @resource.is_overdue}}
+                <div class="field-info-container">
+                    <div class="field-name">{{t "fleet-ops.ui.maintenance.details.overdue"}}</div>
+                    <div class="field-value"><Badge @status="danger">{{t "fleet-ops.ui.maintenance.details.overdue"}}</Badge></div>
+                </div>
+            {{else if @resource.days_until_due}}
+                <div class="field-info-container">
+                    <div class="field-name">{{t "fleet-ops.ui.maintenance.details.days-until-due"}}</div>
+                    <div class="field-value">{{t "fleet-ops.ui.maintenance.details.days" daysUntilDue=@resource.days_until_due}}</div>
+                </div>
+            {{/if}}
+
+            {{! — Readings — }}
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.maintenance.details.readings"}}
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.maintenance.details.odometer"}}</div>
+                <div class="field-value">{{n-a @resource.odometer}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.maintenance.details.engine-hours"}}</div>
+                <div class="field-value">{{n-a @resource.engine_hours}}</div>
+            </div>
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.maintenance.details.duration"}}</div>
+                <div class="field-value">{{n-a @resource.duration_hours}} {{t "fleet-ops.ui.maintenance.details.hrs"}}</div>
+            </div>
+
+            {{! — Summary & Notes — }}
+            {{#if @resource.summary}}
+                <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                    {{t "fleet-ops.ui.maintenance.details.summary"}}
+                </div>
+                <div class="field-info-container col-span-2">
+                    <div class="field-value whitespace-pre-wrap">{{@resource.summary}}</div>
+                </div>
+            {{/if}}
+            {{#if @resource.notes}}
+                <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                    {{t "fleet-ops.ui.maintenance.details.notes"}}
+                </div>
+                <div class="field-info-container col-span-2">
+                    <div class="field-value whitespace-pre-wrap">{{@resource.notes}}</div>
+                </div>
+            {{/if}}
+        </div>
+    </ContentPanel>
+
+    {{! ===== PARTS & SERVICES (invoice-style line items + totals) ===== }}
+    <ContentPanel @title={{t "fleet-ops.ui.maintenance.details.parts-services"}} @open={{true}} @wrapperClass="bordered-top" @panelBodyWrapperClass="px-0i">
+        {{#if @resource.line_items.length}}
+            <table class="w-full text-xs">
+                <colgroup>
+                    <col class="w-[45%]" />
+                    <col class="w-[10%]" />
+                    <col class="w-[20%]" />
+                    <col class="w-[25%]" />
+                </colgroup>
+                <thead>
+                    <tr class="border-b border-gray-200 dark:border-gray-700">
+                        <th class="text-left text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 font-semibold pb-1 px-4">{{t "fleet-ops.ui.maintenance.details.description"}}</th>
+                        <th class="text-right text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 font-semibold pb-1 px-2">{{t "fleet-ops.ui.maintenance.details.qty"}}</th>
+                        <th class="text-right text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 font-semibold pb-1 px-2">{{t "fleet-ops.ui.maintenance.details.unit-cost"}}</th>
+                        <th class="text-right text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 font-semibold pb-1 px-4">{{t "fleet-ops.ui.maintenance.details.total"}}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each @resource.line_items as |item|}}
+                        <tr class="border-b border-gray-100 dark:border-gray-800">
+                            <td class="py-1.5 px-4 text-gray-700 dark:text-gray-200">{{n-a item.description}}</td>
+                            <td class="py-1.5 px-2 text-right text-gray-500 dark:text-gray-400">{{n-a item.quantity}}</td>
+                            <td class="py-1.5 px-2 text-right text-gray-500 dark:text-gray-400">
+                                {{format-currency item.unit_cost (or item.currency @resource.currency)}}
+                            </td>
+                            <td class="py-1.5 px-4 text-right text-gray-700 dark:text-gray-200 font-medium">
+                                {{format-currency (mult item.quantity item.unit_cost) (or item.currency @resource.currency)}}
+                            </td>
+                        </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        {{else}}
+            <div class="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 italic">{{t "fleet-ops.ui.maintenance.details.no-line-items-recorded"}}</div>
+        {{/if}}
+
+        {{! Totals }}
+        <div class="border-t border-gray-200 dark:border-gray-700 pt-2 mt-1 space-y-1 text-xs px-4 pb-3">
+            <div class="flex justify-between text-gray-500 dark:text-gray-400">
+                <span>{{t "fleet-ops.ui.maintenance.details.labour"}}</span>
+                <span>{{format-currency @resource.labor_cost @resource.currency}}</span>
+            </div>
+            <div class="flex justify-between text-gray-500 dark:text-gray-400">
+                <span>{{t "fleet-ops.ui.maintenance.details.parts"}}</span>
+                <span>{{format-currency @resource.parts_cost @resource.currency}}</span>
+            </div>
+            <div class="flex justify-between text-gray-500 dark:text-gray-400">
+                <span>{{t "fleet-ops.ui.maintenance.details.tax"}}</span>
+                <span>{{format-currency @resource.tax @resource.currency}}</span>
+            </div>
+            <div class="flex justify-between font-semibold text-gray-800 dark:text-gray-100 border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
+                <span>{{t "fleet-ops.ui.maintenance.details.total"}}</span>
+                <span>{{format-currency @resource.total_cost @resource.currency}}</span>
+            </div>
+        </div>
+    </ContentPanel>
+
+    {{! ===== CUSTOM FIELDS ===== }}
+    <CustomField::Yield @subject={{@resource}} @viewMode={{true}} @wrapperClass="bordered-top" />
+
+    <Spacer @height="200px" />
+</div>

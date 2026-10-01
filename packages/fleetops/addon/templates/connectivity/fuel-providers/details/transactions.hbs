@@ -1,0 +1,21 @@
+<div class="mx-auto w-full max-w-7xl px-4 py-4 md:px-6">
+    <Layout::Resource::Tabular
+        @resource="fuel-provider-transaction"
+        @title={{t "fleet-ops.ui.route.connectivity-fuel-providers-details-transactions.imported-transactions"}}
+        @data={{@model}}
+        @columns={{this.columns}}
+        @page={{1}}
+        @controller={{this}}
+        @emptyStateComponent={{component
+            "table/empty-state"
+            icon="receipt"
+            title=(t "fleet-ops.ui.route.connectivity-fuel-providers-details-transactions.no-imported-transactions")
+            description=(t "fleet-ops.ui.route.connectivity-fuel-providers-details-transactions.fuel-transactions-will-appear-here-after")
+            filteredTitle=(t "fleet-ops.ui.route.connectivity-fuel-providers-details-transactions.no-transactions-match-your-filters")
+            filteredDescription=(t "fleet-ops.ui.route.connectivity-fuel-providers-details-transactions.adjust-filters-or-sync-the-provider")
+            primaryText=(t "fleet-ops.ui.route.connectivity-fuel-providers-details-transactions.refresh")
+            primaryIcon="refresh"
+            primaryAction=this.refresh
+        }}
+    />
+</div>

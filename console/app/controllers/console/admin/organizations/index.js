@@ -105,22 +105,22 @@ export default class ConsoleAdminOrganizationsController extends Controller {
             {
                 icon: 'filter',
                 prefix: 'fas',
-                text: 'Views',
+                text: this.intl.t('console.ui.admin.orgs.views'),
                 type: 'magic',
                 size: 'sm',
                 triggerClass: 'admin-organization-resource-action-button',
                 items: [
-                    { label: 'Needs Attention', icon: 'building-circle-exclamation', onClick: () => this.applySavedView('needs_attention') },
-                    { label: 'Missing Owner', icon: 'user-slash', onClick: () => this.applySavedView('missing_owner') },
-                    { label: 'Incomplete Onboarding', icon: 'triangle-exclamation', onClick: () => this.applySavedView('incomplete_onboarding') },
-                    { label: 'Inactive Status', icon: 'circle-exclamation', onClick: () => this.applySavedView('inactive_status') },
+                    { label: this.intl.t('console.ui.admin.orgs.needs-attention'), icon: 'building-circle-exclamation', onClick: () => this.applySavedView('needs_attention') },
+                    { label: this.intl.t('console.ui.admin.orgs.missing-owner'), icon: 'user-slash', onClick: () => this.applySavedView('missing_owner') },
+                    { label: this.intl.t('console.ui.admin.orgs.incomplete-onboarding'), icon: 'triangle-exclamation', onClick: () => this.applySavedView('incomplete_onboarding') },
+                    { label: this.intl.t('console.ui.admin.orgs.inactive-status'), icon: 'circle-exclamation', onClick: () => this.applySavedView('inactive_status') },
                     { separator: true },
-                    { label: 'Clear View', icon: 'filter-circle-xmark', onClick: this.clearSavedView },
+                    { label: this.intl.t('console.ui.admin.orgs.clear-view'), icon: 'filter-circle-xmark', onClick: this.clearSavedView },
                 ],
             },
             {
                 icon: 'long-arrow-up',
-                text: 'Export',
+                text: this.intl.t('common.export'),
                 size: 'sm',
                 iconClass: 'rotate-icon-45',
                 onClick: this.exportOrganization,
@@ -131,7 +131,7 @@ export default class ConsoleAdminOrganizationsController extends Controller {
     get bulkActions() {
         return [
             {
-                label: 'Export selected',
+                label: this.intl.t('console.ui.admin.orgs.export-selected'),
                 icon: 'long-arrow-up',
                 fn: this.exportOrganization,
             },
@@ -166,7 +166,7 @@ export default class ConsoleAdminOrganizationsController extends Controller {
             cellComponent: 'table/cell/status',
         },
         {
-            label: 'Owner',
+            label: this.intl.t('console.ui.admin.org.owner'),
             valuePath: 'owner_uuid',
             width: '260px',
             cellComponent: 'admin/table/cell/owner',
@@ -184,7 +184,7 @@ export default class ConsoleAdminOrganizationsController extends Controller {
             sortable: true,
         },
         {
-            label: 'Country',
+            label: this.intl.t('resource.country'),
             valuePath: 'country',
             width: '120px',
             resizable: true,
@@ -193,14 +193,14 @@ export default class ConsoleAdminOrganizationsController extends Controller {
             filterComponent: 'filter/string',
         },
         {
-            label: 'Timezone',
+            label: this.intl.t('common.timezone'),
             valuePath: 'timezone',
             width: '180px',
             resizable: true,
             sortable: true,
         },
         {
-            label: 'Onboarding',
+            label: this.intl.t('console.ui.admin.org.onboarding'),
             valuePath: 'onboardingStatus',
             width: '150px',
             cellComponent: 'table/cell/status',
@@ -210,7 +210,7 @@ export default class ConsoleAdminOrganizationsController extends Controller {
             filterParam: 'onboarding_completed',
         },
         {
-            label: 'Billing',
+            label: this.intl.t('console.ui.admin.orgs.billing'),
             valuePath: 'billing_status',
             width: '140px',
             cellComponent: 'table/cell/status',
@@ -227,7 +227,7 @@ export default class ConsoleAdminOrganizationsController extends Controller {
             sortable: true,
         },
         {
-            label: 'Last Activity',
+            label: this.intl.t('console.ui.admin.orgs.last-activity'),
             valuePath: 'updatedAt',
             width: '180px',
             resizable: true,
@@ -239,34 +239,34 @@ export default class ConsoleAdminOrganizationsController extends Controller {
             ddButtonText: false,
             ddButtonIcon: 'ellipsis-h',
             ddButtonIconPrefix: 'fas',
-            ddMenuLabel: 'Organization Actions',
+            ddMenuLabel: this.intl.t('console.ui.admin.orgs.organization-actions'),
             cellClassNames: 'overflow-visible',
             wrapperClass: 'flex items-center justify-end mx-2',
             sticky: 'right',
             width: 60,
             actions: [
                 {
-                    label: 'View Organization',
+                    label: this.intl.t('console.ui.admin.orgs.view-organization'),
                     icon: 'eye',
                     fn: this.goToCompany,
                 },
                 {
-                    label: 'Open Activity',
+                    label: this.intl.t('console.ui.admin.orgs.open-activity'),
                     icon: 'clock-rotate-left',
                     fn: this.openActivity,
                 },
                 {
-                    label: 'Impersonate Owner',
+                    label: this.intl.t('console.ui.admin.org.impersonate-owner'),
                     icon: 'user-secret',
                     fn: this.impersonateOwner,
                 },
                 {
-                    label: 'Copy Public ID',
+                    label: this.intl.t('console.ui.admin.org.copy-public-id'),
                     icon: 'copy',
-                    fn: (company) => this.copyId(company.public_id, 'Public ID'),
+                    fn: (company) => this.copyId(company.public_id, this.intl.t('console.ui.admin.org.public-id')),
                 },
                 {
-                    label: 'Copy UUID',
+                    label: this.intl.t('console.ui.admin.org.copy-uuid'),
                     icon: 'fingerprint',
                     fn: (company) => this.copyId(company.uuid, 'UUID'),
                 },
@@ -304,14 +304,14 @@ export default class ConsoleAdminOrganizationsController extends Controller {
         const ownerId = owner?.id || owner?.uuid || company?.owner_uuid;
 
         if (!ownerId) {
-            return this.notifications.error('This organization does not have an owner to impersonate.');
+            return this.notifications.error(this.intl.t('console.ui.admin.org.no-owner-to-impersonate'));
         }
 
         try {
             const { token } = await this.fetch.post('auth/impersonate', { user: ownerId });
             await this.router.transitionTo('console');
             this.session.manuallyAuthenticate(token);
-            this.notifications.info(`Now impersonating ${owner?.email || 'organization owner'}...`);
+            this.notifications.info(this.intl.t('console.ui.admin.org.now-impersonating', { name: owner?.email || this.intl.t('console.ui.admin.org.organization-owner') }));
             window.location.reload();
         } catch (error) {
             this.notifications.serverError(error);
@@ -340,7 +340,7 @@ export default class ConsoleAdminOrganizationsController extends Controller {
         }
 
         navigator.clipboard?.writeText(value);
-        this.notifications.success(`${label} copied to clipboard.`);
+        this.notifications.success(this.intl.t('console.ui.admin.org.copied', { label }));
     }
 
     /**

@@ -1,0 +1,15 @@
+<Layout::Resource::Tabular
+    @resource="customer"
+    @title={{t "storefront.common.customers"}}
+    @searchQuery={{this.query}}
+    @onSearch={{perform this.search}}
+    @data={{@model}}
+    @columns={{this.columns}}
+    @page={{this.page}}
+    @onPageChange={{fn (mut this.page)}}
+    @setupTable={{fn (mut this.table)}}
+    @actionButtons={{this.actionButtons}}
+    @controller={{this}}
+/>
+
+{{outlet}}

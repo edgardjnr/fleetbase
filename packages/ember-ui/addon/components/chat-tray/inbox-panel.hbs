@@ -1,0 +1,40 @@
+<section class="chat-inbox-panel" ...attributes>
+    <header class="chat-inbox-panel-header">
+        <div class="chat-inbox-panel-title">
+            <h2>{{t "ember-ui.chat-tray.messages"}}</h2>
+            <span>{{pluralize @unreadCount "unread conversation"}}</span>
+        </div>
+        <div class="chat-inbox-panel-actions">
+            <Button @type="primary" @icon="plus" @text={{t "ember-ui.chat-tray.new-chat"}} @size="xs" @onClick={{@startChat}} />
+            <button type="button" class="chat-inbox-icon-button" aria-label={{t "ember-ui.chat-tray.close-inbox"}} {{on "click" @close}}>
+                <FaIcon @icon="times" />
+            </button>
+        </div>
+    </header>
+
+    <div class="chat-inbox-search">
+        <FaIcon @icon="search" />
+        <input type="search" value={{@searchQuery}} placeholder={{t "ember-ui.chat-tray.search-conversations"}} {{on "input" @setSearchQuery}} />
+    </div>
+
+    <div class="chat-inbox-list">
+        {{#if @isLoading}}
+            <div class="chat-inbox-empty-state">
+                <Spinner @loadingMessage={{t "ember-ui.chat-tray.loading-conversations"}} />
+            </div>
+        {{else if this.hasChannels}}
+            {{#each @channels as |channel|}}
+                <ChatTray::ConversationRow @channel={{channel}} @open={{@openChannel}} @remove={{@removeChannel}} />
+            {{/each}}
+        {{else}}
+            <div class="chat-inbox-empty-state">
+                <div class="chat-inbox-empty-icon">
+                    <FaIcon @icon="message" />
+                </div>
+                <h3>{{t "ember-ui.chat-tray.no-conversations"}}</h3>
+                <p>{{t "ember-ui.chat-tray.start-new-chat-hint"}}</p>
+                <Button @type="primary" @icon="plus" @text={{t "ember-ui.chat-tray.new-chat"}} @size="sm" @onClick={{@startChat}} />
+            </div>
+        {{/if}}
+    </div>
+</section>

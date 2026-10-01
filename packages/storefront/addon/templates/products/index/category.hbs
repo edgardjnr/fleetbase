@@ -1,0 +1,11 @@
+<Storefront::Product::Collection
+    @products={{@model}}
+    @category={{this.category}}
+    @page={{this.page}}
+    @viewMode={{this.productsIndexController.viewMode}}
+    @editRoute="products.index.category.edit"
+    @onPageChange={{fn (mut this.page)}}
+    @onDeleteProduct={{this.deleteProduct}}
+/>
+
+{{outlet}}

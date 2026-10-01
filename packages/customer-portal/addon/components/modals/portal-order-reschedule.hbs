@@ -1,0 +1,7 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="modal-body-container">
+        <InputGroup @name={{t "customer-portal.ui.reschedule.new-time"}} @helpText={{t "customer-portal.ui.reschedule.help"}}>
+            <DateTimeInput @value={{@options.reschedule.scheduled_at}} @onChange={{fn (mut @options.reschedule.scheduled_at)}} placeholder={{t "customer-portal.ui.reschedule.placeholder"}} class="w-full form-input" />
+        </InputGroup>
+    </div>
+</Modal::Default>

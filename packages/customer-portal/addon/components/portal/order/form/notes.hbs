@@ -1,0 +1,5 @@
+<ContentPanel @title={{t "customer-portal.ui.common.notes"}} @open={{true}} @wrapperClass="bordered-top">
+    <InputGroup @name={{t "customer-portal.ui.common.notes"}}>
+        <Textarea @value={{@draft.notes}} class="form-input w-full" rows="4" placeholder={{t "customer-portal.ui.order.notes-placeholder"}} {{on "input" this.setNotes}} />
+    </InputGroup>
+</ContentPanel>

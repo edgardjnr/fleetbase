@@ -1,0 +1,8 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="modal-body-container">
+        <div class="mt-2 grid grid-cols-2 gap-2">
+            <InputGroup @name={{t "ember-ui.modals.tip-tap-editor-insert-table.rows"}} @value={{@options.rows}} @helpText={{t "ember-ui.modals.tip-tap-editor-insert-table.rows-help"}} @inputClass="input-lg" />
+            <InputGroup @name={{t "ember-ui.modals.tip-tap-editor-insert-table.columns"}} @value={{@options.columns}} @helpText={{t "ember-ui.modals.tip-tap-editor-insert-table.columns-help"}} @inputClass="input-lg" />
+        </div>
+    </div>
+</Modal::Default>

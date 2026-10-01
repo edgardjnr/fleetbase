@@ -24,11 +24,11 @@
         "table/empty-state"
         variant="compact"
         icon="building"
-        title="No organizations found"
-        description="No organizations match the current admin view."
-        filteredTitle="No organizations match your filters"
-        filteredDescription="Adjust the search, filters, or saved view to find another organization."
-        primaryText="Clear View"
+        title=(t "console.ui.admin.orgs.empty-title")
+        description=(t "console.ui.admin.orgs.empty-description")
+        filteredTitle=(t "console.ui.admin.orgs.filtered-title")
+        filteredDescription=(t "console.ui.admin.orgs.filtered-description")
+        primaryText=(t "console.ui.admin.orgs.clear-view")
         primaryIcon="filter-circle-xmark"
         primaryAction=this.clearSavedView
     }}

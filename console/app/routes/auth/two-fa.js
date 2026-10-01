@@ -8,6 +8,7 @@ export default class AuthTwoFaRoute extends Route {
     @service notifications;
     @service router;
     @service session;
+    @service intl;
 
     queryParams = {
         token: {
@@ -30,7 +31,7 @@ export default class AuthTwoFaRoute extends Route {
 
         return this.session.store.restore().then(({ identity }) => {
             if (!identity) {
-                this.notifications.error('2FA failed to initialize.');
+                this.notifications.error(this.intl.t('console.ui.two-fa.init-failed'));
                 return this.router.transitionTo('auth.login');
             }
 
@@ -68,7 +69,7 @@ export default class AuthTwoFaRoute extends Route {
     }
 
     async invalidateTwoFaSession(token, identity) {
-        this.notifications.error('2FA authentication session has expired.');
+        this.notifications.error(this.intl.t('console.ui.two-fa.session-expired'));
         await this.fetch.post('two-fa/invalidate', {
             token,
             identity,

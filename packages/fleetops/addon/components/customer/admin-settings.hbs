@@ -1,0 +1,46 @@
+<ContentPanel @title={{t "fleet-ops.ui.customer.admin-settings.fleet-ops-order-settings"}} @open={{true}} @wrapperClass="bordered-classic">
+    <InputGroup @name={{t "fleet-ops.ui.customer.admin-settings.enabled-order-types"}}>
+        <div class="space-y-1">
+            {{#if this.loadOrderConfigs.isRunning}}
+                <Spinner />
+            {{else}}
+                {{#each this.orderConfigs as |orderConfig|}}
+                    <Checkbox @value={{includes orderConfig.id this.enabledOrderConfigs}} @onChange={{perform this.toggleOrderConfig orderConfig}}>{{orderConfig.name}}</Checkbox>
+                {{/each}}
+            {{/if}}
+        </div>
+        {{#if this.toggleOrderConfig.isRunning}}
+            <div class="mt-4">
+                <Spinner @loadingMessage={{t "fleet-ops.ui.customer.admin-settings.saving-changes"}} @loadingMessageClass="ml-2" @wrapperClass="flex flex-row items-center" />
+            </div>
+        {{/if}}
+    </InputGroup>
+    <InputGroup @name={{t "fleet-ops.ui.customer.admin-settings.enable-payments"}} @wrapperClass="mb-0i">
+        <Toggle
+            @isToggled={{this.paymentsEnabled}}
+            @onToggle={{perform this.togglePayments}}
+            @label={{t "fleet-ops.ui.customer.admin-settings.enable-customer-to-make-payments-through"}}
+            @wrapperClass={{if (or this.togglePayments.isRunning this.loadOrderConfigs.isRunning) "pointer-events-none opacity-50" ""}}
+            @disable={{not this.paymentsOnboardCompleted}}
+        />
+        {{#if this.toggleOrderConfig.isIdle}}
+            <div class="space-y-4 mt-4">
+                {{#unless this.paymentsOnboardCompleted}}
+                    <InfoBlock @type="warning" @icon="triangle-exclamation">
+                        <span>{{t "fleet-ops.ui.customer.admin-settings.payment-onboard-must-be-completed-to"}}</span>
+                        <Button @text={{t "fleet-ops.ui.customer.admin-settings.completed-payments-onboard"}} @onClick={{transition-to "settings.payments.onboard"}} @wrapperClass="mt-2" />
+                    </InfoBlock>
+                {{/unless}}
+                <InfoBlock
+                    @type={{if this.isStripeEnabled "success" "warning"}}
+                    @icon={{if this.isStripeEnabled "check" "triangle-exclamation"}}
+                    @text={{if
+                        this.isStripeEnabled
+                        (t "fleet-ops.ui.customer.admin-settings.stripe-is-configured")
+                        (t "fleet-ops.ui.customer.admin-settings.stripe-is-not-configured-the-system")
+                    }}
+                />
+            </div>
+        {{/if}}
+    </InputGroup>
+</ContentPanel>

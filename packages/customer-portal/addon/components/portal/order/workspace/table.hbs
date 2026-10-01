@@ -1,0 +1,50 @@
+<div class="portal-order-table-mode">
+    <div class="portal-table-toolbar">
+        <Input @value={{@query}} class="form-input w-full" placeholder={{t "customer-portal.ui.order.search-orders"}} {{on "input" this.search}} />
+    </div>
+    <div class="next-table-wrapper no-scroll h-auto table-fluid portal-table-panel">
+        <table class="table table-fixed portal-table">
+            <thead>
+                <tr>
+                    <th class="text-left">{{t "customer-portal.ui.common.order"}}</th>
+                    <th class="text-left">{{t "customer-portal.ui.common.status"}}</th>
+                    <th class="text-left">{{t "customer-portal.ui.order.scheduled"}}</th>
+                    <th class="text-left">{{t "customer-portal.ui.common.created"}}</th>
+                    <th class="text-right">{{t "customer-portal.ui.common.actions"}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each @orders as |order|}}
+                    <tr>
+                        <td>
+                            <div class="font-semibold truncate">{{or order.tracking_number.tracking_number order.public_id order.id}}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{n-a (humanize order.type)}}</div>
+                        </td>
+                        <td><Badge @status={{order.status}} /></td>
+                        <td>{{n-a (format-date-fns order.scheduled_at "yyyy-MM-dd HH:mm")}}</td>
+                        <td>{{n-a (format-date-fns order.created_at "yyyy-MM-dd HH:mm")}}</td>
+                        <td>
+                            <div class="flex items-center justify-end space-x-2">
+                                <Button @size="xs" @icon="eye" @onClick={{transition-to "portal.orders.details" (or order.public_id order.id)}} @helpText={{t "customer-portal.ui.order.view-order"}} />
+                            </div>
+                        </td>
+                    </tr>
+                {{else}}
+                    <tr>
+                        <td colspan="5">
+                            <div class="portal-empty-state portal-table-empty-state">
+                                <div class="portal-empty-state-icon"><FaIcon @icon="boxes-packing" /></div>
+                                <div class="portal-empty-state-title">{{t "customer-portal.ui.order.no-orders"}}</div>
+                                <p>{{t "customer-portal.ui.order.no-orders-table-text"}}</p>
+                                <LinkTo @route="portal.orders.new" class="portal-quick-link primary">
+                                    <FaIcon @icon="plus" />
+                                    <span>{{t "customer-portal.ui.order.create-order"}}</span>
+                                </LinkTo>
+                            </div>
+                        </td>
+                    </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+</div>

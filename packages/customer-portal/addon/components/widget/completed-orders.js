@@ -1,0 +1,27 @@
+import Component from '@glimmer/component';
+import { inject as service } from '@ember/service';
+import { tracked } from '@glimmer/tracking';
+import { task } from 'ember-concurrency';
+
+export default class WidgetCompletedOrdersComponent extends Component {
+    @service fetch;
+    @service intl;
+    @tracked total = 0;
+    @tracked error;
+
+    constructor() {
+        super(...arguments);
+        this.load.perform();
+    }
+
+    @task *load() {
+        try {
+            const response = yield this.fetch.get('orders/summary', {}, { namespace: 'customer-portal/int/v1' });
+            this.total = response.completed ?? 0;
+            this.error = null;
+        } catch {
+            this.total = 0;
+            this.error = this.intl.t('customer-portal.ui.widget.load-completed-failed');
+        }
+    }
+}

@@ -1,0 +1,388 @@
+<?php
+
+namespace Fleetbase\FleetOps\Http\Controllers\Internal\v1;
+
+use Fleetbase\FleetOps\Exports\ContactExport;
+use Fleetbase\FleetOps\Http\Controllers\FleetOpsController;
+use Fleetbase\FleetOps\Http\Resources\v1\Vendor as VendorResource;
+use Fleetbase\FleetOps\Imports\ContactImport;
+use Fleetbase\FleetOps\Mail\CustomerCredentialsMail;
+use Fleetbase\FleetOps\Models\Contact;
+use Fleetbase\FleetOps\Models\Entity;
+use Fleetbase\FleetOps\Models\Issue;
+use Fleetbase\FleetOps\Models\Order;
+use Fleetbase\FleetOps\Models\PurchaseRate;
+use Fleetbase\FleetOps\Models\Vendor;
+use Fleetbase\FleetOps\Models\VendorPersonnel;
+use Fleetbase\FleetOps\Support\Utils;
+use Fleetbase\Http\Requests\ExportRequest;
+use Fleetbase\Http\Requests\ImportRequest;
+use Fleetbase\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
+
+class ContactController extends FleetOpsController
+{
+    /**
+     * The resource to query.
+     *
+     * @var string
+     */
+    public $resource = 'contact';
+
+    /**
+     * Handle pre-create transactions.
+     */
+    public function onBeforeCreate(Request $request, array &$input)
+    {
+        $this->resolveUserInput($request, $input);
+        $this->assertCustomerIdentityIsAvailable($input);
+        $this->assertCustomerPortalCanSendWelcomeEmail($input);
+    }
+
+    /**
+     * Handle pre-update transactions.
+     */
+    public function onBeforeUpdate(Request $request, Contact $contact, array &$input)
+    {
+        if ($contact->type === 'customer' && isset($input['type']) && $input['type'] !== 'customer') {
+            throw new \Exception('Customer contact type cannot be changed.');
+        }
+
+        $this->resolveUserInput($request, $input);
+        $this->assertCustomerIdentityIsAvailable($input, $contact);
+    }
+
+    /**
+     * Handle post save transactions.
+     */
+    public function afterSave(Request $request, Contact $contact)
+    {
+        if ($contact->type === 'customer') {
+            $contact->normalizeCustomerUser();
+            $this->sendCustomerPortalWelcomeEmail($contact);
+        }
+
+        $customFieldValues = $request->array('contact.custom_field_values');
+        if ($customFieldValues) {
+            $contact->syncCustomFieldValues($customFieldValues);
+        }
+    }
+
+    /**
+     * Returns the contact as a `facilitator-contact`.
+     *
+     * @var string id
+     */
+    public function getAsFacilitator($id)
+    {
+        $contact = $this->contactByUuidWithTrashed($id);
+
+        if (!$contact) {
+            return response()->error('Facilitator not found.');
+        }
+
+        return response()->json([
+            'facilitatorContact' => $contact,
+        ]);
+    }
+
+    /**
+     * Returns the contact as a `customer-contact`.
+     *
+     * @var string id
+     */
+    public function getAsCustomer($id)
+    {
+        $contact = $this->contactByUuid($id);
+
+        if (!$contact) {
+            return response()->error('Customer not found.');
+        }
+
+        return response()->json([
+            'customerContact' => $contact,
+        ]);
+    }
+
+    public function convertToVendor(Request $request, string $id)
+    {
+        $contact = $this->contactForVendorConversion($id);
+
+        $vendor = $this->runContactConversionTransaction(function () use ($contact, $request) {
+            $originalType = $contact->type;
+            $vendor       = $this->createVendorFromContact([
+                'company_uuid' => $contact->company_uuid,
+                'place_uuid'   => $contact->place_uuid,
+                'name'         => $request->input('name', $contact->name),
+                'email'        => $request->input('email', $contact->email),
+                'phone'        => $request->input('phone', $contact->phone),
+                'status'       => 'active',
+                'type'         => 'customer',
+                'meta'         => [
+                    'converted_from_contact_uuid' => $contact->uuid,
+                    'converted_from_contact_type' => $originalType,
+                    'converted_by_uuid'           => session('user'),
+                    'converted_at'                => now()->toISOString(),
+                ],
+            ]);
+
+            $this->updateOrCreateVendorPersonnel(
+                ['vendor_uuid' => $vendor->uuid, 'contact_uuid' => $contact->uuid],
+                ['role' => 'admin', 'status' => 'active', 'invited_by_uuid' => session('user')]
+            );
+
+            $this->migrateContactCustomerContextToVendor($contact, $vendor);
+
+            $contact->update([
+                'type' => 'customer',
+                'meta' => array_merge((array) $contact->meta, [
+                    'converted_from_type'            => $originalType,
+                    'converted_to_vendor_uuid'       => $vendor->uuid,
+                    'converted_to_vendor_public_id'  => $vendor->public_id,
+                    'converted_to_vendor_at'         => now()->toISOString(),
+                ]),
+            ]);
+
+            return $vendor;
+        });
+
+        return response()->json([
+            'vendor' => $this->vendorResourcePayload($vendor),
+        ]);
+    }
+
+    /**
+     * Export the contacts to excel or csv.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public static function export(ExportRequest $request)
+    {
+        $format       = $request->input('format', 'xlsx');
+        $selections   = $request->array('selections');
+        $fileName     = trim(Str::slug('contacts-' . date('Y-m-d-H:i')) . '.' . $format);
+
+        return Excel::download(new ContactExport($selections), $fileName);
+    }
+
+    /**
+     * Process import files (excel,csv) into Fleetbase order data.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function import(ImportRequest $request)
+    {
+        $disk           = $request->input('disk', config('filesystems.default'));
+        $files          = $request->resolveFilesFromIds();
+        $importedCount  = 0;
+
+        foreach ($files as $file) {
+            try {
+                $import = new ContactImport();
+                Excel::import($import, $file->path, $disk);
+                $importedCount += $import->imported;
+            } catch (\Throwable $e) {
+                return response()->error('Invalid file, unable to proccess.');
+            }
+        }
+
+        return response()->json(['status' => 'ok', 'message' => 'Import completed', 'imported' => $importedCount]);
+    }
+
+    protected function contactByUuidWithTrashed(string $id): ?Contact
+    {
+        return Contact::where('uuid', $id)->withTrashed()->first();
+    }
+
+    protected function contactByUuid(string $id): ?Contact
+    {
+        return Contact::where('uuid', $id)->first();
+    }
+
+    protected function contactForVendorConversion(string $id): Contact
+    {
+        return Contact::where('company_uuid', session('company'))
+            ->where(function ($query) use ($id) {
+                $query->where('uuid', $id)->orWhere('public_id', $id)->orWhere('id', $id);
+            })
+            ->firstOrFail();
+    }
+
+    protected function runContactConversionTransaction(callable $callback): mixed
+    {
+        return DB::transaction($callback);
+    }
+
+    protected function createVendorFromContact(array $attributes): Vendor
+    {
+        return Vendor::create($attributes);
+    }
+
+    protected function updateOrCreateVendorPersonnel(array $where, array $attributes): VendorPersonnel
+    {
+        return VendorPersonnel::updateOrCreate($where, $attributes);
+    }
+
+    protected function vendorResourcePayload(Vendor $vendor): array
+    {
+        return (new VendorResource($vendor->load('personnels')))->resolve();
+    }
+
+    protected function migrateContactCustomerContextToVendor(Contact $contact, Vendor $vendor): void
+    {
+        $contactType = Utils::getMutationType($contact);
+        $vendorType  = Utils::getMutationType($vendor);
+        $filter      = ['customer_uuid' => $contact->uuid, 'customer_type' => $contactType];
+        $replacement = ['customer_uuid' => $vendor->uuid, 'customer_type' => $vendorType];
+
+        $this->bulkUpdateCustomerContext(Order::class, $filter, $replacement);
+        $this->bulkUpdateCustomerContext(PurchaseRate::class, $filter, $replacement);
+        $this->bulkUpdateCustomerContext(Entity::class, $filter, $replacement);
+
+        $this->customerPortalIssuesForContact($contact)
+            ->each(function (Issue $issue) use ($vendor) {
+                $meta = (array) $issue->meta;
+                data_set($meta, 'customer_portal.customer_uuid', $vendor->uuid);
+                data_set($meta, 'customer_portal.customer_type', 'vendor');
+                $issue->update(['meta' => $meta]);
+            });
+    }
+
+    protected function bulkUpdateCustomerContext(string $modelClass, array $filter, array $replacement): void
+    {
+        $modelClass::where($filter)->update($replacement);
+    }
+
+    protected function customerPortalIssuesForContact(Contact $contact)
+    {
+        return Issue::where('company_uuid', $contact->company_uuid)
+            ->where('meta->customer_portal->customer_uuid', $contact->uuid)
+            ->where('meta->customer_portal->customer_type', 'contact')
+            ->get();
+    }
+
+    private function resolveUserInput(Request $request, array &$input): void
+    {
+        $user = data_get($input, 'user_uuid') ?? data_get($input, 'user') ?? $request->input('contact.user_uuid') ?? $request->input('contact.user');
+
+        if (is_array($user)) {
+            $user = data_get($user, 'uuid') ?? data_get($user, 'id');
+        }
+
+        if (!$user) {
+            return;
+        }
+
+        $input['user_uuid'] = $this->resolveUserUuid($user);
+        unset($input['user']);
+    }
+
+    protected function resolveUserUuid(string $user): string
+    {
+        return User::where('uuid', $user)->orWhere('public_id', $user)->value('uuid') ?? $user;
+    }
+
+    protected function assertCustomerPortalCanSendWelcomeEmail(array $input): void
+    {
+        $type = data_get($input, 'type', 'contact');
+        if ($type !== 'customer' || !data_get($input, 'meta.customer_portal.send_welcome_email')) {
+            return;
+        }
+
+        if (!$this->isCustomerPortalInstalled()) {
+            throw new \Exception('Customer portal must be installed before sending a customer welcome email.');
+        }
+    }
+
+    protected function sendCustomerPortalWelcomeEmail(Contact $contact): void
+    {
+        if (!data_get($contact->meta, 'customer_portal.send_welcome_email')) {
+            return;
+        }
+
+        if (!$this->isCustomerPortalInstalled()) {
+            throw new \Exception('Customer portal must be installed before sending a customer welcome email.');
+        }
+
+        $user = $this->contactUser($contact) ?? $this->createCustomerUserFromContact($contact);
+        if (!$user) {
+            throw new \Exception('Unable to create customer portal login.');
+        }
+
+        $password = $this->customerPortalPassword();
+        $user->changePassword($password);
+
+        if ($user->status !== 'active') {
+            $user->activate();
+        }
+
+        $this->sendCustomerCredentialsMail($user, $password, $contact);
+
+        $meta = (array) $contact->meta;
+        data_forget($meta, 'customer_portal.send_welcome_email');
+        $this->saveContactMetaQuietly($contact, $meta);
+        $contact->setAttribute('meta', $meta);
+    }
+
+    protected function contactUser(Contact $contact): ?User
+    {
+        return $contact->getUser();
+    }
+
+    protected function createCustomerUserFromContact(Contact $contact): ?User
+    {
+        return Contact::createUserFromContact($contact, false, true);
+    }
+
+    protected function customerPortalPassword(): string
+    {
+        return Str::random(16);
+    }
+
+    protected function sendCustomerCredentialsMail(User $user, string $password, Contact $contact): void
+    {
+        Mail::to($user)->send(new CustomerCredentialsMail($password, $contact));
+    }
+
+    protected function saveContactMetaQuietly(Contact $contact, array $meta): void
+    {
+        $contact->forceFill(['meta' => $meta])->saveQuietly();
+    }
+
+    protected function isCustomerPortalInstalled(): bool
+    {
+        return $this->containsCustomerPortalExtension($this->installedFleetbaseExtensions());
+    }
+
+    protected function installedFleetbaseExtensions(): array
+    {
+        return Utils::getInstalledFleetbaseExtensions();
+    }
+
+    protected function containsCustomerPortalExtension(array $packages): bool
+    {
+        return collect($packages)
+            ->contains(fn ($package) => data_get($package, 'name') === 'fleetbase/customer-portal-api');
+    }
+
+    private function assertCustomerIdentityIsAvailable(array $input, ?Contact $contact = null): void
+    {
+        $type = data_get($input, 'type', $contact?->type);
+        if ($type !== 'customer') {
+            return;
+        }
+
+        $customer = $contact ? $contact->replicate() : new Contact();
+        if ($contact) {
+            $customer->forceFill($contact->getAttributes());
+            $customer->exists = $contact->exists;
+        }
+
+        $customer->forceFill($input);
+        $customer->assertCustomerIdentityIsAvailable();
+    }
+}

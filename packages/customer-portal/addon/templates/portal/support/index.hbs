@@ -1,0 +1,54 @@
+<Portal::ContentWrapper class="portal-page-card portal-table-page-card">
+    <div class="portal-section-header">
+        <div>
+            <div class="portal-section-eyebrow">{{t "customer-portal.ui.support.eyebrow"}}</div>
+            <h1>{{t "customer-portal.ui.support.title"}}</h1>
+            <p>{{t "customer-portal.ui.support.description"}}</p>
+        </div>
+        <LinkTo @route="portal.support.new" class="portal-quick-link primary">
+            <FaIcon @icon="plus" />
+            <span>{{t "customer-portal.ui.support.new-ticket"}}</span>
+        </LinkTo>
+    </div>
+    <div class="next-table-wrapper no-scroll h-auto table-fluid portal-table-panel mt-5">
+        <table class="table table-fixed portal-table">
+            <thead>
+                <tr>
+                    <th class="text-left">{{t "customer-portal.ui.support.ticket"}}</th>
+                    <th class="text-left">{{t "customer-portal.ui.support.priority"}}</th>
+                    <th class="text-left">{{t "customer-portal.ui.common.status"}}</th>
+                    <th class="text-left">{{t "customer-portal.ui.common.updated"}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each this.model.issues as |issue|}}
+                    <tr>
+                        <td>
+                            <LinkTo @route="portal.support.details" @model={{or issue.public_id issue.uuid issue.id issue.issue_id}} class="portal-table-link font-semibold truncate block">
+                                {{or issue.title issue.issue_id issue.public_id}}
+                            </LinkTo>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{issue.report}}</div>
+                        </td>
+                        <td><Badge @status={{issue.priority}} @text={{issue.priority}} /></td>
+                        <td><Badge @status={{issue.status}} /></td>
+                        <td>{{n-a (format-date-fns issue.updated_at "yyyy-MM-dd HH:mm")}}</td>
+                    </tr>
+                {{else}}
+                    <tr>
+                        <td colspan="4">
+                            <div class="portal-empty-state portal-table-empty-state">
+                                <div class="portal-empty-state-icon"><FaIcon @icon="headset" /></div>
+                                <div class="portal-empty-state-title">{{t "customer-portal.ui.support.empty-title"}}</div>
+                                <p>{{t "customer-portal.ui.support.empty-text"}}</p>
+                                <LinkTo @route="portal.support.new" class="portal-quick-link primary">
+                                    <FaIcon @icon="plus" />
+                                    <span>{{t "customer-portal.ui.support.create-ticket"}}</span>
+                                </LinkTo>
+                            </div>
+                        </td>
+                    </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+</Portal::ContentWrapper>

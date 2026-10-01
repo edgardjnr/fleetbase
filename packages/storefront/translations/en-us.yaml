@@ -1,0 +1,1168 @@
+storefront:
+  extension-name: Storefront
+  common:
+    address: Address
+    alerts: Alerts
+    amount: Amount
+    api: API
+    back: Back
+    backdrop: backdrop
+    building: Building
+    bulk-action: Bulk Action
+    cash: Cash
+    city: City
+    config: Config
+    coordinates: Coordinates
+    country: Country
+    created: Created
+    currency: Currency
+    customer: Customer
+    customers: Customers
+    category: Category
+    delivery-tip: Delivery Tip
+    delivery: Delivery
+    details: Details
+    description: Description
+    driver: Driver
+    dropoff: Dropoff
+    earning: Earnings
+    email: Email
+    export: Export
+    id: ID
+    internal-id: Internal ID
+    import: Import
+    invalid: Invalid
+    loading: Loading...
+    logo: logo
+    name: Name
+    neighborhood: Neighborhood
+    online: Online
+    orders: Orders
+    phone: Phone
+    photos: Photos
+    pickup: Pickup
+    product: Products
+    remove: Remove
+    state: State
+    status: Status
+    store: Store
+    street-1: Street 1
+    storefront: Storefront
+    tag: Tags
+    tip: Tip
+    title: Title
+    total: Total
+    type: Type
+    upload-new: Upload new
+    uploading: Uploading...
+    view: View
+    website: Website
+    edit: Edit
+    delete: Delete
+    network: Networks
+    file: files
+    general: General
+    location: Location
+    notification: Notification
+    gateways: Gateways
+    settings: Settings
+    new: New
+    facebook: Facebook
+    instagram: Instagram
+    twitter: Twitter
+    food-trucks: Food Trucks
+    catalog: Catalog
+    catalogs: Catalogs
+  sidebar:
+    storefront: Storefront
+    dashboard: Dashboard
+    products: Products
+    catalogs: Catalogs
+    food-trucks: Food Trucks
+    customers: Customers
+    orders: Orders
+    networks: Networks
+    promotions: Promotions
+    settings: Settings
+    launch-app: Launch App
+  component:
+    storefront-order-summary:
+      order-summary-title: Storefront Order Summary
+    modals:
+      add-store-hours:
+        start-time: Start time
+        operation-start: When availability/operation start
+        end-time: End time
+        operation-end: When availability/operation hours end
+      assign-driver:
+        message-driver: Select a driver to assign to this order.
+        name-driver: Select Driver
+        placeholder-driver: Select Driver to Assign
+      create-first-store:
+        title: Welcome to Storefront!
+        message: Storefront allows you to quickly setup a headless and dynamic on-demand shop powered by Fleetbase.
+        submit-message: Submit the form below to create your first store.
+        storefront-name: Storefront name
+        enter-name: Enter the name of your store
+        description: Storefront description
+        brief-description: Give your store a simple brief description on the types of things sold
+        currency: Storefront currency
+        select-currency: Select the default currency for your storefront
+      create-getaway:
+        getaway: Gateway type
+        getaway-text: Select gateway type
+        getaway-name: Getaway name
+        name-text: Give your payment gateway a name, this will only be relevent internally
+        getaway-code: Getaway code
+        code-text: Identifier code used to identify gateway to the SDK
+        callback-url: Callback URL
+        callback-text: Callback URL if applicable
+        return-url: Return URL
+        return-text: Return URL if applicable
+        sandbox-getaway: This is a sandbox gateway
+      create-network-category:
+        parent-category: Parent category
+        select-parent: Select a parent category if any
+        category-name: Category name
+        name-text: Enter a name for category
+        description: Category description
+        description-text: Give your network category a brief description
+        category-icon: Category icon type
+      create-network:
+        title: Start a Network
+        message-line1: Storefront allows you to quickly create marketplaces, enabling multiple storefronts to sell under an umbrella.
+        message-line2: When you create the network you defined your rules and you're able to expand your network through invitiations.
+        message-line3: Get started by creating a network below.
+        name: Network name
+        name-text: Enter the name of your store
+        description: Network description
+        description-text: Give your store a simple brief description on the types of things sold
+        currency: Network currency
+        currency-text: Select the default currency for your storefront
+      create-new-variant:
+        name: Variant name
+        name-text: Give your product variant a name
+        description: Variant description
+        description-text: Short description of the variant
+        checkbox-1: Allow user to select multiple variant options at once
+        checkbox-2: This product variant selection is required
+      create-notification-channel:
+        title: Channel
+        title-text: Select notification channel
+        name: Channel name
+        name-text: Give your notification channel a name, this will only be relevent internally
+        key: Channel Key
+        key-text: This is your notification channel key, use this to specify which apps should utilize this notification channel via sdk configs.
+      create-product-category:
+        name: Category name
+        name-text: Enter a name for category
+        description: Category description
+        description-text: Give your product category a brief description
+        icon: Category icon
+        uploading-new: Upload new category icon
+      create-store:
+        name: Storefront name
+        name-text: Enter the name of your store
+        description: Storefront description
+        description-text: Give your store a simple brief description on the types of things sold
+        currency: Storefront currency
+        currency-text: Select the default currency for your storefront
+      import-products:
+        uploading-message: Processing import...
+        drop-upload: Drop to upload
+        ready-upload: ready for upload.
+        upload-spreadsheets: Upload Spreadsheets
+        drag-drop: Drag and drop spreadsheet files onto this dropzone
+        select-spreadsheets: or select spreadsheets to upload.
+        upload-queue: Upload Queue
+        optionally-select-category: Optionally select a category to import products into
+        select-category: Select Category
+      incoming-order:
+        assigned: Driver Assigned
+        not-assigned: No driver assigned
+        no-phone: No phone
+        change-driver: Change Driver
+        assign-driver: Assign Driver
+        pickup-order: Customer must pickup order from
+        address: Customer address
+        tracking: Tracking
+        summary: Order Summary
+        subtotal: Subtotal
+        fee: Delivery fee
+        tip: Tip
+        delivery-tip: Delivery Tip
+      manage-addons:
+        title: New Category
+        delete: Delete Category
+        new-addon: New Addon
+        addon-name: Addon Name
+        description: Addon Description
+        delete-this-addon-category-assosiated-will-lost: Are you sure you wish to delete this addon category? All addons assosciated will be lost!
+        untitled-addon-category: Untitled Addon Category
+      order-ready-assign-driver:
+        driver-dispatch: You are about to set this order as ready and dispatch, use the dropdown below to select a driver to dispatch to. <br><br>Or optionally you can opt to dispatch order as adhoc which will ping the order to all nearby drivers to be accepted.
+        adhoc-dispatch-nearby-drivers: Adhoc dispatch to nearby drivers
+        select-driver: Select Driver
+        select-driver-to-assign: Select Driver to Assign
+      share-network:
+        invite-member: Invite members to your network
+        email-below: Grab a shareable invitiation link or send individual invites via email below.
+        invite-network: Enter the emails of people or organizations you want to send an invite to your network.
+        add-email: Add emails
+        get-link: Get link
+        enable-shareable-link: Enable shareable link
+        anyone-with-this-link-able-to-join-your-network: Anyone with this link is able to join your network
+      store-form:
+        storefront-name: Storefront Name
+        the-name-of-your-store: The name of your store.
+        storefront-description-placeholder: Storefront Description
+        give-your-store-brief-description: Give your store a brief description to let users know what you sell.
+        add-tags-placeholder: Add tags
+      store-location-form:
+        street-2: Street 2
+        security-access-code: Security Access Code
+        postal-code: Postal Code
+    widget:
+      key-metrics:
+        title: Storefront Metrics
+      customers:
+        widget-title: Recent Customers
+        phone: Phone
+        email: Email
+      orders:
+        widget-title: Recent Orders
+        id-column: Order ID
+        cancel-order: Cancel Order
+        cancel-orders: Cancel Orders
+        cancel-order-modal-title: Cancel this order?
+        cancel-order-modal-body: This will cancel the Storefront order and stop any remaining fulfillment activity.
+        cancel-order-success: "Order {orderId} has been canceled."
+        accept-order: Accept Order!
+        mark-as-ready: Mark as Ready!
+        dispatch: Dispatch
+        mark-as-preparing: Mark as Preparing
+        mark-as-completed: Mark as Completed
+        more-details: More Details
+        customer: Customer
+        driver: Driver
+        subtotal: Subtotal
+        delivery-fee: Delivery fee
+        delivery-tip: Delivery tip
+        tip: Tip
+        total: Total
+        change-driver: Change Driver
+        assign-driver: Assign Driver
+        customer-pickup: Customer Pickup
+        pickup-order: Pickup Order
+        mark-as-ready-modal-pickup-title: Mark order ready for pickup?
+        mark-as-ready-modal-pickup-body: Marking the order as ready will notify the customer their order is ready for pickup!
+        mark-as-ready-modal-pickup-accept-button-text: Ready for Pickup!
+        mark-as-ready-modal-not-adhoc-title: Assign driver and dispatch orders
+        mark-as-ready-modal-not-adhoc-accept-button-text: Assign & Dispatch!
+        mark-as-ready-modal-title: Are you want to mark order as ready?
+        mark-as-ready-modal-body: Marking the order as ready will dispatch the order to nearby drivers, only mark the order as ready when it can be picked up.
+        mark-as-ready-modal-accept-button-text: Dispatch!
+        mark-as-completed-modal-title: Are you sure you want to mark order as completed?
+        mark-as-completed-modal-body: Marking the order as completed is a confirmation that the customer has picked up the order and the order is completed.
+        mark-as-completed-accept-button-text: Order Completed!
+        mark-as-preparing-modal-title: Are you sure you want to mark order as preparing?
+        mark-as-preparing-modal-body: Marking the order as preparing is a confirmation that the order is being prepared.
+        mark-as-preparing-accept-button-text: Order Preparing
+        assign-driver-modal-title: Assign Driver
+        assign-driver-modal-accept-button-text: Assign Driver
+        title: "Order Summary"
+      storefront-metrics:
+        last-day: Last 30 days
+      order:
+        delivery-tip: "Delivery Tip"
+        tip: "Tip"
+    file-record:
+      delete-this-file: Are you sure you wish to delete this file?
+      delete-this-file-you-will-unable-recover: Once you delete this file you will be unable to recover it.
+    network-category-picker:
+      no-subcategory: No subcategories for
+      no-categories: No categories for this network
+      create-category: Create a new category
+    schedule-manager:
+      add-hours: Add Hours
+      add-new-hours-for-day: Add new hours for {day}
+      new-hours-added-for-day: New hours added for {day}
+      you-wish-to-remove-these-hour: Are you sure you wish to remove these hours?
+      by-removing-these-operation: By removing these operation/availability hours, your store or product may become inactive or unavailable according to the updated schedule...
+    store-selector:
+      no-stores: No stores to select
+      create-storefront: Create a new
+  home:
+    title: Storefront Dashboard
+  customers:
+    index:
+      internal-id: Internal ID
+      create-at: Created At
+      update-at: Updated At
+      vendor-action: Vendor Actions
+      view-customer-details: View Customer Details
+      edit-customer: Edit Customer
+      success-message: Your new storefront network has been created!
+      delete-customer: Delete Customer
+    customer-panel:
+      details:
+        web-url: Website URL
+      edit-button: Edit customer
+      cancel-edit-button: Cancel edit customer
+      cancel-new-button: Cancel new customer
+  networks:
+    index:
+      network-option: Network Options
+      manage-network: Manage Network
+      send-invite: Send Invites
+      delete-network: Delete Network
+      create-new-network: Create a new network
+      success-message: Yout new storefront network has been created!
+      delete-this-network-all-assigned-stores-customer-order: Are you sure you wish to delete this network ({networkName})? All assigned stores, customers, orders will no longer be reachable.
+      network:
+        manage-network: Manage Network
+        settings: Settings
+        customers: Customers
+        orders: Orders
+        Network-changes-not-save: Network changes not saved!
+        going-back-will-rollback-all-unsaved-changes: Going back will rollback all unsaved changes, are you sure you wish to continue?
+        index:
+          change-network-saved: Changes to network saved.
+          create-new-payment-gateway: Create a new payment gateway
+          save-gateway: Save Gateway
+          new-gateway-add-network: New gateway added to network
+          payment-gateway-changes-success: Payment gateway changes saved!
+          create-new-notification-channel: Create a new notification channel
+          create-notification-channel: Create Notification Channel
+          notification-channel-add-network: New notification channel added to network!
+          notification-channel-changes-save: Notification channel changes saved!
+          general-network-settings-title: General Network Settings
+          general-network-settings-subtitle: Provide the general settings for your network or marketplace.
+          general-network-settings-form:
+            save-changes-button-text: Save Changes
+            name: Name
+            name-placeholder: Storefront Name
+            name-help-text: The name of your network or marketplace.
+            description: Description
+            description-placeholder: Storefront Description
+            description-help-text: Give your store a brief description to let users know what your network is about.
+            currency: Currency
+            contact-social-panel:
+              panel-title: Contact & Social
+              phone: Phone
+              email: Email
+              email-help-text: Your business email.
+              website: Website
+              website-help-text: Your business website URL.
+              facebook: Facebook
+              facebook-help-text: Your business Facebook page ID.
+              instagram: Instagram
+              instagram-help-text: Your business Instagram username.
+              twitter: Twitter
+              twitter-help-text: Your business Twitter username.
+            logo-backdrop-panel:
+              panel-title: Logo & Backdrop
+              logo-label: Logo
+              logo-help-text: Logo for your store.
+              upload-logo-button-text: Upload new logo
+              backdrop-label: Backdrop
+              backdrop-help-text: Optional banner or background image for your store.
+              upload-backdrop-button-text: Upload new backdrop
+            alert-panel:
+              panel-title: Alerts
+              panel-description: Configure who should be alerted for certain events
+              new-order-alert-label: New order alert
+              new-order-alert-placeholder: Select users to alert for new order
+            config-switches:
+              online: Online
+              enable-tax: Enable tax
+              tax-percentage-input-label: Tax Percentage
+              tax-percentage-input-help-text: The sales tax percentage to apply to orders.
+              enable-minimum-order-amount: Enable minimum order amount
+              minimum-order-amount-input-label: Minimum Order Amount
+              minimum-order-amount-input-help-text: The minimum order amount required for checkout.
+              auto-accept-incoming-orders: Auto accept incoming orders
+              auto-dispatch-orders: Auto dispatch orders
+              require-proof-of-delivery: Require proof of delivery
+              proof-of-delivery-method-label: Proof of Delivery Method
+              enable-cash-on-delivery: Enable cash on delivery
+              enable-order-pickup: Enable order pickup
+              enable-tips: Enable tips
+              enable-delivery-tips: Enable delivery tips
+              enable-multi-cart-checkout: Enable multi-cart checkout
+              enable-user-reviews: Enable user reviews
+          api-panel:
+            panel-title: API
+            panel-header: API settings
+            panel-description: Access key for Storefront API & Integrations
+            network-key-label: Network Key
+            network-key-help-text: This is your network key, use this to enable apps and integrations for your network.
+          payment-gateways-panel:
+            panel-title: Gateway Settings
+            panel-description: Add or manage your payment gateway settings here.
+            new-gateway-button-text: Create new gateway
+            gateway-form:
+              name: Gateway name
+              name-help-text: Give your payment gateway a name, this will only be relevent internally
+              code: Gateway code
+              code-help-text: Identifier code used to identify gateway to the SDK
+              callback-url: Callback URL
+              callback-url-help-text: Callback URL if applicable
+              return-url: Return URL
+              return-url-help-text: Return URL if applicable
+              sandbox-toggle-label: This is a sandbox gateway
+              config-header-label: Config
+              delete-gateway-button-text: Delete payment gateway
+          notification-channels-panel:
+            panel-title: Notification Channels
+            panel-header: Notification Settings
+            panel-description: Configure notification channels for your storefront, each notification channel additionally can have it's own rules and options.
+            new-channel-button-text: Create new channel
+          placeholder-tax: "Enter tax percentage"
+        stores:
+          store: Stores
+          add-stores-button-text: Add Stores
+          invite-stores-button-text: Invite Stores
+          created-at: Created At
+          view-store-details: View Store Details
+          edit-store: Edit Store
+          assign-category: Assign Category
+          remove-category: Remove Category
+          remove-store-from-network: Remove Store from Network
+          delete-network-category: Delete network category?
+          deleting-category-move-all-stores-inside-on-top-level: Deleting this category will move all stores inside to the top level, are you sure you want to delete this category?
+          add-store-to-category: Add store to category
+          save-change: Save Changes
+          add-new-network-category: Add new network category
+          create-new-category: Create new category
+          new-category-created: New category created.
+          network-category-create: New network category created.
+          edit-category: Edit category ({categoryName})
+          add-stores-to-network: Add stores to network
+          network-stores-update: Network stores updated.
+          remove-this-store: Remove this store ({storeName}) from this network ({networkName})?
+          done: Done
+          longer-findable-by-this-network: Are you sure you wish to remove this store from this network? It will no longer be findable by this network.
+          viewing-storefront: Viewing {storeName} storefront
+          editing-storefront: Editing {storeName} storefront
+          send-invitations: Send Invitations
+          invitation-sent-recipients: Invitations sent to recipients!
+          invalid-emails-provided-error: Invalid emails provided!
+          remove-store-category: Remove store category
+          remove-store-category-body: You are about to remove {storeName} from the category {categoryName}, do you wish to proceed?
+  orders:
+    index:
+      internal-id: Internal ID
+      customer: Customer
+      select-order-customer: Select order customer
+      select-order-pickup-location: Select order pickup location
+      select-order-dropoff-location: Select order dropoff location
+      scheduled-at: Scheduled At
+      transaction-total: Transaction Total
+      total: Total
+      tracking-number: Tracking Number
+      driver-assigned: Driver Assigned
+      select-driver-for-order: Select driver for order
+      created-at: Created At
+      updated-at: Updated At
+      created-by: Created By
+      updated-by: Updated By
+      select-user: Select user
+      view-order: View Order
+      cancel-order: Cancel Order
+      delete-order: Delete Order
+      view:
+        route-panel-title: Route
+        comments-title: Comments
+        notes-title: Notes
+        dispatch: Dispatch
+        unassign-driver: Unassign Driver
+        assign-driver: Assign Driver
+        cancel-order: Cancel Order
+        delete-order: Delete Order
+        activity: Activity
+        unable-load-order-activity: Unable to load order activity
+        ad-hoc: Ad-Hoc
+        customer: Customer
+        facilitator: Facilitator
+        driver-assigned: Driver Assigned
+        change-driver: Change Driver
+        tracking-number: Tracking Number
+        date-scheduled: Date Scheduled
+        date-dispatched: Date Dispatched
+        date-started: Date Started
+        order-details-title: Order Details
+        route: Route
+        pickup: Pickup
+        dropoff: Dropoff
+        return: Return
+        order-summary: Order Summary
+        subtotal: Subtotal
+        delivery-fee: Delivery fee
+        tip: Tip
+        delivery-tip: Delivery Tip
+        total: Total
+        payload: Payload
+        items-drop: Items drop at
+        tracking: Tracking
+        view-activity: View Activity
+        order-metadata: Order Metadata
+        unassign-title: Are you sure you wish to unassing the driver ({driverName}) from this order?
+        unassign-body: Once the driver is unassigned, the driver will no longer have access to this orders details.
+        unassign-success: Driver has been unassigned from this order.
+        route-error: Route optimization failed, check route entry and try again.
+        invalid-warning: Invalid custom status entry.
+        change-order: Change order driver
+        assign-order: Assign driver to order
+        assign-success: '{orderId} assigned driver updated.'
+        order-title: Order Label
+        waypoint-title: Waypoint Label
+        proof-of-delivery: Proof of Delivery
+        notes-placeholder: Enter order notes here....
+        save-order-note: Save Order Note
+        order-notes-updated: Order notes updated.
+  products:
+    index:
+      manage-addons: Manage Addons
+      manage-addons-dialog:
+        manage-addons-title: Manage Product Addon Categories & Options
+        manage-addons-accept-button: Save Changes
+      done: Done
+      create-new-product-category: Create a new product category
+      product-category-created-success: New product category created.
+      import-products-via-spreadsheets: Import products via spreadsheets
+      start-upload: Start Upload
+      warning-no-file-upload: No files in queue to upload!
+      products-success-message: Successfully imported {resultsLength} products...
+      delete-product: Are you sure you wish to delete this product?
+      body-warning: Warning! Once this product is deleted it will no longer be accessible.
+      aside-scroller:
+        title: Product Categories
+        custom-top-item-text: All Products
+      import-products-success-message: Successfully imported {resultsLength} products...
+      edit:
+        title: Product is not saved!
+        body: You will loose all unsaved changes, are you sure you wish to cancel?
+        changes-saved: Changes saved!
+      new:
+        new-product-created-success: New product created successfully!
+        warning-only-select-an-image-file-to-be-primary: You can only select an image file to be primary!
+        made-the-primary-success-image: >-
+          {fileName} was made the primary image.
+        title: Product is not saved!
+        body: Going back will cancel this product creation, if you continue all input fields will be cleared!
+        select-addon-categories: Select addon categories
+        add-new-product-variant: Add new product variant
+        edit-product-variant: Edit product variant
+        untitled-field: Untitled Field
+      category:
+        category: category
+        title: Product is not saved!
+        body: Warning! Deleting this category will also remove all products listed under this category.
+        edit-category: Edit category
+        save-changes: Save Changes
+        category-changes-saved-success: Category changes saved.
+        delete-product: Are you sure you wish to delete this product?
+        body-warning: Warning! Once this product is deleted it will no longer be accessible.
+  settings:
+    api:
+      api-settings: API Settings
+      access-key-for-storefront-api-integrations: Access key for Storefront API & Integrations.
+      store-key: Store Key
+      store-key-help-text: This is your store key, use this to enable apps and integrations for your storefront.
+    gateways:
+      geteway-settings: Gateway Settings
+      add-or-manage-your-paymeny-gateway-settings-here: Add or manage your payment gateway settings here.
+      create-new-gateway: Create new gateway
+      gateway-name: Gateway name
+      gateway-help-text: Give your payment gateway a name, this will only be relevent internally
+      gateway-code: Gateway code
+      gateway-code-help-text: Identifier code used to identify gateway to the SDK
+      callback-url: Callback URL
+      callback-url-help-text: Callback URL if applicable
+      return-url: Return URL
+      return-url-help-text: Return URL if applicable
+      this-is-a-sandbox-gateway: This is a sandbox gateway
+      delete-payment-gateway: Delete payment gateway
+      create-new-payment-gateway: Create a new payment gateway
+      save-gateway: Save Gateway
+      edit-payment-gateway: Edit payment gateway
+      save-changes: Save Changes
+      title-remove: Are you sure you wish to remove this gateway?
+      application-website-utilizing-gateway: All applications and websites utilizing this gateway in configuration could be disrupted if gateway is not replaced beforehand
+    index:
+      general-settings-header: General Settings
+      general-settings-message: Provide the general settings for your storefront.
+      name-placeholder: Storefront Name
+      name-help-text: The name of your store.
+      description-placeholder: Storefront Description
+      description-help-text: Give your store a brief description to let users know what you sell.
+      tags-placeholder: Add tags
+      contact-social: Contact & Social
+      website-help-text: Your business website URL.
+      facebook-placeholder: Facebook ID
+      facebook-help-text: Your business Facebook page ID.
+      instagram-placeholder: Instagram Username
+      instagram-help-text: Your business Instagram username.
+      twitter-placeholder: Twitter Username
+      twitter-help-text: Your business Twitter username.
+      logo-backdrop: Logo & Backdrop
+      logo-help-text: Logo for your store.
+      upload-new-logo: Upload new logo
+      backdrop-help-text: Optional banner or background image for your store.
+      upload-new-backdrop: Upload new backdrop
+      images-videos: Images & Videos
+      drop-to-upload: Drop to upload
+      ready-to-upload: ready for upload.
+      upload-image-video: Upload Images & Videos
+      drag-and-drop-image: Drag and drop image and video files onto this dropzone
+      upload-queue: Upload Queue
+      alerted-for-certain-event: Configure who should be alerted for certain events.
+      new-order-alert: New order alert
+      alert-placeholder: Select users to alert for new order
+      enable-tax: Enable tax
+      tax-percentage: Tax Percentage
+      tax-percentage-help-text: The sales tax percentage to apply to orders.
+      enable-minimum-order-amount: Enable minimum order amount
+      minimum-order-amount: Minimum Order Amount
+      minimum-order-amount-help-text: The minimum order amount required for checkout.
+      auto-accept-incoming-order: Auto accept incoming orders
+      auto-dispatch-order: Auto dispatch orders
+      require-proof-of-delivery: Require proof of delivery
+      proof-of-delivery-method: Proof of Delivery Method
+      enable-cash-on-delivery: Enable cash on delivery
+      enable-order-pickup: Enable order pickup
+      enable-tips: Enable tips
+      enable-delivery-tips: Enable delivery tips
+      enable-integrated-vendors: Enable integrated vendors
+      save-changes: Save Changes
+      name-select: "Integrated vendors"
+      placeholder-select: "Select integrated vendors"
+    locations:
+      new-store-location: New store location
+      add-new-location: Add new Location
+      edit-store-location: Edit store location
+      save-changes: Save Changes
+      remove-this-store-location: Are you sure you wish to remove this store location?
+      solely-accosciated-location: All products that are solely assosciated with this location will no longer be accessible.
+      new-store-hour: Add new store hours for {day}
+      add-hours: Add hours
+      store-hour-added: New store hours added for {day}
+      remove-these-hour: Are you sure you wish to remove these hours?
+      update-schedule-location: By removing these operation hours, your store may become inactive according to the updated schedule for this location..
+      location-setting: Location Settings
+      manage-store: Manage your stores operating locations and hours
+      text-location: Create new location
+      store-hour: Manage store hours
+    notification:
+      create-new-notification-channel: Create a new notification channel
+      create-notification-channel: Create Notification Channel
+      edit-notification-channel: Edit notification channel
+      save-changes: Save Changes
+      new-notification-channel-added: New notification channel added
+      remove-this-notification-channel: Are you sure you wish to remove this notification channel?
+      application-websites-utillizing-channel: All applications and websites utilizing this channel in configuration could be disrupted if channel is not replaced beforehand
+      notification-settings: Notification Settings
+      notification-storefront: Configure notification channels for your storefront, each notification channel additionally can have it's own rules and options.
+      new-channel: New channel
+  service:
+    storefront:
+      new-incoming-order: You have a new incoming order!
+      accept-order: Accept Order
+      decline-order: Decline Order
+      create-first-storefront: Create your first Storefront
+      storefront-has-been-create-success: Your new storefront has been created!
+      create-new-storefront: Create a new Storefront
+      storefront-create-success: Your new storefront has been created!
+  application:
+    launch-app: Launch App
+  promotions:
+    title: Promotions
+    push-notifications:
+      tab-title: Push Notifications
+      header: Send Push Notifications
+      description: Send promotional push notifications to your customers
+      title-label: Notification Title
+      title-placeholder: Enter notification title
+      title-help-text: The title that will appear in the push notification
+      body-label: Notification Body
+      body-placeholder: Enter notification message
+      body-help-text: The message content that will be sent to customers
+      select-all-customers: Select All Customers
+      select-all-customers-help-text: Send notification to all customers of this store
+      customers-label: Select Customers
+      customers-placeholder: Select customers to send notification to
+      send-button: Send Notification
+      validation-title-body-required: Please enter both title and body for the notification
+      validation-customers-required: Please select at least one customer to send the notification to
+      notification-sent-success: Push notification sent successfully to selected customers
+      notification-sent-error: Failed to send push notification. Please try again.
+  ui:
+    add-product:
+      add-products: "Add Products"
+      button: "Add Product from Storefront"
+      modal-title: "Select Product to Add to Order"
+    catalog:
+      add-category: "Add Catalog Category"
+      change-category-name: "Change category name"
+      created: "New catalog created."
+      delete-category: "Delete category"
+      delete-category-confirm: "Delete this category?"
+      description: "Catalog Description"
+      edit: "Edit Catalog"
+      edit-category-name: "Edit category name"
+      edit-products: "Edit Products"
+      enter-category-name: "Enter category name"
+      manage-category-products: "Manage category products"
+      name: "Catalog Name"
+      new: "New Catalog"
+      product-catalog: "Product Catalog"
+      saved: "Changes to catalog saved."
+      select-status: "Select catalog status"
+      status: "Catalog Status"
+      toggle-category: "Collapse or expand category products"
+    common:
+      availability: "Availability"
+      cancel: "Cancel"
+      catalogs: "Catalogs"
+      confirm: "Confirm"
+      done: "Done"
+      no: "No"
+      order-actions: "Order Actions"
+      save-changes: "Save Changes"
+      select-user: "Select user"
+      selected: "Selected"
+      selected-catalogs: "Selected Catalogs"
+      yes: "Yes"
+    customer:
+      edit: "Edit customer"
+    date-range:
+      black-friday-week: "Black Friday Week"
+      holiday-season: "Holiday Season"
+      last-30-days: "Last 30 Days"
+      last-7-days: "Last 7 Days"
+      last-90-days: "Last 90 Days"
+      last-month: "Last Month"
+      last-quarter: "Last Quarter"
+      last-year: "Last Year"
+      quarter: "Q{quarter} {year}"
+      this-month: "This Month"
+      this-quarter: "This Quarter"
+      this-year: "This Year"
+    display-place:
+      no-address: "No address!"
+      no-address-type: "No {type} address!"
+    extension:
+      header-desc: "Online store management: products, orders, customers, and promotions."
+      shortcut-catalogs-desc: "Organise products into shareable catalogs."
+      shortcut-catalogs-title: "Catalogs"
+      shortcut-customers-desc: "Browse and manage your storefront customer accounts."
+      shortcut-customers-title: "Customers"
+      shortcut-networks-desc: "Connect and manage multi-store networks and marketplaces."
+      shortcut-networks-title: "Networks"
+      shortcut-orders-desc: "View and fulfil incoming storefront orders."
+      shortcut-orders-title: "Orders"
+      shortcut-products-desc: "Manage your product catalogue, categories, and inventory."
+      shortcut-products-title: "Products"
+      shortcut-promotions-desc: "Create push notifications and promotional campaigns."
+      shortcut-promotions-title: "Promotions"
+      storefront-metrics-title: "Storefront Metrics"
+      widget-active-orders-desc: "Orders currently moving through fulfillment."
+      widget-active-orders-name: "Active Orders"
+      widget-average-order-value-desc: "Average order value for non-canceled Storefront orders."
+      widget-average-order-value-name: "Average Order Value"
+      widget-cancellation-rate-desc: "Canceled orders as a percentage of current period order volume."
+      widget-cancellation-rate-name: "Cancellation Rate"
+      widget-cart-conversion-desc: "Orders as a percentage of carts created in the current period."
+      widget-cart-conversion-name: "Cart Conversion"
+      widget-completed-orders-desc: "Completed orders for the current period."
+      widget-completed-orders-name: "Completed Orders"
+      widget-customer-insights-desc: "New and returning customer mix."
+      widget-customer-insights-name: "Customer Insights"
+      widget-customers-desc: "Unique customers ordering during the current period."
+      widget-customers-name: "Customers"
+      widget-key-metrics-legacy-desc: "Legacy grouped Storefront metrics."
+      widget-key-metrics-legacy-name: "Storefront Metrics (Legacy)"
+      widget-order-status-mix-desc: "Distribution of Storefront orders by status."
+      widget-order-status-mix-name: "Order Status Mix"
+      widget-orders-desc: "Order volume for the current period with trend."
+      widget-orders-name: "Orders"
+      widget-revenue-desc: "Storefront revenue for the current period with trend."
+      widget-revenue-name: "Revenue"
+      widget-revenue-trend-desc: "Revenue and order volume over time."
+      widget-revenue-trend-name: "Revenue Trend"
+      widget-storefront-customers-desc: "Recent Storefront customers."
+      widget-storefront-customers-name: "Storefront Customers"
+      widget-storefront-metrics-legacy-desc: "Legacy Storefront order, customer, store, and earnings metrics."
+      widget-storefront-metrics-legacy-name: "Storefront Metrics (Legacy)"
+      widget-storefront-orders-desc: "Recent Storefront orders."
+      widget-storefront-orders-name: "Storefront Orders"
+      widget-top-products-desc: "Best-selling products by revenue."
+      widget-top-products-name: "Top Products"
+    food-truck:
+      assign-catalogs: "Assign Catalogs to this Food Truck"
+      assign-service-area: "Assign Food Truck to Service Area"
+      assign-zone: "Assign Food Truck to Zone"
+      created: "New food truck created."
+      edit: "Edit Food Truck"
+      new: "New Food Truck"
+      saved: "Changes to food truck saved."
+      select-status: "Select food truck status"
+      service-area: "Service Area"
+      status: "Food Truck Status"
+      vehicle: "Assign Food Truck Vehicle"
+      zone: "Zone"
+    gateway:
+      select-type: "Select gateway type"
+    import:
+      file-name: "File Name"
+      file-size: "File Size"
+      type: "Type"
+      upload-date: "Upload Date"
+    loading:
+      creating-product: "Creating new product..."
+      products: "Loading products..."
+      storefront: "Loading storefront..."
+      switching-new-store: "Switching to newly created store..."
+      switching-store: "Switching Storefront to {name}..."
+    nav:
+      all-products: "All Products"
+      all-products-desc: "Browse and manage product inventory."
+      api-desc: "Storefront API settings."
+      catalogs-desc: "Create and manage storefront catalogs."
+      customers-desc: "Review storefront customers and order history."
+      dashboard-desc: "Storefront dashboard and sales overview."
+      food-trucks-desc: "Manage food truck locations and availability."
+      gateways-desc: "Payment gateway settings."
+      general-desc: "General storefront settings."
+      launch-app-desc: "Open the storefront application repository."
+      locations-desc: "Storefront pickup and service locations."
+      networks-desc: "Manage marketplace networks and participating stores."
+      notifications-desc: "Notification channel settings."
+      orders-desc: "Manage incoming storefront orders."
+      products-desc: "Manage products, categories, variants, and addons."
+      promotions-desc: "Send promotional notifications."
+      push-notifications: "Push Notifications"
+      push-notifications-desc: "Send push notifications to storefront customers."
+      settings-desc: "Configure storefront settings, locations, gateways, and notifications."
+    network:
+      category-changes-saved: "Category changes saved."
+      category-icon: "Category icon"
+      delete-category: "Delete Category"
+      edit-category: "Edit Category"
+      select-category: "Select Category"
+      store-actions: "Store Actions"
+      store-category-changed: "{store} category was changed to {category}"
+      store-saved: "Changes to {store} saved."
+    order-actions:
+      assign-driver: "Assign Driver"
+      cancel-order: "Cancel order"
+      driver-assigned: "Driver assigned to order."
+      driver-unassigned: "Driver unassigned from order."
+      mark-ready-body: "Marking the order as ready will dispatch the order to the assigned driver."
+      this-driver: "this driver"
+      unassign-body: "The driver will no longer be assigned to this order."
+      unassign-driver: "Unassign Driver"
+      unassign-title: "Unassign {driver}?"
+      update-activity-body: "Update this order to {status}?"
+      update-activity-button: "Update Activity"
+      update-activity-title: "Update Order Activity"
+    order-workflow:
+      accept: "Accept order"
+      complete: "Complete order"
+      mark-picked-up: "Mark Picked Up"
+      mark-ready: "Mark as Ready"
+      update-activity: "Update activity"
+    order:
+      activity: "Activity"
+      all-stops: "All Stops - {count}"
+      checkout-id: "Checkout ID"
+      comments: "Comments"
+      contact: "Contact"
+      customer-id: "Customer ID"
+      customer-insights: "Customer Insights"
+      customer-type: "Customer Type"
+      delivery-address: "Delivery address"
+      delivery-fee: "Delivery fee"
+      delivery-order: "Delivery Order"
+      delivery-order-lower: "Delivery order"
+      delivery-tip: "Delivery tip"
+      dispatched: "Dispatched"
+      email-available: "Email available"
+      first-time-customer: "First-time customer"
+      fulfillment: "Fulfillment"
+      metadata: "Metadata"
+      no-activity: "No order activity"
+      no-activity-help: "Dispatch or update the order to create activity"
+      no-contact-details: "No contact details"
+      no-created-date: "No created date"
+      no-customer: "No customer"
+      no-description: "No description"
+      no-driver-assigned: "No driver assigned"
+      no-email: "No email"
+      no-items: "No order items were found."
+      no-phone: "No phone"
+      no-pickup-address: "No pickup address"
+      no-website: "No website"
+      order: "Order"
+      order-amount: "Order Amount"
+      order-id: "Order ID"
+      order-type: "Order Type"
+      overview: "Overview"
+      payment-method: "Payment Method"
+      phone-and-email-available: "Phone and email available"
+      phone-available: "Phone available"
+      pickup-order: "Pickup order"
+      reload-activity: "Reload activity"
+      return: "Return"
+      returning-customer: "Returning customer"
+      route: "Route"
+      schedule: "Schedule"
+      scheduled: "Scheduled"
+      started: "Started"
+      storefront-orders: "Storefront Orders"
+      subtotal: "Subtotal"
+      tracking-number: "Tracking Number"
+      transaction-id: "Transaction ID"
+      unnamed-item: "Unnamed item"
+      view-activity-list: "View activity as list"
+      view-activity-timeline: "View activity as timeline"
+    orders:
+      delete-order: "Delete Order"
+      delete-orders: "Delete Orders"
+      dispatch: "Dispatch"
+      dispatch-body: "Once this order is dispatched the assigned driver will be notified."
+      dispatch-order: "Dispatch Order"
+      dispatch-orders: "Dispatch Orders"
+      dispatch-success: "Order {orderId} has been dispatched."
+      dispatch-title: "Are you sure you want to dispatch this order?"
+      view-order: "View Order"
+    permissions-required-for-changes: "You do not have the permissions required to make changes."
+    product:
+      add-metafield: "Add Metafield"
+      add-tags: "Add tags"
+      addons: "Add-ons"
+      addons-count: "{count} add-ons"
+      all-products: "All Products"
+      basics: "Basics"
+      bookable: "Bookable"
+      categories: "Categories"
+      categories-help: "Organize products for storefront browsing."
+      category: "Product Category"
+      category-menu: "Category"
+      checkout-addons: "Checkout Add-ons"
+      checkout-addons-help: "Reusable modifier groups customers can select during checkout."
+      checkout-modifiers: "Checkout modifiers"
+      checkout-modifiers-help: "Attach reusable add-on groups and hide options that should not apply to this product."
+      create: "Create Product"
+      delete-this-category: "Delete this category..."
+      description: "Product Description"
+      description-help: "Enter a description of your product"
+      description-placeholder: "Enter a description of your product...."
+      edit-aria: "Edit {name}"
+      edit-this-category: "Edit this category..."
+      edit-title: "Edit {name}"
+      edit-variant: "Edit Variant"
+      empty-catalog-help: "Create a category, then add products to your catalog."
+      empty-category-help: "Create the first product in this category."
+      full-catalog: "Full catalog"
+      image: "Product image"
+      images-videos: "Images & Videos"
+      is-available: "This product is available"
+      is-bookable: "This service is bookable"
+      is-on-sale: "This product is on sale"
+      is-recommended: "This product is recommended"
+      is-service: "This is a service"
+      make-primary: "Make Primary"
+      name: "Product Name"
+      name-help: "Enter your product's name"
+      new: "New Product"
+      new-variant: "New Variant"
+      new-variant-option: "New {variant} option"
+      no-addon-groups: "No add-on groups"
+      no-addon-groups-help: "Create reusable checkout modifiers like toppings, sides, or preparation choices."
+      no-addon-groups-selected: "No add-on groups selected."
+      no-addons-available: "No add-ons available in this group."
+      no-addons-in-group: "No add-ons in this group."
+      no-categories: "No categories yet"
+      no-products-found: "No products found"
+      no-sku: "No SKU"
+      no-variant-options: "No options in this variant."
+      not-updated: "Not updated"
+      on-sale: "On sale"
+      option-description: "Option Description"
+      option-name: "Option Name"
+      options: "Options"
+      preview-image-aria: "Preview image for {name}"
+      price: "Price"
+      price-help: "Enter a price users will pay to purchase this product"
+      pricing: "Pricing"
+      product: "Product"
+      product-status: "Product Status"
+      recommended: "Recommended"
+      remove-variant: "Remove Variant"
+      sale-price: "Sale Price"
+      sale-price-help: "Optionally add a sale price for the product if the product is put on sale"
+      select-addon-categories: "Select Addon Categories"
+      select-category: "Select Product Category"
+      select-category-first: "Select a category to create a product within"
+      select-status: "Select product status"
+      service: "Service"
+      sku: "Product SKU"
+      sku-help: "Enter product SKU if applicable"
+      status: "Status"
+      storefront-settings: "Storefront Settings"
+      tags: "Product Tags"
+      uncategorized: "Uncategorized"
+      untitled: "Untitled product"
+      variants: "Variants"
+      variants-addons-count: "{variants} variants · {addons} add-ons"
+      variants-count: "{count} variants"
+      youtube-help: "Add YouTube video urls to associate with this product or service."
+      youtube-placeholder: "Enter youtube video url"
+      youtube-urls: "Youtube Video URLs"
+      youtube-urls-help: "Input product youtube video urls if applicable."
+      youtube-videos: "Youtube Videos"
+    select-product:
+      add-count: "Add {count, plural, one {# Product} other {# Products}}"
+      filter-category: "Filter by Product Category"
+      no-products: "No products"
+      select-category: "Select Product Category"
+      select-store: "Select Store"
+      select-storefront: "Select Storefront"
+      selected-count: "Selected {count, plural, one {# Product} other {# Products}}"
+    settings:
+      changes-saved: "Changes saved"
+      default-order-config: "Default Order Config"
+      default-order-config-network-help: "Select the order config which will apply to all orders created for this network."
+      default-order-config-store-help: "Select the order config which will apply to all orders created for this store"
+      edit-gateway: "Edit Gateway"
+      gateway-created: "New gateway ({name}) created."
+      location-saved: "{name} store location saved."
+      or-select-files: "or select files to upload."
+      select-default-order-config: "Select default order config"
+    share-network:
+      share-with: "Share with people and organizations"
+    store:
+      tags: "Tags"
+    tracking:
+      between-stops: "Between stops"
+      between-stops-title: "Between Stops"
+      confidence-high: "High"
+      confidence-item: "{confidence} confidence"
+      confidence-low: "Low"
+      confidence-medium: "Medium"
+      confidence-pill: "{confidence} confidence · {percent}%"
+      confidence-unknown: "Unknown"
+      diag-confidence: "Confidence"
+      diag-driver-signal: "Driver signal"
+      diag-fallback: "Fallback"
+      diag-provider: "Provider"
+      diag-traffic-aware: "Traffic aware"
+      diag-warnings: "Warnings"
+      diagnostics: "Diagnostics"
+      driver-live: "Driver live"
+      driver-missing-gps: "Driver missing GPS"
+      driver-offline: "Driver offline"
+      driver-stale: "Driver stale"
+      estimate-warning: "Tracking estimate warning"
+      estimated-start: "Estimated start"
+      estimated-start-help: "Based on the assigned driver route to the first stop"
+      eta: "ETA:"
+      eta-confidence: "ETA confidence"
+      fallback-item: "Fallback: {provider}"
+      labels: "Labels"
+      live: "Live"
+      msg-canceled: "Order has been canceled."
+      msg-completed: "Order has been completed."
+      msg-dispatched: "Order has been dispatched. Estimated start is based on the assigned driver route to the first stop."
+      msg-pre-start: "Live ETA will begin once the order is started."
+      now-heading-to: "NOW HEADING TO"
+      now-heading-to-stop: "NOW HEADING TO - STOP {index} OF {total}"
+      pending-driver-assignment: "Pending driver assignment"
+      pending-gps-fix: "Pending GPS fix"
+      pending-start: "Pending start"
+      ping-driver-app: "Ping driver app"
+      ping-failed: "Unable to ping driver app."
+      ping-sent: "Driver app ping sent."
+      pinging: "Pinging..."
+      pre-start: "Pre-start"
+      provider-context: "Provider context: {provider} route"
+      recalculate: "Recalculate"
+      recalculating: "Recalculating"
+      reported-eta: "Reported ETA"
+      reported-from-route: "Reported from existing route data"
+      reported-may-not-reflect: "Reported ETA may not reflect the latest tracking signal."
+      reported-total: "Reported total"
+      route-item: "{provider} route"
+      signal-live: "Live"
+      signal-missing: "Missing"
+      signal-offline: "Offline"
+      signal-stale: "Stale"
+      signal-unassigned: "Unassigned"
+      smart-eta: "Smart adjusted ETA"
+      smart-eta-help: "Based on provider route and driver signal"
+      stale-driver-location: "Stale driver location"
+      stop-number: "Stop {number}"
+      stops-of-total: "/ {total} stops"
+      title-canceled: "Order canceled"
+      title-completed: "Order completed"
+      title-dispatched: "Order dispatched"
+      title-pending-start: "Tracking pending start"
+      updated: "Updated {date}"
+      warn-assign-driver: "Assign a driver to start live tracking and improve ETA accuracy."
+      warn-confidence: "{confidence} confidence ETA. Treat the estimate as directional."
+      warn-fallback: "Using {provider} fallback because the preferred tracking provider was unavailable."
+      warn-location-missing: "Driver location is missing, so ETA accuracy may be limited."
+      warn-location-stale: "Driver location is stale. ETA may not reflect the latest movement."
+      warn-provider-error: "Tracking provider returned an error. Showing the best available estimate."
+      warnings-count: "{count, plural, one {# warning} other {# warnings}}"
+    unauthorized-access: "You are not authorized to access this resource."
+    widget:
+      actions: "Actions"
+      active-only: "Active only"
+      active-orders: "Active Orders"
+      amount: "Amount"
+      average-order-value: "Average Order Value"
+      best-sellers: "Best sellers by revenue"
+      buyers-this-period: "{count} buyers ordered during this period."
+      cancellation-rate: "Cancellation Rate"
+      cart-conversion: "Cart Conversion"
+      completed-orders: "Completed Orders"
+      customer: "Customer"
+      customer-insights: "Customer Insights"
+      customers: "Customers"
+      error-customer-insights: "Unable to load customer insights"
+      error-metric: "Unable to load metric"
+      error-order-status-mix: "Unable to load order status mix"
+      error-revenue-trend: "Unable to load revenue trend"
+      error-top-products: "Unable to load top products"
+      fulfillment: "Fulfillment"
+      metric: "Metric"
+      metrics: "Metrics"
+      new: "New"
+      new-vs-returning: "New vs returning buyers"
+      no-customer-activity: "No customer activity yet."
+      no-order-activity: "No order activity yet."
+      no-product-sales: "No product sales yet."
+      no-recent-customers: "No recent customers yet."
+      no-recent-orders: "No recent orders yet."
+      no-revenue-data: "No revenue data yet."
+      order: "Order"
+      order-status-mix: "Order Status Mix"
+      orders: "Orders"
+      orders-this-period: "{count} orders this period"
+      recent-customers-count: "{count} recent customers"
+      recent-orders-count: "{count} recent orders"
+      refresh-orders: "Refresh orders"
+      repeat-rate: "Repeat purchase rate"
+      returning: "Returning"
+      revenue: "Revenue"
+      revenue-across-orders: "{revenue} across {count} orders"
+      revenue-tooltip: "Revenue: {value}"
+      revenue-trend: "Revenue Trend"
+      sold-count: "{count} sold"
+      status: "Status"
+      top-products: "Top Products"
+      value: "Value"
+      vs-previous-period: "vs previous period"

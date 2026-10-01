@@ -1,0 +1,59 @@
+<div class="customer-invoice-page min-h-screen bg-gray-50 px-4 py-10 dark:bg-gray-900">
+    <div class="mx-auto max-w-2xl pt-10">
+        {{#if this.loadRefund.isRunning}}
+            <div class="flex flex-col items-center justify-center py-24 text-gray-500 dark:text-gray-400">
+                <FaIcon @icon="spinner" @spin={{true}} @size="2x" class="mb-4" />
+                <p class="text-sm">{{t "ledger.ui.taler-refund.loading"}}</p>
+            </div>
+        {{else if this.error}}
+            <div class="rounded-xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-700 dark:bg-red-900/20">
+                <FaIcon @icon="triangle-exclamation" @size="2x" class="mb-4 text-red-400" />
+                <p class="font-medium text-red-700 dark:text-red-300">{{this.error}}</p>
+            </div>
+        {{else if this.refund}}
+            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div class="bg-indigo-600 px-8 py-5">
+                    <p class="mb-1 text-xs font-semibold uppercase tracking-widest text-indigo-200">{{t "ledger.ui.taler-refund.title"}}</p>
+                    <h1 class="text-2xl font-bold text-white">{{format-currency this.refund.amount this.refund.currency}}</h1>
+                </div>
+
+                <div class="space-y-5 px-8 py-6">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{t "ledger.ui.taler-refund.open-with-wallet"}}</p>
+                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                            {{t "ledger.ui.taler-refund.for-invoice" number=(n-a this.refund.invoice.number)}}
+                        </p>
+                    </div>
+
+                    {{#if this.qrImageSrc}}
+                        <div class="flex justify-center">
+                            <div class="h-48 w-48 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700">
+                                <img src={{this.qrImageSrc}} alt={{t "ledger.ui.taler-refund.qr-alt"}} class="h-full w-full object-contain" />
+                            </div>
+                        </div>
+                    {{/if}}
+
+                    <div class="flex min-w-0 items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/40">
+                        <ClickToCopy @value={{this.talerRefundUri}} class="min-w-0 flex-1">
+                            <span class="block truncate font-mono text-xs text-blue-600 dark:text-blue-400">{{this.talerRefundUri}}</span>
+                        </ClickToCopy>
+                        <ClickToCopy @value={{this.talerRefundUri}} class="flex-shrink-0">
+                            <span class="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400">{{t "ledger.ui.taler-refund.copy"}}</span>
+                        </ClickToCopy>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3">
+                        <Button @icon="copy" @text={{t "ledger.ui.taler-refund.copy-uri"}} @size="sm" @type="default" @onClick={{this.copyRefundUri}} />
+                        <a
+                            href={{this.talerRefundUri}}
+                            class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+                        >
+                            <FaIcon @icon="wallet" class="mr-2" />
+                            {{t "ledger.ui.customer-invoice.open-taler-wallet"}}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {{/if}}
+    </div>
+</div>

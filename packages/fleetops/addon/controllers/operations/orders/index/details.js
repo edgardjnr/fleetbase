@@ -1,0 +1,241 @@
+import Controller, { inject as controller } from '@ember/controller';
+import { tracked } from '@glimmer/tracking';
+import { action } from '@ember/object';
+import { inject as service } from '@ember/service';
+import { isArray } from '@ember/array';
+import { task } from 'ember-concurrency';
+import { colorForId, routeColorForStatus, routeStyleForStatus } from '../../../../utils/route-colors';
+import { buildRoutePointMarkerPresentation, buildRoutePointsFromPayload } from '../../../../utils/route-visualization';
+
+export default class OperationsOrdersIndexDetailsController extends Controller {
+    @service intl;
+    @controller('operations.orders.index') index;
+    @service('universe/menu-service') menuService;
+    @service orderActions;
+    @service orderSocketEvents;
+    @service mapManager;
+    @service leafletLayerVisibilityManager;
+    @service hostRouter;
+    @service universe;
+    @service sidebar;
+    @tracked routingControl;
+    @tracked routingCompleted = false;
+    @tracked realtimeOrderPublicId = null;
+    @tracked proofReloadToken = 0;
+
+    get routePoints() {
+        return buildRoutePointsFromPayload(this.model?.payload);
+    }
+
+    get routeMarkerFactory() {
+        const routeColor = colorForId(this.model.public_id ?? this.model.id ?? 'order-route');
+
+        return (_waypoint, index) => {
+            return buildRoutePointMarkerPresentation(this.routePoints[index], routeColor);
+        };
+    }
+
+    get routeMarkerWaypoints() {
+        return this.routePoints.map(({ place }) => [place.latitude, place.longitude]);
+    }
+
+    get routeStatus() {
+        return this.model.status ?? 'created';
+    }
+
+    get routePolylineOptions() {
+        const color = routeColorForStatus(this.routeStatus);
+        const styles = routeStyleForStatus(this.routeStatus, color);
+
+        return {
+            color,
+            weight: styles.at(-1)?.weight ?? 4,
+            opacity: styles.at(-1)?.opacity ?? 0.85,
+            styles,
+        };
+    }
+
+    get routeControlTag() {
+        return this.model?.public_id ? `order-details:${this.model.public_id}` : null;
+    }
+
+    get routingControlOptions() {
+        return {
+            tag: this.routeControlTag,
+            color: this.routePolylineOptions.color,
+            status: this.routeStatus,
+            markerWaypoints: this.routeMarkerWaypoints,
+            polylineOptions: this.routePolylineOptions,
+            createMarker: this.routeMarkerFactory,
+            onRouteFound: this.handleRoutingComplete,
+            onRoutingError: this.handleRoutingComplete,
+        };
+    }
+
+    get tabs() {
+        const registeredTabs = this.menuService.getMenuItems('fleet-ops:component:order:details');
+        return [
+            {
+                route: 'operations.orders.index.details.index',
+                label: this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.overview'),
+                icon: 'folder-open',
+            },
+            ...(isArray(registeredTabs) ? registeredTabs : []),
+        ];
+    }
+
+    get actionButtons() {
+        return [
+            {
+                items: [
+                    {
+                        text: this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.edit-details'),
+                        icon: 'pencil',
+                        disabled: this.model.status === 'canceled',
+                        fn: () => this.orderActions.editOrderDetails(this.model),
+                    },
+                    {
+                        text: this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.update-activity'),
+                        icon: 'signal',
+                        disabled: this.model.status === 'canceled',
+                        fn: () =>
+                            this.orderActions.updateActivity(this.model, {
+                                onFinish: this.handleActivityModalFinish,
+                            }),
+                    },
+                    {
+                        text: this.model.has_driver_assigned ? this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.unassign-driver') : this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.assign-driver'),
+                        icon: this.model.has_driver_assigned ? 'user-xmark' : 'edit',
+                        disabled: this.model.has_driver_assigned ? !this.model.hasActiveStatus || !this.model.driver_assigned : !this.model.hasActiveStatus,
+                        fn: () => (this.model.has_driver_assigned ? this.orderActions.unassignDriver(this.model) : this.orderActions.assignDriver(this.model)),
+                    },
+                    {
+                        text: this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.view-order-label'),
+                        icon: 'file-invoice',
+                        fn: () => this.orderActions.viewLabel(this.model),
+                    },
+                    {
+                        separator: true,
+                    },
+                    {
+                        text: this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.listen-to-socket-channel'),
+                        icon: 'headphones',
+                        fn: () => this.hostRouter.transitionTo('console.developers.sockets.view', `order.${this.model.public_id}`),
+                    },
+                    {
+                        text: this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.view-metadata'),
+                        icon: 'table',
+                        fn: () => this.orderActions.viewMetadata(this.model),
+                    },
+                    {
+                        separator: true,
+                    },
+                    {
+                        text: this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.cancel-order'),
+                        icon: 'ban',
+                        class: 'text-danger',
+                        disabled: this.model.status === 'canceled',
+                        fn: () => this.orderActions.cancel(this.model),
+                    },
+                    {
+                        text: this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.delete-order'),
+                        icon: 'trash',
+                        class: 'text-danger',
+                        fn: () =>
+                            this.orderActions.delete(this.model, {
+                                taskOptions: {
+                                    callback: () => {
+                                        this.hostRouter.transitionTo('console.fleet-ops.operations.orders.index');
+                                    },
+                                },
+                            }),
+                    },
+                ].filter(Boolean),
+            },
+        ];
+    }
+
+    @action handleActivityModalFinish(options) {
+        this.refresh.perform();
+
+        if (options?.proofCreated) {
+            this.proofReloadToken++;
+        }
+    }
+
+    @task *refresh() {
+        try {
+            yield this.hostRouter.refresh();
+        } catch (error) {
+            return error;
+        }
+    }
+
+    handleRoutingComplete = () => {
+        this.routingCompleted = true;
+    };
+
+    async setupRealtime() {
+        const currentOrderPublicId = this.model?.public_id;
+        if (!currentOrderPublicId) {
+            return;
+        }
+
+        if (this.realtimeOrderPublicId && this.realtimeOrderPublicId !== currentOrderPublicId) {
+            this.orderSocketEvents.stop({ public_id: this.realtimeOrderPublicId });
+        }
+
+        this.realtimeOrderPublicId = currentOrderPublicId;
+
+        this.orderSocketEvents.start(
+            this.model,
+            async (_msg, { reloadable }) => {
+                if (reloadable) {
+                    await this.hostRouter.refresh();
+                }
+            },
+            { debounceMs: 250 }
+        );
+    }
+
+    async syncRoutingControl() {
+        this.routingCompleted = false;
+        this.teardownRoutingControls();
+
+        this.routingControl = await this.mapManager.addRoutingControl(this.model.routeWaypoints, this.routingControlOptions);
+
+        if (!this.routingControl) {
+            this.routingCompleted = true;
+        }
+    }
+
+    syncMapContext() {
+        this.leafletLayerVisibilityManager.hideCategory('drivers');
+        this.leafletLayerVisibilityManager.showModelLayer(this.model.driver_assigned);
+    }
+
+    teardownRoutingControls() {
+        if (this.routeControlTag) {
+            this.mapManager.clearRoutingControlsByTag(this.routeControlTag);
+        } else if (this.routingControl) {
+            this.mapManager.removeRoutingControl(this.routingControl);
+        }
+
+        this.routingControl = undefined;
+        this.routingCompleted = false;
+    }
+
+    teardownRealtime() {
+        if (this.realtimeOrderPublicId) {
+            this.orderSocketEvents.stop({ public_id: this.realtimeOrderPublicId });
+            this.realtimeOrderPublicId = null;
+        }
+    }
+
+    async setupDetailsSession() {
+        this.index.changeLayout('map');
+        await this.setupRealtime();
+        await this.syncRoutingControl();
+        this.syncMapContext();
+    }
+}

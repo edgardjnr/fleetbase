@@ -1,0 +1,20 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="modal-body-container">
+        <InputGroup @name={{t "fleet-ops.ui.modals.issue-assign.assignee"}} @helpText={{t "fleet-ops.ui.modals.issue-assign.choose-the-operator-responsible-for-following"}}>
+            <ModelSelect
+                @modelName="user"
+                @selectedModel={{this.selectedAssignee}}
+                @placeholder={{t "fleet-ops.ui.modals.issue-assign.select-assignee"}}
+                @triggerClass="form-select form-input"
+                @infiniteScroll={{false}}
+                @renderInPlace={{true}}
+                @query={{hash is_not_customer=true}}
+                @allowClear={{true}}
+                @onChange={{fn (mut this.selectedAssignee)}}
+                as |model|
+            >
+                {{model.name}}
+            </ModelSelect>
+        </InputGroup>
+    </div>
+</Modal::Default>

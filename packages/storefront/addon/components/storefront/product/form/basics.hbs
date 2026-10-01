@@ -1,0 +1,52 @@
+<ContentPanel @title={{t "storefront.ui.product.basics"}} @open={{true}} @wrapperClass="bordered-top">
+    <InputGroup @name={{t "storefront.ui.product.name"}} @value={{@product.name}} @helpText={{t "storefront.ui.product.name-help"}} @disabled={{@disabled}} />
+    <InputGroup @name={{t "storefront.ui.product.description"}} @helpText={{t "storefront.ui.product.description-help"}}>
+        <Textarea @value={{@product.description}} class="form-input w-full" placeholder={{t "storefront.ui.product.description-placeholder"}} disabled={{@disabled}} rows={{4}} />
+    </InputGroup>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <InputGroup @name={{t "storefront.ui.product.category"}}>
+            <ModelSelect
+                @modelName="category"
+                @selectedModel={{@product.category}}
+                @query={{hash for="storefront_product" owner_uuid=@activeStore.id}}
+                @placeholder={{t "storefront.ui.product.select-category"}}
+                @triggerClass="form-select form-input"
+                @infiniteScroll={{false}}
+                @renderInPlace={{true}}
+                @allowClear={{true}}
+                @onChange={{fn (mut @product.category)}}
+                @onChangeId={{fn (mut @product.category_uuid)}}
+                as |model|
+            >
+                <div class="flex items-center">
+                    <span class="uppercase">{{model.name}}</span>
+                </div>
+            </ModelSelect>
+        </InputGroup>
+        <InputGroup @name={{t "storefront.ui.product.product-status"}}>
+            <Select
+                class="w-full"
+                @value={{@product.status}}
+                @placeholder={{t "storefront.ui.product.select-status"}}
+                @options={{@statusOptions}}
+                @onSelect={{fn (mut @product.status)}}
+                @humanize={{true}}
+            />
+        </InputGroup>
+    </div>
+    <InputGroup @name={{t "storefront.ui.product.sku"}} @value={{@product.sku}} @helpText={{t "storefront.ui.product.sku-help"}} @disabled={{@disabled}} />
+    <InputGroup @name={{t "storefront.ui.product.tags"}}>
+        <TagInput
+            class="form-input"
+            @placeholder={{t "storefront.ui.product.add-tags"}}
+            @allowSpacesInTags={{true}}
+            @tags={{@product.tags}}
+            @addTag={{@addTag}}
+            @removeTagAtIndex={{@removeTag}}
+            @disabled={{@disabled}}
+            as |tag|
+        >
+            {{tag}}
+        </TagInput>
+    </InputGroup>
+</ContentPanel>

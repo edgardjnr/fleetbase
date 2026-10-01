@@ -1,0 +1,27 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="modal-body-container">
+        <div class="grid grid-cols-1 gap-2 text-xs dark:text-gray-100">
+            <InputGroup @name={{t "modals.driver-assign-order.order"}}>
+                <ModelSelect
+                    class="listbox-lg"
+                    @modelName="order"
+                    @selectedModel={{@options.selectedOrder}}
+                    @placeholder={{t "modals.driver-assign-order.assign-order"}}
+                    @triggerClass="form-select form-input"
+                    @infiniteScroll={{false}}
+                    @query={{hash sort="-created_at" unassigned=true}}
+                    @renderInPlace={{true}}
+                    @onChange={{@options.selectOrder}}
+                    as |order|
+                >
+                    <Order::Card
+                        @order={{order}}
+                        @variant="selection"
+                        @showMeta={{true}}
+                        @interactive={{false}}
+                    />
+                </ModelSelect>
+            </InputGroup>
+        </div>
+    </div>
+</Modal::Default>

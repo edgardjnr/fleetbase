@@ -1,0 +1,134 @@
+<div class="activity-log activity-log-density-{{this.density}} w-full" ...attributes>
+    {{#if this.showHeader}}
+        <div class="activity-log-header {{@headerWrapperClass}}">
+            <div class="activity-log-title">{{t "common.activity"}}</div>
+
+            <div class="activity-log-header-actions">
+                {{yield to="viewAll"}}
+
+                {{#if this.showControls}}
+                    <div class="activity-log-filters">
+                        {{yield to="filters"}}
+                        <DatePicker
+                            @value={{this.dateFilter}}
+                            @onSelect={{this.setDateFilter}}
+                            @placeholder={{t "common.filter-by-field" field=(t "common.date")}}
+                            @range={{true}}
+                            @toggleSelected={{@toggleSelected}}
+                            @autoClose={{@autoClose}}
+                            @buttons={{@dateFilterButtons}}
+                            class="filter-date-input form-input-sm w-44"
+                        />
+                    </div>
+                    <Button @size="sm" @icon="refresh" @helpText={{t "common.refresh"}} @isLoading={{this.loadActivities.isRunning}} @onClick={{this.reload}} />
+                {{/if}}
+            </div>
+        </div>
+    {{/if}}
+
+    {{#if this.hasItems}}
+        <ol class="activity-log-list {{@groupClass}}">
+            {{#each this.items as |item|}}
+                <li class="activity-log-item {{@itemClass}}" data-key={{item.key}}>
+                    <div class="activity-log-marker" aria-hidden="true">
+                        {{#if (and this.showAvatars item.actor.avatarUrl)}}
+                            <img src={{item.actor.avatarUrl}} alt="" referrerpolicy="no-referrer" />
+                        {{else}}
+                            <span>{{item.actor.initial}}</span>
+                        {{/if}}
+                    </div>
+
+                    <div class="activity-log-row {{@itemDetailsClass}}">
+                        <div class="activity-log-main">
+                            <span class="activity-log-sentence {{@itemSentenceClass}}">
+                                <button type="button" class="activity-log-actor" {{on "click" (fn this.onCauserClick item.causer)}}>{{item.actor.name}}</button>
+                                <span class="activity-log-verb">{{item.verb}}</span>
+
+                                {{#if item.hasMultipleChanges}}
+                                    {{#if item.targetPhrase}}
+                                        <button type="button" class="activity-log-object" {{on "click" (fn this.onSubjectClick item.subject)}}>{{item.targetPhrase}}</button>
+                                        <span class="activity-log-muted">{{t "ember-ui.activity-log.with"}}</span>
+                                    {{/if}}
+                                    <span class="activity-log-change-trigger">
+                                        <button type="button" class="activity-log-change-count">{{t "ember-ui.activity-log.attributes-count" count=item.changeCount}}</button>
+
+                                        <Attach::Popover
+                                            @classNames="activity-log-changes-popover"
+                                            @animation="scale"
+                                            @placement="bottom-start"
+                                            @interactive={{true}}
+                                            @hideDelay={{120}}
+                                            @offset={{8}}
+                                            @shiftOptions={{hash padding=12}}
+                                            @lazyRender={{true}}
+                                        >
+                                            <div class="activity-log-changes-table {{if this.showAttributePreviousValues 'has-previous-values' 'without-previous-values'}}" role="table" aria-label={{t "ember-ui.activity-log.changed-attributes"}}>
+                                                <div class="activity-log-changes-row activity-log-changes-head" role="row">
+                                                    <div role="columnheader">{{t "ember-ui.activity-log.attribute"}}</div>
+                                                    {{#if this.showAttributePreviousValues}}
+                                                        <div role="columnheader">{{t "ember-ui.activity-log.previous-value"}}</div>
+                                                    {{/if}}
+                                                    <div role="columnheader">{{t "ember-ui.activity-log.new-value"}}</div>
+                                                </div>
+
+                                                {{#each item.changes as |change|}}
+                                                    <div class="activity-log-changes-row" role="row">
+                                                        <div class="activity-log-change-attribute" role="cell">{{change.label}}</div>
+                                                        {{#if this.showAttributePreviousValues}}
+                                                            <div class="activity-log-change-value activity-log-change-value-old" role="cell">{{change.from}}</div>
+                                                        {{/if}}
+                                                        <div class="activity-log-change-value activity-log-change-value-new" role="cell">{{change.to}}</div>
+                                                    </div>
+                                                {{/each}}
+                                            </div>
+                                        </Attach::Popover>
+                                    </span>
+                                {{else if item.inlineChange}}
+                                    <span class="activity-log-inline-change">
+                                        <span class="activity-log-inline-attribute">{{item.inlineChange.attribute}}</span>
+                                        {{#if item.inlineChange.hasPreviousValue}}
+                                            <span class="activity-log-muted">{{t "ember-ui.activity-log.from"}}</span>
+                                            <span class="activity-log-inline-value">{{item.inlineChange.from}}</span>
+                                            <span class="activity-log-muted">{{t "ember-ui.activity-log.to"}}</span>
+                                        {{else}}
+                                            <span class="activity-log-muted">{{t "ember-ui.activity-log.to"}}</span>
+                                        {{/if}}
+                                        <span class="activity-log-inline-value">{{item.inlineChange.to}}</span>
+                                    </span>
+                                {{else if item.objectLabel}}
+                                    <button type="button" class="activity-log-object" {{on "click" (fn this.onSubjectClick item.subject)}}>{{item.objectLabel}}</button>
+                                {{/if}}
+
+                                {{#if (and item.hasChanges (not item.hasMultipleChanges) item.objectLabel)}}
+                                    <span class="activity-log-muted">{{t "ember-ui.activity-log.on"}}</span>
+                                    <button type="button" class="activity-log-object" {{on "click" (fn this.onSubjectClick item.subject)}}>{{item.objectLabel}}</button>
+                                {{/if}}
+                            </span>
+
+                            {{#if this.showBadges}}
+                                <span class="activity-log-badge {{@itemBadgeClass}} {{item.badge.class}}">{{item.badge.text}}</span>
+                            {{/if}}
+                        </div>
+
+                        <time class="activity-log-time {{@itemRelativeTimestampClass}}" title={{item.timestamp.exactLocal}} datetime={{item.timestamp.iso}}>
+                            {{item.timestamp.relative}}
+                        </time>
+                    </div>
+                </li>
+            {{/each}}
+        </ol>
+    {{else}}
+        <div class="activity-log-empty">
+            {{#if this.loadActivities.isRunning}}
+                <Spinner @loadingMessage={{t "ember-ui.activity-log.loading"}} />
+            {{else}}
+                <div class="flex space-x-2">
+                    <FaIcon @icon="bars-staggered" @size="lg" class="activity-log-empty-icon" />
+                    <div class="activity-log-empty-text">{{t "ember-ui.activity-log.no-activity"}}</div>
+                </div>
+            {{/if}}
+        </div>
+    {{/if}}
+
+    {{yield}}
+</div>

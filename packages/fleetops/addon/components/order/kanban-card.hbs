@@ -1,0 +1,100 @@
+<div class="kanban-card-content">
+    <div class="flex flex-row justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-600">
+        <div class="flex-1">
+            <h4 class="kanban-card-title">{{@card.tracking}}</h4>
+            <Badge @status={{@card.status}} />
+        </div>
+        <div class="flex flex-row space-x-1">
+            {{#unless @card.driver_assigned}}
+                <Button @size="xs" @icon="user-plus" @onClick={{fn this.orderActions.assignDriver @card}} @helpText={{t "order.actions.assign-driver"}} @wrapperClass="self-start" />
+            {{/unless}}
+            <Button @size="xs" @icon="eye" @onClick={{transition-to "operations.orders.index.details" @card}} @wrapperClass="self-start" />
+        </div>
+    </div>
+    <div class="px-3">
+        <div class="order-listing-row-progress mb-2">
+            <OrderProgressBar
+                @card={{@card}}
+                @progress={{@card.tracker_data.progress.percentage}}
+                @firstWaypointCompleted={{gt @card.tracker_data.progress.completed_stops 0}}
+                @lastWaypointCompleted={{eq @card.tracker_data.progress.percentage 100}}
+            />
+            {{#if @card.tracker_data.insights.is_location_stale}}
+                <div class="flex mt-1">
+                    <Badge @status="warning" @hideStatusDot={{true}}>{{t "fleet-ops.ui.order.kanban-card.stale-gps"}}</Badge>
+                </div>
+            {{else if @card.tracker_data.fallback_provider}}
+                <div class="flex mt-1">
+                    <Badge @status="warning" @hideStatusDot={{true}}>{{t "fleet-ops.ui.order.kanban-card.fallback-eta"}}</Badge>
+                </div>
+            {{else if @card.tracker_data.confidence}}
+                {{#unless (eq @card.tracker_data.confidence "high")}}
+                    <div class="flex mt-1">
+                        <Badge @status="warning" @hideStatusDot={{true}}>{{t "fleet-ops.ui.order.kanban-card.low-eta-confidence"}}</Badge>
+                    </div>
+                {{/unless}}
+            {{/if}}
+        </div>
+        <div class="order-listing-row-body flex flex-row">
+            <div class="flex-1 order-listing-row-body-address start">
+                <div class="font-semibold text-sm">{{t "fleet-ops.ui.order.kanban-card.pickup"}}</div>
+                <div class="address-text text-xs">
+                    {{#if @card.payload.isMultiDrop}}
+                        {{@card.payload.firstWaypoint.address}}
+                    {{else}}
+                        {{@card.payload.pickup.address}}
+                    {{/if}}
+                </div>
+            </div>
+            <div class="flex-1 order-listing-row-body-address end">
+                <div class="font-semibold text-sm">{{t "fleet-ops.ui.order.kanban-card.dropoff"}}</div>
+                <div class="address-text text-xs">
+                    {{#if @card.payload.isMultiDrop}}
+                        {{@card.payload.lastWaypoint.address}}
+                    {{else}}
+                        {{@card.payload.dropoff.address}}
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="py-2 px-3 border-t border-gray-200 dark:border-gray-600">
+        <div class="flex flex-row">
+            <div class="flex-1">
+                <div class="flex flex-row space-x-2">
+                    <div class="resource-assigned-photo relative">
+                        <Image
+                            src={{resource-image @card.customer.photo_url "customer"}}
+                            @fallbackSrc={{(placeholder-image "customer")}}
+                            class="w-5 h-5 rounded-lg shadow-sm"
+                            alt={{@card.customer.name}}
+                        />
+                    </div>
+                    <div class="resource-assigned-details">
+                        <div class="font-semibold text-xs">{{t "fleet-ops.ui.order.kanban-card.customer"}}</div>
+                        <div class="text-xs">{{n-a @card.customer.name (t "fleet-ops.ui.order.kanban-card.no-customer")}}</div>
+                        <div class="text-xs">{{n-a @card.customer.phone (t "fleet-ops.ui.order.kanban-card.no-phone")}}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-1">
+                <div class="flex flex-row space-x-2">
+                    <div class="resource-assigned-photo relative">
+                        <Image
+                            src={{resource-image @card.driver_assigned.photo_url "driver"}}
+                            @fallbackSrc={{(placeholder-image "driver")}}
+                            class="w-5 h-5 rounded-lg shadow-sm"
+                            alt={{@card.driver_assigned.name}}
+                        />
+                        <FaIcon @icon="circle" @size="2xs" class="absolute left-0 top-0 h-2 w-2 -ml-1 -mt-1 {{if @card.driver_assigned.online 'text-green-500' 'text-yellow-200'}}" />
+                    </div>
+                    <div class="resource-assigned-details">
+                        <div class="font-semibold text-xs">{{t "fleet-ops.ui.order.kanban-card.driver-assigned"}}</div>
+                        <div class="text-xs">{{n-a @card.driver_assigned.name (t "fleet-ops.ui.order.kanban-card.no-driver")}}</div>
+                        <div class="text-xs">{{n-a @card.driver_assigned.phone (t "fleet-ops.ui.order.kanban-card.no-phone")}}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,1225 @@
+ledger:
+  extension-name: Ledger
+  ui:
+    period:
+      month-to-date: Month to date
+    models:
+      not-available: N/A
+      "yes": "Yes"
+      "no": "No"
+      journal-source:
+        system: System
+        manual: Manual
+      journal-type:
+        general: General
+        standard: Standard
+        adjusting: Adjusting
+        closing: Closing
+        reversing: Reversing
+        opening: Opening
+        wallet-transfer: Wallet Transfer
+        wallet-deposit: Wallet Deposit
+        wallet-withdrawal: Wallet Withdrawal
+    invoice:
+      invoice-information: Invoice Information
+      invoice-number: Invoice Number
+      invoice-date: Invoice Date
+      due-date: Due Date
+      overdue: Overdue
+      currency: Currency
+      order: Order
+      template: Template
+      sent-at: Sent At
+      viewed-at: Viewed At
+      paid-at: Paid At
+      invoice-url: Invoice URL
+      customer: Customer
+      line-items: Line Items
+      description: Description
+      qty: Qty
+      unit-price: Unit Price
+      tax-percent: Tax %
+      amount: Amount
+      subtotal: Subtotal
+      tax: Tax
+      total: Total
+      no-line-items-recorded: No line items recorded.
+      payment-summary: Payment Summary
+      total-amount: Total Amount
+      amount-paid: Amount Paid
+      balance-due: Balance Due
+      notes: Notes
+      terms: Terms
+      record-info: Record Info
+      internal-id: Internal ID
+      created: Created
+      last-updated: Last Updated
+      invoice-details: Invoice Details
+      number-placeholder: Auto-generated if left blank
+      status: Status
+      select-status: Select status
+      invoice-template: Invoice Template
+      select-template: Select a template (optional)
+      search-customer: Search contacts or vendors…
+      dates: Dates
+      notes-terms: Notes & Terms
+      notes-placeholder: Add any notes or payment instructions for the customer…
+      terms-placeholder: Payment terms, e.g. Net 30…
+      item-description: Item description
+      no-line-items-yet: No line items yet.
+      add-one: Add one
+      add-line-item: Add line item
+      due-on: Due {date}
+      no-due-date: No due date
+      items-missing-description: "{count, plural, one {One line item is missing a description.} other {# line items are missing a description.}}"
+      statuses:
+        draft: Draft
+        sent: Sent
+        viewed: Viewed
+        partial: Partial
+        paid: Paid
+        partial_refund_pending: Partial Refund Pending
+        refund_pending: Refund Pending
+        refunded: Refunded
+        overdue: Overdue
+        void: Void
+        cancelled: Cancelled
+    customer-invoice:
+      loading: Loading invoice…
+      invoice: Invoice
+      bill-to: Bill To
+      due-label: "Due:"
+      pay-this-invoice: Pay This Invoice
+      pay-now: Pay Now
+      payment-method: Payment Method
+      reference-note: Reference / Note (optional)
+      reference-placeholder: "e.g. Bank transfer ref #12345"
+      redirecting: Redirecting to payment provider...
+      taler-qr-alt: GNU Taler payment QR code
+      taler-ready: GNU Taler payment ready
+      taler-scan: Open your Taler wallet or scan the QR code with a wallet on another device.
+      taler-copy-uri: Open your Taler wallet from this browser, or copy the payment URI into a wallet.
+      qr-unavailable: QR code unavailable for this payment response.
+      open-taler-wallet: Open GNU Taler Wallet
+      amount-due: "Amount due:"
+      processing: Processing...
+      pay-with-stripe: Pay with Stripe
+      continue-to-payment: Continue to Payment
+      online-unavailable-title: Online Payment Unavailable
+      online-unavailable-body: Online payment is not available for this invoice. Please contact the sender for payment instructions.
+      paid-title: Invoice Paid
+      paid-body: This invoice has been fully paid. Thank you for your payment.
+      void-title: Invoice {status}
+      void-body: This invoice is no longer active and cannot accept payments.
+      powered-by: Powered by
+      payment-success: Your payment was completed successfully. Thank you!
+      payment-cancelled: Payment was cancelled. You can try again below.
+      no-identifier: No invoice identifier provided. Please check the link and try again.
+      not-found: Invoice not found. Please check the link and try again.
+      not-available: This invoice is not yet available. Please contact the sender.
+      load-failed: Failed to load invoice. Please try again later.
+      online-unavailable: Online payment is not available for this invoice.
+      taler-started: Payment started. Open your GNU Taler wallet to complete it.
+      payment-pending: Payment started. Complete it in your payment app, then refresh this invoice.
+      payment-recorded: Your payment has been recorded successfully. Thank you!
+      payment-failed: Payment failed. Please try again.
+    order-invoice:
+      no-invoice: No invoice found for this order.
+      auto-generated: An invoice is generated automatically when a service rate is purchased.
+      view: View
+      open-in-ledger: Open in Ledger
+      open-full-invoice: Open full invoice in Ledger
+    taler-refund:
+      loading: Loading refund...
+      title: GNU Taler Refund
+      open-with-wallet: Open this refund with your GNU Taler wallet.
+      for-invoice: This refund is for invoice {number}. If your wallet does not open automatically, scan the QR code or copy the wallet URI.
+      qr-alt: GNU Taler refund QR code
+      copy: Copy
+      copy-uri: Copy URI
+      no-identifier: No refund identifier provided. Please check the link and try again.
+      not-found: Refund not found. Please check the link and try again.
+      load-failed: Failed to load refund. Please try again later.
+      uri-copied: Refund URI copied.
+    record-payment:
+      balance: "Balance:"
+      amount: Amount
+      amount-help: Amount received. Defaults to the full outstanding balance.
+      payment-method: Payment Method
+      payment-method-help: How the payment was received.
+      select-payment-method: Select payment method...
+      reference: Reference
+      reference-help: Optional reference number or note for this payment.
+      reference-placeholder: e.g. bank transfer ref, cheque number
+      invalid-amount: Please enter a valid payment amount greater than zero.
+      success: Payment recorded successfully.
+      methods:
+        bank-transfer: Bank Transfer
+        cash: Cash
+        cheque: Cheque
+        credit-card: Credit Card
+        debit-card: Debit Card
+        other: Other
+    billing:
+      template-saved: Invoice template "{name}" saved.
+      template-created: Invoice template "{name}" created successfully.
+      edit-invoice: Edit Invoice {number}
+      create-invoice: Create New Invoice
+      details: Details
+      preview: Preview
+      edit: Edit
+      view-refunds: View Refunds
+      issue-refund: Issue Refund
+      invoice-sent: Invoice sent successfully.
+      gateway-fallback: Gateway
+      no-refundable-payments: This invoice has no refundable gateway payments.
+      issue-refund-title: Issue Refund {number}
+      select-refundable-payment: Select a refundable payment.
+      refund-amount-positive: Enter a refund amount greater than zero.
+      refund-amount-exceeds: Refund amount exceeds the selected payment remaining amount.
+      selected-gateway: the selected gateway
+      taler-refund-note: GNU Taler may return a refund URI that must be shared with the customer wallet.
+      confirm-refund-title: Confirm Refund {number}
+      confirm-refund-body: Issue a {amount} refund through {gateway}? This will create a gateway refund and Ledger reversal.
+      refund-issued-success: Refund issued successfully.
+      refunds-title: Refunds {number}
+      refund-issued-title: Refund Issued
+      refund-unresolved: Unable to resolve the refund transaction.
+      refund-uri-sent: Refund URI sent to customer.
+      refund-status-verified: Refund status verified.
+      void-title: Void Invoice {number}?
+      void-body: This will mark the invoice as void and cannot be undone.
+      invoice-voided: Invoice voided.
+      select-customer: Select customer
+      select-order: Select order
+      min: Min
+      max: Max
+    payments:
+      field:
+        status: Status
+        type: Type
+        currency: Currency
+        amount: Amount
+        amounts: Amounts
+        description: Description
+        notes: Notes
+        description-notes: Description & Notes
+        record-info: Record Info
+        created: Created
+        last-updated: Last Updated
+        select-status: Select status
+        select-currency: Select currency
+        "yes": "Yes"
+        "no": "No"
+        overview: Overview
+        details: Details
+        transactions: Transactions
+    transaction:
+      details-title: Transaction Details
+      information: Transaction Information
+      core-information: Core Information
+      reference-id: Reference ID
+      direction: Direction
+      gateway: Gateway
+      gateway-transaction-id: Gateway Transaction ID
+      payment-method: Payment Method
+      card: Card
+      reference: Reference
+      date: Date
+      fee: Fee
+      tax: Tax
+      net-amount: Net Amount
+      balance-after: Balance After
+      settlement: Settlement
+      exchange-rate: Exchange Rate
+      settled-currency: Settled Currency
+      settled-amount: Settled Amount
+      settled-at: Settled At
+      parties: Parties
+      payer: Payer
+      payee: Payee
+      initiated-by: Initiated By
+      ip-address: IP Address
+      failure-information: Failure Information
+      failure-code: Failure Code
+      failure-reason: Failure Reason
+      select-type: Select type
+      select-direction: Select direction
+      select-payment-method: Select payment method
+      fee-amount: Fee Amount
+      tax-amount: Tax Amount
+      gateway-payment: Gateway & Payment
+      gateway-placeholder: e.g. stripe
+      gateway-transaction-placeholder: Gateway transaction reference
+      reference-placeholder: External reference
+      description-placeholder: Short description of this transaction
+      notes-placeholder: Internal notes...
+      direction-options:
+        credit: Credit
+        debit: Debit
+      payment-method-options:
+        card: Card
+        bank-transfer: Bank Transfer
+        wallet: Wallet
+        cash: Cash
+    wallet:
+      details-title: Wallet Details
+      information: Wallet Information
+      name: Wallet Name
+      name-placeholder: e.g. Main Wallet
+      select-type: Select wallet type
+      frozen: Frozen
+      balance: Balance
+      current-balance: Current Balance
+      owner-details: Owner Details
+      owner: Owner
+      owner-type: Owner Type
+      owner-uuid: Owner UUID
+      select-owner-type: Select owner type
+      email-phone: Email / Phone
+      internal-id: Internal ID
+      settings: Settings
+      freeze-label: Freeze this wallet
+      freeze-toggle-help: Frozen wallets cannot send or receive funds.
+      edit-title: Edit Wallet — {name}
+      new-title: Create New Wallet
+      unauthorized-access: You are not authorized to access this resource.
+      add-funds: Add Funds
+      add-funds-help: Add funds to this wallet balance.
+      add-funds-title: Add Funds — {name}
+      funds-added: Funds added to {name}.
+      transfer: Transfer
+      transfer-help: Transfer funds from this wallet to another wallet.
+      transfer-title: Transfer Funds — {name}
+      funds-transferred: Funds transferred to {name}.
+      freeze: Freeze
+      unfreeze: Unfreeze
+      freeze-help: Freeze this wallet to block all debits.
+      unfreeze-help: Unfreeze this wallet to allow debits.
+      freeze-confirm-title: Freeze {name}?
+      freeze-confirm-body: Freezing this wallet will block all debit transactions. Credits will still be accepted. You can unfreeze it at any time.
+      freeze-wallet: Freeze Wallet
+      frozen-success: "{name} has been frozen."
+      unfreeze-confirm-title: Unfreeze {name}?
+      unfreeze-confirm-body: Unfreezing this wallet will restore normal operation and allow debit transactions.
+      unfreeze-wallet: Unfreeze Wallet
+      unfrozen-success: "{name} has been unfrozen."
+      wallet-frozen: Wallet frozen.
+      wallet-unfrozen: Wallet unfrozen.
+      deposit: Deposit
+      withdraw: Withdraw
+      invalid-amount: Please enter a valid amount greater than zero.
+      select-destination: Please select a destination wallet.
+      same-wallet: Cannot transfer funds to the same wallet.
+      name-column: Name
+      type-options:
+        company: Company
+        driver: Driver
+        customer: Customer
+        user: User
+      status-options:
+        active: Active
+        inactive: Inactive
+        frozen: Frozen
+        suspended: Suspended
+      top-up-amount-help: Amount to add to this wallet.
+      top-up-description-help: Optional note for this transaction.
+      top-up-placeholder: Manual top-up
+      from: From
+      available: Available
+      to-wallet: To Wallet
+      to-wallet-help: Select the destination wallet to transfer funds into.
+      search-placeholder: Search wallets...
+      transfer-amount-help: Amount to transfer.
+      transfer-description-help: Optional note for this transfer.
+      transfer-placeholder: Internal transfer
+    refund:
+      remaining-refundable: "Remaining refundable:"
+      paid: Paid
+      refunded: Refunded
+      available: Available
+      payment: Payment
+      payment-help: Refunds are issued against the original successful gateway payment.
+      select-payment: Select payment...
+      reference: "Reference:"
+      refund-type: Refund Type
+      refund-type-help: Use full for the selected payment's remaining refundable amount, or custom for a partial refund.
+      amount: Amount
+      amount-help: The amount cannot exceed the remaining refundable amount.
+      reason: Reason
+      reason-help: Optional note recorded with the gateway refund and Ledger reversal.
+      reason-placeholder: Reason for refund
+      taler-notice: GNU Taler may return a refund URI. Share it with the customer so they can open it with their Taler wallet and accept the refund.
+      mode-full: Full remaining amount
+      mode-partial: Custom partial amount
+      customer-email: Customer Email
+      customer-email-history-help: Used when sending a refund URI from the rows below.
+      customer-email-result-help: Defaults to the invoice customer email when available.
+      verify-status: Verify Status
+      send-email: Send Email
+      copy: Copy
+      copy-uri: Copy URI
+      no-uri-row: This refund does not expose a customer refund URI.
+      no-uri-invoice: No refund URI has been issued for this invoice yet.
+      customer-link: Customer Refund Link
+      customer-link-help: Send this Fleetbase link to the customer. It opens a Taler wallet handoff page.
+      wallet-uri: Wallet URI
+      wallet-uri-help: Advanced fallback for copying directly into a GNU Taler wallet.
+      refund-status: Refund Status
+      wallet-status: Wallet Status
+      gateway-refund-transaction: "Gateway refund transaction:"
+      completed-title: Refund completed
+      issued-title: Refund URI issued
+      completed-message: The refund was accepted by the customer wallet and marked complete.
+      issued-message: Share this refund URI with the customer so they can open it with their GNU Taler wallet and accept the refund.
+    gateway:
+      common:
+        na: N/A
+        refresh: Refresh
+        pending: Pending
+      reload: Reload
+      catalog:
+        connected: Connected
+        available: Available
+        manual: Manual
+        manage: Manage gateway
+        connect: Connect gateway
+      hub:
+        title: Payment Gateways
+        warnings: "{count} warnings"
+        subtitle: Configure checkout providers, manual methods, webhooks, refunds, and settlement readiness from one workflow.
+        add: Add Gateway
+        connected-title: Connected Gateways
+        connected-subtitle: Review configured providers, checkout availability, environments, and operational status.
+        supported-title: Supported Gateways
+        supported-subtitle: Connect supported gateway drivers or manage existing configured accounts.
+        loading-status: Loading gateway status
+        tile:
+          active: Active gateways
+          active-caption: Ready to collect payments
+          live: Live ready
+          live-caption: Production connections
+          webhook-issues: Webhook issues
+          webhook-issues-caption: Need provisioning review
+          no-warnings: No open warnings
+          sandbox: Sandbox
+          sandbox-caption: Testing connections
+      driver:
+        taler:
+          type: Wallet payment
+          description: Privacy-preserving wallet payments, QR checkout, webhook confirmation, refunds, and settlement verification.
+        stripe:
+          type: Cards and wallets
+          description: Card and digital wallet processing with webhook confirmation and refund support.
+        cash:
+          name: Cash
+          type: Manual payment
+          description: Record offline or in-person payments without external webhook provisioning.
+        qpay:
+          type: Regional payment
+          description: Regional gateway support for QR and local payment collection flows.
+      webhook-events:
+        date: Date
+        event-type: Event Type
+        gateway-ref: Gateway Ref
+        amount: Amount
+        status: Status
+        refund: Refund
+        reconciliation: Reconciliation
+        empty: No webhook events recorded
+      details:
+        last-order: Last order {id}
+        gateway: Gateway
+        verified: Verified
+        failed: Failed
+        not-checked-title: Not Checked
+        webhook-registered-msg: Provider webhook registration completed.
+        webhook-configured-msg: Webhook URL is configured, but no registration action has been recorded.
+        webhook-none-msg: No provider webhook registration stored.
+        connection: Connection
+        ready: Ready
+        inactive: Inactive
+        available-on-invoices: Available on invoices
+        not-used-at-checkout: Not used at checkout
+        environment: Environment
+        live: Live
+        sandbox: Sandbox
+        production-payments: Production payments
+        testing-sandbox-use: Testing and sandbox use
+        webhook: Webhook
+        configured: Configured
+        needs-setup-title: Needs Setup
+        callback-ready: Provider callback ready
+        registration-needed: Registration needed
+        credentials: Credentials
+        last-auth-test: Last provider auth test
+        run-provider-check: Run a provider check
+        driver: Driver
+        mode: Mode
+        not-checked: Not checked
+        needs-setup: Needs setup
+        payment: Payment
+        seen: Seen
+        no-payment-yet: No payment yet
+        refund: Refund
+        no-refund-yet: No refund yet
+        settlement: Settlement
+        name: Name
+        public-id: Public ID
+        status: Status
+        created: Created
+        return-url: Return URL
+        ledger-webhook-url: Ledger webhook URL
+        provider-callback: Provider registered callback
+        same-as-ledger-url: Same as Ledger webhook URL
+        provider-posts-events: The provider posts events to the Ledger webhook URL above.
+        provider-credentials: Provider credentials
+        stored-encrypted: Stored encrypted and hidden
+        credential-test: Credential test
+        no-credential-test: No credential test has been run.
+        webhook-registration: Webhook registration
+        test-order: Test order
+        no-test-order: No test order has been created.
+        test-credentials: Test Credentials
+        test-credentials-desc: Checks whether Ledger can authenticate against the configured Taler Merchant Backend.
+        test-credentials-result: Updates credential status and last checked time.
+        register-webhook: Register Webhook
+        register-webhook-desc: Creates or updates the Taler webhook so payment events route back to this exact gateway.
+        register-webhook-result: Stores the registered webhook URL and routing payload.
+        register-webhook-confirm-title: Register Taler webhook?
+        register-webhook-confirm-body: Ledger will create or update the webhook in the Taler Merchant Backend for this gateway.
+        create-test-order: Create Test Order
+        create-test-order-desc: Creates a small sandbox order to verify order creation and wallet redirect behavior.
+        create-test-order-result: Creates a provider test order and records its order id.
+        create-test-order-confirm-title: Create Taler test order?
+        create-test-order-confirm-body: Ledger will create a test order in the configured Taler Merchant Backend. No customer invoice is changed.
+        refresh-diagnostics: Refresh Diagnostics
+        refresh-diagnostics-desc: Reloads the latest credential, webhook, payment, refund, and settlement diagnostic data from Ledger.
+        refresh-diagnostics-result: No provider mutation; refreshes this screen only.
+        copy-webhook-url: Copy Webhook URL
+        copy-webhook-url-desc: Copies the Ledger callback URL for manual provider setup.
+        copy-webhook-url-result: Use this when provider webhook registration is handled outside Ledger.
+        edit-settings: Edit Settings
+        edit-settings-desc: Change the gateway name, credentials, routing, status, or environment.
+        edit-settings-result: Opens the gateway setup wizard for this existing gateway.
+        credentials-accepted: Taler credentials accepted.
+        test-order-created: Taler test order created.
+        webhook-registered: Taler webhook registered.
+        no-system-webhook: No system webhook URL is available yet.
+        system-webhook-copied: System webhook URL copied.
+        copy-webhook-failed: Unable to copy webhook URL.
+        recent-activity: Recent Gateway Activity
+        recent-activity-desc: Latest webhook, payment, refund, and settlement records for this gateway.
+        no-timestamp: No timestamp
+        no-activity: No gateway activity has been recorded yet.
+        actions: Actions
+        actions-desc: Provider operations an operator is likely to need next.
+        webhook-url-unavailable: Webhook URL unavailable until this gateway has a driver.
+        provider-status: Provider Status
+        provider-status-desc: Usability signals at a glance.
+        setup: Gateway Setup
+        setup-desc: Configuration Ledger uses for routing, provider setup, and checkout availability.
+        edit-gateway: Edit Gateway
+        identity: Identity
+        routing: Routing
+        provider-configuration: Provider Configuration
+        provider-tools: Provider Tools
+        provider-tools-desc: Run provider-facing checks and provisioning actions with a clear expected result.
+        reload-diagnostics-help: Reload diagnostics without changing the provider.
+        expected-result: "Expected result: {result}"
+        tool-results: Provider tool results
+        last-results: Last Results
+        no-diagnostics: This gateway driver does not expose provider diagnostics.
+      form:
+        choose-title: Choose Payment Gateway
+        choose-desc: Select the provider Ledger should use for invoice checkout, payment confirmation, refunds, and settlement tracking.
+        selected: Selected
+        credentials-title: Gateway Credentials
+        credentials-desc: Enter the provider configuration Ledger stores on this gateway. Tokens are saved on the gateway record and are never shown in invoice checkout.
+        select-option: Select option
+        no-credentials-required: This gateway does not require provider credentials.
+        choose-first: Choose a payment gateway before entering credentials.
+        selected-driver: Selected gateway driver
+        routing-title: Routing And Status
+        routing-desc: Name the gateway, choose the environment, and configure where customers and providers return payment events.
+        gateway-name: Gateway name
+        gateway-name-placeholder: e.g. GNU Taler Sandbox
+        code: Code
+        code-placeholder: e.g. taler_sandbox
+        environment: Environment
+        select-environment: Select environment
+        option:
+          sandbox: Sandbox
+          live: Live
+          active: Active
+          inactive: Inactive
+        status: Status
+        select-status: Select status
+        return-url: Return URL
+        return-url-help: The URL the customer is redirected to after payment.
+        webhook-url: Webhook / Callback URL
+        webhook-url-help: The registered provider webhook endpoint for this gateway.
+        copy: Copy
+        description: Description
+        description-placeholder: Optional operating notes for this gateway.
+        checkout-readiness: Checkout Readiness
+        driver-selected: Driver selected
+        ready: Ready
+        missing: Missing
+        credentials: Credentials
+        review: Review
+        review-title: Review Gateway Setup
+        review-desc: Confirm the configuration before saving. Existing gateways can run a live credential check from here.
+        gateway: Gateway
+        unnamed: Unnamed gateway
+        mode: Mode
+        test-again: Test Again
+        test-credentials: Test Credentials
+        after-saving: After Saving
+        after-saving-1: Use the gateway details screen to register webhooks, create test orders, and inspect diagnostics.
+        after-saving-2: For GNU Taler, sandbox gateways can use the hosted Fleetbase Merchant Backend URL when no backend URL is supplied, but API tokens must still be configured.
+        back: Back
+        next: Next
+        cancel: Cancel
+        testing: Testing gateway credentials...
+        verified: Gateway verified
+        test-failed: Gateway test failed
+        ready-to-verify: Ready to verify
+        complete-to-verify: Complete credentials to verify
+        idle-existing: Run a credential test before using this gateway for invoice payments.
+        idle-new: Test the entered provider credentials before creating this gateway.
+        testing-message: Ledger is checking the configured credentials with the payment provider.
+        check-completed: The gateway credential check completed.
+        drivers-load-failed: Could not load available payment drivers.
+        complete-before-testing: Choose a gateway and complete the required credentials before testing.
+        test-failed-message: Gateway credential test failed.
+        no-webhook-url: No webhook URL is available yet.
+        webhook-url-copied: Webhook URL copied.
+        copy-webhook-failed: Unable to copy webhook URL.
+        step:
+          credentials: Credentials
+          routing: Routing
+          review: Review
+          gateway: Gateway
+        driver-category:
+          default: Payment gateway
+      page:
+        webhook-label: "Webhook:"
+        webhook-configured: configured
+        webhook-not-registered: not registered
+        created-label: "Created:"
+        updated-label: "Updated:"
+        settings: Settings
+        delete: Delete
+        edit: Edit
+        view: View
+        sections: Gateway sections
+        setup-eyebrow: Payment gateway setup
+        edit-title: Edit {name}
+        edit-desc: Review provider credentials, routing, status, webhook details, and operational readiness for this gateway.
+        save: Save Gateway
+        edit-footer: Changes affect future invoice checkout, refunds, webhook routing, and diagnostics.
+        new-title: Connect Payment Gateway
+        new-desc: Choose a supported provider, enter credentials, configure checkout routing, and prepare the gateway for invoice payments.
+        create: Create Gateway
+        new-footer: After saving, open diagnostics to test credentials, register webhooks, and create a test order.
+        tab:
+          overview: Overview
+          setup: Setup
+          diagnostics: Diagnostics
+          transactions: Transactions
+        edit-help: Edit this payment gateway configuration.
+        delete-help: Permanently remove this payment gateway. This cannot be undone.
+        delete-confirm-title: Delete Gateway {name}?
+        delete-confirm-body: This action cannot be undone.
+        deleted: Gateway deleted.
+    account:
+      details-title: Account Details
+      information: Account Information
+      name: Account Name
+      name-placeholder: e.g. Cash and Cash Equivalents
+      code: Account Code
+      code-placeholder: e.g. 1000
+      type-label: Type
+      type-field: Account Type
+      select-type: Select account type
+      type:
+        asset: Asset
+        liability: Liability
+        equity: Equity
+        revenue: Revenue
+        expense: Expense
+      status-label: Status
+      select-status: Select status
+      status:
+        active: Active
+        inactive: Inactive
+        archived: Archived
+      currency: Currency
+      select-currency: Select currency
+      description: Description
+      description-placeholder: Optional description of this account...
+      balance: Balance
+      current-balance: Current Balance
+      record-info: Record Info
+      internal-id: Internal ID
+      created: Created
+      last-updated: Last Updated
+      total-debits: Total Debits
+      total-credits: Total Credits
+      net-balance: Net Balance
+      debit: Debit
+      credit: Credit
+      edit-title: Edit Account — {name}
+      new-title: Create New Account
+    journal:
+      title: Journal Entry
+      information: Entry Information
+      number: Entry Number
+      number-placeholder: e.g. JE-0001
+      type: Type
+      select-type: Select entry type
+      types:
+        standard: Standard
+        adjusting: Adjusting
+        closing: Closing
+        reversing: Reversing
+        opening: Opening
+      date: Entry Date
+      source: Source
+      amount: Amount
+      currency: Currency
+      description: Description
+      description-placeholder: Describe the purpose of this journal entry...
+      double-entry: Double-Entry
+      debit: Debit
+      credit: Credit
+      debit-account: Debit Account
+      debit-account-code: Debit Account Code
+      select-debit-account: Select debit account
+      credit-account: Credit Account
+      credit-account-code: Credit Account Code
+      select-credit-account: Select credit account
+      credit-code-placeholder: e.g. 2000
+      system: System
+      edit-title: Edit Journal Entry — {number}
+      new-title: Create Journal Entry
+      filter-type:
+        general: General
+        payment: Payment
+        refund: Refund
+        adjustment: Adjustment
+        deposit: Deposit
+        withdrawal: Withdrawal
+        transfer: Transfer
+      status:
+        posted: Posted
+        draft: Draft
+        voided: Voided
+      delete: Delete
+      delete-help: Permanently delete this journal entry. System entries cannot be deleted.
+      delete-confirm-title: Delete Journal Entry?
+      delete-confirm-body: This action cannot be undone.
+      deleted: Journal entry deleted.
+    accounting:
+      tab:
+        overview: Overview
+        general-ledger: General Ledger
+    settings:
+      save-changes: Save Changes
+      month:
+        january: January
+        february: February
+        march: March
+        april: April
+        may: May
+        june: June
+        july: July
+        august: August
+        september: September
+        october: October
+        november: November
+        december: December
+      accounting:
+        title: Accounting Settings
+        currency-fiscal-year: Currency & Fiscal Year
+        base-currency: Base Currency
+        base-currency-help: The reporting currency for all financial statements and the chart of accounts.
+        default-currency: "Default: {currency}"
+        using-default: Using organisation default ({currency}). Select a currency above to override.
+        fiscal-year-start: Fiscal Year Start Month
+        fiscal-year-start-help: The month in which your organisation's fiscal year begins. Affects period-based financial reports.
+        select-start-month: Select start month
+        default-accounts: Default Accounts
+        default-accounts-desc: These accounts are used automatically when posting transactions unless a specific account is selected on the transaction itself.
+        revenue-account: Default Revenue Account
+        revenue-account-help: Applied to income line items on invoices and sales transactions.
+        select-revenue-account: Select revenue account
+        expense-account: Default Expense Account
+        expense-account-help: Applied to cost and expense line items on bills and purchase transactions.
+        select-expense-account: Select expense account
+        ar-account: Default Accounts Receivable (AR) Account
+        ar-account-help: The asset account that tracks money owed to your organisation from customers.
+        select-ar-account: Select AR account
+        ap-account: Default Accounts Payable (AP) Account
+        ap-account-help: The liability account that tracks money your organisation owes to vendors.
+        select-ap-account: Select AP account
+        journal-behaviour: Journal Entry Behaviour
+        auto-post: Auto-Post Journal Entries
+        auto-post-help: Automatically post journal entries to the general ledger when created, without requiring manual approval.
+        saved: Accounting settings saved.
+      invoice:
+        title: Invoice Settings
+        numbering: Invoice Numbering
+        prefix: Invoice Number Prefix
+        prefix-help: This prefix is prepended to every new invoice number, e.g. 'INV-000001'.
+        currency-terms: Currency & Payment Terms
+        default-currency: Default Currency
+        default-currency-help: The currency applied to new invoices unless overridden on the invoice itself.
+        payment-terms: Default Payment Terms
+        payment-terms-help: Number of days after the invoice date that payment is due.
+        select-payment-terms: Select payment terms
+        due-on-receipt: Due on Receipt
+        net-days: Net {days}
+        default-text: Default Invoice Text
+        default-notes: Default Notes
+        default-notes-help: These notes appear at the bottom of every new invoice. You can override them per invoice.
+        default-notes-placeholder: e.g. Thank you for your business!
+        default-terms: Default Terms & Conditions
+        default-terms-help: Standard terms pre-filled on every new invoice.
+        default-terms-placeholder: e.g. Payment is due within 30 days of the invoice date.
+        default-template-title: Default Invoice Template
+        default-template: Default Template
+        default-template-help: The invoice template applied to all new invoices, including those auto-generated from Fleet-Ops orders. Leave blank to use the system default.
+        select-template: Select an invoice template
+        selected: "Selected:"
+        no-templates: No invoice templates found.
+        create-template: Create a template
+        enable-branding: to enable custom invoice branding.
+        automation: Automation
+        auto-send: Auto-Send on Creation
+        auto-send-help: Automatically email the invoice to the customer when it is created.
+        saved: Invoice settings saved.
+      payment:
+        title: Payment Settings
+        default-gateway-title: Default Payment Gateway
+        default-gateway: Default Gateway
+        default-gateway-help: The gateway used for all invoice payments unless overridden on the individual invoice. Only active gateways are listed.
+        select-gateway: Select a payment gateway
+        no-gateways: No active gateways found.
+        add-gateway: Add a gateway
+        enable-online: to enable online payments.
+        behaviour: Payment Behaviour
+        partial: Allow Partial Payments
+        partial-help: Allow customers to pay a portion of the invoice amount rather than the full balance.
+        wallet-credit: Auto-Apply Wallet Credit
+        wallet-credit-help: Automatically apply available wallet balance toward invoice payments before charging the gateway.
+        notifications: Payment Notifications
+        receipt: Send Payment Receipt
+        receipt-help: Email a payment receipt to the customer automatically after a successful payment.
+        saved: Payment settings saved.
+      gateways:
+        remove: Remove
+        remove-confirm-title: Remove Payment Gateway?
+        remove-confirm-body: This will remove "{name}". Any active integrations using this gateway will stop working.
+        removed: Gateway removed.
+        tab:
+          configuration: Configuration
+          webhook-events: Webhook Events
+    app:
+      search-placeholder: Search Ledger...
+      dashboard-name: Ledger Dashboard
+      dashboard-period: Dashboard period
+      nav:
+        dashboard: Dashboard
+        dashboard-description: Ledger dashboard and financial overview.
+        billing: Billing
+        billing-description: Invoices and reusable invoice templates.
+        invoices: Invoices
+        invoices-description: Create, send, and manage customer invoices.
+        invoice-templates: Invoice Templates
+        invoice-templates-description: Design reusable invoice templates.
+        payments: Payments
+        payments-description: Transactions, wallets, and payment gateways.
+        transactions: Transactions
+        transactions-description: Review payment and wallet transaction history.
+        wallets: Wallets
+        wallets-description: Manage company, customer, and driver wallets.
+        gateways: Gateways
+        gateways-description: Configure payment gateway integrations.
+        accounting: Accounting
+        accounting-description: Chart of accounts, journals, and general ledger.
+        chart-of-accounts: Chart of Accounts
+        chart-of-accounts-description: Manage the ledger account structure.
+        journal-entries: Journal Entries
+        journal-entries-description: Browse and create double-entry journal entries.
+        general-ledger: General Ledger
+        general-ledger-description: Review posted activity across accounts.
+        reports: Reports
+        reports-description: Financial statements and operational reports.
+        income-statement: Income Statement
+        income-statement-description: Revenue, expenses, and net income.
+        balance-sheet: Balance Sheet
+        balance-sheet-description: Assets, liabilities, and equity.
+        trial-balance: Trial Balance
+        trial-balance-description: Debit and credit balances by account.
+        cash-flow: Cash Flow
+        cash-flow-description: Cash movement over the selected period.
+        ar-aging: AR Aging
+        ar-aging-description: Outstanding receivables by age bucket.
+        wallet-summary: Wallet Summary
+        wallet-summary-description: Wallet balances and activity summary.
+        settings: Settings
+        settings-description: Ledger billing, payment, and accounting settings.
+        invoice-settings: Invoice Settings
+        invoice-settings-description: Configure invoice numbering, defaults, and templates.
+        payment-settings: Payment Settings
+        payment-settings-description: Configure payment defaults and gateway behavior.
+        accounting-settings: Accounting Settings
+        accounting-settings-description: Configure accounting automation and posting behavior.
+    extension:
+      header-description: Invoicing, payments, accounting, and real-time financial reporting.
+      shortcuts:
+        invoices: Invoices
+        invoices-description: Create, send, and manage customer invoices.
+        wallets: Wallets
+        wallets-description: Manage driver, customer, and company wallets and balances.
+        transactions: Transactions
+        transactions-description: A chronological record of every transaction.
+        payment-gateways: Payment Gateways
+        payment-gateways-description: Configure and manage payment gateway integrations.
+        chart-of-accounts: Chart of Accounts
+        chart-of-accounts-description: View and manage the full chart of accounts.
+        journal-entries: Journal Entries
+        journal-entries-description: Browse and create double-entry journal entries.
+        general-ledger: General Ledger
+        general-ledger-description: Review all posted transactions across every account.
+      menu:
+        invoice: Invoice
+        taler-refund: Taler Refund
+      categories:
+        kpi-tiles: KPI Tiles
+        analytics: Analytics
+        operations: Operations
+        legacy: Legacy
+        activity: Activity
+        reports: Reports
+      widgets:
+        revenue: Revenue
+        revenue-description: Total revenue for the current period with comparison.
+        expenses: Expenses
+        expenses-description: Total expenses for the current period with comparison.
+        net-income: Net Income
+        net-income-description: Revenue less expenses for the current period.
+        outstanding-ar: Outstanding AR
+        outstanding-ar-description: Unpaid receivables balance across open invoices.
+        overdue-ar: Overdue AR
+        overdue-ar-description: Overdue receivables requiring collection attention.
+        open-invoices: Open Invoices
+        open-invoices-description: Draft, sent, and overdue invoices still requiring action.
+        wallet-balance: Wallet Balance
+        wallet-balance-description: Active wallet balances, grouped by currency when needed.
+        active-wallets: Active Wallets
+        active-wallets-description: Count of active wallets with current balances.
+        revenue-trend: Revenue Trend
+        revenue-trend-description: Revenue and expense trend over selectable periods.
+        cash-flow-summary: Cash Flow Summary
+        cash-flow-summary-description: Operating, financing, and investing cash movement.
+        invoice-pipeline: Invoice Pipeline
+        invoice-pipeline-description: Counts and balances by invoice status.
+        ar-aging-risk: AR Aging Risk
+        ar-aging-risk-description: Condensed accounts receivable aging buckets.
+        wallet-balances: Wallet Balances
+        wallet-balances-description: Total wallet balances grouped by currency across all driver and customer wallets.
+        recent-activity: Recent Financial Activity
+        recent-activity-description: Live feed of the most recent double-entry journal entries in the ledger.
+        financial-reports: Financial Reports
+        financial-reports-description: Shortcuts into Ledger financial reports.
+        overview-legacy: Financial Overview (Legacy)
+        overview-legacy-description: Legacy grouped KPI widget. Replaced by individual Ledger KPI tiles.
+        revenue-chart-legacy: Revenue Chart (Legacy)
+        revenue-chart-legacy-description: Legacy daily revenue bar widget. Replaced by Revenue Trend.
+        invoice-summary-legacy: Invoice Summary (Legacy)
+        invoice-summary-legacy-description: Legacy invoice counts widget. Replaced by Invoice Pipeline.
+    widget:
+      refresh: Refresh
+      recent-activity: Recent Financial Activity
+      recent-activity-subtitle: Latest journal entries posted to the ledger
+      no-recent-entries: No recent journal entries.
+      load-activity-failed: Unable to load activity
+      ar-aging-summary: AR Aging Summary
+      no-ar-aging-data: No AR aging data.
+      ar-aging-risk: AR Aging Risk
+      open-invoices-count: "{count, plural, one {# open invoice} other {# open invoices}}"
+      invoices-count: "{count, plural, one {# invoice} other {# invoices}}"
+      no-outstanding-receivables: No outstanding receivables.
+      load-ar-aging-failed: Unable to load AR aging
+      cash-flow-summary: Cash Flow Summary
+      net-cash-change: "{amount} net cash change"
+      no-cash-flow-data: No cash flow data yet.
+      operating: Operating
+      financing: Financing
+      investing: Investing
+      net-cash-flow: Net cash flow
+      load-cash-flow-failed: Unable to load cash flow
+      invoice-pipeline: Invoice Pipeline
+      invoice-pipeline-subtitle: "{count, plural, one {# invoice} other {# invoices}} · open balance tracked by status"
+      no-invoices: No invoices yet.
+      load-invoice-status-failed: Unable to load invoice status
+      invoice-summary: Invoice Summary
+      financial-overview: Financial Overview
+      no-invoice-data: No invoice data.
+      metric: Metric
+      multi: Multi
+      current: Current
+      grouped-by-currency: Grouped by currency
+      vs-previous-period: vs previous period
+      load-metric-failed: Unable to load metric
+      revenue: Revenue
+      expenses: Expenses
+      net-income: Net Income
+      outstanding-ar: Outstanding AR
+      overdue-ar: Overdue AR
+      open-invoices: Open Invoices
+      wallet-balance: Wallet Balance
+      active-wallets: Active Wallets
+      financial-reports: Financial Reports
+      financial-reports-subtitle: Jump into the source reports behind the dashboard
+      income-statement: Income Statement
+      cash-flow: Cash Flow
+      ar-aging: AR Aging
+      wallet-summary: Wallet Summary
+      general-ledger: General Ledger
+      revenue-chart: Revenue Chart
+      no-revenue-period: No revenue data for this period.
+      revenue-trend: Revenue Trend
+      revenue-trend-subtitle: "{revenue} revenue · {net} net"
+      no-revenue-data: No revenue data yet.
+      value: Value
+      load-revenue-trend-failed: Unable to load revenue trend
+      top-wallets: Top Wallets
+      no-wallet-data: No wallet data.
+      wallet-balances: Wallet Balances
+      wallet-balances-subtitle: Grouped by currency with top active wallets
+      wallets-count: "{count, plural, one {# wallet} other {# wallets}}"
+      load-wallet-balances-failed: Unable to load wallet balances
+      invoice-status:
+        draft: Draft
+        sent: Sent
+        paid: Paid
+        overdue: Overdue
+        cancelled: Cancelled
+        void: Void
+    reports:
+      reports: Reports
+      run-report: Run Report
+      select-report-hint: Select a report and click "Run Report" to generate it.
+      balance-sheet: Balance Sheet
+      income-statement: Income Statement
+      cash-flow: Cash Flow
+      cash-flow-statement: Cash Flow Statement
+      ar-aging: AR Aging
+      ar-aging-title: Accounts Receivable Aging
+      trial-balance: Trial Balance
+      wallet-summary: Wallet Summary
+      select-period: Select period
+      as-of-date: As of date
+      refresh: Refresh
+      as-of: As of {date}
+      balanced: Balanced
+      unbalanced: Unbalanced
+      profitable: Profitable
+      net-loss: Net Loss
+      assets: Assets
+      liabilities: Liabilities
+      equity: Equity
+      no-section-accounts: No {section} accounts
+      total-section: Total {section}
+      total-assets: Total Assets
+      total-liabilities: Total Liabilities
+      total-equity: Total Equity
+      total-liabilities-equity: Total Liabilities & Equity
+      no-data-date: No report data available. Select a date and refresh.
+      no-data-period: No report data available. Select a period and refresh.
+      revenue: Revenue
+      expenses: Expenses
+      total-revenue: Total Revenue
+      total-expenses: Total Expenses
+      net-income: Net Income
+      no-revenue: No revenue recorded
+      no-expenses: No expenses recorded
+      operating-activities: Operating Activities
+      financing-activities: Financing Activities
+      net-operating: Net Operating Cash Flow
+      net-financing: Net Financing Cash Flow
+      net-change: Net Change in Cash
+      no-operating: No operating activity data
+      no-financing: No financing activity data
+      code: Code
+      account: Account
+      type: Type
+      debit: Debit
+      credit: Credit
+      totals: Totals
+      no-account-data: No account data available
+      total-outstanding: Total Outstanding
+      outstanding-invoices: Outstanding Invoices
+      invoice: Invoice
+      customer: Customer
+      due-date: Due Date
+      balance: Balance
+      bucket: Bucket
+      days-overdue: Days Overdue
+      no-outstanding: No outstanding receivables
+      wallets-by-owner-type: Wallets by Owner Type
+      owner-type: Owner Type
+      count: Count
+      total-balance: Total Balance
+      currency: Currency
+      no-wallet-data: No wallet data
+      period-activity: Period Transaction Activity
+      credits: Credits
+      credit-count: Credit Count
+      debits: Debits
+      debit-count: Debit Count
+      no-transactions-period: No transactions in this period
+      top-wallets: Top Wallets by Balance
+      wallet: Wallet
+      owner: Owner
+      no-wallets: No wallets found
+      buckets:
+        current: Current
+        days-1-30: 1–30 days
+        days-31-60: 31–60 days
+        days-61-90: 61–90 days
+        days-over-90: 90+ days
+    general-ledger:
+      title: General Ledger
+      select-date-range: Select date range
+      collapse-all: Collapse All
+      expand-all: Expand All
+      entries-count: "{count, plural, one {# entry} other {# entries}}"
+      date: Date
+      ref: "Ref #"
+      description: Description
+      debit: Debit
+      credit: Credit
+      balance: Balance
+      totals: Totals
+      no-entries: No journal entries for this account.
+      no-entries-period: No journal entries for this account in the selected period.
+      no-accounts: No accounts found.
+      no-accounts-hint: Create accounts in the Chart of Accounts to see entries here.
+      types:
+        all: All Types
+        asset: Asset
+        liability: Liability
+        equity: Equity
+        revenue: Revenue
+        expense: Expense
+  modals:
+    invoice-preview:
+      no-content: No invoice content to display.
+    template-preview:
+      no-content: No template content to display.
+      title: Template Preview
+common:
+  ledger: Ledger
+  overview: Overview
+  transactions: Transactions
+resource:
+  account: Account
+  accounts: Accounts
+  invoice: Invoice
+  invoices: Invoices
+  invoice-template: Invoice Template
+  invoice-templates: Invoice Templates
+  journal: Journal Entry
+  journal-entries: Journal Entries
+  transaction: Transaction
+  transactions: Transactions
+  wallet: Wallet
+  wallets: Wallets
+  gateway: Gateway
+  gateways: Gateways
+  wallet-transaction: Wallet Transaction
+  wallet-transactions: Wallet Transactions
+column:
+  id: ID
+  number: Number
+  name: Name
+  code: Code
+  type: Type
+  status: Status
+  direction: Direction
+  description: Description
+  date: Date
+  created-at: Created
+  updated-at: Updated
+  amount: Amount
+  balance: Balance
+  balance-after: Balance After
+  total: Total
+  net-amount: Net Amount
+  fee: Fee
+  tax: Tax
+  currency: Currency
+  gateway: Gateway
+  payment-method: Payment Method
+  reference: Reference
+  memo: Memo
+  period: Period
+  settled-at: Settled At
+  failure-reason: Failure Reason
+  due-date: Due Date
+  issued-at: Issued At
+  invoice-date: Invoice Date
+  customer: Customer
+  debit-account: Debit Account
+  credit-account: Credit Account
+  source: Source
+  driver: Driver
+  environment: Environment
+  default: Default
+  owner: Owner
+  payer: Payer
+  payee: Payee
+  frozen: Frozen
+  orientation: Orientation
+menu:
+  dashboard: Dashboard
+  billing: Billing
+  invoices: Invoices
+  payments: Payments
+  wallets: Wallets
+  gateways: Gateways
+  accounting: Accounting
+  chart-of-accounts: Chart of Accounts
+  journal-entries: Journal Entries
+  general-ledger: General Ledger
+  reports: Reports
+  income-statement: Income Statement
+  balance-sheet: Balance Sheet
+  trial-balance: Trial Balance
+  cash-flow: Cash Flow
+  ar-aging: AR Aging
+  wallet-summary: Wallet Summary
+  settings: Settings
+  invoice-settings: Invoice Settings
+  payment-settings: Payment Settings
+  accounting-settings: Accounting Settings
+invoice:
+  no-transactions: No transactions recorded for this invoice.
+  actions:
+    preview-invoice: "Preview Invoice #{number}"
+    preview-invoice-fallback: Preview Invoice
+    download-pdf: Download PDF
+    record-payment: Record Payment
+    record-payment-title: Record Payment — {number}
+    copy-payment-link: Copy Payment Link
+    copy-invoice-url: Copy Invoice URL
+    payment-link-copied: Invoice URL copied to clipboard.
+    payment-link-copy-failed: Failed to copy invoice URL. Please copy it manually.
+    send: Send Invoice
+    void: Void Invoice
+    edit: Edit Invoice

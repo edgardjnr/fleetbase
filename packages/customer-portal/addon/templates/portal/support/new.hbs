@@ -1,0 +1,80 @@
+<Portal::ContentWrapper class="portal-page-card">
+    <div class="portal-section-header">
+        <div>
+            <div class="portal-section-eyebrow">{{t "customer-portal.ui.support.eyebrow"}}</div>
+            <h1>{{t "customer-portal.ui.support.new-ticket"}}</h1>
+            <p>{{t "customer-portal.ui.support.new-description"}}</p>
+        </div>
+        <LinkTo @route="portal.support" class="portal-quick-link">
+            <FaIcon @icon="arrow-left" />
+            <span>{{t "customer-portal.ui.support.back"}}</span>
+        </LinkTo>
+    </div>
+
+    <form {{on "submit" (perform this.createTicket)}} class="portal-form-stack portal-form-surface">
+        <InputGroup @name={{t "customer-portal.ui.support.subject"}} @value={{this.title}} @placeholder={{t "customer-portal.ui.support.subject-placeholder"}} />
+        <InputGroup @name={{t "customer-portal.ui.common.order"}} @helpText={{t "customer-portal.ui.support.order-help"}}>
+            <PowerSelect
+                @options={{this.model.orders}}
+                @selected={{this.order}}
+                @onChange={{fn (mut this.order)}}
+                @placeholder={{t "customer-portal.ui.support.select-order"}}
+                @triggerClass="form-select form-input"
+                @allowClear={{true}}
+                as |order|
+            >
+                {{or order.tracking_number.tracking_number order.public_id order.id}}
+            </PowerSelect>
+        </InputGroup>
+        <InputGroup @name={{t "customer-portal.ui.support.category"}}>
+            <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                <PowerSelect
+                    @options={{this.customerIssueCategories}}
+                    @selected={{this.selectedIssueCategory}}
+                    @onChange={{this.setIssueCategory}}
+                    @placeholder={{t "customer-portal.ui.support.select-category"}}
+                    @triggerClass="form-select form-input"
+                    @renderInPlace={{true}}
+                    as |category|
+                >
+                    <div class="text-sm">
+                        <div class="font-semibold normalize-in-trigger">{{category.label}}</div>
+                        <div class="hide-from-trigger">{{category.description}}</div>
+                    </div>
+                </PowerSelect>
+            </div>
+        </InputGroup>
+        <InputGroup @name={{t "customer-portal.ui.support.priority"}}>
+            <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                <PowerSelect
+                    @options={{this.issuePriorities}}
+                    @selected={{this.selectedIssuePriority}}
+                    @onChange={{this.setIssuePriority}}
+                    @placeholder={{t "customer-portal.ui.support.select-priority"}}
+                    @triggerClass="form-select form-input"
+                    @renderInPlace={{true}}
+                    as |priority|
+                >
+                    <div class="text-sm">
+                        <div class="font-semibold normalize-in-trigger">{{priority.label}}</div>
+                        <div class="hide-from-trigger">{{priority.description}}</div>
+                    </div>
+                </PowerSelect>
+            </div>
+        </InputGroup>
+        <InputGroup @name={{t "customer-portal.ui.support.tags"}} @helpText={{t "customer-portal.ui.support.tags-help"}}>
+            <TagInput class="form-input" @tags={{this.tags}} @addTag={{this.addTag}} @removeTagAtIndex={{this.removeTag}} @placeholder={{t "customer-portal.ui.support.add-tags"}} as |tag|>
+                {{tag}}
+            </TagInput>
+        </InputGroup>
+        <InputGroup @name={{t "customer-portal.ui.support.details"}}>
+            <Textarea @value={{this.report}} class="form-input w-full" rows="6" placeholder={{t "customer-portal.ui.support.details-placeholder"}} />
+        </InputGroup>
+        <div class="portal-form-actions">
+            <LinkTo @route="portal.support" class="portal-quick-link">
+                <span>{{t "customer-portal.ui.common.cancel"}}</span>
+            </LinkTo>
+            <Button @buttonType="submit" @type="primary" @icon="paper-plane" @text={{t "customer-portal.ui.support.create-ticket"}} @isLoading={{this.createTicket.isRunning}} />
+        </div>
+    </form>
+</Portal::ContentWrapper>

@@ -1,0 +1,233 @@
+<div class="order-route-editor" ...attributes>
+    <div class="flex flex-row items-start justify-between mb-4">
+        <div>
+            <div class="text-sm font-semibold dark:text-gray-100">{{t "fleet-ops.ui.order.route-editor.route-structure"}}</div>
+            <div class="text-xs text-gray-400 mt-1">{{this.routeSummary}}</div>
+        </div>
+
+        <div class="flex flex-wrap justify-end gap-2">
+            {{#if (gt this.routeOptimization.availableEngines.length 1)}}
+                <RouteOptimizationEngineSelectButton
+                    @onClick={{perform this.optimizeRouteWithService}}
+                    @isLoading={{this.optimizeRouteWithService.isRunning}}
+                    @size="sm"
+                    @disabled={{not this.canOptimizeRoute}}
+                />
+            {{else}}
+                <Button
+                    @type="magic"
+                    @icon="magic"
+                    @text={{t "order.fields.optimize-route"}}
+                    @size="sm"
+                    @onClick={{perform this.optimizeRoute}}
+                    @permission="fleet-ops optimize order"
+                    @helpText={{t "order.fields.optimize-route-help-text"}}
+                    @disabled={{not this.canOptimizeRoute}}
+                    @isLoading={{this.optimizeRoute.isRunning}}
+                />
+            {{/if}}
+
+            <Button @icon="map-marked-alt" @text={{t "modals.order-route-form.add"}} @size="sm" @onClick={{this.addWaypoint}} @helpText={{t "modals.order-route-form.add-text"}} />
+        </div>
+    </div>
+
+    <div class="fleetops-route-editor-section mb-3">
+        <div class="fleetops-route-editor-section__header">
+            <div class="fleetops-route-editor-section__title-group">
+                <span class="fleetops-route-stop-badge fleetops-route-editor-section__badge" style={{this.pickupStop.badgeStyle}}>{{this.pickupStop.label}}</span>
+                <div>
+                    <div class="fleetops-route-editor-section__title">{{t "fleet-ops.ui.order.route-editor.pickup"}}</div>
+                    <div class="fleetops-route-editor-section__subtitle">{{t "fleet-ops.ui.order.route-editor.route-starting-location"}}</div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                {{#if @resource.payload.pickup}}
+                    <Button @text={{t "modals.order-route-form.edit-address"}} @icon="edit" @size="xs" @onClick={{fn this.placeActions.modal.edit @resource.payload.pickup}} />
+                    <Button @type="danger" @icon="trash" @iconPrefix="fas" @size="xs" @onClick={{fn this.clearPayloadPlace "pickup"}} />
+                {{/if}}
+            </div>
+        </div>
+
+        <div class="fleetops-route-editor-section__body">
+            <ModelSelect
+                @modelName="place"
+                @selectedModel={{@resource.payload.pickup}}
+                @placeholder={{t "modals.order-route-form.select-pickup"}}
+                @triggerClass="form-select form-input"
+                @infiniteScroll={{false}}
+                @customSearchEndpoint="places/search"
+                @renderInPlace={{true}}
+                @onChange={{fn this.setPayloadPlace "pickup"}}
+                as |place|
+            >
+                <Place::Address @place={{place}} />
+            </ModelSelect>
+
+            {{#if @resource.payload.pickup.hasInvalidCoordinates}}
+                <div class="leading-5 text-sm text-red-400 mt-2">
+                    <FaIcon @icon="exclamation-triangle" class="mr-1" />
+                    {{t "modals.order-route-form.invalid"}}
+                </div>
+            {{/if}}
+        </div>
+    </div>
+
+    <div class="fleetops-route-editor-section mb-3">
+        <div class="fleetops-route-editor-section__header">
+            <div class="fleetops-route-editor-section__title-group">
+                <span class="fleetops-route-stop-badge fleetops-route-editor-section__badge" style={{this.stopsSectionBadgeStyle}}>{{this.intermediateWaypoints.length}}</span>
+                <div>
+                    <div class="fleetops-route-editor-section__title">{{t "fleet-ops.ui.order.route-editor.intermediate-stops"}}</div>
+                    <div class="fleetops-route-editor-section__subtitle">{{t "fleet-ops.ui.order.route-editor.drag-to-reorder-stops-between-the"}}</div>
+                </div>
+            </div>
+
+            <div class="text-xs text-gray-400">{{t "fleet-ops.ui.order.route-editor.configured" length=this.intermediateWaypoints.length}}</div>
+        </div>
+
+        <div class="fleetops-route-editor-section__body">
+            {{#if this.intermediateWaypoints.length}}
+                <DragSortList class="overflow-visible" @items={{this.intermediateWaypoints}} @dragEndAction={{this.sortWaypoints}} as |waypoint index|>
+                    {{#let (get this.intermediateRouteStops index) as |stop|}}
+                        <div id={{concat "waypoint_" (add index 1)}} class="fleetops-route-editor-stop-row">
+                            <div class="fleetops-route-editor-stop-row__grip cursor-move">
+                                <FaIcon @icon="grip-lines" @prefix="fas" class="text-gray-400" />
+                            </div>
+
+                            <div class="fleetops-route-editor-stop-row__label">
+                                <span class="fleetops-route-stop-badge fleetops-route-editor-stop-row__badge" style={{stop.badgeStyle}}>{{stop.label}}</span>
+                                <span class="fleetops-route-editor-stop-row__title">{{stop.title}}</span>
+                            </div>
+
+                            <div class="fleetops-route-editor-stop-row__field">
+                                {{#let (or waypoint.place waypoint) as |waypointPlace|}}
+                                    <ModelSelect
+                                        @modelName="place"
+                                        @selectedModel={{waypointPlace}}
+                                        @placeholder={{concat (t "order.fields.select-waypoint") " " (add index 1)}}
+                                        @triggerClass="form-select form-input truncate"
+                                        @infiniteScroll={{false}}
+                                        @customSearchEndpoint="places/search"
+                                        @renderInPlace={{true}}
+                                        @onChange={{fn this.setWaypointPlace index}}
+                                        as |place|
+                                    >
+                                        <Place::Address @place={{place}} />
+                                    </ModelSelect>
+
+                                    {{#if waypointPlace.hasInvalidCoordinates}}
+                                        <div class="leading-5 text-sm text-red-400 mt-2">
+                                            <FaIcon @icon="exclamation-triangle" class="mr-1" />
+                                            {{t "modals.order-route-form.invalid"}}
+                                        </div>
+                                    {{/if}}
+                                {{/let}}
+                            </div>
+
+                            <div class="fleetops-route-editor-stop-row__actions">
+                                {{#let (or waypoint.place waypoint) as |waypointPlace|}}
+                                    {{#if waypointPlace}}
+                                        <Button @icon="edit" @size="sm" @onClick={{fn this.placeActions.modal.edit waypointPlace}} />
+                                    {{/if}}
+                                {{/let}}
+                                <Button @type="danger" @icon="trash" @iconPrefix="fas" @size="sm" @onClick={{fn this.removeWaypoint waypoint}} />
+                            </div>
+                        </div>
+                    {{/let}}
+                </DragSortList>
+            {{else}}
+                <div class="fleetops-route-editor-empty-state">
+                    <div class="text-sm dark:text-gray-100">{{t "fleet-ops.ui.order.route-editor.no-intermediate-stops-yet"}}</div>
+                    <div class="text-xs text-gray-400 mt-1">{{t "fleet-ops.ui.order.route-editor.add-a-stop-to-build-a"}}</div>
+                </div>
+            {{/if}}
+        </div>
+    </div>
+
+    <div class="fleetops-route-editor-section mb-3">
+        <div class="fleetops-route-editor-section__header">
+            <div class="fleetops-route-editor-section__title-group">
+                <span class="fleetops-route-stop-badge fleetops-route-editor-section__badge" style={{this.dropoffStop.badgeStyle}}>{{this.dropoffStop.label}}</span>
+                <div>
+                    <div class="fleetops-route-editor-section__title">{{t "fleet-ops.ui.order.route-editor.dropoff"}}</div>
+                    <div class="fleetops-route-editor-section__subtitle">{{t "fleet-ops.ui.order.route-editor.route-ending-location"}}</div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                {{#if @resource.payload.dropoff}}
+                    <Button @text={{t "modals.order-route-form.edit-address"}} @icon="edit" @size="xs" @onClick={{fn this.placeActions.modal.edit @resource.payload.dropoff}} />
+                    <Button @type="danger" @icon="trash" @iconPrefix="fas" @size="xs" @onClick={{fn this.clearPayloadPlace "dropoff"}} />
+                {{/if}}
+            </div>
+        </div>
+
+        <div class="fleetops-route-editor-section__body">
+            <ModelSelect
+                @modelName="place"
+                @selectedModel={{@resource.payload.dropoff}}
+                @placeholder={{t "modals.order-route-form.select-dropoff"}}
+                @triggerClass="form-select form-input"
+                @infiniteScroll={{false}}
+                @customSearchEndpoint="places/search"
+                @renderInPlace={{true}}
+                @onChange={{fn this.setPayloadPlace "dropoff"}}
+                as |place|
+            >
+                <Place::Address @place={{place}} />
+            </ModelSelect>
+
+            {{#if @resource.payload.dropoff.hasInvalidCoordinates}}
+                <div class="leading-5 text-sm text-red-400 mt-2">
+                    <FaIcon @icon="exclamation-triangle" class="mr-1" />
+                    {{t "modals.order-route-form.invalid"}}
+                </div>
+            {{/if}}
+        </div>
+    </div>
+
+    <div class="fleetops-route-editor-section">
+        <div class="fleetops-route-editor-section__header">
+            <div class="fleetops-route-editor-section__title-group">
+                <span class="fleetops-route-stop-badge fleetops-route-editor-section__badge" style={{this.returnStop.badgeStyle}}>{{this.returnStop.label}}</span>
+                <div>
+                    <div class="fleetops-route-editor-section__title">{{t "fleet-ops.ui.order.route-editor.return"}}</div>
+                    <div class="fleetops-route-editor-section__subtitle">{{t "fleet-ops.ui.order.route-editor.optional-fallback-destination"}}</div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                {{#if @resource.payload.return}}
+                    <Button @text={{t "modals.order-route-form.edit-address"}} @icon="edit" @size="xs" @onClick={{fn this.placeActions.modal.edit @resource.payload.return}} />
+                    <Button @type="danger" @icon="trash" @iconPrefix="fas" @size="xs" @onClick={{fn this.clearPayloadPlace "return"}} />
+                {{/if}}
+            </div>
+        </div>
+
+        <div class="fleetops-route-editor-section__body">
+            <ModelSelect
+                @modelName="place"
+                @selectedModel={{@resource.payload.return}}
+                @placeholder={{t "modals.order-route-form.select-return"}}
+                @triggerClass="form-select form-input"
+                @infiniteScroll={{false}}
+                @customSearchEndpoint="places/search"
+                @renderInPlace={{true}}
+                @onChange={{fn this.setPayloadPlace "return"}}
+                as |place|
+            >
+                <Place::Address @place={{place}} />
+            </ModelSelect>
+
+            {{#if @resource.payload.return.hasInvalidCoordinates}}
+                <div class="leading-5 text-sm text-red-400 mt-2">
+                    <FaIcon @icon="exclamation-triangle" class="mr-1" />
+                    {{t "modals.order-route-form.invalid"}}
+                </div>
+            {{/if}}
+        </div>
+    </div>
+
+    <Spacer @height="160px" />
+</div>

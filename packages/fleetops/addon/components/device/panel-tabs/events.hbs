@@ -1,0 +1,30 @@
+<div class="flex flex-col gap-3 p-3" ...attributes>
+    <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">{{t "fleet-ops.ui.device.panel-tabs-events.telemetry-events"}}</h2>
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-300">{{t "fleet-ops.ui.device.panel-tabs-events.recent-device-events-warning-signals-and"}}</p>
+        </div>
+        <Button @icon="refresh" @size="xs" @onClick={{this.refreshEvents}} @isLoading={{this.loadEvents.isRunning}} />
+    </div>
+
+    <Layout::Resource::Tabular
+        @resource="device-event"
+        @title={{t "fleet-ops.ui.device.panel-tabs-events.telemetry-events"}}
+        @data={{this.events}}
+        @columns={{this.columns}}
+        @controller={{this}}
+        @pagination={{false}}
+        @withoutHeader={{true}}
+        @tableWrapperClass="no-table-extra-spacing"
+        @emptyStateComponent={{component
+            "table/empty-state"
+            variant="compact"
+            icon="bolt"
+            title=(t "fleet-ops.ui.device.panel-tabs-events.no-telemetry-events")
+            description=(t "fleet-ops.ui.device.panel-tabs-events.events-appear-after-this-device-reports")
+            primaryText=(t "fleet-ops.ui.device.panel-tabs-events.refresh")
+            primaryIcon="refresh"
+            primaryAction=this.refreshEvents
+        }}
+    />
+</div>

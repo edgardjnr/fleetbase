@@ -1,0 +1,107 @@
+import Component from '@glimmer/component';
+import { inject as service } from '@ember/service';
+
+export default class PortalOrderDetailsTrackingComponent extends Component {
+    @service intl;
+
+    get normalizedStatus() {
+        return String(this.args.resource?.status ?? '').toLowerCase();
+    }
+
+    get hasStarted() {
+        return ['started', 'in-progress', 'in_progress', 'driver-enroute', 'driver_enroute', 'enroute', 'in-transit', 'in_transit'].includes(this.normalizedStatus);
+    }
+
+    get isDispatchedWaitingStart() {
+        return ['dispatched', 'assigned', 'accepted'].includes(this.normalizedStatus);
+    }
+
+    get isCreatedWaitingDispatch() {
+        return !this.normalizedStatus || ['created', 'pending', 'scheduled', 'ready'].includes(this.normalizedStatus);
+    }
+
+    get shouldShowLiveEta() {
+        return this.hasTrackerData && this.hasStarted;
+    }
+
+    get lifecycleMessage() {
+        if (this.shouldShowLiveEta) {
+            return null;
+        }
+
+        if (this.isDispatchedWaitingStart) {
+            return {
+                icon: 'truck-ramp-box',
+                title: this.intl.t('customer-portal.ui.tracking.dispatched-title'),
+                body: this.intl.t('customer-portal.ui.tracking.dispatched-body'),
+                status: 'dispatched',
+            };
+        }
+
+        if (this.isCreatedWaitingDispatch) {
+            return {
+                icon: 'clipboard-check',
+                title: this.intl.t('customer-portal.ui.tracking.created-title'),
+                body: this.intl.t('customer-portal.ui.tracking.created-body'),
+                status: 'created',
+            };
+        }
+
+        return {
+            icon: 'location-crosshairs',
+            title: this.intl.t('customer-portal.ui.tracking.unavailable-title'),
+            body: this.intl.t('customer-portal.ui.tracking.unavailable-body'),
+            status: this.normalizedStatus || 'pending',
+        };
+    }
+
+    get trackerData() {
+        return this.args.resource?.tracker_data ?? null;
+    }
+
+    get hasTrackerData() {
+        return Boolean(this.trackerData);
+    }
+
+    get activeStop() {
+        return this.trackerData?.active_stop ?? null;
+    }
+
+    get route() {
+        return this.trackerData?.route ?? {};
+    }
+
+    get eta() {
+        return this.trackerData?.eta ?? this.args.resource?.eta ?? {};
+    }
+
+    get activeEtaSeconds() {
+        return this.activeStop?.eta_seconds ?? this.activeStop?.duration_in_traffic_s ?? this.activeStop?.duration_s ?? this.eta?.active_stop_seconds ?? null;
+    }
+
+    get completionEtaAt() {
+        return this.eta?.completion_at ?? this.trackerData?.eta?.completion_at ?? null;
+    }
+
+    get remainingDistance() {
+        return this.route?.distance_m ?? null;
+    }
+
+    get remainingDuration() {
+        return this.route?.duration_in_traffic_s ?? this.route?.duration_s ?? null;
+    }
+
+    get confidencePercent() {
+        const confidence = this.trackerData?.confidence;
+
+        if (typeof confidence === 'number') {
+            return confidence > 1 ? Math.round(confidence) : Math.round(confidence * 100);
+        }
+
+        return null;
+    }
+
+    get updatedAt() {
+        return this.trackerData?.generated_at ?? this.args.resource?.updated_at;
+    }
+}

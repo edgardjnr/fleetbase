@@ -1,0 +1,16 @@
+<ContentPanel @title={{t "registry-bridge.ui.registry-configuration"}} @open={{true}} @wrapperClass="bordered-classic">
+    <InputGroup @name={{t "registry-bridge.ui.registry-host"}} @value={{this.registryHost}} disabled={{or this.getConfigValues.isRunning this.saveConfigValues.isRunning}} />
+    <InputGroup @name={{t "registry-bridge.ui.registry-token"}} @value={{this.registryToken}} disabled={{or this.getConfigValues.isRunning this.saveConfigValues.isRunning}} />
+</ContentPanel>
+<EmberWormhole @to="next-view-section-subheader-actions">
+    <Button
+        @type="primary"
+        @size="sm"
+        @icon="save"
+        @text={{t "registry-bridge.ui.save-changes"}}
+        @onClick={{perform this.saveConfigValues}}
+        @disabled={{or this.getConfigValues.isRunning this.saveConfigValues.isRunning}}
+        @isLoading={{this.saveConfigValues.isRunning}}
+    />
+</EmberWormhole>
+<Spacer @height="400px" />

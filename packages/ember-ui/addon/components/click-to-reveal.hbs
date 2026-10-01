@@ -1,0 +1,19 @@
+<div class="relative click-to-reveal {{this.wrapperClass}} {{if this.isVisible 'is-visible' 'is-blurred'}}" {{on "click" (fn this.copy @value)}} ...attributes>
+    <span class="click-to-reveal--hidden-value">
+        {{#if (has-block)}}
+            {{yield}}
+        {{else}}
+            {{n-a @value}}
+        {{/if}}
+    </span>
+    <Button @text={{get-default-value @buttonText (t "ember-ui.click-to-reveal.click-to-reveal")}} @size="xs" @wrapperClass="click-to-reveal--button" @onClick={{this.reveal}} @isLoading={{this.isLoading}} />
+    {{#if this.canClickToCopy}}
+        <span class="click-to-reveal--tooltip">
+            {{#if this.isCopied}}
+                {{t "ember-ui.click-to-copy.copied"}}
+            {{else}}
+                {{t "ember-ui.click-to-copy.click-to-copy"}}
+            {{/if}}
+        </span>
+    {{/if}}
+</div>

@@ -1,0 +1,380 @@
+import Service from '@ember/service';
+import { inject as service } from '@ember/service';
+import { tracked } from '@glimmer/tracking';
+import { task } from 'ember-concurrency';
+import { action } from '@ember/object';
+import { isArray } from '@ember/array';
+import { next } from '@ember/runloop';
+
+/**
+ * Service for managing dashboards, including loading, creating, and deleting dashboards, as well as managing the current dashboard and widget states.
+ * Utilizes Ember services such as `store`, `fetch`, `notifications`, and `universe` for data management and user interaction.
+ *
+ * @extends Service
+ */
+export default class DashboardService extends Service {
+    @service store;
+    @service fetch;
+    @service notifications;
+    @service universe;
+    @service('universe/widget-service') widgetService;
+    @service intl;
+
+    /**
+     * Tracked array of available dashboards.
+     * @type {Array}
+     */
+    @tracked dashboards = [];
+
+    /**
+     * Tracked property representing the currently selected dashboard.
+     * @type {Object}
+     */
+    @tracked currentDashboard;
+
+    /**
+     * Tracked boolean indicating if the dashboard is in editing mode.
+     * @type {boolean}
+     */
+    @tracked isEditingDashboard = false;
+
+    /**
+     * Tracked boolean indicating if a widget is being added.
+     * @type {boolean}
+     */
+    @tracked isAddingWidget = false;
+
+    /**
+     * Determines if panel should render open when no widgets are loaded in the dashboard.
+     *
+     * @memberof DashboardService
+     */
+    @tracked showPanelWhenZeroWidgets = false;
+
+    /**
+     * Last options used to load dashboards. Used when a delete/reload needs to
+     * preserve the current component scope.
+     *
+     * @memberof DashboardService
+     */
+    lastLoadOptions = {};
+
+    /**
+     * Task for loading dashboards from the store. It sets the current dashboard and checks if adding widget is necessary.
+     * Uses drop modifier to prevent concurrent executions and race conditions.
+     */
+    @task({ drop: true }) *loadDashboards({ defaultDashboardId = 'dashboard', defaultDashboardName = 'Default Dashboard', extension = 'core', slot = null } = {}) {
+        this.lastLoadOptions = { defaultDashboardId, defaultDashboardName, extension, slot };
+        this.universe.registerDashboard(defaultDashboardId);
+
+        const dashboards = yield this.store.query('dashboard', { limit: -1, extension });
+        if (isArray(dashboards)) {
+            const savedDashboards = typeof dashboards.toArray === 'function' ? dashboards.toArray() : dashboards;
+            const systemDashboards = this._createSystemDashboards({ defaultDashboardId, defaultDashboardName, extension, slot });
+
+            this.dashboards = [...systemDashboards, ...savedDashboards];
+
+            // Set the current dashboard
+            this.currentDashboard = this._getNextDashboard({ defaultDashboardId, slot });
+            if (this.currentDashboard && this.currentDashboard.widgets.length === 0 && this.showPanelWhenZeroWidgets === true) {
+                this.onAddingWidget(true);
+            }
+        }
+    }
+
+    /**
+     * Task for selecting a dashboard. Handles dashboard switching and updates the current dashboard.
+     * @param {Object} dashboard - The dashboard object to select.
+     */
+    @task *selectDashboard(dashboard) {
+        if (dashboard.user_uuid === 'system') {
+            this.currentDashboard = dashboard;
+            yield this.fetch.post('dashboards/reset-default');
+            return;
+        }
+
+        const currentDashboard = yield this.fetch.post('dashboards/switch', { dashboard_uuid: dashboard.id }, { normalizeToEmberData: true }).catch((error) => {
+            this.notifications.serverError(error);
+        });
+
+        if (currentDashboard) {
+            this.currentDashboard = currentDashboard;
+        }
+    }
+
+    /**
+     * Task for creating a new dashboard. It handles dashboard creation, success notification, and dashboard selection.
+     * @param {string} name - Name of the new dashboard.
+     */
+    @task *createDashboard(name, attributes = {}) {
+        try {
+            const dashboardRecord = this.store.createRecord('dashboard', { name, is_default: true, ...attributes });
+            const dashboard = yield dashboardRecord.save();
+
+            if (dashboard) {
+                this.notifications.success(this.intl.t('services.dashboard-service.create-dashboard-success-notification', { dashboardName: dashboard.name }));
+                this.selectDashboard.perform(dashboard);
+                this.dashboards.pushObject(dashboard);
+            }
+        } catch (err) {
+            this.notifications.serverError(err);
+        }
+    }
+
+    /**
+     * Task for deleting a dashboard. Handles dashboard deletion and success notification.
+     * @param {Object} dashboard - The dashboard object to delete.
+     * @param {Object} [options={}] - Optional configuration options.
+     */
+    @task *deleteDashboard(dashboard, options = {}) {
+        yield dashboard.destroyRecord().catch((error) => {
+            this.notification.serverError(error);
+
+            if (typeof options.onError === 'function') {
+                options.onError(error, dashboard);
+            }
+        });
+
+        this.notifications.success(this.intl.t('services.dashboard-service.delete-dashboard-success-notification', { dashboardName: dashboard.name }));
+        yield this.loadDashboards.perform(this.lastLoadOptions);
+        yield this.selectDashboard.perform(this._getNextDashboard(this.lastLoadOptions));
+
+        if (typeof options.callback === 'function') {
+            options.callback(this.currentDashboard);
+        }
+    }
+
+    /**
+     * Task for setting the current dashboard.
+     * @param {Object} dashboard - The dashboard object to set as current.
+     */
+    @task *setCurrentDashboard(dashboard) {
+        const currentDashboard = yield this.fetch.post('dashboards/switch', { dashboard_uuid: dashboard.id }, { normalizeToEmberData: true }).catch((error) => {
+            this.notifications.serverError(error);
+        });
+
+        if (currentDashboard) {
+            this.currentDashboard = currentDashboard;
+        }
+    }
+
+    /**
+     * Action to toggle dashboard editing state.
+     * @param {boolean} [state=true] - State to set for editing.
+     */
+    @action onChangeEdit(state = true) {
+        this.isEditingDashboard = state;
+    }
+
+    /**
+     * Action to toggle the state of adding a widget.
+     * @param {boolean} [state=true] - State to set for adding a widget.
+     */
+    @action onAddingWidget(state = true) {
+        this.isAddingWidget = state;
+    }
+
+    /**
+     * Reset dashboards
+     *
+     * @memberof DashboardService
+     */
+    reset() {
+        this.currentDashboard = null;
+        this.dashboards = [];
+
+        // Defer the store.unloadAll() pair to the next runloop tick. reset() is
+        // invoked from DashboardComponent's constructor, which itself runs
+        // during a render. Calling unloadAll() synchronously mutates the
+        // `<RelatedCollection:dashboard-widget>.length` tracked tag that the
+        // PREVIOUSLY-rendered Dashboard (if any) consumed earlier in the same
+        // computation, triggering: "Assertion Failed: You attempted to update
+        // <RelatedCollection:dashboard-widget>.length, but it had already been
+        // used previously in the same computation." This blows up the app
+        // whenever a user navigates between two routes that each mount a
+        // Dashboard.
+        //
+        // Scheduling via next() pushes the unloads into the next runloop's
+        // actions queue, after the in-flight render finishes — so the tag
+        // mutation no longer conflicts with the current tracking frame.
+        //
+        // Widgets must be unloaded before their parent dashboard to avoid
+        // orphaned-record warnings.
+        next(() => {
+            this.store.unloadAll('dashboard-widget');
+            this.store.unloadAll('dashboard');
+        });
+    }
+
+    /**
+     * Dashboard namespace used for the widget selector panel.
+     *
+     * System dashboards use their own ID. Saved dashboards can pin a widget
+     * source in options, otherwise they fall back to the current load scope.
+     *
+     * @readonly
+     * @memberof DashboardService
+     */
+    get currentWidgetSourceDashboardId() {
+        if (this.currentDashboard?.user_uuid === 'system') {
+            return this.currentDashboard.id;
+        }
+
+        return this.currentDashboard?.options?.widget_source_dashboard_id ?? this.lastLoadOptions.defaultDashboardId ?? 'dashboard';
+    }
+
+    /**
+     * Creates a default dashboard with predefined widgets.
+     * @private
+     * @returns {Object} The default dashboard object.
+     */
+    _createDefaultDashboard(defaultDashboardId = 'dashboard', defaultDashboardName = 'Default Dashboard') {
+        let defaultDashboard;
+
+        // Reuse the in-store record if it's still in a valid state. peekRecord already
+        // does an identity-map lookup, so an additional peekAll().find() is redundant.
+        const existingDashboard = this.store.peekRecord('dashboard', defaultDashboardId);
+        if (existingDashboard && !existingDashboard.isDeleted && !existingDashboard.isDestroying && !existingDashboard.isDestroyed) {
+            return existingDashboard;
+        }
+
+        // create new default dashboard
+        try {
+            defaultDashboard = this.store.createRecord('dashboard', {
+                id: defaultDashboardId,
+                uuid: defaultDashboardId,
+                name: this._localizeDashboardName(defaultDashboardName),
+                is_default: false,
+                user_uuid: 'system',
+                widgets: this._createDefaultDashboardWidgets(defaultDashboardId),
+            });
+        } catch (error) {
+            // Handle race condition where record was created between our peek and createRecord
+            if (error.message && error.message.includes('already been used')) {
+                defaultDashboard = this.store.peekRecord('dashboard', defaultDashboardId);
+                if (defaultDashboard) return defaultDashboard;
+            }
+            // Re-throw if it's a different error
+            throw error;
+        }
+
+        return defaultDashboard;
+    }
+
+    /**
+     * Translates a system dashboard name. The historical 'Default Dashboard' name maps to
+     * a translation key, and names registered as translation keys are translated.
+     * @private
+     * @param {String} name
+     * @returns {String}
+     */
+    _localizeDashboardName(name) {
+        if (name === 'Default Dashboard') {
+            return this.intl.t('ember-ui.dashboard.default-dashboard');
+        }
+        if (typeof name === 'string' && name && this.intl.exists(name)) {
+            return this.intl.t(name);
+        }
+        return name;
+    }
+
+    /**
+     * Creates every system dashboard registered for a slot.
+     * Falls back to the historical single default dashboard when no slot
+     * dashboards are registered.
+     *
+     * @private
+     * @returns {Array}
+     */
+    _createSystemDashboards({ defaultDashboardId = 'dashboard', defaultDashboardName = 'Default Dashboard', extension = 'core', slot = null } = {}) {
+        const slotDashboards = slot && typeof this.widgetService.getDashboardsForSlot === 'function' ? this.widgetService.getDashboardsForSlot(slot) : [];
+
+        if (!slotDashboards.length) {
+            return [this._createDefaultDashboard(defaultDashboardId, defaultDashboardName)];
+        }
+
+        const hasDefaultDashboard = slotDashboards.some((dashboard) => dashboard.id === defaultDashboardId || dashboard.dashboardId === defaultDashboardId);
+        const dashboards = hasDefaultDashboard
+            ? slotDashboards
+            : [
+                  {
+                      id: defaultDashboardId,
+                      dashboardId: defaultDashboardId,
+                      name: defaultDashboardName,
+                      extension,
+                      priority: 0,
+                  },
+                  ...slotDashboards,
+              ];
+
+        return dashboards.map((dashboard) =>
+            this._createDefaultDashboard(dashboard.dashboardId ?? dashboard.id, dashboard.name ?? dashboard.defaultDashboardName ?? dashboard.dashboardId ?? dashboard.id)
+        );
+    }
+
+    /**
+     * Creates default widgets for the default dashboard.
+     * @private
+     * @returns {Array} An array of default dashboard widgets.
+     */
+    _createDefaultDashboardWidgets(defaultDashboardId = 'dashboard') {
+        const widgets = this.widgetService.getDefaultWidgets(defaultDashboardId);
+        return widgets.map((defaultWidget) => this._buildDashboardWidget(defaultWidget));
+    }
+
+    /**
+     * Materialize a registry widget definition into a transient `dashboard-widget` record.
+     *
+     * The registry id (e.g. 'fleet-ops-kpi-earnings-widget') is a slug shared across every
+     * dashboard that consumes the widget. Passing it through as the Ember Data record id
+     * would collide in the identity map as soon as the widget appears on a second dashboard
+     * (or is added/removed/re-added). Strip the slug and let Ember Data assign a client UUID
+     * — but stash the slug under `options.widget_key` so persisted records can still be
+     * resolved back to their registry definition.
+     */
+    _buildDashboardWidget(definition) {
+        // eslint-disable-next-line no-unused-vars
+        const { id: widgetKey, default: _isDefault, ...rest } = definition;
+        return this.store.createRecord('dashboard-widget', {
+            ...rest,
+            options: { ...(rest.options ?? {}), widget_key: widgetKey },
+        });
+    }
+
+    /**
+     * Checks if default dashboard is already loaded.
+     * @private
+     * @return {Boolean}
+     * @memberof DashboardService
+     */
+    _isDefaultDashboardLoaded(defaultDashboardId = 'dashboard') {
+        return this.dashboards.some((dashboard) => dashboard && dashboard.id === defaultDashboardId);
+    }
+
+    /**
+     * Checks if default dashboard is not already loaded.
+     * @private
+     * @return {Boolean}
+     * @memberof DashboardService
+     */
+    _isDefaultDashboardNotLoaded(defaultDashboardId = 'dashboard') {
+        return !this._isDefaultDashboardLoaded(defaultDashboardId);
+    }
+
+    /**
+     * Gets the current dasbhoard or next available dashboard.
+     *
+     * @return {DashboardModel}
+     * @memberof DashboardService
+     */
+    _getNextDashboard({ defaultDashboardId = 'dashboard', slot = null } = {}) {
+        const configuredDefaultDashboardId =
+            (slot && typeof this.widgetService.getDefaultDashboardForSlot === 'function' && this.widgetService.getDefaultDashboardForSlot(slot)) || defaultDashboardId;
+        return (
+            this.dashboards.find((dashboard) => dashboard.user_uuid !== 'system' && dashboard.is_default) ||
+            this.dashboards.find((dashboard) => dashboard.user_uuid === 'system' && dashboard.id === configuredDefaultDashboardId) ||
+            this.dashboards.find((dashboard) => dashboard.id === defaultDashboardId) ||
+            this.dashboards[0]
+        );
+    }
+}

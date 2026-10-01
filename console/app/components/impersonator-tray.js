@@ -9,6 +9,7 @@ export default class ImpersonatorTrayComponent extends Component {
     @service notifications;
     @service router;
     @service fetch;
+    @service intl;
 
     get isImpersonator() {
         return typeof this.session.data?.authenticated?.impersonator === 'string';
@@ -24,7 +25,7 @@ export default class ImpersonatorTrayComponent extends Component {
             const { token } = await this.fetch.delete('auth/impersonate');
             await this.router.transitionTo('console');
             this.session.manuallyAuthenticate(token);
-            this.notifications.info(`Ending impersonation session.`);
+            this.notifications.info(this.intl.t('console.ui.impersonator.ending'));
 
             // Handed back so the caller can cancel the pending reload. Without this the
             // timer is unreachable once scheduled and always reloads the window.

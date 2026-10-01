@@ -1,0 +1,15 @@
+<Gateway::Hub
+    @gateways={{@model}}
+    @drivers={{this.drivers}}
+    @summary={{this.summary}}
+    @summaryLoading={{this.loadGatewayHub.isRunning}}
+    @columns={{this.columns}}
+    @page={{this.page}}
+    @onPageChange={{fn (mut this.page)}}
+    @bulkActions={{this.bulkActions}}
+    @controller={{this}}
+    @searchQuery={{this.query}}
+    @onSearch={{perform this.gatewayActions.controllerSearchTask this}}
+    @refresh={{perform this.loadGatewayHub}}
+/>
+{{outlet}}

@@ -1,0 +1,61 @@
+<section class="chat-compose-panel" ...attributes>
+    <header class="chat-compose-panel-header">
+        <div class="chat-compose-panel-title">
+            <h2>{{t "ember-ui.chat-tray.new-chat"}}</h2>
+            <span>{{t "ember-ui.chat-tray.select-teammates"}}</span>
+        </div>
+        <button type="button" class="chat-inbox-icon-button" aria-label={{t "ember-ui.chat-tray.close-new-chat"}} {{on "click" @close}}>
+            <FaIcon @icon="times" />
+        </button>
+    </header>
+
+    <div class="chat-compose-form">
+        <label class="chat-compose-label" for="chat-compose-name">{{t "ember-ui.chat-tray.chat-name"}}</label>
+        <input id="chat-compose-name" type="text" value={{@channelName}} placeholder={{t "ember-ui.chat-tray.optional"}} {{on "input" @setChannelName}} />
+
+        {{#if this.hasSelectedUsers}}
+            <div class="chat-compose-selected-users">
+                {{#each @selectedUsers as |user|}}
+                    <span class="chat-compose-selected-user">
+                        <Image src={{user.avatar_url}} @fallbackSrc={{config "defaultValues.userImage"}} alt={{user.name}} />
+                        <span>{{user.name}}</span>
+                        <button type="button" aria-label={{t "ember-ui.chat-tray.remove-user" name=user.name}} {{on "click" (fn @removeSelectedUser user)}}>
+                            <FaIcon @icon="times" />
+                        </button>
+                    </span>
+                {{/each}}
+            </div>
+        {{/if}}
+
+        <label class="chat-compose-label" for="chat-compose-search">{{t "ember-ui.chat-tray.contacts"}}</label>
+        <div class="chat-inbox-search">
+            <FaIcon @icon="search" />
+            <input id="chat-compose-search" type="search" value={{@searchQuery}} placeholder={{t "ember-ui.chat-tray.search-teammates"}} {{on "input" @setSearchQuery}} />
+        </div>
+    </div>
+
+    <div class="chat-compose-contact-list">
+        {{#if @isLoading}}
+            <div class="chat-inbox-empty-state">
+                <Spinner @loadingMessage={{t "ember-ui.chat-tray.loading-contacts"}} />
+            </div>
+        {{else if this.hasUsers}}
+            {{#each @users as |user|}}
+                <ChatTray::ContactRow @user={{user}} @selectedUsers={{@selectedUsers}} @toggle={{@toggleUser}} />
+            {{/each}}
+        {{else}}
+            <div class="chat-inbox-empty-state">
+                <div class="chat-inbox-empty-icon">
+                    <FaIcon @icon="user-plus" />
+                </div>
+                <h3>{{t "ember-ui.chat-tray.no-contacts"}}</h3>
+                <p>{{t "ember-ui.chat-tray.try-different-contact"}}</p>
+            </div>
+        {{/if}}
+    </div>
+
+    <footer class="chat-compose-footer">
+        <Button @type="default" @text={{t "ember-ui.chat-tray.cancel"}} @size="sm" @onClick={{@close}} />
+        <Button @type="primary" @icon="paper-plane" @text={{t "ember-ui.chat-tray.create-chat"}} @size="sm" @onClick={{@create}} @disabled={{not @canCreate}} @isLoading={{@isSaving}} />
+    </footer>
+</section>

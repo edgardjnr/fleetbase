@@ -1,0 +1,15 @@
+<div class="portal-content-wrapper">
+    <div class="portal-settings-header">
+        <div>
+            <div class="portal-section-eyebrow">{{t "customer-portal.ui.settings.eyebrow"}}</div>
+            <h1 class="text-lg font-bold">{{t "customer-portal.ui.nav.account-settings"}}</h1>
+        </div>
+    </div>
+
+    <div class="portal-settings-tabs">
+        <LinkTo @route="portal.settings.account" class="portal-settings-tab">{{t "customer-portal.ui.settings.account"}}</LinkTo>
+        <LinkTo @route="portal.settings.members" class="portal-settings-tab">{{t "customer-portal.ui.settings.members"}}</LinkTo>
+    </div>
+
+    {{outlet}}
+</div>

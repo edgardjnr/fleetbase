@@ -1,0 +1,1225 @@
+ledger:
+  extension-name: Ledger
+  ui:
+    period:
+      month-to-date: Mês até a data
+    models:
+      not-available: N/D
+      "yes": Sim
+      "no": Não
+      journal-source:
+        system: Sistema
+        manual: Manual
+      journal-type:
+        general: Geral
+        standard: Padrão
+        adjusting: Ajuste
+        closing: Encerramento
+        reversing: Estorno
+        opening: Abertura
+        wallet-transfer: Transferência entre carteiras
+        wallet-deposit: Depósito em carteira
+        wallet-withdrawal: Saque de carteira
+    invoice:
+      invoice-information: Informações da fatura
+      invoice-number: Número da fatura
+      invoice-date: Data da fatura
+      due-date: Vencimento
+      overdue: Vencida
+      currency: Moeda
+      order: Pedido
+      template: Modelo
+      sent-at: Enviada em
+      viewed-at: Visualizada em
+      paid-at: Paga em
+      invoice-url: URL da fatura
+      customer: Cliente
+      line-items: Itens da fatura
+      description: Descrição
+      qty: Qtd.
+      unit-price: Preço unitário
+      tax-percent: Imposto %
+      amount: Valor
+      subtotal: Subtotal
+      tax: Imposto
+      total: Total
+      no-line-items-recorded: Nenhum item registrado.
+      payment-summary: Resumo do pagamento
+      total-amount: Valor total
+      amount-paid: Valor pago
+      balance-due: Saldo devedor
+      notes: Observações
+      terms: Condições
+      record-info: Informações do registro
+      internal-id: ID interno
+      created: Criada em
+      last-updated: Última atualização
+      invoice-details: Detalhes da fatura
+      number-placeholder: Gerado automaticamente se deixado em branco
+      status: Situação
+      select-status: Selecione a situação
+      invoice-template: Modelo de fatura
+      select-template: Selecione um modelo (opcional)
+      search-customer: Buscar contatos ou fornecedores…
+      dates: Datas
+      notes-terms: Observações e condições
+      notes-placeholder: Adicione observações ou instruções de pagamento para o cliente…
+      terms-placeholder: "Condições de pagamento, ex.: 30 dias…"
+      item-description: Descrição do item
+      no-line-items-yet: Nenhum item ainda.
+      add-one: Adicionar um
+      add-line-item: Adicionar item
+      due-on: Vence em {date}
+      no-due-date: Sem vencimento
+      items-missing-description: "{count, plural, one {Um item está sem descrição.} other {# itens estão sem descrição.}}"
+      statuses:
+        draft: Rascunho
+        sent: Enviada
+        viewed: Visualizada
+        partial: Parcial
+        paid: Paga
+        partial_refund_pending: Reembolso parcial pendente
+        refund_pending: Reembolso pendente
+        refunded: Reembolsada
+        overdue: Vencida
+        void: Anulada
+        cancelled: Cancelada
+    customer-invoice:
+      loading: Carregando fatura…
+      invoice: Fatura
+      bill-to: Cobrar de
+      due-label: "Vencimento:"
+      pay-this-invoice: Pagar esta fatura
+      pay-now: Pagar agora
+      payment-method: Forma de pagamento
+      reference-note: Referência / observação (opcional)
+      reference-placeholder: "ex.: ref. da transferência #12345"
+      redirecting: Redirecionando para o provedor de pagamento...
+      taler-qr-alt: QR code de pagamento GNU Taler
+      taler-ready: Pagamento GNU Taler pronto
+      taler-scan: Abra sua carteira Taler ou escaneie o QR code com uma carteira em outro dispositivo.
+      taler-copy-uri: Abra sua carteira Taler neste navegador ou copie a URI de pagamento para uma carteira.
+      qr-unavailable: QR code indisponível para esta resposta de pagamento.
+      open-taler-wallet: Abrir carteira GNU Taler
+      amount-due: "Valor devido:"
+      processing: Processando...
+      pay-with-stripe: Pagar com Stripe
+      continue-to-payment: Continuar para o pagamento
+      online-unavailable-title: Pagamento online indisponível
+      online-unavailable-body: O pagamento online não está disponível para esta fatura. Entre em contato com o emissor para obter instruções de pagamento.
+      paid-title: Fatura paga
+      paid-body: Esta fatura foi totalmente paga. Obrigado pelo seu pagamento.
+      void-title: Fatura {status}
+      void-body: Esta fatura não está mais ativa e não pode receber pagamentos.
+      powered-by: Desenvolvido por
+      payment-success: Seu pagamento foi concluído com sucesso. Obrigado!
+      payment-cancelled: O pagamento foi cancelado. Você pode tentar novamente abaixo.
+      no-identifier: Nenhum identificador de fatura informado. Verifique o link e tente novamente.
+      not-found: Fatura não encontrada. Verifique o link e tente novamente.
+      not-available: Esta fatura ainda não está disponível. Entre em contato com o emissor.
+      load-failed: Falha ao carregar a fatura. Tente novamente mais tarde.
+      online-unavailable: O pagamento online não está disponível para esta fatura.
+      taler-started: Pagamento iniciado. Abra sua carteira GNU Taler para concluí-lo.
+      payment-pending: Pagamento iniciado. Conclua-o no seu aplicativo de pagamento e depois atualize esta fatura.
+      payment-recorded: Seu pagamento foi registrado com sucesso. Obrigado!
+      payment-failed: Falha no pagamento. Tente novamente.
+    order-invoice:
+      no-invoice: Nenhuma fatura encontrada para este pedido.
+      auto-generated: Uma fatura é gerada automaticamente quando uma tarifa de serviço é contratada.
+      view: Ver
+      open-in-ledger: Abrir no Ledger
+      open-full-invoice: Abrir a fatura completa no Ledger
+    taler-refund:
+      loading: Carregando reembolso...
+      title: Reembolso GNU Taler
+      open-with-wallet: Abra este reembolso com sua carteira GNU Taler.
+      for-invoice: Este reembolso refere-se à fatura {number}. Se sua carteira não abrir automaticamente, escaneie o QR code ou copie a URI da carteira.
+      qr-alt: QR code de reembolso GNU Taler
+      copy: Copiar
+      copy-uri: Copiar URI
+      no-identifier: Nenhum identificador de reembolso informado. Verifique o link e tente novamente.
+      not-found: Reembolso não encontrado. Verifique o link e tente novamente.
+      load-failed: Falha ao carregar o reembolso. Tente novamente mais tarde.
+      uri-copied: URI de reembolso copiada.
+    record-payment:
+      balance: "Saldo:"
+      amount: Valor
+      amount-help: Valor recebido. Por padrão, o saldo devedor total.
+      payment-method: Forma de pagamento
+      payment-method-help: Como o pagamento foi recebido.
+      select-payment-method: Selecione a forma de pagamento...
+      reference: Referência
+      reference-help: Número de referência ou observação opcional para este pagamento.
+      reference-placeholder: "ex.: ref. da transferência, número do cheque"
+      invalid-amount: Informe um valor de pagamento válido maior que zero.
+      success: Pagamento registrado com sucesso.
+      methods:
+        bank-transfer: Transferência bancária
+        cash: Dinheiro
+        cheque: Cheque
+        credit-card: Cartão de crédito
+        debit-card: Cartão de débito
+        other: Outro
+    billing:
+      template-saved: Modelo de fatura "{name}" salvo.
+      template-created: Modelo de fatura "{name}" criado com sucesso.
+      edit-invoice: Editar fatura {number}
+      create-invoice: Criar nova fatura
+      details: Detalhes
+      preview: Visualizar
+      edit: Editar
+      view-refunds: Ver reembolsos
+      issue-refund: Emitir reembolso
+      invoice-sent: Fatura enviada com sucesso.
+      gateway-fallback: Gateway de pagamento
+      no-refundable-payments: Esta fatura não possui pagamentos via gateway de pagamento reembolsáveis.
+      issue-refund-title: Emitir reembolso {number}
+      select-refundable-payment: Selecione um pagamento reembolsável.
+      refund-amount-positive: Informe um valor de reembolso maior que zero.
+      refund-amount-exceeds: O valor do reembolso excede o valor restante do pagamento selecionado.
+      selected-gateway: o gateway de pagamento selecionado
+      taler-refund-note: O GNU Taler pode retornar uma URI de reembolso que precisa ser compartilhada com a carteira do cliente.
+      confirm-refund-title: Confirmar reembolso {number}
+      confirm-refund-body: Emitir um reembolso de {amount} via {gateway}? Isso criará um reembolso no gateway de pagamento e um estorno no Ledger.
+      refund-issued-success: Reembolso emitido com sucesso.
+      refunds-title: Reembolsos {number}
+      refund-issued-title: Reembolso emitido
+      refund-unresolved: Não foi possível identificar a transação de reembolso.
+      refund-uri-sent: URI de reembolso enviada ao cliente.
+      refund-status-verified: Situação do reembolso verificada.
+      void-title: Anular a fatura {number}?
+      void-body: Isso marcará a fatura como anulada e não poderá ser desfeito.
+      invoice-voided: Fatura anulada.
+      select-customer: Selecione o cliente
+      select-order: Selecione o pedido
+      min: Mín.
+      max: Máx.
+    payments:
+      field:
+        status: Status
+        type: Tipo
+        currency: Moeda
+        amount: Valor
+        amounts: Valores
+        description: Descrição
+        notes: Observações
+        description-notes: Descrição e observações
+        record-info: Informações do registro
+        created: Criado em
+        last-updated: Última atualização
+        select-status: Selecione o status
+        select-currency: Selecione a moeda
+        "yes": Sim
+        "no": Não
+        overview: Visão geral
+        details: Detalhes
+        transactions: Transações
+    transaction:
+      details-title: Detalhes da transação
+      information: Informações da transação
+      core-information: Informações principais
+      reference-id: ID de referência
+      direction: Direção
+      gateway: Gateway de pagamento
+      gateway-transaction-id: ID da transação no gateway
+      payment-method: Forma de pagamento
+      card: Cartão
+      reference: Referência
+      date: Data
+      fee: Taxa
+      tax: Imposto
+      net-amount: Valor líquido
+      balance-after: Saldo após
+      settlement: Liquidação
+      exchange-rate: Taxa de câmbio
+      settled-currency: Moeda de liquidação
+      settled-amount: Valor liquidado
+      settled-at: Liquidado em
+      parties: Partes
+      payer: Pagador
+      payee: Recebedor
+      initiated-by: Iniciado por
+      ip-address: Endereço IP
+      failure-information: Informações da falha
+      failure-code: Código da falha
+      failure-reason: Motivo da falha
+      select-type: Selecione o tipo
+      select-direction: Selecione a direção
+      select-payment-method: Selecione a forma de pagamento
+      fee-amount: Valor da taxa
+      tax-amount: Valor do imposto
+      gateway-payment: Gateway e pagamento
+      gateway-placeholder: "ex.: stripe"
+      gateway-transaction-placeholder: Referência da transação no gateway
+      reference-placeholder: Referência externa
+      description-placeholder: Breve descrição desta transação
+      notes-placeholder: Observações internas...
+      direction-options:
+        credit: Crédito
+        debit: Débito
+      payment-method-options:
+        card: Cartão
+        bank-transfer: Transferência bancária
+        wallet: Carteira
+        cash: Dinheiro
+    wallet:
+      details-title: Detalhes da carteira
+      information: Informações da carteira
+      name: Nome da carteira
+      name-placeholder: "ex.: Carteira principal"
+      select-type: Selecione o tipo de carteira
+      frozen: Congelada
+      balance: Saldo
+      current-balance: Saldo atual
+      owner-details: Dados do titular
+      owner: Titular
+      owner-type: Tipo de titular
+      owner-uuid: UUID do titular
+      select-owner-type: Selecione o tipo de titular
+      email-phone: E-mail / Telefone
+      internal-id: ID interno
+      settings: Configurações
+      freeze-label: Congelar esta carteira
+      freeze-toggle-help: Carteiras congeladas não podem enviar nem receber valores.
+      edit-title: Editar carteira — {name}
+      new-title: Criar nova carteira
+      unauthorized-access: Você não tem permissão para acessar este recurso.
+      add-funds: Adicionar saldo
+      add-funds-help: Adicionar valores ao saldo desta carteira.
+      add-funds-title: Adicionar saldo — {name}
+      funds-added: Saldo adicionado a {name}.
+      transfer: Transferir
+      transfer-help: Transferir valores desta carteira para outra carteira.
+      transfer-title: Transferir valores — {name}
+      funds-transferred: Valores transferidos para {name}.
+      freeze: Congelar
+      unfreeze: Descongelar
+      freeze-help: Congele esta carteira para bloquear todos os débitos.
+      unfreeze-help: Descongele esta carteira para permitir débitos.
+      freeze-confirm-title: Congelar {name}?
+      freeze-confirm-body: Congelar esta carteira bloqueará todas as transações de débito. Créditos continuarão sendo aceitos. Você pode descongelá-la a qualquer momento.
+      freeze-wallet: Congelar carteira
+      frozen-success: "{name} foi congelada."
+      unfreeze-confirm-title: Descongelar {name}?
+      unfreeze-confirm-body: Descongelar esta carteira restaurará a operação normal e permitirá transações de débito.
+      unfreeze-wallet: Descongelar carteira
+      unfrozen-success: "{name} foi descongelada."
+      wallet-frozen: Carteira congelada.
+      wallet-unfrozen: Carteira descongelada.
+      deposit: Depositar
+      withdraw: Sacar
+      invalid-amount: Informe um valor válido maior que zero.
+      select-destination: Selecione uma carteira de destino.
+      same-wallet: Não é possível transferir valores para a mesma carteira.
+      name-column: Nome
+      type-options:
+        company: Empresa
+        driver: Motorista
+        customer: Cliente
+        user: Usuário
+      status-options:
+        active: Ativa
+        inactive: Inativa
+        frozen: Congelada
+        suspended: Suspensa
+      top-up-amount-help: Valor a adicionar a esta carteira.
+      top-up-description-help: Observação opcional para esta transação.
+      top-up-placeholder: Recarga manual
+      from: De
+      available: Disponível
+      to-wallet: Carteira de destino
+      to-wallet-help: Selecione a carteira de destino que receberá os valores.
+      search-placeholder: Buscar carteiras...
+      transfer-amount-help: Valor a transferir.
+      transfer-description-help: Observação opcional para esta transferência.
+      transfer-placeholder: Transferência interna
+    refund:
+      remaining-refundable: "Restante reembolsável:"
+      paid: Pago
+      refunded: Reembolsado
+      available: Disponível
+      payment: Pagamento
+      payment-help: Os reembolsos são emitidos sobre o pagamento original aprovado no gateway de pagamento.
+      select-payment: Selecione o pagamento...
+      reference: "Referência:"
+      refund-type: Tipo de reembolso
+      refund-type-help: Use total para o valor restante reembolsável do pagamento selecionado, ou personalizado para um reembolso parcial.
+      amount: Valor
+      amount-help: O valor não pode exceder o restante reembolsável.
+      reason: Motivo
+      reason-help: Observação opcional registrada no reembolso do gateway de pagamento e no estorno do Ledger.
+      reason-placeholder: Motivo do reembolso
+      taler-notice: O GNU Taler pode retornar uma URI de reembolso. Compartilhe-a com o cliente para que ele a abra na carteira Taler e aceite o reembolso.
+      mode-full: Valor restante total
+      mode-partial: Valor parcial personalizado
+      customer-email: E-mail do cliente
+      customer-email-history-help: Usado ao enviar uma URI de reembolso pelas linhas abaixo.
+      customer-email-result-help: Por padrão, usa o e-mail do cliente da fatura, quando disponível.
+      verify-status: Verificar status
+      send-email: Enviar e-mail
+      copy: Copiar
+      copy-uri: Copiar URI
+      no-uri-row: Este reembolso não disponibiliza uma URI de reembolso para o cliente.
+      no-uri-invoice: Nenhuma URI de reembolso foi emitida para esta fatura ainda.
+      customer-link: Link de reembolso para o cliente
+      customer-link-help: Envie este link do Fleetbase ao cliente. Ele abre uma página de transferência para a carteira Taler.
+      wallet-uri: URI da carteira
+      wallet-uri-help: Alternativa avançada para copiar diretamente em uma carteira GNU Taler.
+      refund-status: Status do reembolso
+      wallet-status: Status da carteira
+      gateway-refund-transaction: "Transação de reembolso no gateway:"
+      completed-title: Reembolso concluído
+      issued-title: URI de reembolso emitida
+      completed-message: O reembolso foi aceito pela carteira do cliente e marcado como concluído.
+      issued-message: Compartilhe esta URI de reembolso com o cliente para que ele a abra na carteira GNU Taler e aceite o reembolso.
+    gateway:
+      common:
+        na: N/D
+        refresh: Atualizar
+        pending: Pendente
+      reload: Recarregar
+      catalog:
+        connected: Conectado
+        available: Disponível
+        manual: Manual
+        manage: Gerenciar gateway de pagamento
+        connect: Conectar gateway de pagamento
+      hub:
+        title: Gateways de pagamento
+        warnings: "{count, plural, one {# alerta} other {# alertas}}"
+        subtitle: Configure provedores de checkout, métodos manuais, webhooks, reembolsos e a prontidão de liquidação em um único fluxo.
+        add: Adicionar gateway
+        connected-title: Gateways conectados
+        connected-subtitle: Revise os provedores configurados, a disponibilidade no checkout, os ambientes e o status operacional.
+        supported-title: Gateways suportados
+        supported-subtitle: Conecte drivers de gateway suportados ou gerencie contas já configuradas.
+        loading-status: Carregando status dos gateways
+        tile:
+          active: Gateways ativos
+          active-caption: Prontos para receber pagamentos
+          live: Prontos para produção
+          live-caption: Conexões de produção
+          webhook-issues: Problemas de webhook
+          webhook-issues-caption: Precisam de revisão do provisionamento
+          no-warnings: Nenhum alerta em aberto
+          sandbox: Sandbox
+          sandbox-caption: Conexões de teste
+      driver:
+        taler:
+          type: Pagamento por carteira
+          description: Pagamentos por carteira com privacidade, checkout por QR, confirmação por webhook, reembolsos e verificação de liquidação.
+        stripe:
+          type: Cartões e carteiras
+          description: Processamento de cartões e carteiras digitais com confirmação por webhook e suporte a reembolsos.
+        cash:
+          name: Dinheiro
+          type: Pagamento manual
+          description: Registre pagamentos offline ou presenciais sem provisionar webhooks externos.
+        qpay:
+          type: Pagamento regional
+          description: Suporte a gateway regional para fluxos de cobrança por QR e pagamentos locais.
+      webhook-events:
+        date: Data
+        event-type: Tipo de evento
+        gateway-ref: Ref. do gateway
+        amount: Valor
+        status: Status
+        refund: Reembolso
+        reconciliation: Conciliação
+        empty: Nenhum evento de webhook registrado
+      details:
+        last-order: Último pedido {id}
+        gateway: Gateway
+        verified: Verificado
+        failed: Falhou
+        not-checked-title: Não verificado
+        webhook-registered-msg: Registro do webhook no provedor concluído.
+        webhook-configured-msg: A URL do webhook está configurada, mas nenhuma ação de registro foi registrada.
+        webhook-none-msg: Nenhum registro de webhook do provedor armazenado.
+        connection: Conexão
+        ready: Pronto
+        inactive: Inativo
+        available-on-invoices: Disponível nas faturas
+        not-used-at-checkout: Não usado no checkout
+        environment: Ambiente
+        live: Produção
+        sandbox: Sandbox
+        production-payments: Pagamentos de produção
+        testing-sandbox-use: Uso em testes e sandbox
+        webhook: Webhook
+        configured: Configurado
+        needs-setup-title: Requer configuração
+        callback-ready: Callback do provedor pronto
+        registration-needed: Registro necessário
+        credentials: Credenciais
+        last-auth-test: Último teste de autenticação no provedor
+        run-provider-check: Execute uma verificação no provedor
+        driver: Driver
+        mode: Modo
+        not-checked: Não verificado
+        needs-setup: Requer configuração
+        payment: Pagamento
+        seen: Recebido
+        no-payment-yet: Nenhum pagamento ainda
+        refund: Reembolso
+        no-refund-yet: Nenhum reembolso ainda
+        settlement: Liquidação
+        name: Nome
+        public-id: ID público
+        status: Status
+        created: Criado em
+        return-url: URL de retorno
+        ledger-webhook-url: URL de webhook do Ledger
+        provider-callback: Callback registrado no provedor
+        same-as-ledger-url: Igual à URL de webhook do Ledger
+        provider-posts-events: O provedor envia eventos para a URL de webhook do Ledger acima.
+        provider-credentials: Credenciais do provedor
+        stored-encrypted: Armazenadas criptografadas e ocultas
+        credential-test: Teste de credenciais
+        no-credential-test: Nenhum teste de credenciais foi executado.
+        webhook-registration: Registro de webhook
+        test-order: Pedido de teste
+        no-test-order: Nenhum pedido de teste foi criado.
+        test-credentials: Testar credenciais
+        test-credentials-desc: Verifica se o Ledger consegue se autenticar no Taler Merchant Backend configurado.
+        test-credentials-result: Atualiza o status das credenciais e o horário da última verificação.
+        register-webhook: Registrar webhook
+        register-webhook-desc: Cria ou atualiza o webhook do Taler para que os eventos de pagamento voltem para este gateway.
+        register-webhook-result: Armazena a URL do webhook registrado e os dados de roteamento.
+        register-webhook-confirm-title: Registrar webhook do Taler?
+        register-webhook-confirm-body: O Ledger vai criar ou atualizar o webhook no Taler Merchant Backend para este gateway.
+        create-test-order: Criar pedido de teste
+        create-test-order-desc: Cria um pequeno pedido em sandbox para verificar a criação de pedidos e o redirecionamento para a carteira.
+        create-test-order-result: Cria um pedido de teste no provedor e registra o ID do pedido.
+        create-test-order-confirm-title: Criar pedido de teste no Taler?
+        create-test-order-confirm-body: O Ledger vai criar um pedido de teste no Taler Merchant Backend configurado. Nenhuma fatura de cliente será alterada.
+        refresh-diagnostics: Atualizar diagnóstico
+        refresh-diagnostics-desc: Recarrega do Ledger os dados de diagnóstico mais recentes de credenciais, webhook, pagamentos, reembolsos e liquidação.
+        refresh-diagnostics-result: Nada é alterado no provedor; apenas atualiza esta tela.
+        copy-webhook-url: Copiar URL do webhook
+        copy-webhook-url-desc: Copia a URL de callback do Ledger para configuração manual no provedor.
+        copy-webhook-url-result: Use quando o registro do webhook no provedor for feito fora do Ledger.
+        edit-settings: Editar configurações
+        edit-settings-desc: Altere o nome, as credenciais, o roteamento, o status ou o ambiente do gateway.
+        edit-settings-result: Abre o assistente de configuração para este gateway existente.
+        credentials-accepted: Credenciais do Taler aceitas.
+        test-order-created: Pedido de teste do Taler criado.
+        webhook-registered: Webhook do Taler registrado.
+        no-system-webhook: Ainda não há URL de webhook do sistema disponível.
+        system-webhook-copied: URL de webhook do sistema copiada.
+        copy-webhook-failed: Não foi possível copiar a URL do webhook.
+        recent-activity: Atividade recente do gateway
+        recent-activity-desc: Registros mais recentes de webhook, pagamento, reembolso e liquidação deste gateway.
+        no-timestamp: Sem data/hora
+        no-activity: Nenhuma atividade do gateway foi registrada ainda.
+        actions: Ações
+        actions-desc: Operações no provedor que o operador provavelmente vai precisar em seguida.
+        webhook-url-unavailable: URL do webhook indisponível até que este gateway tenha um driver.
+        provider-status: Status do provedor
+        provider-status-desc: Sinais de funcionamento em resumo.
+        setup: Configuração do gateway
+        setup-desc: Configuração que o Ledger usa para roteamento, configuração do provedor e disponibilidade no checkout.
+        edit-gateway: Editar gateway
+        identity: Identificação
+        routing: Roteamento
+        provider-configuration: Configuração do provedor
+        provider-tools: Ferramentas do provedor
+        provider-tools-desc: Execute verificações e ações de provisionamento no provedor, com um resultado esperado claro.
+        reload-diagnostics-help: Recarrega o diagnóstico sem alterar nada no provedor.
+        expected-result: "Resultado esperado: {result}"
+        tool-results: Resultados das ferramentas do provedor
+        last-results: Últimos resultados
+        no-diagnostics: Este driver de gateway não oferece diagnóstico do provedor.
+      form:
+        choose-title: Escolha o gateway de pagamento
+        choose-desc: Selecione o provedor que o Ledger deve usar para o checkout de faturas, confirmação de pagamento, reembolsos e acompanhamento de liquidação.
+        selected: Selecionado
+        credentials-title: Credenciais do gateway
+        credentials-desc: Informe a configuração do provedor que o Ledger armazena neste gateway. Os tokens ficam salvos no registro do gateway e nunca aparecem no checkout da fatura.
+        select-option: Selecione uma opção
+        no-credentials-required: Este gateway não exige credenciais do provedor.
+        choose-first: Escolha um gateway de pagamento antes de informar as credenciais.
+        selected-driver: Driver de gateway selecionado
+        routing-title: Roteamento e status
+        routing-desc: Dê um nome ao gateway, escolha o ambiente e configure para onde clientes e provedores retornam os eventos de pagamento.
+        gateway-name: Nome do gateway
+        gateway-name-placeholder: "ex.: GNU Taler Sandbox"
+        code: Código
+        code-placeholder: "ex.: taler_sandbox"
+        environment: Ambiente
+        select-environment: Selecione o ambiente
+        option:
+          sandbox: Sandbox
+          live: Produção
+          active: Ativo
+          inactive: Inativo
+        status: Status
+        select-status: Selecione o status
+        return-url: URL de retorno
+        return-url-help: A URL para onde o cliente é redirecionado após o pagamento.
+        webhook-url: URL de webhook / callback
+        webhook-url-help: O endpoint de webhook registrado no provedor para este gateway.
+        copy: Copiar
+        description: Descrição
+        description-placeholder: Observações operacionais opcionais para este gateway.
+        checkout-readiness: Prontidão para checkout
+        driver-selected: Driver selecionado
+        ready: Pronto
+        missing: Pendente
+        credentials: Credenciais
+        review: Revisar
+        review-title: Revisar configuração do gateway
+        review-desc: Confirme a configuração antes de salvar. Gateways existentes podem executar aqui uma verificação real das credenciais.
+        gateway: Gateway
+        unnamed: Gateway sem nome
+        mode: Modo
+        test-again: Testar novamente
+        test-credentials: Testar credenciais
+        after-saving: Após salvar
+        after-saving-1: Use a tela de detalhes do gateway para registrar webhooks, criar pedidos de teste e consultar o diagnóstico.
+        after-saving-2: No GNU Taler, gateways em sandbox podem usar a URL do Merchant Backend hospedado pela Fleetbase quando nenhuma URL de backend é informada, mas os tokens de API ainda precisam ser configurados.
+        back: Voltar
+        next: Avançar
+        cancel: Cancelar
+        testing: Testando as credenciais do gateway...
+        verified: Gateway verificado
+        test-failed: Falha no teste do gateway
+        ready-to-verify: Pronto para verificar
+        complete-to-verify: Preencha as credenciais para verificar
+        idle-existing: Execute um teste de credenciais antes de usar este gateway para pagamentos de faturas.
+        idle-new: Teste as credenciais do provedor informadas antes de criar este gateway.
+        testing-message: O Ledger está verificando as credenciais configuradas junto ao provedor de pagamento.
+        check-completed: A verificação das credenciais do gateway foi concluída.
+        drivers-load-failed: Não foi possível carregar os drivers de pagamento disponíveis.
+        complete-before-testing: Escolha um gateway e preencha as credenciais obrigatórias antes de testar.
+        test-failed-message: O teste de credenciais do gateway falhou.
+        no-webhook-url: Ainda não há URL de webhook disponível.
+        webhook-url-copied: URL do webhook copiada.
+        copy-webhook-failed: Não foi possível copiar a URL do webhook.
+        step:
+          credentials: Credenciais
+          routing: Roteamento
+          review: Revisão
+          gateway: Gateway
+        driver-category:
+          default: Gateway de pagamento
+      page:
+        webhook-label: "Webhook:"
+        webhook-configured: configurado
+        webhook-not-registered: não registrado
+        created-label: "Criado em:"
+        updated-label: "Atualizado em:"
+        settings: Configurações
+        delete: Excluir
+        edit: Editar
+        view: Visualizar
+        sections: Seções do gateway
+        setup-eyebrow: Configuração do gateway de pagamento
+        edit-title: Editar {name}
+        edit-desc: Revise as credenciais do provedor, o roteamento, o status, os detalhes do webhook e a prontidão operacional deste gateway.
+        save: Salvar gateway
+        edit-footer: As alterações afetam futuros checkouts de faturas, reembolsos, o roteamento de webhooks e o diagnóstico.
+        new-title: Conectar gateway de pagamento
+        new-desc: Escolha um provedor suportado, informe as credenciais, configure o roteamento do checkout e prepare o gateway para pagamentos de faturas.
+        create: Criar gateway
+        new-footer: Após salvar, abra o diagnóstico para testar as credenciais, registrar webhooks e criar um pedido de teste.
+        tab:
+          overview: Visão geral
+          setup: Configuração
+          diagnostics: Diagnóstico
+          transactions: Transações
+        edit-help: Editar a configuração deste gateway de pagamento.
+        delete-help: Remove permanentemente este gateway de pagamento. Esta ação não pode ser desfeita.
+        delete-confirm-title: Excluir o gateway {name}?
+        delete-confirm-body: Esta ação não pode ser desfeita.
+        deleted: Gateway excluído.
+    account:
+      details-title: Detalhes da conta
+      information: Informações da conta
+      name: Nome da conta
+      name-placeholder: "ex.: Caixa e equivalentes de caixa"
+      code: Código da conta
+      code-placeholder: "ex.: 1000"
+      type-label: Tipo
+      type-field: Tipo de conta
+      select-type: Selecione o tipo de conta
+      type:
+        asset: Ativo
+        liability: Passivo
+        equity: Patrimônio líquido
+        revenue: Receita
+        expense: Despesa
+      status-label: Status
+      select-status: Selecione o status
+      status:
+        active: Ativa
+        inactive: Inativa
+        archived: Arquivada
+      currency: Moeda
+      select-currency: Selecione a moeda
+      description: Descrição
+      description-placeholder: Descrição opcional desta conta...
+      balance: Saldo
+      current-balance: Saldo atual
+      record-info: Informações do registro
+      internal-id: ID interno
+      created: Criado em
+      last-updated: Última atualização
+      total-debits: Total de débitos
+      total-credits: Total de créditos
+      net-balance: Saldo líquido
+      debit: Débito
+      credit: Crédito
+      edit-title: Editar conta — {name}
+      new-title: Criar nova conta
+    journal:
+      title: Lançamento contábil
+      information: Informações do lançamento
+      number: Número do lançamento
+      number-placeholder: "ex.: JE-0001"
+      type: Tipo
+      select-type: Selecione o tipo de lançamento
+      types:
+        standard: Padrão
+        adjusting: Ajuste
+        closing: Encerramento
+        reversing: Estorno
+        opening: Abertura
+      date: Data do lançamento
+      source: Origem
+      amount: Valor
+      currency: Moeda
+      description: Descrição
+      description-placeholder: Descreva a finalidade deste lançamento contábil...
+      double-entry: Partidas dobradas
+      debit: Débito
+      credit: Crédito
+      debit-account: Conta de débito
+      debit-account-code: Código da conta de débito
+      select-debit-account: Selecione a conta de débito
+      credit-account: Conta de crédito
+      credit-account-code: Código da conta de crédito
+      select-credit-account: Selecione a conta de crédito
+      credit-code-placeholder: "ex.: 2000"
+      system: Sistema
+      edit-title: Editar lançamento contábil — {number}
+      new-title: Criar lançamento contábil
+      filter-type:
+        general: Geral
+        payment: Pagamento
+        refund: Reembolso
+        adjustment: Ajuste
+        deposit: Depósito
+        withdrawal: Saque
+        transfer: Transferência
+      status:
+        posted: Lançado
+        draft: Rascunho
+        voided: Anulado
+      delete: Excluir
+      delete-help: Exclui permanentemente este lançamento contábil. Lançamentos do sistema não podem ser excluídos.
+      delete-confirm-title: Excluir lançamento contábil?
+      delete-confirm-body: Esta ação não pode ser desfeita.
+      deleted: Lançamento contábil excluído.
+    accounting:
+      tab:
+        overview: Visão geral
+        general-ledger: Razão geral
+    settings:
+      save-changes: Salvar alterações
+      month:
+        january: Janeiro
+        february: Fevereiro
+        march: Março
+        april: Abril
+        may: Maio
+        june: Junho
+        july: Julho
+        august: Agosto
+        september: Setembro
+        october: Outubro
+        november: Novembro
+        december: Dezembro
+      accounting:
+        title: Configurações contábeis
+        currency-fiscal-year: Moeda e exercício fiscal
+        base-currency: Moeda base
+        base-currency-help: A moeda de apresentação de todas as demonstrações financeiras e do plano de contas.
+        default-currency: "Padrão: {currency}"
+        using-default: Usando o padrão da organização ({currency}). Selecione uma moeda acima para substituir.
+        fiscal-year-start: Mês de início do exercício fiscal
+        fiscal-year-start-help: O mês em que começa o exercício fiscal da sua organização. Afeta os relatórios financeiros por período.
+        select-start-month: Selecione o mês de início
+        default-accounts: Contas padrão
+        default-accounts-desc: Estas contas são usadas automaticamente ao lançar transações, a menos que uma conta específica seja selecionada na própria transação.
+        revenue-account: Conta de receita padrão
+        revenue-account-help: Aplicada aos itens de receita em faturas e transações de venda.
+        select-revenue-account: Selecione a conta de receita
+        expense-account: Conta de despesa padrão
+        expense-account-help: Aplicada aos itens de custo e despesa em contas a pagar e transações de compra.
+        select-expense-account: Selecione a conta de despesa
+        ar-account: Conta padrão de contas a receber
+        ar-account-help: A conta de ativo que controla os valores que os clientes devem à sua organização.
+        select-ar-account: Selecione a conta de contas a receber
+        ap-account: Conta padrão de contas a pagar
+        ap-account-help: A conta de passivo que controla os valores que sua organização deve aos fornecedores.
+        select-ap-account: Selecione a conta de contas a pagar
+        journal-behaviour: Comportamento dos lançamentos contábeis
+        auto-post: Lançar automaticamente os lançamentos contábeis
+        auto-post-help: Lança automaticamente os lançamentos contábeis no razão geral ao serem criados, sem exigir aprovação manual.
+        saved: Configurações contábeis salvas.
+      invoice:
+        title: Configurações de faturas
+        numbering: Numeração de faturas
+        prefix: Prefixo do número da fatura
+        prefix-help: "Este prefixo é adicionado ao início de cada novo número de fatura, ex.: 'INV-000001'."
+        currency-terms: Moeda e condições de pagamento
+        default-currency: Moeda padrão
+        default-currency-help: A moeda aplicada às novas faturas, a menos que seja alterada na própria fatura.
+        payment-terms: Prazo de pagamento padrão
+        payment-terms-help: Número de dias após a data da fatura para o vencimento do pagamento.
+        select-payment-terms: Selecione o prazo de pagamento
+        due-on-receipt: À vista (no recebimento)
+        net-days: "{days} dias"
+        default-text: Texto padrão da fatura
+        default-notes: Observações padrão
+        default-notes-help: Estas observações aparecem no rodapé de cada nova fatura. Você pode alterá-las em cada fatura.
+        default-notes-placeholder: "ex.: Obrigado pela preferência!"
+        default-terms: Termos e condições padrão
+        default-terms-help: Termos padrão preenchidos automaticamente em cada nova fatura.
+        default-terms-placeholder: "ex.: O pagamento vence em até 30 dias após a data da fatura."
+        default-template-title: Modelo de fatura padrão
+        default-template: Modelo padrão
+        default-template-help: O modelo de fatura aplicado a todas as novas faturas, inclusive as geradas automaticamente a partir de pedidos do Fleet-Ops. Deixe em branco para usar o padrão do sistema.
+        select-template: Selecione um modelo de fatura
+        selected: "Selecionado:"
+        no-templates: Nenhum modelo de fatura encontrado.
+        create-template: Crie um modelo
+        enable-branding: para personalizar a identidade visual das faturas.
+        automation: Automação
+        auto-send: Envio automático ao criar
+        auto-send-help: Envia automaticamente a fatura por e-mail ao cliente quando ela é criada.
+        saved: Configurações de faturas salvas.
+      payment:
+        title: Configurações de pagamento
+        default-gateway-title: Gateway de pagamento padrão
+        default-gateway: Gateway padrão
+        default-gateway-help: O gateway usado em todos os pagamentos de faturas, a menos que seja alterado na fatura. Apenas gateways ativos são listados.
+        select-gateway: Selecione um gateway de pagamento
+        no-gateways: Nenhum gateway ativo encontrado.
+        add-gateway: Adicione um gateway
+        enable-online: para habilitar pagamentos online.
+        behaviour: Comportamento dos pagamentos
+        partial: Permitir pagamentos parciais
+        partial-help: Permite que os clientes paguem parte do valor da fatura em vez do saldo total.
+        wallet-credit: Aplicar crédito da carteira automaticamente
+        wallet-credit-help: Aplica automaticamente o saldo disponível na carteira ao pagamento de faturas antes de cobrar pelo gateway.
+        notifications: Notificações de pagamento
+        receipt: Enviar comprovante de pagamento
+        receipt-help: Envia automaticamente por e-mail um comprovante ao cliente após um pagamento bem-sucedido.
+        saved: Configurações de pagamento salvas.
+      gateways:
+        remove: Remover
+        remove-confirm-title: Remover gateway de pagamento?
+        remove-confirm-body: Isso vai remover "{name}". Todas as integrações ativas que usam este gateway deixarão de funcionar.
+        removed: Gateway removido.
+        tab:
+          configuration: Configuração
+          webhook-events: Eventos de webhook
+    app:
+      search-placeholder: Buscar no Ledger...
+      dashboard-name: Painel do Ledger
+      dashboard-period: Período do painel
+      nav:
+        dashboard: Painel
+        dashboard-description: Painel do Ledger e visão geral financeira.
+        billing: Faturamento
+        billing-description: Faturas e modelos de fatura reutilizáveis.
+        invoices: Faturas
+        invoices-description: Crie, envie e gerencie faturas de clientes.
+        invoice-templates: Modelos de fatura
+        invoice-templates-description: Crie modelos de fatura reutilizáveis.
+        payments: Pagamentos
+        payments-description: Transações, carteiras e gateways de pagamento.
+        transactions: Transações
+        transactions-description: Consulte o histórico de transações de pagamentos e carteiras.
+        wallets: Carteiras
+        wallets-description: Gerencie carteiras da empresa, de clientes e de motoristas.
+        gateways: Gateways de pagamento
+        gateways-description: Configure integrações com gateways de pagamento.
+        accounting: Contabilidade
+        accounting-description: Plano de contas, lançamentos contábeis e razão geral.
+        chart-of-accounts: Plano de contas
+        chart-of-accounts-description: Gerencie a estrutura de contas do Ledger.
+        journal-entries: Lançamentos contábeis
+        journal-entries-description: Consulte e crie lançamentos contábeis de partidas dobradas.
+        general-ledger: Razão geral
+        general-ledger-description: Revise a movimentação lançada em todas as contas.
+        reports: Relatórios
+        reports-description: Demonstrações financeiras e relatórios operacionais.
+        income-statement: Demonstração de resultado
+        income-statement-description: Receitas, despesas e lucro líquido.
+        balance-sheet: Balanço patrimonial
+        balance-sheet-description: Ativos, passivos e patrimônio líquido.
+        trial-balance: Balancete
+        trial-balance-description: Saldos devedores e credores por conta.
+        cash-flow: Fluxo de caixa
+        cash-flow-description: Movimentação de caixa no período selecionado.
+        ar-aging: Aging de contas a receber
+        ar-aging-description: Recebíveis em aberto por faixa de vencimento.
+        wallet-summary: Resumo de carteiras
+        wallet-summary-description: Saldos e resumo de movimentação das carteiras.
+        settings: Configurações
+        settings-description: Configurações de faturamento, pagamentos e contabilidade do Ledger.
+        invoice-settings: Configurações de fatura
+        invoice-settings-description: Configure numeração, padrões e modelos de fatura.
+        payment-settings: Configurações de pagamento
+        payment-settings-description: Configure padrões de pagamento e o comportamento dos gateways.
+        accounting-settings: Configurações contábeis
+        accounting-settings-description: Configure a automação contábil e o comportamento dos lançamentos.
+    extension:
+      header-description: Faturamento, pagamentos, contabilidade e relatórios financeiros em tempo real.
+      shortcuts:
+        invoices: Faturas
+        invoices-description: Crie, envie e gerencie faturas de clientes.
+        wallets: Carteiras
+        wallets-description: Gerencie carteiras e saldos de motoristas, clientes e da empresa.
+        transactions: Transações
+        transactions-description: Registro cronológico de todas as transações.
+        payment-gateways: Gateways de pagamento
+        payment-gateways-description: Configure e gerencie integrações com gateways de pagamento.
+        chart-of-accounts: Plano de contas
+        chart-of-accounts-description: Visualize e gerencie o plano de contas completo.
+        journal-entries: Lançamentos contábeis
+        journal-entries-description: Consulte e crie lançamentos contábeis de partidas dobradas.
+        general-ledger: Razão geral
+        general-ledger-description: Revise todas as transações lançadas em todas as contas.
+      menu:
+        invoice: Fatura
+        taler-refund: Reembolso Taler
+      categories:
+        kpi-tiles: Indicadores (KPI)
+        analytics: Análises
+        operations: Operações
+        legacy: Legado
+        activity: Atividade
+        reports: Relatórios
+      widgets:
+        revenue: Receita
+        revenue-description: Receita total do período atual com comparação.
+        expenses: Despesas
+        expenses-description: Despesas totais do período atual com comparação.
+        net-income: Lucro líquido
+        net-income-description: Receita menos despesas no período atual.
+        outstanding-ar: Contas a receber em aberto
+        outstanding-ar-description: Saldo de recebíveis não pagos das faturas em aberto.
+        overdue-ar: Contas a receber vencidas
+        overdue-ar-description: Recebíveis vencidos que exigem cobrança.
+        open-invoices: Faturas em aberto
+        open-invoices-description: Faturas em rascunho, enviadas e vencidas que ainda exigem ação.
+        wallet-balance: Saldo das carteiras
+        wallet-balance-description: Saldos das carteiras ativas, agrupados por moeda quando necessário.
+        active-wallets: Carteiras ativas
+        active-wallets-description: Quantidade de carteiras ativas com saldo atual.
+        revenue-trend: Tendência de receita
+        revenue-trend-description: Tendência de receitas e despesas em períodos selecionáveis.
+        cash-flow-summary: Resumo do fluxo de caixa
+        cash-flow-summary-description: Movimentação de caixa operacional, de financiamento e de investimento.
+        invoice-pipeline: Funil de faturas
+        invoice-pipeline-description: Quantidades e saldos por status de fatura.
+        ar-aging-risk: Risco de aging de contas a receber
+        ar-aging-risk-description: Faixas resumidas de aging de contas a receber.
+        wallet-balances: Saldos das carteiras
+        wallet-balances-description: Saldos totais das carteiras agrupados por moeda, em todas as carteiras de motoristas e clientes.
+        recent-activity: Atividade financeira recente
+        recent-activity-description: Feed ao vivo dos lançamentos contábeis de partidas dobradas mais recentes do Ledger.
+        financial-reports: Relatórios financeiros
+        financial-reports-description: Atalhos para os relatórios financeiros do Ledger.
+        overview-legacy: Visão geral financeira (legado)
+        overview-legacy-description: Widget legado de KPIs agrupados. Substituído pelos indicadores individuais do Ledger.
+        revenue-chart-legacy: Gráfico de receita (legado)
+        revenue-chart-legacy-description: Widget legado de barras de receita diária. Substituído por Tendência de receita.
+        invoice-summary-legacy: Resumo de faturas (legado)
+        invoice-summary-legacy-description: Widget legado de contagem de faturas. Substituído por Funil de faturas.
+    widget:
+      refresh: Atualizar
+      recent-activity: Atividade financeira recente
+      recent-activity-subtitle: Últimos lançamentos contábeis registrados no Ledger
+      no-recent-entries: Nenhum lançamento contábil recente.
+      load-activity-failed: Não foi possível carregar a atividade
+      ar-aging-summary: Resumo do aging de contas a receber
+      no-ar-aging-data: Sem dados de aging de contas a receber.
+      ar-aging-risk: Risco de aging de contas a receber
+      open-invoices-count: "{count, plural, one {# fatura em aberto} other {# faturas em aberto}}"
+      invoices-count: "{count, plural, one {# fatura} other {# faturas}}"
+      no-outstanding-receivables: Nenhum recebível em aberto.
+      load-ar-aging-failed: Não foi possível carregar o aging de contas a receber
+      cash-flow-summary: Resumo do fluxo de caixa
+      net-cash-change: "{amount} de variação líquida de caixa"
+      no-cash-flow-data: Ainda não há dados de fluxo de caixa.
+      operating: Operacional
+      financing: Financiamento
+      investing: Investimento
+      net-cash-flow: Fluxo de caixa líquido
+      load-cash-flow-failed: Não foi possível carregar o fluxo de caixa
+      invoice-pipeline: Funil de faturas
+      invoice-pipeline-subtitle: "{count, plural, one {# fatura} other {# faturas}} · saldo em aberto por status"
+      no-invoices: Ainda não há faturas.
+      load-invoice-status-failed: Não foi possível carregar o status das faturas
+      invoice-summary: Resumo de faturas
+      financial-overview: Visão geral financeira
+      no-invoice-data: Sem dados de faturas.
+      metric: Métrica
+      multi: Várias
+      current: Atual
+      grouped-by-currency: Agrupado por moeda
+      vs-previous-period: vs. período anterior
+      load-metric-failed: Não foi possível carregar a métrica
+      revenue: Receita
+      expenses: Despesas
+      net-income: Lucro líquido
+      outstanding-ar: Contas a receber em aberto
+      overdue-ar: Contas a receber vencidas
+      open-invoices: Faturas em aberto
+      wallet-balance: Saldo das carteiras
+      active-wallets: Carteiras ativas
+      financial-reports: Relatórios financeiros
+      financial-reports-subtitle: Acesse os relatórios de origem dos dados do painel
+      income-statement: Demonstração de resultado
+      cash-flow: Fluxo de caixa
+      ar-aging: Aging de contas a receber
+      wallet-summary: Resumo de carteiras
+      general-ledger: Razão geral
+      revenue-chart: Gráfico de receita
+      no-revenue-period: Sem dados de receita para este período.
+      revenue-trend: Tendência de receita
+      revenue-trend-subtitle: "{revenue} de receita · {net} líquido"
+      no-revenue-data: Ainda não há dados de receita.
+      value: Valor
+      load-revenue-trend-failed: Não foi possível carregar a tendência de receita
+      top-wallets: Principais carteiras
+      no-wallet-data: Sem dados de carteiras.
+      wallet-balances: Saldos das carteiras
+      wallet-balances-subtitle: Agrupados por moeda, com as principais carteiras ativas
+      wallets-count: "{count, plural, one {# carteira} other {# carteiras}}"
+      load-wallet-balances-failed: Não foi possível carregar os saldos das carteiras
+      invoice-status:
+        draft: Rascunho
+        sent: Enviada
+        paid: Paga
+        overdue: Vencida
+        cancelled: Cancelada
+        void: Anulada
+    reports:
+      reports: Relatórios
+      run-report: Gerar relatório
+      select-report-hint: Selecione um relatório e clique em "Gerar relatório" para gerá-lo.
+      balance-sheet: Balanço patrimonial
+      income-statement: Demonstração de resultado
+      cash-flow: Fluxo de caixa
+      cash-flow-statement: Demonstração do fluxo de caixa
+      ar-aging: Aging de contas a receber
+      ar-aging-title: Aging de contas a receber
+      trial-balance: Balancete
+      wallet-summary: Resumo de carteiras
+      select-period: Selecione o período
+      as-of-date: Data de referência
+      refresh: Atualizar
+      as-of: Em {date}
+      balanced: Balanceado
+      unbalanced: Desbalanceado
+      profitable: Lucrativo
+      net-loss: Prejuízo líquido
+      assets: Ativos
+      liabilities: Passivos
+      equity: Patrimônio líquido
+      no-section-accounts: Nenhuma conta em {section}
+      total-section: Total de {section}
+      total-assets: Total de ativos
+      total-liabilities: Total de passivos
+      total-equity: Total do patrimônio líquido
+      total-liabilities-equity: Total de passivos e patrimônio líquido
+      no-data-date: Nenhum dado de relatório disponível. Selecione uma data e atualize.
+      no-data-period: Nenhum dado de relatório disponível. Selecione um período e atualize.
+      revenue: Receitas
+      expenses: Despesas
+      total-revenue: Receita total
+      total-expenses: Despesas totais
+      net-income: Lucro líquido
+      no-revenue: Nenhuma receita registrada
+      no-expenses: Nenhuma despesa registrada
+      operating-activities: Atividades operacionais
+      financing-activities: Atividades de financiamento
+      net-operating: Fluxo de caixa operacional líquido
+      net-financing: Fluxo de caixa de financiamento líquido
+      net-change: Variação líquida de caixa
+      no-operating: Sem dados de atividades operacionais
+      no-financing: Sem dados de atividades de financiamento
+      code: Código
+      account: Conta
+      type: Tipo
+      debit: Débito
+      credit: Crédito
+      totals: Totais
+      no-account-data: Nenhum dado de conta disponível
+      total-outstanding: Total em aberto
+      outstanding-invoices: Faturas em aberto
+      invoice: Fatura
+      customer: Cliente
+      due-date: Vencimento
+      balance: Saldo
+      bucket: Faixa
+      days-overdue: Dias em atraso
+      no-outstanding: Nenhum recebível em aberto
+      wallets-by-owner-type: Carteiras por tipo de titular
+      owner-type: Tipo de titular
+      count: Quantidade
+      total-balance: Saldo total
+      currency: Moeda
+      no-wallet-data: Sem dados de carteiras
+      period-activity: Movimentação de transações no período
+      credits: Créditos
+      credit-count: Qtd. de créditos
+      debits: Débitos
+      debit-count: Qtd. de débitos
+      no-transactions-period: Nenhuma transação neste período
+      top-wallets: Principais carteiras por saldo
+      wallet: Carteira
+      owner: Titular
+      no-wallets: Nenhuma carteira encontrada
+      buckets:
+        current: Em dia
+        days-1-30: 1–30 dias
+        days-31-60: 31–60 dias
+        days-61-90: 61–90 dias
+        days-over-90: Mais de 90 dias
+    general-ledger:
+      title: Razão geral
+      select-date-range: Selecione o período
+      collapse-all: Recolher tudo
+      expand-all: Expandir tudo
+      entries-count: "{count, plural, one {# lançamento} other {# lançamentos}}"
+      date: Data
+      ref: Ref. nº
+      description: Descrição
+      debit: Débito
+      credit: Crédito
+      balance: Saldo
+      totals: Totais
+      no-entries: Nenhum lançamento contábil para esta conta.
+      no-entries-period: Nenhum lançamento contábil para esta conta no período selecionado.
+      no-accounts: Nenhuma conta encontrada.
+      no-accounts-hint: Crie contas no Plano de contas para ver os lançamentos aqui.
+      types:
+        all: Todos os tipos
+        asset: Ativo
+        liability: Passivo
+        equity: Patrimônio líquido
+        revenue: Receita
+        expense: Despesa
+  modals:
+    invoice-preview:
+      no-content: Nenhum conteúdo de fatura para exibir.
+    template-preview:
+      no-content: Nenhum conteúdo de modelo para exibir.
+      title: Pré-visualização do modelo
+common:
+  ledger: Ledger
+  overview: Visão geral
+  transactions: Transações
+resource:
+  account: Conta
+  accounts: Contas
+  invoice: Fatura
+  invoices: Faturas
+  invoice-template: Modelo de fatura
+  invoice-templates: Modelos de fatura
+  journal: Lançamento contábil
+  journal-entries: Lançamentos contábeis
+  transaction: Transação
+  transactions: Transações
+  wallet: Carteira
+  wallets: Carteiras
+  gateway: Gateway de pagamento
+  gateways: Gateways de pagamento
+  wallet-transaction: Transação da carteira
+  wallet-transactions: Transações da carteira
+column:
+  id: ID
+  number: Número
+  name: Nome
+  code: Código
+  type: Tipo
+  status: Status
+  direction: Direção
+  description: Descrição
+  date: Data
+  created-at: Criado em
+  updated-at: Atualizado em
+  amount: Valor
+  balance: Saldo
+  balance-after: Saldo após
+  total: Total
+  net-amount: Valor líquido
+  fee: Taxa
+  tax: Imposto
+  currency: Moeda
+  gateway: Gateway de pagamento
+  payment-method: Forma de pagamento
+  reference: Referência
+  memo: Observação
+  period: Período
+  settled-at: Liquidado em
+  failure-reason: Motivo da falha
+  due-date: Vencimento
+  issued-at: Emitido em
+  invoice-date: Data da fatura
+  customer: Cliente
+  debit-account: Conta de débito
+  credit-account: Conta de crédito
+  source: Origem
+  driver: Motorista
+  environment: Ambiente
+  default: Padrão
+  owner: Titular
+  payer: Pagador
+  payee: Beneficiário
+  frozen: Congelada
+  orientation: Orientação
+menu:
+  dashboard: Painel
+  billing: Faturamento
+  invoices: Faturas
+  payments: Pagamentos
+  wallets: Carteiras
+  gateways: Gateways de pagamento
+  accounting: Contabilidade
+  chart-of-accounts: Plano de contas
+  journal-entries: Lançamentos contábeis
+  general-ledger: Livro razão
+  reports: Relatórios
+  income-statement: Demonstração de resultado
+  balance-sheet: Balanço patrimonial
+  trial-balance: Balancete
+  cash-flow: Fluxo de caixa
+  ar-aging: Aging de contas a receber
+  wallet-summary: Resumo de carteiras
+  settings: Configurações
+  invoice-settings: Configurações de fatura
+  payment-settings: Configurações de pagamento
+  accounting-settings: Configurações contábeis
+invoice:
+  no-transactions: Nenhuma transação registrada para esta fatura.
+  actions:
+    preview-invoice: "Visualizar fatura #{number}"
+    preview-invoice-fallback: Visualizar fatura
+    download-pdf: Baixar PDF
+    record-payment: Registrar pagamento
+    record-payment-title: Registrar pagamento — {number}
+    copy-payment-link: Copiar link de pagamento
+    copy-invoice-url: Copiar URL da fatura
+    payment-link-copied: URL da fatura copiada para a área de transferência.
+    payment-link-copy-failed: Falha ao copiar a URL da fatura. Copie manualmente.
+    send: Enviar fatura
+    void: Anular fatura
+    edit: Editar fatura

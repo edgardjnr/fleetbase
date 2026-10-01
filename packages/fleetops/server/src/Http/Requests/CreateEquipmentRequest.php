@@ -1,0 +1,35 @@
+<?php
+
+namespace Fleetbase\FleetOps\Http\Requests;
+
+use Fleetbase\Http\Requests\FleetbaseRequest;
+use Illuminate\Validation\Rule;
+
+class CreateEquipmentRequest extends FleetbaseRequest
+{
+    public function authorize(): bool
+    {
+        return request()->session()->has('api_credential') || request()->session()->has('is_sanctum_token');
+    }
+
+    public function rules(): array
+    {
+        return [
+            'name'           => [Rule::requiredIf($this->isMethod('POST')), 'string'],
+            'code'           => ['nullable', 'string'],
+            'type'           => ['nullable', 'string'],
+            'status'         => ['nullable', 'string'],
+            'serial_number'  => ['nullable', 'string'],
+            'manufacturer'   => ['nullable', 'string'],
+            'model'          => ['nullable', 'string'],
+            'warranty'       => ['nullable', 'string'],
+            'photo'          => ['nullable', 'string'],
+            'equipable_type' => ['nullable', Rule::in(['fleet-ops:vehicle', 'fleet-ops:trailer', 'fleet-ops:driver', 'vehicle', 'trailer', 'driver'])],
+            'equipable'      => ['nullable', 'required_with:equipable_type', 'string'],
+            'purchased_at'   => ['nullable', 'date'],
+            'purchase_price' => ['nullable'],
+            'currency'       => ['nullable', 'string', 'size:3'],
+            'meta'           => ['nullable', 'array'],
+        ];
+    }
+}

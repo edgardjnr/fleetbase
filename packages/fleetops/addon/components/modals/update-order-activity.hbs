@@ -1,0 +1,168 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{perform this.submitActivity}} @decline={{@onDecline}}>
+    <div class="modal-body-container">
+        <div class="flex justify-between align-start">
+            <div class="flex-1">
+                <p class="mb-5 dark:text-gray-100">
+                    {{t "modals.order-new-activity.select-message"}}
+                </p>
+            </div>
+            <Button @text={{t "fleet-ops.ui.modals.update-order-activity.refresh-activity"}} @icon="refresh" @size="xs" @wrapperClass="self-start" @isLoading={{this.loadActivity.isRunning}} @onClick={{perform this.loadActivity}} />
+        </div>
+
+        {{#if this.order.activityHasEnded}}
+            <InfoBlock class="warning mt-2" @icon="exclamation-triangle">
+                {{t "modals.order-new-activity.order-currently-message" htmlSafe=true options=@options.order.status}}
+                {{t "modals.order-new-activity.fleetbase-message"}}
+            </InfoBlock>
+        {{/if}}
+
+        {{#if this.currentWaypoint}}
+            <div class="my-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-blue-900 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-50">
+                <div class="text-xs font-semibold uppercase">{{t "fleet-ops.ui.modals.update-order-activity.updating-activity-for"}}</div>
+                <div class="mt-1 flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="truncate text-sm font-semibold">{{or this.currentWaypoint.name this.currentWaypoint.public_id}}</div>
+                        <div class="truncate text-xs">{{or (place-address-html this.currentWaypoint showTitle=false) this.currentWaypoint.address this.currentWaypoint.street1}}</div>
+                    </div>
+                    {{#if this.currentWaypoint.status_code}}
+                        <Badge @status={{dasherize this.currentWaypoint.status_code}} class="uppercase">{{this.currentWaypoint.status_code}}</Badge>
+                    {{else if this.currentWaypoint.status}}
+                        <Badge @status={{dasherize this.currentWaypoint.status}} class="uppercase">{{this.currentWaypoint.status}}</Badge>
+                    {{/if}}
+                </div>
+            </div>
+        {{/if}}
+
+        <fieldset class="my-5">
+            <legend class="sr-only">
+                {{t "modals.order-new-activity.activity-options"}}
+            </legend>
+
+            <div class="radio-group-condensed -space-y-px">
+                {{#each this.activityOptions as |activity index|}}
+                    <div class="radio-group-item shadow-sm {{if (eq this.selectedActivity index) 'is-checked'}}">
+                        <div class="flex items-center h-5">
+                            <RadioButton
+                                @radioClass="focus:ring-blue-500"
+                                @radioId={{concat "activity_" index}}
+                                @value={{index}}
+                                @groupValue={{this.selectedActivity}}
+                                @name={{t "modals.order-new-activity.activity"}}
+                                @changed={{fn (mut this.selectedActivity)}}
+                            />
+                        </div>
+                        <label for={{concat "activity_" index}} class="ml-3 flex flex-col cursor-pointer w-full">
+                            <span class="block text-sm font-semibold">
+                                {{or activity._resolved_status activity.status}}
+                            </span>
+                            <span class="block text-sm">
+                                {{or activity._resolved_details activity.details}}
+
+                                {{#if (eq activity.code "dispatched")}}
+                                    <InfoBlock @type="warning" @size="xs" @icon="exclamation-triangle" @text={{t "modals.order-new-activity.dispatch"}} class="mt-1" />
+                                {{/if}}
+
+                                {{#if activity.require_pod}}
+                                    <InfoBlock @type="warning" @size="xs" @icon="camera" @text={{t "fleet-ops.ui.modals.update-order-activity.requires-photo-proof-of-delivery"}} class="mt-1" />
+                                {{/if}}
+                            </span>
+                        </label>
+                        <div>
+                            <Badge @status={{dasherize activity.code}} class="uppercase">{{activity.code}}</Badge>
+                        </div>
+                    </div>
+                {{/each}}
+
+                <div class="radio-group-item shadow-sm {{if (eq this.selectedActivity 'custom') 'is-checked'}}">
+                    <div class="flex items-center h-5 pt-1">
+                        <RadioButton
+                            @radioClass="focus:ring-blue-500"
+                            @radioId="activity_custom"
+                            @value="custom"
+                            @groupValue={{this.selectedActivity}}
+                            @name={{t "modals.order-new-activity.activity"}}
+                            @changed={{fn (mut this.selectedActivity)}}
+                        />
+                    </div>
+                    <label for="activity_custom" class="ml-3 flex flex-col cursor-pointer w-full pr-5">
+                        <div class="font-semibold text-sm mb-1">{{t "fleet-ops.ui.modals.update-order-activity.add-custom-activity"}}</div>
+                        <span class="block text-sm font-medium mb-0.5">
+                            <Input
+                                @type="text"
+                                @value={{this.customActivity.status}}
+                                class="form-input form-input-sm w-full rounded-b-none"
+                                placeholder={{t "modals.order-new-activity.status"}}
+                            />
+                        </span>
+                        <span class="block text-sm">
+                            <Input
+                                @type="text"
+                                @value={{this.customActivity.details}}
+                                class="form-input form-input-sm w-full rounded-t-none"
+                                placeholder={{t "modals.order-new-activity.details"}}
+                            />
+                        </span>
+                    </label>
+                    <div>
+                        <Input @type="text" @value={{this.customActivity.code}} class="form-input form-input-sm" placeholder={{t "modals.order-new-activity.code"}} />
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+
+        {{#if this.selectedActivityRequiresPod}}
+            <div class="mb-4 rounded-md border border-yellow-300 bg-yellow-50 py-2 text-yellow-900 dark:border-yellow-700 dark:bg-yellow-900 dark:text-yellow-50">
+                <div class="flex flex-wrap items-center justify-between gap-2 px-3">
+                    <div class="min-w-0">
+                        <div class="text-xs font-semibold uppercase">{{t "fleet-ops.ui.modals.update-order-activity.photo-proof-required"}}</div>
+                        {{#if this.bypassProof}}
+                            <div class="text-xs text-yellow-800 dark:text-yellow-100">{{t "fleet-ops.ui.modals.update-order-activity.proof-bypass-enabled"}}</div>
+                        {{else if this.hasUploadedProof}}
+                            <div class="text-xs text-yellow-800 dark:text-yellow-100">{{t "fleet-ops.ui.modals.update-order-activity.proof-uploaded"}}</div>
+                        {{else if this.uploadProofFile.isRunning}}
+                            <div class="text-xs text-yellow-800 dark:text-yellow-100">{{t "fleet-ops.ui.modals.update-order-activity.uploading-proof"}}</div>
+                        {{else}}
+                            <div class="text-xs text-yellow-800 dark:text-yellow-100">{{t "fleet-ops.ui.modals.update-order-activity.upload-proof-before-submitting"}}</div>
+                        {{/if}}
+                    </div>
+                    {{#unless this.bypassProof}}
+                        <FileUpload @name="photos" @accept={{join "," this.acceptedProofFileTypes}} @multiple={{false}} @onFileAdded={{perform this.uploadProofFile}}>
+                            <a tabindex={{0}} class="btn btn-magic btn-sm cursor-pointer">
+                                {{#if this.uploadProofFile.isRunning}}
+                                    <Spinner class="mr-1" />
+                                    {{t "fleet-ops.ui.modals.update-order-activity.uploading"}}
+                                {{else}}
+                                    <FaIcon @icon="camera" class="mr-1" />
+                                    {{t "fleet-ops.ui.modals.update-order-activity.select-photo"}}
+                                {{/if}}
+                            </a>
+                        </FileUpload>
+                    {{/unless}}
+                </div>
+                <div class="px-3 mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-yellow-50 pt-2 dark:border-yellow-700">
+                    <Toggle @isToggled={{this.bypassProof}} @onToggle={{this.toggleBypassProof}} @label={{t "fleet-ops.ui.modals.update-order-activity.bypass-proof-of-delivery"}} @labelClass="text-xs" />
+                    <span class="text-xs text-yellow-800 dark:text-yellow-100">{{t "fleet-ops.ui.modals.update-order-activity.use-only-when-proof-cannot-be"}}</span>
+                </div>
+                {{#if this.proofFiles}}
+                    <div class="mt-4 mb-1 px-3 space-x-2">
+                        {{#each this.proofFiles as |file|}}
+                            <div class="flex items-center justify-between gap-2 text-xs text-yellow-900 dark:text-yellow-50 border border-yellow-50 dark:border-yellow-700 shadow-sm px-2 py-1.5 rounded-md">
+                                <div class="text-xs flex items-center space-x-2">
+                                    <FaIcon @icon="file" />
+                                    <span class="truncate">{{file.name}}</span>
+                                </div>
+                                <span class="flex-shrink-0 font-semibold">
+                                    {{#if this.hasUploadedProof}}
+                                        {{t "fleet-ops.ui.modals.update-order-activity.uploaded"}}
+                                    {{else}}
+                                        {{round file.progress}}%
+                                    {{/if}}
+                                </span>
+                            </div>
+                        {{/each}}
+                    </div>
+                {{/if}}
+            </div>
+        {{/if}}
+    </div>
+</Modal::Default>

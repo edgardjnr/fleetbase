@@ -1,0 +1,254 @@
+<div class="details-wrapper" ...attributes>
+
+    {{! ── INVOICE INFORMATION ─────────────────────────────────────────────── }}
+    <ContentPanel @title={{t "ledger.ui.invoice.invoice-information"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.invoice.invoice-number"}}</div>
+                <div class="field-value font-mono">{{n-a @resource.number}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.invoice.status"}}</div>
+                <div class="field-value">
+                    <Badge @status={{@resource.status}} @color={{@resource.statusBadgeColor}}>
+                        {{t (concat "ledger.ui.invoice.statuses." @resource.status)}}
+                    </Badge>
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.invoice.invoice-date"}}</div>
+                <div class="field-value">{{n-a @resource.issuedAt}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.invoice.due-date"}}</div>
+                <div class="field-value {{if @resource.isOverdue 'text-red-600 font-semibold'}}">
+                    {{n-a @resource.dueDate}}
+                    {{#if @resource.isOverdue}}
+                        <span class="ml-1 text-red-500 text-[10px] uppercase font-bold">{{t "ledger.ui.invoice.overdue"}}</span>
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.invoice.currency"}}</div>
+                <div class="field-value uppercase">{{n-a @resource.currency}}</div>
+            </div>
+
+            {{#if this.orderIdentifier}}
+                <div class="field-info-container">
+                    <div class="field-name">{{t "ledger.ui.invoice.order"}}</div>
+                    <div class="field-value">
+                        <button type="button" class="text-blue-500 hover:underline font-semibold" {{on "click" this.transitionToOrder}}>
+                            {{n-a this.orderLabel}}
+                        </button>
+                    </div>
+                </div>
+            {{/if}}
+
+            {{#if @resource.templateName}}
+                <div class="field-info-container">
+                    <div class="field-name">{{t "ledger.ui.invoice.template"}}</div>
+                    <div class="field-value">{{@resource.templateName}}</div>
+                </div>
+            {{/if}}
+
+            {{#if @resource.sentAt}}
+                <div class="field-info-container">
+                    <div class="field-name">{{t "ledger.ui.invoice.sent-at"}}</div>
+                    <div class="field-value">{{@resource.sentAt}}</div>
+                </div>
+            {{/if}}
+
+            {{#if @resource.viewedAt}}
+                <div class="field-info-container">
+                    <div class="field-name">{{t "ledger.ui.invoice.viewed-at"}}</div>
+                    <div class="field-value">{{@resource.viewedAt}}</div>
+                </div>
+            {{/if}}
+
+            {{#if @resource.paidAt}}
+                <div class="field-info-container">
+                    <div class="field-name">{{t "ledger.ui.invoice.paid-at"}}</div>
+                    <div class="field-value text-green-600">{{@resource.paidAt}}</div>
+                </div>
+            {{/if}}
+
+            {{#if this.invoiceUrl}}
+                <div class="field-info-container lg:col-span-2">
+                    <div class="field-name">{{t "ledger.ui.invoice.invoice-url"}}</div>
+                    <div class="field-value flex items-center gap-2">
+                        <ClickToCopy @value={{this.invoiceUrl}} class="flex-shrink-0"><a
+                                href={{this.invoiceUrl}}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="text-blue-500 hover:underline truncate max-w-xs font-mono text-xs"
+                            >
+                                {{this.invoiceUrl}}
+                            </a></ClickToCopy>
+                    </div>
+                </div>
+            {{/if}}
+
+        </div>
+    </ContentPanel>
+
+    {{! ── CUSTOMER ─────────────────────────────────────────────────────────── }}
+    <ContentPanel @title={{t "ledger.ui.invoice.customer"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "common.name"}}</div>
+                <div class="field-value">{{n-a @resource.customerName}}</div>
+            </div>
+
+            {{#if @resource.customerEmail}}
+                <div class="field-info-container">
+                    <div class="field-name">{{t "common.email"}}</div>
+                    <div class="field-value">
+                        <a href="mailto:{{@resource.customerEmail}}" class="text-blue-500 hover:underline">
+                            {{@resource.customerEmail}}
+                        </a>
+                    </div>
+                </div>
+            {{/if}}
+
+            {{#if @resource.customerPhone}}
+                <div class="field-info-container">
+                    <div class="field-name">{{t "common.phone"}}</div>
+                    <div class="field-value">{{@resource.customerPhone}}</div>
+                </div>
+            {{/if}}
+
+        </div>
+    </ContentPanel>
+
+    {{! ── LINE ITEMS ───────────────────────────────────────────────────────── }}
+    <ContentPanel @title={{t "ledger.ui.invoice.line-items"}} @open={{true}} @wrapperClass="bordered-top">
+        {{#if @resource.items.length}}
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="border-b border-gray-200 dark:border-gray-700 text-[11px] uppercase tracking-wide text-gray-500 font-semibold">
+                            <th class="py-2 pr-2 text-left">{{t "ledger.ui.invoice.description"}}</th>
+                            <th class="py-2 px-2 text-right w-16">{{t "ledger.ui.invoice.qty"}}</th>
+                            <th class="py-2 px-2 text-right w-36">{{t "ledger.ui.invoice.unit-price"}}</th>
+                            <th class="py-2 px-2 text-right w-20">{{t "ledger.ui.invoice.tax-percent"}}</th>
+                            <th class="py-2 pl-2 text-right w-36">{{t "ledger.ui.invoice.amount"}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each @resource.items as |item|}}
+                            <tr class="border-b border-gray-100 dark:border-gray-800">
+                                <td class="py-2 pr-2 text-gray-700 dark:text-gray-300">
+                                    {{n-a item.description}}
+                                </td>
+                                <td class="py-2 px-2 text-right text-gray-600 dark:text-gray-400">
+                                    {{item.quantity}}
+                                </td>
+                                <td class="py-2 px-2 text-right text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                    {{format-currency item.unit_price @resource.currency}}
+                                </td>
+                                <td class="py-2 px-2 text-right text-gray-600 dark:text-gray-400">
+                                    {{#if item.tax_rate}}{{item.tax_rate}}%{{else}}—{{/if}}
+                                </td>
+                                <td class="py-2 pl-2 text-right font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                    {{format-currency item.amount @resource.currency}}
+                                </td>
+                            </tr>
+                        {{/each}}
+                    </tbody>
+                    <tfoot class="border-t border-gray-200 dark:border-gray-700">
+                        <tr class="text-xs text-gray-500">
+                            <td colspan="4" class="pt-2 text-right pr-2 text-[11px] uppercase tracking-wide font-semibold">{{t "ledger.ui.invoice.subtotal"}}</td>
+                            <td class="pt-2 pl-2 text-right font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                {{format-currency @resource.subtotal @resource.currency}}
+                            </td>
+                        </tr>
+                        {{#if @resource.tax}}
+                            <tr class="text-xs text-gray-500">
+                                <td colspan="4" class="pt-1 text-right pr-2 text-[11px] uppercase tracking-wide font-semibold">{{t "ledger.ui.invoice.tax"}}</td>
+                                <td class="pt-1 pl-2 text-right font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                    {{format-currency @resource.tax @resource.currency}}
+                                </td>
+                            </tr>
+                        {{/if}}
+                        <tr class="text-xs">
+                            <td colspan="4" class="pt-1 pb-2 text-right pr-2 text-[11px] uppercase tracking-wide font-bold text-gray-800 dark:text-gray-100">{{t "ledger.ui.invoice.total"}}</td>
+                            <td class="pt-1 pb-2 pl-2 text-right font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap">
+                                {{format-currency @resource.total @resource.currency}}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        {{else}}
+            <div class="text-xs text-gray-400 italic py-2">{{t "ledger.ui.invoice.no-line-items-recorded"}}</div>
+        {{/if}}
+    </ContentPanel>
+
+    {{! ── AMOUNTS SUMMARY ──────────────────────────────────────────────────── }}
+    <ContentPanel @title={{t "ledger.ui.invoice.payment-summary"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.invoice.total-amount"}}</div>
+                <div class="field-value font-semibold">{{format-currency @resource.total @resource.currency}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.invoice.amount-paid"}}</div>
+                <div class="field-value text-green-600 font-semibold">{{format-currency @resource.amount_paid @resource.currency}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.invoice.balance-due"}}</div>
+                <div class="field-value font-bold {{if @resource.isOverdue 'text-red-600' 'text-gray-800 dark:text-gray-100'}}">
+                    {{format-currency @resource.balance @resource.currency}}
+                </div>
+            </div>
+
+        </div>
+    </ContentPanel>
+
+    {{! ── NOTES ───────────────────────────────────────────────────────────── }}
+    {{#if @resource.notes}}
+        <ContentPanel @title={{t "ledger.ui.invoice.notes"}} @open={{true}} @wrapperClass="bordered-top">
+            <div class="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{@resource.notes}}</div>
+        </ContentPanel>
+    {{/if}}
+
+    {{! ── TERMS ───────────────────────────────────────────────────────────── }}
+    {{#if @resource.terms}}
+        <ContentPanel @title={{t "ledger.ui.invoice.terms"}} @open={{true}} @wrapperClass="bordered-top">
+            <div class="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{@resource.terms}}</div>
+        </ContentPanel>
+    {{/if}}
+
+    {{! ── RECORD INFO ─────────────────────────────────────────────────────── }}
+    <ContentPanel @title={{t "ledger.ui.invoice.record-info"}} @open={{false}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.invoice.internal-id"}}</div>
+                <div class="field-value font-mono text-gray-500">{{n-a @resource.public_id}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.invoice.created"}}</div>
+                <div class="field-value">{{n-a @resource.createdAt}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.invoice.last-updated"}}</div>
+                <div class="field-value">{{n-a @resource.updatedAt}}</div>
+            </div>
+
+        </div>
+    </ContentPanel>
+
+    <Spacer @height="200px" />
+</div>

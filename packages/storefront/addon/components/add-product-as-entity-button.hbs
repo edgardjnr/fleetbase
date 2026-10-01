@@ -1,0 +1,3 @@
+{{#if (eq @order.type "storefront")}}
+    <Button @type="magic" @icon="square-plus" @text={{t "storefront.ui.add-product.button"}} @onClick={{this.promptProductSelection}} />
+{{/if}}

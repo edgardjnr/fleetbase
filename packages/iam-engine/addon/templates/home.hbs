@@ -1,0 +1,14 @@
+<Layout::Section::Body class="overflow-y-scroll h-full">
+    <Dashboard
+        @defaultDashboardId="iam"
+        @defaultDashboardName={{t "iam.ui.dashboard-name"}}
+        @extension="iam"
+        @leftHeaderWrapperClass="iam-dashboard-title"
+        @rightHeaderWrapperClass="iam-dashboard-actions"
+        @createWrapperClass="iam-dashboard-create-wrapper"
+        @stickyHeader={{true}}
+        class="iam-dashboard-page"
+    />
+    <Spacer @height="300px" />
+    {{outlet}}
+</Layout::Section::Body>

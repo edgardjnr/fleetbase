@@ -1,0 +1,258 @@
+<?php
+
+/**
+ * -------------------------------------------
+ * FleetOps API Configuration
+ * -------------------------------------------.
+ */
+return [
+    /*
+    |--------------------------------------------------------------------------
+    | API Config
+    |--------------------------------------------------------------------------
+    */
+    'api' => [
+        'version' => '0.0.1',
+        'routing' => [
+            'prefix'          => null,
+            'internal_prefix' => 'int',
+        ],
+    ],
+    'connection' => [
+        'db' => env('DB_CONNECTION', 'mysql'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Facilitator Fee - This is a percentage fee the system admin takes when
+    | facilitating any payments in the system.
+    | Example: if `10` then 10% fee will be taken on all payments.
+    |--------------------------------------------------------------------------
+    */
+    'facilitator_fee' => 10,
+
+    /*
+    |--------------------------------------------------------------------------
+    | OSRM
+    |--------------------------------------------------------------------------
+    */
+    'osrm' => [
+        'host' => env('OSRM_HOST', 'https://router.project-osrm.org'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | VROOM Route Optimisation Engine
+    |--------------------------------------------------------------------------
+    |
+    | FleetOps ships its own self-contained VROOM engine that does NOT require
+    | the optional `fleetbase/vroom` extension to be installed. When the
+    | extension IS installed its `vroom.base_uri` config key takes precedence.
+    |
+    | API key resolution order:
+    |   1. Company-level setting written by the fleetbase/vroom extension UI
+    |   2. VROOM_API_KEY environment variable
+    |   3. No key (for self-hosted VROOM instances that do not require auth)
+    |
+    | To use a different engine set ORCHESTRATOR_ENGINE=greedy (built-in,
+    | no external service required) or register a custom engine.
+    |
+    */
+
+    /*
+    |--------------------------------------------------------------------------
+    | Distance Matrix Calculator
+    | Options: "calculate", "google", "osrm"
+    |--------------------------------------------------------------------------
+    */
+    'distance_matrix' => [
+        'provider' => env('DISTANCE_MATRIX_PROVIDER', 'calculate'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Order Tracking Intelligence
+    |--------------------------------------------------------------------------
+    |
+    | Provider-neutral tracking data for active orders. The provider registry
+    | can be extended by third-party packages without editing FleetOps core.
+    |
+    | Built-in providers: "google_routes", "osrm", "calculated"
+    |--------------------------------------------------------------------------
+    */
+    'tracking' => [
+        'provider'                         => env('TRACKING_PROVIDER', 'google_routes'),
+        'fallbacks'                        => array_filter(explode(',', env('TRACKING_PROVIDER_FALLBACKS', 'osrm,calculated'))),
+        'traffic_enabled'                  => env('TRACKING_TRAFFIC_ENABLED', true),
+        'cache_ttl_seconds'                => env('TRACKING_CACHE_TTL_SECONDS', 60),
+        'route_cache_ttl_seconds'          => env('TRACKING_ROUTE_CACHE_TTL_SECONDS', 600),
+        'stale_location_threshold_seconds' => env('TRACKING_STALE_LOCATION_THRESHOLD_SECONDS', 300),
+        'default_vehicle_speed_kph'        => env('TRACKING_DEFAULT_VEHICLE_SPEED_KPH', 35),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Navigator App
+    |--------------------------------------------------------------------------
+    */
+    'navigator' => [
+        /*
+        | App store reviewers cannot receive our SMS, so a fixed verification code has
+        | to keep working for them — including in production, which is where a review
+        | build is tested. Blocking the bypass outside production made review
+        | impossible; restricting it to named accounts makes it safe instead.
+        |
+        | Both values are required, and neither has a default. The code alone is not
+        | sufficient: it is only accepted for an identity listed in review_accounts, so
+        | a leaked code cannot be used to authenticate as an arbitrary driver.
+        |
+        |   NAVIGATOR_BYPASS_VERIFICATION_CODE=<a secret, rotated code>
+        |   NAVIGATOR_REVIEW_ACCOUNTS=+15555550100,apple-review@example.com
+        */
+        'bypass_verification_code' => env('SMS_AUTH_BYPASS_CODE', env('NAVIGATOR_BYPASS_VERIFICATION_CODE')),
+        'review_accounts'          => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('NAVIGATOR_REVIEW_ACCOUNTS', ''))
+        ))),
+        'app_identifier'           => env('NAVIGATOR_APP_IDENTIFIER', 'io.fleetbase.navigator'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Customers
+    |--------------------------------------------------------------------------
+    |
+    | Testing-only verification-code bypass for the customer auth flows
+    | (POST /v1/customers, /customers/verify-code, /customers/reset-password).
+    | Intended for local development and staging QA, where signing up means
+    | waiting on a real email or paying for a real SMS.
+    |
+    | MUST be left unset in production. It is ignored outright when the app
+    | environment is `production`, and when unset no bypass is possible.
+    |
+    | Deliberately NOT wired to SMS_AUTH_BYPASS_CODE: that variable already
+    | gates operator console login and driver login, and reusing it here would
+    | make one leaked value unlock three different privilege tiers.
+    |
+    */
+    'customers' => [
+        'verification_bypass_code' => env('FLEETOPS_CUSTOMER_VERIFICATION_BYPASS_CODE'),
+        // Identities the bypass code is accepted for. See the note on navigator below.
+        'review_accounts'          => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('FLEETOPS_CUSTOMER_REVIEW_ACCOUNTS', ''))
+        ))),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Events
+    |--------------------------------------------------------------------------
+    */
+    'events' => [
+        // order events
+        'order.created',
+        'order.updated',
+        'order.deleted',
+        'order.dispatched',
+        'order.dispatch_failed',
+        'order.completed',
+        'order.failed',
+        'order.driver_assigned',
+        'order.completed',
+
+        // payload events
+        'payload.created',
+        'payload.updated',
+        'payload.deleted',
+
+        // entity events
+        'entity.created',
+        'entity.updated',
+        'entity.deleted',
+        'entity.driver_assigned',
+
+        // driver events
+        'driver.created',
+        'driver.updated',
+        'driver.deleted',
+        'driver.assigned',
+        // 'driver.entered_zone',
+        // 'driver.exited_zone',
+
+        // fleet events
+        'fleet.created',
+        'fleet.updated',
+        'fleet.deleted',
+
+        // purchase_rate events
+        'purchase_rate.created',
+        'purchase_rate.updated',
+        'purchase_rate.deleted',
+
+        // contact events
+        'contact.created',
+        'contact.updated',
+        'contact.deleted',
+
+        // place events
+        'place.created',
+        'place.updated',
+        'place.deleted',
+
+        // service_area events
+        'service_area.created',
+        'service_area.updated',
+        'service_area.deleted',
+
+        // service_quote events
+        'service_quote.created',
+        'service_quote.updated',
+        'service_quote.deleted',
+
+        // service_rate events
+        'service_rate.created',
+        'service_rate.updated',
+        'service_rate.deleted',
+
+        // tracking_number events
+        'tracking_number.created',
+        'tracking_number.updated',
+        'tracking_number.deleted',
+
+        // tracking_status events
+        'tracking_status.created',
+        'tracking_status.updated',
+        'tracking_status.deleted',
+
+        // vehicle events
+        'vehicle.created',
+        'vehicle.updated',
+        'vehicle.deleted',
+
+        // vendor events
+        'vendor.created',
+        'vendor.updated',
+        'vendor.deleted',
+
+        // zone events
+        'zone.created',
+        'zone.updated',
+        'zone.deleted',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Proof of Delivery Methods
+    |--------------------------------------------------------------------------
+    */
+    'pod_methods' => 'scan,signature,photo',
+
+    /*
+    |--------------------------------------------------------------------------
+    | API/Webhook Versions
+    |--------------------------------------------------------------------------
+    */
+    'versions' => ['2020-09-30', '2024-03-12'],
+    'version'  => '2024-03-12',
+];

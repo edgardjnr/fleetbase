@@ -1,0 +1,8 @@
+<ContentPanel @title={{t "storefront.ui.product.youtube-videos"}} @open={{true}} @wrapperClass="bordered-top">
+    <p class="text-sm">{{t "storefront.ui.product.youtube-help"}}</p>
+    <div class="input-group">
+        <ArrayInput @data={{@product.youtube_urls}} @placeholder={{t "storefront.ui.product.youtube-placeholder"}} @onDataChanged={{fn (mut @product.youtube_urls)}} @disabled={{@disabled}}>
+            <InputLabel @labelText={{t "storefront.ui.product.youtube-urls"}} @helpText={{t "storefront.ui.product.youtube-urls-help"}} />
+        </ArrayInput>
+    </div>
+</ContentPanel>

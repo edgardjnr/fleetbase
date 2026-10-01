@@ -1,0 +1,456 @@
+import Component from '@glimmer/component';
+import { tracked } from '@glimmer/tracking';
+import { inject as service } from '@ember/service';
+import { action } from '@ember/object';
+import { isArray } from '@ember/array';
+import { later } from '@ember/runloop';
+import { getOwner } from '@ember/application';
+import { debug } from '@ember/debug';
+import { task, timeout } from 'ember-concurrency';
+import { Control as RoutingControl } from '@fleetbase/leaflet-routing-machine';
+import engineService from '@fleetbase/ember-core/decorators/engine-service';
+import { DEFAULT_LEAFLET_TILE_URL } from '../../utils/leaflet-tile-url';
+import registerComponent from '@fleetbase/ember-core/utils/register-component';
+import OrderProgressCardComponent from '../order-progress-card';
+import DisplayPlaceComponent from '../display-place';
+import CustomerCreateOrderFormComponent from './create-order-form';
+
+const MAP_TARGET_FOCUS_PADDING_BOTTOM_RIGHT = [200, 0];
+const MAP_TARGET_FOCUS_REFOCUS_PANBY = [150, 0];
+export default class CustomerOrdersComponent extends Component {
+    @service intl;
+    @service store;
+    @service fetch;
+    @service notifications;
+    @service currentUser;
+    @service universe;
+    @service urlSearchParams;
+    @service customerSession;
+    @service hostRouter;
+    @service leafletRoutingControl;
+    @engineService('@fleetbase/fleetops-engine') movementTracker;
+    @engineService('@fleetbase/fleetops-engine') location;
+    @tracked orders = [];
+    @tracked selectedOrder;
+    @tracked newOrder;
+    @tracked zoom = 12;
+    @tracked map;
+    @tracked mapReady = false;
+    @tracked latitude;
+    @tracked longitude;
+    @tracked route;
+    @tracked query;
+    @tracked tileSourceUrl = DEFAULT_LEAFLET_TILE_URL;
+    @tracked scheduledAt;
+    @tracked deliveryInstructions = {};
+
+    get modalsManager() {
+        const owner = getOwner(this);
+        const application = this.universe.getApplicationInstance();
+        const modalsManager = application ? application.lookup('service:modals-manager') : owner.lookup('service:modals-manager');
+        return modalsManager;
+    }
+
+    constructor(owner) {
+        super(...arguments);
+        registerComponent(owner, OrderProgressCardComponent, { as: 'order-progress-card' });
+        registerComponent(owner, DisplayPlaceComponent, { as: 'display-place' });
+        registerComponent(owner, CustomerCreateOrderFormComponent, { as: 'customer/create-order-form' });
+        // hack - just stick currentUser serivce on the location work
+        if (this.location && typeof this.location === 'object') {
+            this.location.currentUser = this.currentUser;
+        }
+        this.loadCustomerOrders.perform();
+        later(
+            this,
+            () => {
+                this.restoreOrderCreation();
+            },
+            100
+        );
+    }
+
+    @task *loadCustomerOrders(params = {}) {
+        const query = this.urlSearchParams.get('query');
+        this.query = query;
+
+        try {
+            this.orders = yield this.store.query('order', { customer: this.customerAccountId, customer_type: this.customerTypeParam, ...params, query });
+            this.orders = this.orders.toArray().filter((_) => !_.isNew);
+            this.restoreSelectedOrder();
+        } catch (error) {
+            this.notifications.serverError(error);
+        }
+    }
+
+    @task *searchOrders({ target }) {
+        const query = target.value;
+        this.urlSearchParams.addParamToCurrentUrl('query', query);
+        this.unselectOrder();
+
+        yield timeout(300);
+
+        try {
+            this.orders = yield this.store.query('order', { query, customer: this.customerAccountId, customer_type: this.customerTypeParam, with_tracker_data: true });
+        } catch (error) {
+            this.notifications.serverError(error);
+        }
+    }
+
+    @action async startOrderCreation() {
+        this.unselectOrder();
+        this.newOrder = this.store.createRecord('order', {
+            type: 'transport',
+            customer_uuid: this.customerAccountId,
+            customer_type: this.customerTypeParam,
+            customer: this.customerSession.getAccount(),
+            meta: [],
+        });
+        this.urlSearchParams.addParamToCurrentUrl('creating', 1);
+        const { latitude, longitude } = await this.location.getUserLocation();
+        if (latitude && longitude) {
+            this.latitude = latitude;
+            this.longitude = longitude;
+            this.mapReady = true;
+        }
+    }
+
+    @action cancelOrderCreation() {
+        if (this.newOrder && typeof this.newOrder.destroyRecord === 'function') {
+            this.newOrder.destroyRecord();
+        }
+        this.newOrder = undefined;
+        this.urlSearchParams.removeParamFromCurrentUrl('creating');
+    }
+
+    @action onOrderCreated(order) {
+        this.newOrder = undefined;
+        this.urlSearchParams.removeParamFromCurrentUrl('creating');
+        this.orders.unshiftObject(order);
+        later(
+            this,
+            () => {
+                this.viewOrder(order);
+                this.hostRouter.refresh();
+            },
+            100
+        );
+    }
+
+    @action viewOrder(order, options = { resetOrderRoute: false }) {
+        this.selectedOrder = order;
+        this.scheduledAt = order.scheduled_at;
+        this.deliveryInstructions = order.meta?.customer_portal?.delivery_instructions ?? {};
+        // start loading order tracking activity
+        order.loadTrackingActivity();
+        this.urlSearchParams.addParamToCurrentUrl('order', order.public_id);
+        const driverCurrentLocation = order.get('tracker_data.driver.location');
+        if (driverCurrentLocation) {
+            this.latitude = driverCurrentLocation.coordinates[1];
+            this.longitude = driverCurrentLocation.coordinates[0];
+            this.mapReady = true;
+
+            if (options && options.resetOrderRoute === true && this.map) {
+                this.map.whenReady(() => {
+                    this.resetOrderRoute();
+                });
+            }
+        }
+    }
+
+    @action async viewOrderLabel() {
+        const order = this.selectedOrder;
+        if (!order) {
+            return;
+        }
+
+        // render dialog to display label within
+        this.modalsManager.show(`modals/order-label`, {
+            title: this.intl.t('fleet-ops.ui.customer.orders.order-label'),
+            modalClass: 'modal-xl',
+            acceptButtonText: this.intl.t('fleet-ops.ui.customer.orders.done'),
+            hideDeclineButton: true,
+            order,
+        });
+
+        try {
+            // load the pdf label from base64
+            // eslint-disable-next-line no-undef
+            const fileReader = new FileReader();
+            const { data } = await this.fetch.get(`orders/label/${order.public_id}?format=base64`);
+            // eslint-disable-next-line no-undef
+            const base64 = await fetch(`data:application/pdf;base64,${data}`);
+            const blob = await base64.blob();
+            // load into file reader
+            fileReader.onload = (event) => {
+                const data = event.target.result;
+                this.modalsManager.setOption('data', data);
+            };
+            fileReader.readAsDataURL(blob);
+        } catch (error) {
+            this.notifications.serverError(error);
+        }
+    }
+
+    @action async viewWaypointLabel(waypoint) {
+        // render dialog to display label within
+        this.modalsManager.show(`modals/order-label`, {
+            title: this.intl.t('fleet-ops.ui.customer.orders.waypoint-label'),
+            modalClass: 'modal-xl',
+            acceptButtonText: this.intl.t('fleet-ops.ui.customer.orders.done'),
+            hideDeclineButton: true,
+        });
+
+        try {
+            // load the pdf label from base64
+            // eslint-disable-next-line no-undef
+            const fileReader = new FileReader();
+            const { data } = await this.fetch.get(`orders/label/${waypoint.waypoint_public_id}?format=base64`);
+            // eslint-disable-next-line no-undef
+            const base64 = await fetch(`data:application/pdf;base64,${data}`);
+            const blob = await base64.blob();
+            // load into file reader
+            fileReader.onload = (event) => {
+                const data = event.target.result;
+                this.modalsManager.setOption('data', data);
+            };
+            fileReader.readAsDataURL(blob);
+        } catch (error) {
+            this.notifications.serverError(error);
+        }
+    }
+
+    @action unselectOrder() {
+        this.selectedOrder = null;
+        this.removeRouteControl();
+        this.urlSearchParams.removeParamFromCurrentUrl('order');
+    }
+
+    @action onTrackerDataLoaded(order) {
+        if (this.selectedOrder && this.selectedOrder.id === order.id) {
+            this.viewOrder(order, { resetOrderRoute: true });
+        }
+    }
+
+    @action setupMap({ target }) {
+        this.map = target;
+        if (!this.isCreatingOrder()) {
+            this.map.whenReady(() => {
+                this.resetOrderRoute();
+            });
+        }
+    }
+
+    @action displayOrderRoute() {
+        const waypoints = this.getRouteCoordinatesFromOrder(this.selectedOrder);
+        if (this.cannotRouteWaypoints(waypoints)) {
+            return;
+        }
+
+        // center on first coordinate
+        try {
+            this.map.stop();
+            this.map.flyTo(waypoints.firstObject);
+        } catch (error) {
+            // unable to stop map
+            debug(`Leaflet Map Error: ${error.message}`);
+        }
+
+        const routingService = this.currentUser.getOption('routing', { router: 'osrm' }).router;
+        const { router, formatter } = this.leafletRoutingControl.get(routingService);
+
+        this.routeControl = new RoutingControl({
+            router,
+            formatter,
+            waypoints,
+            fitSelectedRoutes: false,
+            alternativeClassName: 'hidden',
+            addWaypoints: false,
+            markerOptions: {
+                draggable: false,
+                icon: L.icon({
+                    iconUrl: '/assets/images/marker-icon.png',
+                    iconRetinaUrl: '/assets/images/marker-icon-2x.png',
+                    shadowUrl: '/assets/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                }),
+            },
+        }).addTo(this.map);
+
+        this.routeControl.on('routingerror', (error) => {
+            debug(`Routing Control Error: ${error.error.message}`);
+        });
+
+        this.routeControl.on('routesfound', (event) => {
+            const { routes } = event;
+
+            this.route = routes.firstObject;
+
+            later(
+                this,
+                () => {
+                    this.map.flyToBounds(waypoints, {
+                        paddingBottomRight: MAP_TARGET_FOCUS_PADDING_BOTTOM_RIGHT,
+                        maxZoom: waypoints.length === 2 ? 13 : 12,
+                        animate: true,
+                    });
+                    this.map.once('moveend', () => {
+                        this.map.panBy(MAP_TARGET_FOCUS_REFOCUS_PANBY);
+                    });
+                },
+                100
+            );
+        });
+    }
+
+    @action resetOrderRoute() {
+        this.removeRouteControl();
+        this.displayOrderRoute();
+    }
+
+    @action startTrackingDriverPosition(event) {
+        const { target } = event;
+        const driver = this.selectedOrder.driver;
+        if (driver) {
+            driver.set('_layer', target);
+            this.movementTracker.track(driver);
+        }
+    }
+
+    @action locateDriver() {
+        const driver = this.selectedOrder.driver;
+        if (driver) {
+            this.map.flyTo(driver.coordinates, 14, {
+                paddingBottomRight: MAP_TARGET_FOCUS_PADDING_BOTTOM_RIGHT,
+                maxZoom: 14,
+                animate: true,
+            });
+            this.map.once('moveend', () => {
+                this.map.panBy(MAP_TARGET_FOCUS_REFOCUS_PANBY);
+            });
+        }
+    }
+
+    @action locateOrderRoute() {
+        if (this.selectedOrder) {
+            const waypoints = this.getRouteCoordinatesFromOrder(this.selectedOrder);
+            this.map.flyToBounds(waypoints, {
+                paddingBottomRight: MAP_TARGET_FOCUS_PADDING_BOTTOM_RIGHT,
+                maxZoom: waypoints.length === 2 ? 13 : 12,
+                animate: true,
+            });
+            this.map.once('moveend', () => {
+                this.map.panBy(MAP_TARGET_FOCUS_REFOCUS_PANBY);
+            });
+        }
+    }
+
+    @action async cancelOrder() {
+        if (!this.selectedOrder) {
+            return;
+        }
+
+        try {
+            const response = await this.fetch.post(`customer-portal/orders/${this.selectedOrder.public_id}/cancel`, {}, { namespace: 'fleet-ops/int/v1' });
+            this.selectedOrder.set('status', response.order?.status ?? 'canceled');
+            this.notifications.success(this.intl.t('fleet-ops.ui.customer.orders.order-canceled'));
+        } catch (error) {
+            this.notifications.serverError(error);
+        }
+    }
+
+    @action async rescheduleOrder() {
+        if (!this.selectedOrder || !this.scheduledAt) {
+            return;
+        }
+
+        try {
+            const response = await this.fetch.post(
+                `customer-portal/orders/${this.selectedOrder.public_id}/reschedule`,
+                { scheduled_at: this.scheduledAt },
+                { namespace: 'fleet-ops/int/v1' }
+            );
+            this.selectedOrder.set('scheduled_at', response.order?.scheduled_at ?? this.scheduledAt);
+            this.notifications.success(this.intl.t('fleet-ops.ui.customer.orders.order-rescheduled'));
+        } catch (error) {
+            this.notifications.serverError(error);
+        }
+    }
+
+    @action updateDeliveryInstruction(key, event) {
+        this.deliveryInstructions = { ...this.deliveryInstructions, [key]: event.target.value };
+    }
+
+    @action async saveDeliveryInstructions() {
+        if (!this.selectedOrder) {
+            return;
+        }
+
+        try {
+            await this.fetch.post(`customer-portal/orders/${this.selectedOrder.public_id}/delivery-instructions`, this.deliveryInstructions, { namespace: 'fleet-ops/int/v1' });
+            this.notifications.success(this.intl.t('fleet-ops.ui.customer.orders.delivery-instructions-saved'));
+        } catch (error) {
+            this.notifications.serverError(error);
+        }
+    }
+
+    isCreatingOrder() {
+        const isCreating = this.urlSearchParams.get('creating');
+        return isCreating === '1' || isCreating === 1;
+    }
+
+    get customerAccountId() {
+        return this.customerSession.get('uuid') || this.customerSession.get('id');
+    }
+
+    get customerTypeParam() {
+        const customerType = this.customerSession.get('customer_type', 'contact');
+        return customerType === 'vendor' ? 'fleet-ops:vendor' : 'fleet-ops:contact';
+    }
+
+    cannotRouteWaypoints(waypoints = []) {
+        return !this.map || !isArray(waypoints) || waypoints.length < 2;
+    }
+
+    getRouteCoordinatesFromOrder(order) {
+        const payload = order.payload;
+        const waypoints = [];
+        const coordinates = [];
+
+        waypoints.pushObjects([payload.pickup, ...payload.waypoints.toArray(), payload.dropoff]);
+        waypoints.forEach((place) => {
+            if (place && place.get('longitude') && place.get('latitude')) {
+                if (place.hasInvalidCoordinates) {
+                    return;
+                }
+
+                coordinates.pushObject([place.get('latitude'), place.get('longitude')]);
+            }
+        });
+
+        return coordinates;
+    }
+
+    removeRouteControl() {
+        if (this.routeControl && this.routeControl instanceof RoutingControl) {
+            this.routeControl.remove();
+        }
+    }
+
+    restoreSelectedOrder() {
+        const selectedOrderId = this.urlSearchParams.get('order');
+        if (selectedOrderId) {
+            const selectedOrder = this.orders.find((order) => order.public_id === selectedOrderId);
+            if (selectedOrder) {
+                this.viewOrder(selectedOrder);
+            }
+        }
+    }
+
+    restoreOrderCreation() {
+        if (this.isCreatingOrder()) {
+            this.startOrderCreation();
+        }
+    }
+}

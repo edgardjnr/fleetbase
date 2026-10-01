@@ -5,11 +5,12 @@ export default class ConsoleAdminRoute extends Route {
     @service currentUser;
     @service notifications;
     @service router;
+    @service intl;
 
     beforeModel() {
         if (!this.currentUser.isAdmin) {
             return this.router.transitionTo('console').then(() => {
-                this.notifications.error('You do not have authorization to access admin!');
+                this.notifications.error(this.intl.t('console.ui.admin.unauthorized'));
             });
         }
     }

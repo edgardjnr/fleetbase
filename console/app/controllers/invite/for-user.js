@@ -5,6 +5,7 @@ import { action } from '@ember/object';
 
 export default class InviteForUserController extends Controller {
     @service fetch;
+    @service intl;
     @service session;
     @service notifications;
     @service modalsManager;
@@ -23,7 +24,7 @@ export default class InviteForUserController extends Controller {
             .post('users/accept-company-invite', { code })
             .then((response) => {
                 this.session.manuallyAuthenticate(response.token);
-                this.notifications.success('Invitation accepted, welcome to Fleetbase!');
+                this.notifications.success(this.intl.t('console.ui.invite.accepted'));
 
                 this.isLoading = false;
 
@@ -41,7 +42,7 @@ export default class InviteForUserController extends Controller {
 
     @action setPassword() {
         this.modalsManager.show('modals/set-password', {
-            title: 'Set a new password',
+            title: this.intl.t('console.ui.invite.set-new-password'),
             closeButton: false,
             backdropClose: false,
             keepOpen: true,

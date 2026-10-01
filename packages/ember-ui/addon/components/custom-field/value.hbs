@@ -1,0 +1,12 @@
+<div class="field-info-container {{if @customField.meta.colSpan (concat 'col-span-' @customField.meta.colSpan) ''}}">
+    <div class="field-name">{{@customField.label}}</div>
+    <div class="field-value">
+        {{#if this.isBoolean}}
+            <Badge @status={{if this.value "success" ""}}>{{if this.value (t "common.yes") (t "common.no")}}</Badge>
+        {{else if this.isFile}}
+            <File @file={{this.value}} @onDownload={{this.downloadFile}} class="custom-field-file" />
+        {{else}}
+            {{n-a this.value}}
+        {{/if}}
+    </div>
+</div>

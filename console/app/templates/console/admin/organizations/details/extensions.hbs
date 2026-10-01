@@ -1,4 +1,4 @@
-{{page-title "Extensions"}}
+{{page-title (t "console.ui.admin.org.extensions")}}
 
 <div class="mx-auto w-full max-w-7xl p-4 md:p-6">
     <section class="rounded-md border bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -8,13 +8,13 @@
                     <FaIcon @icon="puzzle-piece" />
                 </div>
                 <div class="min-w-0">
-                    <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Installed Extensions</h2>
+                    <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{t "console.ui.admin.org.installed-extensions"}}</h2>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        Extension footprint for this organization. Package-specific controls can mount additional panels through the admin registry.
+                        {{t "console.ui.admin.org.installed-extensions-help"}}
                     </p>
                 </div>
             </div>
-            <Badge @status="info" @hideStatusDot={{true}}>{{@model.extensions.length}} installed</Badge>
+            <Badge @status="info" @hideStatusDot={{true}}>{{t "console.ui.admin.org.installed-count" count=@model.extensions.length}}</Badge>
         </div>
 
         {{#if @model.extensions.length}}
@@ -42,7 +42,7 @@
             </div>
         {{else}}
             <div class="mt-4 rounded-md border border-dashed border-gray-200 p-5 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                No organization-specific extensions are installed.
+                {{t "console.ui.admin.org.no-extensions"}}
             </div>
         {{/if}}
     </section>

@@ -96,18 +96,18 @@ export default class ConsoleAdminOrganizationsIndexUsersController extends Contr
             ddButtonText: false,
             ddButtonIcon: 'ellipsis-h',
             ddButtonIconPrefix: 'fas',
-            ddMenuLabel: 'User Actions',
+            ddMenuLabel: this.intl.t('console.ui.admin.org.users.user-actions'),
             cellClassNames: 'overflow-visible',
             wrapperClass: 'flex items-center justify-end mx-2',
             width: '9%',
             actions: [
                 {
-                    label: 'Impersonate',
+                    label: this.intl.t('console.ui.admin.org.users.impersonate'),
                     icon: 'user-secret',
                     fn: this.impersonateUser,
                 },
                 {
-                    label: 'Change Password',
+                    label: this.intl.t('common.change-password'),
                     icon: 'lock-open',
                     fn: this.changeUserPassword,
                 },

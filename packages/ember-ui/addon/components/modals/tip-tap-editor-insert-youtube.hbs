@@ -1,0 +1,9 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="modal-body-container">
+        <InputGroup @name={{t "ember-ui.modals.tip-tap-editor-insert-youtube.url"}} @value={{@options.url}} @helpText={{t "ember-ui.modals.tip-tap-editor-insert-youtube.url-help"}} @inputClass="input-lg" />
+        <div class="mt-2 grid grid-cols-2 gap-2">
+            <InputGroup @name={{t "ember-ui.modals.tip-tap-editor-insert-youtube.height"}} @value={{@options.height}} @helpText={{t "ember-ui.modals.tip-tap-editor-insert-youtube.height-help"}} @inputClass="input-lg" />
+            <InputGroup @name={{t "ember-ui.modals.tip-tap-editor-insert-youtube.width"}} @value={{@options.width}} @helpText={{t "ember-ui.modals.tip-tap-editor-insert-youtube.width-help"}} @inputClass="input-lg" />
+        </div>
+    </div>
+</Modal::Default>

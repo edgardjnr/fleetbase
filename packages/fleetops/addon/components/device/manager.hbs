@@ -1,0 +1,26 @@
+<AttachmentList
+    @title={{t "resource.devices"}}
+    @description={{t "device.prompts.manager-description" resourceType=(get-model-name @resource)}}
+    @actionText={{t "device.actions.attach-device"}}
+    @actionIcon="plus"
+    @onAction={{this.addDevice}}
+    @actionDisabled={{not @resource}}
+    @isLoading={{this.loadDevices.isRunning}}
+    @items={{this.devices}}
+    @emptyIcon="hard-drive"
+    @emptyTitle={{t "device.prompts.no-devices-attached-title"}}
+    @emptyDescription={{t "device.prompts.no-devices-attached-body" resourceType=(get-model-name @resource)}}
+    class="fleetops-device-manager"
+    ...attributes
+>
+    <:item as |device|>
+        <Device::Pill @device={{device}} @onClick={{fn this.viewDevice device}} />
+        {{#if device.status}}
+            <Badge @status={{device.status}} @size="xs" class="fleetops-attachment-list-item-badge" />
+        {{/if}}
+    </:item>
+    <:itemActions as |device|>
+        <Button @icon="eye" @size="xs" @helpText={{t "common.view"}} @onClick={{fn this.viewDevice device}} />
+        <Button @type="danger" @icon="unlink" @size="xs" @helpText={{t "device.attachment.detach"}} @onClick={{fn this.removeDevice device}} />
+    </:itemActions>
+</AttachmentList>

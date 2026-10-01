@@ -1,8 +1,13 @@
+# Build context: the REPOSITORY ROOT (not ./console), e.g.
+#   docker build -f console/Dockerfile .
+# The console is linked (pnpm workspace) to the local Fleetbase packages in ../packages/*
+# (engines, ember-ui, ember-core, fleetops-data), so customizations there - like the pt-BR
+# translations - are part of the build. console/Dockerfile.dockerignore limits the context.
+
 # ---- Build Stage ----
 FROM node:22.22.0-alpine3.22 AS builder
 
-# Set the working directory in the container to /console
-WORKDIR /console
+WORKDIR /app/console
 
 # Create the pnpm directory and set the PNPM_HOME environment variable
 RUN mkdir -p ~/.pnpm
@@ -24,14 +29,8 @@ ENV DISABLE_RUNTIME_CONFIG=$DISABLE_RUNTIME_CONFIG
 # Add the pnpm global bin to the PATH
 ENV PATH=/root/.pnpm/bin:$PATH
 
-# Copy package metadata first for better dependency caching
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-
-# Copy over .npmrc if applicable
-COPY .npmr[c] ./
-
 # Install global dependencies
-RUN npm install -g ember-cli pnpm 
+RUN npm install -g ember-cli pnpm
 
 # Install git
 RUN apk update && apk add git openssh-client
@@ -39,11 +38,14 @@ RUN apk update && apk add git openssh-client
 # Trust GitHub's RSA host key
 RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-# Install app dependencies
-RUN pnpm install --frozen-lockfile
+# Local packages the console workspace links to (see console/pnpm-workspace.yaml)
+COPY packages/ /app/packages/
 
-# Copy the console directory contents into the container at /console
-COPY . .
+# Console sources
+COPY console/ /app/console/
+
+# Install app + workspace package dependencies
+RUN pnpm install --frozen-lockfile
 
 # Build the application
 RUN pnpm build --environment $ENVIRONMENT
@@ -52,16 +54,16 @@ RUN pnpm build --environment $ENVIRONMENT
 FROM nginx:alpine
 
 # Copy the built app to our served directory
-COPY --from=builder /console/dist /usr/share/nginx/html
+COPY --from=builder /app/console/dist /usr/share/nginx/html
 
 # Expose the port nginx is bound to
 EXPOSE 4200
 
 # Use custom nginx.conf
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY console/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Generate fleetbase.config.json from env vars (API_HOST, SOCKETCLUSTER_*, ...) on start
-COPY nginx-entrypoint/40-fleetbase-runtime-config.sh /docker-entrypoint.d/40-fleetbase-runtime-config.sh
+COPY console/nginx-entrypoint/40-fleetbase-runtime-config.sh /docker-entrypoint.d/40-fleetbase-runtime-config.sh
 RUN sed -i 's/\r$//' /docker-entrypoint.d/40-fleetbase-runtime-config.sh \
   && chmod +x /docker-entrypoint.d/40-fleetbase-runtime-config.sh
 

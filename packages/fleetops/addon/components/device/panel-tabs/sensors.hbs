@@ -1,0 +1,30 @@
+<div class="flex flex-col gap-3 p-3" ...attributes>
+    <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">{{t "fleet-ops.ui.device.panel-tabs-sensors.sensor-inventory"}}</h2>
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-300">{{t "fleet-ops.ui.device.panel-tabs-sensors.recent-sensor-readings-and-health-for"}}</p>
+        </div>
+        <Button @icon="refresh" @size="xs" @onClick={{this.refreshSensors}} @isLoading={{this.loadSensors.isRunning}} />
+    </div>
+
+    <Layout::Resource::Tabular
+        @resource="sensor"
+        @title={{t "fleet-ops.ui.device.panel-tabs-sensors.device-sensors"}}
+        @data={{this.sensors}}
+        @columns={{this.columns}}
+        @controller={{this}}
+        @pagination={{false}}
+        @withoutHeader={{true}}
+        @tableWrapperClass="no-table-extra-spacing"
+        @emptyStateComponent={{component
+            "table/empty-state"
+            variant="compact"
+            icon="gauge-high"
+            title=(t "fleet-ops.ui.device.panel-tabs-sensors.no-sensors-connected")
+            description=(t "fleet-ops.ui.device.panel-tabs-sensors.sensors-appear-here-after-provider-telemetry")
+            primaryText=(t "fleet-ops.ui.device.panel-tabs-sensors.refresh")
+            primaryIcon="refresh"
+            primaryAction=this.refreshSensors
+        }}
+    />
+</div>

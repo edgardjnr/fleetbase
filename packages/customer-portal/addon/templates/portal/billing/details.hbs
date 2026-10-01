@@ -1,0 +1,113 @@
+<Portal::ContentWrapper class="portal-page-card portal-invoice-page-card">
+    <div class="portal-section-header">
+        <div>
+            <div class="portal-section-eyebrow">
+                <LinkTo @route="portal.billing.index" class="portal-muted-link">
+                    <FaIcon @icon="arrow-left" />
+                    {{t "customer-portal.ui.nav.billing"}}
+                </LinkTo>
+            </div>
+            <h1>{{n-a this.invoiceNumber}}</h1>
+            <p>{{t "customer-portal.ui.billing.details-description"}}</p>
+        </div>
+        <div class="portal-invoice-actions">
+            {{#if this.isPayable}}
+                <a href={{this.paymentUrl}} target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+                    <FaIcon @icon="arrow-up-right-from-square" class="mr-2" />
+                    <span>{{t "customer-portal.ui.billing.open-payment-link"}}</span>
+                </a>
+            {{/if}}
+        </div>
+    </div>
+
+    <div class="portal-invoice-summary">
+        <div class="field-info-container">
+            <div class="field-name">{{t "customer-portal.ui.common.status"}}</div>
+            <div class="field-value"><Badge @status={{this.invoice.status}} /></div>
+        </div>
+        <div class="field-info-container">
+            <div class="field-name">{{t "customer-portal.ui.billing.invoice-date"}}</div>
+            <div class="field-value">{{n-a (format-date-fns this.invoice.date "yyyy-MM-dd")}}</div>
+        </div>
+        <div class="field-info-container">
+            <div class="field-name">{{t "customer-portal.ui.billing.due-date"}}</div>
+            <div class="field-value">{{n-a (format-date-fns this.invoice.due_date "yyyy-MM-dd")}}</div>
+        </div>
+        <div class="field-info-container">
+            <div class="field-name">{{t "customer-portal.ui.billing.balance"}}</div>
+            <div class="field-value font-semibold">{{format-currency this.balanceAmount this.invoice.currency}}</div>
+        </div>
+    </div>
+
+    <div class="portal-invoice-preview">
+        <div class="portal-invoice-preview-header">
+            <div>
+                <div class="portal-section-eyebrow">{{t "customer-portal.ui.billing.preview"}}</div>
+                <h2>{{n-a this.invoiceNumber}}</h2>
+            </div>
+            <Badge @status={{this.invoice.status}} />
+        </div>
+
+        <div class="portal-invoice-table">
+            <div class="portal-invoice-table-heading">
+                <span>{{t "customer-portal.ui.common.description"}}</span>
+                <span>{{t "customer-portal.ui.billing.qty"}}</span>
+                <span>{{t "customer-portal.ui.billing.unit"}}</span>
+                <span>{{t "customer-portal.ui.billing.amount"}}</span>
+            </div>
+            {{#each this.invoice.items as |item|}}
+                <div class="portal-invoice-table-row">
+                    <span>{{n-a item.description}}</span>
+                    <span>{{n-a item.quantity}}</span>
+                    <span>{{format-currency item.unit_price this.invoice.currency}}</span>
+                    <span>{{format-currency item.amount this.invoice.currency}}</span>
+                </div>
+            {{else}}
+                <div class="portal-empty-state compact">{{t "customer-portal.ui.billing.no-line-items"}}</div>
+            {{/each}}
+        </div>
+
+        <div class="portal-invoice-totals">
+            <div>
+                <span>{{t "customer-portal.ui.billing.subtotal"}}</span>
+                <span>{{format-currency this.subtotalAmount this.invoice.currency}}</span>
+            </div>
+            {{#if this.taxAmount}}
+                <div>
+                    <span>{{t "customer-portal.ui.billing.tax"}}</span>
+                    <span>{{format-currency this.taxAmount this.invoice.currency}}</span>
+                </div>
+            {{/if}}
+            <div class="total">
+                <span>{{t "customer-portal.ui.billing.total"}}</span>
+                <span>{{format-currency this.totalAmount this.invoice.currency}}</span>
+            </div>
+            <div>
+                <span>{{t "customer-portal.ui.billing.paid"}}</span>
+                <span>{{format-currency this.amountPaid this.invoice.currency}}</span>
+            </div>
+            <div>
+                <span>{{t "customer-portal.ui.billing.balance-due"}}</span>
+                <span>{{format-currency this.balanceAmount this.invoice.currency}}</span>
+            </div>
+        </div>
+
+        {{#if this.invoice.notes}}
+            <div class="portal-invoice-notes">
+                <div class="field-name">{{t "customer-portal.ui.common.notes"}}</div>
+                <p>{{this.invoice.notes}}</p>
+            </div>
+        {{/if}}
+
+        {{#if this.orderIdentifier}}
+            <div class="portal-invoice-notes">
+                <div class="field-name">{{t "customer-portal.ui.common.order"}}</div>
+                <p>
+                    <LinkTo @route="portal.orders.details" @model={{this.orderIdentifier}} class="portal-table-link">
+                        {{this.orderLabel}}
+                    </LinkTo>
+                </p>
+            </div>
+        {{/if}}
+    </div>
+</Portal::ContentWrapper>

@@ -11,6 +11,7 @@ export default class ConsoleAdminBrandingController extends Controller {
      * @memberof ConsoleAdminBrandingController
      */
     @service fetch;
+    @service intl;
 
     /**
      * Inject the `notifications` service.
@@ -103,7 +104,7 @@ export default class ConsoleAdminBrandingController extends Controller {
         return this.model
             .save()
             .then(() => {
-                this.notifications.success('Branding settings saved.');
+                this.notifications.success(this.intl.t('console.ui.admin.branding-saved'));
 
                 // if logo url is null
                 if (this.model.logo_url === null) {

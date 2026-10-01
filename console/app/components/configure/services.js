@@ -7,6 +7,7 @@ import { task } from 'ember-concurrency';
 export default class ConfigureServicesComponent extends Component {
     @service fetch;
     @service notifications;
+    @service intl;
     @tracked isLoading = false;
 
     /** aws service */
@@ -32,7 +33,7 @@ export default class ConfigureServicesComponent extends Component {
     @tracked sms = null;
     @tracked smsSelectedProvider = 'twilio';
     @tracked smsTestPhone = null;
-    @tracked smsTestMessage = 'This is a Fleetbase SMS test.';
+    @tracked smsTestMessage = this.intl.t('console.ui.configure.services.sms-test-message');
     @tracked smsTestResponse;
     @tracked customHttpHeadersText = '{}';
     @tracked customHttpQueryParamsText = '{}';
@@ -150,7 +151,7 @@ export default class ConfigureServicesComponent extends Component {
             { key: 'messagebird', name: 'MessageBird' },
             { key: 'aws_sns', name: 'AWS SNS' },
             { key: 'smpp', name: 'SMPP Gateway' },
-            { key: 'custom_http', name: 'Custom HTTP Gateway' },
+            { key: 'custom_http', name: this.intl.t('console.ui.configure.services.custom-http-gateway') },
         ];
     }
 

@@ -1,0 +1,56 @@
+<Portal::ContentWrapper class="portal-page-card portal-table-page-card">
+    <div class="portal-section-header">
+        <div>
+            <div class="portal-section-eyebrow">{{t "customer-portal.ui.address-book.eyebrow"}}</div>
+            <h1>{{t "customer-portal.ui.nav.address-book"}}</h1>
+            <p>{{t "customer-portal.ui.address-book.description"}}</p>
+        </div>
+        <Button @type="primary" @icon="plus" @text={{t "customer-portal.ui.address-book.new-place"}} @onClick={{this.createPlace}} @wrapperClass="portal-order-panel-action-button" />
+    </div>
+
+    <div class="portal-table-panel mt-5">
+        <table class="portal-table address-book-table w-full">
+            <thead>
+                <tr>
+                    <th class="text-left">{{t "customer-portal.ui.address-book.place"}}</th>
+                    <th class="text-left">{{t "customer-portal.ui.address-book.address"}}</th>
+                    <th class="text-left">{{t "customer-portal.ui.address-book.phone"}}</th>
+                    <th class="text-right">{{t "customer-portal.ui.common.actions"}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each this.places as |place|}}
+                    <tr>
+                        <td>
+                            <div class="font-semibold">{{or place.name place.public_id}}</div>
+                            {{#if place.name}}
+                                <div class="text-xs text-gray-500 dark:text-gray-400">{{n-a place.public_id}}</div>
+                            {{/if}}
+                        </td>
+                        <td>{{place-address place showTitle=false}}</td>
+                        <td>{{n-a place.phone}}</td>
+                        <td>
+                            <div class="flex items-center justify-end space-x-2">
+                                <Button @icon="pencil" @size="xs" @onClick={{fn this.editPlace place}} @helpText={{t "customer-portal.ui.address-book.edit-place"}} />
+                                <Button @type="danger" @icon="trash" @size="xs" @onClick={{fn this.deletePlace place}} @helpText={{t "customer-portal.ui.address-book.remove-place"}} />
+                            </div>
+                        </td>
+                    </tr>
+                {{else}}
+                    <tr>
+                        <td colspan="4">
+                            <div class="portal-empty-state portal-table-empty-state">
+                                <div class="portal-empty-state-icon">
+                                    <FaIcon @icon="location-dot" />
+                                </div>
+                                <div class="portal-empty-state-title">{{t "customer-portal.ui.address-book.empty-title"}}</div>
+                                <p>{{t "customer-portal.ui.address-book.empty-text"}}</p>
+                                <Button @type="primary" @icon="plus" @text={{t "customer-portal.ui.address-book.new-place"}} @onClick={{this.createPlace}} @wrapperClass="portal-order-panel-action-button" />
+                            </div>
+                        </td>
+                    </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+</Portal::ContentWrapper>

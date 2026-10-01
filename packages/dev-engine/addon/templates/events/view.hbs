@@ -1,0 +1,13 @@
+<Layout::Section::Header @title={{@model.description}}>
+    <Button @icon="long-arrow-left" @iconPrefix="fas" @text={{t "developers.common.back"}} @onClick={{this.goBack}} />
+</Layout::Section::Header>
+
+<Layout::Section::Body>
+    <div class="h-screen overflow-y-scroll">
+        <div class="max-w-6xl mx-auto">
+            <ApiEvent::Details @apiEvent={{@model}} />
+            <ApiEvent::Data @apiEvent={{@model}} />
+        </div>
+        <Spacer @height="200px" />
+    </div>
+</Layout::Section::Body>

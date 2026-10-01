@@ -1,0 +1,126 @@
+<div class="flex flex-col gap-4 p-4 md:p-6" ...attributes>
+    <section class="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        {{#each this.healthCards as |card|}}
+            <div class="fleet-ops-widget fleet-ops-kpi-tile fleetops-connectivity-kpi-tile {{card.accentClass}} relative min-h-[118px] overflow-hidden rounded-md border bg-white shadow-sm transition hover:-translate-y-px hover:shadow-lg dark:bg-gray-800">
+                <div class="flex h-full flex-col justify-between p-3">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="truncate text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400">{{card.label}}</div>
+                            <div class="mt-2 truncate text-xl font-extrabold leading-none text-gray-900 dark:text-gray-50">{{n-a card.value}}</div>
+                            <div class="mt-2 truncate text-[11px] text-gray-500 dark:text-gray-400">{{card.help}}</div>
+                        </div>
+                        <div class="fleetops-connectivity-kpi-icon flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-[13px]">
+                            <FaIcon @icon={{card.icon}} />
+                        </div>
+                    </div>
+
+                    <div class="mt-3 flex items-center justify-between gap-2 text-[11px]">
+                        <span class="flex-shrink-0 font-semibold text-gray-500 dark:text-gray-400">{{card.detailLabel}}</span>
+                        <span class="min-w-0 truncate text-right text-gray-500 dark:text-gray-400">
+                            {{#if card.detailIsDate}}
+                                {{n-a (format-date-fns card.detail "dd MMM yyyy, HH:mm")}}
+                            {{else}}
+                                {{n-a card.detail}}
+                            {{/if}}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        {{/each}}
+    </section>
+
+    {{#if this.attentionItems.length}}
+        <section class="flex flex-col gap-3">
+            {{#each this.attentionItems as |item|}}
+                <div class="w-full rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-700 dark:bg-yellow-900/20">
+                    <div class="flex items-start gap-3">
+                        <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
+                            <FaIcon @icon={{item.icon}} />
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-sm font-bold text-gray-900 dark:text-gray-100">{{item.title}}</div>
+                            <p class="mt-1 text-xs leading-5 text-yellow-800 dark:text-yellow-300">{{item.description}}</p>
+                        </div>
+                    </div>
+                </div>
+            {{/each}}
+        </section>
+    {{else}}
+        <section class="rounded-md border border-green-200 bg-green-50 p-3 dark:border-green-700 dark:bg-green-900/20">
+            <div class="flex items-center gap-3">
+                <div class="flex h-9 w-9 items-center justify-center rounded-md bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                    <FaIcon @icon="check" />
+                </div>
+                <div>
+                    <div class="text-sm font-bold text-gray-900 dark:text-gray-100">{{t "fleet-ops.ui.telematic.details.no-immediate-attention-needed"}}</div>
+                    <div class="text-xs text-green-800 dark:text-green-300">{{t "fleet-ops.ui.telematic.details.connection-sync-and-telemetry-status-are"}}</div>
+                </div>
+            </div>
+        </section>
+    {{/if}}
+
+    <section class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div class="rounded-md border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800 lg:col-span-2">
+            <div class="mb-3">
+                <h2 class="text-sm font-bold text-gray-900 dark:text-gray-100">{{t "fleet-ops.ui.telematic.details.provider-connection"}}</h2>
+                <p class="text-xs text-gray-500 dark:text-gray-300">{{t "fleet-ops.ui.telematic.details.external-provider-identity-and-public-webhook"}}</p>
+            </div>
+            <div class="grid grid-cols-1 gap-3 text-xs md:grid-cols-2">
+                <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+                    <div class="text-gray-400 dark:text-gray-500">{{t "fleet-ops.ui.telematic.details.provider"}}</div>
+                    <div class="mt-1 flex items-center gap-2 font-bold text-gray-900 dark:text-gray-100">
+                        <Image src={{@resource.provider_descriptor.icon}} class="h-5 w-5 rounded" />
+                        {{@resource.provider_descriptor.label}}
+                    </div>
+                </div>
+                <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+                    <div class="text-gray-400 dark:text-gray-500">{{t "fleet-ops.ui.telematic.details.integration-id"}}</div>
+                    <div class="mt-1 font-mono font-bold text-gray-900 dark:text-gray-100">{{n-a @resource.public_id}}</div>
+                </div>
+                {{#if @resource.provider_descriptor.supports_webhooks}}
+                    <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700 md:col-span-2">
+                        <div class="mb-2 text-gray-400 dark:text-gray-500">{{t "fleet-ops.ui.telematic.details.webhook-url"}}</div>
+                        {{#if this.hasWebhookUrl}}
+                            <ClickToCopy @value={{this.webhookUrl}}>
+                                <Input @value={{this.webhookUrl}} class="form-input w-full" readonly />
+                            </ClickToCopy>
+                        {{else}}
+                            <div class="text-yellow-700 dark:text-yellow-300">{{t "fleet-ops.ui.telematic.details.webhook-url-unavailable-until-this-integration"}}</div>
+                        {{/if}}
+                    </div>
+                {{else}}
+                    <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700 md:col-span-2">
+                        <div class="text-gray-400 dark:text-gray-500">{{t "fleet-ops.ui.telematic.details.update-mode"}}</div>
+                        <div class="mt-1 font-semibold text-gray-900 dark:text-gray-100">{{t "fleet-ops.ui.telematic.details.provider-polling"}}</div>
+                        <div class="mt-1 text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.telematic.details.fleet-ops-polls-this-provider-for"}}</div>
+                    </div>
+                {{/if}}
+            </div>
+        </div>
+
+        <div class="rounded-md border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+            <div class="mb-3">
+                <h2 class="text-sm font-bold text-gray-900 dark:text-gray-100">{{t "fleet-ops.ui.telematic.details.hardware-identity"}}</h2>
+                <p class="text-xs text-gray-500 dark:text-gray-300">{{t "fleet-ops.ui.telematic.details.provider-blackbox-metadata-stored-on-the"}}</p>
+            </div>
+            <div class="grid gap-2 text-xs">
+                {{#each this.hardwareFields as |field|}}
+                    <div class="flex items-center justify-between gap-3 border-b border-gray-100 py-1.5 last:border-b-0 dark:border-gray-700">
+                        <span class="text-gray-400 dark:text-gray-500">{{field.label}}</span>
+                        <span class="truncate font-semibold text-gray-900 dark:text-gray-100">{{n-a field.value}}</span>
+                    </div>
+                {{/each}}
+                <div class="flex items-center justify-between gap-3 border-b border-gray-100 py-1.5 last:border-b-0 dark:border-gray-700">
+                    <span class="text-gray-400 dark:text-gray-500">{{t "fleet-ops.ui.telematic.details.online"}}</span>
+                    {{#if @resource.is_online}}
+                        <Badge @status="online">{{t "fleet-ops.ui.telematic.details.online"}}</Badge>
+                    {{else}}
+                        <Badge @status="offline">{{t "fleet-ops.ui.telematic.details.offline"}}</Badge>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <CustomField::Yield @subject={{@resource}} @viewMode={{true}} @wrapperClass="bordered-top" />
+</div>

@@ -1,0 +1,133 @@
+<div class="details-wrapper" ...attributes>
+    <ContentPanel @title={{t "fleet-ops.ui.sensor.details.identity"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-2">
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.name"}}</div>
+                <div class="field-value">{{n-a @resource.name}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.sensor-type"}}</div>
+                <div class="field-value">{{n-a (get-fleet-ops-option-label "sensorTypes" @resource.type)}}</div>
+            </div>
+
+            <div></div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.unit"}}</div>
+                <div class="field-value">{{n-a @resource.unit}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.internal-id"}}</div>
+                <div class="field-value">{{n-a @resource.internal_id}}</div>
+            </div>
+
+            <div class="field-info-container col-span-2">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.serial-number"}}</div>
+                <div class="field-value">{{n-a @resource.serial_number}}</div>
+            </div>
+
+        </div>
+    </ContentPanel>
+
+    <ContentPanel @title={{t "fleet-ops.ui.sensor.details.thresholds"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.minimum-threshold"}}</div>
+                <div class="field-value">{{n-a @resource.min_threshold}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.maximum-threshold"}}</div>
+                <div class="field-value">{{n-a @resource.max_threshold}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.threshold-inclusive"}}</div>
+                <div class="field-value">
+                    {{#if @resource.threshold_inclusive}}
+                        <Badge @status="success">{{t "fleet-ops.ui.sensor.details.yes"}}</Badge>
+                    {{else}}
+                        <Badge @status="warning">{{t "fleet-ops.ui.sensor.details.no"}}</Badge>
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.threshold-status"}}</div>
+                <div class="field-value">
+                    {{#if (eq @resource.threshold_status "normal")}}
+                        <Badge @status="success">{{t "fleet-ops.ui.sensor.details.normal"}}</Badge>
+                    {{else if (eq @resource.threshold_status "out_of_range")}}
+                        <Badge @status="danger">{{t "fleet-ops.ui.sensor.details.out-of-range"}}</Badge>
+                    {{else if (eq @resource.threshold_status "above_maximum")}}
+                        <Badge @status="warning">{{t "fleet-ops.ui.sensor.details.above-maximum"}}</Badge>
+                    {{else if (eq @resource.threshold_status "below_minimum")}}
+                        <Badge @status="warning">{{t "fleet-ops.ui.sensor.details.below-minimum"}}</Badge>
+                    {{else}}
+                        <Badge @status="default">{{smart-humanize @resource.threshold_status}}</Badge>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    <ContentPanel @title={{t "fleet-ops.ui.sensor.details.readings"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-2">
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.last-reading-at"}}</div>
+                <div class="field-value">{{n-a (format-date @resource.last_reading_at)}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.report-frequency"}}</div>
+                <div class="field-value">
+                    {{#if @resource.report_frequency_sec}}
+                        {{t "fleet-ops.ui.sensor.details.seconds" reportFrequencySec=@resource.report_frequency_sec}}
+                    {{else}}
+                        {{n-a null}}
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    <ContentPanel @title={{t "fleet-ops.ui.sensor.details.status"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-2">
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.status"}}</div>
+                <div class="field-value">
+                    <Badge @status={{@resource.status}}>{{smart-humanize @resource.status}}</Badge>
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.active-status"}}</div>
+                <div class="field-value">
+                    {{#if @resource.is_active}}
+                        <Badge @status="success">{{t "fleet-ops.ui.sensor.details.active"}}</Badge>
+                    {{else}}
+                        <Badge @status="warning">{{t "fleet-ops.ui.sensor.details.inactive"}}</Badge>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    <ContentPanel @title={{t "fleet-ops.ui.sensor.details.integration-associations"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-2">
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.device"}}</div>
+                <div class="field-value">{{n-a @resource.device.name}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.sensor.details.warranty"}}</div>
+                <div class="field-value">{{n-a @resource.warranty.name}}</div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    <CustomField::Yield @subject={{@resource}} @viewMode={{true}} @wrapperClass="bordered-top" />
+</div>

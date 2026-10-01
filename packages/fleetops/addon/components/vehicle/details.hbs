@@ -1,0 +1,705 @@
+<div class="details-wrapper" ...attributes>
+    {{! CORE DETAILS }}
+    <ContentPanel @title={{t "common.details"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+            {{! Vehicle Identification }}
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "fleet-ops.ui.vehicle.details.vehicle-identification"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "common.name"}}</div>
+                <div class="field-value">{{n-a @resource.name}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "common.internal-id"}}</div>
+                <div class="field-value">{{n-a @resource.internal_id}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "vehicle.fields.plate-number"}}</div>
+                <div class="field-value">{{n-a @resource.plate_number}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "vehicle.fields.vin-number"}}</div>
+                <div class="field-value">{{n-a @resource.vin}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "vehicle.fields.make"}}</div>
+                <div class="field-value">{{n-a @resource.make}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "vehicle.fields.model"}}</div>
+                <div class="field-value">{{n-a @resource.model}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "vehicle.fields.year"}}</div>
+                <div class="field-value">{{n-a @resource.year}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.trim"}}</div>
+                <div class="field-value">{{n-a @resource.trim}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.color"}}</div>
+                <div class="field-value">{{n-a @resource.color}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.serial-number"}}</div>
+                <div class="field-value">{{n-a @resource.serial_number}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.fuel-card-number"}}</div>
+                <div class="field-value">{{n-a @resource.fuel_card_number}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.class"}}</div>
+                <div class="field-value">{{n-a @resource.class}}</div>
+            </div>
+
+            {{! Assignment & Status }}
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.vehicle.details.assignment-status"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "vehicle.fields.driver-assigned"}}</div>
+                <div class="field-value">
+                    {{n-a (or @resource.driver.name @resource.driver_name)}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "common.status"}}</div>
+                <div class="field-value">{{n-a (smart-humanize @resource.status)}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.call-sign"}}</div>
+                <div class="field-value">{{n-a @resource.call_sign}}</div>
+            </div>
+
+            {{! Location }}
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.vehicle.details.location"}}
+            </div>
+
+            <div class="field-info-container col-span-2">
+                <div class="field-name">
+                    {{t "common.coordinates"}}
+                </div>
+                <div class="field-value">
+                    {{point-coordinates @resource.location}}
+                </div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    {{! MEASUREMENT, UNITS & ODOMETER }}
+    <ContentPanel @title={{t "fleet-ops.ui.vehicle.details.measurement-units"}} @open={{false}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "fleet-ops.ui.vehicle.details.measurement-units"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.system-of-measurement"}}</div>
+                <div class="field-value">
+                    {{n-a (get-fleet-ops-option-label "measurementSystems" @resource.measurement_system)}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.fuel-volume-unit"}}</div>
+                <div class="field-value">
+                    {{n-a (get-fleet-ops-option-label "fuelVolumeUnits" @resource.fuel_volume_unit)}}
+                </div>
+            </div>
+
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.vehicle.details.odometer-usage"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">
+                    {{concat (t "fleet-ops.ui.vehicle.details.current-odometer") @resource.odometer_unit ")"}}
+                </div>
+                <div class="field-value">
+                    {{n-a @resource.odometer}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.odometer-unit"}}</div>
+                <div class="field-value">
+                    {{n-a (get-fleet-ops-option-label "odometerUnits" @resource.odometer_unit)}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.odometer-at-purchase"}}</div>
+                <div class="field-value">{{n-a @resource.odometer_at_purchase}}</div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    {{! BODY & USAGE }}
+    <ContentPanel @title={{t "fleet-ops.ui.vehicle.details.body-usage"}} @open={{false}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "fleet-ops.ui.vehicle.details.body-usage"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.body-type"}}</div>
+                <div class="field-value">
+                    {{n-a (get-fleet-ops-option-label "vehicleBodyTypes" @resource.body_type)}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.body-subtype"}}</div>
+                <div class="field-value">
+                    {{n-a (get-fleet-ops-option-label "vehicleBodySubTypes" @resource.body_sub_type)}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.usage-type"}}</div>
+                <div class="field-value">
+                    {{n-a (get-fleet-ops-option-label "vehicleUsageTypes" @resource.usage_type)}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.ownership-type"}}</div>
+                <div class="field-value">
+                    {{n-a (get-fleet-ops-option-label "vehicleOwnershipTypes" @resource.ownership_type)}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.fuel-type"}}</div>
+                <div class="field-value">
+                    {{n-a (get-fleet-ops-option-label "fuelTypes" @resource.fuel_type)}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.transmission"}}</div>
+                <div class="field-value">
+                    {{n-a (get-fleet-ops-option-label "transmissionTypes" @resource.transmission)}}
+                </div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    {{! TECHNICAL SPECIFICATIONS }}
+    <ContentPanel @title={{t "fleet-ops.ui.vehicle.details.technical-specifications"}} @open={{false}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-2 text-xs dark:text-gray-100">
+
+            {{! Powertrain & Engine }}
+            <div class="col-span-3 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "fleet-ops.ui.vehicle.details.powertrain-engine"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.engine-number"}}</div>
+                <div class="field-value">{{n-a @resource.engine_number}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.engine-make"}}</div>
+                <div class="field-value">{{n-a @resource.engine_make}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.engine-model"}}</div>
+                <div class="field-value">{{n-a @resource.engine_model}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.engine-family"}}</div>
+                <div class="field-value">{{n-a @resource.engine_family}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.engine-configuration"}}</div>
+                <div class="field-value">{{n-a @resource.engine_configuration}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.cylinder-arrangement"}}</div>
+                <div class="field-value">{{n-a @resource.cylinder_arrangement}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.number-of-cylinders"}}</div>
+                <div class="field-value">{{n-a @resource.number_of_cylinders}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.engine-size"}}</div>
+                <div class="field-value">
+                    {{#if @resource.engine_size}}
+                        {{@resource.engine_size}}
+                        L
+                    {{else}}
+                        {{n-a @resource.engine_size}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.engine-displacement"}}</div>
+                <div class="field-value">
+                    {{#if @resource.engine_displacement}}
+                        {{@resource.engine_displacement}}
+                        cc
+                    {{else}}
+                        {{n-a @resource.engine_displacement}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.horsepower"}}</div>
+                <div class="field-value">
+                    {{#if @resource.horsepower}}
+                        {{@resource.horsepower}}
+                        hp
+                    {{else}}
+                        {{n-a @resource.horsepower}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.horsepower-rpm"}}</div>
+                <div class="field-value">{{n-a @resource.horsepower_rpm}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.torque"}}</div>
+                <div class="field-value">
+                    {{#if @resource.torque}}
+                        {{@resource.torque}}
+                        Nm
+                    {{else}}
+                        {{n-a @resource.torque}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.torque-rpm"}}</div>
+                <div class="field-value">{{n-a @resource.torque_rpm}}</div>
+            </div>
+
+            {{! Capacity & Dimensions }}
+            <div class="col-span-3 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.vehicle.details.capacity-dimensions"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.fuel-capacity"}}</div>
+                <div class="field-value">
+                    {{#if @resource.fuel_capacity}}
+                        {{@resource.fuel_capacity}}
+                        L
+                    {{else}}
+                        {{n-a @resource.fuel_capacity}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.payload-capacity"}}</div>
+                <div class="field-value">
+                    {{#if @resource.payload_capacity}}
+                        {{@resource.payload_capacity}}
+                        kg
+                    {{else}}
+                        {{n-a @resource.payload_capacity}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.towing-capacity"}}</div>
+                <div class="field-value">
+                    {{#if @resource.towing_capacity}}
+                        {{@resource.towing_capacity}}
+                        kg
+                    {{else}}
+                        {{n-a @resource.towing_capacity}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.seating-capacity"}}</div>
+                <div class="field-value">{{n-a @resource.seating_capacity}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.vehicle-weight"}}</div>
+                <div class="field-value">
+                    {{#if @resource.weight}}
+                        {{@resource.weight}}
+                        kg
+                    {{else}}
+                        {{n-a @resource.weight}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.length"}}</div>
+                <div class="field-value">
+                    {{#if @resource.length}}
+                        {{@resource.length}}
+                        cm
+                    {{else}}
+                        {{n-a @resource.length}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.width"}}</div>
+                <div class="field-value">
+                    {{#if @resource.width}}
+                        {{@resource.width}}
+                        cm
+                    {{else}}
+                        {{n-a @resource.width}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.height"}}</div>
+                <div class="field-value">
+                    {{#if @resource.height}}
+                        {{@resource.height}}
+                        cm
+                    {{else}}
+                        {{n-a @resource.height}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.cargo-volume"}}</div>
+                <div class="field-value">
+                    {{#if @resource.cargo_volume}}
+                        {{@resource.cargo_volume}}
+                        L
+                    {{else}}
+                        {{n-a @resource.cargo_volume}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.payload-volume"}}</div>
+                <div class="field-value">
+                    {{#if @resource.payload_capacity_volume}}
+                        {{@resource.payload_capacity_volume}}
+                        m³
+                    {{else}}
+                        {{n-a @resource.payload_capacity_volume}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.pallet-capacity"}}</div>
+                <div class="field-value">{{n-a @resource.payload_capacity_pallets}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.parcel-capacity"}}</div>
+                <div class="field-value">{{n-a @resource.payload_capacity_parcels}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.passenger-volume"}}</div>
+                <div class="field-value">
+                    {{#if @resource.passenger_volume}}
+                        {{@resource.passenger_volume}}
+                        L
+                    {{else}}
+                        {{n-a @resource.passenger_volume}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.interior-volume"}}</div>
+                <div class="field-value">
+                    {{#if @resource.interior_volume}}
+                        {{@resource.interior_volume}}
+                        L
+                    {{else}}
+                        {{n-a @resource.interior_volume}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.ground-clearance"}}</div>
+                <div class="field-value">
+                    {{#if @resource.ground_clearance}}
+                        {{@resource.ground_clearance}}
+                        cm
+                    {{else}}
+                        {{n-a @resource.ground_clearance}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.bed-length"}}</div>
+                <div class="field-value">
+                    {{#if @resource.bed_length}}
+                        {{@resource.bed_length}}
+                        cm
+                    {{else}}
+                        {{n-a @resource.bed_length}}
+                    {{/if}}
+                </div>
+            </div>
+
+            {{! Regulatory & Compliance }}
+            <div class="col-span-3 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.vehicle.details.regulatory-compliance"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.emission-standard"}}</div>
+                <div class="field-value">{{n-a @resource.emission_standard}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.dpf-equipped"}}</div>
+                <div class="field-value">
+                    {{#if (eq @resource.dpf_equipped true)}}
+                        {{t "common.yes"}}
+                    {{else if (eq @resource.dpf_equipped false)}}
+                        {{t "common.no"}}
+                    {{else}}
+                        -
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.scr-equipped"}}</div>
+                <div class="field-value">
+                    {{#if (eq @resource.scr_equipped true)}}
+                        {{t "common.yes"}}
+                    {{else if (eq @resource.scr_equipped false)}}
+                        {{t "common.no"}}
+                    {{else}}
+                        -
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">GVWR</div>
+                <div class="field-value">
+                    {{#if @resource.gvwr}}
+                        {{@resource.gvwr}}
+                        kg
+                    {{else}}
+                        {{n-a @resource.gvwr}}
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">GCWR</div>
+                <div class="field-value">
+                    {{#if @resource.gcwr}}
+                        {{@resource.gcwr}}
+                        kg
+                    {{else}}
+                        {{n-a @resource.gcwr}}
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    {{! FINANCIAL & LIFECYCLE }}
+    <ContentPanel @title={{t "fleet-ops.ui.vehicle.details.financial-lifecycle"}} @open={{false}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "fleet-ops.ui.vehicle.details.asset-values"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.acquisition-cost"}}</div>
+                <div class="field-value">
+                    {{format-currency @resource.acquisition_cost @resource.currency}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.current-value"}}</div>
+                <div class="field-value">
+                    {{format-currency @resource.current_value @resource.currency}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.insurance-value"}}</div>
+                <div class="field-value">
+                    {{format-currency @resource.insurance_value @resource.currency}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.depreciation-rate"}}</div>
+                <div class="field-value">{{n-a @resource.depreciation_rate}}</div>
+            </div>
+
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.vehicle.details.lifecycle-service-life"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.estimated-service-life-distance"}}</div>
+                <div class="field-value">{{n-a @resource.estimated_service_life_distance}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.service-life-distance-unit"}}</div>
+                <div class="field-value">
+                    {{n-a (get-fleet-ops-option-label "odometerUnits" @resource.estimated_service_life_distance_unit)}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.estimated-service-life-months"}}</div>
+                <div class="field-value">{{n-a @resource.estimated_service_life_months}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.purchase-date"}}</div>
+                <div class="field-value">
+                    {{n-a (format-date-fns @resource.purchased_at "dd-MM-yyyy")}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.lease-expiry-date"}}</div>
+                <div class="field-value">
+                    {{n-a (format-date-fns @resource.lease_expires_at "dd-MM-yyyy")}}
+                </div>
+            </div>
+
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.vehicle.details.financing-loan"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.loan-amount"}}</div>
+                <div class="field-value">
+                    {{format-currency @resource.loan_amount @resource.currency}}
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.number-of-payments"}}</div>
+                <div class="field-value">{{n-a @resource.loan_number_of_payments}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "fleet-ops.ui.vehicle.details.first-payment-date"}}</div>
+                <div class="field-value">
+                    {{n-a (format-date-fns @resource.loan_first_payment "dd-MM-yyyy")}}
+                </div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    {{! CUSTOM FIELDS (view mode) }}
+    <CustomField::Yield @subject={{@resource}} @viewMode={{true}} @wrapperClass="bordered-top" />
+
+    {{! ORCHESTRATOR CONSTRAINTS (read-only view) }}
+    {{#if (or @resource.skills.length @resource.time_window_start @resource.time_window_end @resource.max_tasks)}}
+        <ContentPanel @title={{t "fleet-ops.ui.vehicle.details.orchestrator-constraints"}} @open={{true}} @wrapperClass="bordered-top">
+            <div class="grid grid-cols-2 gap-2 text-xs dark:text-gray-100">
+                {{#if @resource.skills.length}}
+                    <div class="field-info-container col-span-2">
+                        <div class="field-name">{{t "fleet-ops.ui.vehicle.details.skills-capabilities"}}</div>
+                        <div class="field-value">{{join @resource.skills ", "}}</div>
+                    </div>
+                {{/if}}
+                {{#if (or @resource.time_window_start @resource.time_window_end)}}
+                    <div class="field-info-container">
+                        <div class="field-name">{{t "fleet-ops.ui.vehicle.details.available-from"}}</div>
+                        <div class="field-value">{{n-a @resource.time_window_start}}</div>
+                    </div>
+                    <div class="field-info-container">
+                        <div class="field-name">{{t "fleet-ops.ui.vehicle.details.available-until"}}</div>
+                        <div class="field-value">{{n-a @resource.time_window_end}}</div>
+                    </div>
+                {{/if}}
+                {{#if @resource.max_tasks}}
+                    <div class="field-info-container">
+                        <div class="field-name">{{t "fleet-ops.ui.vehicle.details.max-tasks"}}</div>
+                        <div class="field-value">{{@resource.max_tasks}}</div>
+                    </div>
+                {{/if}}
+            </div>
+        </ContentPanel>
+    {{/if}}
+
+    {{! AVATAR }}
+    <ContentPanel @title={{t "common.avatar"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="flex px-1">
+            <div class="border border-dashed border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                <div class="flex items-center justify-center h-20 w-24">
+                    <Image
+                        alt={{@resource.displayName}}
+                        src={{or @resource.avatar_custom_url @resource.avatar_url}}
+                        @fallbackSrc={{config "defaultValues.vehicleAvatar"}}
+                        class="w-12 h-12"
+                    />
+                </div>
+            </div>
+        </div>
+    </ContentPanel>
+
+    <RegistryYield @registry="fleet-ops:component:vehicle:details" as |RegistryComponent|>
+        <RegistryComponent @resource={{@resource}} @controller={{@controller}} @permission={{get-write-permission @resource}} />
+    </RegistryYield>
+
+    {{! METADATA }}
+    <ContentPanel
+        @title={{t "common.metadata"}}
+        @open={{true}}
+        @actionButtons={{this.metadataButtons}}
+        @wrapperClass="bordered-top"
+        @panelBodyWrapperClass={{unless (is-object-empty @resource.meta) "px-0i" ""}}
+    >
+        <MetadataViewer @metadata={{@resource.meta}} />
+    </ContentPanel>
+
+    <Spacer @height="300px" />
+</div>

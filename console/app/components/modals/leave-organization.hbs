@@ -4,39 +4,36 @@
             {{#if @options.hasOtherMembers}}
                 <p>
                     <div class="text-base mb-2">
-                        As the owner of
-                        <strong>{{@options.organization.name}}</strong>, leaving the organization requires you to nominate a new owner.
+                        {{t "console.ui.modals.leave-organization.owner-intro" name=@options.organization.name htmlSafe=true}}
                     </div>
-                    <div>Please select a member from the dropdown below to transfer ownership before you can proceed.</div>
+                    <div>{{t "console.ui.modals.leave-organization.select-member-help"}}</div>
                 </p>
-                <InputGroup @name="Select a New Owner" @wrapperClass="mt-2 mb-0i">
+                <InputGroup @name={{t "console.ui.modals.leave-organization.select-new-owner"}} @wrapperClass="mt-2 mb-0i">
                     <Select
                         @options={{@options.organization.users}}
                         @value={{@options.newOwnerId}}
                         @onSelect={{@options.selectNewOwner}}
                         @optionLabel="name"
                         @optionValue="id"
-                        @placeholder="Select a member"
+                        @placeholder={{t "console.ui.modals.leave-organization.select-member"}}
                     />
                 </InputGroup>
             {{else if @options.willBeDeleted}}
                 <p>
                     <div class="text-base mb-2">
-                        You are the sole owner of
-                        <strong>{{@options.organization.name}}</strong>.
+                        {{t "console.ui.modals.leave-organization.sole-owner" name=@options.organization.name htmlSafe=true}}
                     </div>
-                    <div>By leaving, the organization will be permanently deleted along with all its data.</div>
-                    <div>Are you sure you want to proceed?</div>
+                    <div>{{t "console.ui.modals.leave-organization.will-be-deleted"}}</div>
+                    <div>{{t "console.ui.modals.leave-organization.proceed-question"}}</div>
                 </p>
-                <p class="mt-3"><em>This action cannot be undone.</em></p>
+                <p class="mt-3"><em>{{t "console.ui.modals.leave-organization.cannot-undo"}}</em></p>
             {{/if}}
         {{else}}
             <p>
                 <div class="text-base mb-2">
-                    Are you sure you want to leave the organization
-                    <strong>{{@options.organization.name}}</strong>?
+                    {{t "console.ui.modals.leave-organization.leave-question" name=@options.organization.name htmlSafe=true}}
                 </div>
-                <div>You will no longer have access to its resources and settings.</div>
+                <div>{{t "console.ui.modals.leave-organization.lose-access"}}</div>
             </p>
         {{/if}}
     </div>

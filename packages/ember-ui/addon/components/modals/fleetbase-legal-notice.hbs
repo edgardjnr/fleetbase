@@ -1,0 +1,60 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}} @modalClass="flb-resource-modal">
+    <div class="modal-body-container fleetbase-legal-notice-content">
+        <div class="fleetbase-legal-notice-hero">
+            <div class="fleetbase-legal-notice-hero-main">
+                <img
+                    src="https://fleetbase.io/images/filled-icon.png"
+                    alt="Fleetbase"
+                    width="40"
+                    height="40"
+                    class="fleetbase-legal-notice-logo rounded-lg shadow-md"
+                />
+                <div>
+                    <h3>Fleetbase</h3>
+                    <p>{{t "ember-ui.modals.legal-notice.subtitle"}}</p>
+                </div>
+            </div>
+            <span>Copyright © {{format-date-fns (now) "yyyy"}} Fleetbase Pte. Ltd.</span>
+        </div>
+
+        <div class="fleetbase-legal-notice-section">
+            <h4>{{t "ember-ui.modals.legal-notice.open-source-title"}}</h4>
+            <p>
+                {{t "ember-ui.modals.legal-notice.open-source-text"}}
+            </p>
+        </div>
+
+        <div class="fleetbase-legal-notice-section">
+            <h4>{{t "ember-ui.modals.legal-notice.no-warranty-title"}}</h4>
+            <p>
+                {{t "ember-ui.modals.legal-notice.no-warranty-text"}}
+            </p>
+        </div>
+
+        <div class="fleetbase-legal-notice-section">
+            <h4>{{t "ember-ui.modals.legal-notice.commercial-title"}}</h4>
+            <p>
+                {{t "ember-ui.modals.legal-notice.commercial-text"}}
+            </p>
+        </div>
+
+        <div class="fleetbase-legal-notice-links">
+            <a href="https://www.fleetbase.io/licensing" target="_blank" rel="noopener noreferrer">
+                <FaIcon @icon="arrow-up-right-from-square" class="fleetbase-legal-notice-link-icon" />
+                <span>{{t "ember-ui.modals.legal-notice.view-licensing"}}</span>
+            </a>
+            <a href="https://www.fleetbase.io/licensing/commercial" target="_blank" rel="noopener noreferrer">
+                <FaIcon @icon="arrow-up-right-from-square" class="fleetbase-legal-notice-link-icon" />
+                <span>{{t "ember-ui.modals.legal-notice.view-commercial"}}</span>
+            </a>
+            <a href="https://github.com/fleetbase/fleetbase" target="_blank" rel="noopener noreferrer">
+                <FaIcon @icon="arrow-up-right-from-square" class="fleetbase-legal-notice-link-icon" />
+                <span>{{t "ember-ui.modals.legal-notice.view-source"}}</span>
+            </a>
+            <a href="https://github.com/fleetbase/fleetbase/blob/main/LICENSE.md" target="_blank" rel="noopener noreferrer">
+                <FaIcon @icon="arrow-up-right-from-square" class="fleetbase-legal-notice-link-icon" />
+                <span>{{t "ember-ui.modals.legal-notice.view-agpl"}}</span>
+            </a>
+        </div>
+    </div>
+</Modal::Default>

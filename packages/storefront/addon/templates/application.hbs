@@ -1,0 +1,11 @@
+<EmberWormhole @to="sidebar-menu-items">
+    <StoreSelector @stores={{@model}} @activeStore={{this.activeStore}} @buttonClass="mb-2" @onCreateStore={{this.createNewStorefront}} @onSwitchStore={{this.switchActiveStore}} />
+    <Layout::Sidebar::Navigator @items={{this.navigationItems}} @searchPlaceholder="Search Storefront..." @searchProvider={{this.searchNavigation}} />
+</EmberWormhole>
+
+<Layout::Section::Container>
+    {{outlet}}
+</Layout::Section::Container>
+
+<ContextPanel />
+<ResourceContextPanel />

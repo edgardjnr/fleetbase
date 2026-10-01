@@ -1,0 +1,79 @@
+<a href="javascript:;" class="order-progress-card" {{on "click" this.handleClick}} ...attributes>
+    <div class="order-progress-card-header">
+        <div class="order-progress-card-header-id">
+            <div class="order-progress-card-header-id-icon-wrapper">
+                <FaIcon @icon="box" />
+            </div>
+            <div>
+                <h1 class="order-progress-tracking-number">{{this.order.tracking}}</h1>
+                <div class="order-progress-creation-date">{{this.order.createdAt}}</div>
+            </div>
+        </div>
+        <div class="order-progress-card-header-status">
+            <Badge @status={{this.order.status}}>{{smart-humanize this.order.status}}</Badge>
+        </div>
+    </div>
+    <div class="order-progress-card-progress">
+        <OrderProgressBar
+            @order={{this.order}}
+            @progress={{this.order.tracker_data.progress.percentage}}
+            @firstWaypointCompleted={{gt this.order.tracker_data.progress.completed_stops 0}}
+            @lastWaypointCompleted={{eq this.order.tracker_data.progress.percentage 100}}
+        />
+    </div>
+    {{#if this.order.tracker_data.insights.is_location_stale}}
+        <div class="flex px-1 mt-1">
+            <Badge @status="warning" @hideStatusDot={{true}}>{{t "fleet-ops.ui.component.order-progress-card.stale-gps"}}</Badge>
+        </div>
+    {{else if this.order.tracker_data.fallback_provider}}
+        <div class="flex px-1 mt-1">
+            <Badge @status="warning" @hideStatusDot={{true}}>{{t "fleet-ops.ui.component.order-progress-card.fallback-eta"}}</Badge>
+        </div>
+    {{else if this.order.tracker_data.confidence}}
+        {{#unless (eq this.order.tracker_data.confidence "high")}}
+            <div class="flex px-1 mt-1">
+                <Badge @status="warning" @hideStatusDot={{true}}>{{t "fleet-ops.ui.component.order-progress-card.low-eta-confidence"}}</Badge>
+            </div>
+        {{/unless}}
+    {{/if}}
+    <div class="order-progress-card-details">
+        <div class="order-progress-card-details-address start">
+            {{#if this.order.payload.isMultiDrop}}
+                {{this.order.payload.firstWaypoint.address}}
+            {{else}}
+                {{this.order.payload.pickup.address}}
+            {{/if}}
+        </div>
+        <div class="order-progress-card-details-address end">
+            {{#if this.order.payload.isMultiDrop}}
+                {{this.order.payload.lastWaypoint.address}}
+            {{else}}
+                {{this.order.payload.dropoff.address}}
+            {{/if}}
+        </div>
+    </div>
+    <div class="order-progress-card-footer">
+        <div class="grid grid-cols-2 gap-2 mt-1 px-1">
+            <div class="flex flex-col text-xs">
+                <div class="font-semibold">{{t "order.fields.current-eta"}}:</div>
+                <div class="">{{format-duration this.order.tracker_data.eta.active_stop_seconds}}</div>
+            </div>
+            <div class="flex flex-col text-xs">
+                <div class="font-semibold">{{t "order.fields.ect"}}:</div>
+                <div class="">{{n-a this.order.tracker_data.eta.completion_at}}</div>
+            </div>
+            <div class="flex flex-col text-xs">
+                <div class="font-semibold">{{t "order.fields.driver"}}:</div>
+                <div class="truncate {{if this.order.has_driver_assigned 'text-green-900 dark:text-green-200' 'text-yellow-900 dark:text-yellow-200'}}">{{if
+                        this.order.has_driver_assigned
+                        (t "order.fields.driver-assigned")
+                        (t "order.fields.no-driver-assigned")
+                    }}</div>
+            </div>
+            <div class="flex flex-col text-xs">
+                <div class="font-semibold">{{t "order.fields.current-destination"}}:</div>
+                <div class="truncate">{{n-a this.order.tracker_data.active_stop.address}}</div>
+            </div>
+        </div>
+    </div>
+</a>

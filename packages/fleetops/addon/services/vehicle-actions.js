@@ -1,0 +1,457 @@
+import ResourceActionService, { inject as service } from '@fleetbase/ember-core/services/resource-action';
+import leafletIcon from '@fleetbase/ember-core/utils/leaflet-icon';
+import config from 'ember-get-config';
+import { action } from '@ember/object';
+import { isArray } from '@ember/array';
+import { dasherize } from '@ember/string';
+
+export default class VehicleActionsService extends ResourceActionService {
+    @service intl;
+    @service('universe/menu-service') menuService;
+    @service fetch;
+    @service maintenanceScheduleActions;
+    @service workOrderActions;
+    @service maintenanceActions;
+
+    get registeredTabs() {
+        const registeredTabs = this.menuService.getMenuItems('fleet-ops:component:vehicle:details');
+        return (isArray(registeredTabs) ? registeredTabs : [])
+            .map((tab) => {
+                delete tab.route;
+                if (!tab.key) {
+                    tab.key = tab.id ?? dasherize(tab.label ?? tab.title);
+                }
+                return tab;
+            })
+            .filter((tab) => !tab.component);
+    }
+
+    get panelTabs() {
+        return [
+            {
+                key: 'overview',
+                label: this.intl.t('fleet-ops.ui.service.vehicle-actions.overview'),
+                component: 'vehicle/details',
+            },
+            {
+                key: 'positions',
+                label: this.intl.t('fleet-ops.ui.service.vehicle-actions.positions'),
+                component: 'positions-replay',
+            },
+            {
+                key: 'devices',
+                label: this.intl.t('fleet-ops.ui.service.vehicle-actions.devices'),
+                component: 'device/manager',
+            },
+            {
+                key: 'trailers',
+                label: this.intl.t('resource.trailers'),
+                component: 'vehicle/details/trailers',
+            },
+            {
+                key: 'equipment',
+                label: this.intl.t('resource.equipment'),
+                component: 'vehicle/details/equipment',
+            },
+            {
+                key: 'schedules',
+                label: this.intl.t('fleet-ops.ui.service.vehicle-actions.schedules'),
+                component: 'vehicle/details/schedules',
+            },
+            {
+                key: 'work-orders',
+                label: this.intl.t('fleet-ops.ui.service.vehicle-actions.work-orders'),
+                component: 'vehicle/details/work-orders',
+            },
+            {
+                key: 'maintenance-history',
+                label: this.intl.t('fleet-ops.ui.service.vehicle-actions.maintenance'),
+                component: 'vehicle/details/maintenance-history',
+            },
+            ...this.registeredTabs,
+        ];
+    }
+
+    constructor() {
+        super(...arguments);
+        this.initialize('vehicle', { status: 'available' });
+    }
+
+    async resolveVehicleResource(vehicle) {
+        if (typeof vehicle?.then === 'function') {
+            return await vehicle;
+        }
+
+        if (typeof vehicle?.loadResource === 'function') {
+            return (await vehicle.loadResource()) ?? vehicle;
+        }
+
+        return vehicle;
+    }
+
+    async reloadIndexResource(vehicle) {
+        if (vehicle?.meta?._index_resource) {
+            await vehicle.reload();
+        }
+
+        return vehicle;
+    }
+
+    transition = {
+        view: (vehicle) => this.transitionTo('management.vehicles.index.details', vehicle),
+        edit: (vehicle) => this.transitionTo('management.vehicles.index.edit', vehicle),
+        create: () => this.transitionTo('management.vehicles.index.new'),
+    };
+
+    panel = {
+        create: (attributes = {}, options = {}) => {
+            const vehicle = this.createNewInstance(attributes);
+            return this.resourceContextPanel.open({
+                content: 'vehicle/form',
+                title: this.intl.t('common.create-a-new-resource', { resource: this.intl.t('resource.vehicle')?.toLowerCase() }),
+                saveOptions: {
+                    callback: this.refresh,
+                },
+                useDefaultSaveTask: true,
+                vehicle,
+                ...options,
+            });
+        },
+        edit: async (vehicle, options = {}) => {
+            vehicle = await this.reloadIndexResource(await this.resolveVehicleResource(vehicle));
+
+            return this.resourceContextPanel.open({
+                content: 'vehicle/form',
+                title: this.intl.t('common.edit-resource-name', { resourceName: vehicle.name }),
+                actionButtons: [
+                    {
+                        icon: 'eye',
+                        fn: async () => {
+                            await this.resourceContextPanel.closeAll();
+                            this.panel.view(vehicle);
+                        },
+                    },
+                ],
+                useDefaultSaveTask: true,
+                vehicle,
+                ...options,
+            });
+        },
+        view: async (vehicle, options = {}) => {
+            vehicle = await this.reloadIndexResource(await this.resolveVehicleResource(vehicle));
+
+            return this.resourceContextPanel.open({
+                vehicle,
+                header: 'vehicle/panel-header',
+                actionButtons: [
+                    {
+                        icon: 'pencil',
+                        fn: async () => {
+                            await this.resourceContextPanel.closeAll();
+                            this.panel.edit(vehicle);
+                        },
+                    },
+                ],
+                tabs: this.panelTabs,
+                ...options,
+            });
+        },
+    };
+
+    modal = {
+        create: (attributes = {}, options = {}, saveOptions = {}) => {
+            const vehicle = this.createNewInstance(attributes);
+            return this.modalsManager.show('modals/resource', {
+                resource: vehicle,
+                title: this.intl.t('common.create-a-new-resource', { resource: this.intl.t('resource.vehicle')?.toLowerCase() }),
+                acceptButtonText: this.intl.t('common.create-resource', { resource: this.intl.t('resource.vehicle') }),
+                component: 'vehicle/form',
+                confirm: (modal) => this.modalTask.perform(modal, 'saveTask', vehicle, { refresh: true, ...saveOptions }),
+                ...options,
+            });
+        },
+        edit: async (vehicle, options = {}, saveOptions = {}) => {
+            vehicle = await this.reloadIndexResource(await this.resolveVehicleResource(vehicle));
+
+            return this.modalsManager.show('modals/resource', {
+                resource: vehicle,
+                title: this.intl.t('common.edit-resource-name', { resourceName: vehicle.name }),
+                acceptButtonText: this.intl.t('common.save-changes'),
+                saveButtonIcon: 'save',
+                component: 'vehicle/form',
+                confirm: (modal) => this.modalTask.perform(modal, 'saveTask', vehicle, { refresh: true, ...saveOptions }),
+                ...options,
+            });
+        },
+        view: async (vehicle, options = {}) => {
+            vehicle = await this.reloadIndexResource(await this.resolveVehicleResource(vehicle));
+
+            return this.modalsManager.show('modals/resource', {
+                resource: vehicle,
+                title: vehicle.name,
+                component: 'vehicle/details',
+                ...options,
+            });
+        },
+    };
+
+    @action async scheduleMaintenance(vehicle, options = {}, saveOptions = {}) {
+        vehicle = await this.resolveVehicleResource(vehicle);
+
+        return this.maintenanceScheduleActions.modal.create({ subject: vehicle }, options, saveOptions);
+    }
+
+    @action createWorkOrder(vehicle) {
+        this.workOrderActions.modal.create({ target: vehicle });
+    }
+
+    @action logMaintenance(vehicle) {
+        this.maintenanceActions.modal.create({ maintainable: vehicle });
+    }
+
+    @action attachDevice(vehicle, options = {}) {
+        this.modalsManager.show('modals/attach-device', {
+            title: this.intl.t('vehicle.prompts.attach-device-title', { vehicleName: vehicle.displayName ?? vehicle.name }),
+            acceptButtonText: this.intl.t('vehicle.actions.attach-device'),
+            acceptButtonIcon: 'link',
+            selectedDevice: null,
+            vehicle,
+            confirm: async (modal) => {
+                const selectedDevice = modal.getOption('selectedDevice');
+
+                if (!selectedDevice) {
+                    return this.notifications.warning(this.intl.t('vehicle.prompts.select-device-warning'));
+                }
+
+                modal.startLoading();
+
+                try {
+                    await this.fetch.post(`vehicles/${vehicle.id}/attach-device`, { device: selectedDevice.id });
+                    await vehicle.reload?.();
+                    this.notifications.success(this.intl.t('vehicle.prompts.attach-device-success', { vehicleName: vehicle.displayName ?? vehicle.name }));
+                    modal.done();
+                    this.refresh();
+                } catch (error) {
+                    this.notifications.serverError(error);
+                    modal.stopLoading();
+                }
+            },
+            ...options,
+        });
+    }
+
+    /**
+     * Couple a detached trailer to this vehicle. Attachment is owned by the trailer
+     * endpoint so the single-attachment and towing-position rules apply uniformly.
+     */
+    @action attachTrailer(vehicle, options = {}) {
+        const vehicleName = vehicle.displayName ?? vehicle.display_name ?? vehicle.name;
+
+        this.modalsManager.show('modals/select-trailer', {
+            title: this.intl.t('vehicle.prompts.attach-trailer-title', { vehicleName }),
+            acceptButtonText: this.intl.t('vehicle.actions.attach-trailer'),
+            acceptButtonIcon: 'link',
+            vehicle,
+            selectedTrailer: null,
+            position: 1,
+            confirm: async (modal) => {
+                const trailer = modal.getOption('selectedTrailer');
+                const position = Number(modal.getOption('position')) || 1;
+
+                if (!trailer) {
+                    return this.notifications.warning(this.intl.t('vehicle.prompts.select-trailer-warning'));
+                }
+
+                modal.startLoading();
+
+                try {
+                    await this.fetch.post(`trailers/${trailer.id}/attach`, { vehicle: vehicle.id, position });
+                    await trailer.reload?.();
+                    this.notifications.success(this.intl.t('vehicle.prompts.attach-trailer-success', { trailerName: trailer.displayName ?? trailer.name, vehicleName }));
+                    modal.done();
+                    this.refresh();
+                    options.callback?.(vehicle, trailer);
+                } catch (error) {
+                    this.notifications.serverError(error);
+                    modal.stopLoading();
+                }
+            },
+            ...options,
+        });
+    }
+
+    @action attachEquipment(vehicle, options = {}) {
+        const vehicleName = vehicle.displayName ?? vehicle.display_name ?? vehicle.name;
+
+        this.modalsManager.show('modals/attach-equipment', {
+            title: this.intl.t('trailer.prompts.attach-equipment-title', { resourceName: vehicleName }),
+            acceptButtonText: this.intl.t('vehicle.actions.attach-equipment'),
+            acceptButtonIcon: 'link',
+            vehicle,
+            selectedEquipment: null,
+            confirm: async (modal) => {
+                const equipment = modal.getOption('selectedEquipment');
+
+                if (!equipment) {
+                    return this.notifications.warning(this.intl.t('trailer.prompts.select-equipment-warning'));
+                }
+
+                modal.startLoading();
+
+                try {
+                    await this.fetch.post(`vehicles/${vehicle.id}/attach-equipment`, { equipment: equipment.id });
+                    this.notifications.success(this.intl.t('trailer.prompts.attach-equipment-success', { equipmentName: equipment.name, resourceName: vehicleName }));
+                    modal.done();
+                    this.refresh();
+                    options.callback?.(vehicle, equipment);
+                } catch (error) {
+                    this.notifications.serverError(error);
+                    modal.stopLoading();
+                }
+            },
+            ...options,
+        });
+    }
+
+    @action detachEquipment(vehicle, equipment, options = {}) {
+        const vehicleName = vehicle.displayName ?? vehicle.display_name ?? vehicle.name;
+        const equipmentName = equipment?.name ?? equipment?.public_id ?? this.intl.t('resource.equipment');
+
+        return this.modalsManager.confirm({
+            title: this.intl.t('trailer.prompts.detach-equipment-title', { equipmentName }),
+            body: this.intl.t('trailer.prompts.detach-equipment-body', { equipmentName, resourceName: vehicleName }),
+            acceptButtonText: this.intl.t('vehicle.actions.detach-equipment'),
+            acceptButtonIcon: 'unlink',
+            acceptButtonScheme: 'danger',
+            confirm: async (modal) => {
+                modal.startLoading();
+
+                try {
+                    await this.fetch.post(`vehicles/${vehicle.id}/detach-equipment`, { equipment: equipment.id });
+                    this.notifications.success(this.intl.t('trailer.prompts.detach-equipment-success', { equipmentName, resourceName: vehicleName }));
+                    modal.done();
+                    this.refresh();
+                    options.callback?.(vehicle, equipment);
+                } catch (error) {
+                    this.notifications.serverError(error);
+                    modal.stopLoading();
+                }
+            },
+            ...options,
+        });
+    }
+
+    @action async unassignOrders(vehicle, options = {}) {
+        let response;
+
+        try {
+            response = await this.fetch.get(`vehicles/${vehicle.id}/assigned-orders`);
+        } catch (error) {
+            return this.notifications.serverError(error);
+        }
+
+        const currentOrderId = response.current;
+        const orders = (response.orders ?? response.data ?? []).map((order) => ({
+            ...order,
+            is_current_job: [order.id, order.uuid, order.public_id].includes(currentOrderId),
+        }));
+        const vehicleName = vehicle.displayName ?? vehicle.display_name ?? vehicle.name;
+
+        if (orders.length === 0) {
+            return this.notifications.warning(this.intl.t('vehicle.prompts.no-assigned-orders-warning', { vehicleName }));
+        }
+
+        this.modalsManager.show('modals/assigned-orders', {
+            title: this.intl.t('vehicle.prompts.unassign-orders-title', { vehicleName }),
+            acceptButtonText: this.intl.t('vehicle.actions.unassign-orders'),
+            acceptButtonIcon: 'truck-ramp-box',
+            acceptButtonDisabled: true,
+            subjectLabel: this.intl.t('resource.vehicle'),
+            subjectName: vehicleName,
+            orders,
+            selectedOrderIds: [],
+            toggleOrder: (order) => {
+                const orderId = order.id;
+                const selected = this.modalsManager.getOption('selectedOrderIds') ?? [];
+                const selectedOrderIds = selected.includes(orderId) ? selected.filter((id) => id !== orderId) : [...selected, orderId];
+                this.modalsManager.setOption('selectedOrderIds', selectedOrderIds);
+                this.modalsManager.setOption('acceptButtonDisabled', selectedOrderIds.length === 0);
+            },
+            confirm: async (modal) => {
+                const selectedOrderIds = modal.getOption('selectedOrderIds') ?? [];
+                const selectedOrders = orders.filter((order) => selectedOrderIds.includes(order.id));
+
+                if (selectedOrders.length === 0) {
+                    return this.notifications.warning(this.intl.t('vehicle.prompts.select-orders-warning'));
+                }
+
+                const confirmed = await this.confirmUnassignOrders({
+                    title: this.intl.t('vehicle.prompts.confirm-unassign-orders-title', { count: selectedOrders.length, vehicleName }),
+                    body: this.intl.t('vehicle.prompts.confirm-unassign-orders-body', { vehicleName, orders: this.orderReferenceList(selectedOrders) }),
+                });
+
+                if (!confirmed) {
+                    return;
+                }
+
+                modal.startLoading();
+
+                try {
+                    await this.fetch.post(`vehicles/${vehicle.id}/unassign-orders`, { orders: selectedOrderIds });
+                    await vehicle.reload?.();
+                    this.notifications.success(this.intl.t('vehicle.prompts.unassign-orders-success', { count: selectedOrders.length, vehicleName }));
+                    modal.done();
+                    this.refresh();
+                } catch (error) {
+                    this.notifications.serverError(error);
+                    modal.stopLoading();
+                }
+            },
+            ...options,
+        });
+    }
+
+    @action locate(vehicle, options = {}) {
+        const { latitude, longitude, location } = vehicle;
+
+        this.modalsManager.show('modals/point-map', {
+            title: this.intl.t('common.resource-location', { resource: vehicle.displayName }),
+            acceptButtonText: this.intl.t('common.done'),
+            hideDeclineButton: true,
+            resource: vehicle,
+            popupText: `${vehicle.displayName} (${vehicle.public_id})`,
+            tooltip: vehicle.positionString,
+            icon: leafletIcon({
+                iconUrl: vehicle.avatar ?? config?.defaultValues?.vehicleAvatar,
+                iconSize: [40, 40],
+            }),
+            latitude,
+            longitude,
+            location,
+            ...options,
+        });
+    }
+
+    orderReferenceList(orders) {
+        const references = orders.map((order) => order.tracking ?? order.public_id ?? order.id).filter(Boolean);
+
+        return references.length > 5 ? `${references.slice(0, 5).join(', ')} +${references.length - 5}` : references.join(', ');
+    }
+
+    async confirmUnassignOrders({ title, body }) {
+        return new Promise((resolve) => {
+            this.modalsManager.confirm({
+                title,
+                body,
+                confirm: (_modal, done) => {
+                    done();
+                    resolve(true);
+                },
+                decline: (_modal, done) => {
+                    done();
+                    resolve(false);
+                },
+            });
+        });
+    }
+}

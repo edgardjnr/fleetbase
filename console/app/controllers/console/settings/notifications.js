@@ -7,6 +7,7 @@ import { task } from 'ember-concurrency';
 
 export default class ConsoleSettingsNotificationsController extends Controller {
     @service notifications;
+    @service intl;
     @service fetch;
     @service store;
     @service currentUser;
@@ -108,7 +109,7 @@ export default class ConsoleSettingsNotificationsController extends Controller {
         try {
             yield this.fetch.post('notifications/save-settings', { notificationSettings: notificationSettings ?? {} });
             yield this.saveCompanyOptions.perform();
-            this.notifications.success('Notification settings successfully saved.');
+            this.notifications.success(this.intl.t('console.ui.settings.notifications.saved'));
         } catch (error) {
             this.notifications.serverError(error);
         }

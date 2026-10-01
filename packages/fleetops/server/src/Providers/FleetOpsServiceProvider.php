@@ -1,0 +1,277 @@
+<?php
+
+namespace Fleetbase\FleetOps\Providers;
+
+use Brick\Geo\Engine\GeometryEngineRegistry;
+use Brick\Geo\Engine\GEOSEngine;
+use Fleetbase\Providers\CoreServiceProvider;
+use Fleetbase\Support\NotificationRegistry;
+use Fleetbase\Support\Utils;
+use Illuminate\Database\Eloquent\Relations\Relation;
+
+// Never taken in any environment that can run this file: core-api is a hard
+// composer dependency, so the class is always present by the time the package
+// autoloads. It exists to give a readable failure to anyone assembling the
+// package tree by hand.
+// @codeCoverageIgnoreStart
+if (!Utils::classExists(CoreServiceProvider::class)) {
+    throw new \Exception('FleetOps cannot be loaded without `fleetbase/core-api` installed!');
+}
+// @codeCoverageIgnoreEnd
+
+/**
+ * FleetOps service provider.
+ */
+class FleetOpsServiceProvider extends CoreServiceProvider
+{
+    /**
+     * The observers registered with the service provider.
+     *
+     * @var array
+     */
+    public $observers = [
+        \Fleetbase\FleetOps\Models\Order::class                  => \Fleetbase\FleetOps\Observers\OrderObserver::class,
+        \Fleetbase\FleetOps\Models\Payload::class                => \Fleetbase\FleetOps\Observers\PayloadObserver::class,
+        \Fleetbase\FleetOps\Models\Place::class                  => \Fleetbase\FleetOps\Observers\PlaceObserver::class,
+        \Fleetbase\FleetOps\Models\ServiceRate::class            => \Fleetbase\FleetOps\Observers\ServiceRateObserver::class,
+        \Fleetbase\FleetOps\Models\PurchaseRate::class           => \Fleetbase\FleetOps\Observers\PurchaseRateObserver::class,
+        \Fleetbase\FleetOps\Models\ServiceArea::class            => \Fleetbase\FleetOps\Observers\ServiceAreaObserver::class,
+        \Fleetbase\FleetOps\Models\Zone::class                   => \Fleetbase\FleetOps\Observers\ZoneObserver::class,
+        \Fleetbase\FleetOps\Models\TrackingNumber::class         => \Fleetbase\FleetOps\Observers\TrackingNumberObserver::class,
+        \Fleetbase\FleetOps\Models\Driver::class                 => \Fleetbase\FleetOps\Observers\DriverObserver::class,
+        \Fleetbase\FleetOps\Models\Vehicle::class                => \Fleetbase\FleetOps\Observers\VehicleObserver::class,
+        \Fleetbase\FleetOps\Models\Fleet::class                  => \Fleetbase\FleetOps\Observers\FleetObserver::class,
+        \Fleetbase\FleetOps\Models\Contact::class                => \Fleetbase\FleetOps\Observers\ContactObserver::class,
+        \Fleetbase\Models\User::class                            => \Fleetbase\FleetOps\Observers\UserObserver::class,
+        \Fleetbase\Models\Company::class                         => \Fleetbase\FleetOps\Observers\CompanyObserver::class,
+        \Fleetbase\Models\CompanyUser::class                     => \Fleetbase\FleetOps\Observers\CompanyUserObserver::class,
+        \Fleetbase\Models\Category::class                        => \Fleetbase\FleetOps\Observers\CategoryObserver::class,
+        \Fleetbase\FleetOps\Models\WorkOrder::class              => \Fleetbase\FleetOps\Observers\WorkOrderObserver::class,
+    ];
+
+    /**
+     * The console commands registered with the service provider.
+     *
+     * @var array
+     */
+    public $commands = [
+        \Fleetbase\FleetOps\Console\Commands\DispatchAdhocOrders::class,
+        \Fleetbase\FleetOps\Console\Commands\DispatchOrders::class,
+        \Fleetbase\FleetOps\Console\Commands\TrackOrderDistanceAndTime::class,
+        \Fleetbase\FleetOps\Console\Commands\FixDriverCompanies::class,
+        \Fleetbase\FleetOps\Console\Commands\FixCustomerCompanies::class,
+        \Fleetbase\FleetOps\Console\Commands\FixLegacyOrderConfigs::class,
+        \Fleetbase\FleetOps\Console\Commands\FixInvalidPolymorphicRelationTypeNamespaces::class,
+        \Fleetbase\FleetOps\Console\Commands\AssignDriverRoles::class,
+        \Fleetbase\FleetOps\Console\Commands\AssignCustomerRoles::class,
+        \Fleetbase\FleetOps\Console\Commands\AuditCustomerUserConflicts::class,
+        \Fleetbase\FleetOps\Console\Commands\SimulateOrderRouteNavigation::class,
+        \Fleetbase\FleetOps\Console\Commands\DebugOrderTracker::class,
+        \Fleetbase\FleetOps\Console\Commands\PurgeUnpurchasedServiceQuotes::class,
+        \Fleetbase\FleetOps\Console\Commands\SendDriverNotification::class,
+        \Fleetbase\FleetOps\Console\Commands\ReplayVehicleLocations::class,
+        \Fleetbase\FleetOps\Console\Commands\SimulateGeofenceEvents::class,
+        \Fleetbase\FleetOps\Console\Commands\TestEmail::class,
+        \Fleetbase\FleetOps\Console\Commands\ProcessMaintenanceTriggers::class,
+        \Fleetbase\FleetOps\Console\Commands\SendMaintenanceReminders::class,
+        \Fleetbase\FleetOps\Console\Commands\ProcessOperationalAlerts::class,
+        \Fleetbase\FleetOps\Console\Commands\SyncTelematics::class,
+    ];
+
+    /**
+     * Register any application services.
+     *
+     * Within the register method, you should only bind things into the
+     * service container. You should never attempt to register any event
+     * listeners, routes, or any other piece of functionality within the
+     * register method.
+     *
+     * More information on this can be found in the Laravel documentation:
+     * https://laravel.com/docs/8.x/providers
+     *
+     * @return void
+     */
+    public function register()
+    {
+        $this->app->register(CoreServiceProvider::class);
+        $this->app->register(ReportSchemaServiceProvider::class);
+
+        // Register the GeofenceIntersectionService as a singleton so that
+        // the same instance is reused across the request lifecycle, avoiding
+        // repeated instantiation on high-frequency location update calls.
+        $this->app->singleton(
+            \Fleetbase\FleetOps\Support\GeofenceIntersectionService::class,
+            fn () => new \Fleetbase\FleetOps\Support\GeofenceIntersectionService()
+        );
+
+        // Register the OrchestrationEngineRegistry as a singleton so that engines
+        // registered from any service provider share the same instance.
+        $this->app->singleton(
+            \Fleetbase\FleetOps\Orchestration\OrchestrationEngineRegistry::class,
+            fn () => new \Fleetbase\FleetOps\Orchestration\OrchestrationEngineRegistry()
+        );
+
+        // Register the TrackingProviderRegistry as a singleton so FleetOps core
+        // and third-party extensions can share tracking intelligence providers.
+        $this->app->singleton(
+            \Fleetbase\FleetOps\Tracking\TrackingProviderRegistry::class,
+            fn () => new \Fleetbase\FleetOps\Tracking\TrackingProviderRegistry()
+        );
+
+        // Register the fuel provider registry as a singleton so FleetOps core
+        // and third-party extensions can share fuel card and fuel billing
+        // providers. Extensions can register providers from their own service
+        // providers with callAfterResolving(FuelProviderRegistry::class, ...).
+        $this->app->singleton(
+            \Fleetbase\FleetOps\Support\FuelProviders\FuelProviderRegistry::class,
+            fn () => new \Fleetbase\FleetOps\Support\FuelProviders\FuelProviderRegistry()
+        );
+    }
+
+    /**
+     * Bootstrap any package services.
+     *
+     * @return void
+     *
+     * @throws \Exception if the `fleetbase/core-api` package is not installed
+     */
+    public function boot()
+    {
+        $this->registerMorphMap();
+        $this->registerObservers();
+        $this->registerCommands();
+        $this->scheduleCommands(function ($schedule) {
+            $schedule->command('fleetops:dispatch-orders')->everyMinute()->withoutOverlapping()->storeOutputInDb();
+            $schedule->command('fleetops:dispatch-adhoc')->everyMinute()->withoutOverlapping()->storeOutputInDb();
+            $schedule->command('fleetops:update-estimations')->everyTenMinutes()->withoutOverlapping();
+            $schedule->command('fleetops:purge-service-quotes')->daily()->withoutOverlapping();
+            $schedule->command('fleetops:process-maintenance-triggers')->daily()->withoutOverlapping()->storeOutputInDb();
+            $schedule->command('fleetops:send-maintenance-reminders')->daily()->withoutOverlapping()->storeOutputInDb();
+            $schedule->command('fleetops:process-operational-alerts')->everyMinute()->withoutOverlapping()->storeOutputInDb();
+            $schedule->command('fleetops:sync-telematics')->everyMinute()->withoutOverlapping()->storeOutputInDb();
+        });
+        $this->registerNotifications();
+        $this->registerAiCapabilities();
+        $this->registerExpansionsFrom(__DIR__ . '/../Expansions');
+
+        // Register built-in orchestration engines.
+        // Third-party engines can register themselves by resolving the
+        // OrchestrationEngineRegistry singleton from their own service providers.
+        $this->app->resolving(
+            \Fleetbase\FleetOps\Orchestration\OrchestrationEngineRegistry::class,
+            function (\Fleetbase\FleetOps\Orchestration\OrchestrationEngineRegistry $registry) {
+                if (!$registry->has('vroom')) {
+                    $registry->register(new \Fleetbase\FleetOps\Orchestration\Engines\VroomOrchestrationEngine());
+                }
+                if (!$registry->has('greedy')) {
+                    $registry->register(new \Fleetbase\FleetOps\Orchestration\Engines\GreedyOrchestrationEngine());
+                }
+                if (!$registry->has('capacity')) {
+                    $registry->register(new \Fleetbase\FleetOps\Orchestration\Engines\CapacityAllocationEngine());
+                }
+            }
+        );
+
+        // Register built-in tracking providers. Third-party extensions can
+        // register additional providers from their own service providers.
+        $this->app->resolving(
+            \Fleetbase\FleetOps\Tracking\TrackingProviderRegistry::class,
+            function (\Fleetbase\FleetOps\Tracking\TrackingProviderRegistry $registry) {
+                if (!$registry->has('google_routes')) {
+                    $registry->register(new \Fleetbase\FleetOps\Tracking\Providers\GoogleRoutesTrackingProvider());
+                }
+                if (!$registry->has('osrm')) {
+                    $registry->register(new \Fleetbase\FleetOps\Tracking\Providers\OsrmTrackingProvider());
+                }
+                if (!$registry->has('calculated')) {
+                    $registry->register(new \Fleetbase\FleetOps\Tracking\Providers\CalculatedTrackingProvider());
+                }
+            }
+        );
+        $this->loadRoutesFrom(__DIR__ . '/../routes.php');
+        $this->loadMigrationsFrom(__DIR__ . '/../../migrations');
+        $this->loadViewsFrom(__DIR__ . '/../../resources/views', 'fleetops');
+        $this->mergeConfigFrom(__DIR__ . '/../../config/fleetops.php', 'fleetops');
+        $this->mergeConfigFrom(__DIR__ . '/../../config/telematics.php', 'telematics');
+        $this->mergeConfigFrom(__DIR__ . '/../../config/fuel-providers.php', 'fuel-providers');
+        $this->mergeConfigFrom(__DIR__ . '/../../config/api.php', 'api');
+        $this->mergeConfigFrom(__DIR__ . '/../../config/cache.stores.php', 'cache.stores');
+        $this->mergeConfigFrom(__DIR__ . '/../../config/geocoder.php', 'geocoder');
+        $this->mergeConfigFrom(__DIR__ . '/../../config/dompdf.php', 'dompdf');
+
+        // Register the GeometryEngine for GEOSEngine
+        //
+        // The geos extension is installed neither locally nor in CI, so this
+        // registration cannot be exercised here. Tests inject an engine through
+        // GeometryEngineRegistry directly instead.
+        // @codeCoverageIgnoreStart
+        if (extension_loaded('geos')) {
+            GeometryEngineRegistry::set(new GEOSEngine());
+        }
+        // @codeCoverageIgnoreEnd
+    }
+
+    public function registerMorphMap(): void
+    {
+        Relation::morphMap([
+            'Fleetbase\\Models\\Vehicle'    => \Fleetbase\FleetOps\Models\Vehicle::class,
+            '\\Fleetbase\\Models\\Vehicle'  => \Fleetbase\FleetOps\Models\Vehicle::class,
+            'fleet-ops:vehicle'             => \Fleetbase\FleetOps\Models\Vehicle::class,
+            'fleet-ops:trailer'             => \Fleetbase\FleetOps\Models\Trailer::class,
+        ]);
+    }
+
+    public function registerNotifications()
+    {
+        // Register Notifications
+        NotificationRegistry::register([
+            \Fleetbase\FleetOps\Notifications\OrderAssigned::class,
+            \Fleetbase\FleetOps\Notifications\OrderCanceled::class,
+            \Fleetbase\FleetOps\Notifications\OrderDispatched::class,
+            \Fleetbase\FleetOps\Notifications\OrderDispatchFailed::class,
+            \Fleetbase\FleetOps\Notifications\OrderPing::class,
+            \Fleetbase\FleetOps\Notifications\OrderFailed::class,
+            \Fleetbase\FleetOps\Notifications\OrderCompleted::class,
+            \Fleetbase\FleetOps\Notifications\DriverArrivedAtGeofence::class,
+            \Fleetbase\FleetOps\Notifications\LateDeparture::class,
+            \Fleetbase\FleetOps\Notifications\RouteDeviation::class,
+            \Fleetbase\FleetOps\Notifications\ProlongedStoppage::class,
+        ]);
+
+        // Register Notifiables
+        NotificationRegistry::registerNotifiable([
+            \Fleetbase\FleetOps\Models\Contact::class,
+            \Fleetbase\FleetOps\Models\Driver::class,
+            \Fleetbase\FleetOps\Models\Vendor::class,
+            \Fleetbase\FleetOps\Models\Fleet::class,
+            'dynamic:customer',
+            'dynamic:driver',
+            'dynamic:facilitator',
+        ]);
+    }
+
+    protected function registerAiCapabilities(): void
+    {
+        if (!Utils::classExists(\Fleetbase\Ai\Support\AiCapabilityRegistry::class)) {
+            return;
+        }
+
+        if (Utils::classExists(\Fleetbase\Ai\Support\AiQueryRegistry::class)) {
+            $this->callAfterResolving(\Fleetbase\Ai\Support\AiQueryRegistry::class, function (\Fleetbase\Ai\Support\AiQueryRegistry $registry) {
+                \Fleetbase\FleetOps\Support\Ai\FleetOpsAiQueryResources::register($registry);
+            });
+        }
+
+        $this->callAfterResolving(\Fleetbase\Ai\Support\AiCapabilityRegistry::class, function (\Fleetbase\Ai\Support\AiCapabilityRegistry $registry) {
+            $registry->register(new \Fleetbase\FleetOps\Support\Ai\Capabilities\SearchResourcesCapability());
+            $registry->register(new \Fleetbase\FleetOps\Support\Ai\Capabilities\OperationalQueryCapability());
+            $registry->register(new \Fleetbase\FleetOps\Support\Ai\Capabilities\OrderInsightsCapability());
+            $registry->register(new \Fleetbase\FleetOps\Support\Ai\Capabilities\AssetStatusCapability());
+            $registry->register(new \Fleetbase\FleetOps\Support\Ai\Capabilities\DocsHelpCapability());
+            $registry->register(new \Fleetbase\FleetOps\Support\Ai\Capabilities\ConsoleNavigationCapability());
+            $registry->register(new \Fleetbase\FleetOps\Support\Ai\Capabilities\CreateOrderPreviewCapability());
+            $registry->register(new \Fleetbase\FleetOps\Support\Ai\Capabilities\OptimizeOrderRouteCapability());
+            $registry->register(new \Fleetbase\FleetOps\Support\Ai\Capabilities\ImportOrdersPreviewCapability());
+        });
+    }
+}

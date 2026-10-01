@@ -1,0 +1,57 @@
+<ContentPanel @title={{t "customer-portal.ui.order.items"}} @open={{true}} @actionButtons={{this.actionButtons}} @wrapperClass="bordered-top">
+    <div class="space-y-3">
+        {{#each @draft.payload.entities as |entity index|}}
+            <div class="portal-order-item-card">
+                <div class="portal-order-item-card-header">
+                    <div class="font-semibold dark:text-gray-100">{{t "customer-portal.ui.order.item-n" n=(add index 1)}}</div>
+                    <Button @icon="trash" @type="danger" @size="xs" @onClick={{fn this.removeEntity entity}} />
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <InputGroup @name={{t "customer-portal.ui.common.name"}}>
+                        <Input @value={{entity.name}} class="form-input w-full" placeholder={{t "customer-portal.ui.order.item-name-placeholder"}} />
+                    </InputGroup>
+                    <InputGroup @name={{t "customer-portal.ui.order.item-type"}}>
+                        <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                            <PowerSelect
+                                @options={{this.entityTypes}}
+                                @selected={{find-by "value" entity.type this.entityTypes}}
+                                @onChange={{fn this.setEntityValue index "type"}}
+                                @placeholder={{t "customer-portal.ui.order.select-item-type"}}
+                                @triggerClass="form-select form-input"
+                                @renderInPlace={{true}}
+                                as |type|
+                            >
+                                <div class="text-sm">
+                                    <div class="font-semibold normalize-in-trigger">{{type.label}}</div>
+                                    <div class="hide-from-trigger">{{type.description}}</div>
+                                </div>
+                            </PowerSelect>
+                        </div>
+                    </InputGroup>
+                    <InputGroup @name={{t "customer-portal.ui.common.description"}} @wrapperClass="col-span-2">
+                        <Textarea @value={{entity.description}} class="form-input w-full" rows={{2}} placeholder={{t "customer-portal.ui.order.item-description-placeholder"}} />
+                    </InputGroup>
+                    <InputGroup @name={{t "customer-portal.ui.order.weight"}} @wrapperClass="col-span-2">
+                        <div class="grid grid-cols-3 gap-2">
+                            <Input @value={{entity.weight}} @type="number" class="form-input w-full col-span-2" placeholder="0.00" />
+                            <Select class="w-full" @options={{this.weightUnits}} @value={{entity.weight_unit}} @onSelect={{fn this.setEntityValue index "weight_unit"}} />
+                        </div>
+                    </InputGroup>
+                    <InputGroup @name={{t "customer-portal.ui.order.dimensions"}} @wrapperClass="col-span-2">
+                        <div class="grid grid-cols-4 gap-2">
+                            <Input @value={{entity.length}} @type="number" class="form-input w-full" placeholder={{t "customer-portal.ui.order.length"}} />
+                            <Input @value={{entity.width}} @type="number" class="form-input w-full" placeholder={{t "customer-portal.ui.order.width"}} />
+                            <Input @value={{entity.height}} @type="number" class="form-input w-full" placeholder={{t "customer-portal.ui.order.height"}} />
+                            <Select class="w-full" @options={{this.dimensionUnits}} @value={{entity.dimensions_unit}} @onSelect={{fn this.setEntityValue index "dimensions_unit"}} />
+                        </div>
+                    </InputGroup>
+                </div>
+            </div>
+        {{else}}
+            <div class="portal-empty-state compact">
+                <div class="portal-empty-state-title">{{t "customer-portal.ui.order.no-items-added"}}</div>
+                <p>{{t "customer-portal.ui.order.no-items-added-text"}}</p>
+            </div>
+        {{/each}}
+    </div>
+</ContentPanel>

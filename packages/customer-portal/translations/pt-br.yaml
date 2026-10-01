@@ -1,0 +1,582 @@
+starter:
+  extension-name: Inicial
+customer-portal:
+  ui:
+    nav:
+      support: Suporte
+      documents: Documentos
+      account-settings: Configurações da conta
+      logout: Sair
+      workspace: Área de trabalho
+      dashboard: Painel
+      orders: Pedidos
+      billing: Faturamento
+      preferences: Preferências
+      address-book: Catálogo de endereços
+      notifications: Notificações
+    common:
+      actions: Ações
+      type: Tipo
+      order: Pedido
+      created: Criado em
+      updated: Atualizado em
+      status: Situação
+      description: Descrição
+      notes: Observações
+      none: Nenhuma
+      cancel: Cancelar
+      email: E-mail
+      name: Nome
+      create: Criar
+      edit: Editar
+      optional: Opcional
+      reload: Recarregar
+      remove: Remover
+      delete: Excluir
+      save-changes: Salvar alterações
+    address-book:
+      eyebrow: Locais salvos
+      description: Gerencie os locais de coleta, entrega, cobrança e entregas recorrentes desta conta de cliente.
+      new-place: Novo local
+      place: Local
+      address: Endereço
+      phone: Telefone
+      edit-place: Editar local
+      remove-place: Remover local
+      empty-title: Nenhum local salvo ainda
+      empty-text: Adicione os locais de coleta e entrega mais usados para agilizar a criação de pedidos.
+      save-place: Salvar local
+      edit-place-title: Editar local
+      delete-title: Excluir local salvo?
+      delete-body: O local será removido do seu catálogo de endereços.
+      removed: Local removido.
+      updated: Local atualizado.
+      saved: Local salvo.
+    documents:
+      eyebrow: Biblioteca de documentos
+      description: Baixe etiquetas, comprovantes de entrega, fotos, faturas, recibos e arquivos dos pedidos.
+      document: Documento
+      unavailable: Indisponível
+      empty-title: Nenhum documento ainda
+      empty-text: Etiquetas, comprovantes de entrega, fotos, faturas, recibos e arquivos dos pedidos aparecerão aqui quando estiverem disponíveis.
+    home:
+      welcome: "Bem-vindo(a), {name}"
+      description: Acompanhe entregas, faturas, documentos e atendimentos de suporte em um só lugar.
+      view-billing: Ver faturamento
+      company-workspace: Conta empresarial
+      customer-workspace: Área do cliente
+    notifications:
+      eyebrow: Configurações de comunicação
+      title: Preferências de notificação
+      description: Escolha quais eventos do portal do cliente devem ser salvos como preferências de comunicação desta conta.
+      info: Estas preferências ficam salvas na sua conta do portal. O envio efetivo das notificações depende das regras de notificação configuradas pela operação.
+      save: Salvar preferências
+      saved: Preferências de notificação salvas.
+      groups:
+        orders:
+          title: Pedidos
+          description: Atualizações operacionais enquanto seus envios passam pelo despacho e pela entrega.
+        billing:
+          title: Faturamento
+          description: Atualizações de faturas e pagamentos da sua conta.
+        support:
+          title: Suporte
+          description: Atualizações quando seus chamados de suporte mudarem.
+        documents:
+          title: Documentos
+          description: Avisos quando etiquetas, comprovantes de entrega, recibos ou arquivos relacionados estiverem disponíveis.
+      preferences:
+        order_created: Pedido criado
+        order_dispatched: Pedido despachado
+        order_delayed: Pedido atrasado
+        driver_nearby: Motorista próximo
+        order_delivered: Pedido entregue
+        invoice_due: Fatura a vencer
+        invoice_paid: Fatura paga
+        ticket_updated: Chamado atualizado
+        document_available: Documento disponível
+    settings:
+      eyebrow: Configurações
+      account: Conta
+      members: Membros
+    auth:
+      customer-login: Acesso do cliente
+      back-to-console: Voltar ao console
+      verify-continue: Verificar e continuar
+      email-verified: E-mail verificado com sucesso!
+      welcome-to: "Bem-vindo(a) ao {appName}"
+      verify-by-phone: Verificar conta por telefone
+      send: Enviar
+      no-phone: Nenhum telefone informado.
+      sms-sent: Código de verificação enviado por SMS!
+      resend-code: Reenviar código de verificação
+      no-email: Nenhum e-mail informado.
+      email-sent: Código de verificação enviado por e-mail!
+      two-fa-init-failed: Não foi possível iniciar a verificação em duas etapas.
+      two-fa-expired: A sessão de verificação em duas etapas expirou.
+      no-customer: Nenhum cliente encontrado para esta conta de usuário.
+    billing:
+      details-description: Detalhes da fatura, itens e situação do pagamento.
+      open-payment-link: Abrir link de pagamento
+      invoice-date: Data da fatura
+      due-date: Vencimento
+      balance: Saldo
+      preview: Pré-visualização
+      qty: Qtd.
+      unit: Unitário
+      amount: Valor
+      no-line-items: Nenhum item registrado nesta fatura.
+      subtotal: Subtotal
+      tax: Impostos
+      total: Total
+      paid: Pago
+      balance-due: Saldo devedor
+      eyebrow: Central de faturamento
+      description: Veja faturas, saldos, recibos e a situação dos pagamentos.
+      invoice: Fatura
+      due: Vencimento
+      empty-title: Nenhuma fatura ainda
+      empty-text: Faturas, recibos e saldos aparecerão aqui quando houver registros de cobrança para esta conta.
+    support:
+      back: Voltar ao suporte
+      eyebrow: Central de suporte
+      last-updated: Última atualização
+      attachments-count: "{count, plural, one {# anexo} other {# anexos}}"
+      correspondence: Conversa
+      correspondence-text: Responda aqui para manter todas as atualizações vinculadas a este chamado.
+      no-replies: Nenhuma resposta ainda. A resposta da equipe de suporte aparecerá aqui.
+      ticket-details: Detalhes do chamado
+      ticket: Chamado
+      priority: Prioridade
+      related-order: Pedido relacionado
+      tags: Etiquetas
+      timeline: Linha do tempo
+      not-found-title: Chamado não encontrado
+      not-found-text: Não foi possível carregar este chamado ou ele não está mais disponível para esta conta.
+      title: Chamados de suporte
+      description: Acompanhe solicitações de suporte sobre pedidos, faturamento, documentos e conta.
+      new-ticket: Novo chamado de suporte
+      empty-title: Nenhum chamado de suporte ainda
+      empty-text: Abra um chamado quando precisar de ajuda com um pedido, fatura, documento ou dúvida sobre a conta.
+      create-ticket: Abrir chamado
+      new-description: Envie dúvidas sobre pedidos, faturamento, documentos ou conta para a equipe de suporte.
+      subject: Assunto
+      subject-placeholder: Com o que você precisa de ajuda?
+      order-help: Referência do pedido (opcional).
+      select-order: Selecione o pedido relacionado
+      category: Categoria
+      select-category: Selecione a categoria
+      select-priority: Selecione a prioridade
+      tags-help: Etiquetas opcionais que ajudam a equipe de suporte a direcionar sua solicitação.
+      add-tags: Adicionar etiquetas
+      details: Detalhes
+      details-placeholder: Adicione detalhes para a equipe de suporte.
+      ticket-fallback: Chamado de suporte
+      customer: Cliente
+      reply-posted: Resposta publicada.
+      comment-updated: Comentário atualizado.
+      comment-deleted: Comentário excluído.
+      created: Chamado de suporte aberto.
+    admin:
+      title: Configurações do portal do cliente
+      access: Acesso ao portal do cliente
+      access-help: Informe o endereço (slug de URL) em que o portal do cliente poderá ser acessado.
+      url-placeholder: URL do seu portal do cliente
+      order-types: Tipos de pedido disponíveis
+      order-types-help: Escolha quais tipos de pedido os clientes podem criar pelo portal. Desmarque todos para desativar a criação de pedidos pelos clientes.
+      no-order-types: Nenhum tipo de pedido disponível para esta organização.
+      service-rates: Tarifas de serviço para cotação
+      service-rates-help: Escolha quais tarifas de serviço podem ser consultadas quando os clientes pedem cotações. Desmarque todas para não retornar cotações.
+      no-service-rates: Nenhuma tarifa de serviço disponível para esta organização.
+      enable-stripe: Ativar pagamentos via Stripe
+      require-stripe: Exigir pagamento via Stripe quando o cliente escolher uma cotação
+      onboarding-required: É preciso concluir o cadastro no Stripe antes de ativar pagamentos no portal do cliente.
+      complete-onboarding: Concluir cadastro de pagamentos
+      stripe-configured: O Stripe está configurado.
+      stripe-not-configured: O Stripe não está configurado. O administrador do sistema precisa configurá-lo antes que pagamentos de clientes possam ser aceitos.
+      save-settings: Salvar configurações
+      saved: Configurações do portal do cliente salvas.
+      stripe-required: O Stripe precisa estar configurado antes de ativar pagamentos no portal do cliente.
+    convert:
+      heading: Criar uma conta empresarial
+      text: Contas empresariais podem adicionar membros e mantêm pedidos, faturamento, documentos e histórico de suporte vinculados à mesma conta de cliente.
+      company-name: Nome da empresa
+      company-name-placeholder: Nome da empresa
+      accept: Converter conta
+      created: Conta empresarial criada.
+    place:
+      street1: Endereço
+      street2: Complemento
+      searching: Buscando endereços...
+      neighborhood: Bairro
+      building: Edifício
+      security-access-code: Código de acesso
+      postal-code: CEP
+      city: Cidade
+      state: Estado
+      country: País
+      coordinates: Coordenadas
+      address-label: Nome do endereço
+      address-label-placeholder: Depósito, escritório, casa...
+      street-address: Endereço
+      street-address-placeholder: Informe o endereço de coleta ou entrega
+      contact-phone: Telefone de contato
+      phone-placeholder: Telefone (opcional)
+      latitude: Latitude
+      longitude: Longitude
+      save-address: Salvar endereço
+      edit-address: Editar endereço
+      new-address: Novo endereço
+      edit-address-title: Editar endereço
+      address-updated: Endereço atualizado.
+      address-saved: Endereço salvo.
+    reschedule:
+      new-time: Novo horário de entrega
+      help: Escolha a data e o horário de entrega desejados para este pedido.
+      placeholder: Selecione data e hora
+    order:
+      activity: Atividade
+      no-activity: Nenhuma atividade ainda.
+      order-id: ID do pedido
+      tracking-number: Código de rastreamento
+      scheduled: Agendado para
+      proof-of-delivery: Comprovante de entrega
+      not-required: Não exigido
+      no-notes: Nenhuma observação informada.
+      payload: Carga
+      unnamed-item: Item sem nome
+      no-description: Sem descrição
+      weight: Peso
+      dimensions: Dimensões
+      no-items: Nenhum item
+      no-payload-items: Nenhum item de carga foi adicionado a este pedido.
+      no-proof: Nenhum comprovante de entrega
+      no-proof-text: Os comprovantes de entrega registrados aparecerão aqui.
+      route: Rota
+      all-stops: "Todas as paradas - {count}"
+      purchase-rate: Tarifa contratada
+      breakdown: Detalhamento
+      no-purchase-items: Nenhum item de cobrança disponível.
+      tracking: Rastreamento
+      current-eta: ETA atual
+      live: Ao vivo
+      pending: Pendente
+      eta-estimated: Estimado a partir das informações mais recentes da rota de entrega.
+      remaining-route: Rota restante
+      distance-remaining: "{distance} restantes"
+      distance-pending: A distância aparecerá quando o rastreamento estiver disponível.
+      current-stop: Parada atual
+      eta-confidence: Confiabilidade do ETA
+      updated-at: "Atualizado em {date}"
+      new-order: Novo pedido
+      order-type: Tipo de pedido
+      select-order-type: Selecione o tipo de pedido
+      scheduled-at: Agendar para
+      require-pod: Exigir comprovante de entrega
+      proof-method: Tipo de comprovante
+      select-proof-method: Selecione o tipo de comprovante
+      notes-placeholder: Algo que a equipe de operação precise saber.
+      items: Itens
+      item-n: "Item nº {n}"
+      item-name-placeholder: Pacote, palete, envelope
+      item-type: Tipo de item
+      select-item-type: Selecione o tipo de item
+      item-description-placeholder: Instruções de manuseio ou descrição do item (opcional)
+      length: Comprimento
+      width: Largura
+      height: Altura
+      no-items-added: Nenhum item adicionado
+      no-items-added-text: Adicione itens quando a transportadora precisar de detalhes dos volumes, dimensões ou referências.
+      multiple-dropoff: Pedido com várias entregas
+      required: Obrigatório
+      waypoint-n: "Parada {n}"
+      select-waypoint-n: "Selecione a parada {n}"
+      pickup: Coleta
+      dropoff: Entrega
+      return: Devolução
+      select-pickup: Selecione o local de coleta
+      select-dropoff: Selecione o local de entrega
+      select-return: Selecione o local de devolução
+      service: Serviço
+      loading-quotes: Carregando cotações...
+      no-quotes: Nenhuma cotação
+      no-quotes-text: Nenhuma tarifa de serviço disponível atende a este pedido.
+      add-route-details: Informe os dados da rota
+      add-route-details-text: Selecione o tipo de pedido, a coleta e a entrega para ver as cotações.
+      waypoints: Paradas
+      additional-stops: "{count, plural, one {# parada adicional} other {# paradas adicionais}}"
+      dispatched-at: "Despachado em {date}"
+      date-created: "Criado em: {date}"
+      type-value: "Tipo: {type}"
+      completed: Concluída
+      expand: Expandir
+      collapse: Recolher
+      more-stops: "{count, plural, one {mais # parada} other {mais # paradas}}"
+      workspace-description: Acompanhe entregas, veja a atividade das rotas e crie novas solicitações de entrega.
+      order-view: Visualização dos pedidos
+      map: Mapa
+      table: Tabela
+      order-list: Lista de pedidos
+      recent-orders: Pedidos recentes
+      search-orders: Buscar pedidos
+      no-orders: Nenhum pedido ainda
+      no-orders-text: Crie uma solicitação de entrega quando quiser.
+      new-order-route: Rota do novo pedido
+      view-order: Ver pedido
+      no-orders-table-text: Crie um novo pedido quando quiser solicitar uma entrega.
+      create-order: Criar pedido
+      view-label: Ver etiqueta
+      create-support-ticket: Abrir chamado de suporte
+      reschedule: Reagendar
+      cancel-order: Cancelar pedido
+      no-label: Ainda não há etiqueta disponível para este pedido.
+      reschedule-order: Reagendar pedido
+      cancel-title: Cancelar este pedido?
+      cancel-body: A solicitação de entrega deste pedido será cancelada.
+      canceled: Pedido cancelado.
+      choose-time: Escolha um novo horário de entrega antes de reagendar.
+      rescheduled: Pedido reagendado.
+      add-item: Adicionar item
+      add-waypoint: Adicionar parada
+      stop-n: "Parada {n}"
+      validation-warning: Selecione o tipo de pedido e pelo menos duas paradas antes de criar o pedido.
+      created: Pedido criado.
+      complete-payment: "Concluir pagamento do serviço {name}"
+      checkout-failed: Não foi possível iniciar o pagamento seguro. Tente novamente.
+      finalizing-purchase: Finalizando compra
+      completing-purchase: Concluindo a compra, não atualize nem feche a janela...
+      purchase-failed: Algo deu errado ao concluir a compra.
+    files:
+      uploading: Enviando...
+      drop-to-attach: Solte os arquivos para anexá-los.
+      not-supported: Este tipo de arquivo não é suportado.
+      ready-to-upload: "{count, plural, one {# arquivo pronto para envio} other {# arquivos prontos para envio}}"
+      upload-documents: Enviar documentos
+      detail-drop-text: Solte arquivos aqui para adicionar etiquetas, recibos, documentos de entrega ou arquivos de apoio a este pedido.
+      select-files: Selecionar arquivos
+      upload-queue: Fila de envio
+      detail-empty-text: Etiquetas, recibos e arquivos do pedido aparecerão aqui quando estiverem disponíveis.
+      attach-order-documents: Anexar documentos do pedido
+      form-drop-text: Solte aqui etiquetas, romaneios, fotos de referência ou documentos de apoio.
+      not-available: Este arquivo ainda não está disponível para download.
+      attach-failed: Não foi possível anexar este arquivo ao pedido.
+      attached: Arquivo anexado.
+      delete-title: Excluir arquivo?
+      delete-body: O arquivo será removido deste pedido.
+      unidentified: Não foi possível identificar este arquivo.
+      removed: Arquivo removido.
+    account:
+      date-of-birth: Data de nascimento
+      profile-settings: Configurações do perfil
+      account-type: Tipo de conta
+      personal-account: Conta de cliente pessoa física
+      company-account: Conta empresarial
+      convert: Converter em conta empresarial
+      change-password: Alterar senha
+      change-password-text: Atualize a senha usada para entrar neste portal do cliente.
+      current-password: Senha atual
+      new-password: Nova senha
+      confirm-password: Confirme a nova senha
+      change-password-button: Alterar senha
+      profile-saved: Alterações do perfil salvas.
+      validate-password: Confirme sua senha para alterar o e-mail da conta.
+      password-mismatch: A nova senha e a confirmação não conferem.
+      password-changed: Senha alterada com sucesso.
+      password-change-failed: Não foi possível alterar a senha.
+      customer-account: Conta de cliente
+    members:
+      description: Gerencie as pessoas que podem acessar esta conta empresarial.
+      existing-contact: Contato existente
+      new-contact: Novo contato
+      add-member: Adicionar membro
+      contact: Contato
+      select-contact: Selecione um contato existente
+      role: Função
+      select-role: Selecione a função
+      member-name: Nome do membro
+      create-login: Criar acesso
+      empty: Nenhum membro adicionado ainda.
+      company-required: Adicione membros com uma conta empresarial
+      company-required-text: Converta sua conta de cliente em conta empresarial para convidar outras pessoas.
+      select-contact-warning: Selecione um contato que ainda não seja membro.
+      select-contact-to-add: Selecione um contato para adicionar.
+      name-email-required: Nome e e-mail são obrigatórios.
+      added: Membro adicionado.
+      removed: Membro removido.
+    widget:
+      active-orders: Pedidos ativos
+      completed-orders: Pedidos concluídos
+      open-tickets: Chamados abertos
+      unpaid-invoices: Faturas em aberto
+      pending-actions: Ações pendentes
+      pending-actions-subtitle: Itens que podem precisar de atenção
+      pending-actions-empty: Nada precisa de atenção no momento.
+      recent-orders-subtitle: Envios mais recentes desta conta
+      no-recent-orders: Nenhum pedido recente.
+      load-active-failed: Não foi possível carregar os pedidos ativos.
+      load-completed-failed: Não foi possível carregar os pedidos concluídos.
+      load-tickets-failed: Não foi possível carregar os chamados de suporte.
+      load-pending-failed: Não foi possível carregar as ações pendentes.
+      load-recent-failed: Não foi possível carregar os pedidos recentes.
+      load-invoices-failed: Não foi possível carregar as faturas.
+    tracking:
+      dispatched-title: Seu pedido foi despachado
+      dispatched-body: A equipe de entrega aceitou este pedido. O ETA ao vivo aparece quando a rota for iniciada.
+      created-title: Seu pedido ainda não foi iniciado
+      created-body: A solicitação foi recebida e aguarda despacho. As atualizações de rastreamento aparecerão aqui conforme o pedido avançar.
+      unavailable-title: Rastreamento ainda indisponível
+      unavailable-body: O ETA ao vivo e o progresso da rota aparecerão assim que houver dados de deslocamento para este pedido.
+    payment:
+      not-initialized: Stripe não inicializado!
+      not-configured: O Stripe não está configurado para pagamentos no portal do cliente.
+      load-failed: Não foi possível carregar o Stripe. Atualize a página e tente novamente.
+      load-failed-connection: Não foi possível carregar o Stripe. Verifique sua conexão e tente novamente.
+    roles:
+      admin:
+        label: Administrador
+        description: Pode gerenciar as configurações da conta e os membros.
+      member:
+        label: Membro
+        description: Pode acessar a conta do cliente.
+    pod-methods:
+      scan: Leitura de código
+      signature: Assinatura
+      photo: Foto
+    issue-values:
+      open: Aberto
+      pending: Pendente
+      triage: Triagem
+      backlogged: Na fila
+      in-progress: Em andamento
+      requires-update: Requer atualização
+      in-review: Em análise
+      re-opened: Reaberto
+      awaiting-parts: Aguardando peças
+      awaiting-vendor: Aguardando fornecedor
+      monitoring: Em monitoramento
+      escalated: Escalado
+      duplicate: Duplicado
+      pending-review: Aguardando revisão
+      resolved: Resolvido
+      closed: Fechado
+      canceled: Cancelado
+      cancelled: Cancelado
+      low: Baixa
+      medium: Média
+      normal: Normal
+      high: Alta
+      urgent: Urgente
+      critical: Crítica
+      scheduled-maintenance: Manutenção programada
+      operational-suggestion: Sugestão operacional
+    entity-types:
+      entity:
+        label: Entidade
+        description: Entidade genérica padrão que representa um item.
+      parcel:
+        label: Encomenda
+        description: Encomenda ou pacote padrão usado na precificação por volume.
+      package:
+        label: Pacote
+        description: Caixa, encomenda, envelope ou pacote em geral.
+      product:
+        label: Produto
+        description: Produto vendável ou item de catálogo.
+      item:
+        label: Item
+        description: Item de estoque genérico quando nenhum outro tipo se aplica.
+      sku:
+        label: SKU / unidade de estoque
+        description: Unidade de estoque (SKU) ou peça de estoque rastreada.
+      document:
+        label: Documento
+        description: Papéis, etiquetas ou documentos.
+      envelope:
+        label: Envelope
+        description: Envelope ou embalagem plana para documentos.
+      box:
+        label: Caixa
+        description: Unidade de envio em caixa única.
+      carton:
+        label: Caixa de papelão
+        description: Caixa de papelão, caixa ou estojo único.
+      case:
+        label: Fardo
+        description: Mercadorias embaladas em fardo ou caixa fechada.
+      bundle:
+        label: Amarrado
+        description: Itens agrupados ou amarrados enviados juntos.
+      bag:
+        label: Saco
+        description: Mercadorias em sacos, sacolas ou bolsas.
+      tote:
+        label: Caixa plástica
+        description: Caixa plástica, cesto ou recipiente reutilizável.
+      crate:
+        label: Engradado
+        description: Engradado rígido ou unidade de envio gradeada.
+      pallet:
+        label: Palete
+        description: Carga paletizada ou agrupada.
+      container:
+        label: Contêiner
+        description: Envio em contêiner ou contêiner de armazenagem.
+      freight:
+        label: Frete
+        description: Carga solta ou unidade de envio maior.
+      cargo:
+        label: Carga
+        description: Carga geral sem classificação mais específica.
+      equipment:
+        label: Equipamento
+        description: Ferramentas, máquinas ou equipamentos operacionais.
+      machinery:
+        label: Maquinário
+        description: Maquinário industrial ou unidade mecânica de grande porte.
+      asset:
+        label: Ativo
+        description: Ativo da empresa rastreado ou item retornável.
+      return:
+        label: Devolução
+        description: Mercadoria devolvida ou item de logística reversa.
+      sample:
+        label: Amostra
+        description: Item de amostra para teste, demonstração ou inspeção.
+      spare_part:
+        label: Peça de reposição
+        description: Componente de reposição ou peça de manutenção.
+      medical_supply:
+        label: Suprimento médico
+        description: Item de saúde, laboratório ou entrega médica.
+      food:
+        label: Alimento
+        description: Comida pronta, refeição ou item de mercado.
+      beverage:
+        label: Bebida
+        description: Bebida, refresco ou envio engarrafado.
+      retail_goods:
+        label: Mercadorias de varejo
+        description: Mercadorias de consumo ou varejo em geral.
+
+menu-text:
+  customer-portal:
+    title: Portal do cliente
+widget-text:
+  customer-portal-active-orders:
+    name: Pedidos ativos
+    description: Pedidos visíveis ao cliente ainda não concluídos nem cancelados.
+  customer-portal-completed-orders:
+    name: Pedidos concluídos
+    description: Pedidos concluídos da conta de cliente ativa no portal.
+  customer-portal-unpaid-invoices:
+    name: Faturas em aberto
+    description: Faturas do cliente em aberto, quando o Ledger está instalado.
+  customer-portal-open-tickets:
+    name: Chamados de suporte abertos
+    description: Chamados de suporte abertos, registrados como ocorrências do Fleet-Ops.
+  customer-portal-recent-orders:
+    name: Pedidos recentes
+    description: Pedidos mais recentes da conta de cliente ativa no portal.
+  customer-portal-pending-actions:
+    name: Ações pendentes
+    description: Faturas, chamados e pedidos que precisam da atenção do cliente.

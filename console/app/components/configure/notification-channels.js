@@ -6,6 +6,7 @@ import { action } from '@ember/object';
 export default class ConfigureNotificationChannelsComponent extends Component {
     @service fetch;
     @service notifications;
+    @service intl;
     @service currentUser;
     // The constructor performs loadConfigValues, which assigns this before anything can read it,
     // so the initializer below never runs.
@@ -13,7 +14,7 @@ export default class ConfigureNotificationChannelsComponent extends Component {
     @tracked isLoading = false;
     @tracked testResponse;
     @tracked testTitle = 'Hello World from Fleetbase 🚀';
-    @tracked testMessage = 'This is a test push notification!';
+    @tracked testMessage = this.intl.t('console.ui.configure.push.test-message');
     @tracked apnToken;
     @tracked fcmToken;
     @tracked apn = {
@@ -146,7 +147,7 @@ export default class ConfigureNotificationChannelsComponent extends Component {
                 firebase: firebaseConfig,
             })
             .then(() => {
-                this.notifications.success("Notification channel's configuration saved.");
+                this.notifications.success(this.intl.t('console.ui.configure.push.saved'));
             })
             .finally(() => {
                 this.isLoading = false;

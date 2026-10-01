@@ -1,0 +1,48 @@
+<Layout::Section::Header @title={{t "registry-bridge.ui.payments-onboard"}} />
+
+<Layout::Section::Body class="overflow-y-scroll h-full">
+    <div class="container">
+        <div class="max-w-3xl mx-auto mt-4">
+            <div class="content">
+                <div class="onboard-header">
+                    <h2 id="title" class="text-base font-semibold mb-1 {{if this.onboardCompleted 'text-green-700'}}">
+                        {{#if this.onboardCompleted}}
+                            <FaIcon @icon="check" @size="sm" class="text-green-700" />
+                            {{t "registry-bridge.ui.onboard-completed-title"}}
+                        {{else}}
+                            {{t "registry-bridge.ui.onboard-start-title"}}
+                        {{/if}}
+                    </h2>
+                    <p id="subtitle" class="text-sm mb-2">
+                        {{#if this.onboardCompleted}}
+                            {{t "registry-bridge.ui.onboard-completed-body"}}
+                        {{else}}
+                            {{t "registry-bridge.ui.onboard-start-body"}}
+                        {{/if}}
+                    </p>
+                    <div class="flex mb-2">
+                        {{#if this.onboardCompleted}}
+                            <Button @icon="check" @type="primary" @size="lg" @text={{t "registry-bridge.ui.continue"}} @onClick={{transition-to "developers.payments"}} @disabled={{this.onboardInProgress}} />
+                        {{else}}
+                            <Button
+                                @icon="play"
+                                @type="default"
+                                @size="lg"
+                                @text={{if this.onboardInProgress (t "registry-bridge.ui.onboard-in-progress") (t "registry-bridge.ui.start-onboard-now")}}
+                                @onClick={{perform this.startOnboard}}
+                                @isLoading={{this.startOnboard.isRunning}}
+                                @disabled={{this.onboardInProgress}}
+                            />
+                        {{/if}}
+                    </div>
+                </div>
+                <div
+                    id="embedded-onboarding-container"
+                    class="p-4 min-h-20 bg-gray-50 dark:bg-gray-100 shadow-md rounded-lg border border-gray-300 dark:border-gray-900 {{unless this.onboardInProgress 'hidden'}}"
+                    {{did-insert (fn this.createTrackedElement "embeddedOnboardingContainer")}}
+                >
+                </div>
+            </div>
+        </div>
+    </div>
+</Layout::Section::Body>

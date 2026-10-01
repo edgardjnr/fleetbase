@@ -1,0 +1,109 @@
+<div class="details-wrapper" ...attributes>
+    {{! JOURNAL ENTRY DETAILS }}
+    <ContentPanel @title={{t "ledger.ui.journal.title"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "ledger.ui.journal.information"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.journal.number"}}</div>
+                <div class="field-value font-mono">{{n-a @resource.number}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.journal.type"}}</div>
+                <div class="field-value">{{n-a (titleize @resource.type)}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.journal.date"}}</div>
+                <div class="field-value">{{n-a @resource.entryDate}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.journal.source"}}</div>
+                <div class="field-value">
+                    <Badge @color={{if @resource.is_system_entry "blue" "gray"}}>{{@resource.entry_source}}</Badge>
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.journal.amount"}}</div>
+                <div class="field-value font-semibold">{{format-currency @resource.amount @resource.currency}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.journal.currency"}}</div>
+                <div class="field-value">{{n-a @resource.currency}}</div>
+            </div>
+
+            {{#if @resource.description}}
+                <div class="field-info-container col-span-2">
+                    <div class="field-name">{{t "ledger.ui.journal.description"}}</div>
+                    <div class="field-value">{{@resource.description}}</div>
+                </div>
+            {{/if}}
+
+        </div>
+    </ContentPanel>
+
+    {{! DOUBLE-ENTRY }}
+    <ContentPanel @title={{t "ledger.ui.journal.double-entry"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "ledger.ui.journal.debit"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.journal.debit-account"}}</div>
+                <div class="field-value">{{n-a @resource.debit_account_name}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.journal.debit-account-code"}}</div>
+                <div class="field-value font-mono">{{n-a @resource.debit_account_code}}</div>
+            </div>
+
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "ledger.ui.journal.credit"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.journal.credit-account"}}</div>
+                <div class="field-value">{{n-a @resource.credit_account_name}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.journal.credit-account-code"}}</div>
+                <div class="field-value font-mono">{{n-a @resource.credit_account_code}}</div>
+            </div>
+
+        </div>
+    </ContentPanel>
+
+    {{! RECORD INFO }}
+    <ContentPanel @title={{t "ledger.ui.account.record-info"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.account.internal-id"}}</div>
+                <div class="field-value font-mono">{{n-a @resource.public_id}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.account.created"}}</div>
+                <div class="field-value">{{n-a @resource.createdAt}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.account.last-updated"}}</div>
+                <div class="field-value">{{n-a @resource.updatedAt}}</div>
+            </div>
+
+        </div>
+    </ContentPanel>
+    <Spacer @height="200px" />
+</div>

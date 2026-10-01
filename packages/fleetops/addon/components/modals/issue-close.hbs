@@ -1,0 +1,30 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="modal-body-container">
+        <div class="issue-close-modal-summary">
+            {{#if this.vehicleLabel}}
+                <div>
+                    <span>{{t "fleet-ops.ui.modals.issue-close.vehicle"}}</span>
+                    <strong>{{this.vehicleLabel}}</strong>
+                </div>
+            {{/if}}
+            {{#if this.orderLabel}}
+                <div>
+                    <span>{{t "fleet-ops.ui.modals.issue-close.order"}}</span>
+                    <strong>{{this.orderLabel}}</strong>
+                </div>
+            {{/if}}
+            <div>
+                <span>{{t "fleet-ops.ui.modals.issue-close.summary"}}</span>
+                <strong>{{n-a this.issue.title}}</strong>
+            </div>
+            <div>
+                <span>{{t "fleet-ops.ui.modals.issue-close.description"}}</span>
+                <strong>{{n-a this.issue.report (t "fleet-ops.ui.modals.issue-close.no-report-was-provided")}}</strong>
+            </div>
+        </div>
+
+        <InputGroup @name={{t "fleet-ops.ui.modals.issue-close.close-note"}} @helpText={{t "fleet-ops.ui.modals.issue-close.describe-why-this-issue-is-being"}}>
+            <Textarea @value={{this.note}} class="form-input w-full" rows={{5}} placeholder={{t "fleet-ops.ui.modals.issue-close.resolution-note"}} />
+        </InputGroup>
+    </div>
+</Modal::Default>

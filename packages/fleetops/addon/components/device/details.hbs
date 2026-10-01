@@ -1,0 +1,125 @@
+<div class="flex flex-col gap-3 p-3" ...attributes>
+    <section class="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div class="flex flex-col gap-3 p-3 lg:flex-row lg:items-start lg:justify-between">
+            <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                    <h2 class="truncate text-base font-bold text-gray-900 dark:text-gray-100">{{this.displayName}}</h2>
+                    <Badge @status={{this.connectionTone}}>{{smart-humanize this.connectionLabel}}</Badge>
+                    <Badge @status={{this.attachmentTone}}>{{this.attachmentLabel}}</Badge>
+                </div>
+                <div class="mt-2 flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-300">
+                    <span>{{t "fleet-ops.ui.device.details.last-seen"}} {{n-a (format-date-fns this.lastSeenLabel "dd MMM yyyy, HH:mm")}}</span>
+                    <span>{{t "fleet-ops.ui.device.details.provider"}} {{n-a (titleize this.providerLabel)}}</span>
+                    <span>{{t "fleet-ops.ui.device.details.signal"}} {{n-a this.signalLabel}}</span>
+                    <span>{{t "fleet-ops.ui.device.details.device-id"}} {{n-a @resource.device_id}}</span>
+                </div>
+            </div>
+
+            {{#if this.providerIcon}}
+                <div class="flex flex-shrink-0 items-center gap-2 rounded-md border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/70">
+                    <Image src={{this.providerIcon}} class="h-6 w-6 rounded" />
+                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-200">{{n-a this.providerLabel}}</span>
+                </div>
+            {{/if}}
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {{#each this.metrics as |metric|}}
+            <div class="fleet-ops-widget fleet-ops-kpi-tile fleetops-connectivity-kpi-tile {{metric.accentClass}} relative min-h-[82px] overflow-hidden rounded-md border bg-white shadow-sm dark:bg-gray-800">
+                <div class="flex h-full items-start justify-between gap-2 p-3">
+                    <div class="min-w-0">
+                        <div class="truncate text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400">{{metric.label}}</div>
+                        <div class="mt-1 truncate text-lg font-extrabold leading-none text-gray-900 dark:text-gray-50">{{metric.value}}</div>
+                        {{#if metric.meta}}
+                            <div class="mt-1 truncate text-xs text-gray-500 dark:text-gray-300">{{metric.meta}}</div>
+                        {{/if}}
+                    </div>
+                    <div class="fleetops-connectivity-kpi-icon flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-[13px]">
+                        <FaIcon @icon={{metric.icon}} />
+                    </div>
+                </div>
+            </div>
+        {{/each}}
+    </section>
+
+    <section class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+        <div class="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div class="border-b border-gray-200 px-3 py-2 dark:border-gray-700">
+                <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">{{t "fleet-ops.ui.device.details.operational-snapshot"}}</h3>
+            </div>
+            <div class="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2">
+                <div class="field-info-container">
+                    <div class="field-name">{{t "fleet-ops.ui.device.details.location"}}</div>
+                    <div class="field-value">{{n-a (or @resource.location this.lastPositionLabel)}}</div>
+                </div>
+                <div class="field-info-container">
+                    <div class="field-name">{{t "device.fields.data-frequency"}}</div>
+                    <div class="field-value">{{n-a @resource.data_frequency}}</div>
+                </div>
+                <div class="field-info-container">
+                    <div class="field-name">{{t "fleet-ops.ui.device.details.firmware"}}</div>
+                    <div class="field-value">{{n-a this.firmwareLabel}}</div>
+                </div>
+                <div class="field-info-container">
+                    <div class="field-name">{{t "device.fields.installation-date"}}</div>
+                    <div class="field-value">{{n-a (format-date @resource.installation_date)}}</div>
+                </div>
+                <div class="field-info-container">
+                    <div class="field-name">{{t "device.fields.last-maintenance-date"}}</div>
+                    <div class="field-value">{{n-a (format-date @resource.last_maintenance_date)}}</div>
+                </div>
+                <div class="field-info-container">
+                    <div class="field-name">{{t "device.fields.status"}}</div>
+                    <div class="field-value"><Badge @status={{@resource.status}}>{{smart-humanize @resource.status}}</Badge></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div class="border-b border-gray-200 px-3 py-2 dark:border-gray-700">
+                <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">{{t "fleet-ops.ui.device.details.critical-details"}}</h3>
+            </div>
+            <div class="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2">
+                <div class="field-info-container">
+                    <div class="field-name">{{t "device.fields.device-type"}}</div>
+                    <div class="field-value">{{n-a (get-fleet-ops-option-label "deviceTypes" @resource.type)}}</div>
+                </div>
+                <div class="field-info-container">
+                    <div class="field-name">{{t "device.fields.device-model"}}</div>
+                    <div class="field-value">{{n-a @resource.model}}</div>
+                </div>
+                <div class="field-info-container">
+                    <div class="field-name">{{t "device.fields.manufacturer"}}</div>
+                    <div class="field-value">{{n-a @resource.manufacturer}}</div>
+                </div>
+                <div class="field-info-container">
+                    <div class="field-name">{{t "device.fields.serial-number"}}</div>
+                    <div class="field-value">{{n-a @resource.serial_number}}</div>
+                </div>
+                <div class="field-info-container">
+                    <div class="field-name">IMEI</div>
+                    <div class="field-value">{{n-a @resource.imei}}</div>
+                </div>
+                <div class="field-info-container">
+                    <div class="field-name">IMSI</div>
+                    <div class="field-value">{{n-a @resource.imsi}}</div>
+                </div>
+                <div class="field-info-container">
+                    <div class="field-name">{{t "fleet-ops.ui.device.details.internal-id"}}</div>
+                    <div class="field-value">{{n-a @resource.internal_id}}</div>
+                </div>
+                <div class="field-info-container">
+                    <div class="field-name">{{t "device.fields.warranty"}}</div>
+                    <div class="field-value">{{n-a (or @resource.warranty.name @resource.warranty_name)}}</div>
+                </div>
+                <div class="field-info-container sm:col-span-2">
+                    <div class="field-name">{{t "device.fields.notes"}}</div>
+                    <div class="field-value whitespace-pre-line">{{n-a @resource.notes}}</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <CustomField::Yield @subject={{@resource}} @viewMode={{true}} @wrapperClass="bordered-top" />
+</div>

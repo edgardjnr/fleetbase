@@ -1,0 +1,234 @@
+<div class="maintenance-form" ...attributes>
+
+    {{! ===== IDENTIFICATION ===== }}
+    <ContentPanel @title={{t "fleet-ops.ui.maintenance.form.identification"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "fleet-ops.ui.maintenance.form.maintenance-details"}}
+            </div>
+            <InputGroup @name={{t "fleet-ops.ui.maintenance.form.summary"}} @wrapperClass="col-span-2">
+                <Input @value={{@resource.summary}} @type="text" class="w-full form-input" placeholder={{t "fleet-ops.ui.maintenance.form.brief-summary-of-the-maintenance-activity"}} disabled={{cannot-write @resource}} />
+            </InputGroup>
+
+            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.maintenance.form.type-status-priority"}}
+            </div>
+            <InputGroup @name={{t "fleet-ops.ui.maintenance.form.type"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{this.maintenanceTypeOptions}}
+                        @selected={{@resource.type}}
+                        @onChange={{fn (mut @resource.type)}}
+                        @placeholder={{t "fleet-ops.ui.maintenance.form.select-maintenance-type"}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |type|
+                    >
+                        {{smart-humanize type}}
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.maintenance.form.status"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{this.statusOptions}}
+                        @selected={{@resource.status}}
+                        @onChange={{fn (mut @resource.status)}}
+                        @placeholder={{t "fleet-ops.ui.maintenance.form.select-status"}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |status|
+                    >
+                        {{smart-humanize status}}
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.maintenance.form.priority"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{this.priorityOptions}}
+                        @selected={{@resource.priority}}
+                        @onChange={{fn (mut @resource.priority)}}
+                        @placeholder={{t "fleet-ops.ui.maintenance.form.select-priority"}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |priority|
+                    >
+                        {{smart-humanize priority}}
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+        </div>
+    </ContentPanel>
+
+    {{! ===== ASSET & WORK ORDER ===== }}
+    <ContentPanel @title={{t "fleet-ops.ui.maintenance.form.asset-work-order"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "fleet-ops.ui.maintenance.form.maintainable-asset"}}
+            </div>
+            <InputGroup @name={{t "fleet-ops.ui.maintenance.form.asset-type"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{this.maintainableTypeOptions}}
+                        @selected={{this.selectedMaintainableType}}
+                        @onChange={{this.onMaintainableTypeChange}}
+                        @placeholder={{t "fleet-ops.ui.maintenance.form.select-asset-type-vehicle-equipment"}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |option|
+                    >
+                        {{option.label}}
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+            {{#if this.maintainableModelName}}
+                <InputGroup @name={{t "fleet-ops.ui.maintenance.form.asset"}}>
+                    <ModelSelect
+                        @modelName={{this.maintainableModelName}}
+                        @selectedModel={{@resource.maintainable}}
+                        @placeholder={{t "fleet-ops.ui.maintenance.form.select-asset"}}
+                        @triggerClass="form-select form-input"
+                        @infiniteScroll={{false}}
+                        @renderInPlace={{true}}
+                        @onChange={{this.assignMaintainable}}
+                        @disabled={{cannot-write @resource}}
+                        as |model|
+                    >
+                        {{or model.name model.public_id}}
+                    </ModelSelect>
+                </InputGroup>
+            {{/if}}
+
+            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.maintenance.form.performed-by"}}
+            </div>
+            <InputGroup @name={{t "fleet-ops.ui.maintenance.form.performed-by-type"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{this.performedByTypeOptions}}
+                        @selected={{this.selectedPerformedByType}}
+                        @onChange={{this.onPerformedByTypeChange}}
+                        @placeholder={{t "fleet-ops.ui.maintenance.form.select-performer-type-vendor-driver-user"}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |option|
+                    >
+                        {{option.label}}
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+            {{#if this.performedByModelName}}
+                <InputGroup @name={{t "fleet-ops.ui.maintenance.form.performed-by"}}>
+                    <ModelSelect
+                        @modelName={{this.performedByModelName}}
+                        @selectedModel={{@resource.performed_by}}
+                        @placeholder={{t "fleet-ops.ui.maintenance.form.select-performer"}}
+                        @triggerClass="form-select form-input"
+                        @infiniteScroll={{false}}
+                        @renderInPlace={{true}}
+                        @onChange={{this.assignPerformedBy}}
+                        @disabled={{cannot-write @resource}}
+                        as |model|
+                    >
+                        {{or model.name model.public_id}}
+                    </ModelSelect>
+                </InputGroup>
+            {{/if}}
+
+            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.maintenance.form.linked-work-order"}}
+            </div>
+            <InputGroup @name={{t "fleet-ops.ui.maintenance.form.work-order"}} @wrapperClass="col-span-2">
+                <ModelSelect
+                    @modelName="work-order"
+                    @selectedModel={{@resource.work_order}}
+                    @placeholder={{t "fleet-ops.ui.maintenance.form.link-to-a-work-order-optional"}}
+                    @triggerClass="form-select form-input"
+                    @infiniteScroll={{false}}
+                    @renderInPlace={{true}}
+                    @onChange={{fn (mut @resource.work_order)}}
+                    @onChangeId={{fn (mut @resource.work_order_uuid)}}
+                    @disabled={{cannot-write @resource}}
+                    as |model|
+                >
+                    {{or model.subject model.code model.public_id}}
+                </ModelSelect>
+            </InputGroup>
+        </div>
+    </ContentPanel>
+
+    {{! ===== SCHEDULING & READINGS ===== }}
+    <ContentPanel @title={{t "fleet-ops.ui.maintenance.form.scheduling-readings"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "fleet-ops.ui.maintenance.form.dates"}}
+            </div>
+            <InputGroup @name={{t "fleet-ops.ui.maintenance.form.scheduled-at"}}>
+                <DatePicker
+                    @value={{or (format-date-fns @resource.scheduled_at "dd-MM-yyyy") null}}
+                    @onChange={{fn (mut @resource.scheduled_at)}}
+                    @placeholder={{t "fleet-ops.ui.maintenance.form.dd-mm-yyyy"}}
+                    class="filter-date-input w-full flex-1"
+                />
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.maintenance.form.started-at"}}>
+                <DatePicker
+                    @value={{or (format-date-fns @resource.started_at "dd-MM-yyyy") null}}
+                    @onChange={{fn (mut @resource.started_at)}}
+                    @placeholder={{t "fleet-ops.ui.maintenance.form.dd-mm-yyyy"}}
+                    class="filter-date-input w-full flex-1"
+                />
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.maintenance.form.completed-at"}}>
+                <DatePicker
+                    @value={{or (format-date-fns @resource.completed_at "dd-MM-yyyy") null}}
+                    @onChange={{fn (mut @resource.completed_at)}}
+                    @placeholder={{t "fleet-ops.ui.maintenance.form.dd-mm-yyyy"}}
+                    class="filter-date-input w-full flex-1"
+                />
+            </InputGroup>
+
+            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "fleet-ops.ui.maintenance.form.asset-readings-at-service"}}
+            </div>
+            <InputGroup @name={{t "fleet-ops.ui.maintenance.form.odometer-km"}}>
+                <Input @value={{@resource.odometer}} @type="number" class="w-full form-input" placeholder={{t "fleet-ops.ui.maintenance.form.odometer-reading-at-service"}} disabled={{cannot-write @resource}} />
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.maintenance.form.engine-hours"}}>
+                <Input @value={{@resource.engine_hours}} @type="number" class="w-full form-input" placeholder={{t "fleet-ops.ui.maintenance.form.engine-hours-at-service"}} disabled={{cannot-write @resource}} />
+            </InputGroup>
+        </div>
+    </ContentPanel>
+
+    {{! ===== COSTS ===== }}
+    <Maintenance::CostPanel @resource={{@resource}} @disabled={{cannot-write @resource}} />
+
+    {{! ===== NOTES ===== }}
+    <ContentPanel @title={{t "fleet-ops.ui.maintenance.form.notes"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 no-input-group-padding text-xs">
+            <InputGroup @name={{t "fleet-ops.ui.maintenance.form.notes"}}>
+                <Textarea
+                    @value={{@resource.notes}}
+                    aria-label={{t "fleet-ops.ui.maintenance.form.notes"}}
+                    class="w-full form-input"
+                    disabled={{cannot-write @resource}}
+                    placeholder={{t "fleet-ops.ui.maintenance.form.additional-notes-about-this-maintenance-activity"}}
+                    rows={{4}}
+                />
+            </InputGroup>
+        </div>
+    </ContentPanel>
+
+    {{! ===== REGISTRY & METADATA ===== }}
+    <RegistryYield @registry="fleet-ops:component:maintenance:form:details" as |RegistryComponent|>
+        <RegistryComponent @resource={{@resource}} @controller={{@controller}} @permission={{get-write-permission @resource}} />
+    </RegistryYield>
+    <CustomField::Yield @subject={{@resource}} @wrapperClass="bordered-top" />
+    <RegistryYield @registry="fleet-ops:component:maintenance:form" as |RegistryComponent|>
+        <RegistryComponent @resource={{@resource}} @controller={{@controller}} @permission={{get-write-permission @resource}} />
+    </RegistryYield>
+    <ContentPanel @title={{t "fleet-ops.ui.maintenance.form.metadata"}} @open={{false}} @wrapperClass="bordered-top">
+        <MetadataEditor @value={{@resource.meta}} @onChange={{fn (mut @resource.meta)}} />
+    </ContentPanel>
+</div>

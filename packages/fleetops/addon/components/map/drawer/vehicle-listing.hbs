@@ -1,0 +1,19 @@
+<div class="flex flex-row items-center px-5 py-2 border-b border-gray-200 dark:border-gray-700">
+    <div>
+        <Input @value={{this.query}} @type="text" class="form-input form-input-sm w-60" placeholder={{t "live-map-drawer.vehicle-listing.message"}} />
+    </div>
+</div>
+<Table
+    @rows={{this.filteredVehicles}}
+    @columns={{this.columns}}
+    @searchQuery={{this.query}}
+    @emptyStateComponent={{component
+        "table/empty-state"
+        variant="compact"
+        icon="truck"
+        title=(t "fleet-ops.ui.map.drawer-vehicle-listing.no-vehicles-visible")
+        description=(t "fleet-ops.ui.map.drawer-vehicle-listing.vehicles-appear-here-when-they-are")
+        filteredTitle=(t "fleet-ops.ui.map.drawer-vehicle-listing.no-vehicles-match-this-search")
+        filteredDescription=(t "fleet-ops.ui.map.drawer-vehicle-listing.adjust-the-search-to-find-another")
+    }}
+/>

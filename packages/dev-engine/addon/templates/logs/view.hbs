@@ -1,0 +1,16 @@
+<Layout::Section::Header @title={{@model.description}} @badge={{@model.status_code}}>
+    <Button @icon="long-arrow-left" @iconPrefix="fas" @text={{t "developers.common.back"}} @onClick={{this.goBack}} />
+</Layout::Section::Header>
+
+<Layout::Section::Body>
+    <div class="h-screen overflow-y-scroll">
+        <div class="max-w-6xl mx-auto">
+            <ApiRequestLog::Details @apiRequest={{@model}} />
+            <ApiRequestLog::QueryParams @apiRequest={{@model}} />
+            <ApiRequestLog::RequestHeaders @apiRequest={{@model}} />
+            <ApiRequestLog::RequestBody @apiRequest={{@model}} />
+            <ApiRequestLog::ResponseBody @apiRequest={{@model}} />
+        </div>
+        <Spacer @height="200px" />
+    </div>
+</Layout::Section::Body>

@@ -1,0 +1,67 @@
+{{#if (eq this.layout "table")}}
+    <Layout::Resource::Tabular
+        @resource="equipment"
+        @title={{t "resource.equipment"}}
+        @searchQuery={{this.query}}
+        @onSearch={{perform this.equipmentActions.controllerSearchTask this}}
+        @data={{@model}}
+        @columns={{this.columns}}
+        @page={{this.page}}
+        @onPageChange={{fn (mut this.page)}}
+        @setupTable={{fn (mut this.table)}}
+        @actionButtons={{this.actionButtons}}
+        @bulkActions={{this.bulkActions}}
+        @controller={{this}}
+        @emptyStateComponent={{component
+            "table/empty-state"
+            icon="toolbox"
+            title=(t "fleet-ops.ui.route.maintenance-equipment-index.add-your-first-equipment-item")
+            description=(t "fleet-ops.ui.route.maintenance-equipment-index.equipment-records-help-track-assigned-assets")
+            filteredTitle=(t "fleet-ops.ui.route.maintenance-equipment-index.no-equipment-matches-your-filters")
+            filteredDescription=(t "fleet-ops.ui.route.maintenance-equipment-index.adjust-the-search-or-filters-to")
+            primaryText=(t "fleet-ops.ui.route.maintenance-equipment-index.new-equipment")
+            primaryIcon="plus"
+            primaryAction=this.equipmentActions.transition.create
+            secondaryText=(t "fleet-ops.ui.route.maintenance-equipment-index.import")
+            secondaryIcon="upload"
+            secondaryAction=this.equipmentActions.import
+            docsSlug="fleet-ops/maintenance/equipment/overview"
+            docsTitle=(t "fleet-ops.ui.route.maintenance-equipment-index.equipment-guide")
+            docsText=(t "fleet-ops.ui.route.maintenance-equipment-index.equipment-guide")
+            docsSource="fleet-ops-empty-equipment"
+        }}
+    />
+{{else}}
+    <Layout::Section::Header @title={{t "resource.equipment"}} @actionsWrapperClass="space-x-1">
+        <Layout::Resource::TabularActions
+            @searchQuery={{this.query}}
+            @onSearch={{perform this.equipmentActions.controllerSearchTask this}}
+            @columns={{this.columns}}
+            @page={{this.page}}
+            @onPageChange={{fn (mut this.page)}}
+            @setupTable={{fn (mut this.table)}}
+            @actionButtons={{this.actionButtons}}
+            @bulkActions={{this.bulkActions}}
+            @controller={{this}}
+            @hideColumnsPicker={{true}}
+        />
+    </Layout::Section::Header>
+    <Layout::Section::Body class="overflow-y-scroll-i h-full">
+        <Layout::Resource::CardsGrid
+            @resource="equipment"
+            @data={{@model}}
+            @gap="sm"
+            @columns="4"
+            @showPagination={{true}}
+            @page={{this.page}}
+            @onPageChange={{fn (mut this.page)}}
+            @paginationMeta={{@model.meta}}
+            @containerClass="p-4"
+            class="h-full"
+            as |Item|
+        >
+            <Equipment::Card @resource={{Item.model}} />
+        </Layout::Resource::CardsGrid>
+    </Layout::Section::Body>
+{{/if}}
+{{outlet}}

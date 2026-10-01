@@ -5,6 +5,7 @@ import { task } from 'ember-concurrency';
 
 export default class OnboardVerifyEmailController extends AuthVerificationController {
     @service fetch;
+    @service intl;
     @service notifications;
     @service session;
     @service currentUser;
@@ -19,10 +20,10 @@ export default class OnboardVerifyEmailController extends AuthVerificationContro
         try {
             const { status, token } = yield this.fetch.post('onboard/verify-email', { session: this.hello, code: this.code });
             if (status === 'ok') {
-                this.notifications.success('Email successfully verified!');
+                this.notifications.success(this.intl.t('console.ui.verification.email-verified'));
 
                 if (token) {
-                    this.notifications.info('Welcome to Fleetbase!');
+                    this.notifications.info(this.intl.t('console.ui.onboarding.welcome'));
                     this.session.manuallyAuthenticate(token);
 
                     return this.router.transitionTo('console');

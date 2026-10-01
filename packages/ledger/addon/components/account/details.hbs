@@ -1,0 +1,78 @@
+<div class="details-wrapper" ...attributes>
+    {{! ACCOUNT DETAILS }}
+    <ContentPanel @title={{t "ledger.ui.account.details-title"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "ledger.ui.account.information"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.account.name"}}</div>
+                <div class="field-value">{{n-a @resource.name}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.account.code"}}</div>
+                <div class="field-value font-mono">{{n-a @resource.code}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.account.type-label"}}</div>
+                <div class="field-value">{{n-a (if @resource.type (t (concat "ledger.ui.account.type." @resource.type)))}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.account.status-label"}}</div>
+                <div class="field-value">
+                    <Badge @status={{@resource.status}}>{{if @resource.status (t (concat "ledger.ui.account.status." @resource.status))}}</Badge>
+                </div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.account.currency"}}</div>
+                <div class="field-value">{{n-a @resource.currency}}</div>
+            </div>
+
+            {{#if @resource.description}}
+                <div class="field-info-container col-span-2">
+                    <div class="field-name">{{t "ledger.ui.account.description"}}</div>
+                    <div class="field-value">{{@resource.description}}</div>
+                </div>
+            {{/if}}
+
+            <div class="col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "ledger.ui.account.balance"}}
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.account.current-balance"}}</div>
+                <div class="field-value text-xl font-bold text-gray-900 dark:text-white">{{format-currency @resource.balance @resource.currency}}</div>
+            </div>
+
+        </div>
+    </ContentPanel>
+
+    {{! RECORD INFO }}
+    <ContentPanel @title={{t "ledger.ui.account.record-info"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.account.internal-id"}}</div>
+                <div class="field-value font-mono">{{n-a @resource.public_id}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.account.created"}}</div>
+                <div class="field-value">{{n-a @resource.createdAt}}</div>
+            </div>
+
+            <div class="field-info-container">
+                <div class="field-name">{{t "ledger.ui.account.last-updated"}}</div>
+                <div class="field-value">{{n-a @resource.updatedAt}}</div>
+            </div>
+
+        </div>
+    </ContentPanel>
+    <Spacer @height="200px" />
+</div>

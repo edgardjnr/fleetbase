@@ -1,0 +1,77 @@
+<Portal::Container>
+    <div class="portal-topbar">
+        <div class="portal-topbar-account">
+            <div class="portal-account-mark">
+                <FaIcon @icon="building-user" />
+            </div>
+            <div class="min-w-0">
+                <div class="portal-account-eyebrow">{{this.accountTypeLabel}}</div>
+                <div class="portal-account-name">{{this.accountName}}</div>
+            </div>
+        </div>
+        <div class="portal-topbar-actions">
+            <LinkTo @route="portal.support" class="portal-header-link">
+                <FaIcon @icon="headset" />
+                <span>{{t "customer-portal.ui.nav.support"}}</span>
+            </LinkTo>
+            <LinkTo @route="portal.documents" class="portal-header-link hidden md:inline-flex">
+                <FaIcon @icon="folder-open" />
+                <span>{{t "customer-portal.ui.nav.documents"}}</span>
+            </LinkTo>
+            <BasicDropdown class="portal-user-menu" @renderInPlace={{true}} as |dd|>
+                <dd.Trigger class="portal-user-trigger">
+                    <Image
+                        src={{this.currentUser.avatarUrl}}
+                        @fallbackSrc="https://s3.ap-southeast-1.amazonaws.com/flb-assets/static/no-avatar.png"
+                        alt={{this.currentUser.name}}
+                        class="portal-user-avatar"
+                    />
+                    <div class="hidden sm:flex flex-col min-w-0 text-left">
+                        <span class="portal-user-name">{{this.currentUser.name}}</span>
+                        <span class="portal-user-email">{{this.accountEmail}}</span>
+                    </div>
+                    <FaIcon @icon="caret-down" class="text-gray-400 text-xs" />
+                </dd.Trigger>
+                <dd.Content>
+                    <div class="next-dd-menu">
+                        <div class="px-1">
+                            <Layout::Sidebar::Item class="next-dd-item" @route="customer-portal.portal.settings.account" @icon="gear">{{t "customer-portal.ui.nav.account-settings"}}</Layout::Sidebar::Item>
+                        </div>
+                        <Layout::Header::DarkModeToggle />
+                        <div class="next-dd-menu-seperator"></div>
+                        <div class="px-1">
+                            <Layout::Sidebar::Item class="next-dd-item" @onClick={{this.invalidateSession}} @icon="person-running">{{t "customer-portal.ui.nav.logout"}}</Layout::Sidebar::Item>
+                        </div>
+                    </div>
+                </dd.Content>
+            </BasicDropdown>
+        </div>
+    </div>
+    <Portal::Main>
+        <Portal::Sidebar>
+            <div class="portal-nav-group">
+                <div class="portal-nav-label">{{t "customer-portal.ui.nav.workspace"}}</div>
+                <Layout::Sidebar::Item @route="customer-portal.portal.home" @icon="home">{{t "customer-portal.ui.nav.dashboard"}}</Layout::Sidebar::Item>
+                <Layout::Sidebar::Item @route="customer-portal.portal.orders" @icon="boxes-packing">{{t "customer-portal.ui.nav.orders"}}</Layout::Sidebar::Item>
+                <Layout::Sidebar::Item @route="customer-portal.portal.billing" @icon="file-invoice-dollar">{{t "customer-portal.ui.nav.billing"}}</Layout::Sidebar::Item>
+                <Layout::Sidebar::Item @route="customer-portal.portal.support" @icon="headset">{{t "customer-portal.ui.nav.support"}}</Layout::Sidebar::Item>
+                <Layout::Sidebar::Item @route="customer-portal.portal.documents" @icon="folder-open">{{t "customer-portal.ui.nav.documents"}}</Layout::Sidebar::Item>
+            </div>
+            <div class="portal-nav-group">
+                <div class="portal-nav-label">{{t "customer-portal.ui.nav.preferences"}}</div>
+                <Layout::Sidebar::Item @route="customer-portal.portal.address-book" @icon="address-book">{{t "customer-portal.ui.nav.address-book"}}</Layout::Sidebar::Item>
+                <Layout::Sidebar::Item @route="customer-portal.portal.notifications" @icon="bell">{{t "customer-portal.ui.nav.notifications"}}</Layout::Sidebar::Item>
+            </div>
+            <RegistryYield @type="menu" @registry="customer-portal:sidebar" as |menuItem|>
+                <Layout::Sidebar::Item
+                    @onClick={{fn this.universe.transitionMenuItem "customer-portal.portal.virtual" menuItem}}
+                    @item={{menuItem}}
+                    @icon={{menuItem.icon}}
+                    @permission={{menuItem.permission}}
+                >{{menuItem.title}}</Layout::Sidebar::Item>
+            </RegistryYield>
+        </Portal::Sidebar>
+        <Portal::Section>{{outlet}}</Portal::Section>
+    </Portal::Main>
+    <Portal::Footer />
+</Portal::Container>

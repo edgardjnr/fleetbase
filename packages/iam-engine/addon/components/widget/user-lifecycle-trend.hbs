@@ -1,0 +1,10 @@
+<Widget::IamDashboardWidget @endpoint="user-lifecycle" @title={{t "iam.ui.widgets.user-lifecycle.title"}} @subtitle={{t "iam.ui.widgets.user-lifecycle.subtitle"}} @icon="chart-line" as |data|>
+    <div class="iam-chart-frame">
+        <Chart
+            @type="line"
+            @labels={{data.labels}}
+            @datasets={{data.datasets}}
+            @options={{hash responsive=true maintainAspectRatio=false}}
+        />
+    </div>
+</Widget::IamDashboardWidget>

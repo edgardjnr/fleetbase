@@ -1,0 +1,91 @@
+<div class="form-wrapper" ...attributes>
+    <ContentPanel @title={{t "fleet-ops.ui.zone.form.service-area-details"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="space-y-2">
+            <InputGroup
+                @name={{t "modals.zone-form.name"}}
+                @value={{@resource.name}}
+                @type="text"
+                @placeholder={{t "modals.zone-form.name"}}
+                @helpText={{t "modals.zone-form.name-text"}}
+                @required={{true}}
+            />
+
+            <InputGroup
+                @type="color"
+                @value={{@resource.stroke_color}}
+                @name={{t "modals.zone-form.border-color"}}
+                @helpText={{t "modals.zone-form.customize-border"}}
+                class="p-0 border-0 m-0 w-8 h-8 bg-transparent rounded-none"
+            />
+            <InputGroup
+                @type="color"
+                @value={{@resource.color}}
+                @name={{t "modals.zone-form.zone-color"}}
+                @helpText={{t "modals.zone-form.customize-fill-color"}}
+                class="p-0 border-0 m-0 w-8 h-8 bg-transparent rounded-none"
+            />
+
+            <InputGroup @name={{t "modals.zone-form.description-zone"}} @helpText={{t "modals.zone-form.optionally"}}>
+                <Textarea @value={{@resource.description}} rows={{3}} type="text" class="w-full form-input" placeholder={{t "modals.zone-form.description-zone"}} />
+            </InputGroup>
+        </div>
+    </ContentPanel>
+
+    <ContentPanel @title={{t "fleet-ops.ui.zone.form.geofence-triggers"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="space-y-4">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+                {{t "fleet-ops.ui.zone.form.configure-when-this-zone-fires-active"}}
+            </p>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {{! Entry trigger toggle }}
+                <div class="flex items-start space-x-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div class="flex-shrink-0 mt-0.5">
+                        <Toggle
+                            @isToggled={{@resource.trigger_on_entry}}
+                            @onToggle={{fn (mut @resource.trigger_on_entry)}}
+                        />
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{t "fleet-ops.ui.zone.form.trigger-on-entry"}}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {{t "fleet-ops.ui.zone.form.fire-a"}} <code class="font-mono">geofence.entered</code> {{t "fleet-ops.ui.zone.form.event-when-a-driver-enters-this"}}
+                        </p>
+                    </div>
+                </div>
+
+                {{! Exit trigger toggle }}
+                <div class="flex items-start space-x-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div class="flex-shrink-0 mt-0.5">
+                        <Toggle
+                            @isToggled={{@resource.trigger_on_exit}}
+                            @onToggle={{fn (mut @resource.trigger_on_exit)}}
+                        />
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{t "fleet-ops.ui.zone.form.trigger-on-exit"}}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {{t "fleet-ops.ui.zone.form.fire-a"}} <code class="font-mono">geofence.exited</code> {{t "fleet-ops.ui.zone.form.event-when-a-driver-leaves-this"}}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <InputGroup
+                @name={{t "fleet-ops.ui.zone.form.dwell-threshold-minutes"}}
+                @value={{@resource.dwell_threshold_minutes}}
+                @type="number"
+                @placeholder={{t "fleet-ops.ui.zone.form.eg-10"}}
+                @helpText={{t "fleet-ops.ui.zone.form.fire-a-geofence-dwelled-event-after"}}
+            />
+
+            <InputGroup
+                @name={{t "fleet-ops.ui.zone.form.speed-limit-km-h"}}
+                @value={{@resource.speed_limit_kmh}}
+                @type="number"
+                @placeholder={{t "fleet-ops.ui.zone.form.eg-50"}}
+                @helpText={{t "fleet-ops.ui.zone.form.optional-speed-limit-enforced-within-this"}}
+            />
+        </div>
+    </ContentPanel>
+</div>

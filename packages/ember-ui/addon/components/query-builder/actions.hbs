@@ -1,0 +1,19 @@
+<div class="query-builder-panel" ...attributes>
+    <div class="query-builder-panel-header">
+        <div class="query-builder-panel-title">
+            <FaIcon @icon="bolt" @size="sm" class="mr-2" />
+            {{t "ember-ui.query-builder.actions.title"}}
+        </div>
+        <div class="text-xs text-gray-500">
+            {{t "ember-ui.query-builder.actions.subtitle"}}
+        </div>
+    </div>
+
+    <div class="query-builder-panel-content">
+        <div class="query-builder-actions">
+            <Button @type="danger" @icon="trash" @text={{t "ember-ui.query-builder.actions.clear"}} @size="xs" @onClick={{this.onClear}} />
+            <Button @type="magic" @icon="play" @text={{t "ember-ui.query-builder.actions.execute"}} @size="xs" @onClick={{this.onExecute}} />
+            <Button @type="primary" @icon="floppy-disk" @text={{t "ember-ui.query-builder.actions.save"}} @size="xs" @onClick={{this.onSave}} />
+        </div>
+    </div>
+</div>

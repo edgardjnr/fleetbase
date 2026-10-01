@@ -9,10 +9,10 @@
     <InputGroup @name="Google Maps Locale" @value={{this.googleMapsLocale}} disabled={{this.isLoading}} />
 </ContentPanel>
 
-<ContentPanel @title="SMS Providers" @open={{true}} @wrapperClass="bordered-classic">
+<ContentPanel @title={{t "console.ui.configure.services.sms-providers"}} @open={{true}} @wrapperClass="bordered-classic">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
-            <label class="form-label">Default Provider</label>
+            <label class="form-label">{{t "console.ui.configure.services.default-provider"}}</label>
             <select class="form-select form-select-sm w-full" data-test-sms-default-provider {{on "change" this.updateSmsDefaultProvider}}>
                 {{#each this.smsProviders as |provider|}}
                     <option value={{provider.key}} selected={{eq this.normalizedSms.defaultProvider provider.key}}>{{provider.name}}</option>
@@ -20,7 +20,7 @@
             </select>
         </div>
         <div>
-            <label class="form-label">Configure Provider</label>
+            <label class="form-label">{{t "console.ui.configure.services.configure-provider"}}</label>
             <select class="form-select form-select-sm w-full" data-test-sms-configure-provider {{on "change" this.selectSmsProvider}}>
                 {{#each this.smsProviders as |provider|}}
                     <option value={{provider.key}} selected={{eq this.smsSelectedProvider provider.key}}>{{provider.name}}</option>
@@ -70,11 +70,11 @@
             <InputGroup @name="SMPP Bind Type" @value={{this.selectedSmsProviderConfig.bind_type}} {{on "input" (fn this.updateSmsProviderField "smpp" "bind_type")}} disabled={{this.isLoading}} />
             <label class="flex flex-row items-center text-sm my-2">
                 <Input @type="checkbox" @checked={{this.selectedSmsProviderConfig.tls}} {{on "change" (fn this.updateSmsProviderChecked "smpp" "tls")}} class="fleetbase-checkbox form-checkbox" />
-                <span class="ml-2">Use TLS</span>
+                <span class="ml-2">{{t "console.ui.configure.services.use-tls"}}</span>
             </label>
             {{!-- <Checkbox @label="Use TLS" @value={{this.selectedSmsProviderConfig.tls}} @onToggle={{fn this.updateSmsProviderChecked "smpp" "tls"}} @wrapperClass="my-2" /> --}}
             <button type="button" class="text-xs px-2 py-1 rounded-md border border-gray-200 dark:border-gray-700 flex items-center w-full" data-test-smpp-advanced-toggle {{on "click" this.toggleSmppAdvancedSettings}}>
-                <FaIcon @icon="sliders" class="mr-1" /> <span>{{if this.isSmppAdvancedSettingsVisible "Hide Advanced Settings" "Advanced Settings"}}</span>
+                <FaIcon @icon="sliders" class="mr-1" /> <span>{{if this.isSmppAdvancedSettingsVisible (t "console.ui.configure.services.hide-advanced-settings") (t "console.ui.configure.services.advanced-settings")}}</span>
             </button>
             {{#if this.isSmppAdvancedSettingsVisible}}
                 <div class="mt-1 mb-2 rounded-md border border-gray-200 dark:border-gray-700 px-2 py-2">
@@ -96,22 +96,22 @@
 
         {{#if (eq this.smsSelectedProvider "custom_http")}}
             <div>
-                <label class="form-label">Method</label>
+                <label class="form-label">{{t "console.ui.configure.services.method"}}</label>
                 <select class="form-select form-select-sm w-full" data-test-custom-http-method {{on "change" (fn this.updateSmsProviderField "custom_http" "method")}}>
                     <option value="POST" selected={{eq (or this.selectedSmsProviderConfig.method "POST") "POST"}}>POST</option>
                     <option value="GET" selected={{eq this.selectedSmsProviderConfig.method "GET"}}>GET</option>
                 </select>
             </div>
-            <InputGroup @name="Gateway URL" @value={{this.selectedSmsProviderConfig.url}} {{on "input" (fn this.updateSmsProviderField "custom_http" "url")}} disabled={{this.isLoading}} />
-            <InputGroup @name="From" @value={{this.selectedSmsProviderConfig.from}} {{on "input" (fn this.updateSmsProviderField "custom_http" "from")}} disabled={{this.isLoading}} />
+            <InputGroup @name={{t "console.ui.configure.services.gateway-url"}} @value={{this.selectedSmsProviderConfig.url}} {{on "input" (fn this.updateSmsProviderField "custom_http" "url")}} disabled={{this.isLoading}} />
+            <InputGroup @name={{t "console.ui.configure.services.from"}} @value={{this.selectedSmsProviderConfig.from}} {{on "input" (fn this.updateSmsProviderField "custom_http" "from")}} disabled={{this.isLoading}} />
             <InputGroup @name="Auth Header" @value={{this.selectedSmsProviderConfig.auth_header}} {{on "input" (fn this.updateSmsProviderField "custom_http" "auth_header")}} disabled={{this.isLoading}} />
             <InputGroup @name="Auth Token" @value={{this.selectedSmsProviderConfig.auth_token}} {{on "input" (fn this.updateSmsProviderField "custom_http" "auth_token")}} disabled={{this.isLoading}} />
-            <label class="form-label">Headers JSON</label>
+            <label class="form-label">{{t "console.ui.configure.services.headers-json"}}</label>
             <textarea class="form-input w-full font-mono text-xs" rows="4" value={{this.customHttpHeadersText}} {{on "input" (fn this.updateSmsProviderJsonField "custom_http" "headers")}}></textarea>
-            <label class="form-label mt-3">Query Params JSON</label>
+            <label class="form-label mt-3">{{t "console.ui.configure.services.query-params-json"}}</label>
             <textarea class="form-input w-full font-mono text-xs" rows="4" value={{this.customHttpQueryParamsText}} {{on "input" (fn this.updateSmsProviderJsonField "custom_http" "query_params")}} data-test-custom-http-query-params></textarea>
             {{#if this.isCustomHttpPostMethod}}
-                <label class="form-label mt-3">Body Template JSON</label>
+                <label class="form-label mt-3">{{t "console.ui.configure.services.body-template-json"}}</label>
                 <textarea class="form-input w-full font-mono text-xs" rows="5" value={{this.customHttpBodyText}} {{on "input" (fn this.updateSmsProviderJsonField "custom_http" "body")}} data-test-custom-http-body></textarea>
             {{/if}}
         {{/if}}
@@ -124,10 +124,10 @@
         </div>
     {{/if}}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-        <Input @value={{this.smsTestPhone}} @type="tel" placeholder="Send Test SMS Here" class="form-input form-input-sm" data-test-sms-test-phone />
-        <Input @value={{this.smsTestMessage}} @type="text" placeholder="Test Message" class="form-input form-input-sm" data-test-sms-test-message />
+        <Input @value={{this.smsTestPhone}} @type="tel" placeholder={{t "console.ui.configure.services.send-test-sms-here"}} class="form-input form-input-sm" data-test-sms-test-phone />
+        <Input @value={{this.smsTestMessage}} @type="text" placeholder={{t "console.ui.configure.services.test-message"}} class="form-input form-input-sm" data-test-sms-test-message />
     </div>
-    <Button @wrapperClass="mt-3" @icon="plug" @text="Test SMS Provider" @onClick={{perform this.testSmsProvider}} @isLoading={{this.testSmsProvider.isRunning}} @disabled={{not this.smsTestPhone}} data-test-sms-test-button />
+    <Button @wrapperClass="mt-3" @icon="plug" @text={{t "console.ui.configure.services.test-sms-provider"}} @onClick={{perform this.testSmsProvider}} @isLoading={{this.testSmsProvider.isRunning}} @disabled={{not this.smsTestPhone}} data-test-sms-test-button />
 </ContentPanel>
 
 <ContentPanel @title="Sentry" @open={{true}} @wrapperClass="bordered-classic">
@@ -138,7 +138,7 @@
             <span class="text-xs">{{this.this.sentryTestResponse.message}}</span>
         </div>
     {{/if}}
-    <Button @wrapperClass="mt-3" @icon="plug" @text="Test Sentry Config" @onClick={{perform this.testSentry}} @isLoading={{this.testSentry.isRunning}} @disabled={{not this.sentryDsn}} />
+    <Button @wrapperClass="mt-3" @icon="plug" @text={{t "console.ui.configure.services.test-sentry"}} @onClick={{perform this.testSentry}} @isLoading={{this.testSentry.isRunning}} @disabled={{not this.sentryDsn}} />
 </ContentPanel>
 
 <ContentPanel @title="IP Info" @open={{true}} @wrapperClass="bordered-classic">
@@ -148,5 +148,5 @@
 <Spacer @height="200px" />
 
 <EmberWormhole @to="next-view-section-subheader-actions">
-    <Button @type="primary" @size="sm" @icon="save" @text="Save Changes" @onClick={{perform this.save}} @disabled={{or this.save.isRunning this.loadConfigValues.isRunning}} @isLoading={{or this.save.isRunning this.loadConfigValues.isRunning}} />
+    <Button @type="primary" @size="sm" @icon="save" @text={{t "common.save-changes"}} @onClick={{perform this.save}} @disabled={{or this.save.isRunning this.loadConfigValues.isRunning}} @isLoading={{or this.save.isRunning this.loadConfigValues.isRunning}} />
 </EmberWormhole>

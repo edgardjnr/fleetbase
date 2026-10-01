@@ -1,0 +1,184 @@
+<div class="form-wrapper" ...attributes>
+    {{! JOURNAL ENTRY DETAILS }}
+    <ContentPanel @title={{t "ledger.ui.journal.title"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+
+            {{! Entry Identification }}
+            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "ledger.ui.journal.information"}}
+            </div>
+
+            <InputGroup @name={{t "ledger.ui.journal.number"}}>
+                <Input @value={{@resource.number}} @type="text" class="w-full form-input" placeholder={{t "ledger.ui.journal.number-placeholder"}} disabled={{cannot-write @resource}} />
+            </InputGroup>
+
+            <InputGroup @name={{t "ledger.ui.journal.date"}}>
+                <Input @value={{@resource.entry_date}} @type="date" class="w-full form-input" disabled={{cannot-write @resource}} />
+            </InputGroup>
+
+            <InputGroup @name={{t "ledger.ui.journal.type"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{array "standard" "adjusting" "closing" "reversing" "opening"}}
+                        @selected={{@resource.type}}
+                        @onChange={{fn (mut @resource.type)}}
+                        @placeholder={{t "ledger.ui.journal.select-type"}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |option|
+                    >
+                        <div class="capitalize text-sm">{{t (concat "ledger.ui.journal.types." option)}}</div>
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+
+            <InputGroup @name={{t "ledger.ui.journal.currency"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{array
+                            "USD"
+                            "EUR"
+                            "GBP"
+                            "AED"
+                            "SAR"
+                            "QAR"
+                            "KWD"
+                            "BHD"
+                            "OMR"
+                            "JOD"
+                            "EGP"
+                            "NGN"
+                            "KES"
+                            "GHS"
+                            "ZAR"
+                            "INR"
+                            "PKR"
+                            "BDT"
+                            "MYR"
+                            "SGD"
+                            "IDR"
+                            "PHP"
+                            "THB"
+                            "CNY"
+                            "JPY"
+                            "KRW"
+                            "AUD"
+                            "CAD"
+                            "NZD"
+                            "CHF"
+                            "SEK"
+                            "NOK"
+                            "DKK"
+                            "BRL"
+                            "MXN"
+                        }}
+                        @selected={{@resource.currency}}
+                        @onChange={{fn (mut @resource.currency)}}
+                        @placeholder={{t "ledger.ui.account.select-currency"}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |option|
+                    >
+                        <div class="text-sm">{{option}}</div>
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+
+            <InputGroup @name={{t "ledger.ui.journal.amount"}} @wrapperClass="col-span-2">
+                <MoneyInput
+                    @value={{@resource.amount}}
+                    @currency={{@resource.currency}}
+                    @onChange={{fn (mut @resource.amount)}}
+                    @disabled={{cannot-write @resource}}
+                    placeholder="0.00"
+                    class="w-full"
+                />
+            </InputGroup>
+
+        </div>
+    </ContentPanel>
+
+    {{! DOUBLE-ENTRY }}
+    <ContentPanel @title={{t "ledger.ui.journal.double-entry"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
+
+            {{! Debit Account }}
+            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
+                {{t "ledger.ui.journal.debit-account"}}
+            </div>
+
+            <InputGroup @name={{t "ledger.ui.journal.debit-account"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <ModelSelect
+                        @modelName="ledger-account"
+                        @selectedModel={{this.debitAccount}}
+                        @placeholder={{t "ledger.ui.journal.select-debit-account"}}
+                        @triggerClass="form-select form-input"
+                        @infiniteScroll={{false}}
+                        @renderInPlace={{true}}
+                        @onChange={{this.setDebitAccount}}
+                        @disabled={{cannot-write @resource}}
+                        as |model|
+                    >
+                        <div class="flex flex-col">
+                            <div class="font-semibold">{{model.name}}</div>
+                            <div class="text-xs text-gray-500">{{model.code}} · {{model.type}}</div>
+                        </div>
+                    </ModelSelect>
+                </div>
+            </InputGroup>
+
+            <InputGroup @name={{t "ledger.ui.journal.debit-account-code"}}>
+                <Input @value={{@resource.debit_account_code}} @type="text" class="w-full form-input" placeholder={{t "ledger.ui.account.code-placeholder"}} disabled={{true}} />
+            </InputGroup>
+
+            {{! Credit Account }}
+            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
+                {{t "ledger.ui.journal.credit-account"}}
+            </div>
+
+            <InputGroup @name={{t "ledger.ui.journal.credit-account"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <ModelSelect
+                        @modelName="ledger-account"
+                        @selectedModel={{this.creditAccount}}
+                        @placeholder={{t "ledger.ui.journal.select-credit-account"}}
+                        @triggerClass="form-select form-input"
+                        @infiniteScroll={{false}}
+                        @renderInPlace={{true}}
+                        @onChange={{this.setCreditAccount}}
+                        @disabled={{cannot-write @resource}}
+                        as |model|
+                    >
+                        <div class="flex flex-col">
+                            <div class="font-semibold">{{model.name}}</div>
+                            <div class="text-xs text-gray-500">{{model.code}} · {{model.type}}</div>
+                        </div>
+                    </ModelSelect>
+                </div>
+            </InputGroup>
+
+            <InputGroup @name={{t "ledger.ui.journal.credit-account-code"}}>
+                <Input @value={{@resource.credit_account_code}} @type="text" class="w-full form-input" placeholder={{t "ledger.ui.journal.credit-code-placeholder"}} disabled={{true}} />
+            </InputGroup>
+
+        </div>
+    </ContentPanel>
+
+    {{! DESCRIPTION }}
+    <ContentPanel @title={{t "ledger.ui.journal.description"}} @open={{true}} @wrapperClass="bordered-top">
+        <div class="grid grid-cols-1 gap-2 no-input-group-padding text-xs">
+            <InputGroup @name={{t "ledger.ui.journal.description"}} @wrapperClass="col-span-2">
+                <Textarea
+                    @value={{@resource.description}}
+                    class="w-full form-input"
+                    rows="3"
+                    placeholder={{t "ledger.ui.journal.description-placeholder"}}
+                    disabled={{cannot-write @resource}}
+                />
+            </InputGroup>
+        </div>
+    </ContentPanel>
+
+    <Spacer @height="100px" />
+</div>
