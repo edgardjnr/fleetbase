@@ -107,6 +107,13 @@ services:
     environment: *api-env
     volumes:
       - api_storage:/fleetbase/api/storage/app
+    # substitui o healthcheck herdado (admin do Caddy na :2019): só exige que o Octane responda HTTP
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null --max-time 5 http://localhost:8000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     networks: [internal, public]
     deploy: *default-deploy
 
@@ -127,6 +134,10 @@ services:
   scheduler:
     image: entregas-api:latest
     command: ["go-crond", "--verbose", "root:./crontab"]
+    # a imagem base (dunglas/frankenphp) testa o admin do Caddy na :2019, que não existe
+    # aqui; no Swarm isso faz o task ser morto a cada ~90s
+    healthcheck:
+      disable: true
     environment: *api-env
     volumes:
       - api_storage:/fleetbase/api/storage/app
