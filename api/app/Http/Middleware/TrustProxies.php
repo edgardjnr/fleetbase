@@ -25,4 +25,21 @@ class TrustProxies extends Middleware
         Request::HEADER_X_FORWARDED_PORT |
         Request::HEADER_X_FORWARDED_PROTO |
         Request::HEADER_X_FORWARDED_AWS_ELB;
+
+    /**
+     * Read TRUSTED_PROXIES from the process environment ("*" or a comma-separated list).
+     * getenv() is used instead of env() so it still works after `php artisan config:cache`.
+     *
+     * @return array<int, string>|string|null
+     */
+    protected function proxies()
+    {
+        $trusted = getenv('TRUSTED_PROXIES');
+
+        if ($trusted === false || $trusted === '') {
+            return $this->proxies;
+        }
+
+        return $trusted === '*' ? '*' : array_map('trim', explode(',', $trusted));
+    }
 }

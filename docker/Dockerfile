@@ -128,11 +128,16 @@ RUN mkdir -p /fleetbase/api/storage/logs/ && touch /fleetbase/api/storage/logs/l
 RUN chown -R www-data:www-data /fleetbase/api/storage
 RUN chmod -R 755 /fleetbase/api/storage
 
+# Equivalent of `php artisan storage:link`, baked into the image so it survives container recreation
+RUN mkdir -p /fleetbase/api/storage/app/public \
+  && chown www-data:www-data /fleetbase/api/storage/app/public \
+  && ln -sfn /fleetbase/api/storage/app/public /fleetbase/api/public/storage
+
 # Set permissions for deploy script
 RUN chmod +x /fleetbase/api/deploy.sh
 
 # Install go-crond
-RUN curl -L https://github.com/webdevops/go-crond/releases/download/23.12.0/go-crond.linux.amd64 > /usr/local/bin/go-crond && chmod +x /usr/local/bin/go-crond
+RUN curl -fL "https://github.com/webdevops/go-crond/releases/download/23.12.0/go-crond.linux.$(dpkg --print-architecture)" > /usr/local/bin/go-crond && chmod +x /usr/local/bin/go-crond
 COPY docker/crontab ./crontab
 RUN chmod 0600 ./crontab
 

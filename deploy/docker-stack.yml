@@ -1,0 +1,158 @@
+# Fleetbase (Entregas RestaurantePro) - stack de produção para Docker Swarm / Portainer.
+#
+# - Sem portas publicadas: o tráfego entra pelo Cloudflare Tunnel, que já está na rede
+#   externa ${PUBLIC_NETWORK} e aponta para os serviços pelo nome:
+#       entregas.restaurantepro.com.br        -> http://entregas_console:4200
+#       entregas-api.restaurantepro.com.br    -> http://entregas_application:8000
+#       entregas-socket.restaurantepro.com.br -> http://entregas_socket:8000
+#   (supondo que o stack se chame "entregas" no Portainer)
+# - As imagens são buildadas localmente na VPS (ver deploy/README.md); o stack não builda.
+# - Variáveis: copie deploy/stack.env.example para deploy/stack.env, preencha e carregue
+#   no Portainer ("Load variables from .env file").
+
+x-api-env: &api-env
+  ENVIRONMENT: production
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_NAME: ${APP_NAME:-Entregas}
+  APP_KEY: ${APP_KEY:?defina APP_KEY}
+  APP_URL: https://${API_DOMAIN:?defina API_DOMAIN}
+  CONSOLE_HOST: https://${CONSOLE_DOMAIN:?defina CONSOLE_DOMAIN}
+  FRONTEND_HOSTS: ${FRONTEND_HOSTS:-}
+  SANCTUM_STATEFUL_DOMAINS: ${CONSOLE_DOMAIN}
+  SESSION_DOMAIN: ${API_DOMAIN}
+  SESSION_SECURE_COOKIE: "true"
+  TRUSTED_PROXIES: "*"
+  DATABASE_URL: mysql://root:${DB_ROOT_PASSWORD:?defina DB_ROOT_PASSWORD}@entregas-db/fleetbase
+  MYSQL_ATTR_SSL_VERIFY_SERVER_CERT: "false"
+  QUEUE_CONNECTION: redis
+  CACHE_DRIVER: redis
+  CACHE_PATH: /fleetbase/api/storage/framework/cache
+  CACHE_URL: tcp://entregas-cache
+  REDIS_URL: tcp://entregas-cache
+  BROADCAST_DRIVER: socketcluster
+  SOCKETCLUSTER_HOST: entregas-socket
+  SOCKETCLUSTER_PORT: "8000"
+  SOCKETCLUSTER_SECURE: "false"
+  LOG_CHANNEL: stdout
+  XDEBUG_MODE: "off"
+  FILESYSTEM_DRIVER: ${FILESYSTEM_DRIVER:-public}
+  MAIL_MAILER: ${MAIL_MAILER:-log}
+  MAIL_HOST: ${MAIL_HOST:-}
+  MAIL_PORT: ${MAIL_PORT:-587}
+  MAIL_USERNAME: ${MAIL_USERNAME:-}
+  MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+  MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
+  MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-nao-responda@restaurantepro.com.br}
+  MAIL_FROM_NAME: ${APP_NAME:-Entregas}
+  REGISTRY_HOST: https://registry.fleetbase.io
+  REGISTRY_PREINSTALLED_EXTENSIONS: "true"
+  OSRM_HOST: ${OSRM_HOST:-https://router.project-osrm.org}
+  GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+  GOOGLE_MAPS_LOCALE: ${GOOGLE_MAPS_LOCALE:-br}
+  IPINFO_API_KEY: ${IPINFO_API_KEY:-}
+  TWILIO_SID: ${TWILIO_SID:-}
+  TWILIO_TOKEN: ${TWILIO_TOKEN:-}
+  TWILIO_FROM: ${TWILIO_FROM:-}
+
+x-deploy: &default-deploy
+  replicas: 1
+  restart_policy:
+    condition: any
+    delay: 5s
+
+services:
+  cache:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      internal:
+        aliases: [entregas-cache]
+    deploy: *default-deploy
+
+  database:
+    image: mysql:8.0-oracle
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: fleetbase
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      internal:
+        aliases: [entregas-db]
+    deploy: *default-deploy
+
+  socket:
+    image: entregas-socket:latest
+    environment:
+      SOCKETCLUSTER_OPTIONS: '{"origins":"https://${CONSOLE_DOMAIN}:*,wss://${CONSOLE_DOMAIN}:*"}'
+    networks:
+      internal:
+        aliases: [entregas-socket]
+      public: {}
+    deploy: *default-deploy
+
+  application:
+    image: entregas-api:latest
+    environment: *api-env
+    volumes:
+      - api_storage:/fleetbase/api/storage/app
+    networks: [internal, public]
+    deploy: *default-deploy
+
+  queue:
+    image: entregas-api:latest
+    command: ["php", "artisan", "queue:work"]
+    environment: *api-env
+    volumes:
+      - api_storage:/fleetbase/api/storage/app
+    healthcheck:
+      test: ["CMD", "php", "artisan", "queue:status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks: [internal]
+    deploy: *default-deploy
+
+  scheduler:
+    image: entregas-api:latest
+    command: ["go-crond", "--verbose", "root:./crontab"]
+    environment: *api-env
+    volumes:
+      - api_storage:/fleetbase/api/storage/app
+    networks: [internal]
+    deploy: *default-deploy
+
+  console:
+    image: entregas-console:latest
+    environment:
+      API_HOST: https://${API_DOMAIN}
+      API_NAMESPACE: int/v1
+      SOCKETCLUSTER_HOST: ${SOCKET_DOMAIN:?defina SOCKET_DOMAIN}
+      SOCKETCLUSTER_PORT: "443"
+      SOCKETCLUSTER_SECURE: "true"
+      SOCKETCLUSTER_PATH: /socketcluster/
+      OSRM_HOST: ${OSRM_HOST:-https://router.project-osrm.org}
+    networks: [public]
+    deploy: *default-deploy
+
+volumes:
+  mysql_data:
+  api_storage:
+
+networks:
+  internal:
+    driver: overlay
+  public:
+    external: true
+    name: ${PUBLIC_NETWORK:-network_public}

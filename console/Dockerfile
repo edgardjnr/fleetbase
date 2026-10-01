@@ -54,5 +54,10 @@ EXPOSE 4200
 # Use custom nginx.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Generate fleetbase.config.json from env vars (API_HOST, SOCKETCLUSTER_*, ...) on start
+COPY nginx-entrypoint/40-fleetbase-runtime-config.sh /docker-entrypoint.d/40-fleetbase-runtime-config.sh
+RUN sed -i 's/\r$//' /docker-entrypoint.d/40-fleetbase-runtime-config.sh \
+  && chmod +x /docker-entrypoint.d/40-fleetbase-runtime-config.sh
+
 # Start Nginx server
 CMD ["nginx", "-g", "daemon off;"]
