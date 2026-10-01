@@ -95,7 +95,8 @@ services:
   socket:
     image: entregas-socket:latest
     environment:
-      SOCKETCLUSTER_OPTIONS: '{"origins":"https://${CONSOLE_DOMAIN}:*,wss://${CONSOLE_DOMAIN}:*"}'
+      # navegadores só de CONSOLE_DOMAIN; conexões sem Origin (a API) passam - ver docker/socket/server.js
+      SOCKET_ALLOWED_ORIGINS: https://${CONSOLE_DOMAIN}
     networks:
       internal:
         aliases: [entregas-socket]

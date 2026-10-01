@@ -38,6 +38,32 @@ if (process.env.SOCKETCLUSTER_OPTIONS) {
 let httpServer = eetase(http.createServer());
 let agServer = socketClusterServer.attach(httpServer, agOptions);
 
+// Fleetbase: origin allowlist that still lets server-side clients in.
+// Browsers always send an Origin header on WebSocket handshakes, so a missing Origin means a
+// non-browser client (the Fleetbase API broadcasting events). The built-in `origins` option
+// rejects those, which is why this check lives here instead.
+const SOCKET_ALLOWED_ORIGINS = (process.env.SOCKET_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
+if (SOCKET_ALLOWED_ORIGINS.length) {
+  agServer.setMiddleware(agServer.MIDDLEWARE_HANDSHAKE, async (middlewareStream) => {
+    for await (let action of middlewareStream) {
+      if (action.type === action.HANDSHAKE_WS) {
+        let origin = action.request.headers.origin;
+        if (origin && !SOCKET_ALLOWED_ORIGINS.includes(origin)) {
+          let error = new Error(`Origin not allowed: ${origin}`);
+          error.name = 'ForbiddenOriginError';
+          action.block(error);
+          continue;
+        }
+      }
+      action.allow();
+    }
+  });
+}
+
 let expressApp = express();
 if (ENVIRONMENT === 'dev') {
   // Log every HTTP request. See https://github.com/expressjs/morgan for other
