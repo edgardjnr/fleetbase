@@ -87,19 +87,9 @@ Router.map(function () {
             });
         });
 
-        this.mount('@fleetbase/ai-engine', {
-            as: 'ai',
-            path: 'ai'
-        });
-
         this.mount('@fleetbase/dev-engine', {
             as: 'developers',
             path: 'developers'
-        });
-
-        this.mount('@fleetbase/iam-engine', {
-            as: 'iam',
-            path: 'iam'
         });
 
         this.mount('@fleetbase/fleetops-engine', {
@@ -107,36 +97,10 @@ Router.map(function () {
             path: 'fleet-ops'
         });
 
-        this.mount('@fleetbase/ledger-engine', {
-            as: 'ledger',
-            path: 'ledger'
-        });
-
-        this.mount('@fleetbase/storefront-engine', {
-            as: 'storefront',
-            path: 'storefront'
-        });
-
-        this.mount('@fleetbase/registry-bridge-engine', {
-            as: 'extensions',
-            path: 'extensions'
-        });
-
-        this.mount('@fleetbase/vroom-engine', {
-            as: 'vroom',
-            path: 'vroom'
-        });
-
-        this.mount('@fleetbase/valhalla-engine', {
-            as: 'valhalla',
-            path: 'valhalla'
+        this.mount('@fleetbase/iam-engine', {
+            as: 'iam',
+            path: 'iam'
         });
     });
-
-    this.mount('@fleetbase/customer-portal-engine', {
-        as: 'customer-portal',
-        path: 'customer-portal'
-    });
-
     this.route('catch', { path: '/*' });
 });

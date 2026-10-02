@@ -2,6 +2,7 @@ import Route from '@ember/routing/route';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import getResourceNameFromTransition from '@fleetbase/ember-core/utils/get-resource-name-from-transition';
+import isEntregasHiddenRoute from '../utils/entregas-hidden-routes';
 
 export default class ApplicationRoute extends Route {
     @service loader;
@@ -14,6 +15,17 @@ export default class ApplicationRoute extends Route {
     @service currentUser;
     @service mapSettings;
 
+    constructor() {
+        super(...arguments);
+        // Entregas RestaurantePro: telas ocultas (utils/entregas-hidden-routes) caem em Pedidos
+        this.hostRouter.on('routeWillChange', (transition) => {
+            if (isEntregasHiddenRoute(transition.to?.name) && !transition.isAborted) {
+                transition.abort();
+                this.hostRouter.transitionTo('console.fleet-ops.operations.orders.index');
+            }
+        });
+    }
+
     @action loading(transition) {
         // route segment (e.g. "orders") -> translated resource name when a resource.<name> key exists
         const resourceSlug = getResourceNameFromTransition(transition);
@@ -24,10 +36,15 @@ export default class ApplicationRoute extends Route {
         });
     }
 
-    async beforeModel() {
+    async beforeModel(transition) {
         if (this.abilities.cannot('fleet-ops see extension')) {
             this.notifications.warning(this.intl.t('common.unauthorized-access'));
             return this.hostRouter.transitionTo('console');
+        }
+
+        // primeira entrada no engine já direto numa tela oculta (o listener do constructor ainda não existia)
+        if (isEntregasHiddenRoute(transition?.to?.name)) {
+            return this.hostRouter.transitionTo('console.fleet-ops.operations.orders.index');
         }
 
         await this.location.getUserLocation();

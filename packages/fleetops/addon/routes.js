@@ -36,6 +36,7 @@ export default buildRoutes(function () {
         });
     });
     this.route('management', { path: '/manage' }, function () {
+        this.route('driver-payouts');
         this.route('fleets', function () {
             this.route('index', { path: '/' }, function () {
                 this.route('new');

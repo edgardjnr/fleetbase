@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,14 @@ class RouteServiceProvider extends ServiceProvider
                         );
                     }
                 );
+
+                // Entregas RestaurantePro: pagamento dos motoboys por km (console → Fleet-Ops → Pagamento de motoboys)
+                Route::prefix('int/v1/entregas')
+                    ->middleware(['fleetbase.protected'])
+                    ->group(function () {
+                        Route::get('pagamento-motoboys', [PagamentoMotoboysController::class, 'relatorio']);
+                        Route::put('pagamento-motoboys/valor-km', [PagamentoMotoboysController::class, 'salvarValorKm']);
+                    });
             }
         );
     }

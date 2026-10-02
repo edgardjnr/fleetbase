@@ -1,0 +1,154 @@
+<Layout::Section::Header @title={{t "fleet-ops.ui.driver-payouts.title"}}>
+    <div class="flex items-center space-x-2">
+        <Button @icon="refresh" @size="sm" @helpText={{t "common.reload"}} @isLoading={{this.load.isRunning}} @onClick={{perform this.load}} />
+        <Button @icon="file-export" @size="sm" @text={{t "fleet-ops.ui.driver-payouts.export-csv"}} @disabled={{not this.relatorio.entregas.length}} @onClick={{this.exportarCsv}} />
+    </div>
+</Layout::Section::Header>
+
+<Layout::Section::Body class="overflow-y-scroll-i h-full">
+    <div class="max-w-6xl mx-auto px-4 py-6 space-y-5">
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.driver-payouts.how-it-works"}}</p>
+
+        <ContentPanel @title={{t "fleet-ops.ui.driver-payouts.filters"}} @open={{true}} @wrapperClass="bordered-classic">
+            <div class="flex flex-wrap items-end gap-4">
+                <InputGroup @name={{t "fleet-ops.ui.driver-payouts.period-start"}} @wrapperClass="mb-0">
+                    <input type="date" class="form-input form-input-sm" value={{this.inicio}} max={{this.fim}} {{on "change" (fn this.setData "inicio")}} />
+                </InputGroup>
+                <InputGroup @name={{t "fleet-ops.ui.driver-payouts.period-end"}} @wrapperClass="mb-0">
+                    <input type="date" class="form-input form-input-sm" value={{this.fim}} min={{this.inicio}} {{on "change" (fn this.setData "fim")}} />
+                </InputGroup>
+                <Button @type="primary" @size="sm" @icon="magnifying-glass" @text={{t "fleet-ops.ui.driver-payouts.apply"}} @isLoading={{this.load.isRunning}} @onClick={{perform this.load}} />
+                <div class="flex items-center gap-2">
+                    <Button @size="xs" @text={{t "fleet-ops.ui.driver-payouts.last-7-days"}} @onClick={{fn this.setPeriodo "last-7-days"}} />
+                    <Button @size="xs" @text={{t "fleet-ops.ui.driver-payouts.this-month"}} @onClick={{fn this.setPeriodo "this-month"}} />
+                    <Button @size="xs" @text={{t "fleet-ops.ui.driver-payouts.last-month"}} @onClick={{fn this.setPeriodo "last-month"}} />
+                </div>
+                <div class="flex items-end gap-2 ml-auto">
+                    <InputGroup @name={{t "fleet-ops.ui.driver-payouts.rate-per-km"}} @wrapperClass="mb-0">
+                        <input type="text" inputmode="decimal" class="form-input form-input-sm w-28" value={{this.valorKm}} {{on "input" this.setValorKm}} />
+                    </InputGroup>
+                    <Button @size="sm" @icon="save" @text={{t "fleet-ops.ui.driver-payouts.save-rate"}} @isLoading={{this.salvarValorKm.isRunning}} @onClick={{perform this.salvarValorKm}} />
+                </div>
+            </div>
+        </ContentPanel>
+
+        {{#if this.relatorio.pendentes}}
+            <div class="text-sm rounded-md px-3 py-2 bg-yellow-50 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
+                {{#if this.load.isRunning}}
+                    {{t "fleet-ops.ui.driver-payouts.pending" count=this.relatorio.pendentes}}
+                {{else}}
+                    {{t "fleet-ops.ui.driver-payouts.missing-address-count" count=this.relatorio.pendentes}}
+                {{/if}}
+            </div>
+        {{/if}}
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.driver-payouts.deliveries"}}</div>
+                <div class="text-2xl font-semibold dark:text-white">{{this.totais.entregas}}</div>
+            </div>
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.driver-payouts.km"}}</div>
+                <div class="text-2xl font-semibold dark:text-white">{{this.formatar "km" this.totais.km}}</div>
+            </div>
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.driver-payouts.total-amount"}}</div>
+                <div class="text-2xl font-semibold dark:text-white">{{this.formatar "valor" this.totais.valor}}</div>
+            </div>
+        </div>
+
+        <ContentPanel @title={{t "fleet-ops.ui.driver-payouts.by-driver"}} @open={{true}} @wrapperClass="bordered-classic">
+            {{#if this.motoboys.length}}
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{t "fleet-ops.ui.driver-payouts.click-driver"}}</p>
+                <table class="table w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-gray-500 dark:text-gray-400">
+                            <th class="py-2">{{t "fleet-ops.ui.driver-payouts.driver"}}</th>
+                            <th class="py-2 text-right">{{t "fleet-ops.ui.driver-payouts.deliveries"}}</th>
+                            <th class="py-2 text-right">{{t "fleet-ops.ui.driver-payouts.km"}}</th>
+                            <th class="py-2 text-right">{{t "fleet-ops.ui.driver-payouts.amount"}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each this.motoboys as |motoboy|}}
+                            <tr
+                                role="button"
+                                class="cursor-pointer border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 {{if (eq motoboy.motoboy this.motoboySelecionado.motoboy) 'bg-blue-50 dark:bg-blue-900'}}"
+                                {{on "click" (fn this.selecionarMotoboy motoboy)}}
+                            >
+                                <td class="py-2 dark:text-gray-100">
+                                    {{motoboy.motoboy_nome}}
+                                    {{#if motoboy.sem_km}}
+                                        <span class="ml-1 text-xs text-yellow-600">({{t "fleet-ops.ui.driver-payouts.without-km" count=motoboy.sem_km}})</span>
+                                    {{/if}}
+                                </td>
+                                <td class="py-2 text-right dark:text-gray-100">{{motoboy.entregas}}</td>
+                                <td class="py-2 text-right dark:text-gray-100">{{this.formatar "km" motoboy.km}}</td>
+                                <td class="py-2 text-right font-semibold dark:text-gray-100">{{this.formatar "valor" motoboy.valor}}</td>
+                            </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            {{else if this.load.isRunning}}
+                <Spinner />
+            {{else}}
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.driver-payouts.empty"}}</p>
+            {{/if}}
+        </ContentPanel>
+
+        {{#if this.entregas.length}}
+            <ContentPanel
+                @title={{if this.motoboySelecionado (t "fleet-ops.ui.driver-payouts.deliveries-of" name=this.motoboySelecionado.motoboy_nome) (t "fleet-ops.ui.driver-payouts.all-deliveries")}}
+                @open={{true}}
+                @wrapperClass="bordered-classic"
+            >
+                {{#if this.motoboySelecionado}}
+                    <Button @size="xs" @icon="xmark" @text={{t "fleet-ops.ui.driver-payouts.show-all"}} @wrapperClass="mb-2" @onClick={{fn this.selecionarMotoboy null}} />
+                {{/if}}
+                <table class="table w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-gray-500 dark:text-gray-400">
+                            <th class="py-2">{{t "fleet-ops.ui.driver-payouts.completed-at"}}</th>
+                            <th class="py-2">{{t "fleet-ops.ui.driver-payouts.order"}}</th>
+                            {{#unless this.motoboySelecionado}}
+                                <th class="py-2">{{t "fleet-ops.ui.driver-payouts.driver"}}</th>
+                            {{/unless}}
+                            <th class="py-2">{{t "fleet-ops.ui.driver-payouts.dropoff"}}</th>
+                            <th class="py-2 text-right">{{t "fleet-ops.ui.driver-payouts.km"}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each this.entregas as |entrega|}}
+                            <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100">
+                                <td class="py-2 whitespace-nowrap">{{this.formatar "data" entrega.concluido_em}}</td>
+                                <td class="py-2">
+                                    <LinkTo @route="operations.orders.index.details" @model={{entrega.pedido}} class="text-blue-600 dark:text-blue-400 hover:underline">
+                                        {{or entrega.id_interno entrega.pedido}}
+                                    </LinkTo>
+                                </td>
+                                {{#unless this.motoboySelecionado}}
+                                    <td class="py-2">{{entrega.motoboy_nome}}</td>
+                                {{/unless}}
+                                <td class="py-2">{{entrega.destino}}</td>
+                                <td class="py-2 text-right whitespace-nowrap">
+                                    {{#if (eq entrega.km null)}}
+                                        <span class="text-yellow-600" title={{t "fleet-ops.ui.driver-payouts.missing-address"}}>—</span>
+                                    {{else}}
+                                        {{this.formatar "km" entrega.km}}
+                                        {{#if (eq entrega.fonte "estimativa")}}
+                                            <span class="text-yellow-600" title={{t "fleet-ops.ui.driver-payouts.estimate-help"}}>*</span>
+                                        {{/if}}
+                                    {{/if}}
+                                </td>
+                            </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+                {{#if this.temEstimativa}}
+                    <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-2">* {{t "fleet-ops.ui.driver-payouts.estimate-help"}}</p>
+                {{/if}}
+            </ContentPanel>
+        {{/if}}
+    </div>
+    <Spacer @height="300px" />
+</Layout::Section::Body>

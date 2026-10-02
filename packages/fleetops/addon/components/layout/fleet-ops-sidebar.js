@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import isMenuItemActive from '@fleetbase/ember-ui/utils/is-menu-item-active';
+import isEntregasHiddenRoute from '../../utils/entregas-hidden-routes';
 
 const SECTION_REGISTRY_KEYS = {
     operations: 'universeOperationsMenuItems',
@@ -19,6 +20,7 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
     @service intl;
     @service abilities;
     @service fetch;
+    @service currentUser;
 
     @tracked routePrefix = 'console.fleet-ops.';
     @tracked universeMenuItems = [];
@@ -109,7 +111,9 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
             }),
         ];
 
-        return [...coreBranches, ...this.registryRootItems, ...this.registryPanelItems].filter((item) => item.children?.length || item.route || item.url || item.onClick);
+        return [...coreBranches.filter((branch) => !isEntregasHiddenRoute(branch.route)), ...this.registryRootItems, ...this.registryPanelItems].filter(
+            (item) => item.children?.length || item.route || item.url || item.onClick
+        );
     }
 
     get operationsItems() {
@@ -141,6 +145,10 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
                 'resource readiness',
             ]),
             this.createItem('menu.drivers', 'id-card', 'management.drivers', 'fleet-ops list driver', 'fleet-ops see driver', ['driver', 'online drivers']),
+            {
+                ...this.createItem('fleet-ops.ui.driver-payouts.title', 'money-bill-wave', 'management.driver-payouts', 'fleet-ops list driver', 'fleet-ops see driver', ['pagamento', 'motoboy', 'km', 'payout']),
+                visible: this.currentUser.isAdmin === true,
+            },
             this.createItem('menu.vehicles', 'truck', 'management.vehicles', 'fleet-ops list vehicle', 'fleet-ops see vehicle', ['vehicle', 'track vehicles', 'online vehicles']),
             this.createItem('menu.trailers', 'trailer', 'management.trailers', 'fleet-ops list trailer', 'fleet-ops see trailer', ['trailer', 'towed asset', 'reefer', 'flatbed']),
             this.createItem('menu.fleets', 'user-group', 'management.fleets', 'fleet-ops list fleet', 'fleet-ops see fleet', ['fleet', 'teams']),
@@ -261,7 +269,7 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
             route: this.fullRoute(route),
             defaultRoute: this.fullRoute(defaultRoute),
             requiresVisibleChildren,
-            children: children.filter((item) => item.visible !== false),
+            children: children.filter((item) => item.visible !== false && !isEntregasHiddenRoute(item.route)),
             keywords,
         };
     }
@@ -346,6 +354,7 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
             'operations.service-rates': 4,
             'management.index': 0,
             'management.drivers': 1,
+            'management.driver-payouts': 1,
             'management.vehicles': 2,
             'management.trailers': 3,
             'management.fleets': 4,

@@ -1,6 +1,7 @@
 import Controller from '@ember/controller';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
+import isEntregasHiddenRoute from '../../utils/entregas-hidden-routes';
 
 export default class SettingsIndexController extends Controller {
     @service intl;
@@ -129,6 +130,15 @@ export default class SettingsIndexController extends Controller {
             description: this.intl.t('fleet-ops.ui.controller.settings-index.manage-visual-markers-used-across-maps'),
         },
     ];
+
+    constructor() {
+        super(...arguments);
+        // Entregas RestaurantePro: sem cartões, ações e guias de telas ocultas
+        const docRoute = (doc) => (doc.slug ?? '').replace(/^fleet-ops\//, '').replace(/\//g, '.');
+        this.groups = this.groups.map((group) => ({ ...group, links: group.links.filter((link) => !isEntregasHiddenRoute(link.route)) })).filter((group) => group.links.length);
+        this.actions = this.actions.filter((item) => !isEntregasHiddenRoute(item.route));
+        this.docs = this.docs.filter((doc) => !isEntregasHiddenRoute(docRoute(doc)));
+    }
 
     @action openDocs(link) {
         if (!link?.slug) {

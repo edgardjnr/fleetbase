@@ -65,7 +65,28 @@ Depois de cada deploy do console, abra o site com Ctrl+Shift+R. O console guarda
   - Eram submódulos e foram **incorporados ao repo**: o `.gitmodules` foi removido. As cópias originais seguem em `.git/modules/packages/*` e servem de base para diff contra o upstream.
   - Pallet não está instalado no console.
   - **Mudanças em `packages/*/server` (PHP) não chegam à produção.** Texto que vem da API é traduzido no frontend.
+  - Código PHP próprio vai em `api/app/` (entra na imagem da API). Exemplo: `Http/Controllers/Entregas/`, com as rotas na `Providers/RouteServiceProvider.php`.
 - `deploy/`: stack, modelo de env, `atualizar.sh` e README do deploy.
+
+## Escopo enxuto: delivery iFood → motoboy
+
+O produto é só isto: o pedido chega do iFood pela API, é despachado para o motoboy, que usa o app **Navigator**, e o motoboy é pago por km.
+
+- **Extensões fora do console:** storefront, ledger, customer-portal, registry-bridge (Extensions), ai, valhalla e vroom.
+  - Saíram do `console/package.json`, do `pnpm-workspace.yaml` e do `Dockerfile.dockerignore`.
+  - Os `app/router.js` e `app/extensions/*` são gerados no build a partir do `node_modules`.
+  - As pastas em `packages/` e as APIs no `api/composer.json` continuam. Para reativar, reverta essas listas.
+- **Ficam:** Fleet-Ops, IAM e **Developers** (chaves de API e webhooks da integração iFood).
+- **Telas ocultas do Fleet-Ops:** a lista está em `packages/fleetops/addon/utils/entregas-hidden-routes.js`.
+  - Inclui manutenção, conectividade/telemática, veículos, frotas, fornecedores, combustível, ocorrências, orquestrador, agenda, tarifas e várias configurações.
+  - A lista tira os itens do menu (`fleet-ops-sidebar`) e dos hubs (`localize-hub`, `settings/index`), e a URL direta cai em Pedidos (`routes/application.js`).
+  - Os atalhos do cabeçalho ficam no `extension.js`. Esse arquivo é copiado para o console e não pode importar utils do engine.
+- **Pagamento de motoboys:** Fleet-Ops → Recursos → Pagamento de motoboys (`management.driver-payouts`), só para admin.
+  - API: `api/app/Http/Controllers/Entregas/PagamentoMotoboysController.php`, `GET int/v1/entregas/pagamento-motoboys` e `PUT .../valor-km`.
+  - **km = rota de rua loja (pickup) → cliente (dropoff), só ida**, pelo OSRM (`OSRM_HOST`). O valor fica em cache no `meta.entregas.km_rota` do pedido.
+  - Se o OSRM falha, usa uma estimativa (linha reta × 1,3), recalculada na próxima consulta.
+  - **Não use `orders.distance`:** é a distância *restante* e vai a ~0 quando o pedido conclui.
+  - O período usa a data do tracking status `COMPLETED`, no fuso da organização. O R$/km é único por organização (`Setting` `company.<uuid>.entregas.valor_km`).
 - `docker/`: Dockerfile da API, `docker/socket/` (socket ARM) e crontab.
 
 ### Build do console
@@ -88,7 +109,7 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 - **As chaves são globais**, porque todos os YAML se mesclam no build. Toda chave nova leva o prefixo do módulo: `fleet-ops.ui.*`, `ledger.ui.*`, `storefront.ui.*`, `iam.ui.*`, `developers.ui.*`, `registry-bridge.ui.*`, `customer-portal.ui.*`, `ai.ui.*`, `console.ui.*` e `ember-ui.*`. Nunca crie chaves novas em `common.*`.
 - **Validação obrigatória** antes de commitar:
   ```bash
-  node scripts/i18n-check.cjs console ai customer-portal dev-engine ember-core ember-ui fleetops fleetops-data iam-engine ledger registry-bridge storefront
+  node scripts/i18n-check.cjs console dev-engine ember-core ember-ui fleetops fleetops-data iam-engine
   ```
   - Precisa sair com exit 0. O `VERBOSE=1` lista o que falta e os textos fixos restantes.
   - Também confira que todo JS alterado parseia com `@babel/parser` de `console/node_modules/.pnpm/@babel+parser@7*`. Um import duplicado já quebrou o build.

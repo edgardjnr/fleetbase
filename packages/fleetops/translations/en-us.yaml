@@ -93,6 +93,46 @@ fleet-ops:
             document: Document
         api-messages:
             event-already-processed: Event was already processed.
+        driver-payouts:
+            title: Driver payouts
+            menu-description: Deliveries and km per driver to pay by the kilometer
+            how-it-works: Km = street route from the store to the customer (one way), calculated once per order. Only completed orders count, by completion date.
+            filters: Period and rate
+            period-start: Start
+            period-end: End
+            apply: Apply
+            last-7-days: Last 7 days
+            this-month: This month
+            last-month: Last month
+            rate-per-km: Rate per km (R$)
+            save-rate: Save rate
+            rate-saved: Rate per km saved.
+            export-csv: Export CSV
+            pending: 'Calculating km for {count} deliveries...'
+            missing-address-count: '{count} deliveries have no pickup or dropoff address and count as 0 km.'
+            deliveries: Deliveries
+            km: Km
+            amount: Amount
+            total: Total
+            total-amount: Total to pay
+            by-driver: By driver
+            click-driver: Click a driver to see their deliveries.
+            driver: Driver
+            without-km: '{count} without km'
+            empty: No completed deliveries in this period.
+            all-deliveries: All deliveries
+            deliveries-of: 'Deliveries by {name}'
+            show-all: Show all
+            completed-at: Completed at
+            order: Order
+            pickup: Pickup
+            dropoff: Dropoff
+            source: Km source
+            source-osrm: route
+            source-estimativa: estimate
+            missing-address: No pickup or dropoff address
+            estimate-help: 'Estimate (straight line × 1.3): the routing service did not respond. It is recalculated on the next query.'
+            admin-only: Only administrators can see driver payouts.
         settings-hub: Settings Hub
         hub:
             open-resource: Open {resource}

@@ -18,7 +18,7 @@ export default class ManagementIndexController extends Controller {
     }
 
     get kpis() {
-        return (this.hub?.kpis ?? this.loadingKpis).map((kpi) => ({
+        return (this.hub?.kpis ?? this.loadingKpis.filter((kpi) => kpi.key === 'drivers')).map((kpi) => ({
             ...kpi,
             actionLabel: kpi.actionLabel ?? this.intl.t('fleet-ops.ui.hub.open-resource', { resource: kpi.label }),
         }));

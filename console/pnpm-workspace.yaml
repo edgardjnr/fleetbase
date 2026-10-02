@@ -1,15 +1,10 @@
 packages:
-  - "../packages/ai"
-  - "../packages/customer-portal"
   - "../packages/dev-engine"
   - "../packages/ember-core"
   - "../packages/ember-ui"
   - "../packages/fleetops"
   - "../packages/fleetops-data"
   - "../packages/iam-engine"
-  - "../packages/ledger"
-  - "../packages/registry-bridge"
-  - "../packages/storefront"
 linkWorkspacePackages: deep
 preferWorkspacePackages: true
 publicHoistPattern:
