@@ -81,12 +81,16 @@ O produto é só isto: o pedido chega do iFood pela API, é despachado para o mo
   - Inclui manutenção, conectividade/telemática, veículos, frotas, fornecedores, combustível, ocorrências, orquestrador, agenda, tarifas e várias configurações.
   - A lista tira os itens do menu (`fleet-ops-sidebar`) e dos hubs (`localize-hub`, `settings/index`), e a URL direta cai em Pedidos (`routes/application.js`).
   - Os atalhos do cabeçalho ficam no `extension.js`. Esse arquivo é copiado para o console e não pode importar utils do engine.
-- **Pagamento de motoboys:** Fleet-Ops → Recursos → Pagamento de motoboys (`management.driver-payouts`), só para admin.
-  - API: `api/app/Http/Controllers/Entregas/PagamentoMotoboysController.php`, `GET int/v1/entregas/pagamento-motoboys` e `PUT .../valor-km`.
+- **Pagamento e cobrança:** Fleet-Ops → Recursos → Pagamento e cobrança (`management.driver-payouts`), só para admin.
+  - API: `api/app/Http/Controllers/Entregas/PagamentoMotoboysController.php`, `GET int/v1/entregas/pagamento-motoboys` e `PUT .../faixas`.
   - **km = rota de rua loja (pickup) → cliente (dropoff), só ida**, pelo OSRM (`OSRM_HOST`). O valor fica em cache no `meta.entregas.km_rota` do pedido.
   - Se o OSRM falha, usa uma estimativa (linha reta × 1,3), recalculada na próxima consulta.
   - **Não use `orders.distance`:** é a distância *restante* e vai a ~0 quando o pedido conclui.
-  - O período usa a data do tracking status `COMPLETED`, no fuso da organização. O R$/km é único por organização (`Setting` `company.<uuid>.entregas.valor_km`).
+  - O período usa a data do tracking status `COMPLETED`, no fuso da organização.
+  - **Valores por faixa de km** (`Setting` `company.<uuid>.entregas.faixas` = `[{ate_km, motoboy, loja}]`): uma tabela só, com o valor pago ao motoboy e o cobrado da loja. A entrega vale o valor da faixa em que o km cai (0 < km ≤ 1 → 1ª, 1 < km ≤ 2 → 2ª…); acima da última vale a última. `PUT .../faixas` substitui a tabela.
+- **Cobrança das lojas** (mesma tela, renomeada "Pagamento e cobrança"): modelo A = **uma organização só** (o operador de entregas) e cada restaurante é um **Local**.
+  - **Loja = local de coleta (pickup)** do pedido. Agrupa pelo **nome** do Place (a integração pode criar um Place por pedido); sem nome, pelo próprio Place. A integração iFood de cada loja deve mandar como pickup o Local da loja (de preferência pelo `public_id`), com nome igual sempre.
+  - Cobrança = valor "loja" da faixa do km, igual para todas as lojas. A tela mostra a pagar, a cobrar e a margem; o CSV traz motoboys, lojas e o detalhe com loja, faixa e os dois valores.
 - `docker/`: Dockerfile da API, `docker/socket/` (socket ARM) e crontab.
 
 ### Build do console

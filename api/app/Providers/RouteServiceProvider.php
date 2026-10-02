@@ -42,12 +42,12 @@ class RouteServiceProvider extends ServiceProvider
                     }
                 );
 
-                // Entregas RestaurantePro: pagamento dos motoboys por km (console → Fleet-Ops → Pagamento de motoboys)
+                // Entregas RestaurantePro: pagamento dos motoboys e cobrança das lojas por faixa de km (console → Fleet-Ops → Pagamento e cobrança)
                 Route::prefix('int/v1/entregas')
                     ->middleware(['fleetbase.protected'])
                     ->group(function () {
                         Route::get('pagamento-motoboys', [PagamentoMotoboysController::class, 'relatorio']);
-                        Route::put('pagamento-motoboys/valor-km', [PagamentoMotoboysController::class, 'salvarValorKm']);
+                        Route::put('pagamento-motoboys/faixas', [PagamentoMotoboysController::class, 'salvarFaixas']);
                     });
             }
         );

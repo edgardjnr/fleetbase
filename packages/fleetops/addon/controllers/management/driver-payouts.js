@@ -7,6 +7,8 @@ import { task, timeout } from 'ember-concurrency';
 const ENDPOINT = 'entregas/pagamento-motoboys';
 const pad = (n) => String(n).padStart(2, '0');
 const isoDate = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+const numero = (valor) => Number(String(valor ?? '').trim().replace(',', '.'));
+const faixaParaEdicao = (faixa) => ({ ate_km: String(faixa.ate_km), motoboy: String(faixa.motoboy), loja: String(faixa.loja) });
 
 export default class ManagementDriverPayoutsController extends Controller {
     @service fetch;
@@ -15,21 +17,47 @@ export default class ManagementDriverPayoutsController extends Controller {
 
     @tracked inicio = isoDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     @tracked fim = isoDate(new Date());
-    @tracked valorKm = '';
+    // faixas de km em edição (strings, como digitadas); a mesma tabela vale para motoboy e loja
+    @tracked faixas = [];
+    @tracked faixasAlteradas = false;
     @tracked relatorio = null;
     @tracked motoboySelecionado = null;
+    @tracked lojaSelecionada = null;
 
     get motoboys() {
         return this.relatorio?.motoboys ?? [];
     }
 
+    get lojas() {
+        return this.relatorio?.lojas ?? [];
+    }
+
     get entregas() {
-        const entregas = this.relatorio?.entregas ?? [];
-        return this.motoboySelecionado ? entregas.filter((entrega) => entrega.motoboy === this.motoboySelecionado.motoboy) : entregas;
+        let entregas = this.relatorio?.entregas ?? [];
+        if (this.motoboySelecionado) {
+            entregas = entregas.filter((entrega) => entrega.motoboy === this.motoboySelecionado.motoboy);
+        }
+        if (this.lojaSelecionada) {
+            entregas = entregas.filter((entrega) => entrega.loja === this.lojaSelecionada.loja);
+        }
+        return entregas;
+    }
+
+    get tituloEntregas() {
+        const t = (key, opts) => this.intl.t(`fleet-ops.ui.driver-payouts.${key}`, opts);
+        const loja = this.lojaSelecionada ? this.lojaSelecionada.loja_nome || t('without-store') : null;
+        if (this.motoboySelecionado && loja) return t('deliveries-of-from', { name: this.motoboySelecionado.motoboy_nome, store: loja });
+        if (this.motoboySelecionado) return t('deliveries-of', { name: this.motoboySelecionado.motoboy_nome });
+        if (loja) return t('deliveries-from', { name: loja });
+        return t('all-deliveries');
+    }
+
+    get temFiltro() {
+        return Boolean(this.motoboySelecionado || this.lojaSelecionada);
     }
 
     get totais() {
-        return this.relatorio?.totais ?? { entregas: 0, km: 0, valor: 0 };
+        return this.relatorio?.totais ?? { entregas: 0, km: 0, valor: 0, cobrar: 0, margem: 0 };
     }
 
     get temEstimativa() {
@@ -73,12 +101,51 @@ export default class ManagementDriverPayoutsController extends Controller {
         this[campo] = event.target.value;
     }
 
-    @action setValorKm(event) {
-        this.valorKm = event.target.value;
+    /** Faixas com o "de km" (limite da faixa anterior) para exibir. */
+    get linhasFaixas() {
+        return this.faixas.map((faixa, indice) => ({ ...faixa, indice, de_km: indice === 0 ? '0' : this.faixas[indice - 1].ate_km || '?' }));
+    }
+
+    get faixasValidas() {
+        let anterior = 0;
+        for (const faixa of this.faixas) {
+            const ate = numero(faixa.ate_km);
+            if (!(ate > anterior) || !(numero(faixa.motoboy) >= 0) || !(numero(faixa.loja) >= 0)) {
+                return false;
+            }
+            anterior = ate;
+        }
+        return true;
+    }
+
+    @action setFaixa(indice, campo, event) {
+        this.faixas = this.faixas.map((faixa, i) => (i === indice ? { ...faixa, [campo]: event.target.value } : faixa));
+        this.faixasAlteradas = true;
+    }
+
+    @action adicionarFaixa() {
+        const ultima = this.faixas[this.faixas.length - 1];
+        const proximoAte = ultima ? (numero(ultima.ate_km) || 0) + 1 : 1;
+        this.faixas = [...this.faixas, { ate_km: String(proximoAte), motoboy: ultima?.motoboy ?? '', loja: ultima?.loja ?? '' }];
+        this.faixasAlteradas = true;
+    }
+
+    @action removerFaixa(indice) {
+        this.faixas = this.faixas.filter((_, i) => i !== indice);
+        this.faixasAlteradas = true;
     }
 
     @action selecionarMotoboy(motoboy) {
         this.motoboySelecionado = this.motoboySelecionado?.motoboy === motoboy?.motoboy ? null : motoboy;
+    }
+
+    @action selecionarLoja(loja) {
+        this.lojaSelecionada = this.lojaSelecionada && this.lojaSelecionada.loja === loja?.loja ? null : loja;
+    }
+
+    @action limparFiltros() {
+        this.motoboySelecionado = null;
+        this.lojaSelecionada = null;
     }
 
     @task({ restartable: true }) *load() {
@@ -92,10 +159,15 @@ export default class ManagementDriverPayoutsController extends Controller {
                 const relatorio = yield this.fetch.get(ENDPOINT, { inicio: this.inicio, fim: this.fim });
                 const pendentesAntes = this.relatorio?.pendentes;
                 this.relatorio = relatorio;
-                this.valorKm = String(relatorio.valor_km ?? '');
+                if (!this.faixasAlteradas) {
+                    this.faixas = (relatorio.faixas ?? []).map(faixaParaEdicao);
+                }
 
                 if (this.motoboySelecionado && !relatorio.motoboys.some((m) => m.motoboy === this.motoboySelecionado.motoboy)) {
                     this.motoboySelecionado = null;
+                }
+                if (this.lojaSelecionada && !(relatorio.lojas ?? []).some((l) => l.loja === this.lojaSelecionada.loja)) {
+                    this.lojaSelecionada = null;
                 }
 
                 // pendentes que não diminuem = entregas sem endereço; não adianta repetir
@@ -109,15 +181,28 @@ export default class ManagementDriverPayoutsController extends Controller {
         }
     }
 
-    @task *salvarValorKm() {
+    @task *salvarFaixas() {
+        if (!this.faixasValidas) {
+            this.notifications.warning(this.intl.t('fleet-ops.ui.driver-payouts.invalid-bands'));
+            return;
+        }
+
         try {
-            const { valor_km } = yield this.fetch.put(`${ENDPOINT}/valor-km`, { valor_km: String(this.valorKm).replace(',', '.') });
-            this.valorKm = String(valor_km);
-            this.notifications.success(this.intl.t('fleet-ops.ui.driver-payouts.rate-saved'));
+            const faixas = this.faixas.map((faixa) => ({ ate_km: numero(faixa.ate_km), motoboy: numero(faixa.motoboy), loja: numero(faixa.loja) }));
+            const resposta = yield this.fetch.put(`${ENDPOINT}/faixas`, { faixas });
+            this.faixas = (resposta.faixas ?? []).map(faixaParaEdicao);
+            this.faixasAlteradas = false;
+            this.notifications.success(this.intl.t('fleet-ops.ui.driver-payouts.bands-saved'));
             yield this.load.perform();
         } catch (error) {
             this.notifications.serverError(error);
         }
+    }
+
+    @action textoFaixa(faixa) {
+        if (!faixa) return '';
+        const km = (valor) => this.formatarKm(valor).replace(/,00$/, '');
+        return faixa.acima ? `> ${km(faixa.de_km)} km` : `${km(faixa.de_km)}–${km(faixa.ate_km)} km`;
     }
 
     @action exportarCsv() {
@@ -132,10 +217,18 @@ export default class ManagementDriverPayoutsController extends Controller {
         }
         linhas.push([celula(t('total')), this.totais.entregas, num(this.totais.km), num(this.totais.valor)].join(';'));
         linhas.push('');
-        linhas.push([t('driver'), t('order'), t('completed-at'), t('pickup'), t('dropoff'), t('km'), t('source')].map(celula).join(';'));
+        linhas.push([t('store'), t('deliveries'), t('km'), t('charge')].map(celula).join(';'));
+        for (const loja of this.lojas) {
+            linhas.push([celula(loja.loja_nome || t('without-store')), loja.entregas, num(loja.km), num(loja.valor)].join(';'));
+        }
+        linhas.push([celula(t('total')), this.totais.entregas, num(this.totais.km), num(this.totais.cobrar)].join(';'));
+        linhas.push([celula(t('margin')), '', '', num(this.totais.margem)].join(';'));
+        linhas.push('');
+        linhas.push([t('store'), t('driver'), t('order'), t('completed-at'), t('pickup'), t('dropoff'), t('km'), t('source'), t('band'), t('driver-amount'), t('store-amount')].map(celula).join(';'));
         for (const entrega of this.relatorio?.entregas ?? []) {
             linhas.push(
                 [
+                    celula(entrega.loja_nome || t('without-store')),
                     celula(entrega.motoboy_nome),
                     celula(entrega.id_interno || entrega.pedido),
                     celula(this.formatarData(entrega.concluido_em)),
@@ -143,6 +236,9 @@ export default class ManagementDriverPayoutsController extends Controller {
                     celula(entrega.destino),
                     entrega.km === null ? '' : num(entrega.km),
                     celula(entrega.fonte ? t(`source-${entrega.fonte}`) : t('missing-address')),
+                    celula(this.textoFaixa(entrega.faixa)),
+                    entrega.valor_motoboy === null ? '' : num(entrega.valor_motoboy),
+                    entrega.valor_loja === null ? '' : num(entrega.valor_loja),
                 ].join(';')
             );
         }
@@ -151,7 +247,7 @@ export default class ManagementDriverPayoutsController extends Controller {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `pagamento-motoboys_${this.inicio}_${this.fim}.csv`;
+        link.download = `pagamento-e-cobranca_${this.inicio}_${this.fim}.csv`;
         document.body.appendChild(link);
         link.click();
         link.remove();

@@ -23,12 +23,40 @@
                     <Button @size="xs" @text={{t "fleet-ops.ui.driver-payouts.this-month"}} @onClick={{fn this.setPeriodo "this-month"}} />
                     <Button @size="xs" @text={{t "fleet-ops.ui.driver-payouts.last-month"}} @onClick={{fn this.setPeriodo "last-month"}} />
                 </div>
-                <div class="flex items-end gap-2 ml-auto">
-                    <InputGroup @name={{t "fleet-ops.ui.driver-payouts.rate-per-km"}} @wrapperClass="mb-0">
-                        <input type="text" inputmode="decimal" class="form-input form-input-sm w-28" value={{this.valorKm}} {{on "input" this.setValorKm}} />
-                    </InputGroup>
-                    <Button @size="sm" @icon="save" @text={{t "fleet-ops.ui.driver-payouts.save-rate"}} @isLoading={{this.salvarValorKm.isRunning}} @onClick={{perform this.salvarValorKm}} />
-                </div>
+            </div>
+        </ContentPanel>
+
+        <ContentPanel @title={{t "fleet-ops.ui.driver-payouts.bands-title"}} @open={{true}} @wrapperClass="bordered-classic">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{t "fleet-ops.ui.driver-payouts.bands-help"}}</p>
+            {{#if this.faixas.length}}
+                <table class="table w-full text-sm max-w-2xl">
+                    <thead>
+                        <tr class="text-left text-gray-500 dark:text-gray-400">
+                            <th class="py-2">{{t "fleet-ops.ui.driver-payouts.band-from"}}</th>
+                            <th class="py-2">{{t "fleet-ops.ui.driver-payouts.band-to"}}</th>
+                            <th class="py-2">{{t "fleet-ops.ui.driver-payouts.band-driver"}}</th>
+                            <th class="py-2">{{t "fleet-ops.ui.driver-payouts.band-store"}}</th>
+                            <th class="py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each this.linhasFaixas as |faixa|}}
+                            <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100">
+                                <td class="py-1 whitespace-nowrap">{{faixa.de_km}} km</td>
+                                <td class="py-1"><input type="text" inputmode="decimal" class="form-input form-input-sm w-24" value={{faixa.ate_km}} {{on "input" (fn this.setFaixa faixa.indice "ate_km")}} /></td>
+                                <td class="py-1"><input type="text" inputmode="decimal" class="form-input form-input-sm w-28" value={{faixa.motoboy}} {{on "input" (fn this.setFaixa faixa.indice "motoboy")}} /></td>
+                                <td class="py-1"><input type="text" inputmode="decimal" class="form-input form-input-sm w-28" value={{faixa.loja}} {{on "input" (fn this.setFaixa faixa.indice "loja")}} /></td>
+                                <td class="py-1 text-right"><Button @size="xs" @icon="trash" @helpText={{t "fleet-ops.ui.driver-payouts.remove-band"}} @onClick={{fn this.removerFaixa faixa.indice}} /></td>
+                            </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            {{else}}
+                <p class="text-sm text-yellow-700 dark:text-yellow-300 mb-2">{{t "fleet-ops.ui.driver-payouts.no-bands"}}</p>
+            {{/if}}
+            <div class="flex items-center gap-2 mt-3">
+                <Button @size="sm" @icon="plus" @text={{t "fleet-ops.ui.driver-payouts.add-band"}} @onClick={{this.adicionarFaixa}} />
+                <Button @size="sm" @type="primary" @icon="save" @text={{t "fleet-ops.ui.driver-payouts.save-bands"}} @isLoading={{this.salvarFaixas.isRunning}} @onClick={{perform this.salvarFaixas}} />
             </div>
         </ContentPanel>
 
@@ -42,7 +70,7 @@
             </div>
         {{/if}}
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
                 <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.driver-payouts.deliveries"}}</div>
                 <div class="text-2xl font-semibold dark:text-white">{{this.totais.entregas}}</div>
@@ -55,7 +83,54 @@
                 <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.driver-payouts.total-amount"}}</div>
                 <div class="text-2xl font-semibold dark:text-white">{{this.formatar "valor" this.totais.valor}}</div>
             </div>
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.driver-payouts.total-charge"}}</div>
+                <div class="text-2xl font-semibold dark:text-white">{{this.formatar "valor" this.totais.cobrar}}</div>
+            </div>
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.driver-payouts.margin"}}</div>
+                <div class="text-2xl font-semibold {{if (lt this.totais.margem 0) 'text-red-600 dark:text-red-400' 'text-green-700 dark:text-green-400'}}">{{this.formatar "valor" this.totais.margem}}</div>
+            </div>
         </div>
+
+        <ContentPanel @title={{t "fleet-ops.ui.driver-payouts.by-store"}} @open={{true}} @wrapperClass="bordered-classic">
+            {{#if this.lojas.length}}
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{t "fleet-ops.ui.driver-payouts.click-store"}}</p>
+                <table class="table w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-gray-500 dark:text-gray-400">
+                            <th class="py-2">{{t "fleet-ops.ui.driver-payouts.store"}}</th>
+                            <th class="py-2 text-right">{{t "fleet-ops.ui.driver-payouts.deliveries"}}</th>
+                            <th class="py-2 text-right">{{t "fleet-ops.ui.driver-payouts.km"}}</th>
+                            <th class="py-2 text-right">{{t "fleet-ops.ui.driver-payouts.charge"}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each this.lojas as |loja|}}
+                            <tr
+                                role="button"
+                                class="cursor-pointer border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 {{if (eq loja.loja this.lojaSelecionada.loja) 'bg-blue-50 dark:bg-blue-900'}}"
+                                {{on "click" (fn this.selecionarLoja loja)}}
+                            >
+                                <td class="py-2 dark:text-gray-100">
+                                    {{or loja.loja_nome (t "fleet-ops.ui.driver-payouts.without-store")}}
+                                    {{#if loja.sem_km}}
+                                        <span class="ml-1 text-xs text-yellow-600">({{t "fleet-ops.ui.driver-payouts.without-km" count=loja.sem_km}})</span>
+                                    {{/if}}
+                                </td>
+                                <td class="py-2 text-right dark:text-gray-100">{{loja.entregas}}</td>
+                                <td class="py-2 text-right dark:text-gray-100">{{this.formatar "km" loja.km}}</td>
+                                <td class="py-2 text-right font-semibold dark:text-gray-100">{{this.formatar "valor" loja.valor}}</td>
+                            </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            {{else if this.load.isRunning}}
+                <Spinner />
+            {{else}}
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.driver-payouts.empty"}}</p>
+            {{/if}}
+        </ContentPanel>
 
         <ContentPanel @title={{t "fleet-ops.ui.driver-payouts.by-driver"}} @open={{true}} @wrapperClass="bordered-classic">
             {{#if this.motoboys.length}}
@@ -98,23 +173,29 @@
 
         {{#if this.entregas.length}}
             <ContentPanel
-                @title={{if this.motoboySelecionado (t "fleet-ops.ui.driver-payouts.deliveries-of" name=this.motoboySelecionado.motoboy_nome) (t "fleet-ops.ui.driver-payouts.all-deliveries")}}
+                @title={{this.tituloEntregas}}
                 @open={{true}}
                 @wrapperClass="bordered-classic"
             >
-                {{#if this.motoboySelecionado}}
-                    <Button @size="xs" @icon="xmark" @text={{t "fleet-ops.ui.driver-payouts.show-all"}} @wrapperClass="mb-2" @onClick={{fn this.selecionarMotoboy null}} />
+                {{#if this.temFiltro}}
+                    <Button @size="xs" @icon="xmark" @text={{t "fleet-ops.ui.driver-payouts.show-all"}} @wrapperClass="mb-2" @onClick={{this.limparFiltros}} />
                 {{/if}}
                 <table class="table w-full text-sm">
                     <thead>
                         <tr class="text-left text-gray-500 dark:text-gray-400">
                             <th class="py-2">{{t "fleet-ops.ui.driver-payouts.completed-at"}}</th>
                             <th class="py-2">{{t "fleet-ops.ui.driver-payouts.order"}}</th>
+                            {{#unless this.lojaSelecionada}}
+                                <th class="py-2">{{t "fleet-ops.ui.driver-payouts.store"}}</th>
+                            {{/unless}}
                             {{#unless this.motoboySelecionado}}
                                 <th class="py-2">{{t "fleet-ops.ui.driver-payouts.driver"}}</th>
                             {{/unless}}
                             <th class="py-2">{{t "fleet-ops.ui.driver-payouts.dropoff"}}</th>
                             <th class="py-2 text-right">{{t "fleet-ops.ui.driver-payouts.km"}}</th>
+                            <th class="py-2 text-right">{{t "fleet-ops.ui.driver-payouts.band"}}</th>
+                            <th class="py-2 text-right">{{t "fleet-ops.ui.driver-payouts.driver-amount"}}</th>
+                            <th class="py-2 text-right">{{t "fleet-ops.ui.driver-payouts.store-amount"}}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -126,6 +207,9 @@
                                         {{or entrega.id_interno entrega.pedido}}
                                     </LinkTo>
                                 </td>
+                                {{#unless this.lojaSelecionada}}
+                                    <td class="py-2">{{or entrega.loja_nome (t "fleet-ops.ui.driver-payouts.without-store")}}</td>
+                                {{/unless}}
                                 {{#unless this.motoboySelecionado}}
                                     <td class="py-2">{{entrega.motoboy_nome}}</td>
                                 {{/unless}}
@@ -140,6 +224,9 @@
                                         {{/if}}
                                     {{/if}}
                                 </td>
+                                <td class="py-2 text-right whitespace-nowrap text-gray-500 dark:text-gray-400">{{this.textoFaixa entrega.faixa}}</td>
+                                <td class="py-2 text-right whitespace-nowrap">{{if entrega.faixa (this.formatar "valor" entrega.valor_motoboy) "—"}}</td>
+                                <td class="py-2 text-right whitespace-nowrap">{{if entrega.faixa (this.formatar "valor" entrega.valor_loja) "—"}}</td>
                             </tr>
                         {{/each}}
                     </tbody>

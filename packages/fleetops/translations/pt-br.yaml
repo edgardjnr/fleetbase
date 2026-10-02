@@ -94,19 +94,16 @@ fleet-ops:
     api-messages:
       event-already-processed: O evento já havia sido processado.
     driver-payouts:
-      title: Pagamento de motoboys
-      menu-description: Entregas e km de cada motoboy para pagar por km rodado
-      how-it-works: Km = rota de rua da loja até o cliente (só ida), calculada uma vez por pedido. Contam só pedidos concluídos, pela data de conclusão.
-      filters: Período e valor
+      title: Pagamento e cobrança
+      menu-description: 'Quanto pagar a cada motoboy e cobrar de cada loja, por faixa de km'
+      how-it-works: 'Km = rota de rua da loja (local de coleta) até o cliente, só ida, calculada uma vez por pedido. Cada entrega vale o valor da faixa de km em que cai: um valor pago ao motoboy e outro cobrado da loja. Contam só pedidos concluídos, pela data de conclusão.'
+      filters: Período
       period-start: Início
       period-end: Fim
       apply: Aplicar
       last-7-days: Últimos 7 dias
       this-month: Este mês
       last-month: Mês passado
-      rate-per-km: Valor por km (R$)
-      save-rate: Salvar valor
-      rate-saved: Valor por km salvo.
       export-csv: Exportar CSV
       pending: 'Calculando o km de {count} entregas...'
       missing-address-count: '{count} entregas estão sem endereço de origem ou destino e contam como 0 km.'
@@ -114,7 +111,7 @@ fleet-ops:
       km: Km
       amount: Valor
       total: Total
-      total-amount: Total a pagar
+      total-amount: A pagar (motoboys)
       by-driver: Por motoboy
       click-driver: Clique num motoboy para ver as entregas dele.
       driver: Motoboy
@@ -132,7 +129,31 @@ fleet-ops:
       source-estimativa: estimativa
       missing-address: Sem endereço de origem ou destino
       estimate-help: 'Estimativa (linha reta × 1,3): o serviço de rotas não respondeu. É recalculada na próxima consulta.'
-      admin-only: Somente administradores podem ver o pagamento dos motoboys.
+      admin-only: Somente administradores podem ver o pagamento dos motoboys e a cobrança das lojas.
+      total-charge: A cobrar (lojas)
+      margin: Margem
+      by-store: Por loja
+      click-store: Clique numa loja para ver as entregas dela.
+      store: Loja
+      without-store: Sem local de coleta
+      charge: A cobrar
+      deliveries-from: 'Entregas da loja {name}'
+      deliveries-of-from: 'Entregas de {name} na loja {store}'
+      bands-title: Faixas de km
+      bands-help: 'Cada entrega vale o valor da faixa em que o km dela cai (ex.: 2,4 km cai na faixa de 2 a 3 km). Acima da última faixa, vale o valor da última.'
+      band-from: De
+      band-to: Até (km)
+      band-driver: Motoboy (R$)
+      band-store: Loja (R$)
+      add-band: Adicionar faixa
+      remove-band: Remover faixa
+      save-bands: Salvar faixas
+      bands-saved: Faixas salvas.
+      invalid-bands: 'Confira as faixas: o "até" precisa ser maior que zero e crescente, e os valores não podem ser negativos.'
+      no-bands: Cadastre as faixas de km para calcular os valores.
+      band: Faixa
+      driver-amount: Motoboy
+      store-amount: Loja
     settings-hub: Central de Configurações
     hub:
       open-resource: Abrir {resource}

@@ -94,19 +94,16 @@ fleet-ops:
         api-messages:
             event-already-processed: Event was already processed.
         driver-payouts:
-            title: Driver payouts
-            menu-description: Deliveries and km per driver to pay by the kilometer
-            how-it-works: Km = street route from the store to the customer (one way), calculated once per order. Only completed orders count, by completion date.
-            filters: Period and rate
+            title: Payouts and billing
+            menu-description: 'What to pay each driver and charge each store, by km band'
+            how-it-works: 'Km = street route from the store (pickup place) to the customer, one way, calculated once per order. Each delivery is worth the value of the km band it falls in: one amount paid to the driver and another charged to the store. Only completed orders count, by completion date.'
+            filters: Period
             period-start: Start
             period-end: End
             apply: Apply
             last-7-days: Last 7 days
             this-month: This month
             last-month: Last month
-            rate-per-km: Rate per km (R$)
-            save-rate: Save rate
-            rate-saved: Rate per km saved.
             export-csv: Export CSV
             pending: 'Calculating km for {count} deliveries...'
             missing-address-count: '{count} deliveries have no pickup or dropoff address and count as 0 km.'
@@ -114,7 +111,7 @@ fleet-ops:
             km: Km
             amount: Amount
             total: Total
-            total-amount: Total to pay
+            total-amount: To pay (drivers)
             by-driver: By driver
             click-driver: Click a driver to see their deliveries.
             driver: Driver
@@ -132,7 +129,31 @@ fleet-ops:
             source-estimativa: estimate
             missing-address: No pickup or dropoff address
             estimate-help: 'Estimate (straight line × 1.3): the routing service did not respond. It is recalculated on the next query.'
-            admin-only: Only administrators can see driver payouts.
+            admin-only: Only administrators can see driver payouts and store billing.
+            total-charge: To charge (stores)
+            margin: Margin
+            by-store: By store
+            click-store: Click a store to see its deliveries.
+            store: Store
+            without-store: No pickup place
+            charge: To charge
+            deliveries-from: 'Deliveries from {name}'
+            deliveries-of-from: 'Deliveries by {name} from {store}'
+            bands-title: Km bands
+            bands-help: 'Each delivery is worth the value of the band its km falls in (e.g. 2.4 km falls in the 2 to 3 km band). Above the last band, the last band value applies.'
+            band-from: From
+            band-to: Up to (km)
+            band-driver: Driver (R$)
+            band-store: Store (R$)
+            add-band: Add band
+            remove-band: Remove band
+            save-bands: Save bands
+            bands-saved: Bands saved.
+            invalid-bands: 'Check the bands: "up to" must be greater than zero and increasing, and amounts cannot be negative.'
+            no-bands: Add km bands to calculate the amounts.
+            band: Band
+            driver-amount: Driver
+            store-amount: Store
         settings-hub: Settings Hub
         hub:
             open-resource: Open {resource}
