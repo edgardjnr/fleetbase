@@ -17,7 +17,22 @@ export default class OrderFormDetailsComponent extends Component {
 
     constructor() {
         super(...arguments);
-        this.orderConfigActions.loadAll.perform();
+        this.carregarTiposDePedido.perform();
+    }
+
+    // Entregas: um tipo só basta; pedido novo já vem com o tipo padrão (transport) selecionado
+    get mostrarTipoDePedido() {
+        return this.orderConfigActions.allOrderConfigs.length > 1 || !this.args.resource?.order_config;
+    }
+
+    @task *carregarTiposDePedido() {
+        const orderConfigs = yield this.orderConfigActions.loadAll.perform();
+        const resource = this.args.resource;
+        if (!orderConfigs?.length || !resource || resource.order_config || resource.order_config_uuid) return;
+
+        const lista = orderConfigs.toArray ? orderConfigs.toArray() : [...orderConfigs];
+        const padrao = lista.find((config) => config.key === 'transport') ?? lista.find((config) => config.core_service) ?? lista[0];
+        yield this.selectOrderConfig.perform(padrao);
     }
 
     get integratedVendorServiceType() {

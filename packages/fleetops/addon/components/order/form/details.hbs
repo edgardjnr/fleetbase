@@ -1,23 +1,25 @@
 <ContentPanel @title={{t "fleet-ops.ui.order.form-details.details"}} @open={{true}} @wrapperClass="bordered-top">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
-        <InputGroup @name={{t "order.fields.order-type"}} @helpText={{t "order.fields.order-type-help-text"}} @required={{true}}>
-            <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
-                <PowerSelect
-                    @options={{this.orderConfigActions.allOrderConfigs}}
-                    @selected={{@resource.order_config}}
-                    @onChange={{perform this.selectOrderConfig}}
-                    @placeholder={{t "order.fields.order-type-placeholder"}}
-                    @triggerClass="form-select form-input"
-                    @disabled={{cannot-write @resource}}
-                    as |orderConfig|
-                >
-                    <div class="text-sm">
-                        <div class="font-semibold normalize-in-trigger">{{orderConfig.name}}</div>
-                        <div class="hide-from-trigger">{{n-a orderConfig.description}}</div>
-                    </div>
-                </PowerSelect>
-            </div>
-        </InputGroup>
+        {{#if this.mostrarTipoDePedido}}
+            <InputGroup @name={{t "order.fields.order-type"}} @helpText={{t "order.fields.order-type-help-text"}} @required={{true}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{this.orderConfigActions.allOrderConfigs}}
+                        @selected={{@resource.order_config}}
+                        @onChange={{perform this.selectOrderConfig}}
+                        @placeholder={{t "order.fields.order-type-placeholder"}}
+                        @triggerClass="form-select form-input"
+                        @disabled={{cannot-write @resource}}
+                        as |orderConfig|
+                    >
+                        <div class="text-sm">
+                            <div class="font-semibold normalize-in-trigger">{{orderConfig.name}}</div>
+                            <div class="hide-from-trigger">{{n-a orderConfig.description}}</div>
+                        </div>
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+        {{/if}}
 
         <InputGroup @name={{t "order.fields.internal-id"}} @value={{@resource.internal_id}} @helpText={{t "order.fields.internal-id-help-text"}} @disabled={{cannot-write @resource}} />
 
