@@ -166,7 +166,7 @@ export default class DriverActionsService extends ResourceActionService {
             popupText: `${driver.name} (${driver.public_id})`,
             tooltip: driver.positionString,
             icon: leafletIcon({
-                iconUrl: driver.vehicle_avatar ?? config?.defaultValues?.vehicleAvatar,
+                iconUrl: driver.avatar_url ?? driver.vehicle_avatar ?? config?.defaultValues?.vehicleAvatar,
                 iconSize: [40, 40],
             }),
             latitude,
