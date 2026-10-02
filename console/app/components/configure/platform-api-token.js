@@ -4,6 +4,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
 import { format as formatDate } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class ConfigurePlatformApiTokenComponent extends Component {
     @service fetch;
@@ -117,6 +118,6 @@ export default class ConfigurePlatformApiTokenComponent extends Component {
             return this.intl.t('console.admin.platform-api-token.never');
         }
 
-        return formatDate(new Date(value), 'PP p');
+        return formatDate(new Date(value), 'PP p', dateFnsLocaleOptions());
     }
 }

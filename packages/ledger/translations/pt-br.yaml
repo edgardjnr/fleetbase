@@ -1,6 +1,11 @@
 ledger:
   extension-name: Ledger
   ui:
+    template-resources:
+      invoice: Fatura
+      transaction: Transação
+      account: Conta
+      wallet: Carteira
     api:
       gateway:
         cash:

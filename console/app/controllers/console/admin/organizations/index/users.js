@@ -75,7 +75,7 @@ export default class ConsoleAdminOrganizationsIndexUsersController extends Contr
         },
         {
             label: this.intl.t('common.role'),
-            valuePath: 'roleName',
+            valuePath: 'localizedRoleName',
         },
         {
             label: this.intl.t('common.phone'),
@@ -130,7 +130,7 @@ export default class ConsoleAdminOrganizationsIndexUsersController extends Contr
             const { token } = await this.fetch.post('auth/impersonate', { user: user.id });
             await this.router.transitionTo('console');
             this.session.manuallyAuthenticate(token);
-            this.notifications.info(`Now impersonating ${user.email}...`);
+            this.notifications.info(this.intl.t('console.ui.admin.org.now-impersonating', { name: user.email }));
 
             // Handed back so the caller can cancel the pending reload; the same timer on
             // ImpersonatorTray was unreachable once scheduled.

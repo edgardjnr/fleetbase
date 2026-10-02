@@ -259,6 +259,75 @@ iam:
         inventory-manager: Papel para gerenciar todos os produtos.
       any:
         administrator: Papel com acesso total de administrador a uma organização
+    system-role-names:
+      fleetbase-developer: Desenvolvedor Fleetbase
+      iam-user-manager: Gerente de usuários (IAM)
+      iam-policy-manager: Gerente de políticas (IAM)
+      iam-administrator: Administrador do IAM
+      operations-manager: Gerente de operações
+      fleet-supervisor: Supervisor de frota
+      service-coordinator: Coordenador de serviços
+      operations-administrator: Administrador de operações
+      maintenance-technician: Técnico de manutenção
+      driver-coordinator: Coordenador de motoristas
+      navigator-app-manager: Gerente do app Navigator
+      driver: Motorista
+      fleet-ops-customer: Cliente (Fleet-Ops)
+      fleet-ops-contact: Contato (Fleet-Ops)
+      ledger-administrator: Administrador do Ledger
+      billing-specialist: Especialista em cobrança
+      accountant: Contador
+      finance-viewer: Visualizador financeiro
+      payments-operator: Operador de pagamentos
+      extension-developer: Desenvolvedor de extensões
+      quality-assurance: Garantia de qualidade
+      extension-auditor: Auditor de extensões
+      extension-admin: Administrador de extensões
+      storefront-administrator: Administrador do Storefront
+      customer-service: Atendimento ao cliente
+      inventory-manager: Gerente de estoque
+      administrator: Administrador
+    system-policy-names:
+      flbdeveloper: Desenvolvedor Fleetbase
+      flbdevprojectmanager: Gerente de projetos de desenvolvimento
+      usermanager: Gerente de usuários
+      policymanager: Gerente de políticas
+      dispatchmanager: Gerente de despacho
+      fleetmanager: Gerente de frota
+      ordercoordinator: Coordenador de pedidos
+      serviceratemanager: Gerente de tarifas de serviço
+      serviceareamanager: Gerente de áreas de atendimento
+      maintenancemanager: Gerente de manutenção
+      operationsadmin: Administrador de operações
+      navigatorsettingsmanager: Gerente de configurações do Navigator
+      driveroperations: Operações do motorista
+      invoicemanager: Gerente de faturas
+      paymentsmanager: Gerente de pagamentos
+      walletmanager: Gerente de carteiras
+      accountingmanager: Gerente de contabilidade
+      financialreporter: Relatórios financeiros
+      ledgersettingsmanager: Gerente de configurações do Ledger
+      ledgerreadonly: Somente leitura em Ledger
+      extensiondeveloper: Desenvolvedor de extensões
+      extensionmarketing: Marketing de extensões
+      extensionfinance: Finanças de extensões
+      extensionsales: Vendas de extensões
+      extensionmanager: Gerente de extensões
+      inventorymanager: Gerente de estoque
+      ordermanager: Gerente de pedidos
+      customerservice: Atendimento ao cliente
+      marketplacemanager: Gerente de marketplace
+      administratoraccess: Acesso de administrador
+      generated:
+        full-access: "Acesso total a {name}"
+        read-only: "Somente leitura em {name}"
+      services:
+        developers: Desenvolvedores
+        iam: IAM
+        fleetops: Fleet-Ops
+        ledger: Ledger
+        registrybridge: Registry Bridge
+        storefront: Storefront
     api:
       lifecycle:
         created: Criados

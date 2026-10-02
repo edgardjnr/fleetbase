@@ -125,7 +125,7 @@ export default class NotificationsController extends Controller {
                 notifications: this.selected.map(({ id }) => id),
             })
             .then(() => {
-                this.notifications.success(`${this.selected.length} notifications deleted`);
+                this.notifications.success(this.intl.t('console.ui.notifications.deleted-count', { count: this.selected.length }));
                 this.universe.trigger('notifications.deleted', [...this.selected]);
                 this.selected.clear();
 
@@ -149,7 +149,7 @@ export default class NotificationsController extends Controller {
                 notifications: unreadSelectedNotifications.map(({ id }) => id),
             })
             .then(() => {
-                this.notifications.success(`${unreadSelectedNotifications.length} notifications marked as read`);
+                this.notifications.success(this.intl.t('console.ui.notifications.marked-read-count', { count: unreadSelectedNotifications.length }));
                 this.universe.trigger('notifications.read', [...unreadSelectedNotifications]);
                 this.selected.clear();
 

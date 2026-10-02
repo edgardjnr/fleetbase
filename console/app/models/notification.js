@@ -1,6 +1,7 @@
 import Model, { attr } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { format, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class NotificationModel extends Model {
     @attr('string') notifiable_id;
@@ -17,7 +18,7 @@ export default class NotificationModel extends Model {
 
     /** @computed */
     @computed('created_at') get createdAgo() {
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {

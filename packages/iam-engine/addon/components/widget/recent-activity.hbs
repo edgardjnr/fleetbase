@@ -6,7 +6,7 @@
                     <div class="iam-list-title">{{n-a activity.description}}</div>
                     <div class="iam-list-subtitle">{{n-a activity.subject_type}} · {{n-a activity.causer_name}}</div>
                 </div>
-                <span class="iam-list-subtitle">{{n-a activity.created_at}}</span>
+                <span class="iam-list-subtitle" title={{activity.created_at}}>{{n-a (or activity.created_ago activity.created_at)}}</span>
             </div>
         {{else}}
             <div class="iam-widget-empty">{{t "iam.ui.widgets.recent-activity.empty"}}</div>

@@ -11,14 +11,14 @@
         @disabled={{@disabled}}
         as |model|
     >
-        {{model.name}}
+        {{or model.localizedName model.name}}
     </ModelSelect>
 
     {{#if this.selected}}
         <div class="flex flex-row bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm p-2 mt-4 space-x-2 {{if @disabled 'opacity-50'}}">
             {{#each this.selected as |policy|}}
                 <Badge @hideStatusDot={{true}} @status="info" class="flex flex-row items-center">
-                    <div class="mr-2">{{policy.name}}</div>
+                    <div class="mr-2">{{or policy.localizedName (localize-iam-name policy.name "policy" policy)}}</div>
                     <Button @icon="trash" @size="xs" @type="link" @onClick={{fn this.removePolicy policy}} @disabled={{@disabled}} class="hover:opacity-50" />
                 </Badge>
             {{/each}}

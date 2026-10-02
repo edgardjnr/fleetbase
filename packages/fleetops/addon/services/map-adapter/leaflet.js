@@ -75,7 +75,7 @@ export default class LeafletAdapter extends MapAdapterInterface {
         ensureLeafletConstructorNamespace();
 
         const mapOptions = {
-            center: [options.lat ?? 1.3521, options.lng ?? 103.8198],
+            center: [options.lat ?? -21.1775, options.lng ?? -47.8103],
             zoom: options.zoom ?? 12,
             zoomControl: options.zoomControl ?? false,
             contextmenu: options.contextmenu ?? false,

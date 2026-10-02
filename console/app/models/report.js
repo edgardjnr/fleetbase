@@ -5,6 +5,7 @@ import { getOwner } from '@ember/application';
 import fleetbaseApiFetch from '@fleetbase/ember-core/utils/fleetbase-api-fetch';
 import { isPresent } from '@ember/utils';
 import { format, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class ReportModel extends Model {
     /** @ids */
@@ -60,7 +61,7 @@ export default class ReportModel extends Model {
 
     /** @computed */
     @computed('updated_at') get updatedAgo() {
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
@@ -68,7 +69,7 @@ export default class ReportModel extends Model {
     }
 
     @computed('created_at') get createdAgo() {
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {

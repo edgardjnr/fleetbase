@@ -44,6 +44,9 @@ export default class PortalSettingsMembersComponent extends Component {
         }
     }
 
+    /** Label shown for a personnel role value ('admin' / 'member'); unknown values are shown as sent. */
+    roleLabel = (role) => this.roleOptions.find((option) => option.value === role)?.label ?? role;
+
     get isCompanyAccount() {
         return this.customerSession.accountType === 'vendor';
     }

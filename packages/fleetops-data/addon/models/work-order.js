@@ -1,6 +1,7 @@
 import Model, { attr, belongsTo } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { format as formatDate, isValid as isValidDate, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class WorkOrderModel extends Model {
     /** @ids */
@@ -52,7 +53,7 @@ export default class WorkOrderModel extends Model {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
@@ -66,14 +67,14 @@ export default class WorkOrderModel extends Model {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDate(this.updated_at, 'dd, MMM');
+        return formatDate(this.updated_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAgo() {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
@@ -87,14 +88,14 @@ export default class WorkOrderModel extends Model {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDate(this.created_at, 'dd, MMM');
+        return formatDate(this.created_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('deleted_at') get deletedAgo() {
         if (!isValidDate(this.deleted_at)) {
             return null;
         }
-        return formatDistanceToNow(this.deleted_at);
+        return formatDistanceToNow(this.deleted_at, dateFnsLocaleOptions());
     }
 
     @computed('deleted_at') get deletedAt() {
@@ -108,14 +109,14 @@ export default class WorkOrderModel extends Model {
         if (!isValidDate(this.deleted_at)) {
             return null;
         }
-        return formatDate(this.deleted_at, 'dd, MMM');
+        return formatDate(this.deleted_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('opened_at') get openedAgo() {
         if (!isValidDate(this.opened_at)) {
             return null;
         }
-        return formatDistanceToNow(this.opened_at);
+        return formatDistanceToNow(this.opened_at, dateFnsLocaleOptions());
     }
 
     @computed('opened_at') get openedAt() {
@@ -129,14 +130,14 @@ export default class WorkOrderModel extends Model {
         if (!isValidDate(this.opened_at)) {
             return null;
         }
-        return formatDate(this.opened_at, 'dd, MMM');
+        return formatDate(this.opened_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('due_at') get dueAgo() {
         if (!isValidDate(this.due_at)) {
             return null;
         }
-        return formatDistanceToNow(this.due_at);
+        return formatDistanceToNow(this.due_at, dateFnsLocaleOptions());
     }
 
     @computed('due_at') get dueAt() {
@@ -150,14 +151,14 @@ export default class WorkOrderModel extends Model {
         if (!isValidDate(this.due_at)) {
             return null;
         }
-        return formatDate(this.due_at, 'dd, MMM');
+        return formatDate(this.due_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('closed_at') get closedAgo() {
         if (!isValidDate(this.closed_at)) {
             return null;
         }
-        return formatDistanceToNow(this.closed_at);
+        return formatDistanceToNow(this.closed_at, dateFnsLocaleOptions());
     }
 
     @computed('closed_at') get closedAt() {
@@ -171,6 +172,6 @@ export default class WorkOrderModel extends Model {
         if (!isValidDate(this.closed_at)) {
             return null;
         }
-        return formatDate(this.closed_at, 'dd, MMM');
+        return formatDate(this.closed_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 }

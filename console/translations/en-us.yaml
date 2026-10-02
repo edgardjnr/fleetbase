@@ -1209,6 +1209,8 @@ console:
       set-new-password: Set a new password
     notifications:
       marked-read: Notification marked as read.
+      deleted-count: "{count, plural, one {# notification deleted} other {# notifications deleted}}"
+      marked-read-count: "{count, plural, one {# notification marked as read} other {# notifications marked as read}}"
     impersonator:
       end: End Impersonation
       ending: Ending impersonation session.
@@ -1660,6 +1662,116 @@ ember-ui:
     on: "on"
     loading: Loading activity...
     no-activity: No activity yet
+    subject-types:
+      order: Order
+      payload: Payload
+      waypoint: Waypoint
+      entity: Entity
+      tracking-number: Tracking number
+      tracking-status: Tracking status
+      driver: Driver
+      vehicle: Vehicle
+      fleet: Fleet
+      place: Place
+      contact: Contact
+      customer: Customer
+      vendor: Vendor
+      zone: Zone
+      service-area: Service area
+      service-rate: Service rate
+      fuel-report: Fuel report
+      issue: Issue
+      purchase-rate: Purchase rate
+      service-quote: Service quote
+      proof: Proof
+      route: Route
+      order-config: Order config
+      work-order: Work order
+      maintenance: Maintenance
+      equipment: Equipment
+      part: Part
+      device: Device
+      sensor: Sensor
+      telematic: Telematic
+      warranty: Warranty
+      asset: Asset
+      trailer: Trailer
+      user: User
+      company-user: Company user
+      company: Company
+      group: Group
+      role: Role
+      policy: Policy
+      permission: Permission
+      api-credential: API credential
+      webhook: Webhook
+      webhook-endpoint: Webhook endpoint
+      file: File
+      comment: Comment
+      setting: Setting
+      custom-field: Custom field
+      invoice: Invoice
+      transaction: Transaction
+      wallet: Wallet
+      account: Account
+      journal: Journal
+      gateway: Gateway
+      product: Product
+      store: Store
+      network: Network
+      category: Category
+      schedule: Schedule
+      report: Report
+    attributes:
+      status: Status
+      name: Name
+      title: Title
+      description: Description
+      type: Type
+      email: Email
+      phone: Phone
+      color: Color
+      notes: Notes
+      scheduled-at: Scheduled at
+      dispatched-at: Dispatched at
+      started-at: Started at
+      completed-at: Completed at
+      created-at: Created at
+      updated-at: Updated at
+      deleted-at: Deleted at
+      dispatched: Dispatched
+      started: Started
+      plate-number: Plate number
+      make: Make
+      model: Model
+      year: Year
+      address: Address
+      street1: Street 1
+      street2: Street 2
+      city: City
+      province: Province
+      postal-code: Postal code
+      country: Country
+      location: Location
+      online: Online
+      is-online: Online
+      amount: Amount
+      currency: Currency
+      internal-id: Internal ID
+      public-id: Public ID
+      meta: Meta
+      options: Options
+      driver-assigned-uuid: Assigned driver
+      vehicle-assigned-uuid: Assigned vehicle
+      session-status: Session status
+      role-name: Role
+      timezone: Timezone
+      pod-required: POD required
+      pod-method: POD method
+      distance: Distance
+      time: Time
+      avatar-url: Avatar
+      slug: Slug
   dashboard:
     default-dashboard: Default Dashboard
     widget-card:
@@ -2443,3 +2555,42 @@ ember-ui:
     refund: Refund
     charge: Charge
     payout: Payout
+    low: Low
+    medium: Medium
+    high: High
+    critical: Critical
+    urgent: Urgent
+    normal: Normal
+    info: Info
+    warning: Warning
+    unknown: Unknown
+    connected: Connected
+    disconnected: Disconnected
+    never-connected: Never Connected
+    recently-offline: Recently Offline
+    long-offline: Long Offline
+    idle: Idle
+    moving: Moving
+    stopped: Stopped
+    parked: Parked
+    healthy: Healthy
+    degraded: Degraded
+    due: Due
+    due-soon: Due Soon
+    upcoming: Upcoming
+    attached: Attached
+    unattached: Unattached
+    processed: Processed
+    unprocessed: Unprocessed
+    signature: Signature
+    photo: Photo
+    scan: Scan
+    transport: Transport
+    default: Default
+    "yes": "Yes"
+    "no": "No"
+    none: None
+widget-text:
+  report-widget:
+    name: Report
+    description: Display a saved report

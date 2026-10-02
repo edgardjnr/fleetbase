@@ -76,7 +76,9 @@ export default class RolesIndexController extends Controller {
     @tracked columns = [
         {
             label: this.intl.t('iam.common.name'),
-            valuePath: 'name',
+            // translated for system (FLB managed) roles; the stored name is unchanged
+            valuePath: 'localizedName',
+            sortParam: 'name',
             cellComponent: 'table/cell/anchor',
             permission: 'iam view role',
             onClick: this.editRole,
@@ -318,13 +320,13 @@ export default class RolesIndexController extends Controller {
         }
 
         this.modalsManager.confirm({
-            title: this.intl.t('iam.ui.roles.delete-role-title', { roleName: role.name || this.intl.t('iam.groups.index.untitled') }),
+            title: this.intl.t('iam.ui.roles.delete-role-title', { roleName: role.localizedName || role.name || this.intl.t('iam.groups.index.untitled') }),
             body: this.intl.t('iam.roles.index.data-assosciated-this-role-deleted'),
             confirm: async (modal) => {
                 modal.startLoading();
                 try {
                     await role.destroyRecord();
-                    this.notifications.success(this.intl.t('iam.roles.index.role-deleted', { roleName: role.name }));
+                    this.notifications.success(this.intl.t('iam.roles.index.role-deleted', { roleName: role.localizedName || role.name }));
                     return this.hostRouter.refresh();
                 } catch (error) {
                     this.notifications.serverError(error);
@@ -342,7 +344,7 @@ export default class RolesIndexController extends Controller {
      */
     @action viewRolePermissions(role, options = {}) {
         this.modalsManager.show('modals/view-role-permissions', {
-            title: this.intl.t('iam.components.modals.view-role-permissions.view-permissions', { roleName: role.name }),
+            title: this.intl.t('iam.components.modals.view-role-permissions.view-permissions', { roleName: role.localizedName || role.name }),
             hideDeclineButton: true,
             acceptButtonText: this.intl.t('common.done'),
             role,

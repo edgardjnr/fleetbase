@@ -1,5 +1,6 @@
 import Component from '@glimmer/component';
 import { format } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class PortalOrderPanelHeaderComponent extends Component {
     get resource() {
@@ -15,10 +16,10 @@ export default class PortalOrderPanelHeaderComponent extends Component {
     }
 
     get createdAt() {
-        return this.resource.createdAt ?? format(new Date(this.resource.created_at), 'PP HH:mm') ?? '-';
+        return this.resource.createdAt ?? format(new Date(this.resource.created_at), 'PP HH:mm', dateFnsLocaleOptions()) ?? '-';
     }
 
     get dispatchedAt() {
-        return this.resource.dispatchedAt ?? format(new Date(this.resource.dispatched_at), 'PP HH:mm') ?? '-';
+        return this.resource.dispatchedAt ?? format(new Date(this.resource.dispatched_at), 'PP HH:mm', dateFnsLocaleOptions()) ?? '-';
     }
 }

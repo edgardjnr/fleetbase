@@ -10,7 +10,7 @@ import LeafletTrackingMarkerComponent from '../leaflet-tracking-marker';
 import ensureLeafletDrawEditNamespace from '../../utils/leaflet-draw-namespace-guard';
 import { DEFAULT_LEAFLET_TILE_ATTRIBUTION } from '../../utils/leaflet-tile-url';
 
-const DEFAULT_CENTER = [1.31, 103.85];
+const DEFAULT_CENTER = [-21.1775, -47.8103]; // Ribeirão Preto/SP
 const DEFAULT_ZOOM = 11;
 const TILE_ATTRIBUTION = DEFAULT_LEAFLET_TILE_ATTRIBUTION;
 const RECONCILE_INTERVAL_MS = 5 * 60_000;
@@ -28,6 +28,7 @@ export default class WidgetLiveFleetComponent extends Component {
     @service socket;
     @service currentUser;
     @service mapSettings;
+    @service location;
 
     @tracked data = null;
     @tracked error = null;
@@ -157,6 +158,9 @@ export default class WidgetLiveFleetComponent extends Component {
     get center() {
         const first = this.drivers[0] ?? this.vehicles[0];
         if (first?.lat && first?.lng) return [first.lat, first.lng];
+        const lat = this.location?.getLatitude?.();
+        const lng = this.location?.getLongitude?.();
+        if (typeof lat === 'number' && typeof lng === 'number') return [lat, lng];
         return DEFAULT_CENTER;
     }
 

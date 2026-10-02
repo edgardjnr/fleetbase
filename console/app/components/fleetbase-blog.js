@@ -5,6 +5,7 @@ import { isArray } from '@ember/array';
 import { debug } from '@ember/debug';
 import { storageFor } from 'ember-local-storage';
 import { add, format, isPast, isValid } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 import { task } from 'ember-concurrency';
 
 export default class FleetbaseBlogComponent extends Component {
@@ -37,7 +38,7 @@ export default class FleetbaseBlogComponent extends Component {
             return value;
         }
 
-        return format(date, 'MMM d, yyyy');
+        return format(date, 'MMM d, yyyy', dateFnsLocaleOptions());
     }
 
     @task *loadBlogPosts() {

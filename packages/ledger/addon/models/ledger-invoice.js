@@ -1,6 +1,7 @@
 import Model, { attr, belongsTo, hasMany } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { format as formatDate, formatDistanceToNow, isValid as isValidDate } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class LedgerInvoiceModel extends Model {
     // -------------------------------------------------------------------------
@@ -108,14 +109,14 @@ export default class LedgerInvoiceModel extends Model {
         if (!isValidDate(this.date)) {
             return null;
         }
-        return formatDistanceToNow(this.date);
+        return formatDistanceToNow(this.date, dateFnsLocaleOptions());
     }
 
     @computed('date') get invoiceDate() {
         if (!isValidDate(this.date)) {
             return null;
         }
-        return formatDate(this.date, 'PP');
+        return formatDate(this.date, 'PP', dateFnsLocaleOptions());
     }
 
     /** Alias so templates can use @resource.issuedAt consistently. */
@@ -127,7 +128,7 @@ export default class LedgerInvoiceModel extends Model {
         if (!isValidDate(this.date)) {
             return null;
         }
-        return formatDate(this.date, 'dd MMM');
+        return formatDate(this.date, 'dd MMM', dateFnsLocaleOptions());
     }
 
     // -------------------------------------------------------------------------
@@ -137,21 +138,21 @@ export default class LedgerInvoiceModel extends Model {
         if (!isValidDate(this.due_date)) {
             return null;
         }
-        return formatDistanceToNow(this.due_date);
+        return formatDistanceToNow(this.due_date, dateFnsLocaleOptions());
     }
 
     @computed('due_date') get dueDate() {
         if (!isValidDate(this.due_date)) {
             return null;
         }
-        return formatDate(this.due_date, 'PP');
+        return formatDate(this.due_date, 'PP', dateFnsLocaleOptions());
     }
 
     @computed('due_date') get dueDateShort() {
         if (!isValidDate(this.due_date)) {
             return null;
         }
-        return formatDate(this.due_date, 'dd MMM');
+        return formatDate(this.due_date, 'dd MMM', dateFnsLocaleOptions());
     }
 
     // -------------------------------------------------------------------------
@@ -161,14 +162,14 @@ export default class LedgerInvoiceModel extends Model {
         if (!isValidDate(this.paid_at)) {
             return null;
         }
-        return formatDistanceToNow(this.paid_at);
+        return formatDistanceToNow(this.paid_at, dateFnsLocaleOptions());
     }
 
     @computed('paid_at') get paidAt() {
         if (!isValidDate(this.paid_at)) {
             return null;
         }
-        return formatDate(this.paid_at, 'PP HH:mm');
+        return formatDate(this.paid_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     // -------------------------------------------------------------------------
@@ -178,14 +179,14 @@ export default class LedgerInvoiceModel extends Model {
         if (!isValidDate(this.sent_at)) {
             return null;
         }
-        return formatDate(this.sent_at, 'PP HH:mm');
+        return formatDate(this.sent_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('viewed_at') get viewedAt() {
         if (!isValidDate(this.viewed_at)) {
             return null;
         }
-        return formatDate(this.viewed_at, 'PP HH:mm');
+        return formatDate(this.viewed_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     // -------------------------------------------------------------------------
@@ -195,35 +196,35 @@ export default class LedgerInvoiceModel extends Model {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDate(this.created_at, 'PP HH:mm');
+        return formatDate(this.created_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAtShort() {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDate(this.created_at, 'dd MMM');
+        return formatDate(this.created_at, 'dd MMM', dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAtAgo() {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDate(this.updated_at, 'PP HH:mm');
+        return formatDate(this.updated_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     // -------------------------------------------------------------------------

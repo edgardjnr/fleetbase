@@ -102,7 +102,7 @@
                             <div class="portal-personnel-name">{{or personnel.name personnel.public_id}}</div>
                             <div class="portal-personnel-meta">{{n-a personnel.email}} {{n-a personnel.phone}}</div>
                         </div>
-                        <div class="portal-personnel-role">{{personnel.role}}</div>
+                        <div class="portal-personnel-role">{{this.roleLabel personnel.role}}</div>
                         <Badge @status={{or personnel.status "active"}} />
                         <Button @type="danger" @size="xs" @icon="trash" @text={{t "customer-portal.ui.common.remove"}} @onClick={{perform this.removePersonnel personnel}} @isLoading={{this.removePersonnel.isRunning}} />
                     </div>

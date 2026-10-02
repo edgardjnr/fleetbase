@@ -5,7 +5,10 @@
  * The API is not rebuilt with the console, so the fixed server strings are looked up under
  * `console.ui.admin-metrics.*` by the widget slug and the exact server text; anything unknown
  * (company names, activity descriptions, driver names) is kept as returned by the API.
+ * Default activitylog events ("created", "updated"...) and Carbon's "2 hours ago" are translated too.
  */
+import { localizeTimeAgoText } from '@fleetbase/ember-ui/utils/relative-time';
+
 const slugify = (value) =>
     String(value ?? '')
         .toLowerCase()
@@ -47,6 +50,10 @@ const CHART_TEXTS = {
 };
 
 const lookup = (intl, key, fallback) => (intl && intl.exists(key) ? intl.t(key) : fallback);
+
+/** Default activitylog descriptions/events (the event name), shown with the activity log badge texts. */
+const ACTIVITY_EVENTS = ['created', 'updated', 'deleted', 'restored'];
+const byEvent = (intl, text) => (typeof text === 'string' && ACTIVITY_EVENTS.includes(text.trim().toLowerCase()) ? lookup(intl, `ember-ui.activity-log.badge.${text.trim().toLowerCase()}`, text) : text);
 const byText = (intl, table, group, text) => (typeof text === 'string' && table[text] ? lookup(intl, `${BASE}.${group}.${table[text]}`, text) : text);
 
 export function localizeAdminSubtitle(intl, slug, subtitle) {
@@ -63,6 +70,7 @@ export function localizeAdminItems(intl, slug, items) {
     }
 
     const translateTitle = TITLE_WIDGETS.includes(slug);
+    const isActivity = slug === 'admin-activity';
     return items.map((item) => {
         if (!item || typeof item !== 'object') {
             return item;
@@ -70,9 +78,10 @@ export function localizeAdminItems(intl, slug, items) {
 
         return {
             ...item,
-            title: translateTitle ? lookup(intl, `${BASE}.item.${slugify(item.title)}`, item.title) : byText(intl, TEXTS, 'text', item.title),
-            description: byText(intl, TEXTS, 'text', item.description),
-            value: byText(intl, TEXTS, 'text', item.value),
+            title: translateTitle ? lookup(intl, `${BASE}.item.${slugify(item.title)}`, item.title) : byText(intl, TEXTS, 'text', isActivity ? byEvent(intl, item.title) : item.title),
+            // "<causer> / 2 hours ago" (Carbon diffForHumans): the relative part is rebuilt in the active language
+            description: isActivity ? localizeTimeAgoText(intl, item.description) : byText(intl, TEXTS, 'text', item.description),
+            value: byText(intl, TEXTS, 'text', isActivity ? byEvent(intl, item.value) : item.value),
         };
     });
 }

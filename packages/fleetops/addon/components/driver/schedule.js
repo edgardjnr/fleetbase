@@ -4,6 +4,7 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
 import { startOfWeek, endOfWeek, addWeeks, subWeeks, formatISO, addDays, format, isSameDay, startOfDay } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 /**
  * Driver::Schedule Component
@@ -60,10 +61,10 @@ export default class DriverScheduleComponent extends Component {
     get weekRangeLabel() {
         const start = this.calendarAnchor;
         const end = addDays(start, 6);
-        if (format(start, 'MMM') === format(end, 'MMM')) {
-            return `${format(start, 'MMM d')} – ${format(end, 'd, yyyy')}`;
+        if (format(start, 'MMM', dateFnsLocaleOptions()) === format(end, 'MMM', dateFnsLocaleOptions())) {
+            return `${format(start, 'MMM d', dateFnsLocaleOptions())} – ${format(end, 'd, yyyy')}`;
         }
-        return `${format(start, 'MMM d')} – ${format(end, 'MMM d, yyyy')}`;
+        return `${format(start, 'MMM d', dateFnsLocaleOptions())} – ${format(end, 'MMM d, yyyy', dateFnsLocaleOptions())}`;
     }
 
     @action prevWeek() {
@@ -129,7 +130,7 @@ export default class DriverScheduleComponent extends Component {
             });
             return {
                 date: day,
-                label: format(day, 'EEE'),
+                label: format(day, 'EEE', dateFnsLocaleOptions()),
                 dayNum: format(day, 'd'),
                 isToday: isSameDay(day, today),
                 shifts,

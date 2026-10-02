@@ -116,13 +116,15 @@ export default class UsersIndexController extends Controller {
         },
         {
             label: this.intl.t('iam.common.role'),
-            valuePath: 'role.name',
+            // translated for system (FLB managed) roles; the stored name is unchanged
+            valuePath: 'role.localizedName',
             sortable: false,
             filterable: true,
             filterComponent: 'filter/model',
             filterComponentPlaceholder: this.intl.t('iam.ui.users.select-role'),
             filterParam: 'role',
             model: 'role',
+            modelNamePath: 'localizedName',
         },
         {
             label: this.intl.t('iam.common.status'),

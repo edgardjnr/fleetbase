@@ -2,6 +2,7 @@ import Model, { attr, hasMany, belongsTo } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { getOwner } from '@ember/application';
 import { format as formatDate, formatDistanceToNow, isValid as isValidDate } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class ChatChannelModel extends Model {
     /** @ids */
@@ -31,7 +32,7 @@ export default class ChatChannelModel extends Model {
             return null;
         }
 
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
@@ -39,7 +40,7 @@ export default class ChatChannelModel extends Model {
             return null;
         }
 
-        return formatDate(this.updated_at, 'PP HH:mm');
+        return formatDate(this.updated_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAgo() {
@@ -47,7 +48,7 @@ export default class ChatChannelModel extends Model {
             return null;
         }
 
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
@@ -55,7 +56,7 @@ export default class ChatChannelModel extends Model {
             return null;
         }
 
-        return formatDate(this.created_at, 'PP HH:mm');
+        return formatDate(this.created_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     /** @methods */

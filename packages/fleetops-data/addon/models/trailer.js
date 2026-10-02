@@ -4,6 +4,7 @@ import { computed, get } from '@ember/object';
 import { not } from '@ember/object/computed';
 import isValidCoordinates from '@fleetbase/ember-core/utils/is-valid-coordinates';
 import { format as formatDate, isValid as isValidDate, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 /**
  * A first-class towed fleet asset.
@@ -86,7 +87,7 @@ export default class TrailerModel extends AssetModel {
             return null;
         }
 
-        return formatDistanceToNow(this.last_online_at, { addSuffix: true });
+        return formatDistanceToNow(this.last_online_at, dateFnsLocaleOptions({ addSuffix: true }));
     }
 
     @computed('attached_at') get attachedAt() {

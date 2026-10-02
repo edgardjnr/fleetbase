@@ -7,7 +7,19 @@ import { isArray } from '@ember/array';
 import { capitalize } from '@ember/string';
 import { task } from 'ember-concurrency';
 import { parseISO, isDate, isValid, format, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 import smartHumanize from '../utils/smart-humanize';
+import { formatRelativeTime } from '../utils/relative-time';
+
+/** Default Spatie activitylog descriptions (equal to the event name) that are translated for display. */
+const KNOWN_EVENT_DESCRIPTIONS = ['created', 'updated', 'deleted', 'restored'];
+
+const slugify = (value) =>
+    String(value ?? '')
+        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
 
 export default class ActivityLogComponent extends Component {
     @service store;
@@ -102,12 +114,13 @@ export default class ActivityLogComponent extends Component {
         const d = this.#parseDate(tsISO);
         const dateMs = d ? d.getTime() : 0;
         const dayKey = d ? format(d, 'yyyy-MM-dd') : 'unknown';
-        const exactLocal = d ? format(d, 'PP p') : '';
-        const relative = d ? formatDistanceToNow(d, { addSuffix: true }) : '';
+        const exactLocal = d ? format(d, 'PP p', dateFnsLocaleOptions()) : '';
+        // relative time in the active language (falls back to date-fns/English when Intl is unavailable)
+        const relative = d ? (formatRelativeTime(this.intl, d) ?? formatDistanceToNow(d, dateFnsLocaleOptions({ addSuffix: true }))) : '';
 
         const causer = activity?.causer ?? {};
         const subject = activity?.subject ?? {};
-        const subjectTypeLabel = activity?.humanized_subject_type ?? this.#subjectTypeLabel(activity?.subject_type);
+        const subjectTypeLabel = this.#localizeSubjectType(activity?.humanized_subject_type ?? this.#subjectTypeLabel(activity?.subject_type));
         const event = String(activity?.event || '').toLowerCase();
         const changes = this.#computeChanges(activity?.properties);
         const changeCount = changes.length;
@@ -174,7 +187,15 @@ export default class ActivityLogComponent extends Component {
     }
 
     #eventToVerb(event, description, changeCount = 0, showSubjectContext = false) {
-        if (description && typeof description === 'string') return description;
+        if (description && typeof description === 'string') {
+            // default activitylog descriptions are just the event name ("created", "updated"...): translate them
+            const known = description.trim().toLowerCase();
+            if (KNOWN_EVENT_DESCRIPTIONS.includes(known) && this.intl.exists(`ember-ui.activity-log.verb.${known}`)) {
+                return this.intl.t(`ember-ui.activity-log.verb.${known}`);
+            }
+
+            return description;
+        }
         if (showSubjectContext && event === 'updated') return this.intl.t('ember-ui.activity-log.verb.updated');
         if (changeCount > 0 && (!event || event === 'updated')) return this.intl.t('ember-ui.activity-log.verb.changed');
         switch (event) {
@@ -247,7 +268,19 @@ export default class ActivityLogComponent extends Component {
     }
 
     #attributeLabel(key) {
+        const translationKey = `ember-ui.activity-log.attributes.${slugify(key)}`;
+        if (this.intl.exists(translationKey)) {
+            return this.intl.t(translationKey);
+        }
+
         return smartHumanize(String(key).replace(/_/g, ' '));
+    }
+
+    /** Translated subject type ("Order" -> "Pedido"); unknown types keep the humanized class name. */
+    #localizeSubjectType(label) {
+        if (!label || typeof label !== 'string') return label;
+        const translationKey = `ember-ui.activity-log.subject-types.${slugify(label)}`;
+        return this.intl.exists(translationKey) ? this.intl.t(translationKey) : label;
     }
 
     #looksLikeUuid(v) {
@@ -347,7 +380,7 @@ export default class ActivityLogComponent extends Component {
         }
         if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v)) {
             const d = this.#parseDate(v);
-            if (d) return format(d, 'PP p');
+            if (d) return format(d, 'PP p', dateFnsLocaleOptions());
         }
         return String(v);
     }

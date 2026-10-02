@@ -1,6 +1,7 @@
 import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { formatDuration, intervalToDuration } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 import { isArray } from '@ember/array';
 import { run } from '@ember/runloop';
 import { computed } from '@ember/object';
@@ -122,7 +123,7 @@ export default class CountdownComponent extends Component {
                     };
                 }
 
-                this.remaining = formatDuration(duration);
+                this.remaining = formatDuration(duration, dateFnsLocaleOptions());
 
                 // decrement seconds
                 duration.seconds--;

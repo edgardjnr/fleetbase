@@ -1184,6 +1184,8 @@ console:
       set-new-password: Defina uma nova senha
     notifications:
       marked-read: Notificação marcada como lida.
+      deleted-count: "{count, plural, one {# notificação excluída} other {# notificações excluídas}}"
+      marked-read-count: "{count, plural, one {# notificação marcada como lida} other {# notificações marcadas como lidas}}"
     impersonator:
       end: Encerrar personificação
       ending: Encerrando a sessão de personificação.
@@ -1636,6 +1638,116 @@ ember-ui:
     on: em
     loading: Carregando atividades...
     no-activity: Nenhuma atividade ainda
+    subject-types:
+      order: Pedido
+      payload: Carga
+      waypoint: Parada
+      entity: Item
+      tracking-number: Número de rastreamento
+      tracking-status: Status de rastreamento
+      driver: Motorista
+      vehicle: Veículo
+      fleet: Frota
+      place: Local
+      contact: Contato
+      customer: Cliente
+      vendor: Fornecedor
+      zone: Zona
+      service-area: Área de atendimento
+      service-rate: Tarifa de serviço
+      fuel-report: Relatório de combustível
+      issue: Ocorrência
+      purchase-rate: Tarifa de compra
+      service-quote: Cotação de serviço
+      proof: Comprovante
+      route: Rota
+      order-config: Configuração de pedido
+      work-order: Ordem de serviço
+      maintenance: Manutenção
+      equipment: Equipamento
+      part: Peça
+      device: Dispositivo
+      sensor: Sensor
+      telematic: Telemetria
+      warranty: Garantia
+      asset: Ativo
+      trailer: Reboque
+      user: Usuário
+      company-user: Usuário da organização
+      company: Organização
+      group: Grupo
+      role: Papel
+      policy: Política
+      permission: Permissão
+      api-credential: Credencial de API
+      webhook: Webhook
+      webhook-endpoint: Endpoint de webhook
+      file: Arquivo
+      comment: Comentário
+      setting: Configuração
+      custom-field: Campo personalizado
+      invoice: Fatura
+      transaction: Transação
+      wallet: Carteira
+      account: Conta
+      journal: Lançamento
+      gateway: Gateway
+      product: Produto
+      store: Loja
+      network: Rede
+      category: Categoria
+      schedule: Agenda
+      report: Relatório
+    attributes:
+      status: Status
+      name: Nome
+      title: Título
+      description: Descrição
+      type: Tipo
+      email: E-mail
+      phone: Telefone
+      color: Cor
+      notes: Observações
+      scheduled-at: Agendado para
+      dispatched-at: Despachado em
+      started-at: Iniciado em
+      completed-at: Concluído em
+      created-at: Criado em
+      updated-at: Atualizado em
+      deleted-at: Excluído em
+      dispatched: Despachado
+      started: Iniciado
+      plate-number: Placa
+      make: Marca
+      model: Modelo
+      year: Ano
+      address: Endereço
+      street1: Endereço 1
+      street2: Endereço 2
+      city: Cidade
+      province: Estado
+      postal-code: CEP
+      country: País
+      location: Localização
+      online: Online
+      is-online: Online
+      amount: Valor
+      currency: Moeda
+      internal-id: ID interno
+      public-id: ID público
+      meta: Metadados
+      options: Opções
+      driver-assigned-uuid: Motorista atribuído
+      vehicle-assigned-uuid: Veículo atribuído
+      session-status: Status da sessão
+      role-name: Papel
+      timezone: Fuso horário
+      pod-required: Comprovante de entrega obrigatório
+      pod-method: Método de comprovante de entrega
+      distance: Distância
+      time: Tempo
+      avatar-url: Avatar
+      slug: Slug
   dashboard:
     default-dashboard: Painel padrão
     widget-card:
@@ -2419,3 +2531,42 @@ ember-ui:
     refund: Reembolso
     charge: Cobrança
     payout: Repasse
+    low: Baixa
+    medium: Média
+    high: Alta
+    critical: Crítica
+    urgent: Urgente
+    normal: Normal
+    info: Informação
+    warning: Aviso
+    unknown: Desconhecido
+    connected: Conectado
+    disconnected: Desconectado
+    never-connected: Nunca conectado
+    recently-offline: Offline recentemente
+    long-offline: Offline há muito tempo
+    idle: Ocioso
+    moving: Em movimento
+    stopped: Parado
+    parked: Estacionado
+    healthy: Saudável
+    degraded: Degradado
+    due: Vencido
+    due-soon: Vence em breve
+    upcoming: Próximo
+    attached: Vinculado
+    unattached: Não vinculado
+    processed: Processado
+    unprocessed: Não processado
+    signature: Assinatura
+    photo: Foto
+    scan: Leitura
+    transport: Transporte
+    default: Padrão
+    "yes": Sim
+    "no": Não
+    none: Nenhum
+widget-text:
+  report-widget:
+    name: Relatório
+    description: Exibe um relatório salvo

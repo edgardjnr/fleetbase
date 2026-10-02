@@ -1,6 +1,7 @@
 import Model, { attr, belongsTo, hasMany } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { format as formatDate, isValid as isValidDate, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 /**
  * Manifest model
@@ -106,7 +107,7 @@ export default class ManifestModel extends Model {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
@@ -127,13 +128,13 @@ export default class ManifestModel extends Model {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('scheduled_date') get scheduledDateFormatted() {
         if (!isValidDate(this.scheduled_date)) {
             return null;
         }
-        return formatDate(this.scheduled_date, 'dd MMM yyyy');
+        return formatDate(this.scheduled_date, 'dd MMM yyyy', dateFnsLocaleOptions());
     }
 }

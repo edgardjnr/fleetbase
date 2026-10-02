@@ -1,6 +1,7 @@
 import Model, { attr, belongsTo } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { format as formatDate, isValid as isValidDate, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class MaintenanceScheduleModel extends Model {
     /** @ids */
@@ -84,21 +85,21 @@ export default class MaintenanceScheduleModel extends Model {
         if (!isValidDate(this.next_due_date)) {
             return null;
         }
-        return formatDate(this.next_due_date, 'dd, MMM yyyy');
+        return formatDate(this.next_due_date, 'dd, MMM yyyy', dateFnsLocaleOptions());
     }
 
     @computed('next_due_date') get nextDueAgo() {
         if (!isValidDate(this.next_due_date)) {
             return null;
         }
-        return formatDistanceToNow(this.next_due_date, { addSuffix: true });
+        return formatDistanceToNow(this.next_due_date, dateFnsLocaleOptions({ addSuffix: true }));
     }
 
     @computed('updated_at') get updatedAgo() {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
@@ -112,14 +113,14 @@ export default class MaintenanceScheduleModel extends Model {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDate(this.updated_at, 'dd, MMM');
+        return formatDate(this.updated_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAgo() {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
@@ -133,6 +134,6 @@ export default class MaintenanceScheduleModel extends Model {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDate(this.created_at, 'dd, MMM');
+        return formatDate(this.created_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 }

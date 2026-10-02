@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { startOfDay, sub, format } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class WidgetApiMetricsComponent extends Component {
     @service store;
@@ -328,7 +329,7 @@ export default class WidgetApiMetricsComponent extends Component {
                     displayColors: true,
                     callbacks: {
                         title: (context) => {
-                            return format(new Date(context[0].parsed.x), 'MMM d, yyyy h:mm a');
+                            return format(new Date(context[0].parsed.x), 'MMM d, yyyy h:mm a', dateFnsLocaleOptions());
                         },
                         label: (context) => {
                             const value = context.parsed.y;

@@ -3,8 +3,12 @@
  *
  * The API is not rebuilt with the console, so the fixed server strings are looked up under
  * `iam.ui.api.*` by exact server text / stable value and always fall back to the API text.
- * Names (users, roles, groups, services) are data and are never changed.
+ * Names (users, groups, services, organization roles) are data and are never changed; system role and
+ * policy names (FLB managed) are shown translated, by name. Activity timestamps get a client-side relative time.
  */
+import { localizeIamName } from '@fleetbase/ember-ui/utils/localize-iam-name';
+import { formatRelativeTime } from '@fleetbase/ember-ui/utils/relative-time';
+
 const slugify = (value) =>
     String(value ?? '')
         .toLowerCase()
@@ -73,11 +77,11 @@ export default function localizeIamMetrics(intl, endpoint, data) {
     }
 
     if (Array.isArray(data.roles)) {
-        out.roles = data.roles.map((role) => ({ ...role, type: managedType(intl, role?.type) }));
+        out.roles = data.roles.map((role) => ({ ...role, name: localizeIamName(intl, role?.name, 'role', role), type: managedType(intl, role?.type) }));
     }
 
     if (Array.isArray(data.policies)) {
-        out.policies = data.policies.map((policy) => ({ ...policy, type: managedType(intl, policy?.type) }));
+        out.policies = data.policies.map((policy) => ({ ...policy, name: localizeIamName(intl, policy?.name, 'policy', policy), type: managedType(intl, policy?.type) }));
     }
 
     if (Array.isArray(data.buckets)) {
@@ -89,6 +93,7 @@ export default function localizeIamMetrics(intl, endpoint, data) {
             ...item,
             description: ACTIVITY_EVENTS.includes(item?.description) ? lookup(intl, `${BASE}.activity-event.${item.description}`, item.description) : item?.description,
             subject_type: typeof item?.subject_type === 'string' ? lookup(intl, `${BASE}.subject-type.${slugify(item.subject_type)}`, item.subject_type) : item?.subject_type,
+            created_ago: item?.created_at ? formatRelativeTime(intl, item.created_at) : null,
         }));
     }
 

@@ -2,6 +2,7 @@ import Model, { attr } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { getOwner } from '@ember/application';
 import { format, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 function isValidFileObjectJson(str) {
     return typeof str === 'string' && str.startsWith('{') && str.endsWith('}');
@@ -37,7 +38,7 @@ export default class CustomFieldValueModel extends Model {
     }
 
     @computed('created_at') get createdAgo() {
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
@@ -45,7 +46,7 @@ export default class CustomFieldValueModel extends Model {
     }
 
     @computed('updated_at') get updatedAgo() {
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {

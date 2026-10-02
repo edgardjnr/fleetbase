@@ -45,7 +45,8 @@ export default class ConsoleAdminOrganizationsDetailsUsersController extends Con
         },
         {
             label: this.intl.t('common.role'),
-            valuePath: 'roleName',
+            valuePath: 'localizedRoleName',
+            sortParam: 'roleName',
             resizable: true,
             sortable: true,
         },

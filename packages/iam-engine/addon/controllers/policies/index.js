@@ -76,7 +76,9 @@ export default class PoliciesIndexController extends Controller {
     @tracked columns = [
         {
             label: this.intl.t('iam.common.name'),
-            valuePath: 'name',
+            // translated for system (FLB managed) policies; the stored name is unchanged
+            valuePath: 'localizedName',
+            sortParam: 'name',
             cellComponent: 'table/cell/anchor',
             permission: 'iam view policy',
             onClick: this.editPolicy,
@@ -289,7 +291,7 @@ export default class PoliciesIndexController extends Controller {
      */
     @action viewPolicyPermissions(policy, options = {}) {
         this.modalsManager.show('modals/view-policy-permissions', {
-            title: this.intl.t('iam.components.modals.view-policy-permissions.view-permissions', { policyName: policy.name }),
+            title: this.intl.t('iam.components.modals.view-policy-permissions.view-permissions', { policyName: policy.localizedName || policy.name }),
             hideDeclineButton: true,
             acceptButtonText: this.intl.t('common.done'),
             policy,
@@ -310,13 +312,13 @@ export default class PoliciesIndexController extends Controller {
         }
 
         this.modalsManager.confirm({
-            title: this.intl.t('iam.ui.policies.delete-policy-title', { policyName: policy.name || this.intl.t('iam.groups.index.untitled') }),
+            title: this.intl.t('iam.ui.policies.delete-policy-title', { policyName: policy.localizedName || policy.name || this.intl.t('iam.groups.index.untitled') }),
             body: this.intl.t('iam.policies.index.data-assosciated-this-policy-deleted'),
             confirm: async (modal) => {
                 modal.startLoading();
                 try {
                     await policy.destroyRecord();
-                    this.notifications.success(this.intl.t('iam.policies.index.policy-deleted', { policyName: policy.name }));
+                    this.notifications.success(this.intl.t('iam.policies.index.policy-deleted', { policyName: policy.localizedName || policy.name }));
                     return this.hostRouter.refresh();
                 } catch (error) {
                     this.notifications.serverError(error);

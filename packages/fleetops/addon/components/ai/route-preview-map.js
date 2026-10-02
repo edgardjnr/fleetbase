@@ -116,7 +116,7 @@ export default class AiRoutePreviewMapComponent extends Component {
     }
 
     get center() {
-        const [lat, lng] = this.coordinates[0] ?? [1.3521, 103.8198];
+        const [lat, lng] = this.coordinates[0] ?? [-21.1775, -47.8103];
 
         return { lat, lng };
     }

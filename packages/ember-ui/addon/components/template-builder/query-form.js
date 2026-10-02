@@ -102,7 +102,8 @@ export default class TemplateBuilderQueryFormComponent extends Component {
         }
         const serviceTypes = this.templateBuilderService?.resourceTypes ?? [];
         if (serviceTypes.length) {
-            return serviceTypes;
+            // registered types may carry a `labelKey` translated for display (the value is unchanged)
+            return serviceTypes.map((rt) => (rt?.labelKey && this.intl.exists(rt.labelKey) ? { ...rt, label: this.intl.t(rt.labelKey) } : rt));
         }
         return [
             { value: 'Fleetbase\\FleetOps\\Models\\Order', label: this.intl.t('ember-ui.template-builder.query-form.resource-types.order'), icon: 'box' },

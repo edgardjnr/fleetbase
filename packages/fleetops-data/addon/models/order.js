@@ -6,6 +6,7 @@ import { isArray } from '@ember/array';
 import { isBlank } from '@ember/utils';
 import { getOwner } from '@ember/application';
 import { format as formatDate, formatDistanceToNow, isValid as isValidDate } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 import isNotModel from '@fleetbase/ember-core/utils/is-not-model';
 import shouldNotLoadRelation from '../utils/should-not-load-relation';
 
@@ -189,7 +190,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
@@ -197,7 +198,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDate(this.updated_at, 'PP HH:mm');
+        return formatDate(this.updated_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAtShort() {
@@ -205,7 +206,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDate(this.updated_at, 'dd, MMM');
+        return formatDate(this.updated_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAgo() {
@@ -213,7 +214,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
@@ -221,7 +222,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDate(this.created_at, 'PP HH:mm');
+        return formatDate(this.created_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAtShort() {
@@ -229,7 +230,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDate(this.created_at, 'dd, MMM');
+        return formatDate(this.created_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAtWithTime() {
@@ -237,7 +238,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDate(this.created_at, 'PP HH:mm');
+        return formatDate(this.created_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAtDetailed() {
@@ -245,7 +246,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDate(this.created_at, 'PP HH:mm');
+        return formatDate(this.created_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('dispatched_at') get dispatchedAgo() {
@@ -253,7 +254,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDistanceToNow(this.dispatched_at);
+        return formatDistanceToNow(this.dispatched_at, dateFnsLocaleOptions());
     }
 
     @computed('dispatched_at') get dispatchedAt() {
@@ -261,7 +262,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDate(this.dispatched_at, 'PP HH:mm');
+        return formatDate(this.dispatched_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('dispatched_at') get dispatchedAtShort() {
@@ -269,7 +270,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDate(this.dispatched_at, 'dd, MMM');
+        return formatDate(this.dispatched_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('started_at') get startedAgo() {
@@ -277,7 +278,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDistanceToNow(this.started_at);
+        return formatDistanceToNow(this.started_at, dateFnsLocaleOptions());
     }
 
     @computed('started_at') get startedAt() {
@@ -285,7 +286,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDate(this.started_at, 'PP HH:mm');
+        return formatDate(this.started_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('started_at') get startedAtShort() {
@@ -293,7 +294,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDate(this.started_at, 'dd, MMM');
+        return formatDate(this.started_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('scheduled_at') get scheduledAt() {
@@ -301,7 +302,7 @@ export default class OrderModel extends Model {
             return null;
         }
 
-        return formatDate(this.scheduled_at, 'PP HH:mm');
+        return formatDate(this.scheduled_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('scheduled_at') get scheduledAtTime() {

@@ -31,6 +31,9 @@ export default class VendorPersonnelManagerComponent extends Component {
         },
     ];
 
+    /** Label shown for a personnel role value ('admin' / 'member'); unknown values are shown as sent. */
+    roleLabel = (role) => this.roleOptions.find((option) => option.value === role)?.label ?? role;
+
     constructor(owner, args) {
         super(owner, args);
         this.loadPersonnel.perform();

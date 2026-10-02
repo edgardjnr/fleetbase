@@ -2,6 +2,7 @@ import ResourceActionService from '@fleetbase/ember-core/services/resource-actio
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { format } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 import fleetOpsOptions from '../utils/fleet-ops-options';
 
 export default class IssueActionsService extends ResourceActionService {
@@ -13,7 +14,7 @@ export default class IssueActionsService extends ResourceActionService {
         super(...arguments);
         this.initialize('issue', {
             defaultAttributes: {
-                title: this.intl.t('fleet-ops.ui.service.issue-actions.issue-reported-on', { value: format(new Date(), 'dd MMM yy, HH:mm') }),
+                title: this.intl.t('fleet-ops.ui.service.issue-actions.issue-reported-on', { value: format(new Date(), 'dd MMM yy, HH:mm', dateFnsLocaleOptions()) }),
                 status: 'pending',
                 priority: 'low',
                 type: 'operational',

@@ -19,14 +19,14 @@ export default class LocationService extends Service {
      * @type {number}
      * @static
      */
-    static DEFAULT_LATITUDE = 1.369;
+    static DEFAULT_LATITUDE = -21.1775; // Ribeirão Preto/SP
 
     /**
      * Default longitude used when location data is unavailable.
      * @type {number}
      * @static
      */
-    static DEFAULT_LONGITUDE = 103.8864;
+    static DEFAULT_LONGITUDE = -47.8103;
 
     /**
      * Service for accessing the current user's data.

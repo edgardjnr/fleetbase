@@ -1,6 +1,7 @@
 import Model, { attr } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { format as formatDate, formatDistanceToNow, isValid as isValidDate } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class LedgerTransactionModel extends Model {
     // Identity
@@ -78,123 +79,123 @@ export default class LedgerTransactionModel extends Model {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDate(this.created_at, 'PP HH:mm');
+        return formatDate(this.created_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAtShort() {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDate(this.created_at, 'dd, MMM');
+        return formatDate(this.created_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAtAgo() {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDate(this.updated_at, 'PP HH:mm');
+        return formatDate(this.updated_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAtShort() {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDate(this.updated_at, 'dd, MMM');
+        return formatDate(this.updated_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('settled_at') get settledAtAgo() {
         if (!isValidDate(this.settled_at)) {
             return null;
         }
-        return formatDistanceToNow(this.settled_at);
+        return formatDistanceToNow(this.settled_at, dateFnsLocaleOptions());
     }
 
     @computed('settled_at') get settledAt() {
         if (!isValidDate(this.settled_at)) {
             return null;
         }
-        return formatDate(this.settled_at, 'PP HH:mm');
+        return formatDate(this.settled_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('settled_at') get settledAtShort() {
         if (!isValidDate(this.settled_at)) {
             return null;
         }
-        return formatDate(this.settled_at, 'dd, MMM');
+        return formatDate(this.settled_at, 'dd, MMM', dateFnsLocaleOptions());
     }
     @computed('voided_at') get voidedAtAgo() {
         if (!isValidDate(this.voided_at)) {
             return null;
         }
-        return formatDistanceToNow(this.voided_at);
+        return formatDistanceToNow(this.voided_at, dateFnsLocaleOptions());
     }
 
     @computed('voided_at') get voidedAt() {
         if (!isValidDate(this.voided_at)) {
             return null;
         }
-        return formatDate(this.voided_at, 'PP HH:mm');
+        return formatDate(this.voided_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('voided_at') get voidedAtShort() {
         if (!isValidDate(this.voided_at)) {
             return null;
         }
-        return formatDate(this.voided_at, 'dd, MMM');
+        return formatDate(this.voided_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('reversed_at') get reversedAtAgo() {
         if (!isValidDate(this.reversed_at)) {
             return null;
         }
-        return formatDistanceToNow(this.reversed_at);
+        return formatDistanceToNow(this.reversed_at, dateFnsLocaleOptions());
     }
 
     @computed('reversed_at') get reversedAt() {
         if (!isValidDate(this.reversed_at)) {
             return null;
         }
-        return formatDate(this.reversed_at, 'PP HH:mm');
+        return formatDate(this.reversed_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('reversed_at') get reversedAtShort() {
         if (!isValidDate(this.reversed_at)) {
             return null;
         }
-        return formatDate(this.reversed_at, 'dd, MMM');
+        return formatDate(this.reversed_at, 'dd, MMM', dateFnsLocaleOptions());
     }
     @computed('expires_at') get expiresAtAgo() {
         if (!isValidDate(this.expires_at)) {
             return null;
         }
-        return formatDistanceToNow(this.expires_at);
+        return formatDistanceToNow(this.expires_at, dateFnsLocaleOptions());
     }
 
     @computed('expires_at') get expiresAt() {
         if (!isValidDate(this.expires_at)) {
             return null;
         }
-        return formatDate(this.expires_at, 'PP HH:mm');
+        return formatDate(this.expires_at, 'PP HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('expires_at') get expiresAtShort() {
         if (!isValidDate(this.expires_at)) {
             return null;
         }
-        return formatDate(this.expires_at, 'dd, MMM');
+        return formatDate(this.expires_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 }

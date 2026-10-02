@@ -1,6 +1,7 @@
 import Model, { attr, hasMany } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { format as formatDate, isValid as isValidDate, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class FuelProviderConnectionModel extends Model {
     @attr('string') public_id;
@@ -38,7 +39,7 @@ export default class FuelProviderConnectionModel extends Model {
             return null;
         }
 
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     formatDate(value) {

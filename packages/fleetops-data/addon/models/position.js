@@ -1,6 +1,7 @@
 import Model, { attr, belongsTo } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { format as formatDate, isValid as isValidDate, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class PositionModel extends Model {
     /** @ids */
@@ -51,7 +52,7 @@ export default class PositionModel extends Model {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
@@ -65,7 +66,7 @@ export default class PositionModel extends Model {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDate(this.created_at, 'dd, MMM');
+        return formatDate(this.created_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('speed') get speedKmh() {

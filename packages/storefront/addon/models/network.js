@@ -1,5 +1,6 @@
 import Model, { attr, hasMany, belongsTo } from '@ember-data/model';
 import { format, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 import { getOwner } from '@ember/application';
 import isEmail from '@fleetbase/console/utils/is-email';
 import Store from './store';
@@ -48,19 +49,19 @@ export default class NetworkModel extends Model {
 
     /** @computed */
     get updatedAgo() {
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     get updatedAt() {
-        return format(this.updated_at, 'PPP');
+        return format(this.updated_at, 'PPP', dateFnsLocaleOptions());
     }
 
     get createdAgo() {
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     get createdAt() {
-        return format(this.created_at, 'PPP p');
+        return format(this.created_at, 'PPP p', dateFnsLocaleOptions());
     }
 
     /** @methods */

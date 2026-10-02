@@ -1,6 +1,7 @@
 import Model, { attr, belongsTo } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { format, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class DashboardWidgetModel extends Model {
     /** @ids */
@@ -21,7 +22,7 @@ export default class DashboardWidgetModel extends Model {
 
     /** @computed */
     @computed('updated_at') get updatedAgo() {
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
@@ -29,11 +30,11 @@ export default class DashboardWidgetModel extends Model {
     }
 
     @computed('updated_at') get updatedAtShort() {
-        return format(this.updated_at, 'PP');
+        return format(this.updated_at, 'PP', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAgo() {
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
@@ -41,7 +42,7 @@ export default class DashboardWidgetModel extends Model {
     }
 
     @computed('created_at') get createdAtShort() {
-        return format(this.created_at, 'PP');
+        return format(this.created_at, 'PP', dateFnsLocaleOptions());
     }
 
     /**

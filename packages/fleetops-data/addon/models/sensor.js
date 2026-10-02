@@ -1,6 +1,7 @@
 import Model, { attr, belongsTo, hasMany } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { format as formatDate, isValid as isValidDate, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class SensorModel extends Model {
     /** @ids */
@@ -60,7 +61,7 @@ export default class SensorModel extends Model {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
@@ -74,14 +75,14 @@ export default class SensorModel extends Model {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDate(this.updated_at, 'dd, MMM');
+        return formatDate(this.updated_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAgo() {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
@@ -95,14 +96,14 @@ export default class SensorModel extends Model {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDate(this.created_at, 'dd, MMM');
+        return formatDate(this.created_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('deleted_at') get deletedAgo() {
         if (!isValidDate(this.deleted_at)) {
             return null;
         }
-        return formatDistanceToNow(this.deleted_at);
+        return formatDistanceToNow(this.deleted_at, dateFnsLocaleOptions());
     }
 
     @computed('deleted_at') get deletedAt() {
@@ -116,14 +117,14 @@ export default class SensorModel extends Model {
         if (!isValidDate(this.deleted_at)) {
             return null;
         }
-        return formatDate(this.deleted_at, 'dd, MMM');
+        return formatDate(this.deleted_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('last_reading_at') get lastReadingAgo() {
         if (!isValidDate(this.last_reading_at)) {
             return null;
         }
-        return formatDistanceToNow(this.last_reading_at);
+        return formatDistanceToNow(this.last_reading_at, dateFnsLocaleOptions());
     }
 
     @computed('last_reading_at') get lastReadingAt() {
@@ -137,6 +138,6 @@ export default class SensorModel extends Model {
         if (!isValidDate(this.last_reading_at)) {
             return null;
         }
-        return formatDate(this.last_reading_at, 'dd, MMM');
+        return formatDate(this.last_reading_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 }

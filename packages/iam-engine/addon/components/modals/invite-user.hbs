@@ -17,7 +17,7 @@
                     @onChange={{fn (mut @options.role)}}
                     as |model|
                 >
-                    {{model.name}}
+                    {{or model.localizedName model.name}}
                 </ModelSelect>
             </InputGroup>
         </div>

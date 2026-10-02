@@ -141,7 +141,7 @@
                                     <div class="truncate text-gray-500 dark:text-gray-400">{{n-a personnel.email}} {{n-a personnel.phone}}</div>
                                 </div>
                             </div>
-                            <div class="col-span-2 capitalize">{{personnel.role}}</div>
+                            <div class="col-span-2 capitalize">{{this.roleLabel personnel.role}}</div>
                             <div class="col-span-2">
                                 <Badge @status={{or personnel.status "active"}} />
                             </div>

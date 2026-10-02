@@ -1,4 +1,5 @@
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, addDays, subDays, subMonths, subQuarters, subYears, format } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 const currentYear = new Date().getFullYear();
 
@@ -176,7 +177,7 @@ export function createDateRangeButtons(onRangeSelect, translate) {
                     label: range.label,
                     startDate,
                     endDate,
-                    formattedRange: `${format(startDate, 'MMM dd, yyyy')} - ${format(endDate, 'MMM dd, yyyy')}`,
+                    formattedRange: `${format(startDate, 'MMM dd, yyyy', dateFnsLocaleOptions())} - ${format(endDate, 'MMM dd, yyyy', dateFnsLocaleOptions())}`,
                 });
             }
 
@@ -202,5 +203,5 @@ export function getDateRangeByLabel(label) {
  * @returns {string} Formatted date range string
  */
 export function formatDateRange(startDate, endDate) {
-    return `${format(startDate, 'MMM dd, yyyy')} - ${format(endDate, 'MMM dd, yyyy')}`;
+    return `${format(startDate, 'MMM dd, yyyy', dateFnsLocaleOptions())} - ${format(endDate, 'MMM dd, yyyy', dateFnsLocaleOptions())}`;
 }

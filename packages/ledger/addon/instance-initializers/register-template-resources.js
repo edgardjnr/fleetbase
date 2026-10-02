@@ -14,21 +14,25 @@ export function initialize(appInstance) {
     templateBuilder.registerResourceTypes([
         {
             label: 'Invoice',
+            labelKey: 'ledger.ui.template-resources.invoice',
             value: 'Fleetbase\\Ledger\\Models\\Invoice',
             icon: 'file-invoice-dollar',
         },
         {
             label: 'Transaction',
+            labelKey: 'ledger.ui.template-resources.transaction',
             value: 'Fleetbase\\Ledger\\Models\\Transaction',
             icon: 'money-bill-transfer',
         },
         {
             label: 'Account',
+            labelKey: 'ledger.ui.template-resources.account',
             value: 'Fleetbase\\Ledger\\Models\\Account',
             icon: 'building-columns',
         },
         {
             label: 'Wallet',
+            labelKey: 'ledger.ui.template-resources.wallet',
             value: 'Fleetbase\\Ledger\\Models\\Wallet',
             icon: 'wallet',
         },

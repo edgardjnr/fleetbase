@@ -1,6 +1,7 @@
 import Model, { attr, belongsTo, hasMany } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { format as formatDate, isValid as isValidDate, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class MaintenanceModel extends Model {
     /** @ids */
@@ -58,7 +59,7 @@ export default class MaintenanceModel extends Model {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
@@ -72,14 +73,14 @@ export default class MaintenanceModel extends Model {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDate(this.updated_at, 'dd, MMM');
+        return formatDate(this.updated_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAgo() {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
@@ -93,14 +94,14 @@ export default class MaintenanceModel extends Model {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDate(this.created_at, 'dd, MMM');
+        return formatDate(this.created_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('deleted_at') get deletedAgo() {
         if (!isValidDate(this.deleted_at)) {
             return null;
         }
-        return formatDistanceToNow(this.deleted_at);
+        return formatDistanceToNow(this.deleted_at, dateFnsLocaleOptions());
     }
 
     @computed('deleted_at') get deletedAt() {
@@ -114,14 +115,14 @@ export default class MaintenanceModel extends Model {
         if (!isValidDate(this.deleted_at)) {
             return null;
         }
-        return formatDate(this.deleted_at, 'dd, MMM');
+        return formatDate(this.deleted_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('scheduled_at') get scheduledAgo() {
         if (!isValidDate(this.scheduled_at)) {
             return null;
         }
-        return formatDistanceToNow(this.scheduled_at);
+        return formatDistanceToNow(this.scheduled_at, dateFnsLocaleOptions());
     }
 
     @computed('scheduled_at') get scheduledAt() {
@@ -135,14 +136,14 @@ export default class MaintenanceModel extends Model {
         if (!isValidDate(this.scheduled_at)) {
             return null;
         }
-        return formatDate(this.scheduled_at, 'dd, MMM');
+        return formatDate(this.scheduled_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('started_at') get startedAgo() {
         if (!isValidDate(this.started_at)) {
             return null;
         }
-        return formatDistanceToNow(this.started_at);
+        return formatDistanceToNow(this.started_at, dateFnsLocaleOptions());
     }
 
     @computed('started_at') get startedAt() {
@@ -156,14 +157,14 @@ export default class MaintenanceModel extends Model {
         if (!isValidDate(this.started_at)) {
             return null;
         }
-        return formatDate(this.started_at, 'dd, MMM');
+        return formatDate(this.started_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 
     @computed('completed_at') get completedAgo() {
         if (!isValidDate(this.completed_at)) {
             return null;
         }
-        return formatDistanceToNow(this.completed_at);
+        return formatDistanceToNow(this.completed_at, dateFnsLocaleOptions());
     }
 
     @computed('completed_at') get completedAt() {
@@ -177,6 +178,6 @@ export default class MaintenanceModel extends Model {
         if (!isValidDate(this.completed_at)) {
             return null;
         }
-        return formatDate(this.completed_at, 'dd, MMM');
+        return formatDate(this.completed_at, 'dd, MMM', dateFnsLocaleOptions());
     }
 }

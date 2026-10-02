@@ -33,7 +33,7 @@
                             @disabled={{cannot @options.formPermission}}
                             as |model|
                         >
-                            {{model.name}}
+                            {{or model.localizedName model.name}}
                         </ModelSelect>
                     </InputGroup>
                 </div>

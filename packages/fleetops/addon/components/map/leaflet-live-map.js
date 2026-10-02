@@ -872,8 +872,8 @@ export default class MapLeafletLiveMapComponent extends Component {
             return lat;
         }
 
-        // Fallback to default Singapore latitude
-        return 1.369;
+        // Fallback to default latitude (Ribeirão Preto/SP)
+        return -21.1775;
     }
 
     /**
@@ -888,7 +888,7 @@ export default class MapLeafletLiveMapComponent extends Component {
             return lng;
         }
 
-        // Fallback to default Singapore longitude
-        return 103.8864;
+        // Fallback to default longitude (Ribeirão Preto/SP)
+        return -47.8103;
     }
 }

@@ -3,6 +3,7 @@ import { computed } from '@ember/object';
 import { not } from '@ember/object/computed';
 import { getOwner } from '@ember/application';
 import { format, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 import config from '@fleetbase/console/config/environment';
 import isVideoFile from '@fleetbase/ember-core/utils/is-video-file';
 import isImageFile from '@fleetbase/ember-core/utils/is-image-file';
@@ -36,15 +37,15 @@ export default class FileModel extends Model {
 
     /** @computed */
     @computed('updated_at') get updatedAgo() {
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
-        return format(this.updated_at, 'PPP');
+        return format(this.updated_at, 'PPP', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAgo() {
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {

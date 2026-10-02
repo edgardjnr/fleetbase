@@ -1,5 +1,6 @@
 import Model, { attr, hasMany } from '@ember-data/model';
 import { format, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class CatalogModel extends Model {
     /** @ids */
@@ -28,18 +29,18 @@ export default class CatalogModel extends Model {
 
     /** @computed */
     get updatedAgo() {
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     get updatedAt() {
-        return format(this.updated_at, 'PPP');
+        return format(this.updated_at, 'PPP', dateFnsLocaleOptions());
     }
 
     get createdAgo() {
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     get createdAt() {
-        return format(this.created_at, 'PPP p');
+        return format(this.created_at, 'PPP p', dateFnsLocaleOptions());
     }
 }

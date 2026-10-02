@@ -2,7 +2,9 @@ import Model, { attr, hasMany } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { inject as service } from '@ember/service';
 import { localizeIamDescription, localizeIamType } from '@fleetbase/console/utils/localize-iam-record';
+import { localizeIamName } from '@fleetbase/ember-ui/utils/localize-iam-name';
 import { format, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class PolicyModel extends Model {
     @service intl;
@@ -31,6 +33,11 @@ export default class PolicyModel extends Model {
         return this.serialize();
     }
 
+    /** Name for display: system (FLB managed) records are translated, user records are kept as typed. The stored name is never changed. */
+    get localizedName() {
+        return localizeIamName(this.intl, this.name, 'policy', this);
+    }
+
     /** Description for display: system (FLB managed) records are translated, user records are kept as typed. */
     get localizedDescription() {
         return localizeIamDescription(this.intl, this, 'policy');
@@ -47,7 +54,7 @@ export default class PolicyModel extends Model {
     }
 
     @computed('updated_at') get updatedAgo() {
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
@@ -55,7 +62,7 @@ export default class PolicyModel extends Model {
     }
 
     @computed('created_at') get createdAgo() {
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {

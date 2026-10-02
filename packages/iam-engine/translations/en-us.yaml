@@ -263,6 +263,75 @@ iam:
         inventory-manager: Role for managing all products.
       any:
         administrator: Role for full administrator access to an organization
+    system-role-names:
+      fleetbase-developer: Fleetbase Developer
+      iam-user-manager: IAM User Manager
+      iam-policy-manager: IAM Policy Manager
+      iam-administrator: IAM Administrator
+      operations-manager: Operations Manager
+      fleet-supervisor: Fleet Supervisor
+      service-coordinator: Service Coordinator
+      operations-administrator: Operations Administrator
+      maintenance-technician: Maintenance Technician
+      driver-coordinator: Driver Coordinator
+      navigator-app-manager: Navigator App Manager
+      driver: Driver
+      fleet-ops-customer: Fleet-Ops Customer
+      fleet-ops-contact: Fleet-Ops Contact
+      ledger-administrator: Ledger Administrator
+      billing-specialist: Billing Specialist
+      accountant: Accountant
+      finance-viewer: Finance Viewer
+      payments-operator: Payments Operator
+      extension-developer: Extension Developer
+      quality-assurance: Quality Assurance
+      extension-auditor: Extension Auditor
+      extension-admin: Extension Admin
+      storefront-administrator: Storefront Administrator
+      customer-service: Customer Service
+      inventory-manager: Inventory Manager
+      administrator: Administrator
+    system-policy-names:
+      flbdeveloper: FLBDeveloper
+      flbdevprojectmanager: FLBDevProjectManager
+      usermanager: UserManager
+      policymanager: PolicyManager
+      dispatchmanager: DispatchManager
+      fleetmanager: FleetManager
+      ordercoordinator: OrderCoordinator
+      serviceratemanager: ServiceRateManager
+      serviceareamanager: ServiceAreaManager
+      maintenancemanager: MaintenanceManager
+      operationsadmin: OperationsAdmin
+      navigatorsettingsmanager: NavigatorSettingsManager
+      driveroperations: DriverOperations
+      invoicemanager: InvoiceManager
+      paymentsmanager: PaymentsManager
+      walletmanager: WalletManager
+      accountingmanager: AccountingManager
+      financialreporter: FinancialReporter
+      ledgersettingsmanager: LedgerSettingsManager
+      ledgerreadonly: LedgerReadOnly
+      extensiondeveloper: ExtensionDeveloper
+      extensionmarketing: ExtensionMarketing
+      extensionfinance: ExtensionFinance
+      extensionsales: ExtensionSales
+      extensionmanager: ExtensionManager
+      inventorymanager: InventoryManager
+      ordermanager: OrderManager
+      customerservice: CustomerService
+      marketplacemanager: MarketplaceManager
+      administratoraccess: AdministratorAccess
+      generated:
+        full-access: "{name}FullAccess"
+        read-only: "{name}ReadOnly"
+      services:
+        developers: Developers
+        iam: IAM
+        fleetops: FleetOps
+        ledger: Ledger
+        registrybridge: RegistryBridge
+        storefront: Storefront
     api:
       lifecycle:
         created: Created

@@ -1,6 +1,7 @@
 import Model, { attr } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { format as formatDate, isValid as isValidDate, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class TrackingStatusModel extends Model {
     /** @ids */
@@ -26,7 +27,7 @@ export default class TrackingStatusModel extends Model {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
@@ -40,14 +41,14 @@ export default class TrackingStatusModel extends Model {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDate(this.updated_at, 'd MMM yyyy HH:mm');
+        return formatDate(this.updated_at, 'd MMM yyyy HH:mm', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAgo() {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
@@ -61,6 +62,6 @@ export default class TrackingStatusModel extends Model {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDate(this.created_at, 'd MMM yyyy HH:mm');
+        return formatDate(this.created_at, 'd MMM yyyy HH:mm', dateFnsLocaleOptions());
     }
 }

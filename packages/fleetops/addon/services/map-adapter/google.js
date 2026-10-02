@@ -184,7 +184,7 @@ export default class GoogleMapsAdapter extends MapAdapterInterface {
         this._supportsAdvancedMarkers = Boolean(mapId && mapId !== 'FLEETOPS_MAP');
 
         this._map = new Map(element, {
-            center: { lat: options.lat ?? 1.3521, lng: options.lng ?? 103.8198 },
+            center: { lat: options.lat ?? -21.1775, lng: options.lng ?? -47.8103 },
             zoom: options.zoom ?? 12,
             mapTypeId: options.mapTypeId ?? googleMaps.maps.MapTypeId.ROADMAP,
             disableDefaultUI: options.disableDefaultUI ?? true,

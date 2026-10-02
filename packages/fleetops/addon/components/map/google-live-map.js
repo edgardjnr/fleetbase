@@ -26,8 +26,8 @@ export default class MapGoogleLiveMapComponent extends Component {
 
     @action async setupMap(element) {
         const map = await this.mapManager.initializeMap(element, {
-            lat: this.args.latitude ?? 1.369,
-            lng: this.args.longitude ?? 103.886,
+            lat: this.args.latitude ?? -21.1775,
+            lng: this.args.longitude ?? -47.8103,
             zoom: this.args.zoom ?? 12,
             disableDefaultUI: true,
             gestureHandling: 'greedy',

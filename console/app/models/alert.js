@@ -1,6 +1,7 @@
 import Model, { attr, belongsTo } from '@ember-data/model';
 import { computed } from '@ember/object';
 import { format, formatDistanceToNow, differenceInMinutes } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class AlertModel extends Model {
     /** @attributes */
@@ -32,7 +33,7 @@ export default class AlertModel extends Model {
     /** @computed - Date formatting */
     @computed('triggered_at') get triggeredAgo() {
         if (!this.triggered_at) return 'Unknown';
-        return formatDistanceToNow(this.triggered_at) + ' ago';
+        return formatDistanceToNow(this.triggered_at, dateFnsLocaleOptions()) + ' ago';
     }
 
     @computed('triggered_at') get triggeredAt() {
@@ -42,7 +43,7 @@ export default class AlertModel extends Model {
 
     @computed('acknowledged_at') get acknowledgedAgo() {
         if (!this.acknowledged_at) return null;
-        return formatDistanceToNow(this.acknowledged_at) + ' ago';
+        return formatDistanceToNow(this.acknowledged_at, dateFnsLocaleOptions()) + ' ago';
     }
 
     @computed('acknowledged_at') get acknowledgedAt() {
@@ -52,7 +53,7 @@ export default class AlertModel extends Model {
 
     @computed('resolved_at') get resolvedAgo() {
         if (!this.resolved_at) return null;
-        return formatDistanceToNow(this.resolved_at) + ' ago';
+        return formatDistanceToNow(this.resolved_at, dateFnsLocaleOptions()) + ' ago';
     }
 
     @computed('resolved_at') get resolvedAt() {
@@ -61,7 +62,7 @@ export default class AlertModel extends Model {
     }
 
     @computed('updated_at') get updatedAgo() {
-        return formatDistanceToNow(this.updated_at) + ' ago';
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions()) + ' ago';
     }
 
     @computed('updated_at') get updatedAt() {
@@ -69,7 +70,7 @@ export default class AlertModel extends Model {
     }
 
     @computed('created_at') get createdAgo() {
-        return formatDistanceToNow(this.created_at) + ' ago';
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions()) + ' ago';
     }
 
     @computed('created_at') get createdAt() {

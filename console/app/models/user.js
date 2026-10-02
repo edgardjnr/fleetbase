@@ -3,10 +3,15 @@ import Model, { attr, belongsTo, hasMany } from '@ember-data/model';
 import { computed, get } from '@ember/object';
 import { not } from '@ember/object/computed';
 import { getOwner } from '@ember/application';
+import { inject as service } from '@ember/service';
+import { localizeIamName } from '@fleetbase/ember-ui/utils/localize-iam-name';
 import { format, formatDistanceToNow, isValid } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 import config from 'ember-get-config';
 
 export default class UserModel extends Model {
+    @service intl;
+
     /** @ids */
     @attr('string') uuid;
     @attr('string') public_id;
@@ -139,6 +144,16 @@ export default class UserModel extends Model {
     @not('isEmailVerified') emailIsNotVerified;
     @not('isPhoneVerified') phoneIsNotVerified;
 
+    /** Role name for display (system roles are translated; the stored role_name is unchanged). */
+    get localizedRoleName() {
+        const role = this.belongsTo('role').value();
+        if (role && role.name) {
+            return role.localizedName ?? role.name;
+        }
+
+        return localizeIamName(this.intl, this.role_name, 'role');
+    }
+
     /** @computed */
     get allPermissions() {
         return this.getPermissions();
@@ -170,14 +185,14 @@ export default class UserModel extends Model {
             return 'Never';
         }
 
-        return format(this.last_login, 'PP p');
+        return format(this.last_login, 'PP p', dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAgo() {
         if (!isValid(this.updated_at)) {
             return '-';
         }
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
@@ -191,14 +206,14 @@ export default class UserModel extends Model {
         if (!isValid(this.updated_at)) {
             return '-';
         }
-        return format(this.updated_at, 'PP');
+        return format(this.updated_at, 'PP', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAgo() {
         if (!isValid(this.created_at)) {
             return '-';
         }
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
@@ -212,6 +227,6 @@ export default class UserModel extends Model {
         if (!isValid(this.created_at)) {
             return '-';
         }
-        return format(this.created_at, 'PP');
+        return format(this.created_at, 'PP', dateFnsLocaleOptions());
     }
 }

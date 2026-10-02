@@ -104,7 +104,7 @@ export default class OrchestratorWorkbenchComponent extends Component {
 
     // ── Map ───────────────────────────────────────────────────────────────────
 
-    @tracked mapCenter = { lat: 1.369, lng: 103.8864 };
+    @tracked mapCenter = { lat: -21.1775, lng: -47.8103 };
     @tracked mapZoom = 11;
     @tracked leafletMap = null;
 

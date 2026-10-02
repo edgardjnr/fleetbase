@@ -1,6 +1,7 @@
 import groupBy from './group-by';
 import { _range } from './range';
 import { format, startOfMonth, endOfMonth, addDays } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export { _range as range };
 
@@ -25,7 +26,7 @@ export function makeMockDataset(start, end, dateProperty = 'created_at') {
         };
     });
     const grouped = groupBy(data, (record) => {
-        return format(new Date(record[dateProperty]), 'MMMM, dd yyyy');
+        return format(new Date(record[dateProperty]), 'MMMM, dd yyyy', dateFnsLocaleOptions());
     });
     const dataset = [];
 
@@ -42,7 +43,7 @@ export function makeMockDataset(start, end, dateProperty = 'created_at') {
 export default function makeDataset(recordArray, filter = Boolean, dateProperty = 'created_at') {
     const filteredData = recordArray.filter(filter);
     const grouped = groupBy(filteredData, (record) => {
-        return format(new Date(record[dateProperty]), 'MMMM, dd yyyy');
+        return format(new Date(record[dateProperty]), 'MMMM, dd yyyy', dateFnsLocaleOptions());
     });
     const dataset = [];
 

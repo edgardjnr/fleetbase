@@ -4,6 +4,7 @@ import { tracked } from '@glimmer/tracking';
 import { computed } from '@ember/object';
 import { isArray } from '@ember/array';
 import { format as formatDate, isValid as isValidDate, formatDistanceToNow } from 'date-fns';
+import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 export default class StoreModel extends Model {
     /** @ids */
@@ -64,42 +65,42 @@ export default class StoreModel extends Model {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDistanceToNow(this.updated_at);
+        return formatDistanceToNow(this.updated_at, dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAt() {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDate(this.updated_at, 'PPP p');
+        return formatDate(this.updated_at, 'PPP p', dateFnsLocaleOptions());
     }
 
     @computed('updated_at') get updatedAtShort() {
         if (!isValidDate(this.updated_at)) {
             return null;
         }
-        return formatDate(this.updated_at, 'PP');
+        return formatDate(this.updated_at, 'PP', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAgo() {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDistanceToNow(this.created_at);
+        return formatDistanceToNow(this.created_at, dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAt() {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDate(this.created_at, 'PPP p');
+        return formatDate(this.created_at, 'PPP p', dateFnsLocaleOptions());
     }
 
     @computed('created_at') get createdAtShort() {
         if (!isValidDate(this.created_at)) {
             return null;
         }
-        return formatDate(this.created_at, 'PP');
+        return formatDate(this.created_at, 'PP', dateFnsLocaleOptions());
     }
 
     /** @methods */
