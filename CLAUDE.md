@@ -145,6 +145,14 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 - Push em `main` **não** faz deploy automático; o deploy é o `atualizar.sh` na VPS.
 - Nunca commitar `deploy/stack.env`, `api/.env` nem `console/dist`.
 
+## App do motoboy (Navigator próprio)
+
+- Repo **separado e privado**: `edgardjnr/entregas-navigator` (pasta `Documents/vibe coding/entregas-navigator`), fork do Fleetbase Navigator v2.0.11. O da Play Store não recebe push do nosso servidor (usa o Firebase da Fleetbase).
+- APK **debug** com JS embutido, gerado no GitHub Actions a cada push na `main` (artifact `entregas-motoboy-<n>`); dispensa a licença do background-geolocation (o toast "LICENSE VALIDATION FAILURE" é esperado). Instalação direta no Android.
+- Secrets do repo: `GOOGLE_SERVICES_JSON`, `FLEETBASE_KEY` (chave pública `flb_live_`), `GOOGLE_MAPS_API_KEY` (opcional, ainda não definida).
+- Push: Firebase `entregas-restaurantepro`; o JSON da conta de serviço foi enviado em Admin → Notificações Push.
+- **Mudou algo em Admin → Configurações (push, e-mail, socket)? Reinicie a fila:** `docker service update --force entregas_queue`. O worker só lê as configurações ao iniciar; o push e o tempo real só passaram a funcionar depois de um restart.
+
 ## Histórico (2026-10-01)
 
 1. Clone do fork e preparo do deploy Swarm ARM64 com Cloudflare Tunnel (`efd1c075`).
@@ -154,3 +162,5 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 5. Papéis e políticas, log de atividades, date-fns no idioma ativo e mapa em Ribeirão Preto (`c49ded0c`).
 6. Descrições de permissões, nomes de países e "Nunca" (`b7625d16`).
 7. Escopo enxuto iFood→motoboy (extensões removidas, telas ocultas) e pagamento de motoboys por km (`1725beee`).
+8. Pedido novo já vem com o tipo padrão `transport` (`b41654f9`) e marcador do mapa usa o avatar do motorista (`19a6816d`).
+9. Cobrança das lojas (loja = local de coleta) e valores por faixa de km para motoboy e loja (`ce4d4c42`).
