@@ -788,6 +788,93 @@ console:
         Received:
     message: No notifications to display.
   ui:
+    permission-text:
+      full-resource: Permission to do anything with {resource} on {extension}
+      full: Permission to do anything on {extension}
+      action-resource: Permission to {action} {resource} on {extension}
+      action: Permission to {action} on {extension}
+      never: Never
+      actions:
+        create: Create
+        update: Update
+        delete: Delete
+        view: View
+        list: List
+        see: Visibly See
+        export: Export
+        import: Import
+        schedule: Schedule
+        dispatch: Dispatch
+        cancel: Cancel
+        optimize: Optimize
+        assign-driver-for: Assign Driver For
+        assign-vehicle-for: Assign Vehicle For
+        update-route-for: Update Route For
+        clone: Clone
+        notify: Notify
+        assign-order-for: Assign Order For
+        dispatch-order-for: Dispatch Order For
+        update-user-for: Update User For
+        attach-vehicle-for: Attach Vehicle For
+        detach-vehicle-for: Detach Vehicle For
+        attach-device-for: Attach Device For
+        detach-device-for: Detach Device For
+        attach-equipment-for: Attach Equipment For
+        detach-equipment-for: Detach Equipment For
+        subcontract: Subcontract
+        create-order-for: Create Order For
+        reset-credentials-for: Reset Credentials For
+        execute: Execute
+        send: Send
+        preview: Preview
+        record-payment: Record Payment
+        refund: Refund
+        refund-options: Refund Options
+        send-refund-uri: Send Refund Uri
+        verify-refund-status: Verify Refund Status
+        mark-as-sent: Mark As Sent
+        render-pdf: Render Pdf
+        create-from-order: Create From Order
+        charge: Charge
+        setup-intent: Setup Intent
+        test-credentials: Test Credentials
+        create-test-order: Create Test Order
+        register-webhook: Register Webhook
+        diagnostics: Diagnostics
+        summary: Summary
+        transfer: Transfer
+        credit: Credit
+        topup: Topup
+        payout: Payout
+        freeze: Freeze
+        unfreeze: Unfreeze
+        recalculate: Recalculate
+        view-general-ledger: View General Ledger
+        view-trial-balance: View Trial Balance
+        view-balance-sheet: View Balance Sheet
+        view-income-statement: View Income Statement
+        view-cash-flow: View Cash Flow
+        view-ar-aging: View Ar Aging
+        view-wallet-summary: View Wallet Summary
+        view-dashboard: View Dashboard
+        uninstall: Uninstall
+        install: Install
+        purchase: Purchase
+        submit: Submit
+        onboard: Onboard
+        accept: Accept
+        mark-as-ready: Mark As Ready
+        mark-as-completed: Mark As Completed
+        reject: Reject
+        roll: Roll
+        enable: Enable
+        disable: Disable
+        activate: Activate
+        deactivate: Deactivate
+        verify: Verify
+        change-password-for: Change Password For
+        change-email-for: Change Email For
+        change-password: Change Password
     admin-metrics:
       platform-growth:
         subtitle: Current 30 days compared with the previous 30 days

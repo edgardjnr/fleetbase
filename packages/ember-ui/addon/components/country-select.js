@@ -1,4 +1,5 @@
 import Component from '@glimmer/component';
+import countryName from '../utils/country-name';
 import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
@@ -7,6 +8,7 @@ import { task } from 'ember-concurrency';
 
 export default class CountrySelectComponent extends Component {
     @service fetch;
+    @service intl;
     @tracked countries = [];
     @tracked selected;
     @tracked disabled = false;
@@ -26,11 +28,15 @@ export default class CountrySelectComponent extends Component {
 
     @task *fetchCountries(value = null) {
         try {
-            this.countries = yield this.fetch.get(
+            const countries = yield this.fetch.get(
                 'lookup/countries',
                 { columns: ['name', 'cca2', 'flag', 'emoji'] },
                 { fromCache: true, expirationInterval: 1, expirationIntervalUnit: 'week' }
             );
+            // show (and search) country names in the active language
+            this.countries = Array.isArray(countries)
+                ? countries.map((country) => ({ ...country, name: countryName(this.intl?.primaryLocale, country.cca2, country.name) }))
+                : countries;
             this.selected = this.findCountry(value);
         } catch (error) {
             this.countries = [];

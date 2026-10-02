@@ -97,14 +97,14 @@ Router.map(function () {
             path: 'developers'
         });
 
-        this.mount('@fleetbase/fleetops-engine', {
-            as: 'fleet-ops',
-            path: 'fleet-ops'
-        });
-
         this.mount('@fleetbase/iam-engine', {
             as: 'iam',
             path: 'iam'
+        });
+
+        this.mount('@fleetbase/fleetops-engine', {
+            as: 'fleet-ops',
+            path: 'fleet-ops'
         });
 
         this.mount('@fleetbase/ledger-engine', {
@@ -112,24 +112,24 @@ Router.map(function () {
             path: 'ledger'
         });
 
-        this.mount('@fleetbase/registry-bridge-engine', {
-            as: 'extensions',
-            path: 'extensions'
-        });
-
         this.mount('@fleetbase/storefront-engine', {
             as: 'storefront',
             path: 'storefront'
         });
 
-        this.mount('@fleetbase/valhalla-engine', {
-            as: 'valhalla',
-            path: 'valhalla'
+        this.mount('@fleetbase/registry-bridge-engine', {
+            as: 'extensions',
+            path: 'extensions'
         });
 
         this.mount('@fleetbase/vroom-engine', {
             as: 'vroom',
             path: 'vroom'
+        });
+
+        this.mount('@fleetbase/valhalla-engine', {
+            as: 'valhalla',
+            path: 'valhalla'
         });
     });
 

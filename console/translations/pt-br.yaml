@@ -763,6 +763,93 @@ console:
     received: 'Recebido:'
     message: Nenhuma notificação para exibir.
   ui:
+    permission-text:
+      full-resource: Permissão total sobre {resource} em {extension}
+      full: Permissão total em {extension}
+      action-resource: Permissão para {action} {resource} em {extension}
+      action: Permissão para {action} em {extension}
+      never: Nunca
+      actions:
+        create: criar
+        update: editar
+        delete: excluir
+        view: visualizar
+        list: listar
+        see: ver
+        export: exportar
+        import: importar
+        schedule: agendar
+        dispatch: despachar
+        cancel: cancelar
+        optimize: otimizar
+        assign-driver-for: atribuir motorista a
+        assign-vehicle-for: atribuir veículo a
+        update-route-for: atualizar a rota de
+        clone: clonar
+        notify: notificar
+        assign-order-for: atribuir pedido a
+        dispatch-order-for: despachar pedido para
+        update-user-for: atualizar o usuário de
+        attach-vehicle-for: vincular veículo a
+        detach-vehicle-for: desvincular veículo de
+        attach-device-for: vincular dispositivo a
+        detach-device-for: desvincular dispositivo de
+        attach-equipment-for: vincular equipamento a
+        detach-equipment-for: desvincular equipamento de
+        subcontract: subcontratar
+        create-order-for: criar pedido para
+        reset-credentials-for: redefinir credenciais de
+        execute: executar
+        send: enviar
+        preview: pré-visualizar
+        record-payment: registrar pagamento de
+        refund: reembolsar
+        refund-options: ver opções de reembolso de
+        send-refund-uri: enviar link de reembolso de
+        verify-refund-status: verificar reembolso de
+        mark-as-sent: marcar como enviada
+        render-pdf: gerar PDF de
+        create-from-order: criar a partir de pedido
+        charge: cobrar
+        setup-intent: configurar cobrança em
+        test-credentials: testar credenciais de
+        create-test-order: criar pedido de teste em
+        register-webhook: registrar webhook de
+        diagnostics: ver diagnóstico de
+        summary: ver resumo de
+        transfer: transferir
+        credit: creditar
+        topup: recarregar
+        payout: fazer repasse de
+        freeze: congelar
+        unfreeze: descongelar
+        recalculate: recalcular
+        view-general-ledger: ver o razão geral em
+        view-trial-balance: ver o balancete em
+        view-balance-sheet: ver o balanço patrimonial em
+        view-income-statement: ver a DRE em
+        view-cash-flow: ver o fluxo de caixa em
+        view-ar-aging: ver o aging de contas a receber em
+        view-wallet-summary: ver o resumo de carteiras em
+        view-dashboard: ver o painel de
+        uninstall: desinstalar
+        install: instalar
+        purchase: comprar
+        submit: enviar para revisão
+        onboard: configurar
+        accept: aceitar
+        mark-as-ready: marcar como pronto
+        mark-as-completed: marcar como concluído
+        reject: rejeitar
+        roll: renovar
+        enable: ativar
+        disable: desativar
+        activate: ativar
+        deactivate: desativar
+        verify: verificar
+        change-password-for: alterar a senha de
+        change-email-for: alterar o e-mail de
+        change-password: alterar a própria senha
     admin-metrics:
       platform-growth:
         subtitle: Últimos 30 dias comparados aos 30 dias anteriores

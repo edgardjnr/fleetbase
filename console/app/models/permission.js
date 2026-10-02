@@ -1,5 +1,6 @@
 import Model, { attr } from '@ember-data/model';
 import { computed } from '@ember/object';
+import { inject as service } from '@ember/service';
 import { capitalize } from '@ember/string';
 import { pluralize } from 'ember-inflector';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -61,6 +62,8 @@ const smartTitleize = function (string) {
  * @extends {Model}
  */
 export default class PermissionModel extends Model {
+    @service intl;
+
     /** @attributes */
     @attr('string') name;
     @attr('string') guard_name;
@@ -108,16 +111,33 @@ export default class PermissionModel extends Model {
         return getPermissionResource(this.name);
     }
 
-    @computed('actionName', 'name', 'resourceName', 'extensionName') get description() {
-        let actionName = this.actionName;
-        let actionPreposition = 'to';
-        let resourceName = pluralize(smartTitleize(this.resourceName));
-        let resourcePreposition = getPermissionAction(this.name) === '*' && resourceName ? 'with' : '';
-        let extensionName = smartTitleize(this.extensionName);
-        let extensionPreposition = 'on';
-        let descriptionParts = ['Permission', actionPreposition, actionName, resourcePreposition, resourceName, extensionPreposition, extensionName];
+    @computed('actionName', 'name', 'resourceName', 'extensionName', 'intl.locale') get description() {
+        const intl = this.intl;
+        const action = getPermissionAction(this.name);
+        const extension = smartTitleize(this.extensionName);
+        const rawResource = this.resourceName;
 
-        return descriptionParts.join(' ');
+        // translated resource name: resource.<plural> / resource.<singular> keys shared by the extensions
+        let resource = rawResource ? pluralize(smartTitleize(rawResource)) : '';
+        if (rawResource && intl) {
+            const slug = String(rawResource).replace(/_/g, '-');
+            const key = [`resource.${pluralize(slug)}`, `resource.${slug}`].find((k) => intl.exists(k));
+            if (key) resource = intl.t(key).toLowerCase();
+        }
+
+        if (!intl) {
+            return ['Permission', 'to', this.actionName, action === '*' && resource ? 'with' : '', resource, 'on', extension].filter(Boolean).join(' ');
+        }
+
+        if (action === '*') {
+            return resource ? intl.t('console.ui.permission-text.full-resource', { resource, extension }) : intl.t('console.ui.permission-text.full', { extension });
+        }
+
+        const actionKey = `console.ui.permission-text.actions.${action}`;
+        const actionText = intl.exists(actionKey) ? intl.t(actionKey) : this.actionName;
+        return resource
+            ? intl.t('console.ui.permission-text.action-resource', { action: actionText, resource, extension })
+            : intl.t('console.ui.permission-text.action', { action: actionText, extension });
     }
 
     @computed('updated_at') get updatedAgo() {

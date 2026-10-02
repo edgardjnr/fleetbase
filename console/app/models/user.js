@@ -182,7 +182,7 @@ export default class UserModel extends Model {
 
     @computed('last_login') get lastLogin() {
         if (!this.last_login || !isValid(this.last_login)) {
-            return 'Never';
+            return this.intl.t('console.ui.permission-text.never');
         }
 
         return format(this.last_login, 'PP p', dateFnsLocaleOptions());
