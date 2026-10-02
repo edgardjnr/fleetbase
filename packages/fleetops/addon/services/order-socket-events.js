@@ -1,6 +1,10 @@
 import Service, { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { debug } from '@ember/debug';
+import { debounce } from '@ember/runloop';
+
+// Entregas: rota da lista de pedidos, recarregada quando chega pedido novo pelo socket
+const ROTA_PEDIDOS = 'console.fleet-ops.operations.orders.index';
 
 /**
  * SocketCluster-driven order event stream manager.
@@ -16,6 +20,8 @@ export default class OrderSocketEventsService extends Service {
     @service socket;
     @service currentUser;
     @service hostRouter;
+    // Entregas: faltava; #findOrderByPublicId usava this.store e o 1º evento derrubava o laço da empresa
+    @service store;
     @tracked subs = new Map(); // channelId -> { channel, order, onEvent, debounceMs, isActive, pumpPromise, debouncer }
     @tracked _company = null;
     reloadableEvents = new Set(['order.created', 'order.completed', 'waypoint.activity', 'entity.activity']);
@@ -176,8 +182,12 @@ export default class OrderSocketEventsService extends Service {
         const channelId = `company.${companyId}`;
         const channel = sc.subscribe(channelId);
 
-        // Auto-unsubscribe on route change
-        const onRoute = () => this.stopCompany();
+        // Entregas: só desliga ao sair das telas de pedidos (antes desligava ao abrir os detalhes e não religava)
+        const onRoute = (transition) => {
+            if (!String(transition?.to?.name ?? '').startsWith('console.fleet-ops.operations.orders')) {
+                this.stopCompany();
+            }
+        };
         this.hostRouter.on('routeWillChange', onRoute);
 
         this._company = {
@@ -213,9 +223,13 @@ export default class OrderSocketEventsService extends Service {
                             break;
                         }
 
-                        // add more company-wide events here:
-                        // case 'order.updated': ...
-                        // case 'order.completed': ...
+                        default: {
+                            // Entregas: qualquer evento de pedido (status, aceite, conclusão...) atualiza
+                            // o pedido na lista; pedido novo ou fora da página recarrega a lista
+                            if (/^(order|waypoint|entity)\./.test(String(event ?? ''))) {
+                                await this.#atualizarPedidoDoEvento(event, data);
+                            }
+                        }
                     }
                 }
             } catch (e) {
@@ -224,6 +238,29 @@ export default class OrderSocketEventsService extends Service {
         })();
 
         return this._companyHandle();
+    }
+
+    async #atualizarPedidoDoEvento(event, data) {
+        const publicId = data?.public_id ?? data?.order ?? data?.id;
+        const pedido = typeof publicId === 'string' && publicId.startsWith('order_') ? this.store.peekAll('order').find((order) => order.public_id === publicId) : null;
+
+        if (pedido && !pedido.isDeleted) {
+            try {
+                await pedido.reload();
+            } catch (e) {
+                debug(`[order-socket-events] reload ${publicId} falhou: ${e?.message ?? e}`);
+            }
+        }
+
+        if (!pedido || event === 'order.created') {
+            debounce(this, this.#recarregarListaDePedidos, 1500);
+        }
+    }
+
+    #recarregarListaDePedidos() {
+        if (String(this.hostRouter.currentRouteName ?? '').startsWith(ROTA_PEDIDOS)) {
+            this.hostRouter.refresh(ROTA_PEDIDOS);
+        }
     }
 
     /** Stop the company-level listener */

@@ -148,8 +148,10 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 ## App do motoboy (Navigator próprio)
 
 - Repo **separado e privado**: `edgardjnr/entregas-navigator` (pasta `Documents/vibe coding/entregas-navigator`), fork do Fleetbase Navigator v2.0.11. O da Play Store não recebe push do nosso servidor (usa o Firebase da Fleetbase).
-- APK **debug** com JS embutido, gerado no GitHub Actions a cada push na `main` (artifact `entregas-motoboy-<n>`); dispensa a licença do background-geolocation (o toast "LICENSE VALIDATION FAILURE" é esperado). Instalação direta no Android.
-- Secrets do repo: `GOOGLE_SERVICES_JSON`, `FLEETBASE_KEY` (chave pública `flb_live_`), `GOOGLE_MAPS_API_KEY` (opcional, ainda não definida).
+- APK do build type **`entregas`** (otimizado como release, mas `debuggable`, assinado com a chave de debug e C++ em Release/NDEBUG), gerado no GitHub Actions a cada push na `main` (artifact `entregas-motoboy-<n>`, só arm64-v8a). Ser depurável dispensa a licença do background-geolocation (US$ 399; o toast "LICENSE VALIDATION FAILURE" é esperado). O build `debug` deixava o app lento. Instalação direta no Android; ao trocar o tipo de build, desinstalar antes.
+- Alarme de novo pedido: canal `pedidos` (toque de 30 s, padrão do FCM) + módulo nativo `AlertaPedido` (loop até aceitar/iniciar, máx. 3 min). Chat ainda usa o mesmo canal (separar exige mudar o envio na API).
+- Mapa: chave do Maps SDK for Android restrita ao app (grátis). Directions e Geocoding do app estão desativadas (pagas acima de 10 mil/mês): o mapa abre sem a linha da rota.
+- Secrets do repo: `GOOGLE_SERVICES_JSON`, `FLEETBASE_KEY` (chave pública `flb_live_`), `GOOGLE_MAPS_API_KEY`. O projeto Google `entregas-restaurantepro` está no plano Blaze (conta de faturamento vinculada para o Maps).
 - Push: Firebase `entregas-restaurantepro`; o JSON da conta de serviço foi enviado em Admin → Notificações Push.
 - **Mudou algo em Admin → Configurações (push, e-mail, socket)? Reinicie a fila:** `docker service update --force entregas_queue`. O worker só lê as configurações ao iniciar; o push e o tempo real só passaram a funcionar depois de um restart.
 

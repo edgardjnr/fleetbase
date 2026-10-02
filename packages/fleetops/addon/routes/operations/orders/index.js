@@ -3,6 +3,7 @@ import { inject as service } from '@ember/service';
 
 export default class OperationsOrdersIndexRoute extends Route {
     @service store;
+    @service orderSocketEvents;
 
     queryParams = {
         page: { refreshModel: true },
@@ -33,5 +34,11 @@ export default class OperationsOrdersIndexRoute extends Route {
 
     model(params) {
         return this.store.query('order', params);
+    }
+
+    // Entregas: (re)liga o tempo real da empresa sempre que a lista é aberta (no-op se já estiver ligado)
+    activate() {
+        super.activate(...arguments);
+        this.orderSocketEvents.startCompany();
     }
 }
