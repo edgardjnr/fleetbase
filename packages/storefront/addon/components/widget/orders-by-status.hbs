@@ -14,7 +14,7 @@
             <div class="storefront-widget-empty"><Spinner /></div>
         {{else if this.hasData}}
             <div class="storefront-chart-frame">
-                <Chart @type="bar" @labels={{this.data.labels}} @datasets={{this.data.datasets}} @options={{this.chartOptions}} />
+                <Chart @type="bar" @labels={{this.chartLabels}} @datasets={{this.chartDatasets}} @options={{this.chartOptions}} />
             </div>
         {{else}}
             <div class="storefront-widget-empty">{{t "storefront.ui.widget.no-order-activity"}}</div>

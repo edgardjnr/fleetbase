@@ -28,10 +28,26 @@ export default class WidgetPendingActionsComponent extends Component {
     get rows() {
         return this.actions.map((action) => ({
             ...action,
+            ...this.localizedText(action),
             icon: action.icon ?? 'circle-exclamation',
             route: action.route ?? this.routeForType(action.type),
             model: action.model ?? action.model_id ?? action.id,
         }));
+    }
+
+    /**
+     * The API builds title/description in English ("3 unpaid invoices"); translate them by the
+     * action `type` with the count taken from the leading number, falling back to the API text.
+     */
+    localizedText(action) {
+        const base = `customer-portal.ui.dashboard.pending-action.${action.type}`;
+        const count = parseInt(String(action.title ?? '').match(/^\s*(\d+)/)?.[1] ?? '', 10);
+        const tr = (key, fallback, params = {}) => (action.type && this.intl.exists(key) ? this.intl.t(key, params) : fallback);
+
+        return {
+            title: Number.isNaN(count) ? action.title : tr(`${base}.title`, action.title, { count }),
+            description: tr(`${base}.description`, action.description),
+        };
     }
 
     routeForType(type) {

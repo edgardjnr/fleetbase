@@ -2,6 +2,7 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { task } from 'ember-concurrency';
+import { localizeDatasets, localizeStatusLabels } from '../../utils/localize-analytics';
 
 export default class WidgetOrdersByStatusComponent extends Component {
     static widgetId = 'storefront-orders-by-status-widget';
@@ -34,6 +35,14 @@ export default class WidgetOrdersByStatusComponent extends Component {
 
     get hasData() {
         return (this.data?.total ?? 0) > 0;
+    }
+
+    get chartLabels() {
+        return localizeStatusLabels(this.intl, this.data?.labels ?? []);
+    }
+
+    get chartDatasets() {
+        return localizeDatasets(this.intl, this.data?.datasets ?? []);
     }
 
     get chartOptions() {

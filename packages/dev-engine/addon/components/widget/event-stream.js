@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
+import { localizeDevLabel } from '../../utils/localize-dev-metrics';
 
 export default class WidgetEventStreamComponent extends Component {
     @service fetch;
@@ -17,11 +18,11 @@ export default class WidgetEventStreamComponent extends Component {
     }
 
     get types() {
-        return this.data?.types ?? [];
+        return (this.data?.types ?? []).map((item) => ({ ...item, label: localizeDevLabel(this.intl, 'value', item?.label) }));
     }
 
     get sources() {
-        return this.data?.sources ?? [];
+        return (this.data?.sources ?? []).map((item) => ({ ...item, label: localizeDevLabel(this.intl, 'value', item?.label) }));
     }
 
     @task *load() {

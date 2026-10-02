@@ -770,6 +770,29 @@ storefront:
       notification-sent-success: "Notificação push enviada com sucesso aos clientes selecionados"
       notification-sent-error: "Falha ao enviar a notificação push. Tente novamente."
   ui:
+    analytics:
+      dataset:
+        revenue: Receita
+        orders: Pedidos
+      status:
+        created: Criado
+        pending: Pendente
+        started: Iniciado
+        preparing: Em preparo
+        ready: Pronto
+        pickup-ready: Pronto para retirada
+        dispatched: Despachado
+        driver-assigned: Motorista atribuído
+        driver-enroute: Motorista a caminho
+        enroute: A caminho
+        en-route: A caminho
+        arrived: Chegou
+        picked-up: Retirado
+        delivered: Entregue
+        completed: Concluído
+        canceled: Cancelado
+        order-canceled: Pedido cancelado
+        unknown: Desconhecido
     add-product:
       add-products: "Adicionar produtos"
       button: "Adicionar produto do Storefront"

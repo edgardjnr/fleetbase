@@ -2,6 +2,7 @@ import Service from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { task } from 'ember-concurrency';
+import { localizeGettingStarted } from '../utils/localize-api-payload';
 
 export default class GettingStartedService extends Service {
     @service intl;
@@ -14,12 +15,17 @@ export default class GettingStartedService extends Service {
         return this.data?.is_completed === true;
     }
 
+    /** Server payload with step/recommendation text translated by `key` (falls back to the API text). */
+    get localized() {
+        return localizeGettingStarted(this.intl, this.data);
+    }
+
     get steps() {
-        return this.data?.steps ?? [];
+        return this.localized?.steps ?? [];
     }
 
     get recommendations() {
-        return this.data?.recommendations ?? [];
+        return this.localized?.recommendations ?? [];
     }
 
     get progress() {

@@ -4,10 +4,12 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { debug } from '@ember/debug';
 import { task } from 'ember-concurrency';
+import { localizeIssueTimelineEvent } from '../../utils/localize-api-payload';
 
 export default class IssueTimelineComponent extends Component {
     @service fetch;
     @service notifications;
+    @service intl;
 
     @tracked events = [];
 
@@ -18,6 +20,11 @@ export default class IssueTimelineComponent extends Component {
 
     get issueId() {
         return this.args.resource?.id || this.args.resource?.uuid || this.args.resource?.public_id;
+    }
+
+    /** Events with server-built English labels translated for display. */
+    get localizedEvents() {
+        return this.events.map((event) => localizeIssueTimelineEvent(this.intl, event));
     }
 
     get hasEvents() {

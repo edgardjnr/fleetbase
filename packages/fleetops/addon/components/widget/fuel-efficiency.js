@@ -2,6 +2,7 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { task } from 'ember-concurrency';
+import { localizeDayLabels, localizeDatasets } from '../../utils/localize-api-payload';
 
 export default class WidgetFuelEfficiencyComponent extends Component {
     @service intl;
@@ -15,6 +16,14 @@ export default class WidgetFuelEfficiencyComponent extends Component {
     constructor() {
         super(...arguments);
         this.load.perform();
+    }
+
+    get chartLabels() {
+        return localizeDayLabels(this.intl, this.data?.labels ?? []);
+    }
+
+    get chartDatasets() {
+        return localizeDatasets(this.intl, this.data?.datasets ?? []);
     }
 
     get chartOptions() {

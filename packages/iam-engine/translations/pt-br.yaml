@@ -183,6 +183,112 @@ iam:
   home:
     identity-access-management: Gerenciamento de Identidade e Acesso
   ui:
+    system-policies:
+      developers:
+        flbdeveloper: Política para desenvolvedores criarem credenciais de API e webhooks e visualizarem logs.
+        flbdevprojectmanager: Política de visualização e leitura dos recursos de desenvolvimento.
+      iam:
+        usermanager: Política para gerenciar usuários, papéis e grupos.
+        policymanager: Política para gerenciar políticas e papéis.
+      fleet-ops:
+        dispatchmanager: Política para despachar e gerenciar pedidos.
+        fleetmanager: Política para gerenciar veículos, motoristas e frotas.
+        ordercoordinator: Política para coordenar e gerenciar pedidos sem todas as permissões de despacho.
+        serviceratemanager: Política para gerenciar tarifas de serviço, incluindo a importação de tarifas.
+        serviceareamanager: Política para gerenciar zonas e áreas de atendimento.
+        maintenancemanager: Política para gerenciar registros de manutenção, ordens de serviço, equipamentos e peças.
+        operationsadmin: Política para monitorar atividades, ocorrências e relatórios de combustível nas operações da frota.
+        navigatorsettingsmanager: Política para gerenciar as configurações do aplicativo Navigator usado pelos motoristas.
+        driveroperations: Política para motoristas gerenciarem as tarefas atribuídas e acessarem as informações necessárias.
+      ledger:
+        invoicemanager: Política para criar, enviar e gerenciar faturas e modelos de fatura.
+        paymentsmanager: Política para gerenciar gateways de pagamento, processar cobranças e reembolsos e revisar transações.
+        walletmanager: Política para gerenciar carteiras, incluindo recargas, transferências, repasses e bloqueios.
+        accountingmanager: Política para gerenciar o plano de contas e os lançamentos contábeis.
+        financialreporter: Política para visualizar todos os relatórios financeiros e o painel contábil.
+        ledgersettingsmanager: Política para gerenciar as configurações de faturas, pagamentos e contabilidade do Ledger.
+        ledgerreadonly: Política de acesso somente leitura a todos os recursos do Ledger.
+      registry-bridge:
+        extensiondeveloper: Política para desenvolver e publicar extensões.
+        extensionmarketing: Política que fornece informações para o marketing de extensões.
+        extensionfinance: Política para gerenciar as finanças e a contabilidade das extensões.
+        extensionsales: Política para gerenciar os relatórios de vendas das extensões.
+        extensionmanager: Política para a gestão completa das extensões.
+      storefront:
+        inventorymanager: Política para gerenciar produtos e categorias.
+        ordermanager: Política para gerenciar pedidos.
+        customerservice: Política para prestar atendimento aos clientes.
+        marketplacemanager: Política para gerenciar redes.
+      any:
+        administratoraccess: Política de acesso total às extensões e recursos do Fleetbase.
+      generated:
+        full-access: Política de acesso total a {name}.
+        read-only: Política de acesso somente leitura a {name}.
+    system-roles:
+      developers:
+        fleetbase-developer: Papel para desenvolvedores criarem credenciais de API e webhooks e acompanharem eventos e logs em tempo real.
+      iam:
+        iam-user-manager: Papel para gerenciar usuários, papéis e grupos.
+        iam-policy-manager: Papel para gerenciar usuários, papéis e grupos.
+        iam-administrator: Papel para gerenciar todos os usuários, papéis, grupos e políticas.
+      fleet-ops:
+        operations-manager: Papel responsável por supervisionar todas as operações, incluindo despacho, gestão da frota e coordenação de pedidos.
+        fleet-supervisor: Papel focado na gestão da frota e dos motoristas.
+        service-coordinator: Papel dedicado à gestão de tarifas de serviço e zonas.
+        operations-administrator: Papel com acesso administrativo completo a todos os aspectos operacionais do Fleet-Ops.
+        maintenance-technician: Papel para técnicos responsáveis por registros de manutenção, ordens de serviço, equipamentos e estoque de peças.
+        driver-coordinator: Papel responsável por coordenar motoristas, veículos e pedidos.
+        navigator-app-manager: Papel responsável por gerenciar as configurações do aplicativo Navigator.
+        driver: Papel para motoristas com o acesso necessário para gerenciar as tarefas do dia, incluindo pedidos e atribuição de veículo.
+        fleet-ops-customer: Papel para clientes com o acesso necessário para visualizar os próprios pedidos.
+        fleet-ops-contact: Papel para contatos.
+      ledger:
+        ledger-administrator: Acesso administrativo completo a cobrança, pagamentos, contabilidade e configurações do Ledger.
+        billing-specialist: Papel para a equipe responsável por criar e gerenciar faturas e acompanhar pagamentos.
+        accountant: Papel para contadores que gerenciam o plano de contas, os lançamentos contábeis e os relatórios financeiros.
+        finance-viewer: Papel somente leitura para quem precisa ver os dados financeiros sem poder alterá-los.
+        payments-operator: Papel para a equipe que processa pagamentos, gerencia gateways e opera carteiras.
+      registry-bridge:
+        extension-developer: Papel para desenvolver e publicar extensões.
+        quality-assurance: Papel para testar extensões.
+        extension-auditor: Papel para auditar e gerar relatórios das extensões.
+        extension-admin: Papel com controle total das extensões.
+      storefront:
+        storefront-administrator: Papel para gerenciar todos os recursos do Storefront.
+        customer-service: Papel para prestar atendimento aos clientes.
+        inventory-manager: Papel para gerenciar todos os produtos.
+      any:
+        administrator: Papel com acesso total de administrador a uma organização
+    api:
+      lifecycle:
+        created: Criados
+        pending: Pendentes
+        inactive: Inativos
+      user-type:
+        user: Usuário
+        admin: Administrador
+        driver: Motorista
+        customer: Cliente
+        contact: Contato
+      group-bucket:
+        empty: Vazios
+        1-5: 1 a 5 membros
+        6-20: 6 a 20 membros
+        20-plus: Mais de 20 membros
+      activity-event:
+        created: criado
+        updated: atualizado
+        deleted: excluído
+        restored: restaurado
+      subject-type:
+        user: Usuário
+        company-user: Usuário da organização
+        group: Grupo
+        role: Papel
+        policy: Política
+        permission: Permissão
+      metric-format:
+        percent: percentual
     unauthorized-access: Você não tem autorização para acessar este recurso.
     permissions-required-for-changes: Você não tem as permissões necessárias para fazer alterações.
     unable-open-resource: Não foi possível abrir o recurso de IAM selecionado.

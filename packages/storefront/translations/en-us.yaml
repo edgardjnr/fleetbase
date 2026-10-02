@@ -698,6 +698,29 @@ storefront:
       notification-sent-success: Push notification sent successfully to selected customers
       notification-sent-error: Failed to send push notification. Please try again.
   ui:
+    analytics:
+      dataset:
+        revenue: Revenue
+        orders: Orders
+      status:
+        created: Created
+        pending: Pending
+        started: Started
+        preparing: Preparing
+        ready: Ready
+        pickup-ready: Ready for Pickup
+        dispatched: Dispatched
+        driver-assigned: Driver Assigned
+        driver-enroute: Driver En Route
+        enroute: En Route
+        en-route: En Route
+        arrived: Arrived
+        picked-up: Picked Up
+        delivered: Delivered
+        completed: Completed
+        canceled: Canceled
+        order-canceled: Order Canceled
+        unknown: Unknown
     add-product:
       add-products: "Add Products"
       button: "Add Product from Storefront"

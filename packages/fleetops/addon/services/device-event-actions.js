@@ -42,7 +42,9 @@ export default class DeviceEventActionsService extends ResourceActionService {
 
     async markProcessed(deviceEvent) {
         const response = await this.fetch.post(`device-events/${deviceEvent.id}/mark-processed`);
-        this.notifications.success(response?.message ?? this.intl.t('fleet-ops.ui.service.device-event-actions.event-marked-processed'));
+        // The API message is English; show the translated text for its two known variants.
+        const alreadyProcessed = response?.message === 'Event was already processed.';
+        this.notifications.success(this.intl.t(alreadyProcessed ? 'fleet-ops.ui.api-messages.event-already-processed' : 'fleet-ops.ui.service.device-event-actions.event-marked-processed'));
 
         return response;
     }

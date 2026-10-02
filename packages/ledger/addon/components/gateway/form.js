@@ -4,6 +4,7 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
 import copyToClipboard from '@fleetbase/ember-core/utils/copy-to-clipboard';
+import localizeConfigSchema, { localizeDriverName } from '../../utils/localize-gateway-driver';
 
 export default class GatewayFormComponent extends Component {
     @service fetch;
@@ -51,6 +52,7 @@ export default class GatewayFormComponent extends Component {
     get driverCards() {
         return this.availableDrivers.map((driver) => ({
             ...driver,
+            displayName: localizeDriverName(this.intl, driver),
             selected: driver.code === this.args.resource?.driver,
             categoryLabel: driver.category ?? this.driverCategory(driver.code),
             icon: this.driverIcon(driver.code),
@@ -59,6 +61,15 @@ export default class GatewayFormComponent extends Component {
 
     get selectedDriver() {
         return this.availableDrivers.find((driver) => driver.code === this.args.resource?.driver);
+    }
+
+    get selectedDriverName() {
+        return this.selectedDriver ? localizeDriverName(this.intl, this.selectedDriver) : null;
+    }
+
+    /** Display copy of the config schema with translated label/description/placeholder. */
+    get displayConfigSchema() {
+        return localizeConfigSchema(this.intl, this.args.resource?.driver, this.configSchema);
     }
 
     get selectedDriverIcon() {
@@ -123,7 +134,7 @@ export default class GatewayFormComponent extends Component {
     }
 
     get reviewConfigEntries() {
-        return this.configSchema.map((field) => ({
+        return this.displayConfigSchema.map((field) => ({
             label: field.label,
             value: field.type === 'password' && this.configValues[field.key] ? '••••••••' : this.configValues[field.key],
         }));

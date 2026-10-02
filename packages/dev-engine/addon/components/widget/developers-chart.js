@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
+import { localizeDayLabels, localizeDevDatasets } from '../../utils/localize-dev-metrics';
 
 const COLORS = [
     ['#2563eb', 'rgba(37, 99, 235, 0.15)'],
@@ -24,11 +25,11 @@ export default class WidgetDevelopersChartComponent extends Component {
     }
 
     get labels() {
-        return this.data?.labels ?? [];
+        return localizeDayLabels(this.intl, this.data?.labels ?? []);
     }
 
     get datasets() {
-        return (this.data?.datasets ?? []).map((dataset, index) => {
+        return localizeDevDatasets(this.intl, this.data?.datasets ?? []).map((dataset, index) => {
             const color = COLORS[index % COLORS.length];
 
             return {

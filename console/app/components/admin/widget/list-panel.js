@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
+import { localizeAdminSubtitle, localizeAdminEmpty, localizeAdminItems } from '@fleetbase/console/utils/localize-admin-metrics';
 
 export default class AdminWidgetListPanelComponent extends Component {
     @service fetch;
@@ -31,7 +32,7 @@ export default class AdminWidgetListPanelComponent extends Component {
     }
 
     get subtitle() {
-        return this.args.options?.subtitle ?? this.data?.subtitle;
+        return this.args.options?.subtitle ?? localizeAdminSubtitle(this.intl, this.slug, this.data?.subtitle);
     }
 
     get icon() {
@@ -39,11 +40,11 @@ export default class AdminWidgetListPanelComponent extends Component {
     }
 
     get items() {
-        return this.data?.items ?? [];
+        return localizeAdminItems(this.intl, this.slug, this.data?.items ?? []);
     }
 
     get emptyText() {
-        return this.data?.empty ?? this.intl.t('console.ui.widgets.admin.no-items');
+        return localizeAdminEmpty(this.intl, this.data?.empty) ?? this.intl.t('console.ui.widgets.admin.no-items');
     }
 
     get drilldownRoute() {

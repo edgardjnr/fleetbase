@@ -2,6 +2,7 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { task } from 'ember-concurrency';
+import { localizeIssueCategoryLabels } from '../../utils/localize-api-payload';
 
 const CATEGORY_PALETTE = ['#3485e2', '#f59e0b', '#22c55e', '#ef4444', '#8b5cf6', '#a3a3a3', '#0ea5e9', '#ec4899'];
 
@@ -31,7 +32,7 @@ export default class WidgetIssuesInsightsComponent extends Component {
     }
 
     get categoryLabels() {
-        return this.data?.by_category?.labels ?? [];
+        return localizeIssueCategoryLabels(this.intl, this.data?.by_category?.labels ?? []);
     }
 
     get categoryOptions() {

@@ -112,9 +112,9 @@ Router.map(function () {
             path: 'ledger'
         });
 
-        this.mount('@fleetbase/valhalla-engine', {
-            as: 'valhalla',
-            path: 'valhalla'
+        this.mount('@fleetbase/registry-bridge-engine', {
+            as: 'extensions',
+            path: 'extensions'
         });
 
         this.mount('@fleetbase/storefront-engine', {
@@ -122,14 +122,14 @@ Router.map(function () {
             path: 'storefront'
         });
 
+        this.mount('@fleetbase/valhalla-engine', {
+            as: 'valhalla',
+            path: 'valhalla'
+        });
+
         this.mount('@fleetbase/vroom-engine', {
             as: 'vroom',
             path: 'vroom'
-        });
-
-        this.mount('@fleetbase/registry-bridge-engine', {
-            as: 'extensions',
-            path: 'extensions'
         });
     });
 

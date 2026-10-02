@@ -1,8 +1,12 @@
 import Model, { attr, hasMany } from '@ember-data/model';
 import { computed } from '@ember/object';
+import { inject as service } from '@ember/service';
+import { localizeIamDescription, localizeIamType } from '@fleetbase/console/utils/localize-iam-record';
 import { format, formatDistanceToNow } from 'date-fns';
 
 export default class RoleModel extends Model {
+    @service intl;
+
     /** @ids */
     @attr('string') company_uuid;
 
@@ -26,6 +30,16 @@ export default class RoleModel extends Model {
     /** @methods */
     toJSON() {
         return this.serialize();
+    }
+
+    /** Description for display: system (FLB managed) records are translated, user records are kept as typed. */
+    get localizedDescription() {
+        return localizeIamDescription(this.intl, this, 'role');
+    }
+
+    /** "FLB Managed" / "Organization Managed" for display. */
+    get localizedType() {
+        return localizeIamType(this.intl, this);
     }
 
     /** @computed */

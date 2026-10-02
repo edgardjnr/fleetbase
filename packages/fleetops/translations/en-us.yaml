@@ -21,6 +21,78 @@ fleet-ops:
             index:
                 title: Assign Vendor to Place
     ui:
+        getting-started:
+            step:
+                add-driver:
+                    title: Add a driver
+                    description: Create your first driver profile so work can be assigned.
+                create-order:
+                    title: Create an order
+                    description: Add a delivery or service order to start dispatching.
+                assign-driver:
+                    title: Assign driver to order
+                    description: Connect the order to a driver for execution.
+                update-activity:
+                    title: Update order activity
+                    description: Move the order through its workflow and capture progress.
+            recommendation:
+                route-optimization:
+                    title: Route Optimization
+                    description: Plan efficient multi-stop routes and reduce time on the road.
+                live-fleet:
+                    title: Live Fleet Map
+                    description: Watch active drivers, vehicles, and orders in real time.
+                service-rates:
+                    title: Service Rates
+                    description: Create pricing rules for deliveries, zones, and service areas.
+                customer-portal:
+                    title: Customer Portal
+                    description: Let customers submit orders and track deliveries from a branded portal.
+        analytics-api:
+            dataset:
+                completed: Completed
+                in-progress: In Progress
+                dispatched: Dispatched
+                canceled: Canceled
+                failed: Failed
+                fuel-cost: Fuel Cost
+                cost-per-km: Cost per km
+            uncategorized: Uncategorized
+            unnamed: Unnamed
+        issue-timeline:
+            label:
+                issue-opened: Issue opened
+                status-changed: Status changed
+                priority-changed: Priority changed
+                assignee-changed: Assignee changed
+                vehicle-changed: Vehicle linked
+                driver-changed: Driver linked
+                order-changed: Order linked
+                issue-closed: Issue closed
+                issue-reopened: Issue re-opened
+                issue-updated: Issue updated
+                correspondence-added: Correspondence added
+                document-uploaded: Document uploaded
+                document-removed: Document removed
+                field-changed: "{field} changed"
+            field:
+                status: Status
+                priority: Priority
+                assignee: Assigned To
+                vehicle: Vehicle
+                driver: Driver
+                order: Order
+                type: Type
+                category: Category
+                tags: Tags
+                resolved-at: Resolved At
+            change: "{field} changed from {from} to {to}."
+            none: none
+            reported-by: Reported by {name}
+            unknown-reporter: Unknown reporter
+            document: Document
+        api-messages:
+            event-already-processed: Event was already processed.
         settings-hub: Settings Hub
         hub:
             open-resource: Open {resource}

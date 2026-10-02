@@ -1,5 +1,6 @@
 import Route from '@ember/routing/route';
 import { inject as service } from '@ember/service';
+import localizeContextSchemas from '../../../../utils/localize-context-schemas';
 
 /**
  * Normalise the context-schemas API response into the flat array that the
@@ -45,10 +46,11 @@ function normaliseContextSchemas(response) {
 export default class BillingInvoiceTemplatesIndexEditRoute extends Route {
     @service store;
     @service fetch;
+    @service intl;
 
     async model({ id }) {
         const [template, rawSchemas] = await Promise.all([this.store.findRecord('template', id), this.fetch.get('templates/context-schemas', { for: 'ledger-invoice' }).catch(() => ({}))]);
 
-        return { template, contextSchemas: normaliseContextSchemas(rawSchemas) };
+        return { template, contextSchemas: localizeContextSchemas(this.intl, normaliseContextSchemas(rawSchemas)) };
     }
 }

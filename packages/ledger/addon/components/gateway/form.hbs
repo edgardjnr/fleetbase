@@ -38,7 +38,7 @@
                                                 <FaIcon @icon={{driver.icon}} />
                                             </div>
                                             <div class="min-w-0">
-                                                <div class="truncate text-sm font-bold text-gray-900 dark:text-gray-100">{{driver.name}}</div>
+                                                <div class="truncate text-sm font-bold text-gray-900 dark:text-gray-100">{{driver.displayName}}</div>
                                                 <div class="truncate text-[11px] uppercase text-gray-400 dark:text-gray-500">{{driver.categoryLabel}}</div>
                                             </div>
                                         </div>
@@ -68,7 +68,7 @@
                         {{#if this.selectedDriver}}
                             {{#if this.configSchema.length}}
                                 <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 no-input-group-padding text-xs">
-                                    {{#each this.configSchema as |field|}}
+                                    {{#each this.displayConfigSchema as |field|}}
                                         {{#if (eq field.type "select")}}
                                             <InputGroup @name={{field.label}} @helpText={{field.description}} @required={{field.required}}>
                                                 <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
@@ -125,7 +125,7 @@
                                     <FaIcon @icon={{this.selectedDriverIcon}} />
                                 </div>
                                 <div class="min-w-0">
-                                    <div class="truncate text-sm font-bold text-gray-900 dark:text-gray-100">{{this.selectedDriver.name}}</div>
+                                    <div class="truncate text-sm font-bold text-gray-900 dark:text-gray-100">{{this.selectedDriverName}}</div>
                                     <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-300">{{this.selectedDriver.description}}</p>
                                 </div>
                             </div>
@@ -236,7 +236,7 @@
                             <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
                                 <div class="text-[11px] font-semibold uppercase text-gray-400 dark:text-gray-500">{{t "ledger.ui.gateway.form.gateway"}}</div>
                                 <div class="mt-2 text-sm font-bold text-gray-900 dark:text-gray-100">{{or @resource.name (t "ledger.ui.gateway.form.unnamed")}}</div>
-                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-300">{{or this.selectedDriver.name @resource.driver}}</div>
+                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-300">{{or this.selectedDriverName @resource.driver}}</div>
                             </div>
                             <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
                                 <div class="text-[11px] font-semibold uppercase text-gray-400 dark:text-gray-500">{{t "ledger.ui.gateway.form.mode"}}</div>

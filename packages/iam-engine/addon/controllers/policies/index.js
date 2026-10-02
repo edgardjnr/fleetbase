@@ -85,7 +85,9 @@ export default class PoliciesIndexController extends Controller {
         },
         {
             label: this.intl.t('iam.common.description'),
-            valuePath: 'description',
+            // translated for system (FLB managed) records; user records keep their own text
+            valuePath: 'localizedDescription',
+            sortParam: 'description',
             sortable: false,
             width: '35%',
         },
@@ -100,7 +102,9 @@ export default class PoliciesIndexController extends Controller {
         },
         {
             label: this.intl.t('iam.common.type'),
-            valuePath: 'type',
+            valuePath: 'localizedType',
+            sortParam: 'type',
+            filterParam: 'type',
             sortable: false,
             width: '10%',
             filterable: true,

@@ -28,6 +28,13 @@ export default class CustomerPortalAdminSettingsComponent extends Component {
         return window.stripeInstance !== undefined || !isEmpty(config.stripe?.publishableKey);
     }
 
+    /** The API returns an English message; translate it by its `code` (falls back to the API text). */
+    get accessUrlSlugValidationMessage() {
+        const validation = this.accessUrlSlugValidation;
+        const key = `customer-portal.ui.dashboard.access-url-validation.${validation?.code}`;
+        return validation?.code && this.intl.exists(key) ? this.intl.t(key) : validation?.message;
+    }
+
     get saveDisabled() {
         return !this.accessUrlSlug || !this.accessUrlSlugValidation?.valid;
     }

@@ -1,6 +1,76 @@
 ledger:
   extension-name: Ledger
   ui:
+    api:
+      gateway:
+        cash:
+          name: "Dinheiro / Manual"
+          fields:
+            label:
+              label: "Rótulo de exibição"
+            instructions:
+              label: "Instruções de pagamento"
+        qpay:
+          fields:
+            username:
+              label: "Usuário QPay"
+            password:
+              label: "Senha QPay"
+            invoice-code:
+              label: "Código da fatura"
+        stripe:
+          fields:
+            publishable-key:
+              label: "Chave publicável"
+            secret-key:
+              label: "Chave secreta"
+            webhook-secret:
+              label: "Segredo de assinatura do webhook"
+        taler:
+          fields:
+            backend-url:
+              label: "URL do backend do comerciante"
+              description: "URL base do seu Taler Merchant Backend. Em sandbox, usa por padrão o Taler hospedado pelo Fleetbase; gateways em produção exigem uma URL de produção explícita."
+            instance-id:
+              label: "ID da instância"
+              description: "Identificador da instância de comerciante no Taler. O padrão é \"default\"."
+            api-token:
+              label: "Token de API"
+              description: "Token privado da API do comerciante. Formatos aceitos: secret-token:... ou Bearer secret-token:...."
+      template-context:
+        namespaces:
+          invoice: "Fatura"
+        variables:
+          invoice-number: "Número da fatura"
+          invoice-date: "Data da fatura"
+          invoice-due-date: "Data de vencimento do pagamento"
+          invoice-status: "Status da fatura (rascunho, enviada, paga, vencida etc.)"
+          invoice-currency: "Código da moeda ISO 4217"
+          invoice-subtotal: "Subtotal antes dos impostos"
+          invoice-tax: "Valor total dos impostos"
+          invoice-total-amount: "Valor total com impostos"
+          invoice-amount-paid: "Valor já pago"
+          invoice-balance: "Saldo em aberto"
+          invoice-notes: "Observações da fatura"
+          invoice-terms: "Condições de pagamento"
+          transaction-reference: "Número de referência da transação"
+          transaction-amount: "Valor da transação"
+          transaction-currency: "Moeda da transação"
+          transaction-status: "Status da transação"
+          transaction-payment-method: "Forma de pagamento utilizada"
+          transaction-settled-at: "Quando a transação foi liquidada"
+          transaction-notes: "Observações da transação"
+          account-name: "Nome da conta"
+          account-code: "Código da conta"
+          account-type: "Tipo de conta"
+          account-balance: "Saldo da conta"
+          account-currency: "Moeda da conta"
+          account-status: "Status da conta"
+          wallet-name: "Nome da carteira"
+          wallet-balance: "Saldo da carteira (na menor unidade da moeda)"
+          wallet-formatted-balance: "Saldo da carteira formatado, com símbolo da moeda"
+          wallet-currency: "Moeda da carteira"
+          wallet-status: "Status da carteira"
     period:
       month-to-date: Mês até a data
     models:

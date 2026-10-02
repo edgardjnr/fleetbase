@@ -284,6 +284,20 @@ developers:
         logs: Logs
         events: Events
   ui:
+    api:
+      dataset:
+        requests: Requests
+        success: Success
+        errors: Errors
+        sent: Sent
+        succeeded: Succeeded
+        failed: Failed
+      value:
+        unknown: unknown
+      activity-type:
+        api-request: API request
+        webhook: Webhook
+        event: Event
     unauthorized-access: You are not authorized to access this resource.
     permissions-required-for-changes: You do not have the permissions required to make changes.
     filter-by-date: Filter by date

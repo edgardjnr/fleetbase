@@ -788,6 +788,96 @@ console:
         Received:
     message: No notifications to display.
   ui:
+    admin-metrics:
+      platform-growth:
+        subtitle: Current 30 days compared with the previous 30 days
+      system-diagnostics:
+        subtitle: Core service configuration state
+      admin-activity:
+        subtitle: Recent sensitive admin events
+      organization-risk-queue:
+        subtitle: Organizations needing operator review
+      configuration-gaps:
+        subtitle: Missing configuration that can affect operators
+      item:
+        mail: Mail
+        filesystem: Filesystem
+        queue: Queue
+        socket: Socket
+        notifications: Notifications
+        scheduler: Scheduler
+        mail-driver: Mail driver
+        queue-driver: Queue driver
+        filesystem-disk: Filesystem disk
+        broadcast-driver: Broadcast driver
+      text:
+        not-configured: Not configured
+        configuration-missing: Required platform configuration is missing.
+        missing: Missing
+        missing-owner: Missing owner
+        incomplete-onboarding: Incomplete onboarding
+        status-review: Status review
+        admin-activity: Admin activity
+      empty:
+        no-growth-data: No growth data available.
+        no-diagnostics: No diagnostics available.
+        activity-logging-unavailable: Activity logging is unavailable.
+        no-admin-activity: No recent sensitive admin activity.
+        no-organizations-review: No organizations currently need review.
+        no-configuration-gaps: No configuration gaps detected.
+      chart:
+        previous-30d: Previous 30d
+        current-30d: Current 30d
+        users: Users
+        organizations: Organizations
+    api-errors:
+      oops: Oops! Something went wrong with your request.
+      invalid-file: Invalid file, unable to proccess.
+      vehicle-not-available: Vehicle not found or not available for this organization.
+      trailer-not-available: Trailer not found or not available for this organization.
+      device-not-available: Device not found or not available for this organization.
+      equipment-not-available: Equipment not found or not available for this organization.
+      invalid-credentials: These credentials do not match our records.
+      order-not-found: No order found.
+      organization-not-found: Organization not found.
+      user-not-found: User not found.
+      unauthenticated: Unauthenticated.
+      invalid-verification-code: Invalid verification code.
+      invalid-verification-session: Invalid verification session.
+      passwords-do-not-match: Passwords do not match.
+      file-upload-failed: File upload failed.
+      customer-not-found: Customer not found.
+      facilitator-not-found: Facilitator not found.
+      driver-not-found: Selected driver cannot be found.
+      already-member: This user is already a member of your organisation.
+      role-not-available: The selected role is not available for this organisation.
+      no-current-organization: Unable to determine the current organisation.
+      cannot-deactivate-user: Insufficient permissions to deactivate this user.
+      cannot-change-password: Not authorized to change user password.
+      cannot-change-email: Not authorized to change user email.
+      same-email: The new email address must be different from the current email address.
+      attach-device-failed: Unable to attach device to vehicle. Please try again or contact support.
+      detach-device-failed: Unable to detach device from vehicle. Please try again or contact support.
+      render-label-failed: Unable to render label.
+      invalid-qr-code: Unable to validate QR code data.
+      issue-not-found: Issue not found for this organization.
+      file-not-found: File resource not found.
+      comment-not-found: Comment resource not found.
+      chat-channel-not-found: Chat channel resource not found.
+      resource-not-found: Requested resource not found.
+      dashboard-not-found: Dashboard not found.
+      own-comments-only: You can only manage your own comments.
+      console-users-sign-in: Console users must sign in through the Fleetbase console.
+      customers-sign-in: Customer accounts must sign in through the customer portal.
+      portal-no-customer-account: No customer account found for user account.
+      portal-no-order-config: No order config available for this company.
+      portal-route-required: Pickup and dropoff or at least two waypoints are required.
+      portal-quote-unavailable: The selected service quote is no longer available for this customer portal account.
+      portal-rate-unavailable: The selected purchase rate is no longer available for this customer portal account.
+      portal-order-creation-disabled: Customer portal order creation is disabled.
+      portal-order-type-unavailable: This order type is not available from the customer portal.
+      portal-cannot-cancel: This order can no longer be canceled.
+      portal-cannot-reschedule: This order can no longer be rescheduled.
     configure:
       test-config: Test Config
       driver: Driver

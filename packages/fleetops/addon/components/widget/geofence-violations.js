@@ -2,6 +2,7 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { task } from 'ember-concurrency';
+import { localizeZoneLabels } from '../../utils/localize-api-payload';
 
 export default class WidgetGeofenceViolationsComponent extends Component {
     @service intl;
@@ -29,7 +30,7 @@ export default class WidgetGeofenceViolationsComponent extends Component {
     }
 
     get zoneLabels() {
-        return this.data?.by_zone?.labels ?? [];
+        return localizeZoneLabels(this.intl, this.data?.by_zone?.labels ?? []);
     }
 
     get zoneOptions() {

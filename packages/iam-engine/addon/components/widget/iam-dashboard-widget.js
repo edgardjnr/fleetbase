@@ -2,6 +2,7 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { task } from 'ember-concurrency';
+import localizeIamMetrics from '../../utils/localize-iam-metrics';
 
 export default class WidgetIamDashboardWidgetComponent extends Component {
     @service fetch;
@@ -13,6 +14,11 @@ export default class WidgetIamDashboardWidgetComponent extends Component {
     constructor() {
         super(...arguments);
         this.load.perform();
+    }
+
+    /** Payload with the API's fixed English labels translated for display. */
+    get localizedData() {
+        return localizeIamMetrics(this.intl, this.args.endpoint, this.data);
     }
 
     get params() {

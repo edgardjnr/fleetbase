@@ -5,7 +5,7 @@
         </div>
     {{else if this.hasEvents}}
         <ol class="issue-timeline-list">
-            {{#each this.events as |event|}}
+            {{#each this.localizedEvents as |event|}}
                 <li class="issue-timeline-event tone-{{event.tone}}">
                     <div class="issue-timeline-marker">
                         <FaIcon @icon={{event.icon}} />

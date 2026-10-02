@@ -187,6 +187,112 @@ iam:
   home:
       identity-access-management: Identity & Access Management
   ui:
+    system-policies:
+      developers:
+        flbdeveloper: Policy for developers to create api credentials, webhooks and view logs.
+        flbdevprojectmanager: Policy for view and read access to development resources.
+      iam:
+        usermanager: Policy for managing users, roles and groups.
+        policymanager: Policy for managing policies and roles.
+      fleet-ops:
+        dispatchmanager: Policy for dispatching and managing orders.
+        fleetmanager: Policy for managing vehicles, drivers and fleets.
+        ordercoordinator: Policy for coordinating and managing orders without full dispatch capabilities.
+        serviceratemanager: Policy for managing service rates, including importing rate information.
+        serviceareamanager: Policy for managing zones and service areas.
+        maintenancemanager: Policy for managing maintenance records, work orders, equipment, and parts.
+        operationsadmin: Policy for monitoring activities, issues, and fuel reports within the fleet operations.
+        navigatorsettingsmanager: Policy for managing settings related to the Navigator mobile app used by drivers.
+        driveroperations: Policy for drivers to manage their assigned tasks and access necessary information.
+      ledger:
+        invoicemanager: Policy for creating, sending, and managing invoices and invoice templates.
+        paymentsmanager: Policy for managing payment gateways, processing charges and refunds, and reviewing transactions.
+        walletmanager: Policy for managing wallets, including top-ups, transfers, payouts, and freezing.
+        accountingmanager: Policy for managing the chart of accounts and journal entries.
+        financialreporter: Policy for viewing all financial reports and the accounting dashboard.
+        ledgersettingsmanager: Policy for managing Ledger invoice, payment, and accounting settings.
+        ledgerreadonly: Policy for read-only access to all Ledger resources.
+      registry-bridge:
+        extensiondeveloper: Policy for developing and publishing extensions.
+        extensionmarketing: Policy to provide insight for marketing extensions.
+        extensionfinance: Policy for managing finance and accounting for extensions.
+        extensionsales: Policy for managing sales reports of extensions.
+        extensionmanager: Policy for complete management of extensions.
+      storefront:
+        inventorymanager: Policy for managing products and categories.
+        ordermanager: Policy for managing order.
+        customerservice: Policy for providing support to customers.
+        marketplacemanager: Policy for managing networks.
+      any:
+        administratoraccess: Policy for full access to Fleetbase extensions and resources.
+      generated:
+        full-access: Policy for full access to {name}.
+        read-only: Policy for read-only access to {name}.
+    system-roles:
+      developers:
+        fleetbase-developer: Role for developers to create api credentials, webhooks and view real time events and logs.
+      iam:
+        iam-user-manager: Role for managing users, roles, and groups.
+        iam-policy-manager: Role for managing users, roles, and groups.
+        iam-administrator: Role for managing all users, roles, groups and policies.
+      fleet-ops:
+        operations-manager: Role responsible for overseeing all operations, including dispatch, fleet management, and order coordination.
+        fleet-supervisor: Role with responsibilities focused on fleet and driver management.
+        service-coordinator: Role dedicated to managing service rates and zones.
+        operations-administrator: Role with complete administrative access to all operational aspects of Fleet-Ops.
+        maintenance-technician: Role for technicians responsible for managing maintenance records, work orders, equipment, and parts inventory.
+        driver-coordinator: Role responsible for coordinating drivers, vehicles, and orders.
+        navigator-app-manager: Role responsible for managing the Navigator mobile app settings.
+        driver: Role for drivers with the necessary access to manage their daily tasks, including order management, and vehicle assignment.
+        fleet-ops-customer: Role for customers with the necessary access to view their orders.
+        fleet-ops-contact: Role for contacts.
+      ledger:
+        ledger-administrator: Full administrative access to all Ledger billing, payments, accounting, and settings.
+        billing-specialist: Role for staff responsible for creating and managing invoices and following up on payments.
+        accountant: Role for accountants who manage the chart of accounts, journal entries, and financial reports.
+        finance-viewer: Read-only role for stakeholders who need visibility into financial data without the ability to make changes.
+        payments-operator: Role for staff who process payments, manage gateways, and handle wallet operations.
+      registry-bridge:
+        extension-developer: Role for developing and publishing extensions.
+        quality-assurance: Role for testing extensions.
+        extension-auditor: Role for auditing and creating reports for extensions.
+        extension-admin: Role for full control of extensions.
+      storefront:
+        storefront-administrator: Role for managing all of storefront resources.
+        customer-service: Role for providing support to customers.
+        inventory-manager: Role for managing all products.
+      any:
+        administrator: Role for full administrator access to an organization
+    api:
+      lifecycle:
+        created: Created
+        pending: Pending
+        inactive: Inactive
+      user-type:
+        user: User
+        admin: Admin
+        driver: Driver
+        customer: Customer
+        contact: Contact
+      group-bucket:
+        empty: Empty
+        1-5: 1-5 members
+        6-20: 6-20 members
+        20-plus: 20+ members
+      activity-event:
+        created: created
+        updated: updated
+        deleted: deleted
+        restored: restored
+      subject-type:
+        user: User
+        company-user: Company user
+        group: Group
+        role: Role
+        policy: Policy
+        permission: Permission
+      metric-format:
+        percent: percent
     unauthorized-access: You are not authorized to access this resource.
     permissions-required-for-changes: You do not have the permissions required to make changes.
     unable-open-resource: Unable to open the selected IAM resource.

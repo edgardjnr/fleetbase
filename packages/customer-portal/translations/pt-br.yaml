@@ -2,6 +2,17 @@ starter:
   extension-name: Inicial
 customer-portal:
   ui:
+    dashboard:
+      pending-action:
+        billing:
+          title: "{count, plural, one {# fatura em aberto} other {# faturas em aberto}}"
+          description: Revise as cobranças pendentes desta conta.
+        support:
+          title: "{count, plural, one {# chamado de suporte aberto} other {# chamados de suporte abertos}}"
+          description: O suporte está analisando as suas solicitações em aberto.
+      access-url-validation:
+        invalid: A URL informada é inválida.
+        already_taken: Esta URL já está em uso.
     nav:
       support: Suporte
       documents: Documentos

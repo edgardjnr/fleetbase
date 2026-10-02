@@ -763,6 +763,96 @@ console:
     received: 'Recebido:'
     message: Nenhuma notificação para exibir.
   ui:
+    admin-metrics:
+      platform-growth:
+        subtitle: Últimos 30 dias comparados aos 30 dias anteriores
+      system-diagnostics:
+        subtitle: Estado da configuração dos serviços principais
+      admin-activity:
+        subtitle: Eventos administrativos sensíveis recentes
+      organization-risk-queue:
+        subtitle: Organizações que precisam de revisão do operador
+      configuration-gaps:
+        subtitle: Configurações ausentes que podem afetar os operadores
+      item:
+        mail: E-mail
+        filesystem: Sistema de arquivos
+        queue: Fila
+        socket: Socket
+        notifications: Notificações
+        scheduler: Agendador
+        mail-driver: Driver de e-mail
+        queue-driver: Driver de fila
+        filesystem-disk: Disco do sistema de arquivos
+        broadcast-driver: Driver de broadcast
+      text:
+        not-configured: Não configurado
+        configuration-missing: Falta uma configuração obrigatória da plataforma.
+        missing: Ausente
+        missing-owner: Sem proprietário
+        incomplete-onboarding: Integração incompleta
+        status-review: Revisão de status
+        admin-activity: Atividade administrativa
+      empty:
+        no-growth-data: Nenhum dado de crescimento disponível.
+        no-diagnostics: Nenhum diagnóstico disponível.
+        activity-logging-unavailable: O registro de atividades não está disponível.
+        no-admin-activity: Nenhuma atividade administrativa sensível recente.
+        no-organizations-review: Nenhuma organização precisa de revisão no momento.
+        no-configuration-gaps: Nenhuma falha de configuração detectada.
+      chart:
+        previous-30d: 30 dias anteriores
+        current-30d: Últimos 30 dias
+        users: Usuários
+        organizations: Organizações
+    api-errors:
+      oops: Ops! Algo deu errado com a sua solicitação.
+      invalid-file: Arquivo inválido, não foi possível processar.
+      vehicle-not-available: Veículo não encontrado ou indisponível para esta organização.
+      trailer-not-available: Reboque não encontrado ou indisponível para esta organização.
+      device-not-available: Dispositivo não encontrado ou indisponível para esta organização.
+      equipment-not-available: Equipamento não encontrado ou indisponível para esta organização.
+      invalid-credentials: Estas credenciais não correspondem aos nossos registros.
+      order-not-found: Pedido não encontrado.
+      organization-not-found: Organização não encontrada.
+      user-not-found: Usuário não encontrado.
+      unauthenticated: Não autenticado.
+      invalid-verification-code: Código de verificação inválido.
+      invalid-verification-session: Sessão de verificação inválida.
+      passwords-do-not-match: As senhas não coincidem.
+      file-upload-failed: Falha no envio do arquivo.
+      customer-not-found: Cliente não encontrado.
+      facilitator-not-found: Facilitador não encontrado.
+      driver-not-found: O motorista selecionado não foi encontrado.
+      already-member: Este usuário já é membro da sua organização.
+      role-not-available: O papel selecionado não está disponível para esta organização.
+      no-current-organization: Não foi possível identificar a organização atual.
+      cannot-deactivate-user: Permissões insuficientes para desativar este usuário.
+      cannot-change-password: Sem autorização para alterar a senha do usuário.
+      cannot-change-email: Sem autorização para alterar o e-mail do usuário.
+      same-email: O novo endereço de e-mail deve ser diferente do atual.
+      attach-device-failed: Não foi possível vincular o dispositivo ao veículo. Tente novamente ou fale com o suporte.
+      detach-device-failed: Não foi possível desvincular o dispositivo do veículo. Tente novamente ou fale com o suporte.
+      render-label-failed: Não foi possível gerar a etiqueta.
+      invalid-qr-code: Não foi possível validar os dados do QR code.
+      issue-not-found: Ocorrência não encontrada nesta organização.
+      file-not-found: Arquivo não encontrado.
+      comment-not-found: Comentário não encontrado.
+      chat-channel-not-found: Canal de chat não encontrado.
+      resource-not-found: O recurso solicitado não foi encontrado.
+      dashboard-not-found: Painel não encontrado.
+      own-comments-only: Você só pode gerenciar os seus próprios comentários.
+      console-users-sign-in: Usuários do console devem entrar pelo console.
+      customers-sign-in: Contas de cliente devem entrar pelo portal do cliente.
+      portal-no-customer-account: Nenhuma conta de cliente encontrada para este usuário.
+      portal-no-order-config: Nenhuma configuração de pedido disponível para esta empresa.
+      portal-route-required: Informe coleta e entrega ou pelo menos duas paradas.
+      portal-quote-unavailable: A cotação de serviço selecionada não está mais disponível para esta conta do portal do cliente.
+      portal-rate-unavailable: A tarifa selecionada não está mais disponível para esta conta do portal do cliente.
+      portal-order-creation-disabled: A criação de pedidos pelo portal do cliente está desativada.
+      portal-order-type-unavailable: Este tipo de pedido não está disponível no portal do cliente.
+      portal-cannot-cancel: Este pedido não pode mais ser cancelado.
+      portal-cannot-reschedule: Este pedido não pode mais ser reagendado.
     configure:
       test-config: Testar configuração
       driver: Driver

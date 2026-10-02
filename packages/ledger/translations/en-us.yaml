@@ -1,6 +1,76 @@
 ledger:
   extension-name: Ledger
   ui:
+    api:
+      gateway:
+        cash:
+          name: "Cash / Manual"
+          fields:
+            label:
+              label: "Display Label"
+            instructions:
+              label: "Payment Instructions"
+        qpay:
+          fields:
+            username:
+              label: "QPay Username"
+            password:
+              label: "QPay Password"
+            invoice-code:
+              label: "Invoice Code"
+        stripe:
+          fields:
+            publishable-key:
+              label: "Publishable Key"
+            secret-key:
+              label: "Secret Key"
+            webhook-secret:
+              label: "Webhook Signing Secret"
+        taler:
+          fields:
+            backend-url:
+              label: "Merchant Backend URL"
+              description: "Base URL of your Taler Merchant Backend. Sandbox defaults to Fleetbase hosted Taler; live gateways require an explicit production URL."
+            instance-id:
+              label: "Instance ID"
+              description: "The Taler merchant instance identifier. Defaults to \"default\"."
+            api-token:
+              label: "API Token"
+              description: "Private Merchant API token. Accepted formats: secret-token:... or Bearer secret-token:...."
+      template-context:
+        namespaces:
+          invoice: "Invoice"
+        variables:
+          invoice-number: "Invoice number"
+          invoice-date: "Invoice date"
+          invoice-due-date: "Payment due date"
+          invoice-status: "Invoice status (draft, sent, paid, overdue, etc.)"
+          invoice-currency: "ISO 4217 currency code"
+          invoice-subtotal: "Subtotal before tax"
+          invoice-tax: "Total tax amount"
+          invoice-total-amount: "Total amount including tax"
+          invoice-amount-paid: "Amount already paid"
+          invoice-balance: "Outstanding balance"
+          invoice-notes: "Invoice notes"
+          invoice-terms: "Payment terms"
+          transaction-reference: "Transaction reference number"
+          transaction-amount: "Transaction amount"
+          transaction-currency: "Transaction currency"
+          transaction-status: "Transaction status"
+          transaction-payment-method: "Payment method used"
+          transaction-settled-at: "When the transaction was settled"
+          transaction-notes: "Transaction notes"
+          account-name: "Account name"
+          account-code: "Account code"
+          account-type: "Account type"
+          account-balance: "Account balance"
+          account-currency: "Account currency"
+          account-status: "Account status"
+          wallet-name: "Wallet name"
+          wallet-balance: "Wallet balance (in smallest currency unit)"
+          wallet-formatted-balance: "Human-readable wallet balance with currency symbol"
+          wallet-currency: "Wallet currency"
+          wallet-status: "Wallet status"
     period:
       month-to-date: Month to date
     models:

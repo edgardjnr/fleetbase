@@ -85,7 +85,9 @@ export default class RolesIndexController extends Controller {
         },
         {
             label: this.intl.t('iam.common.description'),
-            valuePath: 'description',
+            // translated for system (FLB managed) records; user records keep their own text
+            valuePath: 'localizedDescription',
+            sortParam: 'description',
             sortable: false,
             width: '28%',
         },
@@ -100,7 +102,9 @@ export default class RolesIndexController extends Controller {
         },
         {
             label: this.intl.t('iam.common.type'),
-            valuePath: 'type',
+            valuePath: 'localizedType',
+            sortParam: 'type',
+            filterParam: 'type',
             sortable: false,
             width: '13%',
             filterable: true,

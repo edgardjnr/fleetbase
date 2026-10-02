@@ -21,6 +21,78 @@ fleet-ops:
       index:
         title: Atribuir Fornecedor ao Local
   ui:
+    getting-started:
+      step:
+        add-driver:
+          title: Adicionar um motorista
+          description: Crie o primeiro perfil de motorista para poder atribuir trabalho.
+        create-order:
+          title: Criar um pedido
+          description: Adicione um pedido de entrega ou de serviço para começar a despachar.
+        assign-driver:
+          title: Atribuir motorista ao pedido
+          description: Vincule o pedido a um motorista para execução.
+        update-activity:
+          title: Atualizar a atividade do pedido
+          description: Avance o pedido pelo fluxo de trabalho e registre o progresso.
+      recommendation:
+        route-optimization:
+          title: Otimização de rotas
+          description: Planeje rotas eficientes com várias paradas e reduza o tempo na estrada.
+        live-fleet:
+          title: Mapa da frota ao vivo
+          description: Acompanhe motoristas, veículos e pedidos ativos em tempo real.
+        service-rates:
+          title: Tarifas de serviço
+          description: Crie regras de preço para entregas, zonas e áreas de atendimento.
+        customer-portal:
+          title: Portal do cliente
+          description: Permita que os clientes enviem pedidos e acompanhem entregas em um portal com a sua marca.
+    analytics-api:
+      dataset:
+        completed: Concluídos
+        in-progress: Em andamento
+        dispatched: Despachados
+        canceled: Cancelados
+        failed: Com falha
+        fuel-cost: Custo de combustível
+        cost-per-km: Custo por km
+      uncategorized: Sem categoria
+      unnamed: Sem nome
+    issue-timeline:
+      label:
+        issue-opened: Ocorrência aberta
+        status-changed: Status alterado
+        priority-changed: Prioridade alterada
+        assignee-changed: Responsável alterado
+        vehicle-changed: Veículo vinculado
+        driver-changed: Motorista vinculado
+        order-changed: Pedido vinculado
+        issue-closed: Ocorrência encerrada
+        issue-reopened: Ocorrência reaberta
+        issue-updated: Ocorrência atualizada
+        correspondence-added: Mensagem adicionada
+        document-uploaded: Documento enviado
+        document-removed: Documento removido
+        field-changed: "Alteração de {field}"
+      field:
+        status: Status
+        priority: Prioridade
+        assignee: Responsável
+        vehicle: Veículo
+        driver: Motorista
+        order: Pedido
+        type: Tipo
+        category: Categoria
+        tags: Etiquetas
+        resolved-at: Resolvida em
+      change: "{field}: de {from} para {to}."
+      none: nenhum
+      reported-by: Relatada por {name}
+      unknown-reporter: Relator desconhecido
+      document: Documento
+    api-messages:
+      event-already-processed: O evento já havia sido processado.
     settings-hub: Central de Configurações
     hub:
       open-resource: Abrir {resource}

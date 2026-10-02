@@ -16,7 +16,7 @@
                             disabled={{this.saveConfig.isRunning}}
                         />
                         {{#unless this.accessUrlSlugValidation.valid}}
-                            <InfoBlock @type="danger" @size="sm" @icon="triangle-exclamation" @text={{this.accessUrlSlugValidation.message}} class="mt-2" />
+                            <InfoBlock @type="danger" @size="sm" @icon="triangle-exclamation" @text={{this.accessUrlSlugValidationMessage}} class="mt-2" />
                         {{/unless}}
                     </InputGroup>
                     <InputGroup @name={{t "customer-portal.ui.admin.order-types"}} @helpText={{t "customer-portal.ui.admin.order-types-help"}} @wrapperClass="mb-4">

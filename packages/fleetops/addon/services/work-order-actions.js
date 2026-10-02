@@ -115,7 +115,9 @@ export default class WorkOrderActionsService extends ResourceActionService {
                 modal.startLoading();
                 try {
                     const response = await this.fetch.post(`work-orders/${workOrder.id}/send`);
-                    this.notifications.success(response?.message ?? this.intl.t('fleet-ops.ui.service.work-order-actions.work-order-sent-to-successfully', { value: vendorName ?? 'vendor' }));
+                    // The API message is English ("Work order successfully sent to <email>"); show it translated.
+                    const sentTo = response?.message?.match?.(/^Work order successfully sent to (.+)$/)?.[1];
+                    this.notifications.success(this.intl.t('fleet-ops.ui.service.work-order-actions.work-order-sent-to-successfully', { value: sentTo ?? vendorName ?? 'vendor' }));
                     modal.done();
                 } catch (error) {
                     this.notifications.serverError(error);

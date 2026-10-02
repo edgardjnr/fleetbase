@@ -141,7 +141,7 @@ export default class ConnectivityTelematicsDetailsController extends Controller 
     @task *discoverDevices() {
         try {
             const result = yield this.fetch.post(`telematics/${this.telematicId}/discover`);
-            this.notifications.success(result.message ?? this.intl.t('fleet-ops.ui.controller.connectivity-telematics-details.device-discovery-initiated'));
+            this.notifications.success(this.intl.t('fleet-ops.ui.controller.connectivity-telematics-details.device-discovery-initiated'));
             yield this.hostRouter.refresh();
         } catch (error) {
             this.notifications.serverError(error);

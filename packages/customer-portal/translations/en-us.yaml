@@ -2,6 +2,17 @@ starter:
   extension-name: Starter
 customer-portal:
   ui:
+    dashboard:
+      pending-action:
+        billing:
+          title: "{count, plural, one {# unpaid invoice} other {# unpaid invoices}}"
+          description: Review outstanding billing for this account.
+        support:
+          title: "{count, plural, one {# open support ticket} other {# open support tickets}}"
+          description: Support is reviewing your open requests.
+      access-url-validation:
+        invalid: The URL provided is invalid.
+        already_taken: This URL has already been taken.
     nav:
       support: Support
       documents: Documents

@@ -19,7 +19,7 @@
             <div class="flex items-center justify-center h-full text-xs text-red-500">{{this.error}}</div>
         {{else if this.data}}
             <div class="h-full">
-                <Chart @type="bar" @labels={{this.data.labels}} @datasets={{this.data.datasets}} @options={{this.chartOptions}} />
+                <Chart @type="bar" @labels={{this.chartLabels}} @datasets={{this.chartDatasets}} @options={{this.chartOptions}} />
             </div>
         {{/if}}
     </div>

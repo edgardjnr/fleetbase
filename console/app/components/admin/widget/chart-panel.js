@@ -1,4 +1,5 @@
 import AdminWidgetListPanelComponent from './list-panel';
+import { localizeAdminChartLabels, localizeAdminDatasets } from '@fleetbase/console/utils/localize-admin-metrics';
 
 export default class AdminWidgetChartPanelComponent extends AdminWidgetListPanelComponent {
     get endpoint() {
@@ -10,11 +11,11 @@ export default class AdminWidgetChartPanelComponent extends AdminWidgetListPanel
     }
 
     get chartLabels() {
-        return this.data?.labels ?? [];
+        return localizeAdminChartLabels(this.intl, this.data?.labels ?? []);
     }
 
     get chartDatasets() {
-        return this.data?.datasets ?? null;
+        return this.data?.datasets ? localizeAdminDatasets(this.intl, this.data.datasets) : null;
     }
 
     get chartOptions() {

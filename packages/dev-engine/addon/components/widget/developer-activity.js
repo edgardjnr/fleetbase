@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
+import { localizeDevLabel } from '../../utils/localize-dev-metrics';
 
 export default class WidgetDeveloperActivityComponent extends Component {
     @service fetch;
@@ -17,7 +18,7 @@ export default class WidgetDeveloperActivityComponent extends Component {
     }
 
     get items() {
-        return this.data?.items ?? [];
+        return (this.data?.items ?? []).map((item) => ({ ...item, typeLabel: localizeDevLabel(this.intl, 'activity-type', item?.type) }));
     }
 
     iconFor(type) {

@@ -5,6 +5,7 @@ import { task } from 'ember-concurrency';
 import formatCurrency from '@fleetbase/ember-ui/utils/format-currency';
 import getCurrency from '@fleetbase/ember-ui/utils/get-currency';
 import formatMoney from '@fleetbase/ember-accounting/utils/format-money';
+import { localizeDatasetLabel } from '../../utils/localize-analytics';
 
 export default class WidgetRevenueTrendComponent extends Component {
     static widgetId = 'storefront-revenue-trend-widget';
@@ -61,11 +62,12 @@ export default class WidgetRevenueTrendComponent extends Component {
         return (
             this.data?.datasets?.map((dataset) => {
                 if (!this.isRevenueDataset(dataset)) {
-                    return dataset;
+                    return { ...dataset, label: localizeDatasetLabel(this.intl, dataset.label) };
                 }
 
                 return {
                     ...dataset,
+                    label: localizeDatasetLabel(this.intl, dataset.label),
                     data: dataset.data?.map((value) => this.normalizeRevenueValue(value)) ?? [],
                 };
             }) ?? []
