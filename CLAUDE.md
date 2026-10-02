@@ -149,3 +149,4 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 4. Textos que vêm prontos da API traduzidos no frontend (`6c164670`).
 5. Papéis e políticas, log de atividades, date-fns no idioma ativo e mapa em Ribeirão Preto (`c49ded0c`).
 6. Descrições de permissões, nomes de países e "Nunca" (`b7625d16`).
+7. Escopo enxuto iFood→motoboy (extensões removidas, telas ocultas) e pagamento de motoboys por km (`1725beee`).
