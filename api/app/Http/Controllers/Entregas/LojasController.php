@@ -20,7 +20,8 @@ use Illuminate\Support\Facades\DB;
  * Entregas RestaurantePro: cadastro das lojas (restaurantes) atendidas, só para administradores.
  *
  * Loja = Vendor type=customer (o mesmo tipo que o Portal do Cliente usa) com um Place próprio
- * (dono = o Vendor), que é o local fixo de coleta.
+ * (dono = o Vendor), que é o local fixo de coleta. A integração do iFood manda em cada pedido (POST v1/orders)
+ * `customer` = public_id do Vendor e `pickup` = public_id do Place; os dois saem em formatar() para a central copiar.
  * Usuário da loja = Contact type=customer + VendorPersonnel. O login (User type=customer) nasce no
  * ContactObserver com senha aleatória e status pending; aqui recebe a senha inicial, é marcado como
  * verificado (o portal recusa login não verificado e não há e-mail configurado) e é ativado.
@@ -332,6 +333,9 @@ class LojasController extends Controller
             'nome'     => $vendor->name,
             'telefone' => $vendor->phone,
             'endereco' => $place ? [
+                // o public_id do Local de coleta (place_…): a integração do iFood o manda em `pickup` e a tela Lojas o mostra para copiar
+                // (o `id` da loja, acima, já é o do Vendor, que a integração manda em `customer`)
+                'id'           => $place->public_id,
                 'street1'      => $place->street1,
                 'street2'      => $place->street2,
                 'neighborhood' => $place->neighborhood,

@@ -201,6 +201,9 @@ fleet-ops:
             invalid-email: Invalid email.
             password-too-short: The password must have at least 8 characters.
             user-name-required: Enter the user's name.
+            integration-ids: "Integration (iFood):"
+            integration-customer: customer
+            integration-pickup: pickup
         order-form:
             store-or-customer: Store or customer
             store-or-customer-placeholder: Select store or customer

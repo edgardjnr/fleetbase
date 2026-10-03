@@ -171,6 +171,25 @@
                             {{#if loja.telefone}}
                                 <div class="text-sm text-gray-500 dark:text-gray-400">{{loja.telefone}}</div>
                             {{/if}}
+                            {{! Entregas: ids que a integração do iFood manda em cada pedido (POST v1/orders): customer = id da loja (Vendor), pickup = id do Local de coleta. Um clique copia. Loja sem Local mostra só o do cliente }}
+                            <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                                <span>{{t "fleet-ops.ui.lojas.integration-ids"}}</span>
+                                <span class="inline-flex items-center gap-1">
+                                    <span>{{t "fleet-ops.ui.lojas.integration-customer"}}</span>
+                                    <ClickToCopy @value={{loja.id}} class="inline-block whitespace-nowrap font-mono text-gray-700 dark:text-gray-200">
+                                        <FaIcon @icon="copy" class="mr-1 text-gray-400" />{{loja.id}}
+                                    </ClickToCopy>
+                                </span>
+                                {{#if loja.endereco.id}}
+                                    <span aria-hidden="true">·</span>
+                                    <span class="inline-flex items-center gap-1">
+                                        <span>{{t "fleet-ops.ui.lojas.integration-pickup"}}</span>
+                                        <ClickToCopy @value={{loja.endereco.id}} class="inline-block whitespace-nowrap font-mono text-gray-700 dark:text-gray-200">
+                                            <FaIcon @icon="copy" class="mr-1 text-gray-400" />{{loja.endereco.id}}
+                                        </ClickToCopy>
+                                    </span>
+                                {{/if}}
+                            </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <Button @size="xs" @icon="pen-to-square" @text={{t "fleet-ops.ui.lojas.edit"}} @onClick={{fn this.editar loja}} />
