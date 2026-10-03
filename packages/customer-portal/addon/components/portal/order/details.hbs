@@ -17,8 +17,11 @@
             </div>
         {{/if}}
         <Portal::Order::Details::Activity @resource={{this.order}} />
-        {{!-- Entregas: motoboy do pedido (nome, foto e posição), logo depois da atividade --}}
-        <Portal::Order::Details::Motoboy @resource={{this.order}} @onMudou={{this.motoboyMudou}} />
+        {{!-- Entregas: motoboy do pedido (nome, foto e posição), logo depois da atividade. O ciclo do detalhe consulta e
+             passa os dados; com o pedido encerrado, o painel some --}}
+        {{#if this.isOpen}}
+            <Portal::Order::Details::Motoboy @motoboy={{this.motoboy}} @consultado={{this.motoboyConsultado}} />
+        {{/if}}
         <Portal::Order::Details::Details @resource={{this.order}} />
         {{!-- Entregas: sem tarifa, carga, documentos e campos personalizados (fora do escopo; arquivos e cotações são negados à loja) --}}
         <Portal::Order::Details::Tracking @resource={{this.order}} />

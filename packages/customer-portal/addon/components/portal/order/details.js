@@ -2,50 +2,50 @@ import Component from '@glimmer/component';
 import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
-import { registerDestructor } from '@ember/destroyable';
-import { task, timeout } from 'ember-concurrency';
+import { enqueueTask, race, task, timeout, waitForEvent } from 'ember-concurrency';
 import { arrayFor, valueFor } from '../../../utils/model-access';
-
-// Entregas: a mesma lista de encerrados do servidor (StatusDoPedido::ENCERRADOS)
-const CLOSED_STATUSES = ['completed', 'done', 'canceled', 'cancelled', 'order_canceled', 'expired'];
-// Entregas: a loja só cancela nestes status e antes do aceite (RegrasPortalLoja::STATUS_CANCELAVEIS)
-const CANCELABLE_STATUSES = ['created', 'dispatched'];
-// Entregas: intervalo do acompanhamento do pedido aberto
-const INTERVALO_MS = 20000;
+// Entregas: status, intervalos e situação do motoboy numa lista só, espelho da API
+import { CANCELAVEIS, ENCERRADOS, INTERVALO_MS, VOLTAS_DETALHE, espera, situacao } from '../../../utils/entregas-pedido';
 
 export default class PortalOrderDetailsComponent extends Component {
     @service customerPortalOrderActions;
+    @service fetch;
     @service hostRouter;
     @service modalsManager;
     @service notifications;
     @service intl;
 
     @tracked order = this.args.model?.order;
+    // Entregas: o motoboy da última resposta 2xx (null = ninguém chamado ainda) e se ela já veio (antes, o carregando)
+    @tracked motoboy = null;
+    @tracked motoboyConsultado = false;
 
     constructor() {
         super(...arguments);
-        // Entregas: o detalhe se atualiza sozinho enquanto o pedido está aberto. O template da rota cria um componente
-        // por pedido (templates/portal/orders/details.hbs), então o ciclo segue sempre o pedido exibido
+        // Entregas: acompanha o pedido enquanto ele está aberto (o EC cancela o ciclo quando o componente sai da tela).
+        // O template da rota cria um componente por pedido (templates/portal/orders/details.hbs), então o ciclo segue
+        // sempre o pedido exibido
         this.acompanhar.perform();
-        registerDestructor(this, () => {
-            this.acompanhar.cancelAll();
-            this.recarregar.cancelAll();
-        });
     }
 
     // Entregas: aberto = fora da lista de encerrados
     get isOpen() {
-        return Boolean(this.order) && !CLOSED_STATUSES.includes(valueFor(this.order, 'status'));
+        return Boolean(this.order) && !ENCERRADOS.includes(valueFor(this.order, 'status'));
     }
 
     // Entregas: cancelamento só antes do aceite (depois dele o servidor recusa com 422)
     get canCancel() {
-        return Boolean(this.order) && !valueFor(this.order, 'started') && CANCELABLE_STATUSES.includes(valueFor(this.order, 'status'));
+        return Boolean(this.order) && !valueFor(this.order, 'started') && CANCELAVEIS.includes(valueFor(this.order, 'status'));
     }
 
     // Entregas: pedido aberto que a loja já não cancela; o aviso fica no topo do painel, logo abaixo das ações
     get cancelLocked() {
         return this.isOpen && !this.canCancel;
+    }
+
+    // Entregas: public_id ou uuid (o id do record); a rota do motoboy aceita os dois
+    get pedidoId() {
+        return valueFor(this.order, 'public_id') ?? valueFor(this.order, 'id');
     }
 
     get labelUrl() {
@@ -120,41 +120,94 @@ export default class PortalOrderDetailsComponent extends Component {
         } catch (error) {
             // Entregas: a mensagem do servidor vem em pt-BR (422 depois do aceite, 409 com o pedido em atualização)
             this.notifications.serverError(error);
-            // Entregas: o motoboy pode ter aceitado no meio; relê o pedido para o menu e o aviso mostrarem o estado atual
-            this.recarregar.perform();
         }
+
+        // Entregas: relê o pedido, na fila das releituras do ciclo. Cancelado: uma releitura do ciclo que já estava em curso
+        // (lida antes do cancelamento) não fica por último no store. Recusado: o menu e o aviso mostram o estado atual
+        this.recarregar.perform();
     }
 
-    // Entregas: o painel do motoboy viu mudar quem está com o pedido (aceite, desistência ou encerramento). Relê o
-    // pedido agora, e não só no próximo ciclo; o painel espera esta leitura para mudar junto
-    @action motoboyMudou() {
-        return this.isOpen ? this.recarregar.perform() : null;
-    }
-
-    // Entregas: relê o pedido a cada 20 s até ele encerrar
+    // Entregas: um ciclo só. A cada volta (20 s) consulta o motoboy, que é barato. O detalhe completo (15 relações e o
+    // tracker, que pode pedir rota ao OSRM) é relido só quando muda quem está com o pedido, a cada VOLTAS_DETALHE voltas
+    // (~60 s, para ETA e atividade) e depois de aba oculta ou de falha. As leituras vão em sequência, e o painel muda
+    // junto com o detalhe relido. Em falha (429 inclusive), a espera dobra até 2 min e o painel mantém o último motoboy.
+    // Com a aba oculta, não consulta nada, mas o ciclo continua e volta assim que a aba aparece. Encerrado, o ciclo para
     @task *acompanhar() {
-        while (this.isOpen) {
-            yield timeout(INTERVALO_MS);
+        let falhas = 0; // falhas seguidas
+        let volta = 0; // voltas com a aba visível
+        let detalheAtrasado = false; // aba oculta ou releitura com falha: relê o detalhe na próxima volta
 
-            // o pedido pode ter encerrado durante a espera (cancelado nesta tela, por exemplo)
+        while (this.isOpen) {
+            const oculta = document.hidden;
+
+            if (oculta) {
+                detalheAtrasado = true;
+            } else {
+                let motoboy = yield this.consultarMotoboy(); // undefined em erro
+                let ok = motoboy !== undefined;
+                const mudou = ok && this.motoboyConsultado && situacao(motoboy) !== situacao(this.motoboy);
+
+                if (mudou || detalheAtrasado || volta % VOLTAS_DETALHE === VOLTAS_DETALHE - 1) {
+                    const releu = yield this.recarregar.perform();
+                    detalheAtrasado = !releu;
+                    ok = ok && releu;
+
+                    // o aceite caiu entre as duas leituras: o detalhe já mostra o pedido aceito e o motoboy, lido antes, não.
+                    // Relê o motoboy, para o painel mudar junto com o status
+                    if (ok && valueFor(this.order, 'started') && situacao(motoboy) !== 'aceito') {
+                        const relido = yield this.consultarMotoboy();
+                        ok = relido !== undefined;
+                        motoboy = ok ? relido : motoboy;
+                    }
+                }
+
+                // mudou quem está com o pedido, mas o detalhe não foi relido: o painel fica como está, para mudar junto
+                // com o detalhe na próxima volta
+                if (motoboy !== undefined && !(mudou && detalheAtrasado)) {
+                    this.motoboy = motoboy;
+                    this.motoboyConsultado = true;
+                }
+
+                falhas = ok ? 0 : falhas + 1;
+                volta++;
+            }
+
             if (this.isOpen) {
-                yield this.recarregar.perform();
+                const proxima = timeout(espera(INTERVALO_MS, falhas));
+                // com a aba oculta, a próxima volta começa assim que ela aparece
+                yield oculta ? race([proxima, waitForEvent(document, 'visibilitychange')]) : proxima;
             }
         }
     }
 
-    // Entregas: relê o pedido exibido. Erro (rede instável) não aparece na tela: tenta de novo no próximo ciclo
-    @task *recarregar() {
+    // Entregas: o motoboy do pedido (GET int/v1/entregas/loja/pedidos/{id}/motoboy): o motoboy, null (ninguém chamado
+    // ainda; também para pedido encerrado) ou undefined em erro (rede, 429) ou resposta fora do formato
+    async consultarMotoboy() {
+        try {
+            const resposta = await this.fetch.get(`entregas/loja/pedidos/${encodeURIComponent(this.pedidoId)}/motoboy`);
+
+            return resposta?.motoboy;
+        } catch {
+            return undefined;
+        }
+    }
+
+    // Entregas: relê o pedido exibido e devolve se conseguiu. Em fila: a releitura pedida pelo cancelamento nunca corre
+    // junto com a do ciclo (respostas fora de ordem deixariam um status velho no store). Sem restartable, drop ou
+    // keepLatest aqui: o ciclo faz yield desta task, e o EC cancelaria o ciclo junto
+    @enqueueTask *recarregar() {
         try {
             const order = yield this.customerPortalOrderActions.loadOrder.perform(this.customerPortalOrderActions.identifier(this.order));
 
             // o store.push já atualizou o record exibido no lugar; reatribuir o mesmo objeto recriaria o menu de ações
-            // (e o fecharia, se estivesse aberto) a cada ciclo
+            // (e o fecharia, se estivesse aberto) a cada releitura
             if (order && order !== this.order) {
                 this.order = order;
             }
+
+            return true;
         } catch {
-            // tenta de novo no próximo ciclo
+            return false;
         }
     }
 }

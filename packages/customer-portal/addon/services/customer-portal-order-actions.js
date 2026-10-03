@@ -27,6 +27,12 @@ export default class CustomerPortalOrderActionsService extends ResourceActionSer
         return yield this.fetch.get('orders', params, normalizeOptions('order'));
     }
 
+    // Entregas: a mesma consulta, numa task própria para a atualização automática da lista. Assim o loadOrders.isRunning
+    // (o carregando do botão de recarregar) fica só para a carga da página, a busca e o recarregar manual
+    @task *atualizarPedidos(params = {}) {
+        return yield this.fetch.get('orders', params, normalizeOptions('order'));
+    }
+
     @task *searchOrders(query) {
         yield timeout(300);
         return yield this.loadOrders.perform({ query });

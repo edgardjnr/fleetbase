@@ -2,10 +2,9 @@ import Controller from '@ember/controller';
 import { inject as service } from '@ember/service';
 import { action, set } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
-import { restartableTask, timeout } from 'ember-concurrency';
-
-// Entregas: intervalo da atualização automática da lista de pedidos
-const INTERVALO_LISTA_MS = 30000;
+import { race, restartableTask, timeout, waitForEvent } from 'ember-concurrency';
+// Entregas: intervalo e espera crescente da atualização automática da lista
+import { INTERVALO_LISTA_MS, espera } from '../../utils/entregas-pedido';
 
 export default class PortalOrdersController extends Controller {
     @service customerPortalOrderActions;
@@ -66,13 +65,21 @@ export default class PortalOrdersController extends Controller {
     }
 
     // Entregas: a lista se atualiza sozinha a cada 30 s, com a busca ativa (a rota inicia no setupController e para no
-    // resetController). A busca do usuário vence: o ciclo pula enquanto há uma busca em andamento e descarta o
-    // resultado se a busca ou a lista mudaram durante a consulta. Erro não vira aviso: tenta de novo no próximo ciclo
+    // resetController), numa task própria do serviço (o botão de recarregar não pisca). Pula a vez com a aba oculta,
+    // com o detalhe aberto (a lista nem aparece; o detalhe tem o ciclo dele) e durante uma busca. A busca do usuário
+    // vence: o resultado é descartado se a busca ou a lista mudaram durante a consulta. Erro não vira aviso: a espera
+    // dobra a cada falha seguida (429 inclusive), até 2 min, e volta a 30 s no primeiro sucesso
     @restartableTask *atualizarLista() {
-        while (!this.isDestroying) {
-            yield timeout(INTERVALO_LISTA_MS);
+        let falhas = 0;
+        let oculta = false;
 
-            if (this.customerPortalOrderActions.searchOrders.isRunning) {
+        while (!this.isDestroying) {
+            const proxima = timeout(espera(INTERVALO_LISTA_MS, falhas));
+            // a aba estava oculta na última vez: atualiza assim que ela aparece
+            yield oculta ? race([proxima, waitForEvent(document, 'visibilitychange')]) : proxima;
+
+            oculta = document.hidden;
+            if (oculta || this.hostRouter.currentRouteName?.endsWith('.details') || this.customerPortalOrderActions.searchOrders.isRunning) {
                 continue;
             }
 
@@ -80,13 +87,14 @@ export default class PortalOrdersController extends Controller {
             const query = this.query;
 
             try {
-                const orders = yield this.customerPortalOrderActions.loadOrders.perform({ query });
+                const orders = yield this.customerPortalOrderActions.atualizarPedidos.perform({ query });
+                falhas = 0;
 
                 if (model && this.model === model && this.query === query && !this.customerPortalOrderActions.searchOrders.isRunning) {
                     set(model, 'orders', orders);
                 }
             } catch {
-                // rede instável: sem aviso a cada ciclo
+                falhas++;
             }
         }
     }
