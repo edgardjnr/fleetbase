@@ -1,135 +1,86 @@
 # Portal da Loja — continuação (o que falta)
 
-Retomar por aqui numa sessão nova. Documentos de referência:
-- Plano completo (atualizado com todas as revisões): `docs/superpowers/plans/2026-10-02-portal-da-loja.md`
-- Spec: `docs/superpowers/specs/2026-10-02-portal-da-loja-design.md`
+**Situação (2026-10-03, fim da 2ª sessão):** a implementação está completa no ramo **`portal-da-loja`**: tasks revisadas, conformidade e qualidade aprovadas. Não houve push. A `main` foi trazida para o ramo em `027dfbe7`. Falta só o **deploy e o teste com o usuário** (Task 14, a partir do passo 4).
+
+Referências: o plano em `2026-10-02-portal-da-loja.md`, o desenho em `../specs/2026-10-02-portal-da-loja-design.md` e a seção "Portal da loja" do `CLAUDE.md`. O código no repo é a referência: o plano ficou como histórico, e algumas constantes e limites mudaram nas revisões, como mostram as tabelas abaixo.
 
 ## Como retomar
 
-1. Ramo **`portal-da-loja`** (criado a partir de `main` em `d5669ccd`). **Nada foi enviado por push e nada foi para a `main`.** Confirme com `git branch --show-current` e `git log --oneline main..portal-da-loja`.
-2. Execução por subagentes (skill `superpowers:subagent-driven-development`): para cada task, primeiro um implementador, depois a revisão de conformidade, depois a de qualidade, e as correções até a aprovação. Os relatórios dos subagentes devem ser curtos.
-3. Não há PHP local. Para o lint de sintaxe, instale o parser no scratchpad da sessão nova:
-   ```
-   npm --prefix "<scratchpad>/phplint" i php-parser@3
-   PHP_PARSER_DIR="<scratchpad>/phplint" node scripts/php-lint.cjs <arquivos.php>
-   ```
-4. No front, valide com `node scripts/i18n-check.cjs console dev-engine ember-core ember-ui fleetops fleetops-data iam-engine customer-portal` (precisa sair com exit 0) e com o parse do `@babel/parser` (ver CLAUDE.md).
-5. Faça commits com `git commit -- <arquivos>` e confira antes o `git rev-parse --show-toplevel`. A home `C:\Users\Edgardjr` também é um repo git, por acidente.
+1. **Conferir o ramo:** `git branch --show-current` e `git log --oneline main..portal-da-loja`.
+2. **Merge na `main` e push:** só com o aval do usuário.
+3. **Deploy**, feito pelo usuário na VPS: `cd ~/entregas && bash deploy/atualizar.sh` (API e console). Depois, `docker service update --force entregas_queue`.
+4. **Configurar o portal**, no console, com Ctrl+Shift+R: Admin → Customer Portal com só o tipo `transport`, pagamentos desligados, e o endereço de acesso definido.
+5. **Criar as lojas de teste** em Fleet-Ops → Recursos → Lojas: "Loja Teste A" e "Loja Teste B", com endereços diferentes e coordenadas, e um usuário em cada uma.
+   - Quem grava as credenciais em `deploy/teste-lojas.env` é o usuário, não o Claude. O arquivo é ignorado pelo git, e o cabeçalho do script explica o formato.
+   - Opcionais: `CHAVE_API` + `MOTOBOY_ID` (aceite de pedido cancelado), `LOJA_DESATIVADA_*` e `LOJA_DUPLA_*`.
+6. **Rodar o teste:** `node scripts/teste-isolamento-lojas.mjs` tem de dar todos os itens PASSOU (os opcionais podem sair PULADO).
+   - Antes, avisar o usuário: o teste dispara um aviso real aos motoboys online perto da Loja Teste A. O próprio teste cancela o pedido.
+   - O teste também deixa endereços de teste salvos na Loja A.
+7. **Testar no navegador**, em **janela anônima** (o console guarda a lista de extensões no localStorage por 1 h), logado como Loja A em `/customer-portal`:
+   - passar por Início, Pedidos, novo pedido (endereço novo marcado no mapa, arrastando), detalhe, Extrato e Configurações;
+   - conferir no log `[entregas] portal da loja: acesso negado` que nenhuma chamada necessária voltou 403. Se voltar, liberar só aquele método e caminho;
+   - aceitar o pedido de teste no Navigator: o motoboy aparece no portal em até ~20 s e o cancelamento fica bloqueado.
+8. **Limpar:** desativar ou apagar as lojas de teste, conforme o usuário decidir.
 
 ## Situação por task
 
-| Task | Situação | Commits |
+| Task | Situação | Commits principais |
 |---|---|---|
-| 0 Lint PHP | fechada | dd6a7f6f, e2c47b67 |
-| 1 Portal reativado no console | fechada | 0bd76797 |
-| 2 LojaDoUsuario | fechada (alterada na 6A) | 74f19f53 |
-| 3 CalculoEntregas | fechada | 4188b0fd, 0f018eeb, 9bc56b61, 71bd4850, 702c2833, abab42ce |
-| 4 LojasController (API admin) | fechada | ad13fff6, 50087522, 29aa36a7 |
-| 5 PortalLojaController | fechada | 37535d6c, f3924d2d, 1bf0d2d2 |
-| 6A ProtegerPortalLoja | aprovada (falta 1 Minor opcional) | 7b5f8e3d, 87c6b8f6, 40412c7a |
-| 6B RegrasPortalLoja | **falta corrigir 1 Important** | f74e8f6e |
-| 6C RestringirChaveDoApp | implementada, **falta revisão** | 16860aef |
-| 7 Tela Lojas (Fleet-Ops) | aprovada (Minors opcionais) | f7b24744 |
-| 8 Formulário do operador (coleta travada) | **a fazer** | — |
-| 9 Portal: menu, telas ocultas, membros e login só leitura | implementada, **falta revisão** | 76e0f4ef, d037f5c5 |
-| 10 Portal: novo pedido só com destino | **a fazer** | — |
-| 11 Portal: acompanhamento | **a fazer** | — |
-| 12 Portal: extrato | **a fazer** | — |
-| 13 Build local do console | **a fazer** | — |
-| 14 Teste de isolamento + deploy (com o usuário) | **a fazer** | — |
-| 15 CLAUDE.md + memória | **a fazer** | — |
+| 0–5 | fechadas (1ª sessão) | ver o plano |
+| 6A ProtegerPortalLoja | fechada; Minor do login aplicado | 7b5f8e3d, 87c6b8f6, 40412c7a, 4cc30105 |
+| 6B RegrasPortalLoja | fechada. Cancelamento atômico (`TravaDoPedido`), atividade e evento, sai dos pedidos abertos. `BarrarAceiteDePedidoEncerrado` no grupo `fleetbase.api`, que também põe o cancelamento da API v1 na trava (no timeout, segue sem a trava). `StatusDoPedido`. Descarta `internal_id`/`pod_*` | f74e8f6e, 618b40d1, 14dcff9f, bd710f2c, 3e1c67dd, b288e32a, 1b798b27 |
+| 6C RestringirChaveDoApp | fechada, **desligada** | 16860aef, 88fec82a |
+| 7 Tela Lojas | fechada; Minors aplicados | f7b24744, d90f5258 |
+| 8 Formulário do operador | fechada | a50a5669, 8ee706ab |
+| 9 Menu, telas ocultas, membros | fechada; painel da home só leitura | 76e0f4ef, d037f5c5, d7020515 |
+| 10 Novo pedido só com destino | fechada. Destino a pelo menos 30 m da coleta (front e servidor). O mapa só marca com arrasto, autocomplete ou Localizar. Rua obrigatória | 813820c6, 83c0d09e, ef536cc6, dc0b1ed0, bc04c6b0, 880d4ad4 |
+| 11 Acompanhamento | fechada. Ciclo único (motoboy a cada 20 s, detalhe ao mudar ou a cada ~60 s), espera crescente, pausa com a aba oculta. Endpoint do motoboy aceita o contato da loja | c0666a3b, 36eb59b1, 8931c039, 5f442cef, 349f7341 e o acabamento final |
+| 12 Extrato | fechada. Até 3 meses (92 dias), tabela em partes, aviso de período desatualizado, fuso da organização | 0baf62da, 7cf987f2, 2607e5bb, 8fde868d |
+| 13 Build local | ok (exit 0). Engine do portal no `dist`, ícones do mapa com fingerprint, `.h-56` no CSS. Refazer depois dos últimos commits | — |
+| 14 Teste de isolamento | script pronto e revisado. Deploy e execução com o usuário | da753f54 |
+| 15 Documentação | `CLAUDE.md` e este arquivo | 1ae01d5e |
+| extra | 429 e 404 genérico do core traduzidos | f570d347 |
 
-## Pendências das revisões
+## Decisões pendentes do usuário
 
-### 6B — corrigir antes do deploy (Important)
-**Cancelamento × aceite do motoboy.**
-- O `cancelOrder` do portal só faz `update(status=canceled)`. Não grava atividade, não dispara `OrderCanceled` e mantém `dispatched`/`adhoc` ligados.
-- O `POST v1/orders/{id}/start` da API v1 (`fleetops Api/v1/OrderController.php` ~965-1021) não confere se o pedido foi cancelado. Um motoboy que recebeu o aviso ainda aceita o pedido cancelado, e o pedido "ressuscita": se for concluído, entra no pagamento e na cobrança.
-- Também há corrida entre a nossa checagem e o update.
+- **6D (sugerida, não feita): limitar o login por SMS.**
+  - O problema é anterior a este projeto e foi achado na revisão da 6C. O código tem 6 dígitos e não expira. Cada pedido cria um código novo sem invalidar os anteriores, e o throttle é de 120/min por IP. Com a chave do APK, a força bruta é viável, e um token de motoboy lista os pedidos de todas as lojas.
+  - Correção em `api/app`:
+    - limite por telefone no `login-with-sms`;
+    - limite de tentativas por identidade no `verify-code`;
+    - recusar código vencido;
+    - apagar os códigos depois do login.
+- **App do motoboy (repo `entregas-navigator`):**
+  - criar o Driver com o token do motoboy e deixar o `useFleetbase` síncrono. É o pré-requisito para ligar a 6C;
+  - mostrar ao motoboy o erro do aceite. Hoje sai só `console.warn`, em `AdhocOrderCard.tsx` e `OrderScreen.tsx`, e o motoboy não fica sabendo que o pedido foi cancelado.
+- **Ligar a 6C:** só com o APK novo nos celulares. Os passos e a checagem com `curl` estão no docblock de `RestringirChaveDoApp.php`.
+- **CI:** o `.github/workflows/api.yml` tem um gate de 100% de cobertura em `api/app`. O código do Entregas não tem testes, então confira se o workflow está ativo antes de abrir um PR para a `main`.
 
-Correção sugerida (em `api/app`):
-- Cancelar de forma atômica no `RegrasPortalLoja`: `Order::whereKey(..)->where('started', 0)->whereIn('status', ['created','dispatched'])->update(...)`, conferindo as linhas afetadas.
-- Registrar a atividade e o evento (`$pedido->cancel()`) e desligar `dispatched`/`adhoc`.
-- Num middleware global, barrar `POST v1/orders/{id}/start` de pedido cancelado (o código do Composer não pode ser editado).
+## Minors avaliados e não aplicados (registro)
 
-Minors da 6B (avaliar):
-- Incluir `order_canceled` em `STATUS_ENCERRADOS`.
-- Considerar descartar `order_config`/`type`, `pod_required`/`pod_method` e `internal_id` no `POST orders`.
-- A resposta do `POST orders` sai antes do despacho; o front recarrega.
-- Marcar falha de despacho no `meta` do pedido (ex.: `entregas.despacho_falhou`).
-- Corrida teórica no `POST places` (dá para resolver com `Cache::lock`).
+- **6C:** a deduplicação do log é por IP + rota, e não por IP + motivo.
+- **6B:**
+  - não há alerta automático se o Fleet-Ops renomear `startOrder`/`cancelOrder` (fica a nota no `CLAUDE.md`);
+  - sem testes PHP (não há PHP local).
+- **8:**
+  - o segundo `ModelSelect` desabilitado;
+  - nenhum aviso quando paradas são descartadas;
+  - na troca de loja com a busca pendente, a coleta da loja anterior aparece por um instante.
+- **9:** o `POST dashboards/(switch|reset-default)` ficou no `PERMITIDAS_INTERNAS`.
+- **10:**
+  - os campos lat/lng visíveis do modal não são lidos (vale o ponto do mapa);
+  - o `checkForCheckoutSession` continua ativo, o que só importa com URL forjada.
+- **11:**
+  - a posição do motoboy vem sem horário (o rótulo diz "Última posição");
+  - a busca de pedidos faz 2 consultas por tecla, o que já existia antes.
+- **12:**
+  - não há detecção de "pendente para sempre";
+  - o pedido do extrato não tem link para o detalhe.
+- **Código morto do upstream:** mantido de propósito, para o diff contra o upstream ficar pequeno.
 
-### 6A — Minor opcional
-O `loginDesativado` usa `exists()` sobre qualquer usuário de cliente com o mesmo e-mail ou telefone. Se houver um usuário de cliente pendente com o mesmo e-mail, uma loja ativa toma 401 no login. A correção é voltar ao `first()` sem filtro (a mesma consulta do login do portal) e depois conferir `type === 'customer' && status !== 'active'`, tratando status nulo como desativado.
+## Notas para o deploy
 
-### 6C — revisar e decidir quando ligar
-- **Variável:** `ENTREGAS_CHAVE_APP_MOTOBOY`. Vazia é o padrão e mantém o comportamento de hoje.
-- **O que ela faz quando ligada:** a chave pública do APK só passa em quatro rotas, e o resto devolve 403:
-  - `POST v1/drivers/login-with-sms`
-  - `POST v1/drivers/verify-code` (sem `for` ou com `for=driver_login`)
-  - `POST v1/drivers/{id}/register-device`
-  - `GET v1/drivers/{id}/organizations`
-- **Comparação da chave:** a coluna `api_credentials.key` é `utf8mb4_unicode_ci`, então o middleware compara exato e confere de novo no banco.
-- **Para ligar, depois do deploy e com teste no celular:**
-  1. Confirme que o iFood usa outra chave. Se for a mesma do APK, crie uma chave nova para o iFood antes.
-  2. `bash deploy/atualizar.sh api`.
-  3. Preencha `ENTREGAS_CHAVE_APP_MOTOBOY=flb_live_…` no `stack.env`, igual ao `FLEETBASE_KEY` do app. No Portainer, faça Update the stack com Re-pull desligado; se precisar, rode `docker service update --force entregas_application`.
-  4. `curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer <chave>" https://entregas-api.restaurantepro.com.br/v1/orders` tem de dar 403.
-  5. No celular: saia, entre de novo por SMS, receba um pedido de teste, aceite e conclua.
-  6. `docker service logs entregas_application 2>&1 | grep "chave do app"`.
-  7. Para desligar, apague o valor e faça Update the stack.
-- **Recomendação para o app** (repo `entregas-navigator`): no `createDriverSession`, criar o Driver com o token do motoboy. Assim `register-device` e `organizations` saem da lista.
-
-### 7 — Minors opcionais (uma linha cada)
-1. `salvarLoja` só fecha o painel se ele ainda for o da mesma loja.
-2. `limpar()` faz `this.carregar.cancelAll()`.
-3. O painel "Trocar senha" ganha `did-update` pelo usuário.
-4. Lat/lng sem `inputmode="decimal"`: o teclado decimal não tem "-".
-
-### 9 — revisar
-Peça a revisão de conformidade e de qualidade dos commits 76e0f4ef e d037f5c5. Decisões extras já aceitas:
-- os atalhos da home levam a Novo pedido, Pedidos e Extrato, e o texto da home mudou;
-- a data de nascimento saiu do perfil;
-- o perfil mostra e-mail e telefone só leitura;
-- a aba Membros fica só leitura;
-- o painel da home ficou em w6/w6/w12.
-
-## Notas para as tasks que faltam
-
-- **Task 8:** seguir o plano. Mexe em `packages/fleetops` (formulário do pedido + YAML). A tela Lojas (Task 7) já está fechada, então não há conflito.
-- **Task 10:**
-  - O `POST customer-portal/int/v1/places` **precisa sempre mandar `name`**, mesmo nulo. Sem ele, o `PlaceController` dá 500.
-  - Sem edição de endereço salvo: o servidor devolve 403 para `PATCH`/`DELETE`.
-  - Coordenadas obrigatórias, pelo mapa.
-  - `mapCenter` = coleta da loja.
-  - Mostrar ao usuário o 422 de endereço repetido.
-  - O `minha-loja` sem loja dá 404.
-- **Task 11:**
-  - Remover a ação de suporte em `addon/components/portal/order/details.js`.
-  - `ENCERRADOS` com `expired`.
-  - O polling tem de tolerar 429 (`throttle:60,1` nas rotas `loja/*`).
-  - A posição do motoboy só vem com o pedido aceito há no máximo 4 h; fora disso, lat/lng vêm nulos e o mapa não aparece.
-- **Task 12:** o extrato devolve 422 "Escolha um período de até 1 ano." para período com mais de 366 dias.
-- **Task 13:** `cd console && DISABLE_RUNTIME_CONFIG=false pnpm build --environment production`. Depois, conferir se o build mudou `console/app/router.js` (o portal precisa estar lá) e commitar se mudou.
-- **Task 14:**
-  - Itens a acrescentar ao teste (`scripts/teste-isolamento-lojas.mjs`, ver o plano):
-    - cancelar e depois tentar aceitar no Navigator: o pedido não pode ressuscitar depois da correção da 6B;
-    - `POST v1/customers/orders` com `Customer-Token` de loja → 403;
-    - `service-quotes/preliminary` → 403;
-    - upload de foto: só PNG/JPG até 5 MB;
-    - login de usuário desativado → 401;
-    - usuário em duas lojas → 403.
-  - Testar o portal em **janela anônima**: o console guarda a lista de extensões no `localStorage` por 1 h.
-  - O papel "Fleet-Ops Customer" precisa existir. O `deploy.sh` roda `fleetbase:create-permissions`.
-  - O teste dispara um aviso real aos motoboys perto da loja de teste.
-  - Merge na `main` e push **só com o aval do usuário**. O deploy é `cd ~/entregas && bash deploy/atualizar.sh` (API + console) e depois `docker service update --force entregas_queue`.
-- **Task 15:** além do que o plano pede, documentar no CLAUDE.md:
-  - Se a central corrige uma coordenada errada da loja, nasce um Local novo. Os pedidos antigos ficam com a coordenada antiga e o km deles tem de ser acertado à mão.
-  - Os Locais antigos ficam sem dono, mas com o nome da loja na lista de Locais.
-  - Throttle de 60/min nas rotas `loja/*`.
-  - Posição do motoboy só com o pedido aceito há no máximo 4 h.
-  - Como ligar a 6C.
-  - Riscos conhecidos:
-    - o socket não autentica canais `company.*`;
-    - a chave `flb_live_` do APK enquanto a 6C estiver desligada;
-    - o upload aceita `disk`/`path` de usuários que não são de loja (comportamento do core).
+- O `atualizar.sh api` roda o `deploy.sh`. Não há migration nova neste trabalho. O papel "Fleet-Ops Customer" vem do `fleetbase:create-permissions`.
+- O `throttle:60,1` vale por usuário para as rotas `loja/*`.
+- O extrato aceita no máximo 92 dias.
+- O teste de isolamento depende dessas regras já em produção, como o limite de 92 dias e a trava do aceite.
