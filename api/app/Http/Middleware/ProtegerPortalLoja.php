@@ -28,6 +28,8 @@ use Laravel\Sanctum\PersonalAccessToken;
  * Não confia nas permissões do Fleetbase: o papel "Fleet-Ops Customer" lista e apaga contatos de
  * todas as lojas e edita usuários (inclusive o papel).
  * Usuário de loja desativado não passa em nada, nem no login (o Fleetbase não confere o status).
+ * Ninguém se cadastra sozinho: ROTAS_DE_CADASTRO dá 403 a qualquer requisição, com ou sem token
+ * (só a central cria usuários e lojas, na tela Lojas).
  */
 class ProtegerPortalLoja
 {
@@ -35,6 +37,15 @@ class ProtegerPortalLoja
     public const ATRIBUTO_USUARIO = 'entregas.usuario_loja';
 
     public const ROTAS_DE_LOGIN = ['customer-portal/int/v1/auth/login', 'int/v1/auth/login'];
+
+    /**
+     * Cadastro por conta própria (POST): o core cria uma organização nova com um administrador, sem token (é o botão
+     * "Create a new Account" do login do console). O customer-portal-api não tem rota de cadastro, só `auth/login`:
+     * ao atualizá-lo, confira se ele ganhou uma (`auth/register`, `auth/sign-up`...) e inclua aqui.
+     */
+    public const ROTAS_DE_CADASTRO = ['int/v1/onboard/create-account'];
+
+    public const MENSAGEM_DE_CADASTRO = 'O cadastro é feito pela central. Fale com a central.';
 
     /** int/v1: "MÉTODO caminho" liberados para o usuário de loja. */
     public const PERMITIDAS_INTERNAS = [
@@ -98,6 +109,11 @@ class ProtegerPortalLoja
         $caminho = trim(rawurldecode($request->path()), '/');
         // HEAD executa a rota GET (o roteador registra as duas)
         $metodo = $request->isMethod('HEAD') ? 'GET' : $request->method();
+
+        // antes da saída das requisições sem usuário de loja (logo abaixo): o cadastro é feito sem token
+        if ($metodo === 'POST' && in_array($caminho, static::ROTAS_DE_CADASTRO, true) && $this->cadastroFechado()) {
+            return response()->json(['errors' => [static::MENSAGEM_DE_CADASTRO]], 403);
+        }
 
         if ($request->isMethod('POST') && in_array($caminho, static::ROTAS_DE_LOGIN, true) && $this->loginDesativado($request)) {
             return response()->json(['errors' => ['Acesso desativado. Fale com a central.']], 401);
@@ -205,6 +221,20 @@ class ProtegerPortalLoja
 
         // status nulo também conta como desativado (como no handle(), que só aceita "active")
         return $usuario instanceof User && $usuario->type === 'customer' && $usuario->status !== 'active';
+    }
+
+    /**
+     * O cadastro por conta própria está fechado? Só a instalação o libera: sem nenhum usuário, o core faz do primeiro
+     * cadastro o administrador da plataforma (OnboardController::createAccount confere o mesmo `User::exists()`).
+     * Na dúvida (erro ao consultar o banco), fechado.
+     */
+    protected function cadastroFechado(): bool
+    {
+        try {
+            return User::exists();
+        } catch (\Throwable $e) {
+            return true;
+        }
     }
 
     protected function idsDoUsuario(User $usuario): array
