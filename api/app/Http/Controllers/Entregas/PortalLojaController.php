@@ -104,14 +104,21 @@ class PortalLojaController extends Controller
         ]);
     }
 
-    /** Motoboy do pedido em andamento (nome, foto e, com o pedido aceito há pouco, a posição). Só pedido desta loja. */
+    /** Motoboy do pedido em andamento (nome, foto e, com o pedido aceito há pouco, a posição). Só pedido que o portal mostra a este usuário. */
     public function motoboy(string $id)
     {
         $vendor = $this->lojaDaSessao();
 
+        // os mesmos donos de pedido que o portal mostra (PortalOrderService::accountCustomerUuids): a loja e o contato do
+        // usuário (a central pode lançar o pedido no contato); só com a loja, esse pedido aparece no portal e aqui dá 404
+        $donos = array_values(array_filter([
+            $vendor->uuid,
+            LojaDoUsuario::contato(session('user'))?->uuid,
+        ]));
+
         // name e photo_url do Driver leem o usuário dele e o avatar do usuário: vêm junto, e não sob demanda dentro dos accessors
         $pedido = Order::where('company_uuid', session('company'))
-            ->where('customer_uuid', $vendor->uuid)
+            ->whereIn('customer_uuid', $donos)
             ->where(fn ($q) => $q->where('public_id', $id)->orWhere('uuid', $id))
             ->with('driverAssigned.user.avatar')
             ->firstOrFail();
