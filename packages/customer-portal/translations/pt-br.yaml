@@ -587,6 +587,8 @@ customer-portal:
       no-deliveries: Nenhuma entrega concluída no período.
       pending-km: "{count} entrega(s) ainda sem km calculado; clique em Atualizar."
       refresh: Atualizar
+      km: Km
+      period-invalid: O fim do período não pode ser antes do início.
       pickup-fixed: Coleta
       pickup-fixed-help: Sempre no endereço da loja.
       store-without-address: A loja ainda não tem endereço de coleta. Fale com a central.

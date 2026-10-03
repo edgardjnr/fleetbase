@@ -587,6 +587,8 @@ customer-portal:
       no-deliveries: No completed deliveries in this period.
       pending-km: "{count} deliveries still missing km; click Refresh."
       refresh: Refresh
+      km: Km
+      period-invalid: The period end can't be before the start.
       pickup-fixed: Pickup
       pickup-fixed-help: Always at the store address.
       store-without-address: The store has no pickup address yet. Contact the dispatcher.
