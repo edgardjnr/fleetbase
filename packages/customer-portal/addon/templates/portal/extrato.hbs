@@ -9,20 +9,25 @@
         </div>
     </div>
 
-    {{! Entregas: a consulta sai no `change` dos campos, com uma espera curta (ver o controller). A loja vem da sessão do usuário e não é enviada }}
+    {{! Entregas: a consulta sai no `change` dos campos, com uma espera curta (ver o controller). A loja vem da sessão do usuário e não é enviada. Os campos não têm min nem max: o calendário acinzentaria as datas fora do intervalo e obrigaria a alargar o período antes de fechá-lo }}
     <div class="flex flex-wrap items-end gap-3 mt-4">
         <InputGroup @name={{t "customer-portal.ui.entregas.period-start"}} @wrapperClass="mb-0i" as |inputId|>
-            <input id={{inputId}} type="date" class="form-input" value={{this.inicio}} max={{this.fim}} {{on "change" this.setInicio}} />
+            <input id={{inputId}} type="date" class="form-input" value={{this.inicio}} {{on "change" this.setInicio}} />
         </InputGroup>
         <InputGroup @name={{t "customer-portal.ui.entregas.period-end"}} @wrapperClass="mb-0i" as |inputId|>
-            <input id={{inputId}} type="date" class="form-input" value={{this.fim}} min={{this.inicio}} {{on "change" this.setFim}} />
+            <input id={{inputId}} type="date" class="form-input" value={{this.fim}} {{on "change" this.setFim}} />
         </InputGroup>
     </div>
 
-    {{#if this.desatualizado}}
-        {{! Entregas: depois de um erro ou de um período recusado, os campos mostram um período e os valores abaixo são de outro }}
+    {{#if this.temAvisoPeriodo}}
+        {{! Entregas: o aviso do período, no lugar do toast durante a digitação: por que os campos não são consultados (período invertido ou longo demais) e, havendo dados de outro período na tela, de quando eles são. Vale também sem dados ainda }}
         <InfoBlock @type="warning" @icon="triangle-exclamation" class="mt-4" role="status">
-            {{this.avisoDesatualizado}}
+            {{#if this.problemaPeriodo}}
+                <div>{{this.textoProblemaPeriodo}}</div>
+            {{/if}}
+            {{#if this.desatualizado}}
+                <div>{{this.avisoDesatualizado}}</div>
+            {{/if}}
         </InfoBlock>
     {{/if}}
 

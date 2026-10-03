@@ -113,6 +113,41 @@ export default class PortalExtratoController extends Controller {
         return this.intl.t('customer-portal.ui.entregas.stale-period', { start: dataCurta(this.dados.inicio), end: dataCurta(this.dados.fim) });
     }
 
+    // Entregas: por que o período dos campos, já completo, não pode ser consultado: 'period-invalid' (fim antes do início) ou
+    // 'period-too-long' (mais de 3 meses). null quando pode, ou quando uma data ainda está sendo digitada. Para trocar de
+    // período o usuário passa por estados assim (volta no tempo mudando o início antes do fim, por exemplo), então na
+    // digitação o motivo só aparece no aviso da tela, sem toast e sem consulta; o toast fica para o "Atualizar"
+    get problemaPeriodo() {
+        const { inicio, fim } = this;
+
+        if (!dataCompleta(inicio) || !dataCompleta(fim)) {
+            return null;
+        }
+
+        if (inicio > fim) {
+            return 'period-invalid';
+        }
+
+        return differenceInCalendarDays(parseISO(fim), parseISO(inicio)) > MAX_DIAS ? 'period-too-long' : null;
+    }
+
+    get textoProblemaPeriodo() {
+        switch (this.problemaPeriodo) {
+            case 'period-invalid':
+                return this.intl.t('customer-portal.ui.entregas.period-invalid');
+            case 'period-too-long':
+                return this.intl.t('customer-portal.ui.entregas.period-too-long');
+            default:
+                return '';
+        }
+    }
+
+    // Entregas: há o que dizer sobre o período dos campos (o motivo de ele não ser consultado, dados de outro período na
+    // tela, ou os dois). Vale também sem dados ainda, na primeira carga
+    get temAvisoPeriodo() {
+        return Boolean(this.problemaPeriodo) || this.desatualizado;
+    }
+
     get totalEntregas() {
         return this.dados ? this.intl.formatNumber(Number(this.dados.totais?.entregas) || 0) : SEM_VALOR;
     }
@@ -128,7 +163,8 @@ export default class PortalExtratoController extends Controller {
     // Entregas: uma consulta por vez. Uma nova (outro período, "Atualizar") cancela a anterior, inclusive a que ainda espera
     // o fim da digitação. O período vale o que está nos campos quando a espera termina. Com erro (inclusive o limite de
     // consultas por minuto) os dados que já estavam na tela ficam. O servidor responde em inglês ao período que recusa, então
-    // o que ele recusaria (fim antes do início, mais de 3 meses) é conferido aqui e nem é consultado
+    // o que ele recusaria (fim antes do início, mais de 3 meses) é conferido aqui e nem é consultado. Na digitação (com
+    // espera) isso não vira toast: o motivo está no aviso da tela (problemaPeriodo) e o toast é do "Atualizar"
     @restartableTask *carregar(espera = 0) {
         const comEspera = typeof espera === 'number' && espera > 0;
 
@@ -148,13 +184,13 @@ export default class PortalExtratoController extends Controller {
             return;
         }
 
-        if (inicio > fim) {
-            this.notifications.warning(this.intl.t('customer-portal.ui.entregas.period-invalid'));
-            return;
-        }
+        // período completo que o servidor recusaria (fim antes do início, mais de 3 meses): igual à data incompleta, o aviso
+        // só sai no "Atualizar"
+        if (this.problemaPeriodo) {
+            if (!comEspera) {
+                this.notifications.warning(this.textoProblemaPeriodo);
+            }
 
-        if (differenceInCalendarDays(parseISO(fim), parseISO(inicio)) > MAX_DIAS) {
-            this.notifications.warning(this.intl.t('customer-portal.ui.entregas.period-too-long'));
             return;
         }
 
