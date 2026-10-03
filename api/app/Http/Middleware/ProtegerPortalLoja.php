@@ -44,6 +44,9 @@ class ProtegerPortalLoja
         '#^GET users/me$#',
         '#^(GET|POST) users/locale$#',
         '#^GET geocoder/(reverse|query)$#',
+        // painel da home do portal (<Dashboard>): o DashboardFilter e o DashboardController filtram pelo usuário da sessão
+        '#^GET dashboards$#',
+        '#^POST dashboards/(switch|reset-default)$#',
         '#^[A-Z]+ entregas/loja/.+$#',
     ];
 
