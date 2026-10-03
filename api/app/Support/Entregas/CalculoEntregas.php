@@ -21,14 +21,17 @@ use Illuminate\Support\Facades\Log;
  * ao motoboy e o cobrado da loja. A entrega vale o valor da faixa em que o km dela cai
  * (0 < km ≤ 1 → 1ª faixa, 1 < km ≤ 2 → 2ª…). Acima da última faixa vale o valor da última.
  *
- * A loja de cada pedido é o Vendor dono do pedido (o cliente do pedido), como nos pedidos do
- * portal da loja e nos que a central cria escolhendo a loja. Pedidos sem loja caem no nome do
- * local de coleta (lojas com o mesmo nome são agrupadas, porque a integração pode criar um Place
- * novo por pedido); sem nome, no próprio Place.
+ * A loja de cada pedido é o Vendor dono do pedido, achado pelo uuid do cliente (`customer_uuid`),
+ * como nos pedidos do portal da loja e nos que a central cria escolhendo a loja. O `customer_type`
+ * não serve de critério: varia conforme a rota que criou o pedido (o console e a API v1 gravam a
+ * classe com a barra inicial, o portal sem). Pedidos sem loja caem no nome do local de coleta
+ * (lojas com o mesmo nome são agrupadas, porque a integração pode criar um Place novo por pedido);
+ * sem nome, no próprio Place.
  *
  * O km de cada entrega é a rota de rua loja (pickup) → cliente (dropoff), calculada pelo OSRM
- * uma única vez e guardada no meta do pedido (`entregas.km_rota`). O campo `orders.distance`
- * não serve: é a distância *restante*, que vai a ~0 quando o pedido termina.
+ * uma única vez e guardada no meta do pedido (`entregas.km_rota`); se depois o endereço for apagado
+ * ou perder a posição, vale o km guardado. O campo `orders.distance` não serve: é a distância
+ * *restante*, que vai a ~0 quando o pedido termina.
  *
  * O período é filtrado pela data em que o pedido foi concluído (tracking status COMPLETED),
  * no fuso da organização.
@@ -40,11 +43,21 @@ class CalculoEntregas
 
     public const MAX_FAIXAS = 50;
 
-    /** Quantas rotas novas calcular por requisição (a tela repete enquanto houver pendentes). */
+    /** Quantas rotas novas calcular por chamada, por padrão (a tela repete enquanto houver pendentes). */
     public const LIMITE_CALCULOS = 40;
 
     /** Linha reta → rua, usado só quando o OSRM não responde. */
     public const FATOR_ESTIMATIVA = 1.3;
+
+    /**
+     * Disjuntor do OSRM. Depois da primeira falha nesta requisição (exceção, ou 0 m entre pontos
+     * distintos), as rotas seguintes vão direto para a estimativa (linha reta × FATOR_ESTIMATIVA),
+     * sem chamar o OSRM. O OSRM configurado é o servidor público de demonstração, e cada tentativa
+     * espera até ~1 s (timeout do Fleet-Ops, que devolve rota vazia em vez de lançar exceção).
+     * A estimativa continua sendo refeita nas próximas consultas. O estado é da instância, e a
+     * classe é injetada uma vez por requisição.
+     */
+    protected bool $osrmFalhou = false;
 
     /**
      * Pedidos concluídos no período, com a data de conclusão em `entregas_concluido_em`.
@@ -66,19 +79,22 @@ class CalculoEntregas
             ->whereNull('orders.deleted_at')
             ->whereNotNull('orders.driver_assigned_uuid')
             ->whereBetween(DB::raw('COALESCE(conclusoes.concluido_em, orders.updated_at)'), [$inicio, $fim])
-            // condição booleana: com a closure como condição, o when() a executaria só para decidir
-            ->when($filtro !== null, $filtro)
+            // o filtro vai entre parênteses: um orWhere dele não escapa da empresa, do status e do período
+            // (é o isolamento do extrato da loja). A condição é booleana porque o when() executaria a closure
+            ->when($filtro !== null, fn ($query) => $query->where(fn ($grupo) => $filtro($grupo)))
             ->select('orders.*', DB::raw('COALESCE(conclusoes.concluido_em, orders.updated_at) as entregas_concluido_em'))
-            ->with(['payload', 'driverAssigned'])
+            // coleta, destino e nome do motoboy em lote, sem uma consulta por pedido
+            ->with(['payload.pickup', 'payload.dropoff', 'payload.waypoints', 'driverAssigned.user'])
             ->orderBy('entregas_concluido_em')
             ->get();
     }
 
     /**
      * Uma linha por pedido: loja, motoboy, km, faixa e os dois valores.
+     * Calcula no máximo $limiteCalculos rotas novas (o extrato do portal da loja passa um limite menor).
      * Retorna [entregas, pendentes] (pendentes = pedidos ainda sem km).
      */
-    public function entregas(Collection $pedidos, string $fuso): array
+    public function entregas(Collection $pedidos, string $fuso, int $limiteCalculos = self::LIMITE_CALCULOS): array
     {
         $calculos  = 0;
         $pendentes = 0;
@@ -87,7 +103,7 @@ class CalculoEntregas
         $lojas     = $this->lojasDosPedidos($pedidos);
 
         foreach ($pedidos as $pedido) {
-            $rota = $this->rotaDoPedido($pedido, $calculos < static::LIMITE_CALCULOS, $calculado);
+            $rota = $this->rotaDoPedido($pedido, $calculos < $limiteCalculos, $calculado);
             if ($calculado) {
                 $calculos++;
             }
@@ -123,15 +139,16 @@ class CalculoEntregas
     }
 
     /**
-     * Loja do pedido: o Vendor dono do pedido; sem loja, o nome do local de coleta; sem nome, o Place.
+     * Loja do pedido: o Vendor cujo uuid é o do cliente do pedido (seja qual for o `customer_type`);
+     * sem loja, o nome do local de coleta; sem nome, o Place.
      *
      * @return array{0: ?string, 1: ?string} [chave, nome]
      */
     public function lojaDoPedido(Order $pedido, ?Place $coleta, Collection $lojas): array
     {
-        $vendor = $pedido->customer_type === Vendor::class ? $lojas->get($pedido->customer_uuid) : null;
+        $vendor = $lojas->get($pedido->customer_uuid);
         if ($vendor) {
-            return ['loja:' . $vendor->public_id, $vendor->name];
+            return ['loja:' . $vendor->public_id, $vendor->name ?: $vendor->public_id];
         }
 
         if (!$coleta) {
@@ -145,13 +162,15 @@ class CalculoEntregas
 
     /**
      * Lojas (Vendor) donas dos pedidos, numa consulta só, indexadas pelo uuid.
-     * Inclui lojas excluídas, para o histórico da cobrança não mudar de agrupamento.
+     * Procura pelo uuid do cliente de todos os pedidos, sem olhar o `customer_type`: o uuid de um
+     * contato nunca está em `vendors`. Inclui lojas excluídas, para o histórico da cobrança não mudar
+     * de agrupamento, e dispensa o `place` que o Vendor sempre carrega ($with), que aqui não é usado.
      */
     protected function lojasDosPedidos(Collection $pedidos): Collection
     {
-        $uuids = $pedidos->where('customer_type', Vendor::class)->pluck('customer_uuid')->filter()->unique()->values();
+        $uuids = $pedidos->pluck('customer_uuid')->filter()->unique()->values();
 
-        return $uuids->isEmpty() ? collect() : Vendor::withTrashed()->whereIn('uuid', $uuids)->get()->keyBy('uuid');
+        return $uuids->isEmpty() ? collect() : Vendor::withTrashed()->without('place')->whereIn('uuid', $uuids)->get()->keyBy('uuid');
     }
 
     /** Faixas salvas, em ordem crescente de km. */
@@ -217,20 +236,22 @@ class CalculoEntregas
 
     /**
      * Rota loja → cliente em metros, do cache no meta do pedido ou calculada agora.
-     * Retorna null quando falta endereço ou quando o limite de cálculos desta requisição acabou.
+     * Retorna null quando falta endereço (e não há km guardado) ou quando o limite de cálculos
+     * desta chamada acabou.
      */
     public function rotaDoPedido(Order $pedido, bool $podeCalcular, ?bool &$calculado = null): ?array
     {
         $calculado = false;
+        $cache     = $pedido->getMeta('entregas.km_rota');
         $origem    = $pedido->payload?->getPickupOrFirstWaypoint();
         $destino   = $pedido->payload?->getDropoffOrLastWaypoint();
 
+        // endereço apagado ou sem posição depois do cálculo: vale o km já calculado
         if (!$this->temCoordenadas($origem) || !$this->temCoordenadas($destino)) {
-            return null;
+            return is_array($cache) && isset($cache['metros']) ? $cache : null;
         }
 
         $chave = md5(implode(',', [$origem->location->getLat(), $origem->location->getLng(), $destino->location->getLat(), $destino->location->getLng()]));
-        $cache = $pedido->getMeta('entregas.km_rota');
 
         // estimativa (OSRM fora do ar) é recalculada quando houver folga
         if (is_array($cache) && ($cache['chave'] ?? null) === $chave && (($cache['fonte'] ?? null) === 'osrm' || !$podeCalcular)) {
@@ -244,20 +265,29 @@ class CalculoEntregas
         $calculado = true;
         $rota      = ['metros' => 0, 'fonte' => 'osrm', 'chave' => $chave];
 
-        try {
-            $matriz = Utils::getDistanceMatrixFromOSRM(
-                $origem->location->getLat() . ',' . $origem->location->getLng(),
-                $destino->location->getLat() . ',' . $destino->location->getLng()
-            );
-            $rota['metros'] = (float) $matriz->distance;
-        } catch (\Throwable $e) {
-            Log::warning('[entregas] OSRM falhou no cálculo do km', ['pedido' => $pedido->public_id, 'erro' => $e->getMessage()]);
+        if (!$this->osrmFalhou) {
+            try {
+                $matriz = Utils::getDistanceMatrixFromOSRM(
+                    $origem->location->getLat() . ',' . $origem->location->getLng(),
+                    $destino->location->getLat() . ',' . $destino->location->getLng()
+                );
+                $rota['metros'] = (float) $matriz->distance;
+            } catch (\Throwable $e) {
+                $this->osrmFalhou = true;
+                Log::warning('[entregas] OSRM falhou no cálculo do km', ['pedido' => $pedido->public_id, 'erro' => $e->getMessage()]);
+            }
         }
 
         if ($rota['metros'] <= 0) {
             $linhaReta      = Utils::calculateDrivingDistanceAndTime($origem->location, $destino->location);
             $rota['metros'] = round($linhaReta->distance * static::FATOR_ESTIMATIVA);
             $rota['fonte']  = 'estimativa';
+
+            // 0 m entre pontos distintos também é falha (no timeout o OSRM devolve rota vazia). Coleta e
+            // destino no mesmo ponto dão 0 m de verdade e não desligam o OSRM no resto da requisição
+            if ($linhaReta->distance > 0) {
+                $this->osrmFalhou = true;
+            }
         }
 
         // sem mexer no updated_at: ele é o fallback da data de conclusão no filtro do período
