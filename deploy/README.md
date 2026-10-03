@@ -52,8 +52,9 @@ No Portainer, se usar "Update the stack", deixe **Re-pull image desligado**.
 ## Observações
 
 - **Socket:** a imagem oficial `socketcluster/socketcluster` é só amd64. O `docker/socket/` reconstrói o
-  mesmo app (v17.4.0) para rodar em ARM64. Navegadores só conectam a partir de `https://CONSOLE_DOMAIN`;
-  conexões sem `Origin` (a própria API, de servidor para servidor) são aceitas.
+  mesmo app (v17.4.0) para rodar em ARM64. Navegadores só conectam a partir de `https://CONSOLE_DOMAIN`.
+  O app do motoboy entra com `Origin: https://SOCKET_DOMAIN`, porque o WebSocket do React Native manda o
+  próprio host do socket. Conexões sem `Origin` (a própria API, de servidor para servidor) são aceitas.
 - **HTTPS atrás do tunnel:** com `TRUSTED_PROXIES=*`, a API respeita o `X-Forwarded-Proto` e gera URLs `https://`.
   Isso é seguro porque a API não tem porta publicada; só o cloudflared a alcança.
 - **E-mail:** o padrão é `MAIL_MAILER=log`. Sem SMTP, recuperação de senha e convites não chegam.
