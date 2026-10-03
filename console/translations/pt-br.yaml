@@ -940,6 +940,8 @@ console:
       portal-order-type-unavailable: Este tipo de pedido não está disponível no portal do cliente.
       portal-cannot-cancel: Este pedido não pode mais ser cancelado.
       portal-cannot-reschedule: Este pedido não pode mais ser reagendado.
+      too-many-attempts: Muitas tentativas em pouco tempo. Aguarde um minuto e tente de novo.
+      nothing-to-see: Não há nada para ver aqui.
     configure:
       test-config: Testar configuração
       driver: Driver

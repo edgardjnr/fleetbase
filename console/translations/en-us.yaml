@@ -965,6 +965,8 @@ console:
       portal-order-type-unavailable: This order type is not available from the customer portal.
       portal-cannot-cancel: This order can no longer be canceled.
       portal-cannot-reschedule: This order can no longer be rescheduled.
+      too-many-attempts: Too many attempts. Wait a minute and try again.
+      nothing-to-see: There is nothing to see here.
     configure:
       test-config: Test Config
       driver: Driver

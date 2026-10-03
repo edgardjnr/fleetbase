@@ -60,4 +60,7 @@ export default {
     'This order type is not available from the customer portal.': 'portal-order-type-unavailable',
     'This order can no longer be canceled.': 'portal-cannot-cancel',
     'This order can no longer be rescheduled.': 'portal-cannot-reschedule',
+    // Entregas: limite de chamadas (throttle) e o 404 genérico do core (ex.: portal da loja sem loja)
+    'Too Many Attempts.': 'too-many-attempts',
+    'There is nothing to see here.': 'nothing-to-see',
 };
