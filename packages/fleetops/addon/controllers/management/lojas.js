@@ -167,8 +167,9 @@ export default class ManagementLojasController extends Controller {
         return Boolean(this.senhaDe) && tamanhoDaSenha(this.novaSenha) >= TAMANHO_MINIMO_SENHA;
     }
 
-    /** Zera a tela ao sair dela: nem rascunhos nem senhas digitadas ficam para trás. */
+    /** Zera a tela ao sair dela: nem rascunhos nem senhas digitadas ficam para trás, e o carregamento em curso é cancelado (resposta atrasada não regrava a lista). */
     limpar() {
+        this.carregar.cancelAll();
         this.lojas = [];
         this.carregado = false;
         this.editando = null;
@@ -281,6 +282,8 @@ export default class ManagementLojasController extends Controller {
         }
 
         const loja = this.editando;
+        // identifica o painel que está sendo salvo (sobe a cada "Nova loja"/"Editar")
+        const abertura = this.aberturaDoPainel;
         const opcional = (valor) => texto(valor) || null;
         const pais = texto(loja.country).toUpperCase();
         const corpo = {
@@ -302,7 +305,13 @@ export default class ManagementLojasController extends Controller {
         try {
             const resposta = yield loja.id ? this.fetch.put(`${ENDPOINT}/${loja.id}`, corpo) : this.fetch.post(ENDPOINT, corpo);
             this.substituirLoja(resposta.loja);
-            this.editando = null;
+            // se, enquanto a API respondia, o painel passou para outra loja (ou "Nova loja"), a edição em andamento não é tocada
+            if (this.editando === loja) {
+                this.editando = null;
+            } else if (this.editando && this.aberturaDoPainel === abertura) {
+                // seguiu digitando nesta loja durante o salvamento: o painel fica aberto, já ligado à loja salva (o próximo "Salvar" atualiza, não duplica)
+                this.editando = { ...this.editando, id: resposta.loja.id };
+            }
             this.notifications.success(this.intl.t('fleet-ops.ui.lojas.saved'));
         } catch (error) {
             this.notifications.serverError(error);
