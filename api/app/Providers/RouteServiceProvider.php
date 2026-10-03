@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Http\Controllers\Entregas\LojasController;
 use App\Http\Controllers\Entregas\PagamentoMotoboysController;
+use App\Http\Controllers\Entregas\PortalLojaController;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -57,6 +58,11 @@ class RouteServiceProvider extends ServiceProvider
                         Route::post('lojas/{id}/usuarios', [LojasController::class, 'adicionarUsuario']);
                         Route::put('lojas/{id}/usuarios/{contato}/senha', [LojasController::class, 'trocarSenha']);
                         Route::put('lojas/{id}/usuarios/{contato}/ativo', [LojasController::class, 'alterarAcesso']);
+
+                        // portal da loja (usuário type=customer; o ProtegerPortalLoja só libera estas)
+                        Route::get('loja/minha-loja', [PortalLojaController::class, 'minhaLoja']);
+                        Route::get('loja/extrato', [PortalLojaController::class, 'extrato']);
+                        Route::get('loja/pedidos/{id}/motoboy', [PortalLojaController::class, 'motoboy']);
                     });
             }
         );
