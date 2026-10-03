@@ -29,7 +29,7 @@
                     @dragging={{false}}
                     as |layers|
                 >
-                    <layers.tile @url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png" />
+                    <layers.tile @url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
                     {{!-- Entregas: ícone explícito. O Leaflet acha a pasta do ícone padrão pelo nome marker-icon.png no CSS, e o
                          fingerprint do build de produção quebra essa busca (a imagem saía quebrada). São os PNGs do próprio Leaflet,
                          que o ember-ui publica em /assets/images; no build, esses caminhos são reescritos com o fingerprint --}}

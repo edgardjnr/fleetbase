@@ -51,7 +51,7 @@ export default class CoordinatesInputComponent extends Component {
     @tracked isLoading = false;
     @tracked isReady = false;
     @tracked isInitialMoveEnded = false;
-    @tracked tileSourceUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
+    @tracked tileSourceUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
     @tracked mapTheme = 'light';
     @tracked disabled = false;
 
@@ -102,13 +102,13 @@ export default class CoordinatesInputComponent extends Component {
             this.tileSourceUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
         } else if (sourceUrl === 'light') {
             this.mapTheme = 'light';
-            this.tileSourceUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
+            this.tileSourceUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
         } else if (typeof sourceUrl === 'string' && sourceUrl.startsWith('https://')) {
             this.mapTheme = 'custom';
             this.tileSourceUrl = sourceUrl;
         } else {
             this.mapTheme = 'light';
-            this.tileSourceUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
+            this.tileSourceUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
         }
     }
 
