@@ -83,19 +83,26 @@ por causa da tradução.
 
 ### Formato
 
-- **Alarme** (`order_ping`, `order_assigned`, `order_dispatched`): push **de dados**. Saem o bloco
-  `notification` e o `android.notification`. Os dados levam `id`, `type`, `title`, `body` e
+- **Alarme** (`order_ping`, `order_assigned`, `order_dispatched`), com a chave desligada (padrão):
+  push comum no canal `alarme_pedido`. No APK 16 é o canal de alarme (toca no silencioso, uma vez,
+  sem loop nem tela cheia); no APK antigo, que não tem o canal, o Android usa o padrão `pedidos`,
+  como hoje.
+- **Alarme com a chave ligada:** push **de dados**. Saem o bloco `notification` e o
+  `android.notification`. Os dados levam `id`, `type`, `title`, `body` e
   `android_channel_id = pedidos`, todos como texto. Vai com `android.priority = high` e
   `android.ttl = 900s`: um alarme que não chega em 15 min não toca mais tarde.
 - **Chat:** push comum, `android.notification.channel_id = mensagens`.
 - **Status** (cancelado, falhou, concluído, parada) e teste: push comum, `channel_id = avisos`.
 - **Outros:** só o texto (fica no canal padrão).
-- APK sem os canais `mensagens` ou `avisos`: o Android usa o canal padrão `pedidos`, como hoje.
+- APK sem os canais `alarme_pedido`, `mensagens` ou `avisos`: o Android usa o canal padrão
+  `pedidos`, como hoje.
 
-### Chave de segurança
+### Chave do push de dados
 
-`ENTREGAS_ALARME_POR_DADOS`, lida com `getenv` (sobrevive ao `config:cache`). Ligada por padrão; com
-`0`, `false` ou `off`, os avisos de alarme voltam a ser push comum (em pt-BR, canal `pedidos`). Para
+`ENTREGAS_ALARME_POR_DADOS`, lida com `getenv` (sobrevive ao `config:cache`). **Desligada por
+padrão**; `1`, `true` ou `on` liga. Ligar só quando todos os motoboys tiverem o APK 16: no APK
+antigo, a biblioteca de push monta a notificação do push de dados com os dados embrulhados num campo
+`pushNotification` (o JS não desembrulha), e tocar nela abre o app sem ir ao pedido. Para ligar ou
 desligar: variável nos serviços da API do stack (application, queue, scheduler) + update no
 Portainer, sem deploy de código.
 
@@ -113,6 +120,18 @@ a constante própria.
 - `PushDoEntregas.postNotification` (a biblioteca só chama com o app fora da frente): se o `type` é de
   alarme, chama `AlarmeDePedido.disparar`; senão, segue o comportamento da biblioteca.
 - App na frente: nada muda (o JS abre o pedido e toca o `AlertaPedido`).
+- Tocar no alarme ou em "Ver pedido" abre o app com os dados do push no mesmo formato do push comum
+  (extras com `google.message_id`), que a biblioteca entrega ao JS como "opened".
+- App que estava fechado: a biblioteca guarda o push como "push inicial", mas o app nunca o lia, e
+  tocar numa notificação com o app fechado não abria o pedido. O `DriverLayout` passa a ler o push
+  inicial ao abrir (`getInitialNotification`).
+
+### Voltar para o app com o alarme tocando
+
+O último alarme fica guardado no aparelho ("pendente") por até 3 min. Se o motoboy voltar ao app por
+outro caminho (desbloqueando com o app na frente, pelo ícone), o `DriverLayout` lê o pendente e abre
+o pedido com o alarme do app. "Silenciar", arrastar a notificação para o lado, tocar nela ou a tela do
+pedido abrir apagam o pendente.
 
 ### AlarmeDePedido
 
@@ -168,11 +187,15 @@ a constante própria.
 ## 3. Compatibilidade e implantação
 
 1. Commit e push do servidor (Delivery, main) e do app (navigator, main, que gera o APK 16 no CI).
-2. Deploy da API com o **APK 15** ainda no celular do Motoca. Conferir que pedido (com o app fechado),
-   chat e cancelamento chegam em pt-BR com o toque longo: é o que os APKs antigos vão ver. Se falhar,
-   desligar a chave e investigar.
-3. Instalar o APK 16 e fazer o teste guiado.
-4. Distribuir o APK 16 aos motoboys.
+2. Deploy da API (chave desligada) com o **APK 15** ainda no celular do Motoca. Conferir que pedido
+   (com o app fechado), chat e cancelamento chegam em pt-BR com o toque longo e que tocar no pedido
+   abre o pedido: é o que os APKs antigos vão ver.
+3. Instalar o APK 16 e testar com a chave desligada: alarme no silencioso (uma vez), canais novos,
+   verificação ao abrir.
+4. Ligar a chave (Portainer) num horário calmo e testar o alarme completo: loop e tela cheia. Se
+   ainda houver motoboy com APK antigo, avisar antes (tocar na notificação não abre o pedido para
+   ele) ou desligar a chave depois do teste.
+5. Distribuir o APK 16 aos motoboys e deixar a chave ligada.
 
 ## 4. Testes
 
@@ -185,7 +208,9 @@ a constante própria.
 
 | Situação | Esperado |
 |---|---|
-| App fechado (arrastado), tela bloqueada, silencioso | Tela acende, alarme de tela cheia em loop; "Ver pedido" pede o desbloqueio e abre o pedido |
+| Chave desligada, app fechado, silencioso | Som de alarme (uma vez); tocar abre o pedido |
+| App fechado, tocar numa notificação de pedido | O app abre direto no pedido (antes não abria) |
+| Chave ligada a partir daqui: app fechado (arrastado), tela bloqueada, silencioso | Tela acende, alarme de tela cheia em loop; "Ver pedido" pede o desbloqueio e abre o pedido |
 | O mesmo, tocando "Silenciar" | Alarme para; pedido continua na lista |
 | App em segundo plano, desbloqueado | Notificação no topo com loop; ao tocar, abre o pedido sem som duplicado |
 | App aberto | Como hoje: tela do pedido com o loop |
