@@ -240,7 +240,8 @@ class CalculoEntregas
     /**
      * Rota loja → cliente em metros, do cache no meta do pedido ou calculada agora.
      * Retorna null quando falta endereço (e não há km guardado) ou quando o limite de cálculos
-     * desta chamada acabou.
+     * desta chamada acabou. Uma estimativa vinda de resposta definitiva do OSRM (`definitiva`) não é
+     * refeita; uma vinda de falha do serviço é refeita quando houver folga.
      */
     public function rotaDoPedido(Order $pedido, bool $podeCalcular, ?bool &$calculado = null): ?array
     {
@@ -256,8 +257,8 @@ class CalculoEntregas
 
         $chave = md5(implode(',', [$origem->location->getLat(), $origem->location->getLng(), $destino->location->getLat(), $destino->location->getLng()]));
 
-        // estimativa (OSRM fora do ar) é recalculada quando houver folga
-        if (is_array($cache) && ($cache['chave'] ?? null) === $chave && (($cache['fonte'] ?? null) === 'osrm' || !$podeCalcular)) {
+        // estimativa por falha do OSRM é recalculada quando houver folga; a de resposta definitiva, não
+        if (is_array($cache) && ($cache['chave'] ?? null) === $chave && (($cache['fonte'] ?? null) === 'osrm' || !empty($cache['definitiva']) || !$podeCalcular)) {
             return $cache;
         }
 
@@ -267,15 +268,19 @@ class CalculoEntregas
 
         $calculado = true;
         $rota      = ['metros' => 0, 'fonte' => 'osrm', 'chave' => $chave];
+        $metros    = $this->osrmFalhou ? null : $this->metrosPeloOsrm($pedido, $origem, $destino);
 
-        if (!$this->osrmFalhou) {
-            $rota['metros'] = $this->metrosPeloOsrm($pedido, $origem, $destino);
-        }
-
-        if ($rota['metros'] <= 0) {
+        if ($metros !== null && $metros > 0) {
+            $rota['metros'] = $metros;
+        } else {
             $linhaReta      = Utils::calculateDrivingDistanceAndTime($origem->location, $destino->location);
             $rota['metros'] = round($linhaReta->distance * static::FATOR_ESTIMATIVA);
             $rota['fonte']  = 'estimativa';
+
+            // resposta definitiva do OSRM (0 m, sem rota): não refaz enquanto as coordenadas forem as mesmas
+            if ($metros !== null) {
+                $rota['definitiva'] = true;
+            }
         }
 
         // sem mexer no updated_at: ele é o fallback da data de conclusão no filtro do período
@@ -287,32 +292,40 @@ class CalculoEntregas
 
     /**
      * Distância de rua em metros pelo OSRM, com o mesmo serviço e a mesma distância que o
-     * Utils::getDistanceMatrixFromOSRM. A chamada é direta porque ele esconde o `code` da resposta.
-     * Fica sem o cache em Redis dele, porque o km já é guardado no meta do pedido. Sem rota, devolve 0.
+     * Utils::getDistanceMatrixFromOSRM, mas sem a geometria (`overview=false`), para a resposta vir
+     * menor. A chamada é direta porque ele esconde o `code` da resposta. Fica sem o cache em Redis
+     * dele, porque o km já é guardado no meta do pedido.
      *
-     * Liga o disjuntor só com falha do serviço: exceção, timeout (o Fleet-Ops devolve
-     * `code` "Error"), resposta que não é do OSRM ou "Ok" sem rotas. "NoRoute" e "NoSegment" são
-     * respostas sobre esses pontos e não desligam o OSRM. O mesmo vale para "Ok" com 0 m, que o OSRM
-     * dá para pontos distintos projetados no mesmo trecho da via.
+     * Devolve null quando o serviço falha, e aí liga o disjuntor: exceção, timeout (o Fleet-Ops devolve
+     * `code` "Error"), resposta que não é do OSRM ou "Ok" sem rotas. As outras respostas são
+     * definitivas para esses pontos e devolvem a distância, que é 0 sem rota:
+     * - "Ok" com 0 m, que o OSRM dá para pontos distintos projetados no mesmo trecho da via;
+     * - "NoRoute" e "NoSegment";
+     * - "InvalidValue" ("Invalid coordinate value."). A URL e os parâmetros são montados aqui, e um
+     *   parâmetro errado volta como "InvalidQuery", que continua sendo falha.
      */
-    protected function metrosPeloOsrm(Order $pedido, Place $origem, Place $destino): float
+    protected function metrosPeloOsrm(Order $pedido, Place $origem, Place $destino): ?float
     {
         $resposta = null;
         $erro     = null;
 
         try {
-            // o OSRM recebe lng,lat: é a mesma string que o Utils monta invertendo o "lat,lng"
+            // o OSRM recebe lng,lat: é a mesma string que o Utils monta invertendo o "lat,lng".
+            // 'false' vai em texto: o booleano viraria overview=0, que o OSRM recusa
             $resposta = OSRM::getRouteFromCoordinatesString(
-                $origem->location->getLng() . ',' . $origem->location->getLat() . ';' . $destino->location->getLng() . ',' . $destino->location->getLat()
+                $origem->location->getLng() . ',' . $origem->location->getLat() . ';' . $destino->location->getLng() . ',' . $destino->location->getLat(),
+                ['overview' => 'false']
             );
         } catch (\Throwable $e) {
             $erro = $e->getMessage();
         }
 
         $codigo = is_array($resposta) ? ($resposta['code'] ?? null) : null;
-        if (!in_array($codigo, ['Ok', 'NoRoute', 'NoSegment'], true) || ($codigo === 'Ok' && empty($resposta['routes']))) {
+        if (!in_array($codigo, ['Ok', 'NoRoute', 'NoSegment', 'InvalidValue'], true) || ($codigo === 'Ok' && empty($resposta['routes']))) {
             $this->osrmFalhou = true;
             Log::warning('[entregas] OSRM falhou no cálculo do km; o resto desta consulta usa a estimativa', ['pedido' => $pedido->public_id, 'code' => $codigo, 'erro' => $erro]);
+
+            return null;
         }
 
         return (float) data_get($resposta, 'routes.0.distance', 0);
