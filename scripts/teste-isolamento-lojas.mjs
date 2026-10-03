@@ -9,6 +9,10 @@
 // - pedido cancelado não volta;
 // - o usuário de loja não alcança o resto da API.
 //
+// Ao terminar: o logout do core não revoga o token Sanctum, então as sessões abertas pelo teste continuam válidas
+// no servidor (nunca são impressas). Desative as lojas de teste na tela Lojas ou troque a senha dos usuários delas:
+// as duas coisas apagam os tokens.
+//
 // Preparar: crie o arquivo deploy/teste-lojas.env. Ele é ignorado pelo git e fica só no seu PC, como o stack.env:
 // nunca o commite. Use uma CHAVE=valor por linha, sem aspas (aspas em volta do valor são tiradas). Linha que começa
 // com # é comentário; não existe comentário no fim da linha, porque a senha pode ter #.
