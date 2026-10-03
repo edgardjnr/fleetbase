@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
  */
 class PortalLojaController extends Controller
 {
-    public const STATUS_ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled', 'expired'];
+    public const STATUS_ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled', 'order_canceled', 'expired'];
 
     /** Rotas novas calculadas por consulta do extrato (o portal não repete a chamada como a tela da central). */
     public const LIMITE_CALCULOS_PORTAL = 10;

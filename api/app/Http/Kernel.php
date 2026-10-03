@@ -27,6 +27,8 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\RegrasPortalLoja::class,
         // chave pública do app do motoboy só para o login (desligado enquanto ENTREGAS_CHAVE_APP_MOTOBOY estiver vazia)
         \App\Http\Middleware\RestringirChaveDoApp::class,
+        // aceite do motoboy (v1/orders/{id}/start): barra pedido encerrado e roda com a trava do pedido, a do cancelamento pela loja
+        \App\Http\Middleware\BarrarAceiteDePedidoEncerrado::class,
     ];
 
     /**

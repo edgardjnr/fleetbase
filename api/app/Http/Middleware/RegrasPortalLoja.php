@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Support\Entregas\LojaDoUsuario;
+use App\Support\Entregas\TravaDoPedido;
 use Closure;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Place;
@@ -10,6 +11,7 @@ use Fleetbase\FleetOps\Models\Vendor;
 use Fleetbase\FleetOps\Support\Utils;
 use Fleetbase\LaravelMysqlSpatial\Types\Point;
 use Fleetbase\Models\User;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\ParameterBag;
@@ -21,7 +23,9 @@ use Symfony\Component\HttpFoundation\ParameterBag;
  * - Novo pedido: a coleta é sempre o Local da loja (o que vier na requisição é descartado); o destino
  *   tem de ser um endereço salvo da loja com coordenadas (o km da cobrança sai delas); criado o
  *   pedido, ele é despachado como pedido aberto (adhoc) aos motoboys próximos, como faz a central.
- * - Cancelamento: só antes de um motoboy aceitar.
+ * - Cancelamento: só antes de um motoboy aceitar, conferido e feito com a trava do pedido (TravaDoPedido), a
+ *   mesma do aceite no app; depois do portal, que só grava o status, grava a atividade e o evento do
+ *   cancelamento e tira o pedido dos pedidos abertos do app do motoboy.
  * - Endereços: gravados com as coordenadas marcadas no mapa (o servidor não geocodifica). Endereço
  *   salvo não muda pelo portal (nem por edição, nem sobrescrito por um cadastro com o mesmo nome e
  *   rua): pedidos já feitos usam esses endereços e o km da cobrança sai deles.
@@ -38,8 +42,15 @@ class RegrasPortalLoja
     /**
      * O que a loja não define no pedido: coleta, paradas extras, arquivos, meta (cache do km), agendamento
      * e itens (o Fleetbase baixa a `photo` de um item de qualquer URL e devolve o link: leitura de rede interna).
+     * - `internal_id`: o Order::findRecordOrFail, que as rotas do app do motoboy usam (inclusive o aceite), acha
+     *   o pedido pelo public_id ou pelo internal_id. Uma loja que gravasse ali o public_id de outro pedido
+     *   confundiria essas rotas.
+     * - `pod_required` e `pod_method`: a comprovação de entrega é decisão da central.
      */
-    public const CAMPOS_DESCARTADOS = ['payload', 'pickup', 'return', 'waypoints', 'files', 'meta', 'scheduled_at', 'entities'];
+    public const CAMPOS_DESCARTADOS = [
+        'payload', 'pickup', 'return', 'waypoints', 'files', 'meta', 'scheduled_at', 'entities',
+        'internal_id', 'pod_required', 'pod_method',
+    ];
 
     /** Campos do endereço novo conferidos aqui (o PlaceController os lê por input()/only()/filled()). */
     public const CAMPOS_DO_ENDERECO = ['name', 'street1', 'address', 'latitude', 'longitude', 'location'];
@@ -47,7 +58,8 @@ class RegrasPortalLoja
     /** Status em que a loja ainda pode cancelar, desde que nenhum motoboy tenha aceitado. */
     public const STATUS_CANCELAVEIS = ['created', 'dispatched'];
 
-    public const STATUS_ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled', 'expired'];
+    /** Pedido encerrado: a loja não cancela e o motoboy não aceita (o BarrarAceiteDePedidoEncerrado usa esta lista). */
+    public const STATUS_ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled', 'order_canceled', 'expired'];
 
     public function handle(Request $request, Closure $next)
     {
@@ -178,6 +190,24 @@ class RegrasPortalLoja
             return $next($request);
         }
 
+        // a conferência e o cancelamento com a trava do pedido, a mesma do aceite no app: o motoboy não aceita no meio
+        try {
+            return TravaDoPedido::executar($pedido->uuid, fn () => $this->cancelarComATrava($request, $next, $usuario, $pedido));
+        } catch (LockTimeoutException $e) {
+            Log::warning('[entregas] portal da loja: trava do pedido ocupada no cancelamento', ['pedido' => $pedido->public_id]);
+
+            return $this->erro(409, 'Este pedido está sendo atualizado neste momento. Tente cancelar de novo em alguns segundos.');
+        }
+    }
+
+    protected function cancelarComATrava(Request $request, Closure $next, User $usuario, Order $pedido)
+    {
+        // relido com a trava: um aceite que terminou enquanto esta requisição esperava aparece aqui
+        $pedido = $pedido->fresh();
+        if (!$pedido) {
+            return $next($request);
+        }
+
         if (in_array($pedido->status, static::STATUS_ENCERRADOS, true)) {
             return $this->erro(422, 'Este pedido já foi encerrado.');
         }
@@ -186,7 +216,40 @@ class RegrasPortalLoja
             return $this->erro(422, 'O motoboy já aceitou este pedido. Para cancelar, fale com a central.');
         }
 
-        return $next($request);
+        // o portal grava o status e responde {"order": ...}, que o front usa (a resposta é mantida)
+        $resposta = $next($request);
+
+        if ($resposta->isSuccessful()) {
+            $this->completarCancelamento($pedido, $usuario);
+        }
+
+        return $resposta;
+    }
+
+    /**
+     * O cancelOrder do portal só grava status = canceled: não grava a atividade (tracking status), não dispara o
+     * OrderCanceled (que avisa o motoboy atribuído e vai para o socket e para os webhooks) e deixa o pedido
+     * despachado e aberto (adhoc), que é como o app do motoboy reconhece um pedido à espera de aceite (lista de
+     * pedidos abertos e card de aceitar). O pedido já está cancelado: uma falha aqui só vai para o log, e a
+     * resposta do portal vale do mesmo jeito.
+     */
+    protected function completarCancelamento(Order $pedido, User $usuario): void
+    {
+        try {
+            // relido: o portal acabou de gravar o status (sem isto, o cancel() o regravaria e dispararia outro "updated")
+            $pedido = $pedido->fresh() ?? $pedido;
+
+            // primeiro e sem eventos: o pedido sai dos pedidos abertos do app mesmo que o cancel() falhe
+            $pedido->dispatched = false;
+            $pedido->adhoc      = false;
+            $pedido->saveQuietly();
+
+            session(['company' => $pedido->company_uuid, 'user' => $usuario->uuid]);
+            // atividade "canceled" (status do pedido) + OrderCanceled na fila
+            $pedido->cancel();
+        } catch (\Throwable $e) {
+            Log::error('[entregas] portal da loja: falha ao registrar o cancelamento do pedido', ['pedido' => $pedido->public_id, 'erro' => $e->getMessage()]);
+        }
     }
 
     /** Endereço novo: com as coordenadas marcadas no mapa e sem sobrescrever um endereço salvo. */
