@@ -58,6 +58,14 @@ export default class CoordinatesInputComponent extends Component {
     // Entregas: o @mapCenter válido recebido na criação; null = sem @mapCenter (o console), comportamento original
     initialMapCenter = null;
 
+    // Entregas: com @mapCenter, o usuário já arrastou o mapa aberto agora? Zera a cada mapa novo (onClose e onMapLoaded)
+    isMapDragged = false;
+
+    // Entregas: ouvinte do dragstart do mapa, que o ember-leaflet não expõe no LeafletMap
+    onMapDragStart = () => {
+        this.isMapDragged = true;
+    };
+
     /**
      * Constructor for CoordinatesInputComponent. Sets initial map coordinates and values.
      * @memberof CoordinatesInputComponent
@@ -73,6 +81,15 @@ export default class CoordinatesInputComponent extends Component {
 
         if (typeof onInit === 'function') {
             onInit(this);
+        }
+    }
+
+    willDestroy() {
+        super.willDestroy(...arguments);
+
+        // Entregas: solta o ouvinte do arrasto (só ligado com @mapCenter)
+        if (this.initialMapCenter) {
+            this.leafletMap?.off('dragstart', this.onMapDragStart);
         }
     }
 
@@ -181,6 +198,12 @@ export default class CoordinatesInputComponent extends Component {
     @action onMapLoaded({ target }) {
         this.leafletMap = target;
 
+        // Entregas: com @mapCenter, cada mapa aberto começa sem arrasto e fica sabendo quando o usuário arrasta
+        if (this.initialMapCenter) {
+            this.isMapDragged = false;
+            target.on('dragstart', this.onMapDragStart);
+        }
+
         later(
             this,
             () => {
@@ -215,9 +238,11 @@ export default class CoordinatesInputComponent extends Component {
      * @memberof CoordinatesInputComponent
      */
     @action onClose() {
-        // Entregas: com @mapCenter, o próximo mapa aberto é outro (o moveend da criação dele também não marca)
+        // Entregas: com @mapCenter, o próximo mapa aberto é outro e começa sem arrasto (o moveend da criação dele, que
+        // vem antes do onMapLoaded, também não marca); o ouvinte sai com o mapa que fecha
         if (this.initialMapCenter) {
-            this.isInitialMoveEnded = false;
+            this.isMapDragged = false;
+            this.leafletMap?.off('dragstart', this.onMapDragStart);
         }
 
         // Entregas: só uma posição válida (o critério do @mapCenter) vira o centro do mapa. Vazia (nada marcado), o mapa
@@ -242,37 +267,20 @@ export default class CoordinatesInputComponent extends Component {
         const geographicalCenter = typeof center.wrap === 'function' ? center.wrap() : center;
         const { lat, lng } = geographicalCenter;
 
-        // Entregas: com @mapCenter (o portal da loja abre o mapa na loja), o moveend da criação de cada mapa aberto (o
-        // setView inicial) e o zoom que deixa o centro exatamente no lugar não marcam o ponto nem buscam o endereço. Isso
-        // só reduz as marcações sem querer: a roda do mouse, a pinça e um resize da janela seguido de zoom tiram o centro
-        // do lugar. A garantia de que o destino não fica na loja (km ~0) é a distância mínima conferida no portal
-        // (savePlace) e no servidor (RegrasPortalLoja). Sem @mapCenter, como antes.
-        if (this.initialMapCenter) {
-            if (!this.isInitialMoveEnded) {
-                this.isInitialMoveEnded = true;
-                return;
-            }
-
-            if (this.isAtInitialMapCenter(lat, lng)) {
-                return;
-            }
+        // Entregas: com @mapCenter (o portal da loja abre o mapa na loja), o moveend só marca o ponto e busca o endereço
+        // depois que o usuário arrastou o mapa aberto (o dragstart do Leaflet só sai depois de alguns pixels de arrasto).
+        // A criação do mapa, o zoom (botões, roda do mouse, pinça) e o resize não marcam: o zoom longe do marcador tirava
+        // o centro do lugar e marcava a dezenas ou centenas de metros da loja. No portal, marcam só o arrasto, o
+        // autocomplete e o Localizar (esses dois pelo updateCoordinates); a distância mínima de 30 m da loja, no portal
+        // (savePlace) e no servidor (RegrasPortalLoja), continua sendo a garantia final. Sem @mapCenter, como antes.
+        if (this.initialMapCenter && !this.isMapDragged) {
+            return;
         }
 
         this.updateCoordinates(lat, lng, { updateMap: false });
         if (typeof onUpdatedFromMap === 'function') {
             onUpdatedFromMap({ latitude: lat, longitude: lng });
         }
-    }
-
-    /**
-     * Entregas: o centro do mapa ainda é exatamente o @mapCenter pedido? A folga cobre só o arredondamento do wrap() da
-     * longitude. Vale enquanto nada tirar o centro do lugar (arrastar, a roda do mouse, a pinça ou um resize da janela
-     * seguido de zoom); por isso é só uma proteção a mais, e não a garantia (ver setCoordinatesFromMap).
-     */
-    isAtInitialMapCenter(latitude, longitude) {
-        const { initialMapCenter } = this;
-
-        return Math.abs(latitude - initialMapCenter.latitude) < 1e-7 && Math.abs(longitude - initialMapCenter.longitude) < 1e-7;
     }
 
     /**

@@ -179,28 +179,32 @@ export default class PortalOrderFormRouteComponent extends Component {
         const modalId = this.placeFormContext?.modalId;
         this.modalsManager.startLoading(modalId);
 
+        let createdPlace;
         try {
-            const createdPlace = await this.customerPortalOrderActions.createPlace.perform({
+            createdPlace = await this.customerPortalOrderActions.createPlace.perform({
                 ...place,
                 // o PlaceController do portal dá erro 500 sem a chave `name`, mesmo nula
                 name: place.name ?? null,
                 latitude: coordenadas.latitude,
                 longitude: coordenadas.longitude,
             });
-
-            this.createdPlaces = [createdPlace, ...this.createdPlaces];
-            this.applyPlaceSelection(createdPlace);
-            this.closePlaceForm();
-            this.updateRoutePreview();
-            this.notifications.success(this.intl.t('customer-portal.ui.place.address-saved'));
-            done();
         } catch (error) {
             // ex.: endereço repetido (422); o modal continua aberto para a loja corrigir
             this.notifications.serverError(error);
+            return;
         } finally {
-            // Entregas: o loading sempre para (depois do done() o modal já fechou e isto não faz nada)
+            // Entregas: o loading sempre para, com ou sem erro
             this.modalsManager.stopLoading(modalId);
         }
+
+        // Entregas: o endereço já foi criado. O modal fecha primeiro e o resto fica fora do try: um erro daqui não vira
+        // "erro do servidor" nem deixa o modal aberto com um endereço que, salvo de novo, daria 422 "já existe"
+        done();
+        this.createdPlaces = [createdPlace, ...this.createdPlaces];
+        this.applyPlaceSelection(createdPlace);
+        this.closePlaceForm();
+        this.updateRoutePreview();
+        this.notifications.success(this.intl.t('customer-portal.ui.place.address-saved'));
     }
 
     applyPlaceSelection(place) {

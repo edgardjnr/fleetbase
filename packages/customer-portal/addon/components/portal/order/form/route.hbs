@@ -3,7 +3,8 @@
     <div class="grid grid-cols-1 gap-3">
         <InputGroup>
             <label class="text-xs font-semibold dark:text-gray-100 mb-1 block">{{t "customer-portal.ui.entregas.pickup-fixed"}}</label>
-            {{#if @loja.coleta}}
+            {{!-- Entregas: a mesma condição que liga o "Novo endereço" (coleta com coordenadas válidas); sem ela, o aviso explica o botão desligado --}}
+            {{#if this.mapCenter}}
                 <div class="form-input bg-gray-50 dark:bg-gray-800">{{@loja.nome}}{{if @loja.endereco (concat " — " @loja.endereco)}}</div>
                 <p class="text-xs text-gray-500 mt-1">{{t "customer-portal.ui.entregas.pickup-fixed-help"}}</p>
             {{else}}
