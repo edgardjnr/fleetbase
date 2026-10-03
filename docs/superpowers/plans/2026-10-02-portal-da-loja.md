@@ -785,7 +785,7 @@ Conferir nos fontes locais antes de finalizar (mesmas versões da produção): `
 - [ ] **Step 3: lint** dos dois arquivos → ok.
 - [ ] **Step 4: Commit** — `git add api/app && git commit -m "API: cadastro de lojas e usuários das lojas (admin)"`
 
-**Revisões depois da implementação (aprovadas; o código no repo é a referência):** o login do contato é lido por `Contact::anyUser` (nunca `user`, ver "Armadilhas"); `catch (CustomerUserConflictException)` antes de `catch (UserAlreadyExistsException)`; `adicionarUsuario` recusa (422) e-mail ou telefone já usado por outro contato de cliente da empresa, antes de criar; ao editar a loja, **se as coordenadas mudarem, nasce um Local novo** (o antigo perde o dono e fica só com os pedidos antigos) — o km e a cobrança do histórico não mudam quando a loja se muda.
+**Revisões depois da implementação (aprovadas; o código no repo é a referência):** o login do contato é lido por `Contact::anyUser` (nunca `user`, ver "Armadilhas"); `catch (CustomerUserConflictException)` antes de `catch (UserAlreadyExistsException)`; `adicionarUsuario` recusa (422) e-mail ou telefone já usado por outro contato de cliente da empresa, antes de criar; ao editar a loja, **se as coordenadas mudarem, nasce um Local novo** (o antigo perde o dono e fica só com os pedidos antigos) — o km e a cobrança do histórico não mudam quando a loja se muda. Da revisão de qualidade: "um login, uma loja" também conferido pelo resultado (o observer pode ligar o contato novo a um login existente) e tokens apagados ao criar; idioma `pt-br` gravado para o usuário novo (o padrão do Fleetbase é `en-us`); latitude/longitude restritas ao Brasil (pega coordenadas trocadas); `alterarAcesso` em transação; membro só `type=customer`; `senha` fora do `TrimStrings`; endereço da loja em `mb_strtoupper`.
 
 ---
 
@@ -941,7 +941,7 @@ class PortalLojaController extends Controller
 - [ ] **Step 3: lint** → ok.
 - [ ] **Step 4: Commit** — `git add api/app && git commit -m "API: loja, extrato e motoboy do pedido para o portal da loja"`
 
-**Revisões depois da implementação (aprovadas; o código no repo é a referência):** `with('driverAssigned.user')`; motoboy com posição (0,0) — o Fleetbase grava isso em motorista sem GPS — volta com `latitude`/`longitude` nulos; `STATUS_ENCERRADOS` inclui `expired`. Sem loja, os três endpoints dão 404 (o handler do core troca a mensagem por "There is nothing to see here."; o front reage ao status).
+**Revisões depois da implementação (aprovadas; o código no repo é a referência):** `with('driverAssigned.user')`; motoboy com posição (0,0) — o Fleetbase grava isso em motorista sem GPS — volta com `latitude`/`longitude` nulos; `STATUS_ENCERRADOS` inclui `expired`. Sem loja, os três endpoints dão 404 (o handler do core troca a mensagem por "There is nothing to see here."; o front reage ao status). Da revisão: posição do motoboy só com pedido aceito há no máximo 4 h (`HORAS_POSICAO`, LGPD); extrato com período de até 1 ano (422); `throttle:60,1` nas rotas `loja/*`; sem `atualizado_em` na resposta.
 
 ---
 
@@ -1020,8 +1020,11 @@ class ProtegerPortalLoja
         '#^[A-Z]+ notification-preferences$#',
     ];
 
-    /** Campos que o usuário de loja pode mudar no próprio perfil (sem papel, permissões, status, empresa). */
-    public const CAMPOS_DO_PERFIL = ['name', 'email', 'phone', 'avatar_uuid', 'avatar_url', 'timezone'];
+    /**
+     * Campos que o usuário de loja pode mudar no próprio perfil: sem papel, permissões, status, empresa
+     * e sem e-mail/telefone (o login só muda pela central; trocado pela loja, contornaria "um login, uma loja").
+     */
+    public const CAMPOS_DO_PERFIL = ['name', 'avatar_uuid', 'avatar_url', 'timezone'];
 
     public function handle(Request $request, Closure $next)
     {
@@ -1146,6 +1149,7 @@ class ProtegerPortalLoja
 ```
 
 Observações para o implementador:
+- **O usuário também é identificado pelo cabeçalho `Customer-Token`** (revisão): a API pública de clientes do Fleet-Ops (`v1/customers/*`, `AuthenticateCustomerToken`) e a do Storefront autenticam o cliente por `Customer-Token: <token Sanctum>` com `Authorization: Bearer <chave de API>` (a chave pública vai no APK do motoboy) — sem isso, a loja criaria pedido com coleta livre em `POST v1/customers/orders`. `usuario()` tenta o Bearer e depois o `Customer-Token`.
 - `TrimStrings`/`ConvertEmptyStringsToNull` rodam antes; `$request->json()` é o mesmo bag que o `$request->input()` dos controllers lê em JSON, então o corpo reduzido é o que o core vê.
 - Requisições sem Bearer (login, preflight `OPTIONS`, arquivos) passam direto; token de API (`flb_live_…`) não acha `PersonalAccessToken` e passa direto.
 - Se no teste do navegador (Task 14) alguma chamada necessária do portal voltar 403 deste middleware (log `[entregas] portal da loja: acesso negado`), liberar **só aquele caminho e método** em `PERMITIDAS_INTERNAS`.
@@ -1792,7 +1796,7 @@ import { task, timeout } from 'ember-concurrency';
 import { registerDestructor } from '@ember/destroyable';
 
 const INTERVALO_MS = 20000;
-const ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled'];
+const ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled', 'expired'];
 
 export default class PortalOrderDetailsMotoboyComponent extends Component {
     @service fetch;
