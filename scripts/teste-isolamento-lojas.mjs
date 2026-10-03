@@ -11,8 +11,11 @@
 //
 // Preparar: crie o arquivo deploy/teste-lojas.env. Ele é ignorado pelo git e fica só no seu PC, como o stack.env:
 // nunca o commite. Use uma CHAVE=valor por linha, sem aspas (aspas em volta do valor são tiradas). Linha que começa
-// com # é comentário; não existe comentário no fim da linha, porque a senha pode ter #. Os usuários de loja são
-// criados em Fleet-Ops → Recursos → Lojas, e A e B têm de ser de lojas diferentes:
+// com # é comentário; não existe comentário no fim da linha, porque a senha pode ter #.
+// - A e B TÊM DE SER as lojas de teste (Loja Teste A e Loja Teste B, criadas em Fleet-Ops → Recursos → Lojas, com
+//   endereços diferentes). O teste cria pedido, endereços e arquivo nelas e para antes do item 1 se o nome de
+//   alguma das duas não tiver "teste".
+// - Os usuários do teste têm de estar sem verificação em duas etapas: com ela, o login do script não entra.
 //
 //     API=https://entregas-api.restaurantepro.com.br
 //     LOJA_A_EMAIL=...
@@ -20,14 +23,16 @@
 //     LOJA_B_EMAIL=...
 //     LOJA_B_SENHA=...
 //     # Opcionais. Sem eles, os itens que dependem deles ficam PULADO.
-//     # Item 14: uma chave de API da organização (Developers → Chaves de API), que não seja a do app do motoboy,
-//     # e o driver_… de um motoboy de teste.
+//     # Item 14: uma chave de API da organização (Developers → Chaves de API), que não seja a do app do motoboy, e o
+//     # driver_… de um motoboy de teste. A chave também é o plano B da limpeza: se o portal não cancelar um pedido
+//     # do teste, a limpeza cancela pela API v1.
 //     CHAVE_API=...
 //     MOTOBOY_ID=driver_...
-//     # Item 16: um usuário de loja desativado.
+//     # Item 16: um usuário de loja desativado. Crie um usuário numa loja de teste e desligue o acesso dele na tela Lojas.
 //     LOJA_DESATIVADA_EMAIL=...
 //     LOJA_DESATIVADA_SENHA=...
-//     # Item 17: um usuário ligado a duas lojas.
+//     # Item 17: um usuário ligado às duas lojas de teste. A tela Lojas não deixa um login em duas lojas: o segundo
+//     # vínculo (um vendor_personnel ativo do contato do usuário com a outra loja) é feito à mão e desfeito depois.
 //     LOJA_DUPLA_EMAIL=...
 //     LOJA_DUPLA_SENHA=...
 //
@@ -37,15 +42,20 @@
 //     TESTE_LOJAS_ENV=caminho/do/arquivo node scripts/teste-isolamento-lojas.mjs
 //
 // Atenção:
-// - O teste cria um pedido real na Loja A (Loja Teste A), e o servidor o despacha: os motoboys online perto dela
-//   recebem o aviso de pedido novo. O próprio teste cancela o pedido logo em seguida, e a limpeza do fim confere
-//   o cancelamento, inclusive se algo falhar no meio. Avise os motoboys ou rode o teste quando não houver ninguém
-//   online perto da loja de teste. Antes de criar o pedido, o script espera 5 s: para desistir, use Ctrl+C.
-// - Ficam salvos na Loja A o endereço "Teste isolamento", reaproveitado nas rodadas seguintes, e um
-//   "Teste isolamento perto da loja <data>" por rodada. O portal não apaga endereço salvo (o 403 é de propósito).
-// - O item 15 envia um PNG de 1x1 como foto. O arquivo fica salvo, mas a foto do perfil não muda.
-// - Os itens seguem a numeração do plano (Task 14 de docs/superpowers/plans/2026-10-02-portal-da-loja.md). A
-//   execução junta no fim os itens que precisam do pedido aberto, para ele ficar aberto o menor tempo possível.
+// - O teste cria um pedido real na Loja A, e o servidor o despacha: os motoboys online perto dela recebem o aviso de
+//   pedido novo. O push toca por 30 s, e o alarme do app (AlertaPedido) pode tocar por até 3 min, mesmo com o pedido
+//   já cancelado. Os webhooks da organização recebem o pedido criado, o despachado e o cancelado.
+// - O teste cancela o pedido logo depois de conferir o despacho, e a limpeza do fim confere o cancelamento, inclusive
+//   se algo falhar no meio. Avise os motoboys ou rode quando não houver ninguém online perto da loja de teste.
+// - O script mostra as duas lojas e espera 10 s antes de começar, e mais 5 s antes do primeiro pedido: para desistir,
+//   use Ctrl+C. Ctrl+C no meio do teste também cancela, antes de sair, os pedidos já criados.
+// - Ficam salvos na Loja A os endereços "Teste isolamento" e "Teste isolamento perto da loja", reaproveitados nas
+//   rodadas seguintes, e um PNG de 1x1 do item 15 (a foto do perfil não muda). O portal não apaga endereço salvo:
+//   o 403 é de propósito.
+// - Se uma trava falhar, podem ficar também os endereços "Rua Falsa, 999" e "Rua X" (do pedido com coleta falsa e do
+//   destino sem id) e o PNG acima de 5 MB do item 15c. Nesses casos, o script avisa com "ATENÇÃO" o que mudou.
+// - Os itens seguem a numeração do plano (Task 14 de docs/superpowers/plans/2026-10-02-portal-da-loja.md). A ordem de
+//   execução deixa o pedido real aberto pelo menor tempo possível.
 // - Imprime PASSOU, FALHOU ou PULADO por item e sai com 1 se algum falhar. Senha e token nunca são impressos.
 
 import fs from 'node:fs';
@@ -71,9 +81,19 @@ const AGENTE = 'entregas-teste-isolamento/1.0';
 const CANCELADOS = ['canceled', 'cancelled', 'order_canceled'];
 const ENCERRADOS = ['completed', 'done', ...CANCELADOS, 'expired'];
 
+// só lojas de teste: o teste cria pedido, endereços e arquivo na Loja A e mexe no perfil da Loja B
+const LOJA_DE_TESTE = /teste/i;
+const ESPERA_ANTES_DE_COMECAR_MS = 10000;
+const ESPERA_ANTES_DO_PEDIDO_MS = 5000;
+
 const NOME_DO_ENDERECO = 'Teste isolamento';
 const RUA_DO_ENDERECO = 'Rua Teste, 1';
+// destino a ~10 m do Local da Loja A (item 2c)
+const NOME_DO_ENDERECO_PERTO = 'Teste isolamento perto da loja';
+const RUA_DO_ENDERECO_PERTO = 'Rua Teste, 2';
 const CIDADE = 'Ribeirão Preto';
+// item 11: o UserController do core acha o papel pelo id ou pelo nome (resolveAssignableRole)
+const PAPEL_ADMINISTRADOR = 'Administrator';
 // pontos de Ribeirão Preto para o destino de teste: vale o primeiro que fica a 500 m ou mais da coleta da Loja A
 const PONTOS_DO_DESTINO = [
     [-21.18, -47.81],
@@ -103,29 +123,54 @@ const SEM_COLETA = 'sem o Local de coleta da Loja A (item 0c)';
 // Segredos: nada do que é guardado aqui aparece na saída
 // ---------------------------------------------------------------------------------------------------------------
 
+// valores que nunca são impressos, também na forma que tomam dentro de um JSON e de uma URL
 const segredos = new Set();
+// tokens e chave de API (aleatórios): um pedaço deles também é escondido (o servidor pode cortar o valor numa mensagem)
+const segredosAleatorios = new Set();
 
-/** Guarda um valor que nunca pode ser impresso (senha, token, chave). */
-function guardarSegredo(valor) {
+/** Guarda um valor que nunca pode ser impresso. `aleatorio`: token ou chave de API. */
+function guardarSegredo(valor, aleatorio = false) {
     if (typeof valor !== 'string' || valor.trim().length < 3) {
         return;
     }
-    segredos.add(valor);
+    const valores = [valor];
     // token Sanctum "id|texto": o texto sozinho também é segredo
     const barra = valor.indexOf('|');
     if (barra >= 0 && valor.length - barra > 8) {
-        segredos.add(valor.slice(barra + 1));
+        valores.push(valor.slice(barra + 1));
     }
+    for (const v of valores) {
+        segredos.add(v);
+        segredos.add(JSON.stringify(v).slice(1, -1)); // num JSON: " e \ escapados
+        segredos.add(encodeURIComponent(v)); // numa URL
+        if (aleatorio) {
+            segredosAleatorios.add(v);
+        }
+    }
+}
+
+const ENTIDADES_HTML = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+
+/** Entidades HTML de volta a caracteres (&amp;, &lt;, &#39;, &#x27;...): uma página de erro pode trazer o segredo assim. */
+function desfazerEntidades(texto) {
+    return texto.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (entidade, corpo) => {
+        if (corpo[0] !== '#') {
+            return ENTIDADES_HTML[corpo.toLowerCase()] ?? entidade;
+        }
+        const codigo = /^#x/i.test(corpo) ? parseInt(corpo.slice(2), 16) : parseInt(corpo.slice(1), 10);
+        return codigo > 0 && codigo <= 0x10ffff ? String.fromCodePoint(codigo) : entidade;
+    });
 }
 
 /** Troca por *** todo segredo conhecido que aparecer no texto. */
 function limpar(texto) {
-    let saida = String(texto ?? '');
+    let saida = desfazerEntidades(String(texto ?? ''));
     // os mais longos primeiro: o texto de um token "id|texto" está dentro do token inteiro
     for (const segredo of [...segredos].sort((a, b) => b.length - a.length)) {
         saida = saida.split(segredo).join('***');
     }
-    return saida;
+    // pedaço de token ou de chave: 10 ou mais letras e números seguidos que estão dentro de um deles
+    return saida.replace(/[A-Za-z0-9]{10,}/g, (trecho) => ([...segredosAleatorios].some((s) => s.includes(trecho)) ? '***' : trecho));
 }
 
 /** Campos de JSON cujo valor nunca é impresso (no resumo de uma resposta). */
@@ -138,15 +183,19 @@ function coletarSegredos(valor, profundidade = 0) {
     }
     for (const [chave, item] of Object.entries(valor)) {
         if (typeof item === 'string' && item.length >= 16 && /token|password|secret|authorization/i.test(chave)) {
-            guardarSegredo(item);
+            guardarSegredo(item.replace(/^Bearer\s+/i, ''), !/password/i.test(chave));
         } else {
             coletarSegredos(item, profundidade + 1);
         }
     }
 }
 
+/** Replacer do JSON.stringify do resumo: esconde os campos secretos e limpa cada texto antes de o JSON escapá-lo. */
 function ocultarCampos(chave, valor) {
-    return chave && CAMPO_SECRETO.test(chave) ? '***' : valor;
+    if (chave && CAMPO_SECRETO.test(chave)) {
+        return '***';
+    }
+    return typeof valor === 'string' ? limpar(valor) : valor;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -223,14 +272,17 @@ async function item(id, descricao, requisitos, executar) {
 
 let interrompido = false;
 
-process.on('SIGINT', () => {
-    if (interrompido) {
-        console.log('\nSaindo sem terminar a limpeza: confira no console os pedidos da loja de teste.');
-        process.exit(130);
-    }
-    interrompido = true;
-    console.log('\nInterrompido (Ctrl+C). Os pedidos criados pelo teste são cancelados antes de sair; Ctrl+C de novo sai na hora.');
-});
+// SIGHUP: terminal fechado (no Windows, a janela do console); SIGTERM: kill
+for (const sinal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+    process.on(sinal, () => {
+        if (interrompido) {
+            console.log('\nSaindo sem terminar a limpeza: confira no console os pedidos da loja de teste.');
+            process.exit(130);
+        }
+        interrompido = true;
+        console.log(`\nInterrompido (${sinal}). Os pedidos criados pelo teste são cancelados antes de sair; Ctrl+C de novo sai na hora.`);
+    });
+}
 
 function dormir(ms) {
     return new Promise((resolver) => setTimeout(resolver, ms));
@@ -300,7 +352,13 @@ function validarApi(valor) {
     if (url.protocol !== 'https:' && !(url.protocol === 'http:' && local)) {
         return { erro: 'API precisa começar com https:// (http:// só para localhost): a senha vai na requisição' };
     }
-    return { api: valor.replace(/\/+$/, '') };
+    if (url.username || url.password) {
+        return { erro: 'API não pode ter usuário nem senha na URL' };
+    }
+    if (url.search || url.hash || /[?#]/.test(valor)) {
+        return { erro: 'API não pode ter ? nem # (só o endereço, ex.: https://entregas-api.restaurantepro.com.br)' };
+    }
+    return { api: `${url.origin}${url.pathname.replace(/\/+$/, '')}` };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -437,16 +495,16 @@ function negado(r) {
     return '';
 }
 
-/** Qualquer recusa (4xx ou 5xx) com resposta da API. */
-function recusado(r) {
-    if (r.status === 0) {
-        falha(resumo(r));
-    }
+/** Foto recusada pelo ProtegerPortalLoja (422). Com `aceita413`, vale também o 413 de corpo grande demais (PHP ou proxy). */
+function fotoRecusada(r, aceita413 = false) {
     if (sucesso(r)) {
-        falha(`aceito: arquivo ${idDe(r.json?.file)}`);
+        falha(`aceita: arquivo ${idDe(r.json?.file)}`);
     }
-    exigir(r.status >= 400, () => `esperava uma recusa, veio ${resumo(r)}`);
-    return resumo(r);
+    if (aceita413 && r.status === 413) {
+        return resumo(r);
+    }
+    esperarErro(r, 422, /foto do perfil/i);
+    return '';
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -456,6 +514,7 @@ function recusado(r) {
 const estado = {
     tokenA: null,
     tokenB: null,
+    outrosTokens: [], // do usuário em duas lojas e de um login desativado que entrou: todos saem no fim
     lojaA: null,
     lojaB: null,
     coleta: null, // Local de coleta da Loja A (minha-loja), com lat/lng
@@ -464,7 +523,8 @@ const estado = {
     pedido: null, // pedido do item 3
     pedidoCancelado: false,
     tentouCriarPedido: false,
-    pedidoSemId: false,
+    // criações de pedido sem resposta clara (sem resposta, 5xx ou 2xx sem o id): a limpeza procura pela nota do teste
+    pedidosIncertos: 0,
 };
 
 /** Pedidos criados pelo teste (a limpeza confere se terminaram cancelados). */
@@ -586,6 +646,12 @@ async function buscarEnderecos(texto) {
     return r.json.places;
 }
 
+/** O endereço tem este nome e esta rua (o portal grava em maiúsculas). */
+function mesmoNomeERua(lugar, nome, rua) {
+    const normalizar = (texto) => String(texto ?? '').trim().toUpperCase();
+    return normalizar(lugar?.name) === normalizar(nome) && normalizar(lugar?.street1) === normalizar(rua);
+}
+
 function lerPedido(pedido, token = estado.tokenA) {
     return chamar('GET', `customer-portal/int/v1/orders/${idNaUrl(pedido)}`, { token });
 }
@@ -594,7 +660,7 @@ async function entrar(email, senha) {
     const r = await chamar('POST', 'customer-portal/int/v1/auth/login', { corpo: { identity: email, password: senha } });
     const token = r.json?.token;
     if (sucesso(r) && typeof token === 'string' && token) {
-        guardarSegredo(token);
+        guardarSegredo(token, true);
         return token;
     }
     if (r.json?.twoFaSession || r.json?.isEnabled) {
@@ -607,17 +673,28 @@ async function entrar(email, senha) {
 async function criarPedido(corpo, origem) {
     estado.tentouCriarPedido = true;
     const r = await chamar('POST', 'customer-portal/int/v1/orders', { token: estado.tokenA, corpo: { notes: NOTA_DO_PEDIDO, ...corpo } });
-    if (sucesso(r)) {
-        const pedido = r.json?.order;
-        if (pedido && (pedido.uuid || pedido.public_id)) {
-            pedidosCriados.set(pedido.uuid || pedido.public_id, { uuid: pedido.uuid, public_id: pedido.public_id, origem });
-            info(`pedido criado (${origem}): ${idDe(pedido)}`);
-        } else {
-            estado.pedidoSemId = true;
-            info(`ATENÇÃO: um pedido foi criado (${origem}), mas a resposta não trouxe o id. A limpeza procura pela nota do teste.`);
-        }
+    const pedido = r.json?.order;
+    if (sucesso(r) && pedido && (pedido.uuid || pedido.public_id)) {
+        pedidosCriados.set(pedido.uuid || pedido.public_id, { uuid: pedido.uuid, public_id: pedido.public_id, origem });
+        info(`pedido criado (${origem}): ${idDe(pedido)}`);
+    } else if (sucesso(r) || r.status === 0 || r.status >= 500) {
+        // sem resposta, erro do servidor ou 2xx sem o id: o pedido pode existir sem a resposta mostrar
+        estado.pedidosIncertos += 1;
+        info(`ATENÇÃO: não dá para saber se o pedido (${origem}) foi criado (${resumo(r)}). A limpeza procura pela nota do teste.`);
     }
     return r;
+}
+
+/** Cancela na hora um pedido que uma trava quebrada deixou criar (itens 2c e 5). Devolve o que aconteceu. */
+async function cancelarNaHora(pedido) {
+    if (!pedido || !(pedido.uuid || pedido.public_id)) {
+        return 'sem o id para cancelar: a limpeza procura pela nota do teste';
+    }
+    try {
+        return await garantirCancelado(pedido);
+    } catch (erro) {
+        return `não cancelou (${erro.message}); a limpeza tenta de novo`;
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -641,12 +718,12 @@ async function etapaPreparacao() {
         const r = await chamar('GET', 'int/v1/entregas/loja/minha-loja', { token: estado.tokenA });
         exigir(r.status === 200 && r.json?.loja, () => resumo(r));
         const loja = r.json.loja;
+        estado.lojaA = loja; // o nome vale para o item 0e mesmo sem coleta
         const ponto = coordenadas(loja.coleta);
         exigir(
             loja.coleta?.uuid && coordenadaValida(ponto),
             'a Loja A está sem Local de coleta com coordenadas: cadastre o endereço dela na tela Lojas'
         );
-        estado.lojaA = loja;
         estado.coleta = { ...loja.coleta, ...ponto };
         return `${loja.nome} (${loja.id}), Local ${idDe(loja.coleta)} em ${formatar(ponto)}`;
     });
@@ -661,6 +738,34 @@ async function etapaPreparacao() {
         );
         return `${estado.lojaB.nome} (${estado.lojaB.id})`;
     });
+
+    // o teste cria pedido, endereços e arquivo na Loja A e tenta mudar o papel do usuário da Loja B: só lojas de teste
+    const deTeste = await item('0e', 'A e B são lojas de teste (o nome tem "teste")', [], async () => {
+        exigir(estado.lojaA?.nome, 'não deu para conferir o nome da Loja A (item 0c)');
+        exigir(estado.lojaB?.nome, 'não deu para conferir o nome da Loja B (item 0d)');
+        for (const [letra, loja] of [
+            ['A', estado.lojaA],
+            ['B', estado.lojaB],
+        ]) {
+            exigir(LOJA_DE_TESTE.test(loja.nome), `a Loja ${letra} é "${loja.nome}": no teste-lojas.env, use só usuários das lojas de teste`);
+        }
+        return '';
+    });
+    if (!deTeste) {
+        console.log('\nO teste parou antes do item 1: ele só roda com as duas lojas de teste.');
+        return false;
+    }
+
+    console.log(
+        limpar(
+            `\nAVISO  Lojas do teste: A = "${estado.lojaA.nome}" (${estado.lojaA.id}) e B = "${estado.lojaB.nome}" (${estado.lojaB.id}).\n` +
+                `       O teste cria endereços e um pedido real na "${estado.lojaA.nome}": os motoboys online perto dela recebem\n` +
+                '       o aviso de pedido novo (o push toca 30 s, e o alarme do app, até 3 min), e os webhooks da organização\n' +
+                '       recebem o pedido. O próprio teste cancela o pedido. Começa em 10 s; para desistir, aperte Ctrl+C.'
+        )
+    );
+    await pausa(ESPERA_ANTES_DE_COMECAR_MS);
+    return true;
 }
 
 /** O primeiro ponto de PONTOS_DO_DESTINO a 500 m ou mais da coleta (sem a coleta, o primeiro). */
@@ -697,11 +802,7 @@ async function prepararEnderecoDeTeste() {
     }
 
     if (r.status === 422 && /já existe/i.test(mensagem(r))) {
-        const existente = (await buscarEnderecos(NOME_DO_ENDERECO)).find(
-            (lugar) =>
-                String(lugar.name ?? '').trim().toUpperCase() === NOME_DO_ENDERECO.toUpperCase() &&
-                String(lugar.street1 ?? '').trim().toUpperCase() === RUA_DO_ENDERECO.toUpperCase()
-        );
+        const existente = (await buscarEnderecos(NOME_DO_ENDERECO)).find((lugar) => mesmoNomeERua(lugar, NOME_DO_ENDERECO, RUA_DO_ENDERECO));
         exigir(existente, `422 de endereço repetido, mas a busca não achou "${NOME_DO_ENDERECO}"`);
         const ponto = coordenadas(existente);
         if (coordenadaValida(ponto) && (!estado.coleta || metrosEntre(ponto, estado.coleta) >= 100)) {
@@ -783,21 +884,26 @@ async function etapaEnderecos() {
         [semA, [estado.coleta, SEM_COLETA]],
         async () => {
             const coleta = estado.coleta;
-            // o nome e a rua do Place, que são a chave do firstOrNew do portal (o minha-loja traz o nome da loja, que
-            // a tela Lojas grava em maiúsculas no Place); se a busca falhar, vale o que veio no minha-loja
-            let doLocal = null;
+            // o nome, a rua e o ponto do próprio Place: o nome e a rua são a chave do firstOrNew do portal, e o minha-loja
+            // traz o nome da loja, não o do Place. Vão exatamente como estão, com o mesmo ponto e sem cidade: se a trava
+            // falhar, o portal regrava o Local com os mesmos dados e nada muda
+            let doLocal;
             try {
                 doLocal = coleta.street1 ? (await buscarEnderecos(coleta.street1)).find((lugar) => mesmoRegistro(lugar, coleta)) : null;
-            } catch {
-                doLocal = null;
+            } catch (erro) {
+                pular(`a busca de endereços falhou: ${erro.message}`);
             }
-            const nome = doLocal?.name || coleta.name;
-            const rua = doLocal?.street1 || coleta.street1;
-            if (!nome || !rua) {
-                pular('o minha-loja não trouxe o nome e a rua do Local');
+            const ponto = coordenadas(doLocal);
+            if (!doLocal?.name || !doLocal?.street1 || !coordenadaValida(ponto)) {
+                pular('o Local da Loja A não apareceu, com nome, rua e coordenadas, na busca de endereços da loja');
             }
 
-            const r = await novoEndereco(corpoDoEndereco(nome, rua, deslocar(coleta, 100), coleta.city || CIDADE));
+            const r = await novoEndereco({
+                name: doLocal.name,
+                street1: doLocal.street1,
+                location: { type: 'Point', coordinates: [ponto.lng, ponto.lat] },
+            });
+            // rede de segurança: o Local continua o mesmo Place, no mesmo ponto
             const depois = await chamar('GET', 'int/v1/entregas/loja/minha-loja', { token: estado.tokenA });
             exigir(depois.status === 200, () => `não deu para reler o minha-loja: ${resumo(depois)}`);
             const coletaDepois = depois.json?.loja?.coleta;
@@ -813,12 +919,13 @@ async function etapaEnderecos() {
             }
             if (sucesso(r)) {
                 falha(
-                    `o portal salvou outro endereço com o nome e a rua do Local (${idDe(r.json?.place)}; fica na Loja A). ` +
-                        'O Local não mudou, mas a checagem de endereço repetido não reconheceu o Local'
+                    mesmoRegistro(r.json?.place, coleta)
+                        ? 'a trava não reconheceu o Local: o portal regravou o Local da loja (com os mesmos dados, então nada mudou)'
+                        : `o portal salvou outro endereço com o nome e a rua do Local (${idDe(r.json?.place)}; fica na Loja A)`
                 );
             }
             esperarErro(r, 422, /já existe/i);
-            return `nome "${nome}", rua "${rua}": o Local continua igual`;
+            return `nome "${doLocal.name}", rua "${doLocal.street1}": o Local continua igual`;
         }
     );
 
@@ -905,20 +1012,47 @@ async function etapaAcessoDeB() {
         const id = eu.uuid || eu.public_id || eu.id;
         exigir(id, 'o users/me não trouxe o id do usuário');
         exigir(!ehAdministrador(eu), `B já era administrador antes do teste (papel ${papel(eu)}): corrija o usuário de B`);
+        // o papel de agora, para devolver na hora se a trava falhar (o core aceita o id ou o nome do papel)
+        const papelOriginal = eu.role?.id ?? eu.role_name ?? eu.role?.name;
+        if (papelOriginal === undefined || papelOriginal === null || papelOriginal === '') {
+            pular('o users/me de B veio sem papel: se a trava falhasse, não haveria papel para devolver');
+        }
 
-        const corpo = { user: { role: 'Administrator' } };
-        if (typeof eu.name === 'string' && eu.name) {
-            corpo.user.name = eu.name;
+        const salvarPerfil = (role) => {
+            const corpo = { user: { role: String(role) } };
+            if (typeof eu.name === 'string' && eu.name) {
+                corpo.user.name = eu.name;
+            }
+            return chamar('PUT', `int/v1/users/${encodeURIComponent(id)}`, { token: estado.tokenB, corpo });
+        };
+        const lerPerfil = async () => {
+            const r = await chamar('GET', 'int/v1/users/me', { token: estado.tokenB });
+            return { r, usuario: r.status === 200 ? r.json?.user ?? null : null };
+        };
+
+        const r2 = await salvarPerfil(PAPEL_ADMINISTRADOR);
+        const depois = await lerPerfil();
+        if (ehAdministrador(depois.usuario) || (sucesso(r2) && ehAdministrador(r2.json?.user))) {
+            // a trava falhou: desfaz na hora, pelo mesmo caminho
+            const promovido = ehAdministrador(depois.usuario) ? depois.usuario : r2.json.user;
+            const reversao = await salvarPerfil(papelOriginal);
+            const agora = await lerPerfil();
+            const revertido = agora.usuario && !ehAdministrador(agora.usuario) && papel(agora.usuario) === papel(eu);
+            falha(
+                `B virou ${papel(promovido)} pelo PUT do próprio perfil. ` +
+                    (revertido
+                        ? `Revertido para ${papel(eu)}.`
+                        : `ATENÇÃO: reverter à mão (devolva o papel ${papel(eu)} ao usuário de B na central; a reversão deu ${resumo(reversao)})`)
+            );
         }
-        const r2 = await chamar('PUT', `int/v1/users/${encodeURIComponent(id)}`, { token: estado.tokenB, corpo });
-        const r3 = await chamar('GET', 'int/v1/users/me', { token: estado.tokenB });
-        exigir(r3.status === 200 && r3.json?.user, () => `users/me depois do PUT: ${resumo(r3)}`);
-        const depois = r3.json.user;
-        if (ehAdministrador(depois) || (sucesso(r2) && ehAdministrador(r2.json?.user))) {
-            falha(`ATENÇÃO: B ficou com o papel ${papel(ehAdministrador(depois) ? depois : r2.json.user)}. Tire o papel de administrador do usuário de B na central.`);
-        }
-        exigir(depois.type === eu.type, `o tipo do usuário mudou de ${eu.type} para ${depois.type}`);
-        return `papel antes: ${papel(eu)}; depois: ${papel(depois)} (o PUT deu HTTP ${r2.status})`;
+        exigir(
+            sucesso(r2),
+            () => `o PUT do próprio perfil deu ${resumo(r2)}. Com a trava, só o nome chega ao controller: o erro sugere que o role chegou`
+        );
+        exigir(depois.usuario, () => `users/me depois do PUT: ${resumo(depois.r)}`);
+        exigir(depois.usuario.type === eu.type, `o tipo do usuário mudou de ${eu.type} para ${depois.usuario.type}`);
+        exigir(papel(depois.usuario) === papel(eu), `o papel mudou de ${papel(eu)} para ${papel(depois.usuario)}`);
+        return `papel antes e depois: ${papel(eu)} (o PUT deu HTTP ${r2.status})`;
     });
 
     await item('12a', 'Extrato de B do dia (200, com totais)', [semB], async () => {
@@ -964,15 +1098,15 @@ async function etapaFoto() {
     const temUsuario = [estado.usuarioA, 'sem o id do usuário da Loja A (users/me)'];
     const texto = Buffer.from('isto não é uma foto\n', 'utf8');
 
-    await item('15a', 'Arquivo de texto é recusado', [semA, temUsuario], async () =>
-        recusado(await enviarFoto(texto, 'teste.txt', 'text/plain'))
+    await item('15a', 'Arquivo de texto é recusado (422)', [semA, temUsuario], async () =>
+        fotoRecusada(await enviarFoto(texto, 'teste.txt', 'text/plain'))
     );
-    await item('15b', 'Texto com nome .png é recusado', [semA, temUsuario], async () =>
-        recusado(await enviarFoto(texto, 'foto.png', 'image/png'))
+    await item('15b', 'Texto com nome .png é recusado (422)', [semA, temUsuario], async () =>
+        fotoRecusada(await enviarFoto(texto, 'foto.png', 'image/png'))
     );
-    await item('15c', 'PNG acima de 5 MB é recusado', [semA, temUsuario], async () => {
+    await item('15c', 'PNG acima de 5 MB é recusado (422 ou 413)', [semA, temUsuario], async () => {
         const grande = Buffer.concat([PNG_1X1, Buffer.alloc(FOTO_TAMANHO_MAXIMO + 1024 - PNG_1X1.length)]);
-        return recusado(await enviarFoto(grande, 'grande.png', 'image/png', 120000));
+        return fotoRecusada(await enviarFoto(grande, 'grande.png', 'image/png', 120000), true);
     });
     await item('15d', 'PNG pequeno é aceito (2xx)', [semA, temUsuario], async () => {
         const r = await enviarFoto(PNG_1X1, 'foto.png', 'image/png');
@@ -993,6 +1127,9 @@ async function etapaOutrosUsuarios() {
                 corpo: { identity: cfg.LOJA_DESATIVADA_EMAIL, password: cfg.LOJA_DESATIVADA_SENHA },
             });
             if (sucesso(r)) {
+                if (typeof r.json?.token === 'string') {
+                    estado.outrosTokens.push(r.json.token);
+                }
                 falha('o login entrou (o token não é impresso)');
             }
             esperarErro(r, 401, /desativad/i);
@@ -1006,6 +1143,7 @@ async function etapaOutrosUsuarios() {
         [[cfg.LOJA_DUPLA_EMAIL && cfg.LOJA_DUPLA_SENHA, 'sem LOJA_DUPLA_EMAIL e LOJA_DUPLA_SENHA no teste-lojas.env']],
         async () => {
             const token = await entrar(cfg.LOJA_DUPLA_EMAIL, cfg.LOJA_DUPLA_SENHA);
+            estado.outrosTokens.push(token);
             const r = await chamar('GET', 'customer-portal/int/v1/orders', { token });
             if (sucesso(r)) {
                 falha('o portal listou os pedidos (juntaria os das duas lojas)');
@@ -1014,6 +1152,39 @@ async function etapaOutrosUsuarios() {
             return '';
         }
     );
+}
+
+/** Item 2c: o destino a ~10 m do Local da Loja A, reaproveitado entre as rodadas. Devolve { lugar } ou { recusa }. */
+async function enderecoPertoDaLoja() {
+    const perto = deslocar(estado.coleta, 10);
+    const cidade = estado.coleta.city || CIDADE;
+    const r = await novoEndereco(corpoDoEndereco(NOME_DO_ENDERECO_PERTO, RUA_DO_ENDERECO_PERTO, perto, cidade));
+    if (sucesso(r)) {
+        const lugar = conferirEnderecoSalvo(r, perto);
+        info(`endereço salvo na Loja A: ${idDe(lugar)} "${NOME_DO_ENDERECO_PERTO}" (o portal não o apaga)`);
+        return { lugar };
+    }
+    if (!(r.status === 422 && /já existe/i.test(mensagem(r)))) {
+        return { recusa: r };
+    }
+
+    // de uma rodada anterior: vale se ainda estiver a menos de 30 m do Local (a loja pode ter mudado de lugar)
+    const existente = (await buscarEnderecos(NOME_DO_ENDERECO_PERTO)).find((lugar) =>
+        mesmoNomeERua(lugar, NOME_DO_ENDERECO_PERTO, RUA_DO_ENDERECO_PERTO)
+    );
+    exigir(existente, `422 de endereço repetido, mas a busca não achou "${NOME_DO_ENDERECO_PERTO}"`);
+    const ponto = coordenadas(existente);
+    if (coordenadaValida(ponto) && metrosEntre(ponto, estado.coleta) < 25) {
+        return { lugar: { ...existente, ...ponto } };
+    }
+    const nome = `${NOME_DO_ENDERECO_PERTO} ${CARIMBO}`;
+    const r2 = await novoEndereco(corpoDoEndereco(nome, RUA_DO_ENDERECO_PERTO, perto, cidade));
+    if (!sucesso(r2)) {
+        return { recusa: r2 };
+    }
+    const lugar = conferirEnderecoSalvo(r2, perto);
+    info(`o "${NOME_DO_ENDERECO_PERTO}" salvo está longe do Local (${formatar(ponto)}); novo: ${idDe(lugar)} "${nome}"`);
+    return { lugar };
 }
 
 async function etapaPedido() {
@@ -1025,41 +1196,36 @@ async function etapaPedido() {
         console.log(
             limpar(
                 `AVISO  Os próximos itens criam um pedido real na ${nomeDaLojaA()}, e o servidor o despacha: os motoboys\n` +
-                    '       online perto dela recebem o aviso de pedido novo. O próprio teste cancela o pedido em seguida\n' +
-                    '       (e a limpeza do fim confere, se algo falhar no meio). Para desistir, aperte Ctrl+C nos\n' +
-                    '       próximos 5 s: ainda não há pedido.'
+                    '       online perto dela recebem o aviso de pedido novo. O próprio teste cancela o pedido logo depois de\n' +
+                    '       conferir o despacho (e a limpeza do fim confere, se algo falhar no meio). Para desistir, aperte\n' +
+                    '       Ctrl+C nos próximos 5 s: ainda não há pedido.'
             )
         );
-        await pausa(5000);
+        await pausa(ESPERA_ANTES_DO_PEDIDO_MS);
     }
 
     await item('2c', 'Destino a menos de 30 m da coleta é recusado (422)', [semA, semColeta], async () => {
-        const perto = deslocar(estado.coleta, 10);
-        const nome = `${NOME_DO_ENDERECO} perto da loja ${CARIMBO}`;
-        const r = await novoEndereco(corpoDoEndereco(nome, 'Rua Teste, 2', perto, estado.coleta.city || CIDADE));
-        if (!sucesso(r)) {
-            // o servidor confere a distância no pedido; se passar a conferir já no endereço, o 422 também vale
-            exigir(r.status === 422 && r.json, () => `esperava o endereço salvo (200) ou recusado (422), veio ${resumo(r)}`);
-            return `o servidor já recusou o endereço (${resumo(r)})`;
+        const { lugar, recusa } = await enderecoPertoDaLoja();
+        if (recusa) {
+            // o servidor confere a distância no pedido; se passar a conferir já no endereço, essa recusa também vale
+            esperarErro(recusa, 422, /mesmo lugar/i);
+            return `o servidor já recusou o endereço: ${mensagem(recusa)}`;
         }
-        const lugar = r.json?.place;
-        exigir(lugar?.uuid, () => `resposta sem o endereço: ${resumo(r)}`);
-        info(
-            `endereço salvo na Loja A: ${idDe(lugar)} "${nome}", a ${Math.round(metrosEntre(perto, estado.coleta))} m do Local ` +
-                '(o portal não o apaga)'
-        );
         const rp = await criarPedido({ dropoff: lugar.uuid }, 'item 2c');
         if (sucesso(rp)) {
-            falha(`o pedido foi aceito (${idDe(rp.json?.order)}; a limpeza o cancela)`);
+            falha(
+                `o pedido foi aceito com o destino a ${Math.round(metrosEntre(lugar, estado.coleta))} m do Local ` +
+                    `(${idDe(rp.json?.order)}: ${await cancelarNaHora(rp.json?.order)})`
+            );
         }
         esperarErro(rp, 422, /mesmo lugar/i);
-        return 'o endereço foi salvo, e o pedido, recusado';
+        return `destino ${idDe(lugar)}, a ${Math.round(metrosEntre(lugar, estado.coleta))} m do Local: o pedido foi recusado`;
     });
 
     await item('5', 'Pedido com destino sem id é recusado (422)', [semA, semColeta], async () => {
         const rp = await criarPedido({ dropoff: { street1: 'Rua X', latitude: -21.2, longitude: -47.8 } }, 'item 5');
         if (sucesso(rp)) {
-            falha(`o pedido foi aceito (${idDe(rp.json?.order)}; a limpeza o cancela)`);
+            falha(`o pedido foi aceito (${idDe(rp.json?.order)}: ${await cancelarNaHora(rp.json?.order)})`);
         }
         esperarErro(rp, 422, /endereço de entrega/i);
         return '';
@@ -1086,6 +1252,12 @@ async function etapaPedido() {
             estado.pedido = pedido;
 
             const problemas = [];
+            // sem o campo na resposta, as conferências abaixo passariam sem conferir nada
+            for (const campo of ['meta', 'internal_id', 'pod_required']) {
+                if (!Object.prototype.hasOwnProperty.call(pedido, campo)) {
+                    problemas.push(`a resposta não traz ${campo} (não deu para conferir)`);
+                }
+            }
             const coleta = pedido.payload?.pickup;
             if (!coleta) {
                 problemas.push('o pedido veio sem coleta');
@@ -1120,10 +1292,14 @@ async function etapaPedido() {
         [lojasDiferentes(), 'depende dos itens 0c e 0d (as lojas A e B, diferentes)'],
     ];
 
+    // o pedido real fica aberto só até o cancelamento do item 13a: 6 a 9 conferem o isolamento com ele já cancelado
     await item('4', 'Pedido despachado aos motoboys (adhoc)', [temPedido], async () => {
+        // o RegrasPortalLoja despacha antes de responder à criação: a leitura logo depois já mostra o despacho
         let r;
         for (let tentativa = 0; tentativa < 3; tentativa += 1) {
-            await pausa(tentativa === 0 ? 5000 : 3000);
+            if (tentativa) {
+                await pausa(1500);
+            }
             r = await lerPedido(estado.pedido);
             const pedido = r.json?.order;
             if (r.status === 200 && pedido?.adhoc === true && (pedido.dispatched === true || pedido.status === 'dispatched')) {
@@ -1133,56 +1309,6 @@ async function etapaPedido() {
         exigir(r.status === 200, () => resumo(r));
         const pedido = r.json?.order;
         falha(`adhoc=${pedido?.adhoc}, dispatched=${pedido?.dispatched}, status=${pedido?.status}`);
-    });
-
-    await item('6', 'B não vê o pedido de A na lista', [temPedido, ...deB], async () => {
-        const ra = await chamar('GET', 'customer-portal/int/v1/orders?limit=100', { token: estado.tokenA });
-        exigir(ra.status === 200 && Array.isArray(ra.json?.orders), () => `controle (A lista os próprios pedidos): ${resumo(ra)}`);
-        exigir(ra.json.orders.some((o) => mesmoRegistro(o, estado.pedido)), 'controle: o pedido não aparece nem na lista de A');
-        const rb = await chamar('GET', 'customer-portal/int/v1/orders?limit=100', { token: estado.tokenB });
-        exigir(rb.status === 200 && Array.isArray(rb.json?.orders), () => `B lista os pedidos: ${resumo(rb)}`);
-        const deA = rb.json.orders.filter((o) => ra.json.orders.some((a) => mesmoRegistro(o, a)));
-        exigir(!deA.length, () => `B vê ${deA.length} pedido(s) de A: ${deA.map(idDe).join(', ')}`);
-        return `B vê ${rb.json.orders.length} pedido(s), nenhum de A`;
-    });
-
-    await item('7', 'B não abre o pedido de A (404)', [temPedido, ...deB], async () => {
-        const ra = await lerPedido(estado.pedido);
-        exigir(ra.status === 200, () => `controle (A abre o próprio pedido): ${resumo(ra)}`);
-        const ids = [...new Set([estado.pedido.public_id, estado.pedido.uuid].filter(Boolean))];
-        for (const id of ids) {
-            const rb = await chamar('GET', `customer-portal/int/v1/orders/${encodeURIComponent(id)}`, { token: estado.tokenB });
-            if (sucesso(rb)) {
-                falha(`B abriu o pedido de A pelo ${id}`);
-            }
-            esperarErro(rb, 404);
-        }
-        return ids.length > 1 ? 'pelo public_id e pelo uuid' : '';
-    });
-
-    await item('8', 'B não cancela o pedido de A (404) e ele continua aberto', [temPedido, ...deB], async () => {
-        const rb = await chamar('POST', `customer-portal/int/v1/orders/${idNaUrl(estado.pedido)}/cancel`, { token: estado.tokenB });
-        const ra = await lerPedido(estado.pedido);
-        const status = ra.json?.order?.status;
-        if (sucesso(rb) || CANCELADOS.includes(status)) {
-            falha(`B cancelou o pedido de A (${resumo(rb)}; status agora ${status})`);
-        }
-        esperarErro(rb, 404);
-        exigir(ra.status === 200 && status, () => `controle (A relê o pedido): ${resumo(ra)}`);
-        exigir(!ENCERRADOS.includes(status), `o pedido não está mais aberto: ${status}`);
-        return `continua ${status}`;
-    });
-
-    await item('9', 'B não vê o motoboy do pedido de A (404)', [temPedido, ...deB], async () => {
-        const caminho = `int/v1/entregas/loja/pedidos/${idNaUrl(estado.pedido)}/motoboy`;
-        const ra = await chamar('GET', caminho, { token: estado.tokenA });
-        exigir(ra.status === 200, () => `controle (A pede o motoboy do próprio pedido): ${resumo(ra)}`);
-        const rb = await chamar('GET', caminho, { token: estado.tokenB });
-        if (sucesso(rb)) {
-            falha(`B recebeu ${resumo(rb)}`);
-        }
-        esperarErro(rb, 404);
-        return '';
     });
 
     await item('13a', 'A cancela o próprio pedido antes do aceite (200, canceled)', [temPedido], async () => {
@@ -1223,7 +1349,7 @@ async function etapaPedido() {
                 problemas.push(`status ${pedido.status}`);
             }
             if (pedido.adhoc !== false) {
-                problemas.push(`adhoc=${pedido.adhoc}`);
+                problemas.push(`adhoc=${pedido.adhoc}: o pedido continua na lista de pedidos abertos do app do motoboy`);
             }
             if (pedido.dispatched !== false) {
                 problemas.push(`dispatched=${pedido.dispatched}`);
@@ -1240,6 +1366,62 @@ async function etapaPedido() {
             return `adhoc e dispatched desligados; ${atividade}`;
         }
     );
+
+    await item('6', 'B não vê o pedido de A na lista', [temPedido, ...deB], async () => {
+        const ra = await chamar('GET', 'customer-portal/int/v1/orders?limit=100', { token: estado.tokenA });
+        exigir(ra.status === 200 && Array.isArray(ra.json?.orders), () => `controle (A lista os próprios pedidos): ${resumo(ra)}`);
+        exigir(ra.json.orders.some((o) => mesmoRegistro(o, estado.pedido)), 'controle: o pedido não aparece nem na lista de A');
+        const rb = await chamar('GET', 'customer-portal/int/v1/orders?limit=100', { token: estado.tokenB });
+        exigir(rb.status === 200 && Array.isArray(rb.json?.orders), () => `B lista os pedidos: ${resumo(rb)}`);
+        const deA = rb.json.orders.filter((o) => ra.json.orders.some((a) => mesmoRegistro(o, a)));
+        exigir(!deA.length, () => `B vê ${deA.length} pedido(s) de A: ${deA.map(idDe).join(', ')}`);
+        return `B vê ${rb.json.orders.length} pedido(s), nenhum de A`;
+    });
+
+    await item('7', 'B não abre o pedido de A (404)', [temPedido, ...deB], async () => {
+        const ra = await lerPedido(estado.pedido);
+        exigir(ra.status === 200, () => `controle (A abre o próprio pedido): ${resumo(ra)}`);
+        const ids = [...new Set([estado.pedido.public_id, estado.pedido.uuid].filter(Boolean))];
+        for (const id of ids) {
+            const rb = await chamar('GET', `customer-portal/int/v1/orders/${encodeURIComponent(id)}`, { token: estado.tokenB });
+            if (sucesso(rb)) {
+                falha(`B abriu o pedido de A pelo ${id}`);
+            }
+            esperarErro(rb, 404);
+        }
+        return ids.length > 1 ? 'pelo public_id e pelo uuid' : '';
+    });
+
+    await item('8', 'B não cancela o pedido de A (404)', [temPedido, ...deB], async () => {
+        const antes = await lerPedido(estado.pedido);
+        const statusAntes = antes.json?.order?.status;
+        exigir(antes.status === 200 && statusAntes, () => `controle (A lê o pedido): ${resumo(antes)}`);
+        const rb = await chamar('POST', `customer-portal/int/v1/orders/${idNaUrl(estado.pedido)}/cancel`, { token: estado.tokenB });
+        const depois = await lerPedido(estado.pedido);
+        const statusDepois = depois.json?.order?.status;
+        if (sucesso(rb) || (!CANCELADOS.includes(statusAntes) && CANCELADOS.includes(statusDepois))) {
+            falha(`B cancelou o pedido de A (${resumo(rb)}; status agora ${statusDepois})`);
+        }
+        // com o isolamento quebrado, o pedido já cancelado no item 13a daria 422 (encerrado), e não 404
+        esperarErro(rb, 404);
+        exigir(
+            depois.status === 200 && statusDepois === statusAntes,
+            () => `o status do pedido mudou de ${statusAntes} para ${statusDepois ?? resumo(depois)}`
+        );
+        return `continua ${statusDepois}`;
+    });
+
+    await item('9', 'B não vê o motoboy do pedido de A (404)', [temPedido, ...deB], async () => {
+        const caminho = `int/v1/entregas/loja/pedidos/${idNaUrl(estado.pedido)}/motoboy`;
+        const ra = await chamar('GET', caminho, { token: estado.tokenA });
+        exigir(ra.status === 200, () => `controle (A pede o motoboy do próprio pedido): ${resumo(ra)}`);
+        const rb = await chamar('GET', caminho, { token: estado.tokenB });
+        if (sucesso(rb)) {
+            falha(`B recebeu ${resumo(rb)}`);
+        }
+        esperarErro(rb, 404);
+        return '';
+    });
 
     await item(
         '14',
@@ -1265,6 +1447,9 @@ async function etapaPedido() {
             }
             if (r.status === 401 || r.status === 403) {
                 falha(`a API recusou a chave (${resumo(r)}): use uma chave de API da organização que não seja a do app do motoboy`);
+            }
+            if (r.status === 404) {
+                falha(`${resumo(r)}: a chave não acha o pedido; provavelmente a CHAVE_API é de outra organização`);
             }
             esperarErro(r, 400, /cancelad/i);
             exigir(depois.status === 200 && CANCELADOS.includes(status), () => `depois do aceite barrado, o pedido está ${status ?? resumo(depois)}`);
@@ -1307,29 +1492,49 @@ async function limpeza() {
     }
     secao('Limpeza');
 
-    // pedidos do teste ainda abertos na Loja A: pega também o pedido criado cuja resposta não chegou (tempo esgotado)
-    const lista = await chamar('GET', 'customer-portal/int/v1/orders?limit=100', { token: estado.tokenA });
-    if (lista.status === 200 && Array.isArray(lista.json?.orders)) {
+    // pedidos do teste ainda abertos na Loja A, pela nota: pega também o pedido criado cuja resposta não veio. Com uma
+    // criação incerta, a lista é lida até 3 vezes, a cada 5 s, porque o pedido pode aparecer depois
+    const tentativas = estado.pedidosIncertos ? 3 : 1;
+    let listou = false;
+    let achadosNaLista = 0;
+    for (let tentativa = 1; tentativa <= tentativas; tentativa += 1) {
+        if (tentativa > 1) {
+            info(`procurando de novo o pedido da criação incerta em 5 s (leitura ${tentativa} de ${tentativas})`);
+            await dormir(5000);
+        }
+        const lista = await chamar('GET', 'customer-portal/int/v1/orders?limit=100', { token: estado.tokenA });
+        if (lista.status !== 200 || !Array.isArray(lista.json?.orders)) {
+            info(`não deu para listar os pedidos da Loja A: ${resumo(lista)}`);
+            continue;
+        }
+        listou = true;
         for (const pedido of lista.json.orders) {
             const chave = pedido.uuid || pedido.public_id;
             if (pedido.notes === NOTA_DO_PEDIDO && !ENCERRADOS.includes(pedido.status) && chave && !pedidosCriados.has(chave)) {
                 pedidosCriados.set(chave, { uuid: pedido.uuid, public_id: pedido.public_id, origem: 'aberto na lista da Loja A' });
+                achadosNaLista += 1;
             }
         }
-    } else {
-        info(`não deu para listar os pedidos da Loja A: ${resumo(lista)}`);
-        if (estado.pedidoSemId) {
-            registrar(
-                'FALHOU',
-                'limpeza',
-                'Pedido criado sem id na resposta',
-                `confira no console os pedidos da ${nomeDaLojaA()} com a nota "${NOTA_DO_PEDIDO}" e cancele os abertos`
-            );
+        if (achadosNaLista >= estado.pedidosIncertos) {
+            break;
         }
     }
 
+    if (!listou && estado.pedidosIncertos) {
+        registrar(
+            'FALHOU',
+            'limpeza',
+            'Pedido de criação incerta não conferido',
+            `a lista de pedidos não veio: confira no console os pedidos da ${nomeDaLojaA()} com a nota "${NOTA_DO_PEDIDO}" e cancele os abertos`
+        );
+    } else if (achadosNaLista < estado.pedidosIncertos) {
+        info('a criação incerta não deixou pedido aberto na lista da Loja A: o pedido provavelmente não foi criado');
+    }
+
     if (!pedidosCriados.size) {
-        info('nenhum pedido do teste ficou na Loja A');
+        if (listou) {
+            info('nenhum pedido do teste ficou aberto na Loja A');
+        }
         return;
     }
     for (const pedido of pedidosCriados.values()) {
@@ -1342,6 +1547,15 @@ async function limpeza() {
                 `Pedido ${idDe(pedido)} (${pedido.origem}) continua aberto`,
                 `${erro.message}. Cancele-o no console (Fleet-Ops → Pedidos) e avise os motoboys`
             );
+        }
+    }
+}
+
+/** Sai das sessões que o teste abriu (POST int/v1/auth/logout, como o console faz). Um erro aqui não importa. */
+async function sairDasSessoes() {
+    for (const token of [estado.tokenA, estado.tokenB, ...estado.outrosTokens]) {
+        if (token) {
+            await chamar('POST', 'int/v1/auth/logout', { token, tempoLimite: 10000 });
         }
     }
 }
@@ -1363,7 +1577,7 @@ async function principal() {
     }
     cfg = lido.config;
     for (const chave of CHAVES_SECRETAS) {
-        guardarSegredo(cfg[chave]);
+        guardarSegredo(cfg[chave], chave === 'CHAVE_API');
     }
     for (const aviso of lido.avisos) {
         console.log(`Configuração: ${aviso}`);
@@ -1391,12 +1605,14 @@ async function principal() {
     );
 
     try {
-        await etapaPreparacao();
-        await etapaEnderecos();
-        await etapaAcessoDeB();
-        await etapaFoto();
-        await etapaOutrosUsuarios();
-        await etapaPedido();
+        // a preparação para o teste antes do item 1 se A ou B não forem lojas de teste
+        if (await etapaPreparacao()) {
+            await etapaEnderecos();
+            await etapaAcessoDeB();
+            await etapaFoto();
+            await etapaOutrosUsuarios();
+            await etapaPedido();
+        }
     } catch (erro) {
         if (!(erro instanceof Interrompido)) {
             registrar('FALHOU', 'script', 'Erro inesperado no teste', descreverErro(erro));
@@ -1407,6 +1623,11 @@ async function principal() {
             await limpeza();
         } catch (erro) {
             registrar('FALHOU', 'limpeza', 'Erro inesperado na limpeza', `${descreverErro(erro)}. Confira os pedidos da loja de teste no console`);
+        }
+        try {
+            await sairDasSessoes();
+        } catch {
+            // sair da sessão é só arrumação
         }
     }
 
