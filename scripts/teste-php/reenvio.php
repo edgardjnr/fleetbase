@@ -184,4 +184,12 @@ confere((new LembretePedidoAberto($p, 800))->message === 'Coleta a 800 m de voc�
 confere((new LembretePedidoAberto($p, 15000))->message === 'Coleta a 15,0 km de você. Toque para ver o pedido.', '15,0 km');
 confere((new LembretePedidoAberto($p, null))->message === 'Toque para ver o pedido.', 'sem distância');
 
+echo '== Lista única de status encerrados' . PHP_EOL;
+confere(!defined(ReenviarPedidosAbertos::class . '::ENCERRADOS'), 'o reenvio usa StatusDoPedido::ENCERRADOS, sem lista própria');
+$p         = pedido('PED-S', '12:00:30');
+$p->status = 'order_canceled';
+reiniciar([$p], [motoboy('Motoca', 1200)]);
+rodarMinutos('12:01:00', 6);
+confere(horarios('PED-S') === [], 'pedido order_canceled não é reenviado');
+
 resumo();

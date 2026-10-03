@@ -3,6 +3,7 @@
 namespace App\Console\Commands\Entregas;
 
 use App\Notifications\Entregas\LembretePedidoAberto;
+use App\Support\Entregas\StatusDoPedido;
 use Carbon\CarbonImmutable;
 use Fleetbase\FleetOps\Console\Commands\DispatchAdhocOrders;
 use Fleetbase\FleetOps\Support\Utils;
@@ -34,9 +35,6 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
 
     /** Avisos extras por pedido; depois disso o pedido continua na lista de pedidos próximos do app. */
     public const MAX_REENVIOS = 3;
-
-    /** Pedido nesses status não é mais oferecido aos motoboys. */
-    public const ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled', 'order_canceled', 'expired'];
 
     /** O agendador roda o comando alguns segundos depois do minuto cheio: sem folga, um intervalo às vezes vira 5 min. */
     public const FOLGA_SEGUNDOS = 30;
@@ -99,7 +97,7 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
             ->where(['adhoc' => 1, 'dispatched' => 1, 'started' => 0])
             ->whereNull('driver_assigned_uuid')
             ->whereNull('deleted_at')
-            ->whereNotIn('status', self::ENCERRADOS)
+            ->whereNotIn('status', StatusDoPedido::ENCERRADOS)
             ->where('created_at', '>=', $agora->subDays($dias))
             ->whereBetween('dispatched_at', [
                 // um intervalo a mais depois do último reenvio, para quando faltou motoboy no raio em algum minuto
