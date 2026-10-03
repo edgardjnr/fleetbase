@@ -4,7 +4,9 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { debug } from '@ember/debug';
 import { task } from 'ember-concurrency';
+// Entregas: aviso da coleta da loja para o route e regra única de "o cliente é loja"
 import { COLETA_DA_LOJA } from '../../../services/order-creation';
+import ehLoja from '../../../utils/entregas-loja';
 
 export default class OrderFormDetailsComponent extends Component {
     @service store;
@@ -49,6 +51,7 @@ export default class OrderFormDetailsComponent extends Component {
         this.requestServiceQuoteRefresh('details.facilitator.changed');
     }
 
+    // Entregas: async para buscar o endereço da loja escolhida
     @action async selectCustomer(model) {
         this.args.resource.set('customer', model);
         this.args.resource.set('customer_uuid', model?.uuid ?? model?.id ?? null);
@@ -56,7 +59,7 @@ export default class OrderFormDetailsComponent extends Component {
 
         // Entregas: loja (fornecedor) → a coleta é sempre o endereço da loja. Quem grava a coleta é o componente
         // route (prepara o local, redesenha a rota e pede a cotação); o aviso vai para ele pelo orderCreation.
-        if (model?.customer_type !== 'vendor') {
+        if (!ehLoja({ customer: model })) {
             return;
         }
 
@@ -82,7 +85,7 @@ export default class OrderFormDetailsComponent extends Component {
             this.notifications.warning(this.intl.t('fleet-ops.ui.order-form.store-without-address'));
         }
 
-        // place nulo (loja sem endereço ou falha na busca): a coleta fica como está e destravada
+        // place nulo (loja sem endereço ou falha na busca): o route limpa a coleta da loja anterior, se ainda for ela
         this.orderCreation.trigger(COLETA_DA_LOJA, { order: this.args.resource, place });
     }
 

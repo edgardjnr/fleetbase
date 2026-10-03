@@ -203,6 +203,8 @@ fleet-ops:
             user-name-required: Enter the user's name.
         order-form:
             store-or-customer: Store or customer
+            store-or-customer-placeholder: Select store or customer
+            store-or-customer-help: Choosing a store sets the pickup to its address.
             pickup-locked: "Fixed pickup: the store address."
             store-without-address: This store has no address yet. Choose the pickup.
         settings-hub: Settings Hub

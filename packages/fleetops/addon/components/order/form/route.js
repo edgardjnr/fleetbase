@@ -6,7 +6,9 @@ import { task } from 'ember-concurrency';
 import { colorForId, routeColorForStatus, routeStyleForStatus } from '../../../utils/route-colors';
 import { buildRoutePointMarkerPresentation, buildRoutePointsFromPayload, describeRoutePoint } from '../../../utils/route-visualization';
 import preparePlaceForSave from '../../../utils/prepare-place-for-save';
+// Entregas: aviso da coleta da loja vindo do details e regra única de "o cliente é loja"
 import { COLETA_DA_LOJA } from '../../../services/order-creation';
+import ehLoja from '../../../utils/entregas-loja';
 
 const ORDER_ROUTE_PREVIEW_PADDING_BOTTOM_RIGHT = [420, 0];
 const ORDER_ROUTE_PREVIEW_MAX_ZOOM_TWO_POINTS = 13;
@@ -23,11 +25,13 @@ export default class OrderFormRouteComponent extends Component {
     @service notifications;
     @service placeActions;
     @service orderCreation;
+    // Entregas: o upstream usa this.intl nos erros da otimização de rota sem injetar o serviço
+    @service intl;
     @tracked multipleWaypoints = false;
     @tracked routingControl;
     @tracked route;
-    // Entregas: loja sem endereço (ou falha ao buscá-lo) deixa a coleta livre até a próxima escolha de loja
-    @tracked coletaLiberada = false;
+    // Entregas: coleta que a loja escolhida aplicou ({ order, place }); só ela trava
+    @tracked coletaDaLoja = null;
 
     constructor() {
         super(...arguments);
@@ -36,17 +40,26 @@ export default class OrderFormRouteComponent extends Component {
         this.orderCreation.on(COLETA_DA_LOJA, this._coletaDaLoja);
     }
 
-    // Entregas: com uma loja como cliente, a coleta é o endereço da loja e fica travada. Sem coleta não trava,
-    // porque o operador precisa escolher uma. O tipo chega como 'vendor', 'fleet-ops:vendor', 'customer-vendor'
-    // ou a classe PHP, conforme o pedido seja novo ou venha do servidor.
+    // Entregas: com uma loja como cliente, a coleta que ela aplicou (o endereço dela) fica travada. Coleta escolhida
+    // à mão não trava, nem enquanto a resposta da loja não chega.
     get coletaTravada() {
         const order = this.args.resource;
-        if (!order?.payload?.pickup || this.coletaLiberada) {
+
+        return ehLoja({ customer: order?.customer, customerType: order?.customer_type }) && this.coletaAtualEhDaLoja();
+    }
+
+    // Entregas: a coleta atual deste pedido ainda é a que a loja aplicou? O setPayloadPlace passa o local pelo
+    // preparePlaceForSave, que pode devolver outro objeto; por isso a referência guarda o que ficou na coleta,
+    // e a comparação pelo id cobre o mesmo local em outro objeto.
+    coletaAtualEhDaLoja() {
+        const referencia = this.coletaDaLoja;
+        const order = this.args.resource;
+        const atual = order?.payload?.pickup;
+        if (!referencia?.place || referencia.order !== order || !atual) {
             return false;
         }
 
-        const tipos = [order.customer_type, order.customer?.customer_type];
-        return Boolean(order.customer?.isVendor) || tipos.some((tipo) => /vendor/i.test(tipo ?? ''));
+        return atual === referencia.place || (Boolean(atual.id) && atual.id === referencia.place.id);
     }
 
     focusPlace(place, zoom = 18) {
@@ -116,14 +129,18 @@ export default class OrderFormRouteComponent extends Component {
     }
 
     // Entregas: a loja escolhida no details define a coleta. place nulo (loja sem endereço ou falha na busca):
-    // a coleta fica como está e destravada para o operador escolher.
+    // se a coleta ainda é a da loja anterior, ela é limpa, para o pedido de uma loja não sair com a coleta de
+    // outra; coleta escolhida à mão fica como está. Nos dois casos a coleta fica livre para o operador escolher.
     aplicarColetaDaLoja({ order, place } = {}) {
         if (order && order !== this.args.resource) {
             return;
         }
 
-        this.coletaLiberada = !place;
         if (!place) {
+            if (this.coletaAtualEhDaLoja()) {
+                this.setPayloadPlace('pickup', null);
+            }
+            this.coletaDaLoja = null;
             return;
         }
 
@@ -133,6 +150,7 @@ export default class OrderFormRouteComponent extends Component {
         }
 
         this.setPayloadPlace('pickup', place);
+        this.coletaDaLoja = { order: this.args.resource, place: this.args.resource.payload.pickup };
     }
 
     @action toggleWaypoints(multipleWaypoints) {

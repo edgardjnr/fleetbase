@@ -203,6 +203,8 @@ fleet-ops:
       user-name-required: Informe o nome do usuário.
     order-form:
       store-or-customer: Loja ou cliente
+      store-or-customer-placeholder: Selecionar loja ou cliente
+      store-or-customer-help: Ao escolher uma loja, a coleta vira o endereço dela.
       pickup-locked: "Coleta fixa: endereço da loja."
       store-without-address: Esta loja não tem endereço cadastrado. Escolha a coleta.
     settings-hub: Central de Configurações

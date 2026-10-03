@@ -36,11 +36,11 @@
         </InputGroup>
 
         {{!-- Entregas: o cliente pode ser uma loja (a coleta vira o endereço dela) ou um cliente comum --}}
-        <InputGroup @name={{t "fleet-ops.ui.order-form.store-or-customer"}} @helpText={{t "order.fields.customer-help-text"}}>
+        <InputGroup @name={{t "fleet-ops.ui.order-form.store-or-customer"}} @helpText={{t "fleet-ops.ui.order-form.store-or-customer-help"}}>
             <ModelSelect
                 @modelName="customer"
                 @selectedModel={{@resource.customer}}
-                @placeholder={{t "order.fields.customer-placeholder"}}
+                @placeholder={{t "fleet-ops.ui.order-form.store-or-customer-placeholder"}}
                 @triggerClass="form-select form-input"
                 @infiniteScroll={{false}}
                 @renderInPlace={{true}}
