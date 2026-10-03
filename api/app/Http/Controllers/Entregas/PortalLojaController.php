@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Entregas;
 use App\Http\Controllers\Controller;
 use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\LojaDoUsuario;
+use App\Support\Entregas\StatusDoPedido;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
 use Fleetbase\Models\Company;
@@ -17,8 +18,6 @@ use Illuminate\Support\Carbon;
  */
 class PortalLojaController extends Controller
 {
-    public const STATUS_ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled', 'order_canceled', 'expired'];
-
     /** Rotas novas calculadas por consulta do extrato (o portal não repete a chamada como a tela da central). */
     public const LIMITE_CALCULOS_PORTAL = 10;
 
@@ -118,7 +117,7 @@ class PortalLojaController extends Controller
             ->firstOrFail();
 
         $motoboy = $pedido->driverAssigned;
-        if (!$motoboy || in_array($pedido->status, static::STATUS_ENCERRADOS, true)) {
+        if (!$motoboy || in_array($pedido->status, StatusDoPedido::ENCERRADOS, true)) {
             return response()->json(['motoboy' => null]);
         }
 

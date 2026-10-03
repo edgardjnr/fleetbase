@@ -31,9 +31,10 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        // Entregas RestaurantePro: aceite do motoboy (v1/orders/{id}/start) de pedido encerrado é barrado. O core
-        // preenche o grupo fleetbase.api no boot() dele, e os pacotes sobem antes dos providers do app: este entra
-        // no fim do grupo, depois da autenticação (AuthenticateOnceWithBasicAuth) e com a sessão da empresa montada
+        // Entregas RestaurantePro: aceite do motoboy (v1/orders/{id}/start) de pedido encerrado é barrado, e o
+        // cancelamento da API v1 roda com a mesma trava do aceite. O core preenche o grupo fleetbase.api no boot()
+        // dele, e os pacotes sobem antes dos providers do app: este entra no fim do grupo, depois da autenticação
+        // (AuthenticateOnceWithBasicAuth) e com a sessão da empresa montada
         $this->app['router']->pushMiddlewareToGroup('fleetbase.api', BarrarAceiteDePedidoEncerrado::class);
 
         $this->routes(

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Support\Entregas\LojaDoUsuario;
+use App\Support\Entregas\StatusDoPedido;
 use App\Support\Entregas\TravaDoPedido;
 use Closure;
 use Fleetbase\FleetOps\Models\Order;
@@ -57,9 +58,6 @@ class RegrasPortalLoja
 
     /** Status em que a loja ainda pode cancelar, desde que nenhum motoboy tenha aceitado. */
     public const STATUS_CANCELAVEIS = ['created', 'dispatched'];
-
-    /** Pedido encerrado: a loja não cancela e o motoboy não aceita (o BarrarAceiteDePedidoEncerrado usa esta lista). */
-    public const STATUS_ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled', 'order_canceled', 'expired'];
 
     public function handle(Request $request, Closure $next)
     {
@@ -208,7 +206,7 @@ class RegrasPortalLoja
             return $next($request);
         }
 
-        if (in_array($pedido->status, static::STATUS_ENCERRADOS, true)) {
+        if (in_array($pedido->status, StatusDoPedido::ENCERRADOS, true)) {
             return $this->erro(422, 'Este pedido já foi encerrado.');
         }
 
@@ -248,7 +246,8 @@ class RegrasPortalLoja
             // atividade "canceled" (status do pedido) + OrderCanceled na fila
             $pedido->cancel();
         } catch (\Throwable $e) {
-            Log::error('[entregas] portal da loja: falha ao registrar o cancelamento do pedido', ['pedido' => $pedido->public_id, 'erro' => $e->getMessage()]);
+            // com a exceção no contexto: o log grava a classe e o stack, e não só a mensagem
+            Log::error('[entregas] portal da loja: falha ao registrar o cancelamento do pedido', ['pedido' => $pedido->public_id, 'erro' => $e->getMessage(), 'exception' => $e]);
         }
     }
 
