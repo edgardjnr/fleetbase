@@ -226,12 +226,32 @@ class MessagingFalso implements Kreait\Firebase\Contract\Messaging
 {
     public array $enviados = [];
 
+    /** Uma resposta por chamada, na ordem (função dos tokens que devolve o relatório). Fila vazia: um token entregue e outro recusado. */
+    public array $respostas = [];
+
     public function sendMulticast($message, $registrationTokens, bool $validateOnly = false)
     {
         $this->enviados[] = [$message, $registrationTokens];
 
-        return new Kreait\Firebase\Messaging\MulticastSendReport([new Kreait\Firebase\Messaging\SendReport(false), new Kreait\Firebase\Messaging\SendReport(true)]);
+        $resposta = array_shift($this->respostas);
+
+        return $resposta ? $resposta($registrationTokens) : new Kreait\Firebase\Messaging\MulticastSendReport([new Kreait\Firebase\Messaging\SendReport(false), new Kreait\Firebase\Messaging\SendReport(true)]);
     }
+}
+
+// o que o FCM responde por token: 'ok', 'invalida' (400: mensagem recusada) ou 'desconhecido' (404: o token não existe mais)
+function fcmResponde(array $situacoes): Closure
+{
+    return fn (array $tokens) => new Kreait\Firebase\Messaging\MulticastSendReport(array_map(function ($token) use ($situacoes) {
+        $situacao = $situacoes[$token] ?? 'ok';
+
+        return new Kreait\Firebase\Messaging\SendReport($situacao !== 'ok', $situacao === 'invalida', $token, $situacao === 'ok' ? null : new RuntimeException("FCM: {$situacao}"));
+    }, array_values($tokens)));
+}
+
+function registrosDoLog(string $mensagem): array
+{
+    return array_values(array_filter(Illuminate\Support\Facades\Log::$registros, fn ($registro) => $registro[1] === $mensagem));
 }
 
 class EventosFalsos implements Illuminate\Contracts\Events\Dispatcher
@@ -278,12 +298,16 @@ $eventos    = new EventosFalsos();
 $canal      = new App\Notifications\Entregas\CanalFcmEntregas($eventos, $padrao);
 
 Fleetbase\Support\PushNotification::$cliente = $daMensagem;
+Illuminate\Support\Facades\Log::$registros   = [];
 $canal->send(new MotoboyFalso(['token-1', 'token-2']), new OrderPing(pedidoDoTeste(), 1234));
 confere(count($daMensagem->enviados) === 1 && $padrao->enviados === [], 'envia pelo cliente da mensagem (o do Fleetbase)');
 [$enviada, $tokens] = $daMensagem->enviados[0] ?? [null, null];
 confere($tokens === ['token-1', 'token-2'], 'para os tokens do motoboy');
 confere($enviada !== null && $enviada->notification === null && ($enviada->data['title'] ?? null) === 'Novo pedido disponível', 'a mensagem enviada é a adaptada');
 confere(count($eventos->eventos) === 1 && $eventos->eventos[0] instanceof Illuminate\Notifications\Events\NotificationFailed, 'token com falha gera NotificationFailed, como no pacote');
+$evento = $eventos->eventos[0] ?? null;
+confere($evento?->channel === NotificationChannels\Fcm\FcmChannel::class && isset($evento->data['report']), 'o evento leva o canal do pacote (FcmChannel) e o relatório');
+confere(count(registrosDoLog('[entregas] push recusado pelo FCM')) === 1, 'e o token com falha também vai para o log');
 confere($canal->send(new MotoboyFalso([]), new OrderPing(pedidoDoTeste(), 1234)) === null, 'motoboy sem token: nada é enviado');
 
 Fleetbase\Support\PushNotification::$cliente = null;
@@ -292,6 +316,65 @@ $canal->send(new MotoboyFalso(['token-1']), (new ReflectionClass(AvisoQuebrado::
 $original = $padrao->enviados[0][0] ?? null;
 confere($original instanceof MensagemQuebrada && $original->notification->title === 'Order RP-1 was canceled', 'erro na adaptação: envia a mensagem original');
 confere((Illuminate\Support\Facades\Log::$registros[0][1] ?? null) === '[entregas] aviso push sem adaptação', 'e registra o erro no log');
+$excecao = Illuminate\Support\Facades\Log::$registros[0][2]['exception'] ?? null;
+confere($excecao instanceof RuntimeException && $excecao->getMessage() === 'falha de teste', 'o log leva a exceção inteira na chave "exception" (com o rastreio)');
+
+echo '== CanalFcmEntregas: recusa do FCM' . PHP_EOL;
+
+function canalComFcm(MessagingFalso $fcm, EventosFalsos $eventos): App\Notifications\Entregas\CanalFcmEntregas
+{
+    return new App\Notifications\Entregas\CanalFcmEntregas($eventos, $fcm);
+}
+
+// o FCM recusa o formato adaptado como inválido (400) para os dois tokens: eles recebem o push original
+$fcm            = new MessagingFalso();
+$eventos        = new EventosFalsos();
+$fcm->respostas = [fcmResponde(['token-1' => 'invalida', 'token-2' => 'invalida']), fcmResponde([])];
+Illuminate\Support\Facades\Log::$registros = [];
+$resultado = canalComFcm($fcm, $eventos)->send(new MotoboyFalso(['token-1', 'token-2']), new OrderPing(pedidoDoTeste(), 1234));
+confere(count($fcm->enviados) === 2, 'adaptada recusada como inválida: o canal envia de novo');
+[$adaptada]                   = $fcm->enviados[0] ?? [null];
+[$reenviada, $tokensReenvio]  = $fcm->enviados[1] ?? [null, null];
+confere($adaptada?->notification === null && ($adaptada?->data['title'] ?? null) === 'Novo pedido disponível', 'o primeiro envio é a mensagem adaptada');
+confere($reenviada?->notification?->title === 'New incoming order!' && !isset($reenviada->data['title']), 'o segundo é o push original do Fleet-Ops (em inglês, com bloco de notificação e sem título nos dados)');
+confere($tokensReenvio === ['token-1', 'token-2'], 'reenviado para os tokens recusados');
+$recusas = registrosDoLog('[entregas] push recusado pelo FCM');
+confere(count($recusas) === 2 && $recusas[0][2]['notificacao'] === OrderPing::class && $recusas[0][2]['mensagem_invalida'] === true, 'cada recusa vai para o log, com a notificação e o motivo');
+$reenvios = registrosDoLog('[entregas] push adaptado recusado pelo FCM; enviado o original');
+confere(count($reenvios) === 1 && $reenvios[0][2] === ['notificacao' => OrderPing::class, 'tokens' => 2], 'e o reenvio do original também, com a quantidade de tokens');
+confere(count($eventos->eventos) === 2, 'as recusas do envio adaptado continuam gerando NotificationFailed (o reenvio entregou)');
+confere($resultado instanceof Illuminate\Support\Collection && count($resultado) === 2, 'o retorno junta o relatório do envio adaptado e o do reenvio');
+
+// só um token recusa a mensagem como inválida: o reenvio vai só para ele
+$fcm            = new MessagingFalso();
+$fcm->respostas = [fcmResponde(['token-2' => 'invalida'])];
+canalComFcm($fcm, new EventosFalsos())->send(new MotoboyFalso(['token-1', 'token-2']), new OrderPing(pedidoDoTeste(), 1234));
+confere(count($fcm->enviados) === 2 && ($fcm->enviados[1][1] ?? null) === ['token-2'], 'o reenvio vai só para o token que recusou a mensagem');
+
+// recusa por outro motivo (token que não existe mais): sem reenvio, só o log
+$fcm            = new MessagingFalso();
+$fcm->respostas = [fcmResponde(['token-1' => 'desconhecido', 'token-2' => 'desconhecido'])];
+Illuminate\Support\Facades\Log::$registros = [];
+canalComFcm($fcm, new EventosFalsos())->send(new MotoboyFalso(['token-1', 'token-2']), new OrderPing(pedidoDoTeste(), 1234));
+confere(count($fcm->enviados) === 1, 'recusa que não é de mensagem inválida (token desconhecido): sem reenvio');
+$recusas = registrosDoLog('[entregas] push recusado pelo FCM');
+confere(count($recusas) === 2 && $recusas[1][2] === ['notificacao' => OrderPing::class, 'mensagem_invalida' => false, 'erro' => 'FCM: desconhecido'], 'mas cada recusa vai para o log, com a notificação e o erro do FCM');
+confere(registrosDoLog('[entregas] push adaptado recusado pelo FCM; enviado o original') === [], 'e não há registro de reenvio');
+
+// mensagem que não foi adaptada (erro na adaptação) e o FCM a recusa como inválida: sem reenvio (seria a mesma mensagem)
+$fcm            = new MessagingFalso();
+$fcm->respostas = [fcmResponde(['token-1' => 'invalida'])];
+Illuminate\Support\Facades\Log::$registros = [];
+canalComFcm($fcm, new EventosFalsos())->send(new MotoboyFalso(['token-1']), (new ReflectionClass(AvisoQuebrado::class))->newInstanceWithoutConstructor());
+confere(count($fcm->enviados) === 1, 'original recusado como inválido: não é reenviado (sem laço)');
+confere(count(registrosDoLog('[entregas] push recusado pelo FCM')) === 1 && registrosDoLog('[entregas] push adaptado recusado pelo FCM; enviado o original') === [], 'só o log da recusa');
+
+// tudo entregue: um envio só e nada de log de recusa
+$fcm            = new MessagingFalso();
+$fcm->respostas = [fcmResponde([])];
+Illuminate\Support\Facades\Log::$registros = [];
+canalComFcm($fcm, $eventos = new EventosFalsos())->send(new MotoboyFalso(['token-1', 'token-2']), new OrderPing(pedidoDoTeste(), 1234));
+confere(count($fcm->enviados) === 1 && $eventos->eventos === [] && Illuminate\Support\Facades\Log::$registros === [], 'todos entregues: um envio, sem evento e sem log');
 putenv('ENTREGAS_ALARME_POR_DADOS');
 
 resumo();

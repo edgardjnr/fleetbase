@@ -35,6 +35,7 @@ namespace Illuminate\Support {
         public function map(callable $funcao): static { return new static(array_map($funcao, $this->itens)); }
         public function filter(?callable $funcao = null): static { return new static($funcao ? array_filter($this->itens, $funcao) : array_filter($this->itens)); }
         public function each(callable $funcao): static { foreach ($this->itens as $chave => $valor) { $funcao($valor, $chave); } return $this; }
+        public function merge($itens): static { return new static(array_merge($this->itens, $itens instanceof self ? $itens->all() : (array) $itens)); }
         public function all(): array { return $this->itens; }
         public function count(): int { return count($this->itens); }
         public function getIterator(): \ArrayIterator { return new \ArrayIterator($this->itens); }
@@ -60,10 +61,21 @@ namespace Kreait\Firebase\Contract {
 namespace Kreait\Firebase\Messaging {
     interface Message extends \JsonSerializable {}
 
+    // kreait/firebase-php 7.24.1: na versão real o construtor é privado (SendReport::success/failure), aqui é público
+    // por conveniência; os nomes dos métodos usados pelo canal são os reais
     class SendReport
     {
-        public function __construct(private bool $falhou = false) {}
+        public function __construct(private bool $falhou = false, private bool $invalida = false, private string $token = 'token', private ?\Throwable $erro = null) {}
         public function isFailure(): bool { return $this->falhou; }
+        public function messageWasInvalid(): bool { return $this->invalida; }
+        public function error(): ?\Throwable { return $this->erro; }
+        public function target(): MessageTarget { return new MessageTarget($this->token); }
+    }
+
+    class MessageTarget
+    {
+        public function __construct(private string $valor) {}
+        public function value(): string { return $this->valor; }
     }
 
     class MulticastSendReport

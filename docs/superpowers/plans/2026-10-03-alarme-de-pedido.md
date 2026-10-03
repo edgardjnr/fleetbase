@@ -1527,7 +1527,7 @@ class CanalFcmEntregas extends FcmChannel
 
 - [ ] **Step 4: Rodar e ver passar**
 
-Mesmo comando. Esperado: `FALHAS: 0` (80 casos).
+Mesmo comando. Esperado: `FALHAS: 0` (80 casos com os blocos acima; 98 depois do ajuste da revisão que fecha esta Task, mais abaixo).
 
 - [ ] **Step 5: Trocar o canal no `AppServiceProvider`**
 
@@ -1554,6 +1554,8 @@ Esperado: dois `ok`.
 git -C /c/tmp/em add api/app/Notifications/Entregas/CanalFcmEntregas.php api/app/Providers/AppServiceProvider.php scripts/teste-php/avisos-push.php
 git -C /c/tmp/em commit -m "Push do motoboy: CanalFcmEntregas no lugar do FcmChannel (adapta e, se falhar, envia o original)"
 ```
+
+- [x] **Ajustes da revisão de qualidade** (commit seguinte ao da Task 5): o kreait 7.24.1 não valida a mensagem localmente (o `sendMulticast` devolve a recusa do servidor como falha no `SendReport`, sem exceção) e o pacote FCM só dispara `NotificationFailed`, que não tem ouvinte: se o FCM recusasse o formato novo (dados sem bloco de notificação, `android.ttl`/`priority`, `channel_id`), todo push daquele tipo sumiria sem uma linha de log. O `CanalFcmEntregas` passou a (1) registrar cada push recusado (`[entregas] push recusado pelo FCM`, com a classe da notificação, `mensagem_invalida` e o erro do FCM; o `checkReportForFailures` é sobrescrito e chama o do pacote em seguida, então o `NotificationFailed` continua saindo, com o canal `FcmChannel`) e (2) reenviar o push ORIGINAL (o do Fleet-Ops, que funciona hoje) aos tokens cuja recusa foi de mensagem inválida (`SendReport::messageWasInvalid()`, o 400 do FCM), com o aviso `[entregas] push adaptado recusado pelo FCM; enviado o original`. Não há laço: se a mensagem não foi adaptada (erro na adaptação), uma recusa só vai para o log. O erro da adaptação agora leva a exceção inteira (chave `exception`, com o rastreio). Stubs: `SendReport` com `messageWasInvalid`, `error` e `target`, `MessageTarget` com `value` e `Collection::merge`. O `avisos-push.php` passa de 80 para 98 casos (o `reenvio.php` segue com 32). Limite conhecido: `messageWasInvalid()` também é verdadeiro para um token malformado (400); nesse caso o reenvio do original custa uma chamada a mais, que falha do mesmo jeito.
 
 ---
 
@@ -1632,6 +1634,7 @@ Substitua a linha que começa com `- Alarme de novo pedido: canal \`pedidos\`` p
 - **Avisos ao motoboy (push):** todos passam pelo `CanalFcmEntregas` (troca do `FcmChannel` no `AppServiceProvider`), que usa o `AvisosDoMotoboy` (`api/app/Notifications/Entregas/`):
   - texto em pt-BR por classe de notificação; aviso novo do Fleet-Ops sem tradução aparece no log como `[entregas] aviso push sem tradução`;
   - canal do app: `alarme_pedido` (pedido novo, reenvio, atribuído, liberado), `mensagens` (chat, toque longo) e `avisos` (status, som normal). APK sem o canal usa o padrão `pedidos`.
+  - Recusa do FCM aparece no log como `[entregas] push recusado pelo FCM`; se o formato adaptado for recusado como inválido, o canal reenvia o push original do Fleet-Ops. **Ao atualizar o pacote `laravel-notification-channels/fcm` (hoje 4.5.0), confira o `send()` do `FcmChannel`**: o `CanalFcmEntregas` repete o dele.
 - **Alarme de novo pedido:** com o app aberto, a tela do pedido toca o `AlertaPedido` (loop até aceitar/iniciar, máx. 3 min). Com o app fora da frente, o canal `alarme_pedido` (APK 16+) toca no silencioso.
   - Com `ENTREGAS_ALARME_POR_DADOS=1` nos serviços da API (Portainer), o alarme vai como push de dados e o APK 16+ toca em loop com tela cheia. **Só ligar com todos os motoboys no APK 16:** no antigo, tocar no push de dados não abre o pedido.
 ```
@@ -2727,7 +2730,10 @@ Perguntar ao Edgard se o portal da loja já está em produção: o `atualizar.sh
 ```bash
 cd ~/entregas && bash deploy/atualizar.sh api
 docker exec $(docker ps -q -f name=entregas_queue) printenv ENTREGAS_ALARME_POR_DADOS || echo "chave desligada (sem a variável)"
+docker exec $(docker ps -q -f name=entregas_queue) php /fleetbase/api/artisan tinker --execute="echo get_class(app(\NotificationChannels\Fcm\FcmChannel::class)), PHP_EOL;"
 ```
+
+Esperado na última linha: `App\Notifications\Entregas\CanalFcmEntregas` (o canal novo está no lugar do `FcmChannel` na fila, que é quem envia os push). Se aparecer `NotificationChannels\Fcm\FcmChannel`, a fila ainda roda a imagem antiga.
 
 ### Task 19: Compatibilidade com o APK 15 (chave desligada)
 
