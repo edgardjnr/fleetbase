@@ -615,10 +615,11 @@ body[data-theme='dark'].fleetbase-portal .portal-dashboard-hero p {
     display: none;
 }
 
+/* Entregas: o painel da home é só leitura (@readOnly) e o cabeçalho fica sem botões; sem altura mínima não sobra uma faixa vazia */
 .fleetbase-portal .portal-dashboard-grid > .right-section {
     grid-column: 1 / -1;
     justify-content: flex-end;
-    min-height: 2.25rem;
+    min-height: 0;
     margin: 0;
 }
 

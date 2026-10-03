@@ -21,10 +21,12 @@
         </div>
     </div>
 
+    {{!-- Entregas: painel só leitura (o servidor nega ao usuário de loja criar, editar e adicionar widgets; com zero widgets o painel de widgets também não abre); o nome do painel é chave de tradução --}}
     <Dashboard
         @defaultDashboardId="customer-portal-overview-v2"
-        @defaultDashboardName="Overview"
-        @showPanelWhenZeroWidgets={{true}}
+        @defaultDashboardName="customer-portal.ui.entregas.dashboard-name"
+        @readOnly={{true}}
+        @showPanelWhenZeroWidgets={{false}}
         @stickyHeader={{true}}
         @leftHeaderWrapperClass="portal-dashboard-title"
         @rightHeaderWrapperClass="portal-dashboard-actions"

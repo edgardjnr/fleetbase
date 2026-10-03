@@ -64,4 +64,31 @@ module('Integration | Component | dashboard', function (hooks) {
 
         assert.dom('.fleetbase-dashboard-grid').doesNotHaveClass('fleetbase-dashboard-grid--sticky');
     });
+
+    // Entregas: @readOnly esconde o seletor de painéis, o menu e o botão de salvar
+    test('it hides the dashboard controls when read-only', async function (assert) {
+        await render(hbs`<Dashboard />`);
+
+        // seletor de painéis e menu "…"
+        assert.dom('.fleetbase-dashboard-actions .ember-basic-dropdown-trigger').exists({ count: 2 });
+
+        await render(hbs`<Dashboard @readOnly={{true}} />`);
+
+        assert.dom('.fleetbase-dashboard-actions').exists();
+        assert.dom('.fleetbase-dashboard-actions .ember-basic-dropdown-trigger').doesNotExist();
+        assert.dom('.fleetbase-dashboard-actions button').doesNotExist();
+        assert.dom('h1').hasText('Test Dashboard');
+    });
+
+    // Entregas: o estado do serviço é compartilhado; o painel somente leitura não pode reagir a ele
+    test('it ignores edit mode and the widget panel when read-only', async function (assert) {
+        const dashboard = this.owner.lookup('service:dashboard');
+        dashboard.isEditingDashboard = true;
+        dashboard.isAddingWidget = true;
+
+        await render(hbs`<Dashboard @readOnly={{true}} />`);
+
+        assert.dom('.fleetbase-dashboard-actions button').doesNotExist();
+        assert.dom('.dashboard-widget-panel-body').doesNotExist();
+    });
 });

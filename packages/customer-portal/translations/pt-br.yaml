@@ -600,6 +600,7 @@ customer-portal:
       cancel-locked: O motoboy já aceitou. Para cancelar, fale com a central.
       members-managed-by-central: Para adicionar ou remover usuários da loja, fale com a central.
       login-managed-by-central: O e-mail e o telefone de acesso só podem ser alterados pela central.
+      dashboard-name: Visão geral
 
 menu-text:
   customer-portal:

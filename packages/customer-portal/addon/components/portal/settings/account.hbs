@@ -48,9 +48,7 @@
                     {{/if}}
                 </div>
             </div>
-            {{#if this.isContactAccount}}
-                <button type="button" class="portal-link-button" {{on "click" this.openConvertModal}}>{{t "customer-portal.ui.account.convert"}}</button>
-            {{/if}}
+            {{!-- Entregas: sem botão de converter a conta em empresa; o servidor nega account/convert-to-vendor ao usuário de loja --}}
         </div>
     </div>
 

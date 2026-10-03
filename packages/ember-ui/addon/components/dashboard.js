@@ -20,9 +20,16 @@ export default class DashboardComponent extends Component {
 
     /**
      * Creates an instance of DashboardComponent.
+     *
+     * Entregas: o argumento opcional `@readOnly` mostra só os widgets do painel atual, sem o seletor de painéis,
+     * o menu (criar, editar, adicionar widgets, apagar) nem o botão de salvar. Sem ele, nada muda.
+     *
      * @memberof DashboardComponent
      */
-    constructor(owner, { defaultDashboardId = 'dashboard', defaultDashboardName = 'Default Dashboard', showPanelWhenZeroWidgets = false, extension = 'core', slot = null } = {}) {
+    constructor(
+        owner,
+        { defaultDashboardId = 'dashboard', defaultDashboardName = 'Default Dashboard', showPanelWhenZeroWidgets = false, readOnly = false, extension = 'core', slot = null } = {}
+    ) {
         super(...arguments);
         // reset() queues its store.unloadAll() calls onto the next runloop tick
         // to avoid mutating tracked tags from inside the current render. We
@@ -31,7 +38,8 @@ export default class DashboardComponent extends Component {
         // not interleaved with the synchronous reset().
         this.dashboard.reset();
         next(() => {
-            this.dashboard.showPanelWhenZeroWidgets = showPanelWhenZeroWidgets;
+            // Entregas: painel somente leitura nunca abre o painel de widgets sozinho (com zero widgets)
+            this.dashboard.showPanelWhenZeroWidgets = showPanelWhenZeroWidgets && !readOnly;
             this.dashboard.loadDashboards.perform({ defaultDashboardId, defaultDashboardName, extension, slot });
         });
     }

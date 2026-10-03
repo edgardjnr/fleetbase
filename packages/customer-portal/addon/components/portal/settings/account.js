@@ -45,13 +45,7 @@ export default class PortalSettingsAccountComponent extends Component {
         );
     }
 
-    @action openConvertModal() {
-        this.modalsManager.show('modals/portal-convert-to-company', {
-            onConverted: () => {
-                this.customerSession.promiseCurrentCustomer();
-            },
-        });
-    }
+    // Entregas: sem openConvertModal (converter a conta em empresa); o servidor nega account/convert-to-vendor ao usuário de loja
 
     @task *saveProfile(event) {
         if (event instanceof Event) {
