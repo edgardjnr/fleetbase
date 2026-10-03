@@ -6,7 +6,9 @@
                 <img src={{@motoboy.foto}} alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
             {{/if}}
             <div class="text-sm text-gray-700 dark:text-gray-200">
-                {{#if @motoboy.aceitou}}
+                {{!-- Entregas: com o pedido já aceito (@aceito), o texto é o de quem aceitou, mesmo que a resposta do motoboy seja
+                     anterior ao aceite (a consulta depois do aceite falhou) e ainda diga que ele não aceitou --}}
+                {{#if (or @motoboy.aceitou @aceito)}}
                     {{t "customer-portal.ui.entregas.courier-accepted" name=@motoboy.nome}}
                 {{else}}
                     {{t "customer-portal.ui.entregas.courier-assigned" name=@motoboy.nome}}
