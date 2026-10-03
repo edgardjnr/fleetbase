@@ -46,6 +46,9 @@ export default class CoordinatesInputComponent extends Component {
     @tracked mapTheme = 'light';
     @tracked disabled = false;
 
+    // Entregas: o @mapCenter válido recebido na criação; null = sem @mapCenter (o console), comportamento original
+    initialMapCenter = null;
+
     /**
      * Constructor for CoordinatesInputComponent. Sets initial map coordinates and values.
      * @memberof CoordinatesInputComponent
@@ -117,6 +120,7 @@ export default class CoordinatesInputComponent extends Component {
     setInitialMapCoordinates() {
         // Entregas: o centro pedido por quem usa o componente (ex.: a loja, no portal) vem antes do whois
         const mapCenter = validMapCenter(this.args.mapCenter);
+        this.initialMapCenter = mapCenter;
         if (mapCenter) {
             this.mapLat = mapCenter.latitude;
             this.mapLng = mapCenter.longitude;
@@ -202,6 +206,16 @@ export default class CoordinatesInputComponent extends Component {
      * @memberof CoordinatesInputComponent
      */
     @action onClose() {
+        // Entregas: com @mapCenter, o próximo mapa aberto é outro (o moveend da criação dele também não marca) e, sem
+        // ponto marcado, o mapa fica no centro pedido: copiar latitude/longitude vazios deixaria o mapa sem centro
+        if (this.initialMapCenter) {
+            this.isInitialMoveEnded = false;
+
+            if (isBlank(this.latitude) || isBlank(this.longitude)) {
+                return;
+            }
+        }
+
         this.mapLat = this.latitude;
         this.mapLng = this.longitude;
     }
@@ -218,10 +232,34 @@ export default class CoordinatesInputComponent extends Component {
         const geographicalCenter = typeof center.wrap === 'function' ? center.wrap() : center;
         const { lat, lng } = geographicalCenter;
 
+        // Entregas: com @mapCenter (o portal da loja abre o mapa na loja), o moveend da criação de cada mapa aberto (o
+        // setView inicial) e o zoom sem arrastar (o centro continua o pedido) não marcam o ponto nem buscam o endereço:
+        // o centro é a loja, e marcar sem o usuário mexer gravaria o destino na loja, com km ~0. Sem @mapCenter, como antes.
+        if (this.initialMapCenter) {
+            if (!this.isInitialMoveEnded) {
+                this.isInitialMoveEnded = true;
+                return;
+            }
+
+            if (this.isAtInitialMapCenter(lat, lng)) {
+                return;
+            }
+        }
+
         this.updateCoordinates(lat, lng, { updateMap: false });
         if (typeof onUpdatedFromMap === 'function') {
             onUpdatedFromMap({ latitude: lat, longitude: lng });
         }
+    }
+
+    /**
+     * Entregas: o centro do mapa ainda é o @mapCenter pedido? O Leaflet devolve o mesmo centro até alguém arrastar o
+     * mapa (o zoom pelos botões ou pelo teclado não o tira do lugar); a folga cobre o arredondamento do wrap() da longitude.
+     */
+    isAtInitialMapCenter(latitude, longitude) {
+        const { initialMapCenter } = this;
+
+        return Math.abs(latitude - initialMapCenter.latitude) < 1e-7 && Math.abs(longitude - initialMapCenter.longitude) < 1e-7;
     }
 
     /**
