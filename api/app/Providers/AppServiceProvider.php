@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Console\Commands\Entregas\ReenviarPedidosAbertos;
+use Fleetbase\FleetOps\Console\Commands\DispatchAdhocOrders;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Events\TransactionBeginning;
@@ -35,7 +37,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        // Entregas: o fleetops:dispatch-adhoc, que o Fleet-Ops agenda a cada minuto, roda a versão corrigida do
+        // reenvio de pedidos abertos (ver ReenviarPedidosAbertos)
+        $this->app->bind(DispatchAdhocOrders::class, ReenviarPedidosAbertos::class);
     }
 
     /**
