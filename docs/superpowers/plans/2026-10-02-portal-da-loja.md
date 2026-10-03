@@ -34,8 +34,14 @@
 **Pedidos e motoboys**
 - Criação pela central: `dispatched` padrão `true` → `firstDispatchWithActivity()`; com `adhoc=true`, o listener `HandleOrderDispatched` avisa os motoboys `available` e `online` num raio de `adhoc_distance` (null → opção da empresa `fleetops.adhoc_distance`, padrão 6000 m) da coleta.
 - "Motoboy aceitou" = `orders.started = 1` (aceite adhoc: `POST v1/orders/{id}/start` com `assign`). `driver_assigned_uuid`/`dispatched` sozinhos não servem.
-- `orders.customer_type` é gravado como nome da classe (mutator + cast `PolymorphicType` devolve o valor cru) → pedido de loja: `customer_type === Fleetbase\FleetOps\Models\Vendor::class`.
+- **`orders.customer_type` varia conforme a rota que criou o pedido:** o portal grava `Fleetbase\FleetOps\Models\Vendor`; a criação pelo console (`normalizeCustomerType` → `getModelClassName`) e a API v1 gravam `\Fleetbase\FleetOps\Models\Vendor` (barra inicial). **O critério canônico da loja do pedido é `orders.customer_uuid`** (como no `PortalOrderService` do portal).
 - Driver: `name` e `photo_url` (avatar do usuário) são accessors; `location` é Point.
+
+**Armadilhas do Fleetbase achadas na execução**
+- `Contact::user()` é `belongsTo(User)->where('type', $this->type)`: em `with`/`load`/`refresh`/`whereHas` a relação é montada numa instância vazia (`type IS NULL`) e nunca acha o usuário. Usar **`Contact::anyUser`**. Pelo mesmo motivo, o Fleetbase **não detecta e-mail/telefone repetido entre contatos de cliente** (o `whereHas('user')` de `createUserFromContact` falha): o mesmo login ficaria ligado a duas lojas — e o portal juntaria os pedidos de todas as contas do usuário.
+- `CustomerUserConflictException extends UserAlreadyExistsException` (o `catch` da subclasse vem primeiro).
+- `PlaceObserver::creating` passa nome e endereço para maiúsculas (`strtoupper`, só na criação) — comportamento de todo o Fleetbase; mantido.
+- `POST customer-portal/int/v1/places` usa `Place::firstOrNew([empresa, dono, name = strtoupper(name ?: street1), street1 = strtoupper(street1)])` e **sobrescreve** um endereço salvo com o mesmo nome e rua (inclusive o Local da loja, que é da mesma conta). `PATCH`/`DELETE places/{id}` também mudam/apagam endereços usados por pedidos antigos (o km da cobrança sai das coordenadas atuais; Place apagado some do payload).
 
 **Modelos e cadastro**
 - `Contact::create(type customer)` → `ContactObserver::saving` → `createUser()`: User `type=customer`, `status=pending`, senha aleatória, papel "Fleet-Ops Customer", vínculo com a empresa. Erros: `Fleetbase\FleetOps\Exceptions\UserAlreadyExistsException` (e-mail/telefone já de outro contato), `Fleetbase\FleetOps\Exceptions\CustomerUserConflictException` (e-mail/telefone de usuário da equipe), `\Exception('... is not available.')`.
@@ -458,6 +464,13 @@ class PagamentoMotoboysController extends Controller
 - [ ] **Step 4: conferir que o front não depende do formato da chave** — `grep -rn "nome:" packages/fleetops/addon` → nenhuma ocorrência.
 - [ ] **Step 5: Commit** — `git add api/app && git commit -m "API: cálculo de entregas compartilhado; cobrança agrupada pela loja dona do pedido"`
 
+**Revisões depois da implementação (aprovadas; o código no repo é a referência):**
+- `->when($filtro !== null, fn ($query) => $query->where(fn ($grupo) => $filtro($grupo)))` — no Laravel 10 o `when()` executa uma closure passada como condição; e o filtro (fronteira de isolamento do extrato da loja) fica agrupado.
+- Loja do pedido pelo **uuid do cliente**: `lojasDosPedidos` busca `Vendor::withTrashed()->without('place')->whereIn('uuid', <customer_uuid de todos os pedidos>)`; `lojaDoPedido` usa `$lojas->get($pedido->customer_uuid)` (o `customer_type` varia com/sem barra inicial).
+- `rotaDoPedido`: endereço apagado ou sem coordenadas depois do cálculo → vale o km em cache.
+- Disjuntor do OSRM por requisição (depois da primeira falha, vai direto para a estimativa) e `entregas(..., int $limiteCalculos = self::LIMITE_CALCULOS)`.
+- Eager load das relações usadas por pedido (coleta, destino, paradas, usuário do motoboy) para não ter N+1.
+
 ---
 
 ### Task 4: API admin de lojas (`LojasController`)
@@ -772,6 +785,8 @@ Conferir nos fontes locais antes de finalizar (mesmas versões da produção): `
 - [ ] **Step 3: lint** dos dois arquivos → ok.
 - [ ] **Step 4: Commit** — `git add api/app && git commit -m "API: cadastro de lojas e usuários das lojas (admin)"`
 
+**Revisões depois da implementação (aprovadas; o código no repo é a referência):** o login do contato é lido por `Contact::anyUser` (nunca `user`, ver "Armadilhas"); `catch (CustomerUserConflictException)` antes de `catch (UserAlreadyExistsException)`; `adicionarUsuario` recusa (422) e-mail ou telefone já usado por outro contato de cliente da empresa, antes de criar.
+
 ---
 
 ### Task 5: API do portal da loja (`PortalLojaController`)
@@ -801,6 +816,9 @@ use Illuminate\Support\Carbon;
 class PortalLojaController extends Controller
 {
     public const STATUS_ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled'];
+
+    /** Rotas novas calculadas por consulta do extrato (o portal não repete a chamada como a tela da central). */
+    public const LIMITE_CALCULOS_PORTAL = 10;
 
     public function minhaLoja(CalculoEntregas $calculo)
     {
@@ -847,7 +865,7 @@ class PortalLojaController extends Controller
         $pedidos = $calculo->pedidosConcluidos($companyUuid, $inicio, $fim, function ($query) use ($vendor) {
             $query->where('orders.customer_uuid', $vendor->uuid);
         });
-        [$entregas, $pendentes] = $calculo->entregas($pedidos, $fuso);
+        [$entregas, $pendentes] = $calculo->entregas($pedidos, $fuso, static::LIMITE_CALCULOS_PORTAL);
 
         // a loja não vê o valor pago ao motoboy nem quem levou
         $entregas = array_map(fn ($e) => [
@@ -927,11 +945,12 @@ class PortalLojaController extends Controller
 
 ### Task 6A: Controle de acesso do usuário de loja (`ProtegerPortalLoja`)
 
-**Files:** Create `api/app/Http/Middleware/ProtegerPortalLoja.php`; Modify `api/app/Http/Kernel.php`
+**Files:** Create `api/app/Http/Middleware/ProtegerPortalLoja.php`; Modify `api/app/Http/Kernel.php`, `api/app/Support/Entregas/LojaDoUsuario.php`
 
 Regras (só para usuário `type=customer` identificado pelo token; os demais passam direto):
 1. Login (`POST customer-portal/int/v1/auth/login` e `POST int/v1/auth/login`) de usuário `customer` com `status != active` → 401 "Acesso desativado. Fale com a central."
 2. Usuário de loja com `status != active` → 403 em tudo.
+2b. Usuário ligado a **mais de uma loja** (vínculos ativos) → 403 nas rotas `customer-portal/int/v1/*` e `int/v1/entregas/loja/*` (o portal juntaria os pedidos de todas as contas do usuário). A tela Lojas já impede o cadastro repetido; isto é a segunda barreira.
 3. `customer-portal/int/v1/*` → liberado, menos `NEGADAS_NO_PORTAL`.
 4. `int/v1/*` → só `PERMITIDAS_INTERNAS`, `PUT|PATCH users/{ele mesmo}` (corpo reduzido a nome/contato/foto) e `POST files/upload` da foto do próprio perfil.
 5. Qualquer outro caminho (inclusive `v1/*`, a API pública) → 403.
@@ -943,6 +962,7 @@ Regras (só para usuário `type=customer` identificado pelo token; os demais pas
 
 namespace App\Http\Middleware;
 
+use App\Support\Entregas\LojaDoUsuario;
 use Closure;
 use Fleetbase\Models\User;
 use Illuminate\Http\Request;
@@ -1018,6 +1038,12 @@ class ProtegerPortalLoja
         }
 
         $request->attributes->set(static::ATRIBUTO_USUARIO, $usuario);
+
+        // o portal juntaria os pedidos de todas as lojas do usuário: um login, uma loja
+        if ((str_starts_with($caminho, 'customer-portal/int/v1/') || str_starts_with($caminho, 'int/v1/entregas/loja/'))
+            && LojaDoUsuario::totalDeLojas($usuario->uuid) > 1) {
+            return $this->negar($caminho, 'usuário ligado a mais de uma loja');
+        }
 
         if (str_starts_with($caminho, 'customer-portal/int/v1/')) {
             $rota = $request->method() . ' ' . substr($caminho, strlen('customer-portal/int/v1/'));
@@ -1121,6 +1147,31 @@ Observações para o implementador:
 - Requisições sem Bearer (login, preflight `OPTIONS`, arquivos) passam direto; token de API (`flb_live_…`) não acha `PersonalAccessToken` e passa direto.
 - Se no teste do navegador (Task 14) alguma chamada necessária do portal voltar 403 deste middleware (log `[entregas] portal da loja: acesso negado`), liberar **só aquele caminho e método** em `PERMITIDAS_INTERNAS`.
 
+- [ ] **Step 1b: `LojaDoUsuario::totalDeLojas`** — em `api/app/Support/Entregas/LojaDoUsuario.php`, a consulta de `vendor()` vira um método protegido reaproveitado:
+
+```php
+    public static function vendor(?string $userUuid): ?Vendor
+    {
+        return $userUuid ? static::lojas($userUuid)->first() : null;
+    }
+
+    /** Quantas lojas o usuário tem (o portal da loja só aceita uma: com mais, juntaria os pedidos delas). */
+    public static function totalDeLojas(?string $userUuid): int
+    {
+        return $userUuid ? static::lojas($userUuid)->count() : 0;
+    }
+
+    /** Lojas com vínculo ativo do contato de cliente do usuário (mesma regra do PortalAccountResolver). */
+    protected static function lojas(string $userUuid)
+    {
+        return Vendor::whereHas('vendorPersonnel', function ($query) use ($userUuid) {
+            $query->where('status', 'active')->whereHas('contact', function ($contato) use ($userUuid) {
+                $contato->where('user_uuid', $userUuid)->where('type', 'customer');
+            });
+        });
+    }
+```
+
 - [ ] **Step 2: registrar como global** em `api/app/Http/Kernel.php`, no fim de `$middleware`:
 
 ```php
@@ -1140,8 +1191,8 @@ Observações para o implementador:
 Regras (rotas `customer-portal/int/v1/*` do usuário de loja que o `ProtegerPortalLoja` guardou em `$request->attributes`):
 1. `POST orders`: sem loja → 403; loja sem coleta válida (Place da loja, dono = o Vendor, com coordenadas) → 422; destino tem de ser um endereço salvo **da loja** com coordenadas e diferente da coleta → senão 422; descarta `payload`, `pickup`, `return`, `waypoints`, `files`, `meta`, `scheduled_at`; grava `pickup` = uuid da coleta e `dropoff` = uuid do destino. Depois que o portal cria o pedido (2xx): marca `adhoc=true` e despacha (`firstDispatchWithActivity`) → os motoboys próximos são avisados, como no fluxo da central. Falha no despacho só vai para o log (o pedido existe; a central despacha à mão).
 2. `POST orders/{id}/cancel`: pedido da loja (empresa + `customer_uuid` = loja) encerrado → 422 "Este pedido já foi encerrado."; com `started` ou status fora de `created`/`dispatched` → 422 "O motoboy já aceitou este pedido. Para cancelar, fale com a central."; pedido de outra loja → segue (o portal responde 404).
-3. `POST places`: copia `location.coordinates` (`[lng, lat]`) para `latitude`/`longitude`; sem coordenadas válidas → 422 "Marque no mapa o local do endereço (botão "Selecionar no mapa")."
-4. `PATCH|DELETE places/{id}`: o Local da loja → 403; `PATCH` dos demais → copia as coordenadas como em 3 (sem exigir).
+3. `POST places`: copia `location.coordinates` (`[lng, lat]`) para `latitude`/`longitude`; sem coordenadas válidas → 422 "Marque no mapa o local do endereço (botão "Selecionar no mapa")."; já existe endereço da loja com a mesma chave do `firstOrNew` do portal (nome = `strtoupper(name ?: street1)`, rua = `strtoupper(street1 ?: address)`) → 422 "Já existe um endereço salvo com este nome e esta rua. Escolha-o na lista ou use outro nome." (senão o portal sobrescreveria o endereço salvo — inclusive o Local da loja — e mudaria o km de pedidos já feitos).
+4. `PATCH|DELETE places/{id}`: **sempre 403** para usuário de loja — endereços salvos são usados por pedidos (inclusive antigos) e o km da cobrança sai deles; a loja cadastra um endereço novo em vez de editar.
 
 - [ ] **Step 1: criar o middleware**
 
@@ -1169,8 +1220,9 @@ use Symfony\Component\HttpFoundation\ParameterBag;
  *   tem de ser um endereço salvo da loja com coordenadas (o km da cobrança sai delas); criado o
  *   pedido, ele é despachado como pedido aberto (adhoc) aos motoboys próximos, como faz a central.
  * - Cancelamento: só antes de um motoboy aceitar.
- * - Endereços: gravados com as coordenadas marcadas no mapa (o servidor não geocodifica); o Local
- *   da loja não pode ser editado nem apagado pelo portal.
+ * - Endereços: gravados com as coordenadas marcadas no mapa (o servidor não geocodifica). Endereço
+ *   salvo não muda pelo portal (nem por edição, nem sobrescrito por um cadastro com o mesmo nome e
+ *   rua): pedidos já feitos usam esses endereços e o km da cobrança sai deles.
  */
 class RegrasPortalLoja
 {
@@ -1204,11 +1256,11 @@ class RegrasPortalLoja
         }
 
         if ($rota === 'POST places') {
-            return $this->novoEndereco($request, $next);
+            return $this->novoEndereco($request, $next, $usuario);
         }
 
-        if (preg_match('#^(PATCH|DELETE) places/([^/]+)$#', $rota, $m)) {
-            return $this->mudancaDeEndereco($request, $next, $usuario, $m[1], $m[2]);
+        if (preg_match('#^(PATCH|DELETE) places/[^/]+$#', $rota)) {
+            return $this->erro(403, 'Endereços salvos não podem ser alterados pelo portal. Cadastre um endereço novo.');
         }
 
         return $next($request);
@@ -1306,25 +1358,25 @@ class RegrasPortalLoja
         return $next($request);
     }
 
-    /** Endereço novo: grava com as coordenadas marcadas no mapa (o servidor não geocodifica). */
-    protected function novoEndereco(Request $request, Closure $next)
+    /** Endereço novo: com as coordenadas marcadas no mapa e sem sobrescrever um endereço salvo. */
+    protected function novoEndereco(Request $request, Closure $next, User $usuario)
     {
-        if (!$this->copiarCoordenadas($this->entrada($request))) {
+        $entrada = $this->entrada($request);
+        if (!$this->copiarCoordenadas($entrada)) {
             return $this->erro(422, 'Marque no mapa o local do endereço (botão "Selecionar no mapa").');
         }
 
-        return $next($request);
-    }
-
-    protected function mudancaDeEndereco(Request $request, Closure $next, User $usuario, string $metodo, string $id)
-    {
-        $coleta = LojaDoUsuario::coleta(LojaDoUsuario::vendor($usuario->uuid));
-        if ($coleta && in_array($id, [$coleta->uuid, $coleta->public_id], true)) {
-            return $this->erro(403, 'O endereço da loja só pode ser alterado pela central.');
-        }
-
-        if ($metodo === 'PATCH') {
-            $this->copiarCoordenadas($this->entrada($request));
+        // o portal grava com firstOrNew(nome, rua) e sobrescreveria o endereço salvo (até o da loja)
+        $vendor = LojaDoUsuario::vendor($usuario->uuid);
+        $rua    = (string) ($entrada->get('street1') ?: $entrada->get('address'));
+        $nome   = (string) ($entrada->get('name') ?: $rua);
+        if ($vendor && $rua !== '' && Place::where('company_uuid', $usuario->company_uuid)
+            ->where('owner_uuid', $vendor->uuid)
+            ->where('owner_type', Utils::getMutationType($vendor))
+            ->where('name', strtoupper($nome))
+            ->where('street1', strtoupper($rua))
+            ->exists()) {
+            return $this->erro(422, 'Já existe um endereço salvo com este nome e esta rua. Escolha-o na lista ou use outro nome.');
         }
 
         return $next($request);
@@ -1662,9 +1714,10 @@ Copiar os padrões da tela **Pagamento e cobrança** (`routes/controllers/templa
 
   - abaixo do seletor do destino: `<p class="text-xs text-gray-500 mt-1">{{t "customer-portal.ui.entregas.customer-name-help"}}</p>`;
   - o botão "Novo endereço" (`actionButtons`) abre o formulário para `dropoff` (hoje abre para `pickup`); tirar o botão de waypoint;
+  - **sem edição de endereço salvo**: remover o link "Editar" do destino e o fluxo `openEditPlaceForm`/modo `edit` (o servidor recusa `PATCH`/`DELETE` de endereço da loja; para corrigir, a loja cadastra um endereço novo);
   - `places` exclui o Local da loja (`uuid`/`public_id` igual a `@loja.coleta.uuid`/`public_id`), para a loja não escolher o próprio endereço como destino;
-  - `openPlaceForm`/`openEditPlaceForm` passam `mapCenter: { latitude: @loja.coleta.latitude, longitude: @loja.coleta.longitude }` (quando houver) e `keepOpen: true` nas opções do modal, com `confirm: (modal, done) => this.savePlace(place, done)`;
-  - `savePlace(place, done)`: antes de salvar, ler as coordenadas de `place.latitude/longitude` ou de `place.location.coordinates` (`[lng, lat]`); sem coordenadas válidas (números, não ambos ~0) → `notifications.warning(t('customer-portal.ui.entregas.map-location-required'))` e **não** chamar `done` (o modal fica aberto); com coordenadas → envia `latitude`/`longitude` junto (além de `location`) e, salvando com sucesso, chama `done()`; erro do servidor → `notifications.serverError` e o modal fica aberto.
+  - `openPlaceForm` passa `mapCenter: { latitude: @loja.coleta.latitude, longitude: @loja.coleta.longitude }` (quando houver) e `keepOpen: true` nas opções do modal, com `confirm: (modal, done) => this.savePlace(place, done)`;
+  - `savePlace(place, done)`: antes de salvar, ler as coordenadas de `place.latitude/longitude` ou de `place.location.coordinates` (`[lng, lat]`); sem coordenadas válidas (números, não ambos ~0) → `notifications.warning(t('customer-portal.ui.entregas.map-location-required'))` e **não** chamar `done` (o modal fica aberto); com coordenadas → envia `latitude`/`longitude` junto (além de `location`) e, salvando com sucesso, chama `done()`; erro do servidor (ex.: endereço repetido, 422) → `notifications.serverError` e o modal fica aberto.
 - [ ] **Step 6: mapa do endereço abre na loja** — ember-ui:
   - `coordinates-input.js`: `DEFAULT_LATITUDE/LONGITUDE` → Ribeirão Preto (`-21.1775`, `-47.8103`); em `setInitialMapCoordinates`, usar `this.args.mapCenter` (`{latitude, longitude}` numéricos válidos) antes do whois;
   - `model-coordinates-input.hbs`: repassar `@mapCenter={{@mapCenter}}` e `@zoom={{@zoom}}` ao `CoordinatesInput` (sem `@zoom`, o `CoordinatesInput` mantém o padrão 9 — conferir que `undefined` não sobrescreve o padrão do construtor);
@@ -1906,7 +1959,8 @@ export default class PortalExtratoController extends Controller {
 
 - [ ] **Step 1: script** (`node scripts/teste-isolamento-lojas.mjs`, Node 18+, sem dependências) — lê `deploy/teste-lojas.env` (`API=https://entregas-api.restaurantepro.com.br`, `LOJA_A_EMAIL`, `LOJA_A_SENHA`, `LOJA_B_EMAIL`, `LOJA_B_SENHA`); faz login de cada loja em `POST {API}/customer-portal/int/v1/auth/login` (`{identity, password}` → `token`); imprime `PASSOU`/`FALHOU` por item e sai com 1 se algo falhar. **Nunca imprime senha nem token.** Itens:
   1. A cria endereço sem coordenadas (`POST customer-portal/int/v1/places` `{name:'Teste isolamento', street1:'Rua Teste, 1'}`) → 422.
-  2. A cria endereço com coordenadas (`{name:'Teste isolamento', street1:'Rua Teste, 1', city:'Ribeirão Preto', location:{type:'Point', coordinates:[-47.81, -21.18]}}`) → 200 e o place devolvido tem latitude ≈ -21.18.
+  2. A cria endereço com coordenadas (`{name:'Teste isolamento', street1:'Rua Teste, 1', city:'Ribeirão Preto', location:{type:'Point', coordinates:[-47.81, -21.18]}}`) → 200 e o place devolvido tem latitude ≈ -21.18. (Se o endereço já existir de uma rodada anterior, o 422 de "endereço repetido" também conta como esperado: o script busca o existente em `GET .../places/search?query=Teste isolamento` e segue.)
+  2b. Endereço salvo não muda pelo portal: `PATCH .../places/{id}` desse endereço → 403; `DELETE` → 403; `POST .../places` com o mesmo nome e rua → 422; `POST .../places` com o nome e a rua do Local da loja A (de `GET int/v1/entregas/loja/minha-loja` → `loja.coleta`) e outras coordenadas → 422, e o `minha-loja` continua com as coordenadas originais.
   3. A cria pedido (`POST customer-portal/int/v1/orders`) com `dropoff` = uuid desse endereço **e** `pickup` falso `{street1:'Rua Falsa, 999', latitude:-23.5, longitude:-46.6}` e `meta:{entregas:{km_rota:{metros:1}}}` → 200; o pedido devolvido tem `payload.pickup` com o endereço da loja A (não "Rua Falsa") e sem `meta.entregas`.
   4. Depois de ~5 s, `GET customer-portal/int/v1/orders/{id}` (A) → `adhoc` verdadeiro e (`dispatched` verdadeiro ou status `dispatched`).
   5. A cria pedido com `dropoff` inline sem id (`{street1:'Rua X', latitude:-21.2, longitude:-47.8}`) → 422.
@@ -1924,7 +1978,7 @@ export default class PortalExtratoController extends Controller {
 - [ ] **Step 5 (usuário, console com Ctrl+Shift+R):** Admin → Customer Portal: habilitar só o tipo `transport`, pagamentos desligados, definir o endereço de acesso.
 - [ ] **Step 6 (usuário):** Fleet-Ops → Recursos → Lojas: criar "Loja Teste A" e "Loja Teste B" (endereços diferentes, com coordenadas) com um usuário cada; gravar e-mails/senhas em `deploy/teste-lojas.env` (o usuário digita, não o Claude).
 - [ ] **Step 7:** avisar que o item 3 dispara um aviso real de pedido aos motoboys online perto da Loja Teste A (o item 13 cancela); rodar `node scripts/teste-isolamento-lojas.mjs` → todos PASSOU.
-- [ ] **Step 8: navegador (o usuário faz o login)** — logado como loja A em `/customer-portal`: Início, Pedidos, novo pedido (endereço novo marcado no mapa), detalhe, Extrato, Configurações (conta e membros). Conferir no log da API (`[entregas] portal da loja: acesso negado`) ou no console de rede que nenhuma chamada necessária volta 403; se voltar, liberar só aquele caminho e repetir 7–8. Aceitar o pedido de teste no Navigator: o motoboy aparece no portal em ≤ 20 s e o cancelamento fica bloqueado.
+- [ ] **Step 8: navegador (o usuário faz o login, numa janela anônima — o console guarda a lista de extensões no `localStorage` por 1 h, e um navegador que abriu o console antes do deploy não enxerga o engine do portal)** — logado como loja A em `/customer-portal`: Início, Pedidos, novo pedido (endereço novo marcado no mapa), detalhe, Extrato, Configurações (conta e membros). Conferir no log da API (`[entregas] portal da loja: acesso negado`) ou no console de rede que nenhuma chamada necessária volta 403; se voltar, liberar só aquele caminho e repetir 7–8. Aceitar o pedido de teste no Navigator: o motoboy aparece no portal em ≤ 20 s e o cancelamento fica bloqueado.
 - [ ] **Step 9:** desativar as lojas de teste (ou apagá-las) conforme o usuário decidir.
 
 ---
