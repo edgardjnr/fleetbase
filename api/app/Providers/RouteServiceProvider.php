@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Http\Controllers\Entregas\LojasController;
 use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use App\Http\Controllers\Entregas\PortalLojaController;
+use App\Http\Middleware\BarrarAceiteDePedidoEncerrado;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,11 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        // Entregas RestaurantePro: aceite do motoboy (v1/orders/{id}/start) de pedido encerrado é barrado. O core
+        // preenche o grupo fleetbase.api no boot() dele, e os pacotes sobem antes dos providers do app: este entra
+        // no fim do grupo, depois da autenticação (AuthenticateOnceWithBasicAuth) e com a sessão da empresa montada
+        $this->app['router']->pushMiddlewareToGroup('fleetbase.api', BarrarAceiteDePedidoEncerrado::class);
+
         $this->routes(
             function () {
                 Route::get(

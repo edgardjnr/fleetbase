@@ -4,9 +4,11 @@ namespace App\Http\Middleware;
 
 use App\Support\Entregas\TravaDoPedido;
 use Closure;
+use Fleetbase\FleetOps\Http\Controllers\Api\v1\OrderController;
 use Fleetbase\FleetOps\Models\Order;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -17,6 +19,11 @@ use Illuminate\Support\Facades\Log;
  * ainda consegue aceitá-lo, e o pedido "ressuscita": fica atribuído, iniciado e com o status da atividade de
  * início por cima do cancelado. Se for concluído, entra no pagamento dos motoboys e na cobrança da loja.
  *
+ * Fica no fim do grupo de middleware `fleetbase.api` das rotas v1 (registrado no RouteServiceProvider), não na
+ * lista global: roda depois da autenticação (AuthenticateOnceWithBasicAuth), então só vê requisições autenticadas
+ * (sem credencial válida, o core responde 401 antes, sem a trava) e já com a sessão da empresa montada, que faz o
+ * CompanyScope filtrar a busca do pedido pela empresa, como no findRecordOrFail do startOrder.
+ *
  * A conferência e o aceite inteiro rodam com a trava do pedido (TravaDoPedido), a mesma do cancelamento pelo
  * portal da loja (RegrasPortalLoja): ou o cancelamento termina antes e o aceite é barrado aqui, ou o aceite
  * termina antes e o cancelamento vê o pedido iniciado. Dois motoboys aceitando juntos também entram em fila,
@@ -26,21 +33,27 @@ use Illuminate\Support\Facades\Log;
  */
 class BarrarAceiteDePedidoEncerrado
 {
+    /** Ação da rota do aceite (o grupo fleetbase.api serve a API v1 inteira). */
+    public const ACAO_DO_ACEITE = OrderController::class . '@startOrder';
+
     /** Encerrados por cancelamento, que têm mensagem própria. */
     public const STATUS_CANCELADOS = ['canceled', 'cancelled', 'order_canceled'];
 
     public function handle(Request $request, Closure $next)
     {
-        // caminho decodificado, como o roteador do Laravel casa as rotas (rawurldecode); o method() é o mesmo que
-        // o roteador usa (já com o _method / X-HTTP-Method-Override aplicado)
-        $caminho = trim(rawurldecode($request->path()), '/');
-        if ($request->method() !== 'POST' || preg_match('#^v1/orders/([^/]+)/start$#', $caminho, $m) !== 1) {
+        // pela ação da rota que o roteador casou: o caminho, codificado ou não, não importa
+        $rota = $request->route();
+        if (!$rota instanceof Route || ltrim($rota->getActionName(), '\\') !== static::ACAO_DO_ACEITE) {
             return $next($request);
         }
 
-        // a mesma busca do startOrder (Order::findRecordOrFail): public_id ou internal_id. A sessão ainda não foi
-        // montada (é o middleware da rota que a monta), então o filtro de empresa do Fleetbase não age aqui
-        $id     = $m[1];
+        $id = $request->route('id');
+        if (!is_string($id) || $id === '') {
+            return $next($request);
+        }
+
+        // a mesma busca do startOrder (Order::findRecordOrFail): public_id ou internal_id, filtrada pela empresa da
+        // sessão (CompanyScope)
         $pedido = Order::where(fn ($q) => $q->where('public_id', $id)->orWhere('internal_id', $id))->first();
 
         // inexistente: o próprio controller responde 404
