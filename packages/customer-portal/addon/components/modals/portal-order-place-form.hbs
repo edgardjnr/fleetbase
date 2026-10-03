@@ -46,7 +46,8 @@
             </InputGroup>
 
             <InputGroup @name={{t "customer-portal.ui.place.coordinates"}} @wrapperClass="col-span-2">
-                <ModelCoordinatesInput @model={{this.place}} @autocomplete="all" @onInputReady={{fn (mut this.coordinatesInput)}} />
+                {{!-- Entregas: o mapa abre na loja (@options.mapCenter) e mais perto (zoom 15) --}}
+                <ModelCoordinatesInput @model={{this.place}} @autocomplete="all" @onInputReady={{fn (mut this.coordinatesInput)}} @mapCenter={{@options.mapCenter}} @zoom={{15}} />
             </InputGroup>
 
             <InputGroup @name={{t "customer-portal.ui.address-book.phone"}} @wrapperClass="col-span-2">

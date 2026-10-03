@@ -1,3 +1,4 @@
+{{!-- Entregas: @mapCenter ({ latitude, longitude }) e @zoom chegam ao mapa; sem eles, valem o whois (ou Ribeirão Preto) e o zoom 9 do CoordinatesInput --}}
 <CoordinatesInput
     @value={{if @locationProperty (get @model @locationProperty) @model.location}}
     @onChange={{this.updateCoordinates}}
@@ -5,4 +6,6 @@
     @onUpdatedFromMap={{perform this.reverseGeocode}}
     @onInit={{this.setCoordinatesInput}}
     @disabled={{@disabled}}
+    @mapCenter={{@mapCenter}}
+    @zoom={{@zoom}}
 />

@@ -9,8 +9,24 @@ import { debug } from '@ember/debug';
 import { task } from 'ember-concurrency';
 import getWithDefault from '@fleetbase/ember-core/utils/get-with-default';
 
-const DEFAULT_LATITUDE = 1.3521;
-const DEFAULT_LONGITUDE = 103.8198;
+// Entregas: sem centro informado nem localização do usuário, o mapa abre em Ribeirão Preto (e não em Singapura)
+const DEFAULT_LATITUDE = -21.1775;
+const DEFAULT_LONGITUDE = -47.8103;
+
+/**
+ * Entregas: o `@mapCenter` ({ latitude, longitude }) quando os dois são números finitos, dentro dos limites e
+ * fora do (0, 0), que o Fleetbase usa como "sem posição"; senão, null.
+ */
+function validMapCenter(center) {
+    const latitude = center?.latitude;
+    const longitude = center?.longitude;
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+        return null;
+    }
+
+    return Math.abs(latitude) > 0.0001 || Math.abs(longitude) > 0.0001 ? { latitude, longitude } : null;
+}
 
 export default class CoordinatesInputComponent extends Component {
     @service fetch;
@@ -99,6 +115,14 @@ export default class CoordinatesInputComponent extends Component {
      * @memberof CoordinatesInputComponent
      */
     setInitialMapCoordinates() {
+        // Entregas: o centro pedido por quem usa o componente (ex.: a loja, no portal) vem antes do whois
+        const mapCenter = validMapCenter(this.args.mapCenter);
+        if (mapCenter) {
+            this.mapLat = mapCenter.latitude;
+            this.mapLng = mapCenter.longitude;
+            return;
+        }
+
         const whois = this.currentUser.getOption('whois', {});
 
         this.mapLat = getWithDefault(whois, 'latitude', DEFAULT_LATITUDE);

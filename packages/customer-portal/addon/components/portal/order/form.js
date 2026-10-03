@@ -78,22 +78,8 @@ export default class PortalOrderFormComponent extends Component {
     }
 
     @action async refreshServiceQuotes() {
-        if (!this.canQuote || this.urlSearchParams.has('checkout_session_id')) {
-            return;
-        }
-
-        const revision = this.quoteRevision;
-        if (this.lastQuotedRevision === revision) {
-            return;
-        }
-        this.lastQuotedRevision = revision;
-
-        try {
-            const serviceQuotes = await this.customerPortalOrderActions.loadServiceQuotes.perform(this.draft);
-            this.customerPortalOrderCreation.setServiceQuotes(serviceQuotes);
-        } catch (error) {
-            this.notifications.serverError(error);
-        }
+        // Entregas: sem tarifas nem pagamento online; o valor sai das faixas de km no extrato
+        return;
     }
 
     @action cancel() {

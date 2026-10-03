@@ -10,10 +10,7 @@ export default class CustomerPortalOrderValidationService extends Service {
             return false;
         }
 
-        if (draft.isMultipleDropoffOrder) {
-            return (draft.payload?.waypoints ?? []).filter((waypoint) => waypoint?.place).length >= 2;
-        }
-
-        return Boolean(draft.payload?.pickup && draft.payload?.dropoff);
+        // Entregas: a coleta é sempre o endereço da loja (o servidor grava); a loja só informa o destino
+        return Boolean(draft.payload?.dropoff);
     }
 }

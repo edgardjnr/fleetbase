@@ -3,7 +3,50 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { restartableTask, timeout } from 'ember-concurrency';
+import { valueFor } from '../../../../utils/model-access';
 
+/** Entregas: número de um campo de coordenada (número ou texto numérico); o resto vira NaN. */
+function numero(valor) {
+    if (typeof valor === 'number') {
+        return valor;
+    }
+
+    return typeof valor === 'string' && valor.trim() !== '' ? Number(valor) : NaN;
+}
+
+/** Entregas: o mesmo critério do servidor (RegrasPortalLoja): números, dentro dos limites e fora do (0, 0). */
+function coordenadasValidas(latitude, longitude) {
+    return (
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude) &&
+        Math.abs(latitude) <= 90 &&
+        Math.abs(longitude) <= 180 &&
+        (Math.abs(latitude) > 0.0001 || Math.abs(longitude) > 0.0001)
+    );
+}
+
+/**
+ * Entregas: coordenadas marcadas no mapa do endereço novo, ou null. O mapa grava em `location`
+ * (GeoJSON, [lng, lat]) a cada movimento, então ele vem antes de `latitude`/`longitude`.
+ */
+function coordenadasDoEndereco(place) {
+    const [lng, lat] = Array.isArray(place?.location?.coordinates) ? place.location.coordinates : [];
+    const candidatas = [
+        [numero(lat), numero(lng)],
+        [numero(place?.latitude), numero(place?.longitude)],
+    ];
+
+    for (const [latitude, longitude] of candidatas) {
+        if (coordenadasValidas(latitude, longitude)) {
+            return { latitude, longitude };
+        }
+    }
+
+    return null;
+}
+
+// Entregas: só o destino. A coleta é fixa (o endereço da loja, só leitura), sem várias paradas nem retorno, e
+// endereço salvo não se edita (o servidor nega PATCH/DELETE): para corrigir, a loja cadastra um endereço novo.
 export default class PortalOrderFormRouteComponent extends Component {
     @service customerPortalOrderActions;
     @service customerPortalOrderCreation;
@@ -16,41 +59,30 @@ export default class PortalOrderFormRouteComponent extends Component {
     @tracked placeFormContext;
 
     get places() {
-        return [...this.createdPlaces, ...(this.args.places ?? [])];
+        // Entregas: o Local da loja não aparece como destino
+        return [...this.createdPlaces, ...(this.args.places ?? [])].filter((place) => !this.isStorePlace(place));
     }
 
     get actionButtons() {
-        const buttons = [
+        // Entregas: o endereço novo é o destino; sem botão de parada extra
+        return [
             {
                 text: this.intl.t('customer-portal.ui.place.new-address'),
                 icon: 'plus',
                 size: 'xs',
                 wrapperClass: 'portal-order-panel-action-button',
-                onClick: () => this.openPlaceForm('pickup'),
+                onClick: () => this.openPlaceForm('dropoff'),
             },
         ];
-
-        if (this.args.draft?.isMultipleDropoffOrder) {
-            buttons.push({
-                text: this.intl.t('customer-portal.ui.order.add-waypoint'),
-                icon: 'map-location-dot',
-                size: 'xs',
-                wrapperClass: 'portal-order-panel-action-button',
-                onClick: this.addWaypoint,
-            });
-        }
-
-        return buttons;
     }
 
-    get waypointRouteStops() {
-        return (this.args.draft?.payload?.waypoints ?? []).map((waypoint, index) => {
-            return {
-                label: index + 1,
-                required: index < 2,
-                badgeStyle: this.badgeStyle(),
-            };
-        });
+    /** Entregas: o mapa do endereço novo abre na loja, quando ela tem coordenadas. */
+    get mapCenter() {
+        const coleta = this.args.loja?.coleta;
+        const latitude = numero(coleta?.latitude);
+        const longitude = numero(coleta?.longitude);
+
+        return coordenadasValidas(latitude, longitude) ? { latitude, longitude } : null;
     }
 
     @restartableTask *searchPlaces(query) {
@@ -71,7 +103,8 @@ export default class PortalOrderFormRouteComponent extends Component {
             longitude: center.longitude,
         });
 
-        return places;
+        // Entregas: a busca também não oferece o Local da loja
+        return places.filter((place) => !this.isStorePlace(place));
     }
 
     @action setPayloadPlace(field, place) {
@@ -79,38 +112,8 @@ export default class PortalOrderFormRouteComponent extends Component {
         this.updateRoutePreview();
     }
 
-    @action toggleMultiDrop(isMultipleDropoffOrder) {
-        this.customerPortalOrderCreation.toggleMultiDrop(isMultipleDropoffOrder);
-        this.updateRoutePreview();
-    }
-
-    @action addWaypoint() {
-        this.customerPortalOrderCreation.addWaypoint();
-        this.updateRoutePreview();
-    }
-
-    @action setWaypoint(index, place) {
-        this.customerPortalOrderCreation.setWaypoint(index, place);
-        this.updateRoutePreview();
-    }
-
-    @action setWaypointType(index, type) {
-        this.customerPortalOrderCreation.setWaypointType(index, type);
-        this.updateRoutePreview();
-    }
-
-    @action sortWaypoints({ sourceIndex, targetIndex }) {
-        this.customerPortalOrderCreation.sortWaypoints(sourceIndex, targetIndex);
-        this.updateRoutePreview();
-    }
-
-    @action removeWaypoint(index) {
-        this.customerPortalOrderCreation.removeWaypoint(index);
-        this.updateRoutePreview();
-    }
-
-    @action openPlaceForm(field, index = null) {
-        this.placeFormContext = { field, index, mode: 'create' };
+    @action openPlaceForm(field) {
+        this.placeFormContext = { field };
         const place = {};
 
         this.modalsManager.show('modals/portal-order-place-form', {
@@ -119,25 +122,10 @@ export default class PortalOrderFormRouteComponent extends Component {
             acceptButtonText: this.intl.t('customer-portal.ui.place.save-address'),
             declineButtonText: this.intl.t('customer-portal.ui.common.cancel'),
             place,
-            confirm: () => this.savePlace(place),
-        });
-    }
-
-    @action openEditPlaceForm(field, place, index = null) {
-        if (!place) {
-            return;
-        }
-
-        this.placeFormContext = { field, index, mode: 'edit', originalPlace: place };
-        const editablePlace = this.editablePlace(place);
-
-        this.modalsManager.show('modals/portal-order-place-form', {
-            title: this.intl.t('customer-portal.ui.place.edit-address-title'),
-            modalClass: 'modal-md',
-            acceptButtonText: this.intl.t('customer-portal.ui.common.save-changes'),
-            declineButtonText: this.intl.t('customer-portal.ui.common.cancel'),
-            place: editablePlace,
-            confirm: () => this.savePlace(editablePlace),
+            // Entregas: o modal só fecha quando o endereço é salvo; sem coordenadas ou com erro do servidor, fica aberto
+            mapCenter: this.mapCenter,
+            keepOpen: true,
+            confirm: (modal, done) => this.savePlace(place, done),
         });
     }
 
@@ -145,79 +133,60 @@ export default class PortalOrderFormRouteComponent extends Component {
         this.placeFormContext = null;
     }
 
-    @action async savePlace(place) {
-        try {
-            const isEdit = this.placeFormContext?.mode === 'edit';
-            const id = this.customerPortalOrderActions.identifier(place);
-            const savedPlace = isEdit && id ? await this.customerPortalOrderActions.updatePlace.perform(place) : place;
-
-            if (!isEdit) {
-                const createdPlace = await this.customerPortalOrderActions.createPlace.perform(place);
-                this.createdPlaces = [createdPlace, ...this.createdPlaces];
-                this.applyPlaceSelection(createdPlace);
-            } else {
-                this.applyPlaceSelection(savedPlace);
-                this.updateCreatedPlace(savedPlace);
-            }
-
-            this.closePlaceForm();
-            this.updateRoutePreview();
-            this.notifications.success(isEdit ? this.intl.t('customer-portal.ui.place.address-updated') : this.intl.t('customer-portal.ui.place.address-saved'));
-        } catch (error) {
-            this.notifications.serverError(error);
-        }
-    }
-
-    applyPlaceSelection(place) {
-        if (this.placeFormContext?.field === 'waypoint') {
-            this.customerPortalOrderCreation.setWaypoint(this.placeFormContext.index, place);
-        } else {
-            this.customerPortalOrderCreation.setPayloadField(this.placeFormContext.field, place);
-        }
-    }
-
-    updateCreatedPlace(place) {
-        const id = this.customerPortalOrderActions.identifier(place);
-
-        if (!id) {
+    @action async savePlace(place, done) {
+        // Entregas: o local marcado no mapa é obrigatório (o servidor também recusa sem ele)
+        const coordenadas = coordenadasDoEndereco(place);
+        if (!coordenadas) {
+            this.notifications.warning(this.intl.t('customer-portal.ui.entregas.map-location-required'));
             return;
         }
 
-        this.createdPlaces = this.createdPlaces.map((candidate) => (this.customerPortalOrderActions.identifier(candidate) === id ? place : candidate));
+        let createdPlace;
+        this.modalsManager.startLoading();
+
+        try {
+            createdPlace = await this.customerPortalOrderActions.createPlace.perform({
+                ...place,
+                // o PlaceController do portal dá erro 500 sem a chave `name`, mesmo nula
+                name: place.name ?? null,
+                latitude: coordenadas.latitude,
+                longitude: coordenadas.longitude,
+            });
+        } catch (error) {
+            // ex.: endereço repetido (422); o modal continua aberto para a loja corrigir
+            this.modalsManager.stopLoading();
+            this.notifications.serverError(error);
+            return;
+        }
+
+        this.createdPlaces = [createdPlace, ...this.createdPlaces];
+        this.applyPlaceSelection(createdPlace);
+        this.closePlaceForm();
+        this.updateRoutePreview();
+        this.notifications.success(this.intl.t('customer-portal.ui.place.address-saved'));
+        done();
     }
 
-    editablePlace(place = {}) {
-        return {
-            id: typeof place.id === 'string' ? place.id : null,
-            public_id: place.public_id,
-            uuid: place.uuid,
-            name: place.name,
-            street1: place.street1 ?? place.address,
-            street2: place.street2,
-            neighborhood: place.neighborhood,
-            building: place.building,
-            security_access_code: place.security_access_code,
-            postal_code: place.postal_code,
-            city: place.city,
-            province: place.province,
-            country: place.country,
-            phone: place.phone,
-            latitude: place.latitude,
-            longitude: place.longitude,
-            location: place.location,
-            address: place.address,
-        };
+    applyPlaceSelection(place) {
+        this.customerPortalOrderCreation.setPayloadField(this.placeFormContext?.field ?? 'dropoff', place);
+    }
+
+    /** Entregas: o endereço é o Local da loja (a coleta)? Compara uuid e public_id. */
+    isStorePlace(place) {
+        const coleta = this.args.loja?.coleta;
+        const daLoja = [coleta?.uuid, coleta?.public_id].filter(Boolean);
+
+        if (!place || daLoja.length === 0) {
+            return false;
+        }
+
+        return [valueFor(place, 'uuid'), valueFor(place, 'public_id'), valueFor(place, 'id')].some((id) => id && daLoja.includes(id));
     }
 
     updateRoutePreview() {
+        // Entregas: a rota é só coleta (a loja) → destino
         const payload = this.customerPortalOrderCreation.draft?.payload ?? {};
-        const places = this.customerPortalOrderCreation.draft?.isMultipleDropoffOrder
-            ? (payload.waypoints ?? []).map((waypoint) => waypoint.place).filter(Boolean)
-            : [payload.pickup, payload.dropoff, payload.return].filter(Boolean);
+        const places = [payload.pickup, payload.dropoff].filter(Boolean);
         this.customerPortalOrderCreation.updateRoutePreview(this.customerPortalOrderActions.coordinatesFromPlaces(places));
-    }
-
-    badgeStyle() {
-        return 'background-color: #3485e2; color: #ffffff;';
     }
 }

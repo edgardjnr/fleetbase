@@ -6,12 +6,8 @@
             </:actions>
         </Overlay::Header>
         <Overlay::Body @wrapperClass="portal-order-overlay-body">
-            <Portal::Order::Form::Details @draft={{this.draft}} @orderConfigs={{@model.orderConfigs}} />
-            <Portal::Order::Form::CustomFields @draft={{this.draft}} />
-            <Portal::Order::Form::Route @draft={{this.draft}} @places={{@model.places}} />
-            <Portal::Order::Form::Payload @draft={{this.draft}} />
-            <Portal::Order::Form::ServiceRate @draft={{this.draft}} @isLoading={{this.customerPortalOrderActions.loadServiceQuotes.isRunning}} @canQuote={{this.canQuote}} />
-            <Portal::Order::Form::Documents @draft={{this.draft}} />
+            {{!-- Entregas: só o destino (a coleta é a loja) e as observações. Sem tipo (vale o primeiro habilitado), agendamento, campos extras, itens, tarifas nem arquivos: o servidor descarta ou nega --}}
+            <Portal::Order::Form::Route @draft={{this.draft}} @places={{@model.places}} @loja={{@model.loja}} />
             <Portal::Order::Form::Notes @draft={{this.draft}} />
             <Spacer @height="200px" />
         </Overlay::Body>
