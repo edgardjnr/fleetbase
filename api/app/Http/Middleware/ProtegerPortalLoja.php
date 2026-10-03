@@ -22,6 +22,7 @@ use Laravel\Sanctum\PersonalAccessToken;
  * - customer-portal/int/v1/*: liberado, menos NEGADAS_NO_PORTAL (o portal filtra os dados pela
  *   conta da loja, mas tem rotas sem checagem de admin e telas fora do escopo);
  * - int/v1/*: só PERMITIDAS_INTERNAS, o próprio perfil (campos limitados) e a foto do perfil;
+ * - ~registry/v1/engines: só GET (a lista de extensões instaladas, que o console pede ao abrir);
  * - todo o resto, inclusive a API pública v1/* e storefront/*, que aceitam o mesmo token e
  *   devolveriam os dados de todas as lojas.
  * Não confia nas permissões do Fleetbase: o papel "Fleet-Ops Customer" lista e apaga contatos de
@@ -72,6 +73,12 @@ class ProtegerPortalLoja
      * ao usuário que já tem aquele e-mail/telefone).
      */
     public const CAMPOS_DO_PERFIL = ['name', 'avatar_uuid', 'avatar_url', 'timezone'];
+
+    /**
+     * Lista das extensões instaladas (registry-bridge), que o console pede ao abrir cada página
+     * (ember-core load-installed-extensions.js). Liberada só em GET/HEAD e neste caminho exato.
+     */
+    public const CAMINHO_DAS_EXTENSOES = '~registry/v1/engines';
 
     /** Cabeçalho do token do cliente na API pública de clientes (Fleet-Ops CustomerAuth::HEADER e Storefront). */
     public const CABECALHO_TOKEN_DO_CLIENTE = 'Customer-Token';
@@ -141,6 +148,13 @@ class ProtegerPortalLoja
 
                 return $next($request);
             }
+        }
+
+        // Entregas: a lista de extensões instaladas é informação pública e o console a pede em toda página que abre. Sem esta
+        // exceção o usuário de loja levava 403 nela e o log de acesso negado (a pista das chamadas necessárias que faltam
+        // liberar) enchia de ruído. Só GET (HEAD vira GET acima) e exatamente este caminho.
+        if ($metodo === 'GET' && $caminho === static::CAMINHO_DAS_EXTENSOES) {
+            return $next($request);
         }
 
         return $this->negar($caminho, $usuario);
