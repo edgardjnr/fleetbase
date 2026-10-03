@@ -21,6 +21,8 @@ class Kernel extends HttpKernel
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        // Entregas RestaurantePro: portal da loja (antes das rotas do Composer)
+        \App\Http\Middleware\ProtegerPortalLoja::class,
     ];
 
     /**
