@@ -11,6 +11,7 @@ use Fleetbase\FleetOps\Models\Vendor;
 use Fleetbase\FleetOps\Models\VendorPersonnel;
 use Fleetbase\FleetOps\Support\Utils;
 use Fleetbase\LaravelMysqlSpatial\Types\Point;
+use Fleetbase\Models\Setting;
 use Fleetbase\Support\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,6 +43,8 @@ class LojasController extends Controller
         }
 
         $lojas = Vendor::where('company_uuid', session('company'))->where('type', static::TIPO_LOJA)->orderBy('name')->get();
+        // o place já vem pelo $with do Vendor; os usuários de todas as lojas, de uma vez
+        $lojas->loadMissing('vendorPersonnel.contact.anyUser');
 
         return response()->json(['lojas' => $lojas->map(fn ($vendor) => $this->formatar($vendor))->values()]);
     }
@@ -105,10 +108,10 @@ class LojasController extends Controller
 
         // O guard do Fleetbase não pega contato de cliente repetido (o whereHas('user') dele filtra users.type nulo):
         // o mesmo login ficaria ligado a duas lojas e veria os pedidos das duas (PortalOrderService::accountCustomerUuids).
-        // Telefone: como digitado e no formato que o Contact grava (setPhoneAttribute → Utils::formatPhoneNumber).
+        // Telefone: como digitado e no formato que o Contact grava (setPhoneAttribute → Utils::formatPhoneNumber), sem valores vazios.
         $email     = mb_strtolower($dados['email']);
         $telefone  = $dados['telefone'] ?? null;
-        $telefones = filled($telefone) ? array_values(array_unique([$telefone, Utils::formatPhoneNumber($telefone)])) : [];
+        $telefones = array_values(array_filter(array_unique([$telefone, filled($telefone) ? Utils::formatPhoneNumber($telefone) : null]), 'filled'));
         $repetido  = Contact::where('company_uuid', session('company'))
             ->where('type', 'customer')
             ->where(fn ($q) => $q->where('email', $email)->when($telefones, fn ($q2) => $q2->orWhereIn('phone', $telefones)))
@@ -130,10 +133,23 @@ class LojasController extends Controller
                 $usuario = $contato->anyUser()->first();
                 abort_if(!$usuario, 422, 'Não foi possível criar o login do usuário.');
 
+                // Um login, uma loja, conferido pelo resultado: o observer acha o login por e-mail OU telefone e pode ligar o contato
+                // novo a um usuário que já existe (login com e-mail alterado, contato apagado no Fleet-Ops com usuário órfão).
+                // Se esse login já é de outro contato da empresa, o abort desfaz a transação inteira.
+                $outroContato = Contact::where('company_uuid', session('company'))
+                    ->where('user_uuid', $usuario->uuid)
+                    ->where('uuid', '!=', $contato->uuid)
+                    ->exists();
+                abort_if($outroContato, 422, 'Este e-mail ou telefone já pertence ao login de outro usuário.');
+
                 // a central é quem cadastra: o e-mail vale como verificado (o portal recusa login não verificado)
                 $usuario->email_verified_at = now();
                 $usuario->changePassword($dados['senha']);
+                // o login pode não ser novo e os tokens Sanctum não expiram aqui: derruba as sessões que ele já tinha
+                $usuario->tokens()->delete();
                 $usuario->activate();
+                // o portal da loja é em português; sem isto o users/me devolve en-us (mesma chave e valor do seletor de idioma)
+                Setting::configure('user.' . $usuario->uuid . '.locale', 'pt-br');
 
                 VendorPersonnel::updateOrCreate(
                     ['vendor_uuid' => $vendor->uuid, 'contact_uuid' => $contato->uuid],
@@ -164,10 +180,17 @@ class LojasController extends Controller
         $dados   = $request->validate(['senha' => ['required', 'string', 'min:8', 'max:100']]);
         $usuario = $this->acharMembro($vendor, $contato)->contact?->anyUser;
         abort_if(!$usuario, 404, 'Usuário sem login.');
+        abort_if($usuario->type !== 'customer', 422, 'Este login não é de usuário de loja.');
 
-        $usuario->changePassword($dados['senha']);
-        // derruba as sessões abertas com a senha antiga
-        $usuario->tokens()->delete();
+        DB::transaction(function () use ($usuario, $dados) {
+            $usuario->changePassword($dados['senha']);
+            // o portal recusa login não verificado (manualVerify grava email_verified_at = agora)
+            if ($usuario->isNotVerified()) {
+                $usuario->manualVerify();
+            }
+            // derruba as sessões abertas com a senha antiga
+            $usuario->tokens()->delete();
+        });
 
         return response()->json(['ok' => true]);
     }
@@ -181,20 +204,32 @@ class LojasController extends Controller
         $ativo   = (bool) $request->validate(['ativo' => ['required', 'boolean']])['ativo'];
         $membro  = $this->acharMembro($vendor, $contato);
         $usuario = $membro->contact?->anyUser;
+        abort_if($usuario && $usuario->type !== 'customer', 422, 'Este login não é de usuário de loja.');
 
-        $membro->update(['status' => $ativo ? 'active' : 'inactive']);
-        if ($usuario && $ativo) {
-            $usuario->activate();
-        } elseif ($usuario) {
-            $usuario->deactivate();
-            $usuario->tokens()->delete();
-        }
+        DB::transaction(function () use ($membro, $usuario, $ativo) {
+            if ($usuario && !$ativo) {
+                // primeiro o login e as sessões, depois o vínculo com a loja
+                $usuario->deactivate();
+                $usuario->tokens()->delete();
+            }
+
+            $membro->update(['status' => $ativo ? 'active' : 'inactive']);
+
+            if ($usuario && $ativo) {
+                // o portal recusa login não verificado
+                if ($usuario->isNotVerified()) {
+                    $usuario->manualVerify();
+                }
+                $usuario->activate();
+            }
+        });
 
         return response()->json(['loja' => $this->formatar($vendor->refresh())]);
     }
 
     protected function validarLoja(Request $request): array
     {
+        // latitude e longitude do Brasil (a faixa também pega o erro comum de digitá-las trocadas); 0 é o valor vazio do Fleetbase
         return $request->validate([
             'nome'                  => ['required', 'string', 'max:120'],
             'telefone'              => ['nullable', 'string', 'max:30'],
@@ -205,31 +240,67 @@ class LojasController extends Controller
             'endereco.province'     => ['nullable', 'string', 'max:60'],
             'endereco.postal_code'  => ['nullable', 'string', 'max:20'],
             'endereco.country'      => ['nullable', 'string', 'size:2'],
-            'endereco.latitude'     => ['required', 'numeric', 'between:-90,90', 'not_in:0'],
-            'endereco.longitude'    => ['required', 'numeric', 'between:-180,180', 'not_in:0'],
+            'endereco.latitude'     => ['required', 'numeric', 'between:-34,6', 'not_in:0'],
+            'endereco.longitude'    => ['required', 'numeric', 'between:-74,-34', 'not_in:0'],
+        ], [
+            'endereco.latitude.required'  => 'Informe a latitude do endereço da loja.',
+            'endereco.latitude.numeric'   => 'A latitude precisa ser um número.',
+            'endereco.latitude.between'   => 'Latitude fora do Brasil: confira se latitude e longitude não estão trocadas.',
+            'endereco.latitude.not_in'    => 'Informe a latitude do endereço da loja (0 não vale).',
+            'endereco.longitude.required' => 'Informe a longitude do endereço da loja.',
+            'endereco.longitude.numeric'  => 'A longitude precisa ser um número.',
+            'endereco.longitude.between'  => 'Longitude fora do Brasil: confira se latitude e longitude não estão trocadas.',
+            'endereco.longitude.not_in'   => 'Informe a longitude do endereço da loja (0 não vale).',
         ]);
     }
 
-    /** O Place da loja: dono = o Vendor (assim o portal o reconhece como da loja), nome = nome da loja. */
-    protected function salvarEndereco(Vendor $vendor, ?Place $place, array $dados): Place
+    /**
+     * O Place da loja: dono = o Vendor (assim o portal o reconhece como da loja), nome = nome da loja.
+     *
+     * O Place atual só é reaproveitado se for da loja (dono = o Vendor, mesma empresa) e as coordenadas não mudaram.
+     * O km dos pedidos já feitos sai das coordenadas do Place deles, então a loja que se muda ganha um Place novo e o
+     * antigo é solto (sem dono: some dos endereços da loja e fica só com os pedidos antigos). Um Place que não é da loja
+     * (Vendor antigo, Place compartilhado) nunca é alterado: cria-se um novo.
+     * Nome e endereço vão em maiúsculas com mb_strtoupper: o PlaceObserver só faz strtoupper (ASCII) ao criar e gravaria
+     * "SãO"; assim fica igual na criação e na edição.
+     */
+    protected function salvarEndereco(Vendor $vendor, ?Place $atual, array $dados): Place
     {
-        $endereco = $dados['endereco'];
-        $place    = $place ?: new Place(['company_uuid' => session('company')]);
+        $endereco  = $dados['endereco'];
+        $latitude  = (float) $endereco['latitude'];
+        $longitude = (float) $endereco['longitude'];
+
+        $daLoja = $atual
+            && $atual->owner_uuid === $vendor->uuid
+            && $atual->owner_type === Utils::getMutationType($vendor)
+            && $atual->company_uuid === session('company');
+        $mesmoLugar = $daLoja
+            && $atual->location !== null
+            && abs($atual->location->getLat() - $latitude) < 0.000001
+            && abs($atual->location->getLng() - $longitude) < 0.000001;
+
+        $maiusculo = fn (?string $texto) => $texto === null ? null : mb_strtoupper($texto, 'UTF-8');
+
+        $place = $mesmoLugar ? $atual : new Place(['company_uuid' => session('company')]);
         $place->fill([
             'owner_uuid'   => $vendor->uuid,
             'owner_type'   => Utils::getMutationType($vendor),
-            'name'         => $dados['nome'],
+            'name'         => $maiusculo($dados['nome']),
             'phone'        => $dados['telefone'] ?? null,
-            'street1'      => $endereco['street1'],
-            'street2'      => $endereco['street2'] ?? null,
-            'neighborhood' => $endereco['neighborhood'] ?? null,
-            'city'         => $endereco['city'],
-            'province'     => $endereco['province'] ?? null,
-            'postal_code'  => $endereco['postal_code'] ?? null,
-            'country'      => $endereco['country'] ?? 'BR',
-            'location'     => new Point((float) $endereco['latitude'], (float) $endereco['longitude']),
+            'street1'      => $maiusculo($endereco['street1']),
+            'street2'      => $maiusculo($endereco['street2'] ?? null),
+            'neighborhood' => $maiusculo($endereco['neighborhood'] ?? null),
+            'city'         => $maiusculo($endereco['city']),
+            'province'     => $maiusculo($endereco['province'] ?? null),
+            'postal_code'  => $maiusculo($endereco['postal_code'] ?? null),
+            'country'      => $maiusculo($endereco['country'] ?? 'BR'),
+            'location'     => new Point($latitude, $longitude),
         ]);
         $place->save();
+
+        if ($daLoja && !$mesmoLugar) {
+            $atual->update(['owner_uuid' => null, 'owner_type' => null]);
+        }
 
         return $place;
     }
@@ -245,15 +316,16 @@ class LojasController extends Controller
     protected function acharMembro(Vendor $vendor, string $contato): VendorPersonnel
     {
         return VendorPersonnel::where('vendor_uuid', $vendor->uuid)
-            ->whereHas('contact', fn ($q) => $q->where(fn ($q2) => $q2->where('uuid', $contato)->orWhere('public_id', $contato)))
+            ->whereHas('contact', fn ($q) => $q->where('type', 'customer')->where(fn ($q2) => $q2->where('uuid', $contato)->orWhere('public_id', $contato)))
             ->with('contact.anyUser')
             ->firstOrFail();
     }
 
     protected function formatar(Vendor $vendor): array
     {
-        $place   = $vendor->place_uuid ? Place::where('uuid', $vendor->place_uuid)->first() : null;
-        $membros = VendorPersonnel::where('vendor_uuid', $vendor->uuid)->with('contact.anyUser')->get();
+        // o place vem pelo $with do Vendor e os usuários, no index, já vêm carregados para todas as lojas
+        $vendor->loadMissing('place', 'vendorPersonnel.contact.anyUser');
+        $place = $vendor->place;
 
         return [
             'id'       => $vendor->public_id,
@@ -270,7 +342,7 @@ class LojasController extends Controller
                 'latitude'     => $place->location?->getLat(),
                 'longitude'    => $place->location?->getLng(),
             ] : null,
-            'usuarios' => $membros->filter(fn ($m) => $m->contact)->map(fn ($m) => [
+            'usuarios' => $vendor->vendorPersonnel->filter(fn ($m) => $m->contact)->map(fn ($m) => [
                 'id'       => $m->contact->public_id,
                 'nome'     => $m->contact->name,
                 'email'    => $m->contact->email,

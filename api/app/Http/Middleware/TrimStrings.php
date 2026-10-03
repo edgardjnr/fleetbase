@@ -15,5 +15,7 @@ class TrimStrings extends Middleware
         'current_password',
         'password',
         'password_confirmation',
+        // senha digitada pela central em Lojas (LojasController): o login do portal não apara a senha, então ela não pode ser aparada ao gravar
+        'senha',
     ];
 }
