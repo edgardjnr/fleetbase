@@ -91,7 +91,8 @@ O produto é só isto: o pedido chega do iFood pela API, é despachado para o mo
   - **Valores por faixa de km** (`Setting` `company.<uuid>.entregas.faixas` = `[{ate_km, motoboy, loja}]`): uma tabela só, com o valor pago ao motoboy e o cobrado da loja. A entrega vale o valor da faixa em que o km cai (0 < km ≤ 1 → 1ª, 1 < km ≤ 2 → 2ª…); acima da última vale a última. `PUT .../faixas` substitui a tabela.
 - **Cobrança das lojas** (mesma tela, renomeada "Pagamento e cobrança"): modelo A = **uma organização só** (o operador de entregas) e cada restaurante é uma **Loja** (ver "Portal da loja").
   - **Loja do pedido = o Vendor dono do pedido** (`orders.customer_uuid`), como nos pedidos do portal e nos que a central cria escolhendo a loja.
-  - Pedido sem loja (ex.: integração que manda só a coleta) agrupa pelo **nome** do local de coleta (a integração pode criar um Place por pedido); sem nome, pelo próprio Place. A integração iFood de cada loja deve mandar como pickup o Local da loja (de preferência pelo `public_id`), com nome igual sempre.
+  - **A integração iFood manda, em cada pedido (`POST v1/orders`), `customer` = `public_id` do Fornecedor da loja (`vendor_…`) e `pickup` = `public_id` do Local da loja (`place_…`).** Os dois ids aparecem na tela Lojas. Assim o pedido entra no portal da loja (lista, acompanhamento e cancelamento antes do aceite), no extrato e na cobrança dela (decisão de 2026-10-03).
+  - Pedido sem loja como cliente fica fora do portal e do extrato. Na cobrança, ele agrupa pelo **nome** do local de coleta (a integração pode criar um Place por pedido); sem nome, pelo próprio Place.
   - Cobrança = valor "loja" da faixa do km, igual para todas as lojas. A tela mostra a pagar, a cobrar e a margem; o CSV traz motoboys, lojas e o detalhe com loja, faixa e os dois valores.
 - `docker/`: Dockerfile da API, `docker/socket/` (socket ARM) e crontab.
 
@@ -143,10 +144,12 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
   - **O servidor não tem geocodificação:** o endereço de entrega é marcado no mapa, que abre na loja. Com `@mapCenter`, o `CoordinatesInput` do ember-ui só marca o ponto com arrasto, autocomplete ou Localizar; sem ele (console), nada mudou.
   - O canal de socket `company.<uuid>` não é usado no portal, porque transmite os pedidos de todas as lojas.
 - **Pedido da central:** no formulário do operador, escolher uma loja como cliente põe a coleta no Local da loja e a trava.
+  - **Escolha a loja, não o usuário dela.** O contato do usuário também aparece como cliente. Com ele, a coleta não trava e o pedido fica fora do extrato.
+- **Ao atualizar o customer-portal-api:** em `customer-portal/int/v1` o padrão do `ProtegerPortalLoja` é liberar, menos o que está em `NEGADAS_NO_PORTAL`. Revise as rotas novas da versão.
 - **Configuração do portal** (Admin → Customer Portal): só o tipo `transport`, pagamentos desligados.
 - **Teste de isolamento:** `node scripts/teste-isolamento-lojas.mjs`, contra a produção, com `deploy/teste-lojas.env` (ignorado pelo git; o cabeçalho do script explica).
   - Dispara aviso real aos motoboys perto da loja de teste A e deixa endereços de teste salvos.
-  - Teste o portal no navegador em **janela anônima**: o console guarda a lista de extensões no localStorage por 1 h.
+  - Use **janela anônima** no portal e também no Admin → Customer Portal logo depois do deploy. O console guarda a lista de extensões no localStorage por 1 h (só invalida quando muda a versão do console), e o Ctrl+Shift+R não limpa o localStorage.
 - **Chave do app do motoboy** (`ENTREGAS_CHAVE_APP_MOTOBOY`, **desligada**): restringe ao login a chave pública `flb_live_` que vai no APK.
   - Só ligar depois de um APK novo em todos os celulares: o Driver criado com o token do motoboy e o `useFleetbase` síncrono no `entregas-navigator`.
   - Os passos e a checagem com `curl` estão no docblock do `RestringirChaveDoApp.php`.

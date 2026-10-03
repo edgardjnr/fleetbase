@@ -9,7 +9,7 @@ Referências: o plano em `2026-10-02-portal-da-loja.md`, o desenho em `../specs/
 1. **Conferir o ramo:** `git branch --show-current` e `git log --oneline main..portal-da-loja`.
 2. **Merge na `main` e push:** só com o aval do usuário.
 3. **Deploy**, feito pelo usuário na VPS: `cd ~/entregas && bash deploy/atualizar.sh` (API e console). Depois, `docker service update --force entregas_queue`.
-4. **Configurar o portal**, no console, com Ctrl+Shift+R: Admin → Customer Portal com só o tipo `transport`, pagamentos desligados, e o endereço de acesso definido.
+4. **Configurar o portal**, no console aberto em **janela anônima** (a lista de extensões fica no localStorage por 1 h, e o Ctrl+Shift+R não a limpa): Admin → Customer Portal com só o tipo `transport`, pagamentos desligados, e o endereço de acesso definido.
 5. **Criar as lojas de teste** em Fleet-Ops → Recursos → Lojas: "Loja Teste A" e "Loja Teste B", com endereços diferentes e coordenadas, e um usuário em cada uma.
    - Quem grava as credenciais em `deploy/teste-lojas.env` é o usuário, não o Claude. O arquivo é ignorado pelo git, e o cabeçalho do script explica o formato.
    - Opcionais: `CHAVE_API` + `MOTOBOY_ID` (aceite de pedido cancelado), `LOJA_DESATIVADA_*` e `LOJA_DUPLA_*`.
@@ -40,6 +40,12 @@ Referências: o plano em `2026-10-02-portal-da-loja.md`, o desenho em `../specs/
 | 14 Teste de isolamento | script pronto e revisado. Deploy e execução com o usuário | da753f54 |
 | 15 Documentação | `CLAUDE.md` e este arquivo | 1ae01d5e |
 | extra | 429 e 404 genérico do core traduzidos | f570d347 |
+
+## Decidido em 2026-10-03
+
+- **A integração iFood manda `customer` = Fornecedor da loja (`vendor_…`) e `pickup` = Local da loja (`place_…`).** Os dois ids aparecem na tela Lojas. O pedido do iFood entra no portal, no extrato e na cobrança da loja, e a loja pode cancelá-lo antes do aceite.
+  - **Pendente, fora deste repo:** ajustar a integração.
+  - Até lá, os pedidos do iFood ficam fora do extrato da loja e, na cobrança, agrupados pelo nome do Local.
 
 ## Decisões pendentes do usuário
 
