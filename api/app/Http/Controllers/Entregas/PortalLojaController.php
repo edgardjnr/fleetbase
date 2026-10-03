@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
  */
 class PortalLojaController extends Controller
 {
-    public const STATUS_ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled'];
+    public const STATUS_ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled', 'expired'];
 
     /** Rotas novas calculadas por consulta do extrato (o portal não repete a chamada como a tela da central). */
     public const LIMITE_CALCULOS_PORTAL = 10;
@@ -110,13 +110,22 @@ class PortalLojaController extends Controller
             return response()->json(['motoboy' => null]);
         }
 
+        // o Fleetbase grava (0, 0) em motorista que ainda não mandou GPS: é "sem posição", não um ponto no mapa
+        // (mesmo critério do CalculoEntregas::temCoordenadas)
+        $posicao   = $motoboy->location;
+        $latitude  = $posicao?->getLat();
+        $longitude = $posicao?->getLng();
+        if (abs((float) $latitude) <= 0.0001 && abs((float) $longitude) <= 0.0001) {
+            $latitude = $longitude = null;
+        }
+
         return response()->json([
             'motoboy' => [
                 'nome'          => $motoboy->name,
                 'foto'          => $motoboy->photo_url,
                 'aceitou'       => (bool) $pedido->started,
-                'latitude'      => $motoboy->location?->getLat(),
-                'longitude'     => $motoboy->location?->getLng(),
+                'latitude'      => $latitude,
+                'longitude'     => $longitude,
                 'atualizado_em' => optional($motoboy->updated_at)->toIso8601String(),
             ],
         ]);
