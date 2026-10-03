@@ -1,0 +1,33 @@
+{{!-- Entregas: motoboy do pedido (nome, foto e posição); some quando o pedido encerra --}}
+{{#if this.visivel}}
+    <ContentPanel @title={{t "customer-portal.ui.entregas.courier"}} @open={{true}} @wrapperClass="bordered-top">
+        {{#if this.motoboy}}
+            <div class="flex items-center space-x-3 mb-3">
+                {{#if this.motoboy.foto}}
+                    <img src={{this.motoboy.foto}} alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                {{/if}}
+                <div class="text-sm text-gray-700 dark:text-gray-200">
+                    {{#if this.motoboy.aceitou}}
+                        {{t "customer-portal.ui.entregas.courier-accepted" name=this.motoboy.nome}}
+                    {{else}}
+                        {{t "customer-portal.ui.entregas.courier-assigned" name=this.motoboy.nome}}
+                    {{/if}}
+                </div>
+            </div>
+            {{#if this.temPosicao}}
+                <div class="h-56 rounded-md overflow-hidden">
+                    <LeafletMap @lat={{this.posicao.latitude}} @lng={{this.posicao.longitude}} @zoom={{15}} @scrollWheelZoom={{false}} as |layers|>
+                        <layers.tile @url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png" />
+                        <layers.marker @lat={{this.posicao.latitude}} @lng={{this.posicao.longitude}} as |marker|>
+                            <marker.tooltip @permanent={{true}}>{{t "customer-portal.ui.entregas.courier-position"}}</marker.tooltip>
+                        </layers.marker>
+                    </LeafletMap>
+                </div>
+            {{/if}}
+        {{else if this.consultado}}
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{t "customer-portal.ui.entregas.courier-waiting"}}</p>
+        {{else}}
+            <Spinner />
+        {{/if}}
+    </ContentPanel>
+{{/if}}

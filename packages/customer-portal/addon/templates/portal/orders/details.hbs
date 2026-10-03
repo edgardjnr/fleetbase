@@ -1,1 +1,5 @@
-<Portal::Order::Details @model={{this.model}} />
+{{!-- Entregas: um componente de detalhe por pedido. De um pedido para outro nesta mesma rota, o Ember só trocaria o
+     @model e reaproveitaria o componente, cujo estado (o pedido e o acompanhamento de 20 s) seguiria o pedido anterior --}}
+{{#each (array this.model) key="@identity" as |model|}}
+    <Portal::Order::Details @model={{model}} />
+{{/each}}

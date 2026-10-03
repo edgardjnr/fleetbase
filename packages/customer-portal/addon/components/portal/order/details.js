@@ -2,9 +2,16 @@ import Component from '@glimmer/component';
 import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { registerDestructor } from '@ember/destroyable';
+import { task, timeout } from 'ember-concurrency';
 import { arrayFor, valueFor } from '../../../utils/model-access';
 
-const CLOSED_STATUSES = ['completed', 'done', 'canceled', 'cancelled'];
+// Entregas: a mesma lista de encerrados do servidor (StatusDoPedido::ENCERRADOS)
+const CLOSED_STATUSES = ['completed', 'done', 'canceled', 'cancelled', 'order_canceled', 'expired'];
+// Entregas: a loja só cancela nestes status e antes do aceite (RegrasPortalLoja::STATUS_CANCELAVEIS)
+const CANCELABLE_STATUSES = ['created', 'dispatched'];
+// Entregas: intervalo do acompanhamento do pedido aberto
+const INTERVALO_MS = 20000;
 
 export default class PortalOrderDetailsComponent extends Component {
     @service customerPortalOrderActions;
@@ -15,8 +22,30 @@ export default class PortalOrderDetailsComponent extends Component {
 
     @tracked order = this.args.model?.order;
 
-    get canModify() {
-        return this.order && !CLOSED_STATUSES.includes(valueFor(this.order, 'status'));
+    constructor() {
+        super(...arguments);
+        // Entregas: o detalhe se atualiza sozinho enquanto o pedido está aberto. O template da rota cria um componente
+        // por pedido (templates/portal/orders/details.hbs), então o ciclo segue sempre o pedido exibido
+        this.acompanhar.perform();
+        registerDestructor(this, () => {
+            this.acompanhar.cancelAll();
+            this.recarregar.cancelAll();
+        });
+    }
+
+    // Entregas: aberto = fora da lista de encerrados
+    get isOpen() {
+        return Boolean(this.order) && !CLOSED_STATUSES.includes(valueFor(this.order, 'status'));
+    }
+
+    // Entregas: cancelamento só antes do aceite (depois dele o servidor recusa com 422)
+    get canCancel() {
+        return Boolean(this.order) && !valueFor(this.order, 'started') && CANCELABLE_STATUSES.includes(valueFor(this.order, 'status'));
+    }
+
+    // Entregas: pedido aberto que a loja já não cancela; o aviso fica no topo do painel, logo abaixo das ações
+    get cancelLocked() {
+        return this.isOpen && !this.canCancel;
     }
 
     get labelUrl() {
@@ -33,6 +62,7 @@ export default class PortalOrderDetailsComponent extends Component {
                 type: 'default',
                 size: 'sm',
                 renderInPlace: true,
+                // Entregas: só a etiqueta e o cancelamento. Sem chamado de suporte e sem reagendar (rotas negadas à loja)
                 items: [
                     {
                         text: this.intl.t('customer-portal.ui.order.view-label'),
@@ -41,27 +71,13 @@ export default class PortalOrderDetailsComponent extends Component {
                         fn: this.viewLabel,
                     },
                     {
-                        text: this.intl.t('customer-portal.ui.order.create-support-ticket'),
-                        icon: 'headset',
-                        fn: this.createSupportTicket,
-                    },
-                    {
-                        separator: true,
-                    },
-                    {
-                        text: this.intl.t('customer-portal.ui.order.reschedule'),
-                        icon: 'calendar',
-                        disabled: !this.canModify,
-                        fn: this.openRescheduleModal,
-                    },
-                    {
                         separator: true,
                     },
                     {
                         text: this.intl.t('customer-portal.ui.order.cancel-order'),
                         icon: 'ban',
                         class: 'text-danger',
-                        disabled: !this.canModify,
+                        disabled: !this.canCancel,
                         fn: this.confirmCancelOrder,
                     },
                 ],
@@ -82,30 +98,12 @@ export default class PortalOrderDetailsComponent extends Component {
         window.open(this.labelUrl, '_blank', 'noopener,noreferrer');
     }
 
-    @action createSupportTicket() {
-        this.hostRouter.transitionTo('customer-portal.portal.support.new', {
-            queryParams: {
-                order_id: this.customerPortalOrderActions.identifier(this.order),
-            },
-        });
-    }
-
-    @action openRescheduleModal() {
-        const reschedule = {
-            scheduled_at: this.order?.scheduled_at,
-        };
-
-        this.modalsManager.show('modals/portal-order-reschedule', {
-            title: this.intl.t('customer-portal.ui.order.reschedule-order'),
-            modalClass: 'modal-md',
-            acceptButtonText: this.intl.t('customer-portal.ui.order.reschedule'),
-            declineButtonText: this.intl.t('customer-portal.ui.common.cancel'),
-            reschedule,
-            confirm: () => this.rescheduleOrder(reschedule.scheduled_at),
-        });
-    }
-
     @action async confirmCancelOrder() {
+        // Entregas: o item fica desabilitado depois do aceite, mas o link ainda recebe Enter pelo teclado
+        if (!this.canCancel) {
+            return;
+        }
+
         await this.modalsManager.confirm({
             title: this.intl.t('customer-portal.ui.order.cancel-title'),
             body: this.intl.t('customer-portal.ui.order.cancel-body'),
@@ -120,21 +118,43 @@ export default class PortalOrderDetailsComponent extends Component {
             this.order = await this.customerPortalOrderActions.cancelOrder.perform(this.order);
             this.notifications.success(this.intl.t('customer-portal.ui.order.canceled'));
         } catch (error) {
+            // Entregas: a mensagem do servidor vem em pt-BR (422 depois do aceite, 409 com o pedido em atualização)
             this.notifications.serverError(error);
+            // Entregas: o motoboy pode ter aceitado no meio; relê o pedido para o menu e o aviso mostrarem o estado atual
+            this.recarregar.perform();
         }
     }
 
-    @action async rescheduleOrder(scheduledAt) {
-        if (!scheduledAt) {
-            this.notifications.warning(this.intl.t('customer-portal.ui.order.choose-time'));
-            return;
-        }
+    // Entregas: o painel do motoboy viu mudar quem está com o pedido (aceite, desistência ou encerramento). Relê o
+    // pedido agora, e não só no próximo ciclo; o painel espera esta leitura para mudar junto
+    @action motoboyMudou() {
+        return this.isOpen ? this.recarregar.perform() : null;
+    }
 
+    // Entregas: relê o pedido a cada 20 s até ele encerrar
+    @task *acompanhar() {
+        while (this.isOpen) {
+            yield timeout(INTERVALO_MS);
+
+            // o pedido pode ter encerrado durante a espera (cancelado nesta tela, por exemplo)
+            if (this.isOpen) {
+                yield this.recarregar.perform();
+            }
+        }
+    }
+
+    // Entregas: relê o pedido exibido. Erro (rede instável) não aparece na tela: tenta de novo no próximo ciclo
+    @task *recarregar() {
         try {
-            this.order = await this.customerPortalOrderActions.rescheduleOrder.perform(this.order, scheduledAt);
-            this.notifications.success(this.intl.t('customer-portal.ui.order.rescheduled'));
-        } catch (error) {
-            this.notifications.serverError(error);
+            const order = yield this.customerPortalOrderActions.loadOrder.perform(this.customerPortalOrderActions.identifier(this.order));
+
+            // o store.push já atualizou o record exibido no lugar; reatribuir o mesmo objeto recriaria o menu de ações
+            // (e o fecharia, se estivesse aberto) a cada ciclo
+            if (order && order !== this.order) {
+                this.order = order;
+            }
+        } catch {
+            // tenta de novo no próximo ciclo
         }
     }
 }

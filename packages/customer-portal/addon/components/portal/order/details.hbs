@@ -9,15 +9,21 @@
     class="portal-order-panel-overlay"
 >
     <div class="details-wrapper scrollable">
+        {{#if this.cancelLocked}}
+            {{!-- Entregas: depois do aceite o cancelar fica desabilitado no menu de ações; o aviso explica o motivo --}}
+            <div class="flex items-start px-4 py-2 space-x-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                <FaIcon @icon="lock" class="mt-0.5" />
+                <span>{{t "customer-portal.ui.entregas.cancel-locked"}}</span>
+            </div>
+        {{/if}}
         <Portal::Order::Details::Activity @resource={{this.order}} />
+        {{!-- Entregas: motoboy do pedido (nome, foto e posição), logo depois da atividade --}}
+        <Portal::Order::Details::Motoboy @resource={{this.order}} @onMudou={{this.motoboyMudou}} />
         <Portal::Order::Details::Details @resource={{this.order}} />
-        <Portal::Order::Details::ServiceRate @resource={{this.order}} />
+        {{!-- Entregas: sem tarifa, carga, documentos e campos personalizados (fora do escopo; arquivos e cotações são negados à loja) --}}
         <Portal::Order::Details::Tracking @resource={{this.order}} />
         <Portal::Order::Details::Route @resource={{this.order}} />
-        <Portal::Order::Details::Payload @resource={{this.order}} />
         <Portal::Order::Details::Proof @resource={{this.order}} />
-        <Portal::Order::Details::Documents @resource={{this.order}} />
-        <Portal::Order::Details::CustomFields @resource={{this.order}} />
         <Portal::Order::Details::Notes @resource={{this.order}} />
         <Spacer @height="200px" />
     </div>
