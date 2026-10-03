@@ -14,9 +14,10 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
     get center() {
         const firstMarker = this.markers[0];
 
+        // Entregas: sem marcadores o mapa abre em Ribeirão Preto (e não em Singapura)
         return {
-            latitude: Number(firstMarker?.latitude) || 1.3521,
-            longitude: Number(firstMarker?.longitude) || 103.8198,
+            latitude: Number(firstMarker?.latitude) || -21.1775,
+            longitude: Number(firstMarker?.longitude) || -47.8103,
         };
     }
 

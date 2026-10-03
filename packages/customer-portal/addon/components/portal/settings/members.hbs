@@ -1,96 +1,15 @@
-{{#if this.isCompanyAccount}}
-    <div class="portal-account-card">
-        <div class="portal-section-header mb-4">
-            <div>
-                <h2 class="text-base font-bold">{{t "customer-portal.ui.settings.members"}}</h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{t "customer-portal.ui.members.description"}}</p>
-            </div>
+<div class="portal-account-card">
+    <div class="portal-section-header mb-4">
+        <div>
+            <h2 class="text-base font-bold">{{t "customer-portal.ui.settings.members"}}</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{t "customer-portal.ui.entregas.members-managed-by-central"}}</p>
+        </div>
+        {{#if this.isCompanyAccount}}
             <Button @type="default" @size="sm" @icon="rotate" @helpText={{t "customer-portal.ui.common.reload"}} @onClick={{perform this.loadPersonnel}} @isLoading={{this.loadPersonnel.isRunning}} />
-        </div>
+        {{/if}}
+    </div>
 
-        <div class="portal-segmented-control mb-4">
-            <button type="button" class={{if this.isAddingExistingContact "active"}} {{on "click" (fn this.setPersonnelMode "existing")}}>
-                <FaIcon @icon="address-book" />
-                <span>{{t "customer-portal.ui.members.existing-contact"}}</span>
-            </button>
-            <button type="button" class={{if this.isCreatingContact "active"}} {{on "click" (fn this.setPersonnelMode "new")}}>
-                <FaIcon @icon="user-plus" />
-                <span>{{t "customer-portal.ui.members.new-contact"}}</span>
-            </button>
-        </div>
-
-        <form class="portal-personnel-form" aria-label={{t "customer-portal.ui.members.add-member"}} {{on "submit" (perform this.addPersonnel)}}>
-            {{#if this.isAddingExistingContact}}
-                <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                    <InputGroup @name={{t "customer-portal.ui.members.contact"}} @wrapperClass="mb-0i">
-                        <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
-                            <PowerSelect
-                                @options={{this.availablePersonnelCandidates}}
-                                @selected={{this.selectedContact}}
-                                @onChange={{this.selectContact}}
-                                @placeholder={{t "customer-portal.ui.members.select-contact"}}
-                                @triggerClass="form-select form-input"
-                                as |contact|
-                            >
-                                <div class="min-w-0">
-                                    <div class="truncate font-semibold">{{contact.name}}</div>
-                                    <div class="truncate text-xs text-gray-500">{{n-a contact.email}}</div>
-                                </div>
-                            </PowerSelect>
-                        </div>
-                    </InputGroup>
-                    <InputGroup @name={{t "customer-portal.ui.members.role"}} @wrapperClass="mb-0i">
-                        <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
-                            <PowerSelect
-                                @options={{this.roleOptions}}
-                                @selected={{this.selectedRole}}
-                                @onChange={{this.selectRole}}
-                                @placeholder={{t "customer-portal.ui.members.select-role"}}
-                                @triggerClass="form-select form-input"
-                                as |role|
-                            >
-                                <div class="font-semibold">{{role.label}}</div>
-                            </PowerSelect>
-                        </div>
-                    </InputGroup>
-                </div>
-            {{else}}
-                <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                    <InputGroup @name={{t "customer-portal.ui.common.name"}} @value={{this.personnelName}} @placeholder={{t "customer-portal.ui.members.member-name"}} @wrapperClass="mb-0i" />
-                    <InputGroup @name={{t "customer-portal.ui.common.email"}} @type="email" @value={{this.personnelEmail}} @placeholder="email@example.com" @wrapperClass="mb-0i" />
-                </div>
-                <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                    <InputGroup @name={{t "customer-portal.ui.address-book.phone"}} @wrapperClass="mb-0i">
-                        <PhoneInput @value={{this.personnelPhone}} @onInput={{fn (mut this.personnelPhone)}} class="form-input w-full" />
-                    </InputGroup>
-                    <InputGroup @name={{t "customer-portal.ui.members.role"}} @wrapperClass="mb-0i">
-                        <PowerSelect
-                            @options={{this.roleOptions}}
-                            @selected={{this.selectedRole}}
-                            @onChange={{this.selectRole}}
-                            @placeholder={{t "customer-portal.ui.members.select-role"}}
-                            @triggerClass="form-select form-input"
-                            as |role|
-                        >
-                            <div class="font-semibold">{{role.label}}</div>
-                        </PowerSelect>
-                    </InputGroup>
-                </div>
-            {{/if}}
-
-            <div class="portal-personnel-form-footer">
-                <Checkbox @value={{this.createLogin}} @onToggle={{this.toggleCreateLogin}}>{{t "customer-portal.ui.members.create-login"}}</Checkbox>
-                <Button
-                    @buttonType="submit"
-                    @type="primary"
-                    @icon="plus"
-                    @text={{t "customer-portal.ui.members.add-member"}}
-                    @isLoading={{this.addPersonnel.isRunning}}
-                    @disabled={{not this.canAddPersonnel}}
-                />
-            </div>
-        </form>
-
+    {{#if this.isCompanyAccount}}
         <div class="portal-personnel-list">
             {{#if this.loadPersonnel.isRunning}}
                 <div class="portal-widget-empty"><Spinner /></div>
@@ -104,21 +23,11 @@
                         </div>
                         <div class="portal-personnel-role">{{this.roleLabel personnel.role}}</div>
                         <Badge @status={{or personnel.status "active"}} />
-                        <Button @type="danger" @size="xs" @icon="trash" @text={{t "customer-portal.ui.common.remove"}} @onClick={{perform this.removePersonnel personnel}} @isLoading={{this.removePersonnel.isRunning}} />
                     </div>
                 {{/each}}
             {{else}}
                 <div class="portal-widget-empty">{{t "customer-portal.ui.members.empty"}}</div>
             {{/if}}
         </div>
-    </div>
-{{else}}
-    <div class="portal-account-card">
-        <div class="portal-empty-state">
-            <FaIcon @icon="users" class="text-2xl text-blue-500" />
-            <div class="font-semibold text-gray-900 dark:text-gray-100">{{t "customer-portal.ui.members.company-required"}}</div>
-            <p>{{t "customer-portal.ui.members.company-required-text"}}</p>
-            <Button @type="primary" @icon="building" @text={{t "customer-portal.ui.account.convert"}} @onClick={{this.openConvertModal}} />
-        </div>
-    </div>
-{{/if}}
+    {{/if}}
+</div>

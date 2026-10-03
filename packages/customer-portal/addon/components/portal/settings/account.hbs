@@ -17,11 +17,10 @@
         <div class="flex-1">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs dark:text-gray-100">
                 <InputGroup @name={{t "common.name"}} @value={{this.user.name}} />
-                <InputGroup @name={{t "common.email"}} @type="email" @value={{this.user.email}} />
-                <InputGroup @name={{t "common.phone"}} @helpText={{t "console.account.index.phone"}}>
-                    <PhoneInput @value={{this.user.phone}} @onInput={{fn (mut this.user.phone)}} class="form-input input-lg w-full" />
-                </InputGroup>
-                <InputGroup @name={{t "customer-portal.ui.account.date-of-birth"}} @type="date" @value={{this.user.date_of_birth}} />
+                {{! Entregas: o login (e-mail e telefone) só é alterado pela central; o servidor descarta esses campos (e a data de nascimento) no perfil da loja }}
+                <InputGroup @name={{t "common.email"}} @type="email" @value={{this.user.email}} @disabled={{true}} />
+                <InputGroup @name={{t "common.phone"}} @type="tel" @value={{this.user.phone}} @disabled={{true}} />
+                <p class="lg:col-span-2 text-gray-500 dark:text-gray-400">{{t "customer-portal.ui.entregas.login-managed-by-central"}}</p>
             </div>
             <div class="mt-3 flex items-center justify-end">
                 <Button

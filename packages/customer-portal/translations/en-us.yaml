@@ -72,7 +72,7 @@ customer-portal:
       empty-text: Labels, PODs, photos, invoices, receipts, and order files will appear here when they become available.
     home:
       welcome: "Welcome, {name}"
-      description: Track deliveries, invoices, documents, and support activity from one customer workspace.
+      description: Create delivery orders, follow your couriers and check your statement in one place.
       view-billing: View Billing
       company-workspace: Company customer workspace
       customer-workspace: Customer workspace
@@ -568,6 +568,38 @@ customer-portal:
       retail_goods:
         label: Retail Goods
         description: General consumer or retail merchandise.
+    entregas:
+      statement: Statement
+      statement-title: Delivery statement
+      period-start: Start
+      period-end: End
+      order: Order
+      deliveries: Deliveries
+      total-km: Total km
+      amount-due: Amount due
+      band: Band
+      band-range: "{from} to {to} km"
+      band-above: "above {from} km"
+      destination: Destination
+      completed-at: Completed at
+      amount: Amount
+      export-csv: Download CSV
+      no-deliveries: No completed deliveries in this period.
+      pending-km: "{count} deliveries still missing km; click Refresh."
+      refresh: Refresh
+      pickup-fixed: Pickup
+      pickup-fixed-help: Always at the store address.
+      store-without-address: The store has no pickup address yet. Contact the dispatcher.
+      customer-name-help: On the delivery address, use the customer's name and phone.
+      map-location-required: Mark the delivery spot on the map (Select from map).
+      courier: Courier
+      courier-waiting: Waiting for a courier to accept.
+      courier-accepted: "{name} has the order."
+      courier-assigned: "{name} was assigned and hasn't accepted yet."
+      courier-position: Courier position
+      cancel-locked: The courier already accepted. To cancel, contact the dispatcher.
+      members-managed-by-central: To add or remove store users, contact the dispatcher.
+      login-managed-by-central: The sign-in email and phone can only be changed by the dispatcher.
 
 menu-text:
   customer-portal:

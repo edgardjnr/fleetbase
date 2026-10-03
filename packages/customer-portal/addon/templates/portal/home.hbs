@@ -6,17 +6,17 @@
             <p>{{t "customer-portal.ui.home.description"}}</p>
         </div>
         <div class="portal-dashboard-quick-actions">
-            <LinkTo @route="portal.support" class="portal-quick-link primary">
-                <FaIcon @icon="headset" />
-                <span>{{t "customer-portal.ui.support.new-ticket"}}</span>
+            <LinkTo @route="portal.orders.new" class="portal-quick-link primary">
+                <FaIcon @icon="plus" />
+                <span>{{t "customer-portal.ui.order.new-order"}}</span>
             </LinkTo>
-            <LinkTo @route="portal.billing" class="portal-quick-link">
+            <LinkTo @route="portal.orders" class="portal-quick-link">
+                <FaIcon @icon="boxes-packing" />
+                <span>{{t "customer-portal.ui.nav.orders"}}</span>
+            </LinkTo>
+            <LinkTo @route="portal.extrato" class="portal-quick-link">
                 <FaIcon @icon="file-invoice-dollar" />
-                <span>{{t "customer-portal.ui.home.view-billing"}}</span>
-            </LinkTo>
-            <LinkTo @route="portal.documents" class="portal-quick-link">
-                <FaIcon @icon="folder-open" />
-                <span>{{t "customer-portal.ui.nav.documents"}}</span>
+                <span>{{t "customer-portal.ui.entregas.statement"}}</span>
             </LinkTo>
         </div>
     </div>

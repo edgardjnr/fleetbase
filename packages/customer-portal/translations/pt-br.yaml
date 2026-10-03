@@ -72,7 +72,7 @@ customer-portal:
       empty-text: Etiquetas, comprovantes de entrega, fotos, faturas, recibos e arquivos dos pedidos aparecerão aqui quando estiverem disponíveis.
     home:
       welcome: "Bem-vindo(a), {name}"
-      description: Acompanhe entregas, faturas, documentos e atendimentos de suporte em um só lugar.
+      description: Crie pedidos de entrega, acompanhe os motoboys e confira o extrato em um só lugar.
       view-billing: Ver faturamento
       company-workspace: Conta empresarial
       customer-workspace: Área do cliente
@@ -568,6 +568,38 @@ customer-portal:
       retail_goods:
         label: Mercadorias de varejo
         description: Mercadorias de consumo ou varejo em geral.
+    entregas:
+      statement: Extrato
+      statement-title: Extrato de entregas
+      period-start: Início
+      period-end: Fim
+      order: Pedido
+      deliveries: Entregas
+      total-km: Km total
+      amount-due: Valor a pagar
+      band: Faixa
+      band-range: "{from} a {to} km"
+      band-above: "acima de {from} km"
+      destination: Destino
+      completed-at: Concluído em
+      amount: Valor
+      export-csv: Baixar CSV
+      no-deliveries: Nenhuma entrega concluída no período.
+      pending-km: "{count} entrega(s) ainda sem km calculado; clique em Atualizar."
+      refresh: Atualizar
+      pickup-fixed: Coleta
+      pickup-fixed-help: Sempre no endereço da loja.
+      store-without-address: A loja ainda não tem endereço de coleta. Fale com a central.
+      customer-name-help: No endereço de entrega, use o nome e o telefone do cliente.
+      map-location-required: Marque no mapa o local da entrega (Selecionar no mapa).
+      courier: Motoboy
+      courier-waiting: Aguardando um motoboy aceitar.
+      courier-accepted: "{name} está com o pedido."
+      courier-assigned: "{name} foi chamado e ainda não aceitou."
+      courier-position: Posição do motoboy
+      cancel-locked: O motoboy já aceitou. Para cancelar, fale com a central.
+      members-managed-by-central: Para adicionar ou remover usuários da loja, fale com a central.
+      login-managed-by-central: O e-mail e o telefone de acesso só podem ser alterados pela central.
 
 menu-text:
   customer-portal:

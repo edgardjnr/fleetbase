@@ -32,6 +32,8 @@ export default buildRoutes(function () {
             this.route('members');
         });
         this.route('account');
+        // Entregas: extrato de entregas da loja (antes de `virtual`, que é o catch-all `/:slug`)
+        this.route('extrato');
         this.route('virtual', { path: '/:slug' });
     });
 });

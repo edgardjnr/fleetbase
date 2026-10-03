@@ -38,7 +38,6 @@ export default class PortalAccountController extends Controller {
     @service customerSession;
 
     @tracked personnels = [];
-    @tracked personnelCandidates = [];
     @tracked selectedContact;
     @tracked personnelMode = 'existing';
     @tracked personnelName;
@@ -209,17 +208,13 @@ export default class PortalAccountController extends Controller {
     }
 
     @task *loadPersonnel() {
+        // Entregas: a API nega `account/personnel-candidates` ao usuário de loja; só a lista de membros é carregada
         try {
-            const [personnelResponse, candidateResponse] = yield Promise.all([
-                this.fetch.get('account/personnels', {}, { namespace: 'customer-portal/int/v1' }),
-                this.fetch.get('account/personnel-candidates', {}, { namespace: 'customer-portal/int/v1' }),
-            ]);
+            const personnelResponse = yield this.fetch.get('account/personnels', {}, { namespace: 'customer-portal/int/v1' });
 
             this.personnels = personnelResponse.personnels ?? [];
-            this.personnelCandidates = candidateResponse.contacts ?? [];
         } catch (error) {
             this.personnels = [];
-            this.personnelCandidates = [];
             this.notifications.serverError(error);
         }
     }
