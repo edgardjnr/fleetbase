@@ -785,7 +785,7 @@ Conferir nos fontes locais antes de finalizar (mesmas versões da produção): `
 - [ ] **Step 3: lint** dos dois arquivos → ok.
 - [ ] **Step 4: Commit** — `git add api/app && git commit -m "API: cadastro de lojas e usuários das lojas (admin)"`
 
-**Revisões depois da implementação (aprovadas; o código no repo é a referência):** o login do contato é lido por `Contact::anyUser` (nunca `user`, ver "Armadilhas"); `catch (CustomerUserConflictException)` antes de `catch (UserAlreadyExistsException)`; `adicionarUsuario` recusa (422) e-mail ou telefone já usado por outro contato de cliente da empresa, antes de criar.
+**Revisões depois da implementação (aprovadas; o código no repo é a referência):** o login do contato é lido por `Contact::anyUser` (nunca `user`, ver "Armadilhas"); `catch (CustomerUserConflictException)` antes de `catch (UserAlreadyExistsException)`; `adicionarUsuario` recusa (422) e-mail ou telefone já usado por outro contato de cliente da empresa, antes de criar; ao editar a loja, **se as coordenadas mudarem, nasce um Local novo** (o antigo perde o dono e fica só com os pedidos antigos) — o km e a cobrança do histórico não mudam quando a loja se muda.
 
 ---
 
@@ -941,6 +941,8 @@ class PortalLojaController extends Controller
 - [ ] **Step 3: lint** → ok.
 - [ ] **Step 4: Commit** — `git add api/app && git commit -m "API: loja, extrato e motoboy do pedido para o portal da loja"`
 
+**Revisões depois da implementação (aprovadas; o código no repo é a referência):** `with('driverAssigned.user')`; motoboy com posição (0,0) — o Fleetbase grava isso em motorista sem GPS — volta com `latitude`/`longitude` nulos; `STATUS_ENCERRADOS` inclui `expired`. Sem loja, os três endpoints dão 404 (o handler do core troca a mensagem por "There is nothing to see here."; o front reage ao status).
+
 ---
 
 ### Task 6A: Controle de acesso do usuário de loja (`ProtegerPortalLoja`)
@@ -1007,6 +1009,7 @@ class ProtegerPortalLoja
     /** customer-portal/int/v1: rotas do portal negadas ao usuário de loja. */
     public const NEGADAS_NO_PORTAL = [
         '#^[A-Z]+ settings(/.*)?$#',                          // configuração do portal: o portal não confere se é admin
+        '#^[A-Z]+ service-quotes(/.*)?$#',                    // cotação: sobrescreve endereço salvo (até o da loja); sem tarifas no Entregas
         '#^[A-Z]+ (account|contacts/[^/]+)/convert-to-vendor$#',
         '#^GET account/personnel-candidates$#',              // lista os usuários de todas as lojas
         '#^(POST|DELETE) account/personnels(/[^/]+)?$#',     // usuários da loja: só a central cria (tela Lojas)
@@ -1161,6 +1164,16 @@ Observações para o implementador:
         return $userUuid ? static::lojas($userUuid)->count() : 0;
     }
 
+    /** Local de coleta da loja (o Place do Vendor); usa o `place` já carregado pelo `Vendor::$with`. */
+    public static function coleta(?Vendor $vendor): ?Place
+    {
+        if (!$vendor || !$vendor->place_uuid) {
+            return null;
+        }
+
+        return $vendor->relationLoaded('place') ? $vendor->place : Place::where('uuid', $vendor->place_uuid)->first();
+    }
+
     /** Lojas com vínculo ativo do contato de cliente do usuário (mesma regra do PortalAccountResolver). */
     protected static function lojas(string $userUuid)
     {
@@ -1234,7 +1247,7 @@ class RegrasPortalLoja
     /** Status em que a loja ainda pode cancelar, desde que nenhum motoboy tenha aceitado. */
     public const STATUS_CANCELAVEIS = ['created', 'dispatched'];
 
-    public const STATUS_ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled'];
+    public const STATUS_ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled', 'expired'];
 
     public function handle(Request $request, Closure $next)
     {
@@ -1968,7 +1981,7 @@ export default class PortalExtratoController extends Controller {
   7. B abre o pedido de A (`GET .../orders/{id}`) → 404.
   8. B cancela o pedido de A (`POST .../orders/{id}/cancel`) → 404, e o pedido continua aberto para A.
   9. B pede o motoboy do pedido de A (`GET int/v1/entregas/loja/pedidos/{id}/motoboy`) → 404.
-  10. Com o token de B → 403 em: `GET int/v1/orders`, `GET int/v1/contacts`, `GET int/v1/places`, `GET int/v1/drivers`, `GET v1/orders`, `GET int/v1/entregas/lojas`, `GET int/v1/entregas/pagamento-motoboys?inicio=2026-01-01&fim=2026-01-02`, `GET customer-portal/int/v1/settings/config`, `GET customer-portal/int/v1/account/personnel-candidates`.
+  10. Com o token de B → 403 em: `GET int/v1/orders`, `GET int/v1/contacts`, `GET int/v1/places`, `GET int/v1/drivers`, `GET v1/orders`, `GET int/v1/entregas/lojas`, `GET int/v1/entregas/pagamento-motoboys?inicio=2026-01-01&fim=2026-01-02`, `GET customer-portal/int/v1/settings/config`, `GET customer-portal/int/v1/account/personnel-candidates`, `POST customer-portal/int/v1/service-quotes/preliminary`.
   11. B tenta virar admin: `GET int/v1/users/me` (pega o próprio id), `PUT int/v1/users/{id}` com `{user:{name:<o mesmo nome>, role:'Administrator'}}` → depois `GET int/v1/users/me` não tem papel Administrator (comparar o campo de papel que vier na resposta).
   12. B extrato (`GET int/v1/entregas/loja/extrato?inicio=<hoje>&fim=<hoje>`) → 200 com `totais`.
   13. A cancela o próprio pedido (ainda sem aceite) → 200 e status `canceled`.
