@@ -21,8 +21,9 @@ use Illuminate\Support\Facades\Log;
  *
  * Fica no fim do grupo de middleware `fleetbase.api` das rotas v1 (registrado no RouteServiceProvider), não na
  * lista global: roda depois da autenticação (AuthenticateOnceWithBasicAuth), então só vê requisições autenticadas
- * (sem credencial válida, o core responde 401 antes, sem a trava) e já com a sessão da empresa montada, que faz o
- * CompanyScope filtrar a busca do pedido pela empresa, como no findRecordOrFail do startOrder.
+ * (sem credencial válida, o core responde 401 antes, sem a trava) e já com a sessão da empresa montada. A busca
+ * do pedido filtra pela empresa da sessão, como o findRecordOrFail do startOrder (nenhum model registra o
+ * CompanyScope nesta versão: o filtro tem de ser explícito).
  *
  * A conferência e o aceite inteiro rodam com a trava do pedido (TravaDoPedido), a mesma do cancelamento pelo
  * portal da loja (RegrasPortalLoja): ou o cancelamento termina antes e o aceite é barrado aqui, ou o aceite
@@ -52,9 +53,11 @@ class BarrarAceiteDePedidoEncerrado
             return $next($request);
         }
 
-        // a mesma busca do startOrder (Order::findRecordOrFail): public_id ou internal_id, filtrada pela empresa da
-        // sessão (CompanyScope)
-        $pedido = Order::where(fn ($q) => $q->where('public_id', $id)->orWhere('internal_id', $id))->first();
+        // a mesma busca do startOrder (Order::findRecordOrFail): public_id ou internal_id e, com a empresa na sessão
+        // (depois da autenticação, sempre), só nessa empresa
+        $pedido = Order::where(fn ($q) => $q->where('public_id', $id)->orWhere('internal_id', $id))
+            ->when(session('company'), fn ($q, $empresa) => $q->where('company_uuid', $empresa))
+            ->first();
 
         // inexistente: o próprio controller responde 404
         if (!$pedido) {
