@@ -53,5 +53,12 @@ return [
     'google_maps' => [
         'locale' => env('GOOGLE_MAPS_LOCALE', 'us'),
         'api_key' => env('GOOGLE_MAPS_API_KEY'),
-    ]
+    ],
+
+    // Entregas RestaurantePro: chave pública do app do motoboy (Navigator). Vazia, nada muda; preenchida, a
+    // chave só serve para o login do app (App\Http\Middleware\RestringirChaveDoApp). Fica aqui, e não num env()
+    // solto, porque o deploy.sh roda config:cache.
+    'entregas' => [
+        'chave_app_motoboy' => env('ENTREGAS_CHAVE_APP_MOTOBOY'),
+    ],
 ];

@@ -25,6 +25,8 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\ProtegerPortalLoja::class,
         // regras do portal da loja: lê o usuário de loja que o ProtegerPortalLoja grava (tem de vir depois dele)
         \App\Http\Middleware\RegrasPortalLoja::class,
+        // chave pública do app do motoboy só para o login (desligado enquanto ENTREGAS_CHAVE_APP_MOTOBOY estiver vazia)
+        \App\Http\Middleware\RestringirChaveDoApp::class,
     ];
 
     /**

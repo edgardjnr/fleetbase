@@ -54,6 +54,9 @@ x-api-env: &api-env
   TWILIO_SID: ${TWILIO_SID:-}
   TWILIO_TOKEN: ${TWILIO_TOKEN:-}
   TWILIO_FROM: ${TWILIO_FROM:-}
+  # chave pública do app do motoboy: vazia = sem restrição; preenchida = só serve para o login do app
+  # (api/app/Http/Middleware/RestringirChaveDoApp.php)
+  ENTREGAS_CHAVE_APP_MOTOBOY: ${ENTREGAS_CHAVE_APP_MOTOBOY:-}
 
 x-deploy: &default-deploy
   replicas: 1
