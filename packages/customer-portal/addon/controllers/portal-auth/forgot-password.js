@@ -39,7 +39,7 @@ export default class PortalAuthForgotPasswordController extends Controller {
 
         try {
             yield this.fetch.post('auth/get-magic-reset-link', { email: this.email });
-            this.notifications.success(this.intl.t('auth.forgot-password.success-message'));
+            this.notifications.success(this.intl.t('customer-portal.ui.auth.forgot-password.success'));
             this.isSent = true;
         } catch (error) {
             this.notifications.serverError(error);

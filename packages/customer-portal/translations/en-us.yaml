@@ -126,6 +126,58 @@ customer-portal:
       two-fa-init-failed: 2FA failed to initialize.
       two-fa-expired: 2FA authentication session has expired.
       no-customer: No customer found for user account.
+      two-fa-title: Two-factor verification
+      login:
+        email-label: Email address
+        password-label: Password
+        remember-me: Remember me
+        forgot-password: Forgot your password?
+        sign-in: Sign in
+        failed-attempt-message: "<strong>Forgot your password?</strong><br> Click the button below to reset your password."
+        failed-attempt-button: Ok, help me reset!
+        no-identity: Did you forget to enter your email?
+        no-password: Did you forget to enter your password?
+        unverified: Your account needs to be verified to proceed.
+        password-reset-required: A password reset is required to continue.
+        slow-connection: Experiencing connectivity issues.
+      forgot-password:
+        title: Forgot your password?
+        message: "<strong>Don't worry, we've got your back.</strong><br> Enter the email you use to login to {appName} and we will send you a secure link to reset your password."
+        sent-title: Almost Done!
+        sent-message: "<strong>Check your email!</strong><br> We've sent you a magic link to your email which will allow you to reset your password. The link expires in 15 minutes."
+        email-label: Your email address
+        submit: OK, Send me a magic link!
+        nevermind: Nevermind
+        continue: Continue
+        success: Check your email to continue!
+      reset-password:
+        title: Reset your password
+        code-label: Your reset code
+        code-help: The verification code you received in your email.
+        password-label: New Password
+        password-help: Enter a password at-least 6 characters to continue.
+        confirm-label: Confirm new Password
+        confirm-help: Enter a password at-least 6 characters to continue.
+        submit: Reset Password
+        back: Back
+        success: Your password has been reset! Login to continue.
+        invalid-link: This reset password link is invalid or expired.
+      verification:
+        title: Verify your email address
+        message: "<strong>Almost done!</strong><br> Check your email for a verification code."
+        code-label: Verification Code
+        code-help: Enter the verification code you received via email.
+        didnt-receive: Didn't receive a code yet?
+        alternative-choice: Use the alternative options below to verify your account.
+        resend-email: Resend Email
+        send-by-sms: Send by SMS
+      two-fa:
+        invalid-session: Invalid session. Please try again.
+        verified: Verification successful!
+        code-expired: Verification code has expired. Please request a new one.
+        verify-failed: Verification failed. Please try again.
+        code-resent: New verification code sent.
+        resend-failed: Error resending verification code. Please try again.
     billing:
       details-description: Invoice details, line item preview, and payment status.
       open-payment-link: Open Payment Link

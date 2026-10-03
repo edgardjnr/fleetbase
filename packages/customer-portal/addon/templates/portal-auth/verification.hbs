@@ -4,20 +4,20 @@
             <LogoIcon @brand={{@brand}} @size="12" class="rounded-md" />
         </LinkTo>
         <h2 class="mt-6 text-center text-lg font-extrabold text-gray-900 dark:text-white truncate">
-            {{t "auth.verification.title"}}
+            {{t "customer-portal.ui.auth.verification.title"}}
         </h2>
     </div>
 
     <InfoBlock @type="info" @icon="shield-halved" @iconSize="lg">
-        {{t "auth.verification.message-text" htmlSafe=true}}
+        {{t "customer-portal.ui.auth.verification.message" htmlSafe=true}}
     </InfoBlock>
 
     <form class="mt-8 space-y-6" {{on "submit" (perform this.verifyCode)}}>
         <InputGroup
             @type="tel"
-            @name={{t "auth.verification.verification-input-label"}}
+            @name={{t "customer-portal.ui.auth.verification.code-label"}}
             @value={{this.code}}
-            @helpText={{t "auth.verification.verification-code-text"}}
+            @helpText={{t "customer-portal.ui.auth.verification.code-help"}}
             @inputClass="input-lg"
             {{on "input" this.validateInput}}
             {{did-insert this.validateInitInput}}
@@ -35,7 +35,7 @@
                 @disabled={{not this.isReadyToSubmit}}
                 @onClick={{perform this.verifyCode}}
             />
-            <a href="javascript:;" {{on "click" this.onDidntReceiveCode}} class="text-sm text-blue-400 hover:text-blue-300">{{t "auth.verification.didnt-receive-a-code"}}</a>
+            <a href="javascript:;" {{on "click" this.onDidntReceiveCode}} class="text-sm text-blue-400 hover:text-blue-300">{{t "customer-portal.ui.auth.verification.didnt-receive"}}</a>
         </div>
 
         {{#if this.stillWaiting}}
@@ -46,14 +46,14 @@
                     </div>
                     <div class="flex-1">
                         <div class="flex-1 text-sm text-yellow-100">
-                            <div>{{t "auth.verification.didnt-receive-a-code" htmlSafe=true}}</div>
-                            <div>{{t "auth.verification.not-sent.alternative-choice" htmlSafe=true}}</div>
+                            <div>{{t "customer-portal.ui.auth.verification.didnt-receive" htmlSafe=true}}</div>
+                            <div>{{t "customer-portal.ui.auth.verification.alternative-choice" htmlSafe=true}}</div>
                         </div>
                     </div>
                 </div>
                 <div class="flex items-center space-x-2">
                     <Button
-                        @text={{t "auth.verification.not-sent.resend-email"}}
+                        @text={{t "customer-portal.ui.auth.verification.resend-email"}}
                         @buttonType="button"
                         @type="link"
                         class="text-yellow-100"
@@ -61,7 +61,7 @@
                         @onClick={{this.resendEmail}}
                     />
                     <Button
-                        @text={{t "auth.verification.not-sent.send-by-sms"}}
+                        @text={{t "customer-portal.ui.auth.verification.send-by-sms"}}
                         @buttonType="button"
                         @type="link"
                         class="text-yellow-100"

@@ -15,7 +15,7 @@ export default class PortalAuthResetPasswordRoute extends Route {
     async setupController(controller, model) {
         super.setupController(...arguments);
         if (model.is_valid === false) {
-            this.notifications.warning(this.intl.t('auth.reset-password.invalid-verification-code'));
+            this.notifications.warning(this.intl.t('customer-portal.ui.auth.reset-password.invalid-link'));
             return this.hostRouter.transitionTo('customer-portal.portal-auth');
         }
 

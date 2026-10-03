@@ -54,7 +54,7 @@ export default class PortalAuthResetPasswordController extends Controller {
             return this.notifications.serverError(error);
         }
 
-        this.notifications.success(this.intl.t('auth.reset-password.success-message'));
+        this.notifications.success(this.intl.t('customer-portal.ui.auth.reset-password.success'));
         yield this.hostRouter.transitionTo('customer-portal.portal-auth.login');
     }
 }

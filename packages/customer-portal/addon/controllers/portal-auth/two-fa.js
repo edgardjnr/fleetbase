@@ -106,7 +106,7 @@ export default class PortalAuthTwoFaController extends Controller {
             const { token, verificationCode, clientToken, identity } = this;
 
             if (!clientToken) {
-                this.notifications.error(this.intl.t('auth.two-fa.verify-code.invalid-session-error-notification'));
+                this.notifications.error(this.intl.t('customer-portal.ui.auth.two-fa.invalid-session'));
                 return;
             }
 
@@ -123,7 +123,7 @@ export default class PortalAuthTwoFaController extends Controller {
             );
 
             // If verification is successful, transition to the desired route
-            this.notifications.success(this.intl.t('auth.two-fa.verify-code.verification-successful-notification'));
+            this.notifications.success(this.intl.t('customer-portal.ui.auth.two-fa.verified'));
 
             // authenticate user
             return this.session.manuallyAuthenticate(authToken).then(() => {
@@ -131,9 +131,9 @@ export default class PortalAuthTwoFaController extends Controller {
             });
         } catch (error) {
             if (error.message.includes('Verification code has expired')) {
-                this.notifications.info(this.intl.t('auth.two-fa.verify-code.verification-code-expired-notification'));
+                this.notifications.info(this.intl.t('customer-portal.ui.auth.two-fa.code-expired'));
             } else {
-                this.notifications.error(this.intl.t('auth.two-fa.verify-code.verification-code-failed-notification'));
+                this.notifications.error(this.intl.t('customer-portal.ui.auth.two-fa.verify-failed'));
             }
         }
     }
@@ -158,13 +158,13 @@ export default class PortalAuthTwoFaController extends Controller {
                 this.twoFactorSessionExpiresAfter = this.getExpirationDateFromClientToken(clientToken);
                 this.countdownReady = true;
                 this.isCodeExpired = false;
-                this.notifications.success(this.intl.t('auth.two-fa.resend-code.verification-code-resent-notification'));
+                this.notifications.success(this.intl.t('customer-portal.ui.auth.two-fa.code-resent'));
             } else {
-                this.notifications.error(this.intl.t('auth.two-fa.resend-code.verification-code-resent-error-notification'));
+                this.notifications.error(this.intl.t('customer-portal.ui.auth.two-fa.resend-failed'));
             }
         } catch (error) {
             // Handle errors, show error notifications, etc.
-            this.notifications.error(this.intl.t('auth.two-fa.resend-code.verification-code-resent-error-notification'));
+            this.notifications.error(this.intl.t('customer-portal.ui.auth.two-fa.resend-failed'));
         }
     }
 

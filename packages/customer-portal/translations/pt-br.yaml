@@ -126,6 +126,58 @@ customer-portal:
       two-fa-init-failed: Não foi possível iniciar a verificação em duas etapas.
       two-fa-expired: A sessão de verificação em duas etapas expirou.
       no-customer: Nenhum cliente encontrado para esta conta de usuário.
+      two-fa-title: Verificação em duas etapas
+      login:
+        email-label: Endereço de e-mail
+        password-label: Senha
+        remember-me: Lembrar de mim
+        forgot-password: Esqueceu sua senha?
+        sign-in: Entrar
+        failed-attempt-message: "<strong>Esqueceu sua senha?</strong><br> Clique no botão abaixo para redefinir sua senha."
+        failed-attempt-button: Ok, me ajude a redefinir!
+        no-identity: Esqueceu de digitar seu e-mail?
+        no-password: Esqueceu de digitar sua senha?
+        unverified: Sua conta precisa ser verificada para continuar.
+        password-reset-required: É necessário redefinir a senha para continuar.
+        slow-connection: Problemas de conexão detectados.
+      forgot-password:
+        title: Esqueceu sua senha?
+        message: "<strong>Não se preocupe, estamos aqui para ajudar.</strong><br> Digite o e-mail que você usa para entrar no {appName} e enviaremos um link seguro para redefinir sua senha."
+        sent-title: Quase lá!
+        sent-message: "<strong>Confira seu e-mail!</strong><br> Enviamos um link mágico para o seu e-mail que permitirá redefinir sua senha. O link expira em 15 minutos."
+        email-label: Seu endereço de e-mail
+        submit: OK, envie-me um link mágico!
+        nevermind: Deixa pra lá
+        continue: Continuar
+        success: Verifique seu e-mail para continuar!
+      reset-password:
+        title: Redefina sua senha
+        code-label: Seu código de redefinição
+        code-help: O código de verificação que você recebeu no seu e-mail.
+        password-label: Nova senha
+        password-help: Digite uma senha com pelo menos 6 caracteres para continuar.
+        confirm-label: Confirme a nova senha
+        confirm-help: Digite uma senha com pelo menos 6 caracteres para continuar.
+        submit: Redefinir senha
+        back: Voltar
+        success: Sua senha foi redefinida! Faça login para continuar.
+        invalid-link: Este link para redefinir a senha é inválido ou expirou.
+      verification:
+        title: Verifique seu endereço de e-mail
+        message: "<strong>Quase pronto!</strong><br> Verifique seu e-mail para um código de verificação."
+        code-label: Código de verificação
+        code-help: Digite o código de verificação que você recebeu por e-mail.
+        didnt-receive: Ainda não recebeu um código?
+        alternative-choice: Use as opções alternativas abaixo para verificar sua conta.
+        resend-email: Reenviar e-mail
+        send-by-sms: Enviar por SMS
+      two-fa:
+        invalid-session: Sessão inválida. Por favor, tente novamente.
+        verified: Verificação bem-sucedida!
+        code-expired: O código de verificação expirou. Por favor, solicite um novo.
+        verify-failed: Falha na verificação. Por favor, tente novamente.
+        code-resent: Novo código de verificação enviado.
+        resend-failed: Erro ao reenviar código de verificação. Por favor, tente novamente.
     billing:
       details-description: Detalhes da fatura, itens e situação do pagamento.
       open-payment-link: Abrir link de pagamento

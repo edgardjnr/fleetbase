@@ -93,12 +93,12 @@ export default class PortalAuthLoginController extends Controller {
 
         // If no password error
         if (!identity) {
-            return this.notifications.warning(this.intl.t('auth.login.no-identity-notification'));
+            return this.notifications.warning(this.intl.t('customer-portal.ui.auth.login.no-identity'));
         }
 
         // If no password error
         if (!password) {
-            return this.notifications.warning(this.intl.t('auth.login.no-identity-notification'));
+            return this.notifications.warning(this.intl.t('customer-portal.ui.auth.login.no-password'));
         }
 
         // start loader
@@ -175,7 +175,7 @@ export default class PortalAuthLoginController extends Controller {
     @action sendUserForEmailVerification(email) {
         return this.fetch.post('auth/create-verification-session', { email, send: true }).then(({ token, session }) => {
             return this.session.store.persist({ email }).then(() => {
-                this.notifications.warning(this.intl.t('auth.login.unverified-notification'));
+                this.notifications.warning(this.intl.t('customer-portal.ui.auth.login.unverified'));
                 return this.hostRouter.transitionTo('customer-portal.portal-auth.verification', { queryParams: { token, hello: session } }).then(() => {
                     this.reset('error');
                 });
@@ -191,7 +191,7 @@ export default class PortalAuthLoginController extends Controller {
      * @memberof AuthPortalLoginController
      */
     @action sendUserForPasswordReset(email) {
-        this.notifications.warning(this.intl.t('auth.login.password-reset-required'));
+        this.notifications.warning(this.intl.t('customer-portal.ui.auth.login.password-reset-required'));
         return this.hostRouter.transitionTo('customer-portal.portal-auth.forgot-password', { queryParams: { email } }).then(() => {
             this.reset('error');
         });
@@ -245,7 +245,7 @@ export default class PortalAuthLoginController extends Controller {
      * @void
      */
     slowConnection() {
-        this.notifications.error(this.intl.t('auth.login.slow-connection-message'));
+        this.notifications.error(this.intl.t('customer-portal.ui.auth.login.slow-connection'));
     }
 
     /**
