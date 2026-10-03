@@ -6,6 +6,7 @@ import { task } from 'ember-concurrency';
 import { colorForId, routeColorForStatus, routeStyleForStatus } from '../../../utils/route-colors';
 import { buildRoutePointMarkerPresentation, buildRoutePointsFromPayload, describeRoutePoint } from '../../../utils/route-visualization';
 import preparePlaceForSave from '../../../utils/prepare-place-for-save';
+import { COLETA_DA_LOJA } from '../../../services/order-creation';
 
 const ORDER_ROUTE_PREVIEW_PADDING_BOTTOM_RIGHT = [420, 0];
 const ORDER_ROUTE_PREVIEW_MAX_ZOOM_TWO_POINTS = 13;
@@ -25,6 +26,28 @@ export default class OrderFormRouteComponent extends Component {
     @tracked multipleWaypoints = false;
     @tracked routingControl;
     @tracked route;
+    // Entregas: loja sem endereço (ou falha ao buscá-lo) deixa a coleta livre até a próxima escolha de loja
+    @tracked coletaLiberada = false;
+
+    constructor() {
+        super(...arguments);
+        // Entregas: o details avisa, pelo orderCreation, quando a loja escolhida define a coleta
+        this._coletaDaLoja = (event) => this.aplicarColetaDaLoja(event);
+        this.orderCreation.on(COLETA_DA_LOJA, this._coletaDaLoja);
+    }
+
+    // Entregas: com uma loja como cliente, a coleta é o endereço da loja e fica travada. Sem coleta não trava,
+    // porque o operador precisa escolher uma. O tipo chega como 'vendor', 'fleet-ops:vendor', 'customer-vendor'
+    // ou a classe PHP, conforme o pedido seja novo ou venha do servidor.
+    get coletaTravada() {
+        const order = this.args.resource;
+        if (!order?.payload?.pickup || this.coletaLiberada) {
+            return false;
+        }
+
+        const tipos = [order.customer_type, order.customer?.customer_type];
+        return Boolean(order.customer?.isVendor) || tipos.some((tipo) => /vendor/i.test(tipo ?? ''));
+    }
 
     focusPlace(place, zoom = 18) {
         if (place?.hasValidCoordinates) {
@@ -85,9 +108,31 @@ export default class OrderFormRouteComponent extends Component {
 
     willDestroy() {
         super.willDestroy(...arguments);
+        // Entregas: cancela a assinatura do aviso da coleta da loja
+        this.orderCreation.off(COLETA_DA_LOJA, this._coletaDaLoja);
         if (this.routingControl) {
             this.mapManager.removeRoutingControl(this.routingControl);
         }
+    }
+
+    // Entregas: a loja escolhida no details define a coleta. place nulo (loja sem endereço ou falha na busca):
+    // a coleta fica como está e destravada para o operador escolher.
+    aplicarColetaDaLoja({ order, place } = {}) {
+        if (order && order !== this.args.resource) {
+            return;
+        }
+
+        this.coletaLiberada = !place;
+        if (!place) {
+            return;
+        }
+
+        // a coleta fixa só existe no modo simples
+        if (this.multipleWaypoints) {
+            this.toggleWaypoints(false);
+        }
+
+        this.setPayloadPlace('pickup', place);
     }
 
     @action toggleWaypoints(multipleWaypoints) {

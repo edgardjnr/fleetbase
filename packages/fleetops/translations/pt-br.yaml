@@ -201,6 +201,10 @@ fleet-ops:
       invalid-email: E-mail inválido.
       password-too-short: A senha precisa ter pelo menos 8 caracteres.
       user-name-required: Informe o nome do usuário.
+    order-form:
+      store-or-customer: Loja ou cliente
+      pickup-locked: "Coleta fixa: endereço da loja."
+      store-without-address: Esta loja não tem endereço cadastrado. Escolha a coleta.
     settings-hub: Central de Configurações
     hub:
       open-resource: Abrir {resource}

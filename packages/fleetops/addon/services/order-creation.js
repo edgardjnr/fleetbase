@@ -4,6 +4,8 @@ import { next } from '@ember/runloop';
 import Evented from '@ember/object/evented';
 
 export const SERVICE_QUOTE_REFRESH_REQUESTED = 'service-quote-refresh-requested';
+// Entregas: o details avisa o route de que a loja escolhida define a coleta ({ order, place }; place nulo = sem endereço)
+export const COLETA_DA_LOJA = 'entregas:coleta-da-loja';
 
 export default class OrderCreationService extends Service.extend(Evented) {
     @service orderActions;

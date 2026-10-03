@@ -71,6 +71,10 @@ module('Integration | Component | order/form/route', function (hooks) {
             requestServiceQuoteRefresh(reason, resource) {
                 requests.push({ reason, resource });
             }
+
+            // Entregas: o route assina o aviso da coleta da loja (o serviço real é Evented)
+            on() {}
+            off() {}
         }
 
         this.owner.register('service:order-creation', OrderCreationStub);

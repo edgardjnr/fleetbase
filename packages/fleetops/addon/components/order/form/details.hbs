@@ -35,7 +35,8 @@
             />
         </InputGroup>
 
-        <InputGroup @name={{t "order.fields.customer"}} @helpText={{t "order.fields.customer-help-text"}}>
+        {{!-- Entregas: o cliente pode ser uma loja (a coleta vira o endereço dela) ou um cliente comum --}}
+        <InputGroup @name={{t "fleet-ops.ui.order-form.store-or-customer"}} @helpText={{t "order.fields.customer-help-text"}}>
             <ModelSelect
                 @modelName="customer"
                 @selectedModel={{@resource.customer}}

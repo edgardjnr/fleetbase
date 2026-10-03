@@ -4,6 +4,7 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { debug } from '@ember/debug';
 import { task } from 'ember-concurrency';
+import { COLETA_DA_LOJA } from '../../../services/order-creation';
 
 export default class OrderFormDetailsComponent extends Component {
     @service store;
@@ -13,6 +14,9 @@ export default class OrderFormDetailsComponent extends Component {
     @service leafletMapManager;
     @service leafletLayerVisibilityManager;
     @service currentUser;
+    // Entregas: avisos da coleta da loja
+    @service notifications;
+    @service intl;
     @tracked customFields;
 
     constructor() {
@@ -45,10 +49,41 @@ export default class OrderFormDetailsComponent extends Component {
         this.requestServiceQuoteRefresh('details.facilitator.changed');
     }
 
-    @action selectCustomer(model) {
+    @action async selectCustomer(model) {
         this.args.resource.set('customer', model);
         this.args.resource.set('customer_uuid', model?.uuid ?? model?.id ?? null);
         this.args.resource.set('customer_type', model?.customer_type ? `fleet-ops:${model.customer_type}` : null);
+
+        // Entregas: loja (fornecedor) → a coleta é sempre o endereço da loja. Quem grava a coleta é o componente
+        // route (prepara o local, redesenha a rota e pede a cotação); o aviso vai para ele pelo orderCreation.
+        if (model?.customer_type !== 'vendor') {
+            return;
+        }
+
+        let place = null;
+        let erro = null;
+        try {
+            // o id do cliente é o uuid da loja; reload porque a loja que muda de endereço ganha um Local novo
+            // e o registro em cache ficaria com o antigo
+            const vendor = await this.store.findRecord('vendor', model.id, { reload: true });
+            place = (await vendor.place) ?? null;
+        } catch (error) {
+            erro = error;
+        }
+
+        // a escolha mudou enquanto a loja carregava: vale a escolha nova
+        if (this.isDestroying || this.isDestroyed || this.args.resource.customer !== model) {
+            return;
+        }
+
+        if (erro) {
+            this.notifications.serverError(erro);
+        } else if (!place) {
+            this.notifications.warning(this.intl.t('fleet-ops.ui.order-form.store-without-address'));
+        }
+
+        // place nulo (loja sem endereço ou falha na busca): a coleta fica como está e destravada
+        this.orderCreation.trigger(COLETA_DA_LOJA, { order: this.args.resource, place });
     }
 
     @task *selectOrderConfig(orderConfig) {

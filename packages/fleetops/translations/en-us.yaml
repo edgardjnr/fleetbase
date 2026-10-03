@@ -201,6 +201,10 @@ fleet-ops:
             invalid-email: Invalid email.
             password-too-short: The password must have at least 8 characters.
             user-name-required: Enter the user's name.
+        order-form:
+            store-or-customer: Store or customer
+            pickup-locked: "Fixed pickup: the store address."
+            store-without-address: This store has no address yet. Choose the pickup.
         settings-hub: Settings Hub
         hub:
             open-resource: Open {resource}

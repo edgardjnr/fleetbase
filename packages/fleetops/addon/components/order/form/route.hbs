@@ -1,7 +1,10 @@
 <ContentPanel @title={{t "order.fields.route"}} @open={{true}} @wrapperClass="bordered-top">
     <div class="flex flex-row items-center justify-between mb-4">
         <div class="flex">
-            <Toggle @isToggled={{this.multipleWaypoints}} @onToggle={{this.toggleWaypoints}} @label={{t "order.fields.route-label"}} />
+            {{!-- Entregas: com a coleta fixa da loja não há várias paradas --}}
+            {{#unless this.coletaTravada}}
+                <Toggle @isToggled={{this.multipleWaypoints}} @onToggle={{this.toggleWaypoints}} @label={{t "order.fields.route-label"}} />
+            {{/unless}}
         </div>
         <div class="flex flex-1 justify-end space-x-2">
             {{#if this.multipleWaypoints}}
@@ -153,7 +156,8 @@
             <InputGroup @name={{t "order.fields.pickup"}} @required={{true}}>
                 <div class="flex items-center justify-end">
                     <div class="flex-row space-x-1 pr-0.5">
-                        {{#if @resource.payload.pickup}}
+                        {{!-- Entregas: a coleta fixa da loja não se edita nem se apaga --}}
+                        {{#if (and @resource.payload.pickup (not this.coletaTravada))}}
                             <a href="javascript:;" {{on "click" (fn this.editPlace @resource.payload.pickup)}}>
                                 <FaIcon @icon="edit" />
                             </a>
@@ -164,21 +168,39 @@
                     </div>
                 </div>
 
-                <ModelSelect
-                    @modelName="place"
-                    @selectedModel={{@resource.payload.pickup}}
-                    @placeholder={{t "order.fields.select-pickup"}}
-                    @triggerClass="form-select form-input"
-                    @infiniteScroll={{false}}
-                    @customSearchEndpoint="places/search"
-                    @query={{hash geo=true latitude=this.location.latitude longitude=this.location.longitude}}
-                    @renderInPlace={{true}}
-                    @onChange={{fn this.setPayloadPlace "pickup"}}
-                    @permission={{cannot-write @resource}}
-                    as |place|
-                >
-                    <Place::Address @place={{place}} />
-                </ModelSelect>
+                {{!-- Entregas: coleta fixa da loja → seletor desabilitado. O ModelSelect só lê @disabled ao ser criado,
+                     por isso o travado é outra instância, criada pelo if --}}
+                {{#if this.coletaTravada}}
+                    <ModelSelect
+                        @modelName="place"
+                        @selectedModel={{@resource.payload.pickup}}
+                        @placeholder={{t "order.fields.select-pickup"}}
+                        @triggerClass="form-select form-input"
+                        @infiniteScroll={{false}}
+                        @renderInPlace={{true}}
+                        @disabled={{true}}
+                        as |place|
+                    >
+                        <Place::Address @place={{place}} />
+                    </ModelSelect>
+                    <p class="text-xs text-gray-500 mt-1">{{t "fleet-ops.ui.order-form.pickup-locked"}}</p>
+                {{else}}
+                    <ModelSelect
+                        @modelName="place"
+                        @selectedModel={{@resource.payload.pickup}}
+                        @placeholder={{t "order.fields.select-pickup"}}
+                        @triggerClass="form-select form-input"
+                        @infiniteScroll={{false}}
+                        @customSearchEndpoint="places/search"
+                        @query={{hash geo=true latitude=this.location.latitude longitude=this.location.longitude}}
+                        @renderInPlace={{true}}
+                        @onChange={{fn this.setPayloadPlace "pickup"}}
+                        @permission={{cannot-write @resource}}
+                        as |place|
+                    >
+                        <Place::Address @place={{place}} />
+                    </ModelSelect>
+                {{/if}}
 
                 {{#if (and @resource.facilitator.isIntegratedVendor (is-not-facilitator-supported-place @resource.facilitator @resource.payload.pickup))}}
                     <InfoBlock class="my-2 px-4 py-1.5 danger" @blockClass="flex flex-row items-center" @text={{concat @resource.facilitator.name (t "order.fields.infoblock-text")}} />
