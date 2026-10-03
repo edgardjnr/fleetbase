@@ -68,6 +68,7 @@ Depois de cada deploy do console, abra o site com Ctrl+Shift+R. O console guarda
   - **Mudanças em `packages/*/server` (PHP) não chegam à produção.** Texto que vem da API é traduzido no frontend.
   - Código PHP próprio vai em `api/app/` (entra na imagem da API). Exemplo: `Http/Controllers/Entregas/`, com as rotas na `Providers/RouteServiceProvider.php`.
 - `deploy/`: stack, modelo de env, `atualizar.sh` e README do deploy.
+- `scripts/teste-php/`: testes de comportamento do PHP do `api/app` sem PHP instalado (php-wasm, PHP 8.2), com os arquivos reais do Fleet-Ops e stubs do resto. Uso no cabeçalho do `rodar.mjs`.
 
 ## Escopo enxuto: delivery iFood → motoboy
 
@@ -208,7 +209,12 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 
 - Repo **separado e privado**: `edgardjnr/entregas-navigator` (pasta `Documents/vibe coding/entregas-navigator`), fork do Fleetbase Navigator v2.0.11. O da Play Store não recebe push do nosso servidor (usa o Firebase da Fleetbase).
 - APK do build type **`entregas`** (otimizado como release, mas `debuggable`, assinado com a chave de debug e C++ em Release/NDEBUG), gerado no GitHub Actions a cada push na `main` (artifact `entregas-motoboy-<n>`, só arm64-v8a). Ser depurável dispensa a licença do background-geolocation (US$ 399; o toast "LICENSE VALIDATION FAILURE" é esperado). O build `debug` deixava o app lento. Instalação direta no Android; ao trocar o tipo de build, desinstalar antes.
-- Alarme de novo pedido: canal `pedidos` (toque de 30 s, padrão do FCM) + módulo nativo `AlertaPedido` (loop até aceitar/iniciar, máx. 3 min). Chat ainda usa o mesmo canal (separar exige mudar o envio na API).
+- **Avisos ao motoboy (push):** todos passam pelo `CanalFcmEntregas` (troca do `FcmChannel` no `AppServiceProvider`), que usa o `AvisosDoMotoboy` (`api/app/Notifications/Entregas/`):
+  - texto em pt-BR por classe de notificação; aviso novo do Fleet-Ops sem tradução aparece no log como `[entregas] aviso push sem tradução`;
+  - canal do app: `alarme_pedido` (pedido novo, reenvio, atribuído, liberado), `mensagens` (chat, toque longo) e `avisos` (status, som normal). APK sem o canal usa o padrão `pedidos`.
+  - Recusa do FCM aparece no log como `[entregas] push recusado pelo FCM`; se o formato adaptado for recusado como inválido, o canal reenvia o push original do Fleet-Ops. **Ao atualizar o pacote `laravel-notification-channels/fcm` (hoje 4.5.0), confira o `send()` do `FcmChannel`**: o `CanalFcmEntregas` repete o dele.
+- **Alarme de novo pedido:** com o app aberto, a tela do pedido toca o `AlertaPedido` (loop até aceitar/iniciar, máx. 3 min). Com o app fora da frente, o canal `alarme_pedido` (APK 16+) toca no silencioso. O push de alarme vale 15 min (`android.ttl`): um pedido velho não toca quando o celular volta à rede.
+  - Com `ENTREGAS_ALARME_POR_DADOS=1` nos serviços da API (Portainer), o alarme vai como push de dados e o APK 16+ toca em loop com tela cheia. **Só ligar com todos os motoboys no APK 16:** no antigo, tocar no push de dados não abre o pedido.
 - **Reenvio de pedido aberto:** o `fleetops:dispatch-adhoc` (agendado pelo Fleet-Ops a cada minuto) roda a nossa `api/app/Console/Commands/Entregas/ReenviarPedidosAbertos.php`, trocada no `AppServiceProvider`. O original nunca achava pedido (Carbon mutável) e, corrigido só nisso, avisaria em dobro por até 2 dias. Agora o aviso volta a cada 4 min, no máximo 3 vezes, para os motoboys livres no raio da coleta, com texto em pt-BR (`LembretePedidoAberto`). **Ao atualizar o fleetops-api, confira se os métodos herdados ainda existem** (lista no docblock da classe).
 - Mapa: chave do Maps SDK for Android restrita ao app (grátis). Directions e Geocoding do app estão desativadas (pagas acima de 10 mil/mês): o mapa abre sem a linha da rota.
 - Secrets do repo: `GOOGLE_SERVICES_JSON`, `FLEETBASE_KEY` (chave pública `flb_live_`), `GOOGLE_MAPS_API_KEY`. O projeto Google `entregas-restaurantepro` está no plano Blaze (conta de faturamento vinculada para o Maps).
