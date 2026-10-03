@@ -38,6 +38,8 @@ namespace Illuminate\Support {
         public function subHours($n) { $this->modify("-{$n} hours"); return $this; }
         public function subMinutes($n) { $this->modify("-{$n} minutes"); return $this; }
         public function subDays($n) { $this->modify("-{$n} days"); return $this; }
+        public function subSeconds($n) { $this->modify("-{$n} seconds"); return $this; }
+        public function addDay() { $this->modify('+1 day'); return $this; }
         public function toDateTimeString() { return $this->format('Y-m-d H:i:s'); }
     }
 }
@@ -240,9 +242,10 @@ namespace Teste {
 }
 
 namespace {
+    // como o now() do Laravel: devolve o Carbon mutável (Illuminate\Support\Carbon)
     function now()
     {
-        return \Carbon\CarbonImmutable::now();
+        return \Illuminate\Support\Carbon::now();
     }
 
     // classes do api/app (App\...) carregadas direto do repositório montado em /repo
@@ -253,6 +256,16 @@ namespace {
                 require $arquivo;
             }
         }
+    });
+
+    // como o HandleExceptions do Laravel: warning e notice viram ErrorException (o comando aborta em produção);
+    // deprecation segue o tratamento padrão do PHP (só aparece na saída)
+    set_error_handler(function (int $nivel, string $mensagem, string $arquivo = '', int $linha = 0): bool {
+        if (in_array($nivel, [E_DEPRECATED, E_USER_DEPRECATED], true)) {
+            return false;
+        }
+
+        throw new \ErrorException($mensagem, 0, $nivel, $arquivo, $linha);
     });
 
     $GLOBALS['falhas'] = 0;
@@ -268,5 +281,18 @@ namespace {
     function resumo(): void
     {
         echo PHP_EOL . 'FALHAS: ' . $GLOBALS['falhas'] . PHP_EOL;
+    }
+
+    // a cópia do Fleet-Ops em packages/ (carregada pelos testes) tem de ser a versão que a produção instala (api/composer.lock)
+    function confereVersaoDoFleetOps(): void
+    {
+        $local    = json_decode(file_get_contents('/repo/packages/fleetops/composer.json'), true)['version'] ?? null;
+        $producao = null;
+        foreach (json_decode(file_get_contents('/repo/api/composer.lock'), true)['packages'] ?? [] as $pacote) {
+            if (($pacote['name'] ?? null) === 'fleetbase/fleetops-api') {
+                $producao = ltrim((string) $pacote['version'], 'v');
+            }
+        }
+        confere($local !== null && $local === $producao, "Fleet-Ops local ({$local}) é a versão da produção ({$producao})");
     }
 }

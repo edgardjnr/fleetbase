@@ -596,6 +596,8 @@ git -C /c/tmp/em commit -m "Testes de PHP sem PHP instalado: scripts/teste-php (
 
 (Toda mensagem de commit deste plano termina com a linha `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`; use `-F -` com heredoc para mensagens de várias linhas.)
 
+- [x] **Ajustes da revisão de qualidade** (commit seguinte ao da Task 1): o `now()` do stub devolve o Carbon mutável, como o do Laravel (senão o teste deixava passar o bug de Carbon mutável); warning e notice do PHP viram `ErrorException`, como no `HandleExceptions` do Laravel; `confereVersaoDoFleetOps()`; cenário de pedidos que não são oferecidos (não ad hoc, iniciado, apagado, sem carga, criado há 3 dias); relógio fixo na seção "Nosso comando"; comentários no `rodar.mjs`. O `reenvio.php` passa a ter 25 casos.
+
 ---
 
 ### Task 2: Reenvio usa a lista única `StatusDoPedido::ENCERRADOS`
@@ -650,7 +652,7 @@ por
 
 - [ ] **Step 4: Rodar e ver passar**
 
-Mesmo comando. Esperado: `FALHAS: 0` (21 casos).
+Mesmo comando. Esperado: `FALHAS: 0` (27 casos).
 
 - [ ] **Step 5: Commit**
 

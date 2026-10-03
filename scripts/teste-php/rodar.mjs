@@ -22,6 +22,7 @@ const carregar = createRequire(path.join(path.resolve(process.env.PHP_WASM_DIR |
 const { PHP } = carregar('@php-wasm/universal');
 const { loadNodeRuntime, createNodeFsMountHandler } = carregar('@php-wasm/node');
 
+// processId: fora do Vitest, o php-wasm exige o id do processo (usado pelo gerenciador de travas de arquivo)
 const php = new PHP(await loadNodeRuntime('8.2', { emscriptenOptions: { processId: 1 } }));
 await php.mount('/repo', createNodeFsMountHandler(raiz));
 
@@ -39,4 +40,5 @@ try {
 }
 process.stdout.write(saida);
 if (erros) process.stderr.write(erros);
+// process.exit é obrigatório: o php-wasm mantém o event loop vivo e o Node não terminaria sozinho
 process.exit(/FALHAS: 0\s*$/.test(saida) ? 0 : 1);
