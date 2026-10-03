@@ -91,25 +91,23 @@ class CalculoEntregas
     }
 
     /**
-     * Uma linha por pedido: loja, motoboy, km, faixa e os dois valores.
-     * Calcula no máximo $limiteCalculos rotas novas (o extrato do portal da loja passa um limite menor).
+     * Uma linha por pedido, na ordem de conclusão: loja, motoboy, km, faixa e os dois valores.
+     * Calcula no máximo $limiteCalculos rotas (o extrato do portal da loja passa um limite menor),
+     * primeiro as das entregas sem km e depois as estimativas a refazer.
      * Retorna [entregas, pendentes] (pendentes = pedidos ainda sem km).
      */
     public function entregas(Collection $pedidos, string $fuso, int $limiteCalculos = self::LIMITE_CALCULOS): array
     {
         $this->osrmFalhou = false;
 
-        $calculos  = 0;
         $pendentes = 0;
         $entregas  = [];
         $faixas    = $this->faixas();
         $lojas     = $this->lojasDosPedidos($pedidos);
+        $comCota   = $this->pedidosComCota($pedidos, $limiteCalculos);
 
-        foreach ($pedidos as $pedido) {
-            $rota = $this->rotaDoPedido($pedido, $calculos < $limiteCalculos, $calculado);
-            if ($calculado) {
-                $calculos++;
-            }
+        foreach ($pedidos as $i => $pedido) {
+            $rota = $this->rotaDoPedido($pedido, isset($comCota[$i]));
             if ($rota === null) {
                 $pendentes++;
             }
@@ -246,19 +244,16 @@ class CalculoEntregas
     public function rotaDoPedido(Order $pedido, bool $podeCalcular, ?bool &$calculado = null): ?array
     {
         $calculado = false;
-        $cache     = $pedido->getMeta('entregas.km_rota');
-        $origem    = $pedido->payload?->getPickupOrFirstWaypoint();
-        $destino   = $pedido->payload?->getDropoffOrLastWaypoint();
+
+        [$situacao, $origem, $destino, $chave, $cache] = $this->situacaoDaRota($pedido);
 
         // endereço apagado ou sem posição depois do cálculo: vale o km já calculado
-        if (!$this->temCoordenadas($origem) || !$this->temCoordenadas($destino)) {
+        if ($situacao === 'sem_endereco') {
             return is_array($cache) && isset($cache['metros']) ? $cache : null;
         }
 
-        $chave = md5(implode(',', [$origem->location->getLat(), $origem->location->getLng(), $destino->location->getLat(), $destino->location->getLng()]));
-
         // estimativa por falha do OSRM é recalculada quando houver folga; a de resposta definitiva, não
-        if (is_array($cache) && ($cache['chave'] ?? null) === $chave && (($cache['fonte'] ?? null) === 'osrm' || !empty($cache['definitiva']) || !$podeCalcular)) {
+        if ($situacao === 'pronto' || ($situacao === 'refazer' && !$podeCalcular)) {
             return $cache;
         }
 
@@ -288,6 +283,54 @@ class CalculoEntregas
         $pedido->updateMeta('entregas.km_rota', $rota);
 
         return $rota;
+    }
+
+    /**
+     * Situação do km do pedido: [situação, origem, destino, chave das coordenadas, cache].
+     * - 'sem_endereco': coleta ou destino sem posição (vale o km guardado, se houver);
+     * - 'pronto': km guardado para estas coordenadas, do OSRM ou de resposta definitiva dele;
+     * - 'refazer': estimativa guardada por falha do OSRM, refeita quando houver folga;
+     * - 'calcular': sem km para estas coordenadas.
+     */
+    protected function situacaoDaRota(Order $pedido): array
+    {
+        $cache   = $pedido->getMeta('entregas.km_rota');
+        $origem  = $pedido->payload?->getPickupOrFirstWaypoint();
+        $destino = $pedido->payload?->getDropoffOrLastWaypoint();
+
+        if (!$this->temCoordenadas($origem) || !$this->temCoordenadas($destino)) {
+            return ['sem_endereco', $origem, $destino, null, $cache];
+        }
+
+        $chave = md5(implode(',', [$origem->location->getLat(), $origem->location->getLng(), $destino->location->getLat(), $destino->location->getLng()]));
+
+        if (!is_array($cache) || ($cache['chave'] ?? null) !== $chave) {
+            $situacao = 'calcular';
+        } elseif (($cache['fonte'] ?? null) === 'osrm' || !empty($cache['definitiva'])) {
+            $situacao = 'pronto';
+        } else {
+            $situacao = 'refazer';
+        }
+
+        return [$situacao, $origem, $destino, $chave, $cache];
+    }
+
+    /**
+     * Pedidos que recebem a cota de cálculos desta chamada (as chaves da coleção): primeiro os sem
+     * km, depois as estimativas a refazer, cada grupo na ordem de conclusão. Assim estimativas
+     * antigas não deixam entregas novas sem km.
+     */
+    protected function pedidosComCota(Collection $pedidos, int $limiteCalculos): array
+    {
+        $fila = ['calcular' => [], 'refazer' => []];
+        foreach ($pedidos as $i => $pedido) {
+            $situacao = $this->situacaoDaRota($pedido)[0];
+            if (isset($fila[$situacao])) {
+                $fila[$situacao][] = $i;
+            }
+        }
+
+        return array_flip(array_slice(array_merge($fila['calcular'], $fila['refazer']), 0, max(0, $limiteCalculos)));
     }
 
     /**
