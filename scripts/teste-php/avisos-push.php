@@ -6,6 +6,15 @@
 require __DIR__ . '/stubs.php';
 require __DIR__ . '/stubs-avisos.php';
 require '/repo/packages/fleetops/server/src/Notifications/OrderPing.php';
+// as demais notificações também são as reais: Fleet-Ops e core-api (cópias em packages/, nas versões da produção)
+require '/repo/packages/fleetops/server/src/Notifications/OrderAssigned.php';
+require '/repo/packages/fleetops/server/src/Notifications/OrderDispatched.php';
+require '/repo/packages/fleetops/server/src/Notifications/OrderCanceled.php';
+require '/repo/packages/fleetops/server/src/Notifications/OrderFailed.php';
+require '/repo/packages/fleetops/server/src/Notifications/OrderCompleted.php';
+require '/repo/packages/fleetops/server/src/Notifications/WaypointCompleted.php';
+require '/repo/packages/core-api/src/Notifications/ChatMessageReceived.php';
+require '/repo/packages/core-api/src/Notifications/TestPushNotification.php';
 
 use App\Notifications\Entregas\AvisosDoMotoboy;
 use App\Notifications\Entregas\LembretePedidoAberto;
@@ -29,10 +38,11 @@ function pedidoDoTeste(): Order
     return $pedido;
 }
 
-// aviso do Fleet-Ops com o título e o texto originais (em inglês) e os dados que ele manda
+// aviso real do Fleet-Ops ou do core com o título e o texto originais (em inglês) e os dados que ele manda; a instância
+// nasce sem o construtor real, que pede os modelos (pedido, parada, mensagem) e monta o texto a partir deles
 function aviso(string $classe, string $titulo, string $texto, array $dados)
 {
-    $notificacao          = new $classe();
+    $notificacao          = (new ReflectionClass($classe))->newInstanceWithoutConstructor();
     $notificacao->title   = $titulo;
     $notificacao->message = $texto;
     $notificacao->data    = $dados;
@@ -78,12 +88,20 @@ $casos = [
     'cancelado sem código'      => [aviso(OrderCanceled::class, 'Order  was canceled', 'Order  has been canceled.', ['type' => 'order_canceled']), ['Pedido cancelado', 'O pedido foi cancelado.']],
     'parada sem código'         => [aviso(WaypointCompleted::class, 'Order  driver has arrived', 'x', ['type' => 'waypoint_completed']), ['Parada concluída', 'Uma parada do pedido foi concluída.']],
     'atribuído sem código'      => [aviso(OrderAssigned::class, 'New order  assigned!', 'You have a new order assigned, tap for details.', ['type' => 'order_assigned']), ['Novo pedido para você', 'Toque para ver os detalhes.']],
+    'liberado sem código'       => [aviso(OrderDispatched::class, 'Order  has been dispatched!', 'An order has just been dispatched to you and is ready to be started.', ['type' => 'order_dispatched']), ['Pedido liberado para você', 'Toque para ver e iniciar a entrega.']],
+    'falhou sem código'         => [aviso(OrderFailed::class, 'Order  delivery has has failed', 'Order  delivery has failed.', ['type' => 'order_canceled']), ['Entrega não concluída', 'A entrega do pedido falhou.']],
+    'concluído sem código'      => [aviso(OrderCompleted::class, 'Order  has been completed.', 'Order  has been completed by agent.', ['type' => 'order_completed']), ['Pedido concluído', 'O pedido foi concluído.']],
     'chat com outro título'     => [aviso(ChatMessageReceived::class, 'Something', 'oi', ['type' => 'chat_message_received']), ['Nova mensagem', 'oi']],
 ];
 foreach ($casos as $nome => [$notificacao, $esperado]) {
     $obtido = AvisosDoMotoboy::texto($notificacao);
     confere($obtido === $esperado, $nome . ': ' . json_encode($obtido, JSON_UNESCAPED_UNICODE));
 }
+
+// distância da coleta: os metros são arredondados antes de escolher a unidade
+confere(AvisosDoMotoboy::textoDaColeta(999.6) === 'Coleta a 1,0 km de você. Toque para ver o pedido.', 'coleta a 999,6 m arredonda para 1,0 km (e não "1000 m")');
+confere(AvisosDoMotoboy::textoDaColeta(0.4) === 'Toque para ver o pedido.', 'coleta a 0,4 m (arredonda para 0) fica só com o convite');
+confere(AvisosDoMotoboy::textoDaColeta('0.0') === 'Toque para ver o pedido.', 'coleta a "0.0" fica só com o convite');
 
 $agendado        = aviso(OrderAssigned::class, 'New order RP-2 assigned!', 'You have a new order scheduled for 2026-10-03 18:00:00', ['type' => 'order_assigned']);
 $agendado->order = (object) ['scheduled_at' => new DateTimeImmutable('2026-10-03 18:00:00', new DateTimeZone('UTC')), 'company' => (object) ['timezone' => 'America/Sao_Paulo']];
@@ -93,6 +111,10 @@ $agendado->order = (object) ['scheduled_at' => new DateTimeImmutable('2026-10-03
 confere((AvisosDoMotoboy::texto($agendado)[1] ?? null) === 'Pedido RP-2 agendado para 03/10 às 15:00.', 'agendado sem fuso usa America/Sao_Paulo');
 $agendado->order = null;
 confere((AvisosDoMotoboy::texto($agendado)[1] ?? null) === 'Pedido RP-2. Toque para ver os detalhes.', 'agendado sem data cai no texto comum');
+
+$agendadoSemCodigo        = aviso(OrderAssigned::class, 'New order  assigned!', 'You have a new order scheduled for 2026-10-03 18:00:00', ['type' => 'order_assigned']);
+$agendadoSemCodigo->order = (object) ['scheduled_at' => new DateTimeImmutable('2026-10-03 18:00:00', new DateTimeZone('UTC')), 'company' => (object) ['timezone' => 'America/Sao_Paulo']];
+confere((AvisosDoMotoboy::texto($agendadoSemCodigo)[1] ?? null) === 'Pedido agendado para 03/10 às 15:00.', 'agendado sem código de rastreamento: frase sem o código');
 
 confere(AvisosDoMotoboy::texto(new Illuminate\Notifications\Notification()) === null, 'classe sem tradução devolve null');
 

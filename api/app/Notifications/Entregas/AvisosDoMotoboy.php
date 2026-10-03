@@ -49,12 +49,12 @@ class AvisosDoMotoboy
     /** "Coleta a 1,2 km de você. Toque para ver o pedido." (sem distância, só o convite). */
     public static function textoDaColeta($distancia): string
     {
-        if (!$distancia) {
+        $metros = (int) round((float) $distancia);
+        if ($metros < 1) {
             return 'Toque para ver o pedido.';
         }
 
-        $metros = (float) $distancia;
-        $texto  = $metros < 1000 ? (int) round($metros) . ' m' : number_format($metros / 1000, 1, ',', '.') . ' km';
+        $texto = $metros < 1000 ? $metros . ' m' : number_format($metros / 1000, 1, ',', '.') . ' km';
 
         return 'Coleta a ' . $texto . ' de você. Toque para ver o pedido.';
     }

@@ -1,8 +1,8 @@
 <?php
 
 // Stubs dos testes de avisos push (avisos-push.php), além do stubs.php: o pacote FCM (laravel-notification-channels/fcm
-// 4.5.0, MIT, copiado: o formato da mensagem e o envio do canal), o kreait, partes do Laravel e as notificações do
-// Fleet-Ops e do core com o que o AvisosDoMotoboy lê delas. O OrderPing é o real.
+// 4.5.0, MIT, copiado: o formato da mensagem e o envio do canal), o kreait e partes do Laravel. As notificações do
+// Fleet-Ops e do core são as reais (cópias em packages/), carregadas pelo avisos-push.php.
 
 namespace Illuminate\Contracts\Events {
     interface Dispatcher
@@ -194,33 +194,4 @@ namespace Fleetbase\Support {
             return static::$cliente ? $mensagem->usingClient(static::$cliente) : $mensagem;
         }
     }
-}
-
-namespace Fleetbase\FleetOps\Notifications {
-    // o que o AvisosDoMotoboy lê das notificações reais do fleetops-api 0.6.65: título e texto originais (em inglês),
-    // dados e o pedido; o toFcm é igual ao delas
-    abstract class AvisoDoFleetOps extends \Illuminate\Notifications\Notification
-    {
-        public $order;
-        public string $title   = '';
-        public string $message = '';
-        public array $data     = [];
-
-        public function toFcm($notifiable)
-        {
-            return \Fleetbase\Support\PushNotification::createFcmMessage($this->title, $this->message, $this->data);
-        }
-    }
-
-    class OrderAssigned extends AvisoDoFleetOps {}
-    class OrderDispatched extends AvisoDoFleetOps {}
-    class OrderCanceled extends AvisoDoFleetOps {}
-    class OrderFailed extends AvisoDoFleetOps {}
-    class OrderCompleted extends AvisoDoFleetOps {}
-    class WaypointCompleted extends AvisoDoFleetOps {}
-}
-
-namespace Fleetbase\Notifications {
-    class ChatMessageReceived extends \Fleetbase\FleetOps\Notifications\AvisoDoFleetOps {}
-    class TestPushNotification extends \Fleetbase\FleetOps\Notifications\AvisoDoFleetOps {}
 }

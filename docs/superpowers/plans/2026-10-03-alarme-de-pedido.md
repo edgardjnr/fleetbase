@@ -1146,7 +1146,7 @@ class AvisosDoMotoboy
 
 - [ ] **Step 5: Rodar e ver passar**
 
-Mesmo comando do passo 3. Esperado: `FALHAS: 0` (19 casos). Rode também o `reenvio.php` (Task 1, passo 4): `FALHAS: 0`.
+Mesmo comando do passo 3. Esperado: `FALHAS: 0` (26 casos). Rode também o `reenvio.php` (Task 1, passo 4): `FALHAS: 0`.
 
 - [ ] **Step 6: Sintaxe na versão da produção**
 
@@ -1162,6 +1162,8 @@ Esperado: `ok` e exit 0.
 git -C /c/tmp/em add api/app/Notifications/Entregas/AvisosDoMotoboy.php scripts/teste-php/stubs-avisos.php scripts/teste-php/avisos-push.php
 git -C /c/tmp/em commit -m "Avisos ao motoboy em pt-BR: textos por classe de notificação (AvisosDoMotoboy)"
 ```
+
+- [x] **Ajustes da revisão de qualidade** (commit seguinte ao da Task 3): `textoDaColeta()` arredonda os metros antes de escolher a unidade (999,6 m sai "1,0 km", e não "1000 m"; 0,4 m e "0.0" ficam só com o convite, sem "Coleta a 0 m"); o `avisos-push.php` usa as notificações reais do Fleet-Ops e do core (cópias em `packages/`) em vez de stubs inventados: o `stubs-avisos.php` perdeu os blocos `AvisoDoFleetOps` e `Fleetbase\Notifications`, e o `aviso()` cria a instância com `newInstanceWithoutConstructor()`, porque o construtor real pede os modelos (na Task 5, o `AvisoQuebrado`, que herda do `OrderCanceled` real, nasce do mesmo jeito); casos novos: distância (999,6, 0,4 e "0.0"), frases sem o código de rastreamento (liberado, falhou, concluído) e agendado sem código. O `avisos-push.php` passa a ter 26 casos (a Task 4 termina com 58 e a Task 5 com 65).
 
 ---
 
@@ -1365,7 +1367,7 @@ use NotificationChannels\Fcm\Resources\Notification as NotificacaoFcm;
 
 - [ ] **Step 4: Rodar e ver passar**
 
-Mesmo comando. Esperado: `FALHAS: 0` (51 casos).
+Mesmo comando. Esperado: `FALHAS: 0` (58 casos).
 
 - [ ] **Step 5: Sintaxe**
 
@@ -1460,7 +1462,7 @@ confere($canal->send(new MotoboyFalso([]), new OrderPing(pedidoDoTeste(), 1234))
 
 Fleetbase\Support\PushNotification::$cliente = null;
 Illuminate\Support\Facades\Log::$registros    = [];
-$canal->send(new MotoboyFalso(['token-1']), new AvisoQuebrado());
+$canal->send(new MotoboyFalso(['token-1']), (new ReflectionClass(AvisoQuebrado::class))->newInstanceWithoutConstructor());
 $original = $padrao->enviados[0][0] ?? null;
 confere($original instanceof MensagemQuebrada && $original->notification->title === 'Order RP-1 was canceled', 'erro na adaptação: envia a mensagem original');
 confere((Illuminate\Support\Facades\Log::$registros[0][1] ?? null) === '[entregas] aviso push sem adaptação', 'e registra o erro no log');
@@ -1523,7 +1525,7 @@ class CanalFcmEntregas extends FcmChannel
 
 - [ ] **Step 4: Rodar e ver passar**
 
-Mesmo comando. Esperado: `FALHAS: 0` (58 casos).
+Mesmo comando. Esperado: `FALHAS: 0` (65 casos).
 
 - [ ] **Step 5: Trocar o canal no `AppServiceProvider`**
 
