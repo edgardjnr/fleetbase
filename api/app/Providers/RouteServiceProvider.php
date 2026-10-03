@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\Entregas\LojasController;
 use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
@@ -48,6 +49,14 @@ class RouteServiceProvider extends ServiceProvider
                     ->group(function () {
                         Route::get('pagamento-motoboys', [PagamentoMotoboysController::class, 'relatorio']);
                         Route::put('pagamento-motoboys/faixas', [PagamentoMotoboysController::class, 'salvarFaixas']);
+
+                        // cadastro das lojas e dos usuários do portal (Fleet-Ops → Recursos → Lojas)
+                        Route::get('lojas', [LojasController::class, 'index']);
+                        Route::post('lojas', [LojasController::class, 'store']);
+                        Route::put('lojas/{id}', [LojasController::class, 'update']);
+                        Route::post('lojas/{id}/usuarios', [LojasController::class, 'adicionarUsuario']);
+                        Route::put('lojas/{id}/usuarios/{contato}/senha', [LojasController::class, 'trocarSenha']);
+                        Route::put('lojas/{id}/usuarios/{contato}/ativo', [LojasController::class, 'alterarAcesso']);
                     });
             }
         );
