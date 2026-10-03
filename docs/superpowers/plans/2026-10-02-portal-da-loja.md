@@ -1499,6 +1499,17 @@ Conferir: `Order::firstDispatchWithActivity()`, `adhoc` no fillable/casts de `Or
 
 ---
 
+### Task 6C: Chave pública do app do motoboy só para o login (achado da revisão de segurança)
+
+**Problema (anterior a este projeto):** a chave pública `flb_live_` que vai dentro do APK do Navigator autentica a API pública `v1/*` como o administrador que a criou (`AuthenticateOnceWithBasicAuth`), sem token de usuário. Quem extrair a chave do APK lista/cria/cancela pedidos e lê clientes de todas as lojas. O Navigator só precisa da chave antes do login; depois usa o token do motoboy.
+
+**Files:** Create `api/app/Http/Middleware/RestringirChaveDoApp.php`; Modify `api/app/Http/Kernel.php` (global, depois do `RegrasPortalLoja`), `api/config/services.php` (`'entregas' => ['chave_app_motoboy' => env('ENTREGAS_CHAVE_APP_MOTOBOY')]`), `deploy/docker-stack.yml` e `deploy/stack.env.example` (variável repassada à API, vazia por padrão).
+
+- Com a variável **vazia** (padrão), nada muda. Configurada: requisição cujo Bearer é exatamente essa chave e que não traz token de usuário (Sanctum) só passa nas rotas que o Navigator chama antes do login (levantar no repo `Documents/vibe coding/entregas-navigator`: login por e-mail/SMS, verificação de código, o que mais for chamado sem sessão) → resto 403 com log.
+- Ligar só depois de testar num celular (login, receber pedido, aceitar, concluir); para desligar, apagar a variável e reiniciar a API. Documentar no CLAUDE.md (Task 15).
+
+---
+
 ### Task 7: Tela "Lojas" no Fleet-Ops (admin)
 
 **Files:** Create `packages/fleetops/addon/routes/management/lojas.js`, `addon/controllers/management/lojas.js`, `addon/templates/management/lojas.hbs`; Modify `addon/routes.js`, `addon/components/layout/fleet-ops-sidebar.js`, `translations/en-us.yaml`, `translations/pt-br.yaml`. (O engine não tem re-exports em `app/` para `management/driver-payouts`; não criar para `lojas`.)
