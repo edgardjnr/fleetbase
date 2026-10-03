@@ -174,6 +174,11 @@ class ProtegerPortalLoja
         return $usuario instanceof User ? $usuario : null;
     }
 
+    /**
+     * O login é de um usuário de loja desativado? Confere o mesmo usuário que o login autentica: a consulta do
+     * AuthController do portal (e do core), por e-mail ou telefone, sem filtro de tipo e com o first(). Assim
+     * outro usuário com o mesmo e-mail ou telefone (um cliente pendente, por exemplo) não barra uma loja ativa.
+     */
     protected function loginDesativado(Request $request): bool
     {
         $identidade = $request->input('identity');
@@ -181,13 +186,11 @@ class ProtegerPortalLoja
             return false;
         }
 
-        $identidade = trim($identidade);
+        // o mesmo valor que o controller usa (o TrimStrings global já tirou os espaços)
+        $usuario = User::where(fn ($q) => $q->where('email', $identidade)->orWhere('phone', $identidade))->first();
 
         // status nulo também conta como desativado (como no handle(), que só aceita "active")
-        return User::where('type', 'customer')
-            ->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 'active'))
-            ->where(fn ($q) => $q->where('email', $identidade)->orWhere('phone', $identidade))
-            ->exists();
+        return $usuario instanceof User && $usuario->type === 'customer' && $usuario->status !== 'active';
     }
 
     protected function idsDoUsuario(User $usuario): array
