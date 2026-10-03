@@ -28,6 +28,15 @@ function validMapCenter(center) {
     return Math.abs(latitude) > 0.0001 || Math.abs(longitude) > 0.0001 ? { latitude, longitude } : null;
 }
 
+/** Entregas: número de um campo de coordenada; texto só com ponto decimal ("-21.5"). Vírgula, vazio e o resto viram NaN. */
+function toCoordinate(value) {
+    if (typeof value === 'number') {
+        return value;
+    }
+
+    return typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
+}
+
 export default class CoordinatesInputComponent extends Component {
     @service fetch;
     @service currentUser;
@@ -206,14 +215,15 @@ export default class CoordinatesInputComponent extends Component {
      * @memberof CoordinatesInputComponent
      */
     @action onClose() {
-        // Entregas: com @mapCenter, o próximo mapa aberto é outro (o moveend da criação dele também não marca) e, sem
-        // ponto marcado, o mapa fica no centro pedido: copiar latitude/longitude vazios deixaria o mapa sem centro
+        // Entregas: com @mapCenter, o próximo mapa aberto é outro (o moveend da criação dele também não marca)
         if (this.initialMapCenter) {
             this.isInitialMoveEnded = false;
+        }
 
-            if (isBlank(this.latitude) || isBlank(this.longitude)) {
-                return;
-            }
+        // Entregas: só uma posição válida (o critério do @mapCenter) vira o centro do mapa. Vazia (nada marcado), o mapa
+        // reabriria sem centro; digitada com vírgula ("-21,5"), o Leaflet lançaria "Invalid LatLng". Aí o mapa fica onde está
+        if (!validMapCenter({ latitude: toCoordinate(this.latitude), longitude: toCoordinate(this.longitude) })) {
+            return;
         }
 
         this.mapLat = this.latitude;
@@ -233,8 +243,10 @@ export default class CoordinatesInputComponent extends Component {
         const { lat, lng } = geographicalCenter;
 
         // Entregas: com @mapCenter (o portal da loja abre o mapa na loja), o moveend da criação de cada mapa aberto (o
-        // setView inicial) e o zoom sem arrastar (o centro continua o pedido) não marcam o ponto nem buscam o endereço:
-        // o centro é a loja, e marcar sem o usuário mexer gravaria o destino na loja, com km ~0. Sem @mapCenter, como antes.
+        // setView inicial) e o zoom que deixa o centro exatamente no lugar não marcam o ponto nem buscam o endereço. Isso
+        // só reduz as marcações sem querer: a roda do mouse, a pinça e um resize da janela seguido de zoom tiram o centro
+        // do lugar. A garantia de que o destino não fica na loja (km ~0) é a distância mínima conferida no portal
+        // (savePlace) e no servidor (RegrasPortalLoja). Sem @mapCenter, como antes.
         if (this.initialMapCenter) {
             if (!this.isInitialMoveEnded) {
                 this.isInitialMoveEnded = true;
@@ -253,8 +265,9 @@ export default class CoordinatesInputComponent extends Component {
     }
 
     /**
-     * Entregas: o centro do mapa ainda é o @mapCenter pedido? O Leaflet devolve o mesmo centro até alguém arrastar o
-     * mapa (o zoom pelos botões ou pelo teclado não o tira do lugar); a folga cobre o arredondamento do wrap() da longitude.
+     * Entregas: o centro do mapa ainda é exatamente o @mapCenter pedido? A folga cobre só o arredondamento do wrap() da
+     * longitude. Vale enquanto nada tirar o centro do lugar (arrastar, a roda do mouse, a pinça ou um resize da janela
+     * seguido de zoom); por isso é só uma proteção a mais, e não a garantia (ver setCoordinatesFromMap).
      */
     isAtInitialMapCenter(latitude, longitude) {
         const { initialMapCenter } = this;

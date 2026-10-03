@@ -594,6 +594,9 @@ customer-portal:
       store-without-address: A loja ainda não tem endereço de coleta. Fale com a central.
       customer-name-help: No endereço de entrega, use o nome e o telefone do cliente.
       map-location-required: Marque no mapa o local da entrega (Selecionar no mapa).
+      map-location-at-store: O ponto marcado está na loja. Arraste o mapa até o local da entrega.
+      map-location-help: O km e o valor da entrega saem do ponto marcado no mapa.
+      street-required: Informe a rua e o número do endereço de entrega.
       courier: Motoboy
       courier-waiting: Aguardando um motoboy aceitar.
       courier-accepted: "{name} está com o pedido."
