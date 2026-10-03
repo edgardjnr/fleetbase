@@ -66,7 +66,8 @@ class CalculoEntregas
             ->whereNull('orders.deleted_at')
             ->whereNotNull('orders.driver_assigned_uuid')
             ->whereBetween(DB::raw('COALESCE(conclusoes.concluido_em, orders.updated_at)'), [$inicio, $fim])
-            ->when($filtro, $filtro)
+            // condição booleana: com a closure como condição, o when() a executaria só para decidir
+            ->when($filtro !== null, $filtro)
             ->select('orders.*', DB::raw('COALESCE(conclusoes.concluido_em, orders.updated_at) as entregas_concluido_em'))
             ->with(['payload', 'driverAssigned'])
             ->orderBy('entregas_concluido_em')
@@ -142,12 +143,15 @@ class CalculoEntregas
         return [$nome !== '' ? 'nome:' . $nome : $coleta->public_id, $coleta->name ?: $this->enderecoCurto($coleta)];
     }
 
-    /** Lojas (Vendor) donas dos pedidos, numa consulta só, indexadas pelo uuid. */
+    /**
+     * Lojas (Vendor) donas dos pedidos, numa consulta só, indexadas pelo uuid.
+     * Inclui lojas excluídas, para o histórico da cobrança não mudar de agrupamento.
+     */
     protected function lojasDosPedidos(Collection $pedidos): Collection
     {
         $uuids = $pedidos->where('customer_type', Vendor::class)->pluck('customer_uuid')->filter()->unique()->values();
 
-        return $uuids->isEmpty() ? collect() : Vendor::whereIn('uuid', $uuids)->get()->keyBy('uuid');
+        return $uuids->isEmpty() ? collect() : Vendor::withTrashed()->whereIn('uuid', $uuids)->get()->keyBy('uuid');
     }
 
     /** Faixas salvas, em ordem crescente de km. */
