@@ -6,6 +6,7 @@ use App\Support\Entregas\LojaDoUsuario;
 use Closure;
 use Fleetbase\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -75,6 +76,14 @@ class ProtegerPortalLoja
     /** Cabeçalho do token do cliente na API pública de clientes (Fleet-Ops CustomerAuth::HEADER e Storefront). */
     public const CABECALHO_TOKEN_DO_CLIENTE = 'Customer-Token';
 
+    /** Foto do perfil: MIME real do conteúdo => extensões aceitas no nome (o core grava com a extensão do nome). */
+    public const FOTO_TIPOS = ['image/jpeg' => ['jpg', 'jpeg'], 'image/png' => ['png'], 'image/webp' => ['webp']];
+
+    public const FOTO_TAMANHO_MAXIMO = 5 * 1024 * 1024; // 5 MB
+
+    /** Parâmetros do upload que a loja não escolhe (vale o padrão do servidor); os `resize*` também saem. */
+    public const PARAMETROS_DO_UPLOAD_REMOVIDOS = ['disk', 'bucket', 'path', 'file_size'];
+
     public function handle(Request $request, Closure $next)
     {
         // caminho decodificado, como o roteador do Laravel casa as rotas (rawurldecode): senão
@@ -93,7 +102,7 @@ class ProtegerPortalLoja
         }
 
         if ($usuario->status !== 'active') {
-            return $this->negar($caminho, 'login desativado');
+            return $this->negar($caminho, $usuario, 'login desativado');
         }
 
         $request->attributes->set(static::ATRIBUTO_USUARIO, $usuario);
@@ -101,13 +110,13 @@ class ProtegerPortalLoja
         // o portal juntaria os pedidos de todas as lojas do usuário: um login, uma loja
         if ((str_starts_with($caminho, 'customer-portal/int/v1/') || str_starts_with($caminho, 'int/v1/entregas/loja/'))
             && LojaDoUsuario::totalDeLojas($usuario->uuid) > 1) {
-            return $this->negar($caminho, 'usuário ligado a mais de uma loja');
+            return $this->negar($caminho, $usuario, 'usuário ligado a mais de uma loja');
         }
 
         if (str_starts_with($caminho, 'customer-portal/int/v1/')) {
             $rota = $metodo . ' ' . substr($caminho, strlen('customer-portal/int/v1/'));
 
-            return $this->casa($rota, static::NEGADAS_NO_PORTAL) ? $this->negar($caminho) : $next($request);
+            return $this->casa($rota, static::NEGADAS_NO_PORTAL) ? $this->negar($caminho, $usuario) : $next($request);
         }
 
         if (str_starts_with($caminho, 'int/v1/')) {
@@ -124,11 +133,17 @@ class ProtegerPortalLoja
             }
 
             if ($rota === 'POST files/upload' && $this->ehFotoDoProprioPerfil($request, $usuario)) {
+                if (!$this->fotoValida($request)) {
+                    return response()->json(['errors' => ['A foto do perfil precisa ser uma imagem JPG, PNG ou WEBP de até 5 MB.']], 422);
+                }
+
+                $this->limparParametrosDoUpload($request);
+
                 return $next($request);
             }
         }
 
-        return $this->negar($caminho);
+        return $this->negar($caminho, $usuario);
     }
 
     /**
@@ -161,14 +176,18 @@ class ProtegerPortalLoja
 
     protected function loginDesativado(Request $request): bool
     {
-        $identidade = trim((string) $request->input('identity'));
-        if ($identidade === '') {
+        $identidade = $request->input('identity');
+        if (!is_string($identidade) || trim($identidade) === '') {
             return false;
         }
 
-        $usuario = User::where(fn ($q) => $q->where('email', $identidade)->orWhere('phone', $identidade))->first();
+        $identidade = trim($identidade);
 
-        return $usuario && $usuario->type === 'customer' && $usuario->status !== 'active';
+        // status nulo também conta como desativado (como no handle(), que só aceita "active")
+        return User::where('type', 'customer')
+            ->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 'active'))
+            ->where(fn ($q) => $q->where('email', $identidade)->orWhere('phone', $identidade))
+            ->exists();
     }
 
     protected function idsDoUsuario(User $usuario): array
@@ -199,7 +218,49 @@ class ProtegerPortalLoja
 
     protected function ehFotoDoProprioPerfil(Request $request, User $usuario): bool
     {
-        return $request->input('type') === 'user_avatar' && in_array((string) $request->input('subject_uuid'), $this->idsDoUsuario($usuario), true);
+        $sujeito = $request->input('subject_uuid');
+
+        return $request->input('type') === 'user_avatar' && is_string($sujeito) && in_array($sujeito, $this->idsDoUsuario($usuario), true);
+    }
+
+    /**
+     * O campo `file` (o que o FileController@upload do core lê) tem de ser uma imagem JPEG, PNG ou WEBP pelo
+     * conteúdo, com a extensão do nome combinando (o core grava o arquivo com ela), de até 5 MB.
+     */
+    protected function fotoValida(Request $request): bool
+    {
+        $arquivo = $request->file('file');
+        if (!$arquivo instanceof UploadedFile || !$arquivo->isValid()) {
+            return false;
+        }
+
+        $tamanho = $arquivo->getSize();
+        if (!is_int($tamanho) || $tamanho <= 0 || $tamanho > static::FOTO_TAMANHO_MAXIMO) {
+            return false;
+        }
+
+        try {
+            $mime = $arquivo->getMimeType(); // pelo conteúdo (finfo), não pelo que o navegador informou
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        $tipos     = static::FOTO_TIPOS;
+        $extensoes = is_string($mime) ? ($tipos[$mime] ?? null) : null;
+
+        return $extensoes !== null && in_array(strtolower($arquivo->getClientOriginalExtension()), $extensoes, true);
+    }
+
+    /** Disco, bucket, pasta, tamanho informado e redimensionamento ficam no padrão do servidor (corpo e query). */
+    protected function limparParametrosDoUpload(Request $request): void
+    {
+        foreach ([$request->request, $request->query] as $parametros) {
+            foreach (array_keys($parametros->all()) as $chave) {
+                if (in_array($chave, static::PARAMETROS_DO_UPLOAD_REMOVIDOS, true) || str_starts_with((string) $chave, 'resize')) {
+                    $parametros->remove($chave);
+                }
+            }
+        }
     }
 
     protected function casa(string $rota, array $padroes): bool
@@ -213,9 +274,9 @@ class ProtegerPortalLoja
         return false;
     }
 
-    protected function negar(string $caminho, string $motivo = 'rota fora do portal da loja')
+    protected function negar(string $caminho, User $usuario, string $motivo = 'rota fora do portal da loja')
     {
-        Log::info('[entregas] portal da loja: acesso negado', ['caminho' => $caminho, 'motivo' => $motivo]);
+        Log::info('[entregas] portal da loja: acesso negado', ['caminho' => $caminho, 'motivo' => $motivo, 'usuario' => $usuario->public_id]);
 
         return response()->json(['errors' => ['Acesso não permitido para usuários de loja.']], 403);
     }
