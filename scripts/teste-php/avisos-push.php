@@ -220,4 +220,78 @@ $mensagem                                  = enviado(new AvisoNovoDoFleetOps());
 confere(($mensagem['notification']['title'] ?? null) === 'Something new' && !isset($mensagem['android']['notification']['channel_id']), 'segue como veio (texto e canal)');
 confere((Illuminate\Support\Facades\Log::$registros[0][1] ?? null) === '[entregas] aviso push sem tradução', 'e fica no log');
 
+echo '== CanalFcmEntregas' . PHP_EOL;
+
+class MessagingFalso implements Kreait\Firebase\Contract\Messaging
+{
+    public array $enviados = [];
+
+    public function sendMulticast($message, $registrationTokens, bool $validateOnly = false)
+    {
+        $this->enviados[] = [$message, $registrationTokens];
+
+        return new Kreait\Firebase\Messaging\MulticastSendReport([new Kreait\Firebase\Messaging\SendReport(false), new Kreait\Firebase\Messaging\SendReport(true)]);
+    }
+}
+
+class EventosFalsos implements Illuminate\Contracts\Events\Dispatcher
+{
+    public array $eventos = [];
+
+    public function dispatch($event, $payload = [], $halt = false)
+    {
+        $this->eventos[] = $event;
+    }
+}
+
+class MotoboyFalso
+{
+    public function __construct(public array $tokens) {}
+
+    public function routeNotificationFor($canal, $notificacao)
+    {
+        return $this->tokens;
+    }
+}
+
+// mensagem que falha ao ser copiada: força o erro na adaptação
+class MensagemQuebrada extends NotificationChannels\Fcm\FcmMessage
+{
+    public function __clone()
+    {
+        throw new RuntimeException('falha de teste');
+    }
+}
+
+class AvisoQuebrado extends OrderCanceled
+{
+    public function toFcm($notifiable)
+    {
+        return new MensagemQuebrada(data: ['type' => 'order_canceled'], notification: new NotificationChannels\Fcm\Resources\Notification(title: 'Order RP-1 was canceled', body: 'Order RP-1 has been canceled.'));
+    }
+}
+
+putenv('ENTREGAS_ALARME_POR_DADOS=1');
+$padrao     = new MessagingFalso();
+$daMensagem = new MessagingFalso();
+$eventos    = new EventosFalsos();
+$canal      = new App\Notifications\Entregas\CanalFcmEntregas($eventos, $padrao);
+
+Fleetbase\Support\PushNotification::$cliente = $daMensagem;
+$canal->send(new MotoboyFalso(['token-1', 'token-2']), new OrderPing(pedidoDoTeste(), 1234));
+confere(count($daMensagem->enviados) === 1 && $padrao->enviados === [], 'envia pelo cliente da mensagem (o do Fleetbase)');
+[$enviada, $tokens] = $daMensagem->enviados[0] ?? [null, null];
+confere($tokens === ['token-1', 'token-2'], 'para os tokens do motoboy');
+confere($enviada !== null && $enviada->notification === null && ($enviada->data['title'] ?? null) === 'Novo pedido disponível', 'a mensagem enviada é a adaptada');
+confere(count($eventos->eventos) === 1 && $eventos->eventos[0] instanceof Illuminate\Notifications\Events\NotificationFailed, 'token com falha gera NotificationFailed, como no pacote');
+confere($canal->send(new MotoboyFalso([]), new OrderPing(pedidoDoTeste(), 1234)) === null, 'motoboy sem token: nada é enviado');
+
+Fleetbase\Support\PushNotification::$cliente = null;
+Illuminate\Support\Facades\Log::$registros    = [];
+$canal->send(new MotoboyFalso(['token-1']), (new ReflectionClass(AvisoQuebrado::class))->newInstanceWithoutConstructor());
+$original = $padrao->enviados[0][0] ?? null;
+confere($original instanceof MensagemQuebrada && $original->notification->title === 'Order RP-1 was canceled', 'erro na adaptação: envia a mensagem original');
+confere((Illuminate\Support\Facades\Log::$registros[0][1] ?? null) === '[entregas] aviso push sem adaptação', 'e registra o erro no log');
+putenv('ENTREGAS_ALARME_POR_DADOS');
+
 resumo();

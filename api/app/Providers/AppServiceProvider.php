@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Console\Commands\Entregas\ReenviarPedidosAbertos;
+use App\Notifications\Entregas\CanalFcmEntregas;
 use Fleetbase\FleetOps\Console\Commands\DispatchAdhocOrders;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use NotificationChannels\Fcm\FcmChannel;
 use Psr\Http\Message\RequestInterface;
 
 class AppServiceProvider extends ServiceProvider
@@ -40,6 +42,9 @@ class AppServiceProvider extends ServiceProvider
         // Entregas: o fleetops:dispatch-adhoc, que o Fleet-Ops agenda a cada minuto, roda a versão corrigida do
         // reenvio de pedidos abertos (ver ReenviarPedidosAbertos)
         $this->app->bind(DispatchAdhocOrders::class, ReenviarPedidosAbertos::class);
+
+        // Entregas: todo push (FCM) sai em pt-BR e no formato do app do motoboy (ver CanalFcmEntregas e AvisosDoMotoboy)
+        $this->app->bind(FcmChannel::class, CanalFcmEntregas::class);
     }
 
     /**
