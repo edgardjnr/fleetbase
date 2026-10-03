@@ -609,6 +609,7 @@ customer-portal:
       members-managed-by-central: Para adicionar ou remover usuários da loja, fale com a central.
       login-managed-by-central: O e-mail e o telefone de acesso só podem ser alterados pela central.
       dashboard-name: Visão geral
+      eta: "Previsão:"
 
 menu-text:
   customer-portal:

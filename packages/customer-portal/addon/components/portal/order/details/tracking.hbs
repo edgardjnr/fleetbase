@@ -44,7 +44,8 @@
                         <div class="tracking-intelligence-destination__label">{{t "customer-portal.ui.order.current-stop"}}</div>
                         <div class="tracking-intelligence-destination__address">{{n-a this.activeStop.address}}</div>
                         <div class="tracking-intelligence-destination__eta">
-                            ETA:
+                            {{!-- Entregas: o "ETA:" vem de customer-portal.ui.entregas.eta; o texto fixo aparecia em inglês no portal em pt-BR --}}
+                            {{t "customer-portal.ui.entregas.eta"}}
                             <strong>{{if this.activeEtaSeconds (format-duration this.activeEtaSeconds) (t "customer-portal.ui.order.pending")}}</strong>
                         </div>
                     </div>

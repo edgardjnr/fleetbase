@@ -609,6 +609,7 @@ customer-portal:
       members-managed-by-central: To add or remove store users, contact the dispatcher.
       login-managed-by-central: The sign-in email and phone can only be changed by the dispatcher.
       dashboard-name: Overview
+      eta: "ETA:"
 
 menu-text:
   customer-portal:

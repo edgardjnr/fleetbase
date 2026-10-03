@@ -1,3 +1,4 @@
+{{!-- Entregas: o "ETA:" das paradas (nos quatro lugares abaixo) vem de customer-portal.ui.entregas.eta; o texto fixo aparecia em inglês no portal em pt-BR --}}
 <div class="order-route-list portal-order-details-route-list" ...attributes>
     {{#if this.firstStop}}
         <div class="order-route-stop">
@@ -9,7 +10,7 @@
                 <div class="mb-2 flex flex-wrap items-center gap-1.5">
                     {{#if this.firstStop.statusCode}}<Badge @status={{this.firstStop.statusCode}} />{{/if}}
                     {{#if this.firstStop.showCompletedFlagBadge}}<Badge @status="success" @hideStatusDot={{true}}>{{t "customer-portal.ui.order.completed"}}</Badge>{{else if this.firstStop.active}}<Badge @status="indigo" @hideStatusDot={{true}}>{{t "customer-portal.ui.order.current-stop"}}</Badge>{{/if}}
-                    {{#if this.firstStop.etaSeconds}}<Badge @status="pending" @hideStatusDot={{true}}><span class="font-bold">ETA:</span> {{format-duration this.firstStop.etaSeconds}}</Badge>{{/if}}
+                    {{#if this.firstStop.etaSeconds}}<Badge @status="pending" @hideStatusDot={{true}}><span class="font-bold">{{t "customer-portal.ui.entregas.eta"}}</span> {{format-duration this.firstStop.etaSeconds}}</Badge>{{/if}}
                 </div>
                 {{place-address this.firstStop.place}}
             </div>
@@ -37,7 +38,7 @@
                         <div class="mb-2 flex flex-wrap items-center gap-1.5">
                             {{#if stop.statusCode}}<Badge @status={{stop.statusCode}} />{{/if}}
                             {{#if stop.showCompletedFlagBadge}}<Badge @status="success" @hideStatusDot={{true}}>{{t "customer-portal.ui.order.completed"}}</Badge>{{else if stop.active}}<Badge @status="indigo" @hideStatusDot={{true}}>{{t "customer-portal.ui.order.current-stop"}}</Badge>{{/if}}
-                            {{#if stop.etaSeconds}}<Badge @status="pending" @hideStatusDot={{true}}><span class="font-bold">ETA:</span> {{format-duration stop.etaSeconds}}</Badge>{{/if}}
+                            {{#if stop.etaSeconds}}<Badge @status="pending" @hideStatusDot={{true}}><span class="font-bold">{{t "customer-portal.ui.entregas.eta"}}</span> {{format-duration stop.etaSeconds}}</Badge>{{/if}}
                         </div>
                         {{place-address stop.place}}
                     </div>
@@ -55,7 +56,7 @@
                     <div class="mb-2 flex flex-wrap items-center gap-1.5">
                         {{#if stop.statusCode}}<Badge @status={{stop.statusCode}} />{{/if}}
                         {{#if stop.showCompletedFlagBadge}}<Badge @status="success" @hideStatusDot={{true}}>{{t "customer-portal.ui.order.completed"}}</Badge>{{else if stop.active}}<Badge @status="indigo" @hideStatusDot={{true}}>{{t "customer-portal.ui.order.current-stop"}}</Badge>{{/if}}
-                        {{#if stop.etaSeconds}}<Badge @status="pending" @hideStatusDot={{true}}><span class="font-bold">ETA:</span> {{format-duration stop.etaSeconds}}</Badge>{{/if}}
+                        {{#if stop.etaSeconds}}<Badge @status="pending" @hideStatusDot={{true}}><span class="font-bold">{{t "customer-portal.ui.entregas.eta"}}</span> {{format-duration stop.etaSeconds}}</Badge>{{/if}}
                     </div>
                     {{place-address stop.place}}
                 </div>
@@ -73,7 +74,7 @@
                 <div class="mb-2 flex flex-wrap items-center gap-1.5">
                     {{#if this.lastStop.statusCode}}<Badge @status={{this.lastStop.statusCode}} />{{/if}}
                     {{#if this.lastStop.showCompletedFlagBadge}}<Badge @status="success" @hideStatusDot={{true}}>{{t "customer-portal.ui.order.completed"}}</Badge>{{else if this.lastStop.active}}<Badge @status="indigo" @hideStatusDot={{true}}>{{t "customer-portal.ui.order.current-stop"}}</Badge>{{/if}}
-                    {{#if this.lastStop.etaSeconds}}<Badge @status="pending" @hideStatusDot={{true}}><span class="font-bold">ETA:</span> {{format-duration this.lastStop.etaSeconds}}</Badge>{{/if}}
+                    {{#if this.lastStop.etaSeconds}}<Badge @status="pending" @hideStatusDot={{true}}><span class="font-bold">{{t "customer-portal.ui.entregas.eta"}}</span> {{format-duration this.lastStop.etaSeconds}}</Badge>{{/if}}
                 </div>
                 {{place-address this.lastStop.place}}
             </div>
