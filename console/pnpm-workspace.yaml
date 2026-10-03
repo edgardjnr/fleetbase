@@ -1,4 +1,5 @@
 packages:
+  - "../packages/customer-portal"
   - "../packages/dev-engine"
   - "../packages/ember-core"
   - "../packages/ember-ui"

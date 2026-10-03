@@ -102,5 +102,11 @@ Router.map(function () {
             path: 'iam'
         });
     });
+
+    this.mount('@fleetbase/customer-portal-engine', {
+        as: 'customer-portal',
+        path: 'customer-portal'
+    });
+
     this.route('catch', { path: '/*' });
 });

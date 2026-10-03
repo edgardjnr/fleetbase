@@ -35,6 +35,7 @@
     },
     "dependencies": {
         "@ember/legacy-built-in-components": "^0.4.2",
+        "@fleetbase/customer-portal-engine": "link:../packages/customer-portal",
         "@fleetbase/dev-engine": "link:../packages/dev-engine",
         "@fleetbase/ember-core": "workspace:*",
         "@fleetbase/ember-ui": "workspace:*",
