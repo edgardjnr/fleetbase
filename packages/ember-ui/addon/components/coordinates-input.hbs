@@ -18,6 +18,9 @@
                     @onLoad={{this.onMapLoaded}}
                     @onMoveend={{this.setCoordinatesFromMap}}
                     @doubleClickZoom={{false}}
+                    {{!-- Entregas: com o centro vindo da tela (portal da loja), roda e pinça dão zoom em torno do centro, então o marcador nunca sai do ponto gravado; sem @mapCenter vale o padrão do Leaflet (undefined não é repassado) --}}
+                    @scrollWheelZoom={{if this.initialMapCenter "center"}}
+                    @touchZoom={{if this.initialMapCenter "center"}}
                     as |layers|
                 >
                     <layers.tile @url={{this.tileSourceUrl}} />

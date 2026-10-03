@@ -593,7 +593,7 @@ customer-portal:
       pickup-fixed-help: Always at the store address.
       store-without-address: The store has no pickup address yet. Contact the dispatcher.
       customer-name-help: On the delivery address, use the customer's name and phone.
-      map-location-required: Mark the delivery spot on the map (Select from map).
+      map-location-required: Drag the map to the delivery spot (Select from map).
       map-location-at-store: The marked spot is at the store. Drag the map to the delivery location.
       map-location-help: The delivery's km and price come from the spot marked on the map.
       street-required: Enter the street and number of the delivery address.
