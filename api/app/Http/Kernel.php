@@ -23,6 +23,8 @@ class Kernel extends HttpKernel
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
         // Entregas RestaurantePro: portal da loja (antes das rotas do Composer)
         \App\Http\Middleware\ProtegerPortalLoja::class,
+        // regras do portal da loja: lê o usuário de loja que o ProtegerPortalLoja grava (tem de vir depois dele)
+        \App\Http\Middleware\RegrasPortalLoja::class,
     ];
 
     /**
