@@ -20,7 +20,9 @@ use NotificationChannels\Fcm\FcmMessage;
  * motoboy; token que não existe mais, o 404, vai como info) e, se o FCM recusar o formato adaptado como inválido, envia
  * o push original (o do Fleet-Ops, que funcionava antes) aos tokens recusados, menos os de token malformado.
  *
- * Ao atualizar o pacote FCM, confira se o send() do FcmChannel mudou: este repete o dele.
+ * Ao atualizar o pacote FCM (laravel-notification-channels/fcm) ou o kreait/firebase-php, confira: o send() do FcmChannel
+ * (este repete o dele), o checkReportForFailures() (este o sobrescreve) e, no SendReport do kreait, messageWasInvalid(),
+ * messageTargetWasInvalid() e messageWasSentToUnknownToken(), que este canal usa.
  */
 class CanalFcmEntregas extends FcmChannel
 {
@@ -46,7 +48,7 @@ class CanalFcmEntregas extends FcmChannel
         // o FCM recusou o formato adaptado (mensagem inválida): esses motoboys recebem o push original, como antes
         $recusados = $mensagem === $original ? [] : $this->tokensComMensagemInvalida($relatorios);
         if ($recusados) {
-            Log::warning('[entregas] push adaptado recusado pelo FCM; enviado o original', ['notificacao' => get_class($notification), 'tokens' => count($recusados)]);
+            Log::warning('[entregas] push adaptado recusado pelo FCM; enviado o original', ['notificacao' => get_class($notification), 'motoboy' => $notifiable->public_id ?? null, 'tokens' => count($recusados)]);
             $relatorios = $relatorios->merge($this->enviar($original, $recusados));
         }
 
@@ -92,6 +94,7 @@ class CanalFcmEntregas extends FcmChannel
         $tokens = [];
         foreach ($relatorios as $relatorio) {
             foreach ($relatorio->getItems() as $item) {
+                // messageTargetWasInvalid() é a heurística do kreait sobre o texto do erro: se errar, no pior caso é uma chamada a mais, ou nenhum reenvio, e a recusa segue no log
                 if ($item->isFailure() && $item->messageWasInvalid() && !$item->messageTargetWasInvalid()) {
                     $tokens[] = $item->target()->value();
                 }

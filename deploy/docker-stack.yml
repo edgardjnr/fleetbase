@@ -57,6 +57,9 @@ x-api-env: &api-env
   # chave pública do app do motoboy: vazia = sem restrição; preenchida = só serve para o login do app
   # (api/app/Http/Middleware/RestringirChaveDoApp.php)
   ENTREGAS_CHAVE_APP_MOTOBOY: ${ENTREGAS_CHAVE_APP_MOTOBOY:-}
+  # alarme de pedido do motoboy como push de dados (APK 16+): vazio = desligado, 1 = ligado; só com todos os motoboys no
+  # APK 16 (api/app/Notifications/Entregas/AvisosDoMotoboy.php; como ligar: CLAUDE.md, "App do motoboy")
+  ENTREGAS_ALARME_POR_DADOS: ${ENTREGAS_ALARME_POR_DADOS:-}
 
 x-deploy: &default-deploy
   replicas: 1

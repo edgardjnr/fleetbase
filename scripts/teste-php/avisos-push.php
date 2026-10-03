@@ -352,7 +352,7 @@ $recusas = registrosDoLog('[entregas] push recusado pelo FCM');
 confere(count($recusas) === 2 && $recusas[0][2]['notificacao'] === OrderPing::class && $recusas[0][2]['mensagem_invalida'] === true, 'cada recusa vai para o log, com a notificação e o motivo');
 confere(($recusas[0][2]['motoboy'] ?? null) === 'driver_motoca' && array_column($recusas, 0) === ['warning', 'warning'], 'com o motoboy (public_id), e a recusa de mensagem inválida vai como warning');
 $reenvios = registrosDoLog('[entregas] push adaptado recusado pelo FCM; enviado o original');
-confere(count($reenvios) === 1 && $reenvios[0][2] === ['notificacao' => OrderPing::class, 'tokens' => 2], 'e o reenvio do original também, com a quantidade de tokens');
+confere(count($reenvios) === 1 && $reenvios[0][2] === ['notificacao' => OrderPing::class, 'motoboy' => 'driver_motoca', 'tokens' => 2], 'e o reenvio do original também, com o motoboy e a quantidade de tokens');
 confere(count($eventos->eventos) === 2, 'as recusas do envio adaptado continuam gerando NotificationFailed (o reenvio entregou)');
 confere($resultado instanceof Illuminate\Support\Collection && count($resultado) === 2, 'o retorno junta o relatório do envio adaptado e o do reenvio');
 
@@ -396,7 +396,7 @@ confere(array_column($recusas, 0) === ['info', 'info'], 'token desconhecido (404
 confere(registrosDoLog('[entregas] push adaptado recusado pelo FCM; enviado o original') === [], 'e não há registro de reenvio');
 
 // notificável sem public_id: o motoboy do log fica nulo, sem aviso do PHP (o teste trata aviso como erro)
-$semCodigo = new class {
+$semPublicId = new class {
     public function routeNotificationFor($canal, $notificacao)
     {
         return ['token-1'];
@@ -405,9 +405,17 @@ $semCodigo = new class {
 $fcm            = new MessagingFalso();
 $fcm->respostas = [fcmResponde(['token-1' => 'desconhecido'])];
 Illuminate\Support\Facades\Log::$registros = [];
-canalComFcm($fcm, new EventosFalsos())->send($semCodigo, new OrderPing(pedidoDoTeste(), 1234));
+canalComFcm($fcm, new EventosFalsos())->send($semPublicId, new OrderPing(pedidoDoTeste(), 1234));
 $recusa = registrosDoLog('[entregas] push recusado pelo FCM')[0] ?? null;
 confere($recusa !== null && array_key_exists('motoboy', $recusa[2]) && $recusa[2]['motoboy'] === null, 'notificável sem public_id: motoboy nulo no log');
+
+// o log do reenvio do original também leva o motoboy, nulo sem public_id (e sem aviso do PHP)
+$fcm            = new MessagingFalso();
+$fcm->respostas = [fcmResponde(['token-1' => 'invalida']), fcmResponde([])];
+Illuminate\Support\Facades\Log::$registros = [];
+canalComFcm($fcm, new EventosFalsos())->send($semPublicId, new OrderPing(pedidoDoTeste(), 1234));
+$reenvio = registrosDoLog('[entregas] push adaptado recusado pelo FCM; enviado o original')[0] ?? null;
+confere($reenvio !== null && array_key_exists('motoboy', $reenvio[2]) && $reenvio[2]['motoboy'] === null, 'reenvio para notificável sem public_id: motoboy nulo no log');
 
 // mensagem que não foi adaptada (erro na adaptação) e o FCM a recusa como inválida: sem reenvio (seria a mesma mensagem)
 $fcm            = new MessagingFalso();

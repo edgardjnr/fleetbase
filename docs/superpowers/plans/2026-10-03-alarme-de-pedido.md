@@ -2753,7 +2753,7 @@ O Edgard instala `entregas-motoboy-16.apk` por cima do 15.
 ### Task 21: Ligar a chave e testar o alarme completo
 
 - [ ] Perguntar ao Edgard se ainda há motoboy com APK antigo (avisar do efeito) e escolher um horário calmo.
-- [ ] O Edgard acrescenta `ENTREGAS_ALARME_POR_DADOS: "1"` no ambiente dos serviços da API no stack (Portainer → Stacks → entregas → Editor; "Re-pull image" desligado) e faz o update.
+- [ ] O Edgard liga a chave no Portainer (Stacks → entregas): confirma que o YAML do editor tem a linha `ENTREGAS_ALARME_POR_DADOS: ${ENTREGAS_ALARME_POR_DADOS:-}` no `x-api-env` (se faltar, copia a do `deploy/docker-stack.yml` do repositório), define `ENTREGAS_ALARME_POR_DADOS=1` nas variáveis de ambiente do stack e faz o Update the stack ("Re-pull image" desligado). Conferir com o `printenv` do Task 18, passo 3 (`docker exec $(docker ps -q -f name=entregas_queue) printenv ENTREGAS_ALARME_POR_DADOS`): esperado `1`.
 - [ ] Testes: tela bloqueada + silencioso + app fechado (tela acende, loop, "Ver pedido" pede desbloqueio e abre o pedido); "Silenciar"; app em segundo plano desbloqueado (notificação no topo, loop; tocar abre sem som duplicado); app aberto (como hoje); reenvio aos 4/8/12 min; pedido atribuído pela central ao Motoca; voltar ao app pelo ícone com o alarme tocando (abre o pedido).
 
 ### Task 22: Fechamento
