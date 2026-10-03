@@ -103,12 +103,26 @@ class LojasController extends Controller
             'senha'    => ['required', 'string', 'min:8', 'max:100'],
         ]);
 
+        // O guard do Fleetbase não pega contato de cliente repetido (o whereHas('user') dele filtra users.type nulo):
+        // o mesmo login ficaria ligado a duas lojas e veria os pedidos das duas (PortalOrderService::accountCustomerUuids).
+        // Telefone: como digitado e no formato que o Contact grava (setPhoneAttribute → Utils::formatPhoneNumber).
+        $email     = mb_strtolower($dados['email']);
+        $telefone  = $dados['telefone'] ?? null;
+        $telefones = filled($telefone) ? array_values(array_unique([$telefone, Utils::formatPhoneNumber($telefone)])) : [];
+        $repetido  = Contact::where('company_uuid', session('company'))
+            ->where('type', 'customer')
+            ->where(fn ($q) => $q->where('email', $email)->when($telefones, fn ($q2) => $q2->orWhereIn('phone', $telefones)))
+            ->exists();
+        if ($repetido) {
+            return response()->json(['errors' => ['Já existe um usuário com este e-mail ou telefone.']], 422);
+        }
+
         try {
-            DB::transaction(function () use ($vendor, $dados) {
+            DB::transaction(function () use ($vendor, $dados, $email) {
                 $contato = Contact::create([
                     'company_uuid' => session('company'),
                     'name'         => $dados['nome'],
-                    'email'        => mb_strtolower($dados['email']),
+                    'email'        => $email,
                     'phone'        => $dados['telefone'] ?? null,
                     'type'         => 'customer',
                 ]);
