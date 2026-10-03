@@ -46,6 +46,7 @@ namespace Illuminate\Support\Facades {
     class Log
     {
         public static array $registros = [];
+        public static function info($mensagem, array $contexto = []) { self::$registros[] = ['info', $mensagem, $contexto]; }
         public static function warning($mensagem, array $contexto = []) { self::$registros[] = ['warning', $mensagem, $contexto]; }
         public static function error($mensagem, array $contexto = []) { self::$registros[] = ['error', $mensagem, $contexto]; }
     }
@@ -65,9 +66,18 @@ namespace Kreait\Firebase\Messaging {
     // por conveniência; os nomes dos métodos usados pelo canal são os reais
     class SendReport
     {
-        public function __construct(private bool $falhou = false, private bool $invalida = false, private string $token = 'token', private ?\Throwable $erro = null) {}
+        public function __construct(
+            private bool $falhou = false,
+            private bool $invalida = false,
+            private string $token = 'token',
+            private ?\Throwable $erro = null,
+            private bool $tokenInvalido = false,
+            private bool $desconhecido = false,
+        ) {}
         public function isFailure(): bool { return $this->falhou; }
         public function messageWasInvalid(): bool { return $this->invalida; }
+        public function messageTargetWasInvalid(): bool { return $this->tokenInvalido; }
+        public function messageWasSentToUnknownToken(): bool { return $this->desconhecido; }
         public function error(): ?\Throwable { return $this->erro; }
         public function target(): MessageTarget { return new MessageTarget($this->token); }
     }

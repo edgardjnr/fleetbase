@@ -16,9 +16,9 @@ use NotificationChannels\Fcm\FcmMessage;
  * AvisosDoMotoboy (pt-BR, canal e formato). Se a adaptação falhar, envia a mensagem original: nenhum aviso se perde.
  *
  * O kreait não valida a mensagem localmente: uma recusa do FCM vem no relatório de envio (sem exceção) e o pacote só
- * dispara NotificationFailed, que não tem ouvinte aqui. Por isso o canal registra no log cada push recusado e, se o FCM
- * recusar o formato adaptado como inválido, envia o push original (o do Fleet-Ops, que funcionava antes) aos tokens
- * recusados.
+ * dispara NotificationFailed, que não tem ouvinte aqui. Por isso o canal registra no log cada push recusado (com o
+ * motoboy; token que não existe mais, o 404, vai como info) e, se o FCM recusar o formato adaptado como inválido, envia
+ * o push original (o do Fleet-Ops, que funcionava antes) aos tokens recusados, menos os de token malformado.
  *
  * Ao atualizar o pacote FCM, confira se o send() do FcmChannel mudou: este repete o dele.
  */
@@ -57,12 +57,22 @@ class CanalFcmEntregas extends FcmChannel
     protected function checkReportForFailures(mixed $notifiable, Notification $notification, MulticastSendReport $report): MulticastSendReport
     {
         foreach ($report->getItems() as $item) {
-            if ($item->isFailure()) {
-                Log::warning('[entregas] push recusado pelo FCM', [
-                    'notificacao'       => get_class($notification),
-                    'mensagem_invalida' => $item->messageWasInvalid(),
-                    'erro'              => $item->error()?->getMessage(),
-                ]);
+            if (!$item->isFailure()) {
+                continue;
+            }
+
+            $contexto = [
+                'notificacao'       => get_class($notification),
+                'motoboy'           => $notifiable->public_id ?? null,
+                'mensagem_invalida' => $item->messageWasInvalid(),
+                'erro'              => $item->error()?->getMessage(),
+            ];
+
+            // token que não existe mais (404): o motoboy trocou de celular ou reinstalou o app, e ninguém limpa os tokens velhos
+            if ($item->messageWasSentToUnknownToken()) {
+                Log::info('[entregas] push recusado pelo FCM', $contexto);
+            } else {
+                Log::warning('[entregas] push recusado pelo FCM', $contexto);
             }
         }
 
@@ -76,12 +86,13 @@ class CanalFcmEntregas extends FcmChannel
             ->map(fn ($lote) => ($mensagem->client ?? $this->client)->sendMulticast($mensagem, $lote->all()));
     }
 
+    /** Tokens para os quais o FCM recusou a mensagem (400), menos os de token malformado: o push original não os alcançaria. */
     private function tokensComMensagemInvalida(Collection $relatorios): array
     {
         $tokens = [];
         foreach ($relatorios as $relatorio) {
             foreach ($relatorio->getItems() as $item) {
-                if ($item->isFailure() && $item->messageWasInvalid()) {
+                if ($item->isFailure() && $item->messageWasInvalid() && !$item->messageTargetWasInvalid()) {
                     $tokens[] = $item->target()->value();
                 }
             }
