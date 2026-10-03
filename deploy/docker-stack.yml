@@ -95,8 +95,9 @@ services:
   socket:
     image: entregas-socket:latest
     environment:
-      # navegadores só de CONSOLE_DOMAIN; conexões sem Origin (a API) passam - ver docker/socket/server.js
-      SOCKET_ALLOWED_ORIGINS: https://${CONSOLE_DOMAIN}
+      # origens liberadas: o console (navegador) e o app do motoboy, cujo WebSocket (React Native) envia
+      # Origin = https://SOCKET_DOMAIN; conexões sem Origin (a API) passam - ver docker/socket/server.js
+      SOCKET_ALLOWED_ORIGINS: https://${CONSOLE_DOMAIN},https://${SOCKET_DOMAIN}
     networks:
       internal:
         aliases: [entregas-socket]
