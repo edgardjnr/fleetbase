@@ -154,6 +154,53 @@ fleet-ops:
             band: Band
             driver-amount: Driver
             store-amount: Store
+        lojas:
+            title: Stores
+            menu-description: Served restaurants and their portal access
+            admin-only: Only administrators can manage stores.
+            portal-link: "Store portal address: {url}"
+            new: New store
+            edit: Edit
+            name: Store name
+            phone: Phone
+            street1: Street and number
+            street2: Address line 2
+            neighborhood: Neighborhood
+            city: City
+            province: State
+            postal-code: Postal code
+            latitude: Latitude
+            longitude: Longitude
+            coordinates-help: "Coordinates of the store entrance: right-click the spot on Google Maps and copy the numbers (latitude first). Each delivery's km is measured from here."
+            check-on-map: Check on map
+            save: Save store
+            cancel: Cancel
+            saved: Store saved.
+            users: Portal users
+            add-user: Add user
+            new-user-of: "New user for {name}"
+            user-name: Name
+            user-email: Email (login)
+            user-phone: Phone
+            user-password: Initial password (min. 8)
+            user-added: User created. Share the email and password with the store.
+            change-password: Change password
+            change-password-of: "New password for {name}"
+            new-password: New password (min. 8)
+            password-changed: Password changed. Open sessions were signed out.
+            deactivate: Deactivate access
+            reactivate: Reactivate access
+            user-deactivated: Access deactivated.
+            user-reactivated: Access reactivated.
+            active: Active
+            inactive: Inactive
+            no-users: No users yet.
+            empty: No stores yet.
+            required-fields: Fill in name, street and city.
+            invalid-coordinates: "Invalid coordinates: use numbers inside Brazil (latitude between -34 and 6, longitude between -74 and -34)."
+            invalid-email: Invalid email.
+            password-too-short: The password must have at least 8 characters.
+            user-name-required: Enter the user's name.
         settings-hub: Settings Hub
         hub:
             open-resource: Open {resource}

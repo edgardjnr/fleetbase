@@ -154,6 +154,53 @@ fleet-ops:
       band: Faixa
       driver-amount: Motoboy
       store-amount: Loja
+    lojas:
+      title: Lojas
+      menu-description: Restaurantes atendidos e o acesso deles ao portal
+      admin-only: Somente administradores podem gerenciar as lojas.
+      portal-link: "Endereço do portal das lojas: {url}"
+      new: Nova loja
+      edit: Editar
+      name: Nome da loja
+      phone: Telefone
+      street1: Rua e número
+      street2: Complemento
+      neighborhood: Bairro
+      city: Cidade
+      province: Estado
+      postal-code: CEP
+      latitude: Latitude
+      longitude: Longitude
+      coordinates-help: "Coordenadas da porta da loja: no Google Maps, clique com o botão direito no local e copie os números (latitude primeiro). O km de cada entrega sai daqui."
+      check-on-map: Conferir no mapa
+      save: Salvar loja
+      cancel: Cancelar
+      saved: Loja salva.
+      users: Usuários do portal
+      add-user: Adicionar usuário
+      new-user-of: "Novo usuário de {name}"
+      user-name: Nome
+      user-email: E-mail (login)
+      user-phone: Telefone
+      user-password: Senha inicial (mín. 8)
+      user-added: Usuário criado. Passe o e-mail e a senha para a loja.
+      change-password: Trocar senha
+      change-password-of: "Nova senha de {name}"
+      new-password: Nova senha (mín. 8)
+      password-changed: Senha alterada. As sessões abertas foram encerradas.
+      deactivate: Desativar acesso
+      reactivate: Reativar acesso
+      user-deactivated: Acesso desativado.
+      user-reactivated: Acesso reativado.
+      active: Ativo
+      inactive: Inativo
+      no-users: Nenhum usuário ainda.
+      empty: Nenhuma loja cadastrada.
+      required-fields: Preencha nome, rua e cidade.
+      invalid-coordinates: "Coordenadas inválidas: use números dentro do Brasil (latitude entre -34 e 6, longitude entre -74 e -34)."
+      invalid-email: E-mail inválido.
+      password-too-short: A senha precisa ter pelo menos 8 caracteres.
+      user-name-required: Informe o nome do usuário.
     settings-hub: Central de Configurações
     hub:
       open-resource: Abrir {resource}

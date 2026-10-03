@@ -1,0 +1,358 @@
+<Layout::Section::Header @title={{t "fleet-ops.ui.lojas.title"}}>
+    <div class="flex items-center space-x-2">
+        <Button @icon="refresh" @size="sm" @helpText={{t "common.reload"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
+        <Button @type="primary" @icon="plus" @size="sm" @text={{t "fleet-ops.ui.lojas.new"}} @onClick={{this.novaLoja}} />
+    </div>
+</Layout::Section::Header>
+
+<Layout::Section::Body class="overflow-y-scroll-i h-full">
+    <div class="max-w-6xl mx-auto px-4 py-6 space-y-5">
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.portal-link" url=this.portalUrl}}</p>
+
+        {{#if this.editando}}
+            <div {{did-insert this.abrirPainel}} {{did-update this.abrirPainel this.aberturaDoPainel}}>
+                <ContentPanel @title={{this.tituloEdicao}} @open={{true}} @wrapperClass="bordered-classic">
+                    <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                        <InputGroup @name={{t "fleet-ops.ui.lojas.name"}} @required={{true}} @wrapperClass="mb-0 md:col-span-4" as |id|>
+                            <input
+                                id={{id}}
+                                type="text"
+                                maxlength="120"
+                                autocomplete="off"
+                                class="form-input form-input-sm w-full"
+                                value={{this.editando.nome}}
+                                {{on "input" (fn this.setCampoLoja "nome")}}
+                            />
+                        </InputGroup>
+                        <InputGroup @name={{t "fleet-ops.ui.lojas.phone"}} @wrapperClass="mb-0 md:col-span-2" as |id|>
+                            <input
+                                id={{id}}
+                                type="tel"
+                                inputmode="tel"
+                                maxlength="30"
+                                autocomplete="off"
+                                class="form-input form-input-sm w-full"
+                                value={{this.editando.telefone}}
+                                {{on "input" (fn this.setCampoLoja "telefone")}}
+                            />
+                        </InputGroup>
+
+                        <InputGroup @name={{t "fleet-ops.ui.lojas.street1"}} @required={{true}} @wrapperClass="mb-0 md:col-span-3" as |id|>
+                            <input
+                                id={{id}}
+                                type="text"
+                                maxlength="190"
+                                autocomplete="off"
+                                class="form-input form-input-sm w-full"
+                                value={{this.editando.street1}}
+                                {{on "input" (fn this.setCampoLoja "street1")}}
+                            />
+                        </InputGroup>
+                        <InputGroup @name={{t "fleet-ops.ui.lojas.street2"}} @wrapperClass="mb-0 md:col-span-3" as |id|>
+                            <input
+                                id={{id}}
+                                type="text"
+                                maxlength="190"
+                                autocomplete="off"
+                                class="form-input form-input-sm w-full"
+                                value={{this.editando.street2}}
+                                {{on "input" (fn this.setCampoLoja "street2")}}
+                            />
+                        </InputGroup>
+
+                        <InputGroup @name={{t "fleet-ops.ui.lojas.neighborhood"}} @wrapperClass="mb-0 md:col-span-2" as |id|>
+                            <input
+                                id={{id}}
+                                type="text"
+                                maxlength="120"
+                                autocomplete="off"
+                                class="form-input form-input-sm w-full"
+                                value={{this.editando.neighborhood}}
+                                {{on "input" (fn this.setCampoLoja "neighborhood")}}
+                            />
+                        </InputGroup>
+                        <InputGroup @name={{t "fleet-ops.ui.lojas.city"}} @required={{true}} @wrapperClass="mb-0 md:col-span-2" as |id|>
+                            <input
+                                id={{id}}
+                                type="text"
+                                maxlength="120"
+                                autocomplete="off"
+                                class="form-input form-input-sm w-full"
+                                value={{this.editando.city}}
+                                {{on "input" (fn this.setCampoLoja "city")}}
+                            />
+                        </InputGroup>
+                        <InputGroup @name={{t "fleet-ops.ui.lojas.province"}} @wrapperClass="mb-0" as |id|>
+                            <input
+                                id={{id}}
+                                type="text"
+                                maxlength="60"
+                                autocomplete="off"
+                                class="form-input form-input-sm w-full"
+                                value={{this.editando.province}}
+                                {{on "input" (fn this.setCampoLoja "province")}}
+                            />
+                        </InputGroup>
+                        <InputGroup @name={{t "fleet-ops.ui.lojas.postal-code"}} @wrapperClass="mb-0" as |id|>
+                            <input
+                                id={{id}}
+                                type="text"
+                                inputmode="numeric"
+                                maxlength="20"
+                                autocomplete="off"
+                                class="form-input form-input-sm w-full"
+                                value={{this.editando.postal_code}}
+                                {{on "input" (fn this.setCampoLoja "postal_code")}}
+                            />
+                        </InputGroup>
+
+                        <InputGroup @name={{t "fleet-ops.ui.lojas.latitude"}} @required={{true}} @wrapperClass="mb-0 md:col-span-2" as |id|>
+                            <input
+                                id={{id}}
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                placeholder="-21.1775"
+                                class="form-input form-input-sm w-full"
+                                value={{this.editando.latitude}}
+                                {{on "input" (fn this.setCampoLoja "latitude")}}
+                                {{on "paste" this.colarCoordenadas}}
+                            />
+                        </InputGroup>
+                        <InputGroup @name={{t "fleet-ops.ui.lojas.longitude"}} @required={{true}} @wrapperClass="mb-0 md:col-span-2" as |id|>
+                            <input
+                                id={{id}}
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                placeholder="-47.8103"
+                                class="form-input form-input-sm w-full"
+                                value={{this.editando.longitude}}
+                                {{on "input" (fn this.setCampoLoja "longitude")}}
+                                {{on "paste" this.colarCoordenadas}}
+                            />
+                        </InputGroup>
+                        <div class="flex items-end pb-1 md:col-span-2">
+                            {{#if this.linkDoMapa}}
+                                <a href={{this.linkDoMapa}} target="_blank" rel="noopener noreferrer" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">{{t
+                                        "fleet-ops.ui.lojas.check-on-map"
+                                    }}</a>
+                            {{/if}}
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">{{t "fleet-ops.ui.lojas.coordinates-help"}}</p>
+                    {{#each this.dicasLoja as |dica|}}
+                        <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-1">{{dica}}</p>
+                    {{/each}}
+
+                    <div class="flex items-center gap-2 mt-4">
+                        <Button
+                            @type="primary"
+                            @size="sm"
+                            @icon="save"
+                            @text={{t "fleet-ops.ui.lojas.save"}}
+                            @disabled={{not this.podeSalvarLoja}}
+                            @isLoading={{this.salvarLoja.isRunning}}
+                            @onClick={{perform this.salvarLoja}}
+                        />
+                        <Button @size="sm" @text={{t "fleet-ops.ui.lojas.cancel"}} @onClick={{this.cancelarEdicao}} />
+                    </div>
+                </ContentPanel>
+            </div>
+        {{/if}}
+
+        {{#if this.lojas.length}}
+            {{#each this.lojas key="id" as |loja|}}
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="text-base font-semibold dark:text-white">{{loja.nome}}</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">{{this.enderecoDaLoja loja}}</div>
+                            {{#if loja.telefone}}
+                                <div class="text-sm text-gray-500 dark:text-gray-400">{{loja.telefone}}</div>
+                            {{/if}}
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <Button @size="xs" @icon="pen-to-square" @text={{t "fleet-ops.ui.lojas.edit"}} @onClick={{fn this.editar loja}} />
+                            <Button @size="xs" @icon="user-plus" @text={{t "fleet-ops.ui.lojas.add-user"}} @onClick={{fn this.abrirNovoUsuario loja}} />
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-xs uppercase text-gray-500 dark:text-gray-400 mb-1">{{t "fleet-ops.ui.lojas.users"}}</div>
+                        {{#if loja.usuarios.length}}
+                            <table class="table w-full text-sm">
+                                <thead>
+                                    <tr class="text-left text-gray-500 dark:text-gray-400">
+                                        <th class="py-2">{{t "fleet-ops.ui.lojas.user-name"}}</th>
+                                        <th class="py-2">{{t "fleet-ops.ui.lojas.user-email"}}</th>
+                                        <th class="py-2"></th>
+                                        <th class="py-2"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{#each loja.usuarios key="id" as |usuario|}}
+                                        <tr
+                                            class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100
+                                                {{if (eq this.senhaDe.usuario.id usuario.id) 'bg-blue-50 dark:bg-blue-900'}}"
+                                        >
+                                            <td class="py-2">
+                                                {{usuario.nome}}
+                                                {{#if usuario.telefone}}
+                                                    <span class="ml-1 text-xs text-gray-500 dark:text-gray-400">{{usuario.telefone}}</span>
+                                                {{/if}}
+                                            </td>
+                                            <td class="py-2">{{usuario.email}}</td>
+                                            <td class="py-2 whitespace-nowrap">
+                                                {{#if usuario.ativo}}
+                                                    <span class="text-xs font-medium rounded px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">{{t
+                                                            "fleet-ops.ui.lojas.active"
+                                                        }}</span>
+                                                {{else}}
+                                                    <span class="text-xs font-medium rounded px-2 py-0.5 bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{t
+                                                            "fleet-ops.ui.lojas.inactive"
+                                                        }}</span>
+                                                {{/if}}
+                                            </td>
+                                            <td class="py-2 text-right whitespace-nowrap">
+                                                <div class="inline-flex items-center gap-2">
+                                                    <Button @size="xs" @icon="key" @text={{t "fleet-ops.ui.lojas.change-password"}} @onClick={{fn this.abrirTrocarSenha loja usuario}} />
+                                                    {{#if usuario.ativo}}
+                                                        <Button
+                                                            @size="xs"
+                                                            @icon="user-slash"
+                                                            @text={{t "fleet-ops.ui.lojas.deactivate"}}
+                                                            @disabled={{this.alterarAcesso.isRunning}}
+                                                            @onClick={{perform this.alterarAcesso loja usuario false}}
+                                                        />
+                                                    {{else}}
+                                                        <Button
+                                                            @size="xs"
+                                                            @icon="user-check"
+                                                            @text={{t "fleet-ops.ui.lojas.reactivate"}}
+                                                            @disabled={{this.alterarAcesso.isRunning}}
+                                                            @onClick={{perform this.alterarAcesso loja usuario true}}
+                                                        />
+                                                    {{/if}}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {{/each}}
+                                </tbody>
+                            </table>
+                        {{else}}
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.no-users"}}</p>
+                        {{/if}}
+                    </div>
+
+                    {{#if (eq this.senhaDe.loja.id loja.id)}}
+                        <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 space-y-3" {{did-insert this.abrirPainel}}>
+                            <div class="text-sm font-semibold dark:text-white">{{t "fleet-ops.ui.lojas.change-password-of" name=this.senhaDe.usuario.nome}}</div>
+                            <InputGroup @name={{t "fleet-ops.ui.lojas.new-password"}} @required={{true}} @wrapperClass="mb-0 max-w-sm" as |id|>
+                                <input
+                                    id={{id}}
+                                    type="password"
+                                    autocomplete="new-password"
+                                    maxlength="100"
+                                    class="form-input form-input-sm w-full"
+                                    value={{this.novaSenha}}
+                                    {{on "input" this.setNovaSenha}}
+                                />
+                            </InputGroup>
+                            {{#unless this.podeTrocarSenha}}
+                                <p class="text-xs text-yellow-700 dark:text-yellow-300">{{t "fleet-ops.ui.lojas.password-too-short"}}</p>
+                            {{/unless}}
+                            <div class="flex items-center gap-2">
+                                <Button
+                                    @type="primary"
+                                    @size="sm"
+                                    @icon="key"
+                                    @text={{t "fleet-ops.ui.lojas.change-password"}}
+                                    @disabled={{not this.podeTrocarSenha}}
+                                    @isLoading={{this.trocarSenha.isRunning}}
+                                    @onClick={{perform this.trocarSenha}}
+                                />
+                                <Button @size="sm" @text={{t "fleet-ops.ui.lojas.cancel"}} @onClick={{this.fecharTrocarSenha}} />
+                            </div>
+                        </div>
+                    {{/if}}
+
+                    {{#if (eq this.lojaDoUsuario.id loja.id)}}
+                        <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 space-y-3" {{did-insert this.abrirPainel}}>
+                            <div class="text-sm font-semibold dark:text-white">{{t "fleet-ops.ui.lojas.new-user-of" name=loja.nome}}</div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <InputGroup @name={{t "fleet-ops.ui.lojas.user-name"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                                    <input
+                                        id={{id}}
+                                        type="text"
+                                        maxlength="120"
+                                        autocomplete="off"
+                                        class="form-input form-input-sm w-full"
+                                        value={{this.novoUsuario.nome}}
+                                        {{on "input" (fn this.setCampoUsuario "nome")}}
+                                    />
+                                </InputGroup>
+                                <InputGroup @name={{t "fleet-ops.ui.lojas.user-email"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                                    <input
+                                        id={{id}}
+                                        type="email"
+                                        inputmode="email"
+                                        maxlength="190"
+                                        autocomplete="off"
+                                        class="form-input form-input-sm w-full"
+                                        value={{this.novoUsuario.email}}
+                                        {{on "input" (fn this.setCampoUsuario "email")}}
+                                    />
+                                </InputGroup>
+                                <InputGroup @name={{t "fleet-ops.ui.lojas.user-phone"}} @wrapperClass="mb-0" as |id|>
+                                    <input
+                                        id={{id}}
+                                        type="tel"
+                                        inputmode="tel"
+                                        maxlength="30"
+                                        autocomplete="off"
+                                        class="form-input form-input-sm w-full"
+                                        value={{this.novoUsuario.telefone}}
+                                        {{on "input" (fn this.setCampoUsuario "telefone")}}
+                                    />
+                                </InputGroup>
+                                <InputGroup @name={{t "fleet-ops.ui.lojas.user-password"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                                    <input
+                                        id={{id}}
+                                        type="password"
+                                        autocomplete="new-password"
+                                        maxlength="100"
+                                        class="form-input form-input-sm w-full"
+                                        value={{this.novoUsuario.senha}}
+                                        {{on "input" (fn this.setCampoUsuario "senha")}}
+                                    />
+                                </InputGroup>
+                            </div>
+                            {{#each this.dicasUsuario as |dica|}}
+                                <p class="text-xs text-yellow-700 dark:text-yellow-300">{{dica}}</p>
+                            {{/each}}
+                            <div class="flex items-center gap-2">
+                                <Button
+                                    @type="primary"
+                                    @size="sm"
+                                    @icon="user-plus"
+                                    @text={{t "fleet-ops.ui.lojas.add-user"}}
+                                    @disabled={{not this.podeAdicionarUsuario}}
+                                    @isLoading={{this.adicionarUsuario.isRunning}}
+                                    @onClick={{perform this.adicionarUsuario}}
+                                />
+                                <Button @size="sm" @text={{t "fleet-ops.ui.lojas.cancel"}} @onClick={{this.fecharNovoUsuario}} />
+                            </div>
+                        </div>
+                    {{/if}}
+                </div>
+            {{/each}}
+        {{else if this.carregar.isRunning}}
+            <Spinner />
+        {{else if this.carregado}}
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.empty"}}</p>
+        {{/if}}
+    </div>
+    <Spacer @height="300px" />
+</Layout::Section::Body>
