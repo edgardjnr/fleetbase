@@ -59,10 +59,10 @@ class RouteServiceProvider extends ServiceProvider
                         Route::put('lojas/{id}/usuarios/{contato}/senha', [LojasController::class, 'trocarSenha']);
                         Route::put('lojas/{id}/usuarios/{contato}/ativo', [LojasController::class, 'alterarAcesso']);
 
-                        // portal da loja (usuário type=customer; o ProtegerPortalLoja só libera estas)
-                        Route::get('loja/minha-loja', [PortalLojaController::class, 'minhaLoja']);
-                        Route::get('loja/extrato', [PortalLojaController::class, 'extrato']);
-                        Route::get('loja/pedidos/{id}/motoboy', [PortalLojaController::class, 'motoboy']);
+                        // portal da loja (usuário type=customer; o ProtegerPortalLoja só libera estas), até 60 chamadas por minuto por usuário
+                        Route::get('loja/minha-loja', [PortalLojaController::class, 'minhaLoja'])->middleware('throttle:60,1');
+                        Route::get('loja/extrato', [PortalLojaController::class, 'extrato'])->middleware('throttle:60,1');
+                        Route::get('loja/pedidos/{id}/motoboy', [PortalLojaController::class, 'motoboy'])->middleware('throttle:60,1');
                     });
             }
         );
