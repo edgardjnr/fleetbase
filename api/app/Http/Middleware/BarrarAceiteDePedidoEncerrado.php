@@ -31,6 +31,11 @@ use Illuminate\Support\Facades\Log;
  * decisão de quem chama, mas, se chegasse no meio de um aceite, o startOrder gravaria o status de início por cima
  * do cancelamento. O início e o cancelamento pela central (int/v1) ficam fora: são decisão da central.
  *
+ * Se a trava não sair no tempo de espera (TravaDoPedido::ESPERA), o aceite responde 409 e o motoboy tenta de novo,
+ * mas o cancelamento nunca é recusado por causa dela: segue sem a trava, com um aviso no log. Uma trava presa por
+ * tanto tempo quase sempre é de um processo que morreu (o aceite grava o início em milissegundos), e um 409 perderia
+ * o cancelamento se a integração não repetisse a chamada: o motoboy entregaria um pedido cancelado, cobrado da loja.
+ *
  * Fica no fim do grupo de middleware `fleetbase.api` das rotas v1 (registrado no RouteServiceProvider), não na
  * lista global: roda depois da autenticação (AuthenticateOnceWithBasicAuth), então só vê requisições autenticadas
  * (sem credencial válida, o core responde 401 antes, sem a trava) e já com a sessão da empresa montada. A busca
@@ -71,14 +76,27 @@ class BarrarAceiteDePedidoEncerrado
                 // o cancelamento só entra na fila, sem conferência (o Fleet-Ops cancela em qualquer status)
                 : fn () => $next($request));
         } catch (LockTimeoutException $e) {
+            if (!$aceite) {
+                // o cancelamento nunca é recusado por causa da trava: presa por tanto tempo, ela quase sempre é de um
+                // processo morto, e um 409 perderia o cancelamento se a integração não repetisse a chamada
+                Log::warning('[entregas] cancelamento pela API v1: trava do pedido ocupada, seguindo sem a trava', [
+                    'pedido' => $pedido->public_id,
+                    'motivo' => 'a trava não saiu em ' . TravaDoPedido::ESPERA
+                        . ' s (quem a segurava provavelmente morreu)',
+                ]);
+
+                return $next($request);
+            }
+
             Log::warning(
-                $aceite ? '[entregas] aceite do motoboy: trava do pedido ocupada' : '[entregas] cancelamento pela API v1: trava do pedido ocupada',
+                '[entregas] aceite do motoboy: trava do pedido ocupada',
                 ['pedido' => $pedido->public_id, 'ip' => $request->ip()]
             );
 
-            return response()->apiError($aceite
-                ? 'Este pedido está sendo atualizado neste momento. Tente aceitar de novo em alguns segundos.'
-                : 'Este pedido está sendo atualizado neste momento. Tente cancelar de novo em alguns segundos.', 409);
+            return response()->apiError(
+                'Este pedido está sendo atualizado neste momento. Tente aceitar de novo em alguns segundos.',
+                409
+            );
         }
     }
 
