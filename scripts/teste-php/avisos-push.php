@@ -130,20 +130,34 @@ $ping   = enviado(new OrderPing(pedidoDoTeste(), 1234));
 confere(($ping['notification'] ?? null) === ['title' => 'Novo pedido disponível', 'body' => 'Coleta a 1,2 km de você. Toque para ver o pedido.'], 'pedido novo: push comum com o texto em pt-BR');
 confere(($ping['android']['notification']['channel_id'] ?? null) === 'alarme_pedido', 'pedido novo no canal "alarme_pedido"');
 confere(!isset($ping['android']['priority']), 'sem prioridade de push de dados com a chave desligada');
-$canais = ['atribuído' => 'alarme_pedido', 'liberado' => 'alarme_pedido', 'chat' => 'mensagens', 'cancelado' => 'avisos', 'falhou' => 'avisos', 'concluído' => 'avisos', 'parada' => 'avisos', 'teste' => 'avisos'];
+confere(($ping['android']['ttl'] ?? null) === '900s', 'pedido novo com validade de 15 min também como push comum');
+$canais =['atribuído' => 'alarme_pedido', 'liberado' => 'alarme_pedido', 'chat' => 'mensagens', 'cancelado' => 'avisos', 'falhou' => 'avisos', 'concluído' => 'avisos', 'parada' => 'avisos', 'teste' => 'avisos'];
 foreach ($canais as $nome => $canal) {
     $mensagem = enviado($avisos[$nome]);
     confere(($mensagem['android']['notification']['channel_id'] ?? null) === $canal, "{$nome}: canal \"{$canal}\"");
 }
+// o Fleet-Ops manda o OrderFailed com o tipo order_canceled; se corrigir para order_failed, o canal continua o mesmo
+$falhouCorrigido = aviso(OrderFailed::class, 'Order RP-1 delivery has has failed', 'Order RP-1 delivery has failed.', ['id' => 'order_abc', 'type' => 'order_failed']);
+confere((enviado($falhouCorrigido)['android']['notification']['channel_id'] ?? null) === 'avisos', 'falhou com o tipo corrigido (order_failed): canal "avisos"');
+foreach (['atribuído', 'liberado'] as $nome) {
+    confere((enviado($avisos[$nome])['android']['ttl'] ?? null) === '900s', "{$nome}: validade de 15 min também como push comum");
+}
+foreach (['chat', 'cancelado'] as $nome) {
+    confere(!isset(enviado($avisos[$nome])['android']['ttl']), "{$nome}: sem validade curta (não é alarme)");
+}
 $chat = enviado($avisos['chat']);
 confere(($chat['notification']['title'] ?? null) === 'Mensagem de Edgard Junior' && ($chat['data']['channel'] ?? null) === 'chat_channel_1', 'chat: texto em pt-BR e os dados da conversa mantidos');
 confere(($chat['android']['notification']['color'] ?? null) === '#4391EA', 'o resto do push do Fleet-Ops (cor, som) fica');
+confere(($chat['android']['notification']['sound'] ?? null) === 'default', 'o som do push do Fleet-Ops também fica');
+confere(isset($chat['android']['fcm_options'], $chat['apns']), 'fcm_options e apns do push do Fleet-Ops ficam no push comum');
 
 echo '== Alarme como push de dados (chave ligada)' . PHP_EOL;
 foreach (['1', 'true', 'on', 'ON'] as $valor) {
     putenv("ENTREGAS_ALARME_POR_DADOS={$valor}");
     confere(AvisosDoMotoboy::alarmePorDados(), "chave '{$valor}' liga");
 }
+putenv('ENTREGAS_ALARME_POR_DADOS= on ');
+confere(AvisosDoMotoboy::alarmePorDados(), "chave ' on ' (com espaços em volta) liga");
 foreach (['0', 'false', 'off', ''] as $valor) {
     putenv("ENTREGAS_ALARME_POR_DADOS={$valor}");
     confere(!AvisosDoMotoboy::alarmePorDados(), "chave '{$valor}' desliga");
@@ -161,9 +175,30 @@ foreach (['atribuído', 'liberado'] as $nome) {
 }
 $cancelado = enviado($avisos['cancelado']);
 confere(($cancelado['notification']['title'] ?? null) === 'Pedido RP-1 cancelado' && !isset($cancelado['android']['priority']), 'cancelado continua push comum com a chave ligada');
+confere(($cancelado['android']['notification']['channel_id'] ?? null) === 'avisos', 'cancelado segue no canal "avisos" com a chave ligada');
+$chat = enviado($avisos['chat']);
+confere(isset($chat['notification']) && ($chat['android']['notification']['channel_id'] ?? null) === 'mensagens', 'chat segue push comum no canal "mensagens" com a chave ligada');
 $comTipos = aviso(OrderAssigned::class, 'New order RP-1 assigned!', 'You have a new order assigned, tap for details.', ['id' => 'order_abc', 'type' => 'order_assigned', 'tentativa' => 2, 'urgente' => true, 'vazio' => null]);
 $dados    = enviado($comTipos)['data'];
 confere($dados['tentativa'] === '2' && $dados['urgente'] === '1' && !array_key_exists('vazio', $dados), 'dados do push de dados todos como texto (nulos saem)');
+$comEstruturas = aviso(OrderAssigned::class, 'New order RP-1 assigned!', 'You have a new order assigned, tap for details.', [
+    'id'       => 'order_abc',
+    'type'     => 'order_assigned',
+    'lista'    => ['a', 'b'],
+    'acentos'  => ['ação'],
+    'quebrado' => ["a\xB1"],
+    'objeto'   => new class {
+        public function __toString(): string
+        {
+            return 'em texto';
+        }
+    },
+]);
+$dados = enviado($comEstruturas)['data'];
+confere($dados['lista'] === '["a","b"]', 'lista nos dados vira JSON em texto');
+confere($dados['acentos'] === '["ação"]', 'JSON dos dados sem escapar os acentos');
+confere($dados['objeto'] === 'em texto', 'objeto com __toString vira o texto dele (e não "{}")');
+confere($dados['quebrado'] === "[\"a\u{FFFD}\"]", 'UTF-8 inválido dentro de uma lista é substituído (json_encode não deixa false nos dados)');
 putenv('ENTREGAS_ALARME_POR_DADOS');
 
 echo '== Aviso sem tradução' . PHP_EOL;

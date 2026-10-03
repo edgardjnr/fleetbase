@@ -1163,7 +1163,7 @@ git -C /c/tmp/em add api/app/Notifications/Entregas/AvisosDoMotoboy.php scripts/
 git -C /c/tmp/em commit -m "Avisos ao motoboy em pt-BR: textos por classe de notificação (AvisosDoMotoboy)"
 ```
 
-- [x] **Ajustes da revisão de qualidade** (commit seguinte ao da Task 3): `textoDaColeta()` arredonda os metros antes de escolher a unidade (999,6 m sai "1,0 km", e não "1000 m"; 0,4 m e "0.0" ficam só com o convite, sem "Coleta a 0 m"); o `avisos-push.php` usa as notificações reais do Fleet-Ops e do core (cópias em `packages/`) em vez de stubs inventados: o `stubs-avisos.php` perdeu os blocos `AvisoDoFleetOps` e `Fleetbase\Notifications`, e o `aviso()` cria a instância com `newInstanceWithoutConstructor()`, porque o construtor real pede os modelos (na Task 5, o `AvisoQuebrado`, que herda do `OrderCanceled` real, nasce do mesmo jeito); casos novos: distância (999,6, 0,4 e "0.0"), frases sem o código de rastreamento (liberado, falhou, concluído) e agendado sem código. O `avisos-push.php` passa a ter 26 casos (a Task 4 termina com 58 e a Task 5 com 65).
+- [x] **Ajustes da revisão de qualidade** (commit seguinte ao da Task 3): `textoDaColeta()` arredonda os metros antes de escolher a unidade (999,6 m sai "1,0 km", e não "1000 m"; 0,4 m e "0.0" ficam só com o convite, sem "Coleta a 0 m"); o `avisos-push.php` usa as notificações reais do Fleet-Ops e do core (cópias em `packages/`) em vez de stubs inventados: o `stubs-avisos.php` perdeu os blocos `AvisoDoFleetOps` e `Fleetbase\Notifications`, e o `aviso()` cria a instância com `newInstanceWithoutConstructor()`, porque o construtor real pede os modelos (na Task 5, o `AvisoQuebrado`, que herda do `OrderCanceled` real, nasce do mesmo jeito); casos novos: distância (999,6, 0,4 e "0.0"), frases sem o código de rastreamento (liberado, falhou, concluído) e agendado sem código. O `avisos-push.php` passa a ter 26 casos (a Task 4 termina com 73 e a Task 5 com 80).
 
 ---
 
@@ -1367,7 +1367,7 @@ use NotificationChannels\Fcm\Resources\Notification as NotificacaoFcm;
 
 - [ ] **Step 4: Rodar e ver passar**
 
-Mesmo comando. Esperado: `FALHAS: 0` (58 casos).
+Mesmo comando. Esperado: `FALHAS: 0` (73 casos).
 
 - [ ] **Step 5: Sintaxe**
 
@@ -1379,6 +1379,8 @@ Mesmo comando da Task 3, passo 6. Esperado: `ok`.
 git -C /c/tmp/em add api/app/Notifications/Entregas/AvisosDoMotoboy.php scripts/teste-php/avisos-push.php
 git -C /c/tmp/em commit -m "Avisos ao motoboy: canal do app por tipo e alarme como push de dados (chave ENTREGAS_ALARME_POR_DADOS)"
 ```
+
+- [x] **Ajustes da revisão de qualidade** (commit seguinte ao da Task 4): o alarme como push comum (chave desligada) também leva `android.ttl = 900s`, porque um alerta de pedido velho não pode tocar horas depois, quando o celular volta a ter rede (no APK 16 o canal de alarme toca até no silencioso), e o docblock da `VALIDADE_ALARME` passa a dizer que vale para todo push de alarme; o `comoDados()` converte os dados com um `match` (escalar e `Stringable` viram texto; o resto vira JSON com `JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE`, e `?: ''` no lugar do `false`), em vez do `json_encode` simples, que deixava um objeto como `{}` e um `false` com UTF-8 inválido; `CANAIS` ganha `order_failed` => `avisos` (o Fleet-Ops hoje manda o `OrderFailed` com o tipo `order_canceled`); o docblock do `adaptar()` diz que ele altera e devolve a mesma instância (o canal da Task 5 passa um clone); casos novos no `avisos-push.php`: validade só nos três alarmes (e não no chat nem no cancelado), som, `fcm_options` e `apns` do Fleetbase mantidos no push comum, chave `' on '` com espaços, canais do chat e do cancelado com a chave ligada, `order_failed` e, no push de dados, lista, acentos, objeto com `__toString` e UTF-8 inválido. O `avisos-push.php` passa a ter 73 casos (a Task 5 termina com 80).
 
 ---
 
@@ -1525,7 +1527,7 @@ class CanalFcmEntregas extends FcmChannel
 
 - [ ] **Step 4: Rodar e ver passar**
 
-Mesmo comando. Esperado: `FALHAS: 0` (65 casos).
+Mesmo comando. Esperado: `FALHAS: 0` (80 casos).
 
 - [ ] **Step 5: Trocar o canal no `AppServiceProvider`**
 

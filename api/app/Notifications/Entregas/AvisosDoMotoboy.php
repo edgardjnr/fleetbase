@@ -26,7 +26,8 @@ use NotificationChannels\Fcm\Resources\Notification as NotificacaoFcm;
  * - Canal: cada tipo vai para um canal do app (alarme, mensagens, avisos). O APK sem o canal usa o padrão "pedidos".
  * - Alarme (pedido novo, reenvio, atribuído, liberado): com ENTREGAS_ALARME_POR_DADOS ligada, vira push de dados de
  *   alta prioridade, e o app (APK 16+) toca o alarme em loop com tela cheia. Desligada (padrão), vai como push comum no
- *   canal de alarme. Só ligar com todos no APK 16: no antigo, tocar no push de dados não abre o pedido.
+ *   canal de alarme. Nos dois casos o aviso vale só por 15 min (VALIDADE_ALARME). Só ligar com todos no APK 16: no
+ *   antigo, tocar no push de dados não abre o pedido.
  */
 class AvisosDoMotoboy
 {
@@ -40,6 +41,7 @@ class AvisosDoMotoboy
         'order_dispatched'      => 'alarme_pedido',
         'chat_message_received' => 'mensagens',
         'order_canceled'        => 'avisos',
+        'order_failed'          => 'avisos', // se o Fleet-Ops corrigir o tipo do OrderFailed (hoje manda order_canceled)
         'order_completed'       => 'avisos',
         'waypoint_completed'    => 'avisos',
         'test'                  => 'avisos',
@@ -48,10 +50,16 @@ class AvisosDoMotoboy
     /** Canal do push de dados no APK antigo (a biblioteca de push mostra nele; o APK 16 usa o canal do alarme). */
     public const CANAL_PADRAO = 'pedidos';
 
-    /** Validade do push de dados de alarme: o FCM descarta depois disso, e um alarme velho não toca quando o celular volta. */
+    /**
+     * Validade de todo push de alarme, de dados ou comum: o FCM descarta depois disso, e um alarme velho não toca quando
+     * o celular volta a ter rede (no APK 16 o canal de alarme toca até no silencioso).
+     */
     public const VALIDADE_ALARME = '900s';
 
-    /** Adapta o push montado pela notificação: texto em pt-BR, canal e formato. */
+    /**
+     * Adapta o push montado pela notificação: texto em pt-BR, canal e formato. Altera e devolve a mesma instância (o
+     * CanalFcmEntregas passa uma cópia da mensagem e, se a adaptação falhar, envia a original).
+     */
     public static function adaptar(Notification $notificacao, FcmMessage $mensagem): FcmMessage
     {
         $tipo  = (string) ($mensagem->data['type'] ?? '');
@@ -73,6 +81,11 @@ class AvisosDoMotoboy
 
         if (isset(self::CANAIS[$tipo])) {
             $mensagem->custom['android']['notification']['channel_id'] = self::CANAIS[$tipo];
+        }
+
+        // alarme comum também vence em 15 min: um pedido velho não pode tocar horas depois, quando o celular volta
+        if (in_array($tipo, self::TIPOS_DE_ALARME, true)) {
+            $mensagem->custom['android']['ttl'] = self::VALIDADE_ALARME;
         }
 
         return $mensagem;
@@ -180,7 +193,11 @@ class AvisosDoMotoboy
         $dados = [];
         foreach ((array) $mensagem->data as $chave => $valor) {
             if ($valor !== null) {
-                $dados[$chave] = is_scalar($valor) ? (string) $valor : json_encode($valor);
+                $dados[$chave] = match (true) {
+                    is_scalar($valor)              => (string) $valor,
+                    $valor instanceof \Stringable  => (string) $valor,
+                    default                        => json_encode($valor, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) ?: '',
+                };
             }
         }
 

@@ -86,7 +86,7 @@ por causa da tradução.
 - **Alarme** (`order_ping`, `order_assigned`, `order_dispatched`), com a chave desligada (padrão):
   push comum no canal `alarme_pedido`. No APK 16 é o canal de alarme (toca no silencioso, uma vez,
   sem loop nem tela cheia); no APK antigo, que não tem o canal, o Android usa o padrão `pedidos`,
-  como hoje.
+  como hoje. Validade de 15 min (`android.ttl = 900s`), como no push de dados.
 - **Alarme com a chave ligada:** push **de dados**. Saem o bloco `notification` e o
   `android.notification`. Os dados levam `id`, `type`, `title`, `body` e
   `android_channel_id = pedidos`, todos como texto. Vai com `android.priority = high` e
