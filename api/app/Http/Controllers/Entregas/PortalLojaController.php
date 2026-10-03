@@ -21,8 +21,11 @@ class PortalLojaController extends Controller
     /** Rotas novas calculadas por consulta do extrato (o portal não repete a chamada como a tela da central). */
     public const LIMITE_CALCULOS_PORTAL = 10;
 
-    /** Maior período do extrato, em dias entre o início e o fim (1 ano, contando o bissexto). */
-    public const MAX_DIAS_EXTRATO = 366;
+    /**
+     * Maior período do extrato, em dias entre o início e o fim: 3 meses (do dia 1 até o dia 1 três meses depois são, no
+     * máximo, 92 dias). O portal confere o mesmo limite antes de consultar (MAX_DIAS no controller do extrato).
+     */
+    public const MAX_DIAS_EXTRATO = 92;
 
     /** A loja só vê a posição do motoboy até estas horas depois do aceite (LGPD). */
     public const HORAS_POSICAO = 4;
@@ -64,10 +67,12 @@ class PortalLojaController extends Controller
             'fim'    => ['required', 'date_format:Y-m-d', 'after_or_equal:inicio'],
         ]);
 
-        // até 1 ano por consulta: o extrato varre os pedidos do período e calcula rotas, e a loja pode chamar quando quiser
+        // até 3 meses por consulta: o extrato carrega de uma vez todos os pedidos do período (cerca de 7 models por pedido) e
+        // calcula rotas, e a loja pode chamar quando quiser. Um ano de loja movimentada passa de 36 mil entregas, o que estoura
+        // a memória do PHP e o tempo do Octane
         $dias = Carbon::parse($request->input('inicio'), 'UTC')->diffInDays(Carbon::parse($request->input('fim'), 'UTC'));
         if ($dias > static::MAX_DIAS_EXTRATO) {
-            return response()->json(['errors' => ['Escolha um período de até 1 ano.']], 422);
+            return response()->json(['errors' => ['Escolha um período de até 3 meses.']], 422);
         }
 
         $companyUuid = session('company');
