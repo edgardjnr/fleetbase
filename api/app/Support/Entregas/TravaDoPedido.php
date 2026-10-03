@@ -27,7 +27,10 @@ class TravaDoPedido
     /** Validade da trava, em segundos: se o processo morrer com ela, ela se solta sozinha depois disto. */
     public const VALIDADE = 30;
 
-    /** Quanto esperar pela trava, em segundos, antes de desistir (quem chama responde 409). */
+    /**
+     * Quanto esperar pela trava, em segundos, antes de desistir. Quem chama decide o que fazer: o aceite do motoboy e o
+     * cancelamento pelo portal respondem 409; o cancelamento pela API v1 segue sem a trava (BarrarAceiteDePedidoEncerrado).
+     */
     public const ESPERA = 10;
 
     /**
