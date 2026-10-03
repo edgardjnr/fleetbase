@@ -62,3 +62,5 @@ builds/osx/frankenphp
 
 # deploy de produção: variáveis com segredos
 deploy/stack.env
+# teste de isolamento do portal da loja (scripts/teste-isolamento-lojas.mjs): senhas e chave de API
+deploy/teste-lojas.env
