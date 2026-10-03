@@ -585,10 +585,13 @@ customer-portal:
       amount: Valor
       export-csv: Baixar CSV
       no-deliveries: Nenhuma entrega concluída no período.
-      pending-km: "{count} entrega(s) ainda sem km calculado; clique em Atualizar."
+      pending-km: "{count, plural, one {# entrega ainda sem km: o km total e o valor a pagar ainda não a incluem.} other {# entregas ainda sem km: o km total e o valor a pagar ainda não as incluem.}} Clique em Atualizar."
       refresh: Atualizar
+      show-more: "Mostrar mais ({count, plural, one {# restante} other {# restantes}})"
+      stale-period: "Os valores abaixo são de {start} a {end}. Clique em Atualizar para ver o período escolhido."
       km: Km
-      period-invalid: O fim do período não pode ser antes do início.
+      period-invalid: "Informe um período válido: o fim não pode ser antes do início."
+      period-too-long: Escolha um período de até 3 meses.
       pickup-fixed: Coleta
       pickup-fixed-help: Sempre no endereço da loja.
       store-without-address: A loja ainda não tem endereço de coleta. Fale com a central.

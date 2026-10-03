@@ -9,18 +9,25 @@
         </div>
     </div>
 
-    {{! Entregas: a consulta sai no `change` dos campos (com uma espera curta, ver o controller); o período vem da loja da sessão, que não é enviada }}
+    {{! Entregas: a consulta sai no `change` dos campos, com uma espera curta (ver o controller). A loja vem da sessão do usuário e não é enviada }}
     <div class="flex flex-wrap items-end gap-3 mt-4">
         <InputGroup @name={{t "customer-portal.ui.entregas.period-start"}} @wrapperClass="mb-0i" as |inputId|>
-            <input id={{inputId}} type="date" class="form-input" value={{this.inicio}} {{on "change" this.setInicio}} />
+            <input id={{inputId}} type="date" class="form-input" value={{this.inicio}} max={{this.fim}} {{on "change" this.setInicio}} />
         </InputGroup>
         <InputGroup @name={{t "customer-portal.ui.entregas.period-end"}} @wrapperClass="mb-0i" as |inputId|>
-            <input id={{inputId}} type="date" class="form-input" value={{this.fim}} {{on "change" this.setFim}} />
+            <input id={{inputId}} type="date" class="form-input" value={{this.fim}} min={{this.inicio}} {{on "change" this.setFim}} />
         </InputGroup>
     </div>
 
-    {{! Entregas: três colunas só a partir de md; antes disso o valor (fonte grande, sem quebra) seria cortado nos cartões estreitos }}
-    <div class="grid grid-cols-1 gap-3 md:grid-cols-3 mt-4">
+    {{#if this.desatualizado}}
+        {{! Entregas: depois de um erro ou de um período recusado, os campos mostram um período e os valores abaixo são de outro }}
+        <InfoBlock @type="warning" @icon="triangle-exclamation" class="mt-4" role="status">
+            {{this.avisoDesatualizado}}
+        </InfoBlock>
+    {{/if}}
+
+    {{! Entregas: três colunas só a partir de md; antes disso o valor (fonte grande, sem quebra) seria cortado nos cartões estreitos. Os cartões esmaecem com uma consulta em andamento ou quando são de outro período }}
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-3 mt-4 transition-opacity {{if this.esmaecido 'opacity-60'}}">
         <div class="portal-dashboard-widget portal-kpi-tile portal-kpi-accent-blue">
             <div class="portal-kpi-content">
                 <div class="min-w-0">
@@ -51,17 +58,13 @@
     </div>
 
     {{#if this.pendentes}}
-        <div
-            class="flex items-start gap-2 mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200"
-            role="status"
-        >
-            <FaIcon @icon="triangle-exclamation" class="mt-0.5" />
-            <span>{{t "customer-portal.ui.entregas.pending-km" count=this.pendentes}}</span>
-        </div>
+        <InfoBlock @type="warning" @icon="triangle-exclamation" class="mt-4" role="status">
+            {{t "customer-portal.ui.entregas.pending-km" count=this.pendentes}}
+        </InfoBlock>
     {{/if}}
 
-    {{! Entregas: com dados na tela, uma nova consulta só os escurece (continuam visíveis até a resposta chegar) }}
-    <div class="mt-5 transition-opacity {{if this.atualizando 'opacity-60'}}">
+    {{! Entregas: com dados na tela, uma nova consulta só os esmaece (continuam visíveis até a resposta chegar); também esmaecem quando são de outro período }}
+    <div class="mt-5 transition-opacity {{if this.esmaecido 'opacity-60'}}">
         {{#if this.dados}}
             <div class="next-table-wrapper no-scroll h-auto table-fluid portal-table-panel">
                 <table class="table portal-table">
@@ -76,7 +79,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {{#each this.entregas as |entrega|}}
+                        {{#each this.entregasVisiveis as |entrega|}}
                             <tr>
                                 <td class="whitespace-nowrap">{{this.dataHora entrega.concluido_em}}</td>
                                 <td class="font-semibold whitespace-nowrap">{{or entrega.id_interno entrega.pedido}}</td>
@@ -98,6 +101,12 @@
                     </tbody>
                 </table>
             </div>
+            {{#if this.restantes}}
+                {{! Entregas: a tabela desenha em partes (milhares de linhas travam a aba); o CSV e os totais já têm todas }}
+                <div class="flex justify-center py-4">
+                    <Button @text={{t "customer-portal.ui.entregas.show-more" count=this.restantes}} @onClick={{this.mostrarMais}} />
+                </div>
+            {{/if}}
         {{else if this.carregar.isRunning}}
             <div class="portal-empty-state portal-table-empty-state">
                 <Spinner />

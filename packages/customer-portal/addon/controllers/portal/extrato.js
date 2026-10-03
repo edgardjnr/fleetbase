@@ -3,7 +3,7 @@ import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { restartableTask, timeout } from 'ember-concurrency';
-import { format, isValid, parseISO, startOfMonth } from 'date-fns';
+import { differenceInCalendarDays, format, isValid, parseISO, startOfMonth } from 'date-fns';
 import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 
 // Entregas: o navegador dispara o `change` do campo de data a cada data válida durante a digitação (o ano 2026 passa por
@@ -13,6 +13,14 @@ const ESPERA_ALTERACAO_MS = 500;
 // Entregas: quanto tempo o endereço do download (blob) continua válido. Revogar logo depois do click() cancela o download
 // em navegadores que só leem o blob depois do click
 const VALIDADE_DOWNLOAD_MS = 60000;
+
+// Entregas: maior período por consulta, em dias entre o início e o fim (3 meses). É o MAX_DIAS_EXTRATO do servidor
+// (PortalLojaController): conferir aqui evita a ida e a resposta em inglês
+const MAX_DIAS = 92;
+
+// Entregas: a tabela desenha este tanto de linhas por vez e "Mostrar mais" acrescenta outro tanto. Em 3 meses uma loja
+// movimentada passa de 10 mil entregas, e cada linha tem uns 14 nós no DOM
+const LINHAS_POR_VEZ = 200;
 
 const FORMATO_DATA_API = 'yyyy-MM-dd';
 const DATA_API = /^\d{4}-\d{2}-\d{2}$/;
@@ -25,9 +33,18 @@ const INICIO_DE_FORMULA = /^[=+\-@\t\r]/;
 const hoje = () => format(new Date(), FORMATO_DATA_API);
 const inicioDoMes = () => format(startOfMonth(new Date()), FORMATO_DATA_API);
 
-// Entregas: o campo de data entrega texto vazio enquanto a data está incompleta, e o ano pode ter 5 ou 6 dígitos. A comparação
-// como texto vale porque as duas datas têm o formato AAAA-MM-DD
-const periodoValido = (inicio, fim) => DATA_API.test(inicio) && DATA_API.test(fim) && inicio <= fim;
+// Entregas: data que o usuário ainda está digitando. O campo de data entrega texto vazio enquanto está incompleto e, a cada
+// dígito do ano, uma data válida (0002, 0020, 0202, até 2026); o ano também pode ter 5 ou 6 dígitos. Por isso só vale data
+// no formato AAAA-MM-DD e de 2000 em diante. Comparar como texto serve porque todas têm esse formato
+const DATA_MINIMA = '2000-01-01';
+const dataCompleta = (data) => DATA_API.test(data) && data >= DATA_MINIMA;
+
+// 'AAAA-MM-DD' no idioma ativo (sem hora nem fuso, o parseISO a lê como data local)
+const dataCurta = (valor) => {
+    const data = valor ? parseISO(String(valor)) : null;
+
+    return data && isValid(data) ? format(data, 'P', dateFnsLocaleOptions()) : SEM_VALOR;
+};
 
 // Número com vírgula decimal e duas casas, como o Excel brasileiro lê
 const decimalCsv = (valor) => Number(valor).toFixed(2).replace('.', ',');
@@ -50,9 +67,19 @@ export default class PortalExtratoController extends Controller {
     @tracked inicio = inicioDoMes();
     @tracked fim = hoje();
     @tracked dados = null;
+    @tracked linhasVisiveis = LINHAS_POR_VEZ;
 
     get entregas() {
         return this.dados?.entregas ?? [];
+    }
+
+    // Entregas: a tabela desenha só as primeiras linhasVisiveis; o CSV e os totais usam todas
+    get entregasVisiveis() {
+        return this.entregas.slice(0, this.linhasVisiveis);
+    }
+
+    get restantes() {
+        return Math.max(0, this.entregas.length - this.linhasVisiveis);
     }
 
     get temEntregas() {
@@ -66,6 +93,24 @@ export default class PortalExtratoController extends Controller {
     // Já há dados na tela e uma nova consulta está em andamento (os dados antigos continuam visíveis, só esmaecidos)
     get atualizando() {
         return Boolean(this.dados) && this.carregar.isRunning;
+    }
+
+    // Entregas: os campos mostram um período e os cartões e a tabela são de outro. Acontece depois de um erro (o limite de
+    // chamadas, por exemplo), de um período inválido ou com a data ainda sendo digitada
+    get desatualizado() {
+        return Boolean(this.dados) && !this.carregar.isRunning && (this.dados.inicio !== this.inicio || this.dados.fim !== this.fim);
+    }
+
+    get esmaecido() {
+        return this.atualizando || this.desatualizado;
+    }
+
+    get avisoDesatualizado() {
+        if (!this.dados) {
+            return '';
+        }
+
+        return this.intl.t('customer-portal.ui.entregas.stale-period', { start: dataCurta(this.dados.inicio), end: dataCurta(this.dados.fim) });
     }
 
     get totalEntregas() {
@@ -82,22 +127,46 @@ export default class PortalExtratoController extends Controller {
 
     // Entregas: uma consulta por vez. Uma nova (outro período, "Atualizar") cancela a anterior, inclusive a que ainda espera
     // o fim da digitação. O período vale o que está nos campos quando a espera termina. Com erro (inclusive o limite de
-    // consultas por minuto) os dados que já estavam na tela ficam
+    // consultas por minuto) os dados que já estavam na tela ficam. O servidor responde em inglês ao período que recusa, então
+    // o que ele recusaria (fim antes do início, mais de 3 meses) é conferido aqui e nem é consultado
     @restartableTask *carregar(espera = 0) {
-        if (typeof espera === 'number' && espera > 0) {
+        const comEspera = typeof espera === 'number' && espera > 0;
+
+        if (comEspera) {
             yield timeout(espera);
         }
 
         const { inicio, fim } = this;
 
-        // o servidor responderia em inglês a um período invertido, então nem é consultado
-        if (!periodoValido(inicio, fim)) {
+        // data ainda sendo digitada: o aviso só sai no "Atualizar" (sem espera). Na digitação fica quieto e a consulta sai
+        // quando a data fechar
+        if (!dataCompleta(inicio) || !dataCompleta(fim)) {
+            if (!comEspera) {
+                this.notifications.warning(this.intl.t('customer-portal.ui.entregas.period-invalid'));
+            }
+
+            return;
+        }
+
+        if (inicio > fim) {
             this.notifications.warning(this.intl.t('customer-portal.ui.entregas.period-invalid'));
             return;
         }
 
+        if (differenceInCalendarDays(parseISO(fim), parseISO(inicio)) > MAX_DIAS) {
+            this.notifications.warning(this.intl.t('customer-portal.ui.entregas.period-too-long'));
+            return;
+        }
+
         try {
-            this.dados = yield this.fetch.get('entregas/loja/extrato', { inicio, fim });
+            const dados = yield this.fetch.get('entregas/loja/extrato', { inicio, fim });
+
+            // outro período volta às primeiras linhas; o "Atualizar" do mesmo período mantém as que já estavam abertas
+            if (dados?.inicio !== this.dados?.inicio || dados?.fim !== this.dados?.fim) {
+                this.linhasVisiveis = LINHAS_POR_VEZ;
+            }
+
+            this.dados = dados;
         } catch (error) {
             this.notifications.serverError(error);
         }
@@ -109,10 +178,15 @@ export default class PortalExtratoController extends Controller {
         this.inicio = inicioDoMes();
         this.fim = hoje();
         this.dados = null;
+        this.linhasVisiveis = LINHAS_POR_VEZ;
     }
 
     @action atualizar() {
         this.carregar.perform();
+    }
+
+    @action mostrarMais() {
+        this.linhasVisiveis += LINHAS_POR_VEZ;
     }
 
     @action setInicio(event) {
@@ -125,9 +199,11 @@ export default class PortalExtratoController extends Controller {
         this.carregar.perform(ESPERA_ALTERACAO_MS);
     }
 
-    // Data e hora da conclusão no idioma ativo (date-fns com o locale compartilhado, como no resto do portal)
+    // Data e hora da conclusão no idioma ativo (date-fns com o locale compartilhado, como no resto do portal). O servidor manda
+    // no fuso da organização ("2026-10-31T22:30:00-03:00"): vale o relógio da própria string, sem o deslocamento, e não o do
+    // navegador, para a entrega não mudar de dia (e de período) para quem está em outro fuso
     @action dataHora(valor) {
-        const data = valor ? parseISO(valor) : null;
+        const data = valor ? parseISO(String(valor).slice(0, 19)) : null;
 
         return data && isValid(data) ? format(data, 'P p', dateFnsLocaleOptions()) : SEM_VALOR;
     }

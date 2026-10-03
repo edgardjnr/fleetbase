@@ -585,10 +585,13 @@ customer-portal:
       amount: Amount
       export-csv: Download CSV
       no-deliveries: No completed deliveries in this period.
-      pending-km: "{count} deliveries still missing km; click Refresh."
+      pending-km: "{count, plural, one {# delivery still without km: the total km and the amount due don't include it yet.} other {# deliveries still without km: the total km and the amount due don't include them yet.}} Click Refresh."
       refresh: Refresh
+      show-more: "Show more ({count, number} left)"
+      stale-period: "The values below are from {start} to {end}. Click Refresh to see the chosen period."
       km: Km
-      period-invalid: The period end can't be before the start.
+      period-invalid: "Enter a valid period: the end can't be before the start."
+      period-too-long: Choose a period of up to 3 months.
       pickup-fixed: Pickup
       pickup-fixed-help: Always at the store address.
       store-without-address: The store has no pickup address yet. Contact the dispatcher.
