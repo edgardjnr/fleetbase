@@ -118,4 +118,71 @@ confere((AvisosDoMotoboy::texto($agendadoSemCodigo)[1] ?? null) === 'Pedido agen
 
 confere(AvisosDoMotoboy::texto(new Illuminate\Notifications\Notification()) === null, 'classe sem tradução devolve null');
 
+function enviado($notificacao): array
+{
+    return AvisosDoMotoboy::adaptar($notificacao, $notificacao->toFcm(null))->toArray();
+}
+
+echo '== Canal e formato (chave desligada, o padrão)' . PHP_EOL;
+putenv('ENTREGAS_ALARME_POR_DADOS');
+$avisos = avisosDoFleetOps();
+$ping   = enviado(new OrderPing(pedidoDoTeste(), 1234));
+confere(($ping['notification'] ?? null) === ['title' => 'Novo pedido disponível', 'body' => 'Coleta a 1,2 km de você. Toque para ver o pedido.'], 'pedido novo: push comum com o texto em pt-BR');
+confere(($ping['android']['notification']['channel_id'] ?? null) === 'alarme_pedido', 'pedido novo no canal "alarme_pedido"');
+confere(!isset($ping['android']['priority']), 'sem prioridade de push de dados com a chave desligada');
+$canais = ['atribuído' => 'alarme_pedido', 'liberado' => 'alarme_pedido', 'chat' => 'mensagens', 'cancelado' => 'avisos', 'falhou' => 'avisos', 'concluído' => 'avisos', 'parada' => 'avisos', 'teste' => 'avisos'];
+foreach ($canais as $nome => $canal) {
+    $mensagem = enviado($avisos[$nome]);
+    confere(($mensagem['android']['notification']['channel_id'] ?? null) === $canal, "{$nome}: canal \"{$canal}\"");
+}
+$chat = enviado($avisos['chat']);
+confere(($chat['notification']['title'] ?? null) === 'Mensagem de Edgard Junior' && ($chat['data']['channel'] ?? null) === 'chat_channel_1', 'chat: texto em pt-BR e os dados da conversa mantidos');
+confere(($chat['android']['notification']['color'] ?? null) === '#4391EA', 'o resto do push do Fleet-Ops (cor, som) fica');
+
+echo '== Alarme como push de dados (chave ligada)' . PHP_EOL;
+foreach (['1', 'true', 'on', 'ON'] as $valor) {
+    putenv("ENTREGAS_ALARME_POR_DADOS={$valor}");
+    confere(AvisosDoMotoboy::alarmePorDados(), "chave '{$valor}' liga");
+}
+foreach (['0', 'false', 'off', ''] as $valor) {
+    putenv("ENTREGAS_ALARME_POR_DADOS={$valor}");
+    confere(!AvisosDoMotoboy::alarmePorDados(), "chave '{$valor}' desliga");
+}
+putenv('ENTREGAS_ALARME_POR_DADOS=1');
+$ping = enviado(new OrderPing(pedidoDoTeste(), 1234));
+confere(!isset($ping['notification']), 'pedido novo vai sem bloco de notificação');
+confere(($ping['data'] ?? null) === ['id' => 'order_abc', 'type' => 'order_ping', 'title' => 'Novo pedido disponível', 'body' => 'Coleta a 1,2 km de você. Toque para ver o pedido.', 'android_channel_id' => 'pedidos'], 'dados com id, tipo, título, texto e o canal do APK antigo: ' . json_encode($ping['data'] ?? null, JSON_UNESCAPED_UNICODE));
+confere(($ping['android']['priority'] ?? null) === 'high' && ($ping['android']['ttl'] ?? null) === '900s', 'prioridade alta e validade de 15 min');
+confere(!isset($ping['android']['notification']), 'sem android.notification (senão o Android mostra como push comum)');
+confere(isset($ping['android']['fcm_options'], $ping['apns']), 'o resto do push (fcm_options, apns) fica');
+foreach (['atribuído', 'liberado'] as $nome) {
+    $mensagem = enviado($avisos[$nome]);
+    confere(!isset($mensagem['notification']) && ($mensagem['android']['priority'] ?? null) === 'high', "{$nome} também vai como push de dados");
+}
+$cancelado = enviado($avisos['cancelado']);
+confere(($cancelado['notification']['title'] ?? null) === 'Pedido RP-1 cancelado' && !isset($cancelado['android']['priority']), 'cancelado continua push comum com a chave ligada');
+$comTipos = aviso(OrderAssigned::class, 'New order RP-1 assigned!', 'You have a new order assigned, tap for details.', ['id' => 'order_abc', 'type' => 'order_assigned', 'tentativa' => 2, 'urgente' => true, 'vazio' => null]);
+$dados    = enviado($comTipos)['data'];
+confere($dados['tentativa'] === '2' && $dados['urgente'] === '1' && !array_key_exists('vazio', $dados), 'dados do push de dados todos como texto (nulos saem)');
+putenv('ENTREGAS_ALARME_POR_DADOS');
+
+echo '== Aviso sem tradução' . PHP_EOL;
+
+class AvisoNovoDoFleetOps extends Illuminate\Notifications\Notification
+{
+    public string $title   = 'Something new';
+    public string $message = 'Body';
+    public array $data     = ['type' => 'algo_novo'];
+
+    public function toFcm($notifiable)
+    {
+        return Fleetbase\Support\PushNotification::createFcmMessage($this->title, $this->message, $this->data);
+    }
+}
+
+Illuminate\Support\Facades\Log::$registros = [];
+$mensagem                                  = enviado(new AvisoNovoDoFleetOps());
+confere(($mensagem['notification']['title'] ?? null) === 'Something new' && !isset($mensagem['android']['notification']['channel_id']), 'segue como veio (texto e canal)');
+confere((Illuminate\Support\Facades\Log::$registros[0][1] ?? null) === '[entregas] aviso push sem tradução', 'e fica no log');
+
 resumo();

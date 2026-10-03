@@ -12,16 +12,72 @@ use Fleetbase\FleetOps\Notifications\WaypointCompleted;
 use Fleetbase\Notifications\ChatMessageReceived;
 use Fleetbase\Notifications\TestPushNotification;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
+use NotificationChannels\Fcm\FcmMessage;
+use NotificationChannels\Fcm\Resources\Notification as NotificacaoFcm;
 
 /**
  * Entregas RestaurantePro: o push que o motoboy recebe, em pt-BR e no formato que o app trata. O CanalFcmEntregas
  * passa todo push por aqui.
  *
- * Os avisos do Fleet-Ops e do core saem em inglês; cada classe conhecida ganha título e texto em pt-BR. O código do
- * pedido vem do título original ("Order X …" / "New order X …"); sem ele, a frase sai sem o código.
+ * - Texto: os avisos do Fleet-Ops e do core saem em inglês; cada classe conhecida ganha título e texto em pt-BR. O
+ *   código do pedido vem do título original ("Order X …" / "New order X …"); sem ele, a frase sai sem o código. Classe
+ *   sem tradução segue como veio e fica registrada no log.
+ * - Canal: cada tipo vai para um canal do app (alarme, mensagens, avisos). O APK sem o canal usa o padrão "pedidos".
+ * - Alarme (pedido novo, reenvio, atribuído, liberado): com ENTREGAS_ALARME_POR_DADOS ligada, vira push de dados de
+ *   alta prioridade, e o app (APK 16+) toca o alarme em loop com tela cheia. Desligada (padrão), vai como push comum no
+ *   canal de alarme. Só ligar com todos no APK 16: no antigo, tocar no push de dados não abre o pedido.
  */
 class AvisosDoMotoboy
 {
+    /** Tipos (data.type) que tocam o alarme de pedido no app. */
+    public const TIPOS_DE_ALARME = ['order_ping', 'order_assigned', 'order_dispatched'];
+
+    /** Canal do app por tipo de aviso (criados no MainApplication do app). */
+    public const CANAIS = [
+        'order_ping'            => 'alarme_pedido',
+        'order_assigned'        => 'alarme_pedido',
+        'order_dispatched'      => 'alarme_pedido',
+        'chat_message_received' => 'mensagens',
+        'order_canceled'        => 'avisos',
+        'order_completed'       => 'avisos',
+        'waypoint_completed'    => 'avisos',
+        'test'                  => 'avisos',
+    ];
+
+    /** Canal do push de dados no APK antigo (a biblioteca de push mostra nele; o APK 16 usa o canal do alarme). */
+    public const CANAL_PADRAO = 'pedidos';
+
+    /** Validade do push de dados de alarme: o FCM descarta depois disso, e um alarme velho não toca quando o celular volta. */
+    public const VALIDADE_ALARME = '900s';
+
+    /** Adapta o push montado pela notificação: texto em pt-BR, canal e formato. */
+    public static function adaptar(Notification $notificacao, FcmMessage $mensagem): FcmMessage
+    {
+        $tipo  = (string) ($mensagem->data['type'] ?? '');
+        $texto = static::texto($notificacao);
+
+        if ($texto === null) {
+            Log::warning('[entregas] aviso push sem tradução', ['notificacao' => get_class($notificacao), 'tipo' => $tipo]);
+
+            return $mensagem;
+        }
+
+        [$titulo, $corpo] = $texto;
+
+        if (in_array($tipo, self::TIPOS_DE_ALARME, true) && static::alarmePorDados()) {
+            return static::comoDados($mensagem, $titulo, $corpo);
+        }
+
+        $mensagem->notification = new NotificacaoFcm(title: $titulo, body: $corpo);
+
+        if (isset(self::CANAIS[$tipo])) {
+            $mensagem->custom['android']['notification']['channel_id'] = self::CANAIS[$tipo];
+        }
+
+        return $mensagem;
+    }
+
     /**
      * Título e texto em pt-BR do aviso, ou null se a classe não tem tradução.
      *
@@ -57,6 +113,14 @@ class AvisosDoMotoboy
         $texto = $metros < 1000 ? $metros . ' m' : number_format($metros / 1000, 1, ',', '.') . ' km';
 
         return 'Coleta a ' . $texto . ' de você. Toque para ver o pedido.';
+    }
+
+    /** ENTREGAS_ALARME_POR_DADOS ligada (1, true ou on): o alarme vai como push de dados. Desligada por padrão. */
+    public static function alarmePorDados(): bool
+    {
+        $valor = getenv('ENTREGAS_ALARME_POR_DADOS');
+
+        return $valor !== false && in_array(strtolower(trim($valor)), ['1', 'true', 'on'], true);
     }
 
     /** O código de rastreamento que o Fleet-Ops põe no título original ("Order X …" / "New order X …"). */
@@ -105,5 +169,28 @@ class AvisosDoMotoboy
         $prefixo = 'Message from ';
 
         return str_starts_with($tituloOriginal, $prefixo) ? 'Mensagem de ' . substr($tituloOriginal, strlen($prefixo)) : 'Nova mensagem';
+    }
+
+    /**
+     * Push de dados: sem bloco de notificação (o app monta a notificação), título e texto nos dados, todos os dados como
+     * texto (exigência do FCM), prioridade alta e validade curta.
+     */
+    protected static function comoDados(FcmMessage $mensagem, string $titulo, string $corpo): FcmMessage
+    {
+        $dados = [];
+        foreach ((array) $mensagem->data as $chave => $valor) {
+            if ($valor !== null) {
+                $dados[$chave] = is_scalar($valor) ? (string) $valor : json_encode($valor);
+            }
+        }
+
+        $mensagem->data         = array_merge($dados, ['title' => $titulo, 'body' => $corpo, 'android_channel_id' => self::CANAL_PADRAO]);
+        $mensagem->notification = null;
+
+        $android = (array) ($mensagem->custom['android'] ?? []);
+        unset($android['notification']);
+        $mensagem->custom['android'] = array_merge($android, ['priority' => 'high', 'ttl' => self::VALIDADE_ALARME]);
+
+        return $mensagem;
     }
 }
