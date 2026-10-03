@@ -186,6 +186,7 @@ module('Unit | Route | application', function (hooks) {
         const route = this.owner.lookup('route:application');
         let locales;
 
+        patch(route.session, 'isAuthenticated', true);
         patch(route.intl, 'setLocale', (value) => (locales = value));
         patch(route.currentUser, 'getOption', (key, fallback) => (key === 'locale' ? 'fr-fr' : fallback));
 
@@ -194,11 +195,12 @@ module('Unit | Route | application', function (hooks) {
         assert.deepEqual(locales, ['fr-fr']);
     });
 
-    test('initializeLocale falls back to en-US when the user has no locale option', function (assert) {
+    test('initializeLocale falls back to en-US when a signed-in user has no locale option', function (assert) {
         const route = this.owner.lookup('route:application');
         let locales;
         let requestedFallback;
 
+        patch(route.session, 'isAuthenticated', true);
         patch(route.intl, 'setLocale', (value) => (locales = value));
         patch(route.currentUser, 'getOption', (key, fallback) => {
             requestedFallback = fallback;
@@ -209,6 +211,38 @@ module('Unit | Route | application', function (hooks) {
 
         assert.strictEqual(requestedFallback, 'en-US', 'en-US is passed as the default');
         assert.deepEqual(locales, ['en-US']);
+    });
+
+    // Entregas: o produto é pt-BR; quem não tem sessão (login, esqueci a senha...) não pode cair em inglês.
+    test('initializeLocale falls back to pt-br for a visitor without a session', function (assert) {
+        const route = this.owner.lookup('route:application');
+        let locales;
+        let requestedFallback;
+
+        patch(route.session, 'isAuthenticated', false);
+        patch(route.intl, 'setLocale', (value) => (locales = value));
+        patch(route.currentUser, 'getOption', (key, fallback) => {
+            requestedFallback = fallback;
+            return fallback;
+        });
+
+        route.initializeLocale();
+
+        assert.strictEqual(requestedFallback, 'pt-br', 'pt-br is passed as the default');
+        assert.deepEqual(locales, ['pt-br']);
+    });
+
+    test('initializeLocale keeps a locale already stored in the browser for a visitor without a session', function (assert) {
+        const route = this.owner.lookup('route:application');
+        let locales;
+
+        patch(route.session, 'isAuthenticated', false);
+        patch(route.intl, 'setLocale', (value) => (locales = value));
+        patch(route.currentUser, 'getOption', (key, fallback) => (key === 'locale' ? 'en-us' : fallback));
+
+        route.initializeLocale();
+
+        assert.deepEqual(locales, ['en-us']);
     });
 
     test('beforeModel sets up the session, waits for extensions, then runs the before-model hook', async function (assert) {

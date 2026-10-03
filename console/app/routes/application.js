@@ -113,9 +113,13 @@ export default class ApplicationRoute extends Route {
      * This method retrieves the user's preferred locale using the `getOption` method from the `currentUser` service.
      * If no locale is set by the user, it defaults to `'en-US'`. It then sets the application's locale by calling
      * the `setLocale` method of the `intl` service with the retrieved locale.
+     *
+     * Entregas: o produto é pt-BR, então o padrão muda para quem não tem sessão (login, esqueci a senha, portal da loja
+     * antes do login...): 'pt-br' em vez de 'en-US'. Quem está logado segue como antes (idioma salvo, ou en-US até o login
+     * trazer o do usuário), e um idioma já gravado neste navegador vale nos dois casos.
      */
     initializeLocale() {
-        const locale = this.currentUser.getOption('locale', 'en-US');
+        const locale = this.currentUser.getOption('locale', this.session.isAuthenticated ? 'en-US' : 'pt-br');
         this.intl.setLocale([locale]);
     }
 }

@@ -8856,3 +8856,6 @@ sensor:
   fields:
     min-threshold-placeholder: Limite mínimo
     max-threshold-placeholder: Limite máximo
+menu-text:
+  track-order:
+    title: Rastrear Pedido

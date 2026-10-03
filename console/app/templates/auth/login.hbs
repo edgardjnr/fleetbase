@@ -90,7 +90,7 @@
             @isLoading={{this.isLoading}}
             @onClick={{this.login}}
         />
-        <Button @text={{t "auth.login.form.create-account-button"}} @icon="briefcase" @wrapperClass="btn-block" @disabled={{this.isLoading}} @onClick={{fn (transition-to "onboard")}} />
+        {{!-- Entregas: sem o botão "Criar uma nova conta" (rota onboard). A organização é criada só pela central, e a API recusa o POST onboard/create-account. Só a primeira instalação, sem nenhuma organização, abre o cadastro: a rota auth.login manda para /onboard. --}}
         <RegistryYield @type="menu" @registry="auth:login" as |menuItem|>
             <Button
                 @text={{menu-text menuItem "title"}}
