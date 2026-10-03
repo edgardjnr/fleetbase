@@ -51,9 +51,11 @@
                 </LeafletMap>
             </div>
         {{/if}}
-    {{else if @consultado}}
+    {{else if (and @consultado (not @aceito))}}
         <p class="text-sm text-gray-500 dark:text-gray-400">{{t "customer-portal.ui.entregas.courier-waiting"}}</p>
     {{else}}
+        {{!-- Entregas: carregando antes da primeira resposta e também com o pedido já aceito e sem motoboy na resposta (a consulta
+             depois do aceite falhou): "aguardando" contradiria o detalhe, que já mostra o aceite --}}
         <Spinner />
     {{/if}}
 </ContentPanel>

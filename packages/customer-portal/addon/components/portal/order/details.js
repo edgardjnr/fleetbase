@@ -33,6 +33,12 @@ export default class PortalOrderDetailsComponent extends Component {
         return Boolean(this.order) && !ENCERRADOS.includes(valueFor(this.order, 'status'));
     }
 
+    // Entregas: o detalhe (relido) já mostra o pedido aceito. O painel do motoboy usa isto para não dizer "aguardando"
+    // enquanto a consulta do motoboy ainda não trouxe o aceite (por exemplo, se a consulta depois da releitura falhou)
+    get aceito() {
+        return Boolean(valueFor(this.order, 'started'));
+    }
+
     // Entregas: cancelamento só antes do aceite (depois dele o servidor recusa com 422)
     get canCancel() {
         return Boolean(this.order) && !valueFor(this.order, 'started') && CANCELAVEIS.includes(valueFor(this.order, 'status'));
@@ -153,8 +159,9 @@ export default class PortalOrderDetailsComponent extends Component {
                     ok = ok && releu;
 
                     // o aceite caiu entre as duas leituras: o detalhe já mostra o pedido aceito e o motoboy, lido antes, não.
-                    // Relê o motoboy, para o painel mudar junto com o status
-                    if (ok && valueFor(this.order, 'started') && situacao(motoboy) !== 'aceito') {
+                    // Relê o motoboy, para o painel mudar junto com o status. Só com o pedido ainda aberto: se a releitura o
+                    // mostrou encerrado, o painel some e o servidor devolve null, então a consulta seria à toa
+                    if (ok && this.isOpen && this.aceito && situacao(motoboy) !== 'aceito') {
                         const relido = yield this.consultarMotoboy();
                         ok = relido !== undefined;
                         motoboy = ok ? relido : motoboy;

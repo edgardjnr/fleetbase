@@ -17,6 +17,10 @@ export default class PortalOrdersController extends Controller {
     @tracked query = '';
     @tracked selectedOrder;
 
+    // Entregas: falhas seguidas da atualização automática da lista. Fica no controller, e não dentro da task, para a
+    // ação que atualiza a lista ao fechar o detalhe saber se há uma espera crescente em curso
+    falhasLista = 0;
+
     get isTableView() {
         return this.view === 'table';
     }
@@ -64,17 +68,35 @@ export default class PortalOrdersController extends Controller {
         }
     }
 
+    // Entregas: a rota do detalhe chama isto ao fechá-lo. Com o detalhe aberto a atualização da lista fica pausada, e sem
+    // isto os pedidos novos só apareceriam na próxima volta, daqui a até 30 s. Com falhas seguidas (429 inclusive) vale a
+    // espera crescente: o ciclo segue como está, sem consulta imediata
+    @action atualizarListaAgora() {
+        if (this.falhasLista === 0) {
+            this.atualizarLista.perform({ imediata: true });
+        }
+    }
+
     // Entregas: a lista se atualiza sozinha a cada 30 s, com a busca ativa (a rota inicia no setupController e para no
     // resetController), numa task própria do serviço (o botão de recarregar não pisca). Pula a vez com a aba oculta,
     // com o detalhe aberto (a lista nem aparece; o detalhe tem o ciclo dele) e durante uma busca. A busca do usuário
     // vence: o resultado é descartado se a busca ou a lista mudaram durante a consulta. Erro não vira aviso: a espera
-    // dobra a cada falha seguida (429 inclusive), até 2 min, e volta a 30 s no primeiro sucesso
-    @restartableTask *atualizarLista() {
-        let falhas = 0;
+    // dobra a cada falha seguida (429 inclusive), até 2 min, e volta a 30 s no primeiro sucesso.
+    // Reiniciada com imediata (ao fechar o detalhe), a primeira volta não espera os 30 s e passa pelas mesmas guardas
+    // (aba, detalhe, busca e query). Ela só espera um instante (timeout 0) para a transição terminar: no resetController
+    // o hostRouter ainda aponta para o detalhe, e a guarda do detalhe pularia a consulta
+    @restartableTask *atualizarLista({ imediata = false } = {}) {
         let oculta = false;
+        let primeira = imediata;
+
+        // uma partida normal recomeça do zero; a imediata mantém a contagem de falhas do controller
+        if (!imediata) {
+            this.falhasLista = 0;
+        }
 
         while (!this.isDestroying) {
-            const proxima = timeout(espera(INTERVALO_LISTA_MS, falhas));
+            const proxima = timeout(primeira ? 0 : espera(INTERVALO_LISTA_MS, this.falhasLista));
+            primeira = false;
             // a aba estava oculta na última vez: atualiza assim que ela aparece
             yield oculta ? race([proxima, waitForEvent(document, 'visibilitychange')]) : proxima;
 
@@ -88,13 +110,13 @@ export default class PortalOrdersController extends Controller {
 
             try {
                 const orders = yield this.customerPortalOrderActions.atualizarPedidos.perform({ query });
-                falhas = 0;
+                this.falhasLista = 0;
 
                 if (model && this.model === model && this.query === query && !this.customerPortalOrderActions.searchOrders.isRunning) {
                     set(model, 'orders', orders);
                 }
             } catch {
-                falhas++;
+                this.falhasLista++;
             }
         }
     }
