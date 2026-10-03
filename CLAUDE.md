@@ -73,11 +73,11 @@ Depois de cada deploy do console, abra o site com Ctrl+Shift+R. O console guarda
 
 O produto é só isto: o pedido chega do iFood pela API, é despachado para o motoboy, que usa o app **Navigator**, e o motoboy é pago por km.
 
-- **Extensões fora do console:** storefront, ledger, customer-portal, registry-bridge (Extensions), ai, valhalla e vroom.
+- **Extensões fora do console:** storefront, ledger, registry-bridge (Extensions), ai, valhalla e vroom.
   - Saíram do `console/package.json`, do `pnpm-workspace.yaml` e do `Dockerfile.dockerignore`.
   - Os `app/router.js` e `app/extensions/*` são gerados no build a partir do `node_modules`.
   - As pastas em `packages/` e as APIs no `api/composer.json` continuam. Para reativar, reverta essas listas.
-- **Ficam:** Fleet-Ops, IAM e **Developers** (chaves de API e webhooks da integração iFood).
+- **Ficam:** Fleet-Ops, IAM, **Developers** (chaves de API e webhooks da integração iFood) e o **Portal do Cliente**, que voltou como portal da loja (ver "Portal da loja").
 - **Telas ocultas do Fleet-Ops:** a lista está em `packages/fleetops/addon/utils/entregas-hidden-routes.js`.
   - Inclui manutenção, conectividade/telemática, veículos, frotas, fornecedores, combustível, ocorrências, orquestrador, agenda, tarifas e várias configurações.
   - A lista tira os itens do menu (`fleet-ops-sidebar`) e dos hubs (`localize-hub`, `settings/index`), e a URL direta cai em Pedidos (`routes/application.js`).
@@ -89,8 +89,9 @@ O produto é só isto: o pedido chega do iFood pela API, é despachado para o mo
   - **Não use `orders.distance`:** é a distância *restante* e vai a ~0 quando o pedido conclui.
   - O período usa a data do tracking status `COMPLETED`, no fuso da organização.
   - **Valores por faixa de km** (`Setting` `company.<uuid>.entregas.faixas` = `[{ate_km, motoboy, loja}]`): uma tabela só, com o valor pago ao motoboy e o cobrado da loja. A entrega vale o valor da faixa em que o km cai (0 < km ≤ 1 → 1ª, 1 < km ≤ 2 → 2ª…); acima da última vale a última. `PUT .../faixas` substitui a tabela.
-- **Cobrança das lojas** (mesma tela, renomeada "Pagamento e cobrança"): modelo A = **uma organização só** (o operador de entregas) e cada restaurante é um **Local**.
-  - **Loja = local de coleta (pickup)** do pedido. Agrupa pelo **nome** do Place (a integração pode criar um Place por pedido); sem nome, pelo próprio Place. A integração iFood de cada loja deve mandar como pickup o Local da loja (de preferência pelo `public_id`), com nome igual sempre.
+- **Cobrança das lojas** (mesma tela, renomeada "Pagamento e cobrança"): modelo A = **uma organização só** (o operador de entregas) e cada restaurante é uma **Loja** (ver "Portal da loja").
+  - **Loja do pedido = o Vendor dono do pedido** (`orders.customer_uuid`), como nos pedidos do portal e nos que a central cria escolhendo a loja.
+  - Pedido sem loja (ex.: integração que manda só a coleta) agrupa pelo **nome** do local de coleta (a integração pode criar um Place por pedido); sem nome, pelo próprio Place. A integração iFood de cada loja deve mandar como pickup o Local da loja (de preferência pelo `public_id`), com nome igual sempre.
   - Cobrança = valor "loja" da faixa do km, igual para todas as lojas. A tela mostra a pagar, a cobrar e a margem; o CSV traz motoboys, lojas e o detalhe com loja, faixa e os dois valores.
 - `docker/`: Dockerfile da API, `docker/socket/` (socket ARM) e crontab.
 
@@ -106,6 +107,60 @@ O produto é só isto: o pedido chega do iFood pela API, é despachado para o mo
   - faça login nessa aba.
 - O `~/postcss.config.mjs` da home do Windows atrapalha builds Tailwind v4 em subpastas. O console usa Tailwind 3 e não é afetado.
 
+## Portal da loja
+
+Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-portal` (login próprio), cria e acompanha os próprios pedidos e vê o extrato, sem enxergar nada de outra loja. Os motoboys continuam recebendo os pedidos de todas. Desenho: `docs/superpowers/specs/2026-10-02-portal-da-loja-design.md`; plano: `docs/superpowers/plans/2026-10-02-portal-da-loja.md`; situação e pendências: `docs/superpowers/plans/2026-10-03-portal-da-loja-continuacao.md`.
+
+- **Cadastro (só a central):** Fleet-Ops → Recursos → Lojas (`management.lojas`, só admin; API `Entregas/LojasController.php`, `int/v1/entregas/lojas*`).
+  - Loja = Vendor `type=customer` + um Place próprio (dono = o Vendor), que é a **coleta fixa**.
+  - Usuário da loja = Contact `type=customer` + `VendorPersonnel`. O login é o User `customer` do contato, com senha inicial e e-mail já verificado. Um login, uma loja.
+  - Trocar a senha e desativar apagam os tokens. O Fleetbase não barra usuário inativo; quem barra é o `ProtegerPortalLoja`.
+  - **Mudou a coordenada da loja? Nasce um Local novo.** Os pedidos antigos ficam com a coordenada antiga (o km deles se acerta à mão), e o Local antigo fica sem dono, com o nome da loja, na lista de Locais.
+  - **Não edite o Local da loja pela lista de Locais nem pelo editor de rota do pedido:** isso muda a coleta de todos os pedidos da loja. Use a tela Lojas.
+- **Segurança:** middlewares nossos em `api/app/Http/Middleware/`, que rodam antes do código do Composer.
+  - `ProtegerPortalLoja` (global): identifica o usuário de loja pelo token Sanctum (Bearer ou `Customer-Token`) e **nega por padrão**, inclusive a API pública `v1/*`.
+    - Listas: `PERMITIDAS_INTERNAS` (`int/v1`) e `NEGADAS_NO_PORTAL` (`customer-portal/int/v1`).
+    - Perfil só com nome, foto e fuso; upload só da foto (PNG/JPG/WEBP até 5 MB). Usuário desativado não passa, nem no login.
+    - Uma chamada necessária do portal voltando 403 aparece no log `[entregas] portal da loja: acesso negado`. Libere só aquele método e caminho.
+  - `RegrasPortalLoja` (global):
+    - coleta = Local da loja em todo pedido (descarta pickup, payload, paradas, arquivos, meta, agendamento, itens, `internal_id` e `pod_*`);
+    - destino = endereço salvo da loja, com coordenadas e a pelo menos 30 m da coleta;
+    - despacho como pedido aberto (adhoc) aos motoboys próximos;
+    - cancelamento só antes do aceite, atômico, com atividade e evento `OrderCanceled`, e o pedido sai dos abertos;
+    - endereço novo só com coordenadas e sem sobrescrever um salvo; `PATCH`/`DELETE places` → 403.
+  - `BarrarAceiteDePedidoEncerrado` (grupo `fleetbase.api`, depois da autenticação): pedido encerrado não pode ser aceito (`POST v1/orders/{id}/start` → 400), e o cancelamento da API v1 entra na mesma trava. Compara o nome da ação (`Api\v1\OrderController@startOrder|cancelOrder`): **ao atualizar o fleetops-api, confira se essas ações ainda existem.**
+  - `App\Support\Entregas\TravaDoPedido` (Redis) serializa o cancelamento da loja, o da API v1 e o aceite do motoboy. `StatusDoPedido` tem a lista única de status encerrados.
+  - `RestringirChaveDoApp` (global, **desligado**): ver "Chave do app do motoboy" abaixo.
+- **API do portal** (`Entregas/PortalLojaController.php`, `int/v1/entregas/loja/*`, `throttle:60,1`):
+  - `minha-loja`;
+  - `extrato`: até 3 meses, com o valor "loja" das faixas;
+  - `pedidos/{id}/motoboy`: nome e foto; a posição só com o pedido aceito há no máximo 4 h.
+- **Front** (`packages/customer-portal/addon`):
+  - menu enxuto (Início, Pedidos, Extrato, Configurações); as telas fora do escopo redirecionam para Pedidos; membros e login só leitura;
+  - novo pedido só com o destino;
+  - acompanhamento num ciclo só: motoboy a cada 20 s, detalhe ao mudar ou a cada ~60 s, espera crescente em erro, pausa com a aba oculta;
+  - extrato com CSV.
+  - **O servidor não tem geocodificação:** o endereço de entrega é marcado no mapa, que abre na loja. Com `@mapCenter`, o `CoordinatesInput` do ember-ui só marca o ponto com arrasto, autocomplete ou Localizar; sem ele (console), nada mudou.
+  - O canal de socket `company.<uuid>` não é usado no portal, porque transmite os pedidos de todas as lojas.
+- **Pedido da central:** no formulário do operador, escolher uma loja como cliente põe a coleta no Local da loja e a trava.
+- **Configuração do portal** (Admin → Customer Portal): só o tipo `transport`, pagamentos desligados.
+- **Teste de isolamento:** `node scripts/teste-isolamento-lojas.mjs`, contra a produção, com `deploy/teste-lojas.env` (ignorado pelo git; o cabeçalho do script explica).
+  - Dispara aviso real aos motoboys perto da loja de teste A e deixa endereços de teste salvos.
+  - Teste o portal no navegador em **janela anônima**: o console guarda a lista de extensões no localStorage por 1 h.
+- **Chave do app do motoboy** (`ENTREGAS_CHAVE_APP_MOTOBOY`, **desligada**): restringe ao login a chave pública `flb_live_` que vai no APK.
+  - Só ligar depois de um APK novo em todos os celulares: o Driver criado com o token do motoboy e o `useFleetbase` síncrono no `entregas-navigator`.
+  - Os passos e a checagem com `curl` estão no docblock do `RestringirChaveDoApp.php`.
+- **Riscos conhecidos:**
+  - o socket não autentica a inscrição nos canais `company.*`;
+  - a chave `flb_live_` do APK funciona enquanto a restrição estiver desligada;
+  - o login por SMS não limita tentativas e o código de 6 dígitos não expira. Quem extrai a chave pode chegar a um token de motoboy, que lista os pedidos de todas as lojas;
+  - o upload do core aceita `disk`/`path` de usuários que não são de loja.
+- **Armadilhas do Fleetbase achadas aqui:**
+  - `Contact::user()` filtra pelo `type` da instância e falha em `with`/`whereHas`: use `Contact::anyUser`.
+  - O `CompanyScope` existe, mas **não** está registrado nos models desta versão: filtre `company_uuid` de forma explícita.
+  - `orders.customer_type` varia com e sem a barra inicial: a loja do pedido é o `customer_uuid`.
+  - O `cancelOrder` do portal só troca o status (sem atividade nem evento), e o `startOrder` da API v1 não confere cancelamento: daí a trava e o `BarrarAceiteDePedidoEncerrado`.
+
 ## Tradução pt-BR (convenções)
 
 O objetivo é que nenhum texto de interface apareça em inglês com pt-BR selecionado. O inglês continua funcionando.
@@ -114,7 +169,7 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 - **As chaves são globais**, porque todos os YAML se mesclam no build. Toda chave nova leva o prefixo do módulo: `fleet-ops.ui.*`, `ledger.ui.*`, `storefront.ui.*`, `iam.ui.*`, `developers.ui.*`, `registry-bridge.ui.*`, `customer-portal.ui.*`, `ai.ui.*`, `console.ui.*` e `ember-ui.*`. Nunca crie chaves novas em `common.*`.
 - **Validação obrigatória** antes de commitar:
   ```bash
-  node scripts/i18n-check.cjs console dev-engine ember-core ember-ui fleetops fleetops-data iam-engine
+  node scripts/i18n-check.cjs console dev-engine ember-core ember-ui fleetops fleetops-data iam-engine customer-portal
   ```
   - Precisa sair com exit 0. O `VERBOSE=1` lista o que falta e os textos fixos restantes.
   - Também confira que todo JS alterado parseia com `@babel/parser` de `console/node_modules/.pnpm/@babel+parser@7*`. Um import duplicado já quebrou o build.
@@ -168,3 +223,10 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 7. Escopo enxuto iFood→motoboy (extensões removidas, telas ocultas) e pagamento de motoboys por km (`1725beee`).
 8. Pedido novo já vem com o tipo padrão `transport` (`b41654f9`) e marcador do mapa usa o avatar do motorista (`19a6816d`).
 9. Cobrança das lojas (loja = local de coleta) e valores por faixa de km para motoboy e loja (`ce4d4c42`).
+10. Portal da loja (2026-10-03, ramo `portal-da-loja`):
+    - tela Lojas;
+    - portal reativado, com coleta fixa, destino marcado no mapa, acompanhamento e extrato;
+    - coleta travada no formulário da central;
+    - cobrança pela loja dona do pedido;
+    - middlewares de segurança e trava cancelamento × aceite;
+    - teste de isolamento.
