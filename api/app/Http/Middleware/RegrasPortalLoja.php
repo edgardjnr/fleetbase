@@ -22,8 +22,8 @@ use Symfony\Component\HttpFoundation\ParameterBag;
  * para o usuário de loja que o ProtegerPortalLoja identificou (o PHP do portal vem do Composer).
  *
  * - Novo pedido: a coleta é sempre o Local da loja (o que vier na requisição é descartado); o destino
- *   tem de ser um endereço salvo da loja com coordenadas (o km da cobrança sai delas); criado o
- *   pedido, ele é despachado como pedido aberto (adhoc) aos motoboys próximos, como faz a central.
+ *   tem de ser um endereço salvo da loja com coordenadas, a 30 m ou mais da coleta (o km da cobrança sai
+ *   delas); criado o pedido, ele é despachado como pedido aberto (adhoc) aos motoboys próximos, como faz a central.
  * - Cancelamento: só antes de um motoboy aceitar, conferido e feito com a trava do pedido (TravaDoPedido), a
  *   mesma do aceite no app; depois do portal, que só grava o status, grava a atividade e o evento do
  *   cancelamento e tira o pedido dos pedidos abertos do app do motoboy.
@@ -58,6 +58,13 @@ class RegrasPortalLoja
 
     /** Status em que a loja ainda pode cancelar, desde que nenhum motoboy tenha aceitado. */
     public const STATUS_CANCELAVEIS = ['created', 'dispatched'];
+
+    /**
+     * Destino mais perto que isto da coleta é recusado. O km da cobrança da loja e do pagamento do motoboy sai
+     * das coordenadas, e um destino marcado na loja (o mapa do portal abre nela) daria km ~0. Como o endereço
+     * salvo não se edita pelo portal, o ponto errado voltaria nos pedidos seguintes.
+     */
+    public const DISTANCIA_MINIMA_DA_COLETA_METROS = 30;
 
     public function handle(Request $request, Closure $next)
     {
@@ -114,6 +121,10 @@ class RegrasPortalLoja
         }
         if ($destino->uuid === $coleta->uuid) {
             return $this->erro(422, 'O endereço de entrega não pode ser o da própria loja.');
+        }
+        // outro Place, mas com o ponto na loja: o km sai das coordenadas e daria ~0 (ver DISTANCIA_MINIMA_DA_COLETA_METROS)
+        if ($this->metrosEntre($coleta->location, $destino->location) < static::DISTANCIA_MINIMA_DA_COLETA_METROS) {
+            return $this->erro(422, 'O endereço de entrega está no mesmo lugar da loja. Cadastre o endereço de novo, marcando no mapa o local da entrega.');
         }
 
         // fora do corpo, da query string e dos arquivos: o portal só vê a coleta e o destino conferidos aqui
@@ -356,6 +367,16 @@ class RegrasPortalLoja
     protected function temCoordenadas(Place $lugar): bool
     {
         return $lugar->location instanceof Point && $this->coordenadaValida($lugar->location->getLat(), $lugar->location->getLng());
+    }
+
+    /** Distância em metros entre dois pontos (haversine, raio médio da Terra). */
+    protected function metrosEntre(Point $a, Point $b): float
+    {
+        $dLat = deg2rad($b->getLat() - $a->getLat());
+        $dLng = deg2rad($b->getLng() - $a->getLng());
+        $h    = sin($dLat / 2) ** 2 + cos(deg2rad($a->getLat())) * cos(deg2rad($b->getLat())) * sin($dLng / 2) ** 2;
+
+        return 2 * 6371000 * asin(min(1, sqrt($h)));
     }
 
     protected function coordenadaValida($lat, $lng): bool
