@@ -614,11 +614,13 @@ Em `reenvio.php`, antes da linha final `resumo();`:
 ```php
 echo '== Lista única de status encerrados' . PHP_EOL;
 confere(!defined(ReenviarPedidosAbertos::class . '::ENCERRADOS'), 'o reenvio usa StatusDoPedido::ENCERRADOS, sem lista própria');
-$p         = pedido('PED-S', '12:00:30');
-$p->status = 'order_canceled';
-reiniciar([$p], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 6);
-confere(horarios('PED-S') === [], 'pedido order_canceled não é reenviado');
+foreach (App\Support\Entregas\StatusDoPedido::ENCERRADOS as $status) {
+    $p         = pedido('PED-S', '12:00:30');
+    $p->status = $status;
+    reiniciar([$p], [motoboy('Motoca', 1200)]);
+    rodarMinutos('12:01:00', 6);
+    confere(horarios('PED-S') === [], "pedido {$status} não é reenviado");
+}
 ```
 
 - [ ] **Step 2: Rodar e ver falhar**
@@ -650,9 +652,18 @@ por
  * pedido aberto (ReenviarPedidosAbertos).
 ```
 
+Ainda em `StatusDoPedido.php`, o docblock da constante `ENCERRADOS` também passa a citar o reenvio (em uma linha passaria de 120 colunas; fica multilinha, como o da classe):
+
+```php
+    /**
+     * Pedido encerrado: a loja não cancela, o motoboy não aceita, a loja não vê mais o motoboy e o aviso de
+     * pedido aberto não é reenviado.
+     */
+```
+
 - [ ] **Step 4: Rodar e ver passar**
 
-Mesmo comando. Esperado: `FALHAS: 0` (27 casos).
+Mesmo comando. Esperado: `FALHAS: 0` (32 casos: os 25 da Task 1, a checagem da lista própria e um por status de `StatusDoPedido::ENCERRADOS`, hoje 6).
 
 - [ ] **Step 5: Commit**
 

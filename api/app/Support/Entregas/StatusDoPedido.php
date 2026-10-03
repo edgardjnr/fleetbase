@@ -10,7 +10,10 @@ namespace App\Support\Entregas;
  */
 class StatusDoPedido
 {
-    /** Pedido encerrado: a loja não cancela, o motoboy não aceita e a loja não vê mais o motoboy. */
+    /**
+     * Pedido encerrado: a loja não cancela, o motoboy não aceita, a loja não vê mais o motoboy e o aviso de
+     * pedido aberto não é reenviado.
+     */
     public const ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled', 'order_canceled', 'expired'];
 
     /** Os encerrados por cancelamento (o aceite barrado tem mensagem própria para eles). */

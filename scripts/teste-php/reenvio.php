@@ -186,10 +186,12 @@ confere((new LembretePedidoAberto($p, null))->message === 'Toque para ver o pedi
 
 echo '== Lista única de status encerrados' . PHP_EOL;
 confere(!defined(ReenviarPedidosAbertos::class . '::ENCERRADOS'), 'o reenvio usa StatusDoPedido::ENCERRADOS, sem lista própria');
-$p         = pedido('PED-S', '12:00:30');
-$p->status = 'order_canceled';
-reiniciar([$p], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 6);
-confere(horarios('PED-S') === [], 'pedido order_canceled não é reenviado');
+foreach (App\Support\Entregas\StatusDoPedido::ENCERRADOS as $status) {
+    $p         = pedido('PED-S', '12:00:30');
+    $p->status = $status;
+    reiniciar([$p], [motoboy('Motoca', 1200)]);
+    rodarMinutos('12:01:00', 6);
+    confere(horarios('PED-S') === [], "pedido {$status} não é reenviado");
+}
 
 resumo();
