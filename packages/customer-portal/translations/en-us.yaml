@@ -604,7 +604,7 @@ customer-portal:
       courier-waiting: Waiting for a courier to accept.
       courier-accepted: "{name} has the order."
       courier-assigned: "{name} was assigned and hasn't accepted yet."
-      courier-position: Courier position
+      courier-position: Courier's last known position
       cancel-locked: The courier already accepted. To cancel, contact the dispatcher.
       members-managed-by-central: To add or remove store users, contact the dispatcher.
       login-managed-by-central: The sign-in email and phone can only be changed by the dispatcher.
