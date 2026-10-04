@@ -1,20 +1,22 @@
 import { DESLIZE_MS, capaceteDaSituacao, deveSaltar, interpolar, motoboysValidos } from './motoboys-no-mapa';
 
 // Entregas: os capacetes dos motoboys no mapa do portal da loja. Cria, move e remove os marcadores direto no Leaflet, com
-// um laço de animação só para todos, que anima só quem está deslizando. O nome entra como texto (o Leaflet poria uma
-// string de rótulo no innerHTML). Marcador não interativo: clicar no capacete não faz nada, porque o portal não tem
-// detalhes do motoboy para mostrar. O Leaflet, o relógio, os quadros e o rótulo vêm por opção (os testes usam falsos)
+// um laço de animação só para todos, que anima só quem está deslizando. O nome fica dentro do marcador (divIcon), e não
+// num tooltip: o motoboy destacado sobe inteiro, capacete e nome (os tooltips ficam numa camada acima de todos os
+// marcadores), e mover o marcador não obriga o navegador a medir um rótulo a cada quadro. O nome entra como texto, nunca
+// como HTML. Marcador não interativo: clicar no capacete não faz nada, porque o portal não tem detalhes do motoboy para
+// mostrar. O Leaflet, o relógio, os quadros e os elementos vêm por opção (os testes usam falsos)
 
 /** Intervalo mínimo entre dois quadros desenhados (~30 por segundo): poupa o celular com muitos motoboys andando. */
 const QUADRO_MS = 33;
 
-/** O capacete do motoboy do pedido aberto fica por cima dos outros. */
+/** O marcador do motoboy do pedido aberto fica por cima dos outros. */
 const Z_DESTAQUE = 1000;
 
 const reduzirMovimentoDoSistema = () => globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
 
 export default class CamadaDeMotoboys {
-    /** id do motoboy → { marcador, rotulo, situacao, destacado, de, para, inicio } */
+    /** id do motoboy → { marcador, raiz, capacete, nome, situacao, destacado, de, para, inicio } */
     itens = new Map();
     quadro = null;
     ultimoQuadro = -Infinity;
@@ -27,7 +29,7 @@ export default class CamadaDeMotoboys {
             agora = () => performance.now(),
             pedirQuadro = (passo) => requestAnimationFrame(passo),
             cancelarQuadro = (id) => cancelAnimationFrame(id),
-            criarRotulo = () => document.createElement('span'),
+            criarElemento = (tag) => document.createElement(tag),
         } = {}
     ) {
         this.map = map;
@@ -36,7 +38,7 @@ export default class CamadaDeMotoboys {
         this.agora = agora;
         this.pedirQuadro = pedirQuadro;
         this.cancelarQuadro = cancelarQuadro;
-        this.criarRotulo = criarRotulo;
+        this.criarElemento = criarElemento;
     }
 
     /**
@@ -66,12 +68,12 @@ export default class CamadaDeMotoboys {
 
             if (item.situacao !== motoboy.situacao) {
                 item.situacao = motoboy.situacao;
-                item.marcador.setIcon(this.icone(motoboy.situacao));
+                item.capacete.src = capaceteDaSituacao(motoboy.situacao);
             }
 
             const nome = motoboy.nome ?? '';
-            if (item.rotulo.textContent !== nome) {
-                item.rotulo.textContent = nome;
+            if (item.nome.textContent !== nome) {
+                item.nome.textContent = nome;
             }
 
             this.destacar(item, motoboy.id === destaque);
@@ -102,30 +104,37 @@ export default class CamadaDeMotoboys {
         this.map = null;
     }
 
+    // o capacete de 36 px centrado na posição, como no mapa do console, e o nome num rótulo embaixo (CSS entregas-motoboy-*)
     criar(motoboy, destino) {
-        const rotulo = this.criarRotulo();
-        rotulo.textContent = motoboy.nome ?? '';
+        const raiz = this.criarElemento('div');
+        raiz.className = 'entregas-motoboy';
 
-        const marcador = this.L.marker(destino, { icon: this.icone(motoboy.situacao), interactive: false, keyboard: false });
-        marcador.bindTooltip(rotulo, { permanent: true, direction: 'bottom', className: 'entregas-nome-motoboy', interactive: false });
+        const capacete = this.criarElemento('img');
+        capacete.className = 'entregas-motoboy-capacete';
+        capacete.alt = '';
+        capacete.src = capaceteDaSituacao(motoboy.situacao);
+
+        const nome = this.criarElemento('span');
+        nome.className = 'entregas-motoboy-nome';
+        nome.textContent = motoboy.nome ?? '';
+
+        raiz.append(capacete, nome);
+
+        const icon = this.L.divIcon({ html: raiz, className: 'entregas-motoboy-icone', iconSize: [36, 36], iconAnchor: [18, 18] });
+        const marcador = this.L.marker(destino, { icon, interactive: false, keyboard: false });
         marcador.addTo(this.map);
 
-        return { marcador, rotulo, situacao: motoboy.situacao, destacado: false, de: null, para: null, inicio: 0 };
-    }
-
-    // o mesmo tamanho e a mesma âncora do rótulo do capacete no mapa do console
-    icone(situacao) {
-        return this.L.icon({ iconUrl: capaceteDaSituacao(situacao), iconSize: [36, 36], tooltipAnchor: [0, 13] });
+        return { marcador, raiz, capacete, nome, situacao: motoboy.situacao, destacado: false, de: null, para: null, inicio: 0 };
     }
 
     destacar(item, destacado) {
-        if (item.destacado === destacado) {
-            return;
-        }
+        // a classe vai sempre (é idempotente); o z-index só muda quando o destaque muda
+        item.raiz.classList.toggle('entregas-motoboy-destaque', destacado);
 
-        item.destacado = destacado;
-        item.marcador.setZIndexOffset(destacado ? Z_DESTAQUE : 0);
-        item.marcador.getTooltip()?.getElement()?.classList.toggle('entregas-nome-motoboy-destaque', destacado);
+        if (item.destacado !== destacado) {
+            item.destacado = destacado;
+            item.marcador.setZIndexOffset(destacado ? Z_DESTAQUE : 0);
+        }
     }
 
     moverPara(item, destino, agora) {

@@ -3518,11 +3518,31 @@ body[data-theme='dark'].fleetbase-portal .portal-invoice-notes p {
 }
 /* stylelint-enable no-duplicate-selectors */
 
-/* Entregas: nome do motoboy fixo embaixo do capacete no mapa de motoboys do portal (cópia do entregas-nome-motoboy do mapa
-   do console, cujo CSS não carrega aqui) e o destaque azul do motoboy do pedido aberto */
-.fleetbase-portal .leaflet-tooltip.entregas-nome-motoboy {
+/* Entregas: capacete e nome do motoboy no mapa de motoboys do portal (utils/camada-de-motoboys.js). O nome fica dentro do
+   marcador, num rótulo no estilo do entregas-nome-motoboy do mapa do console (cujo CSS não carrega aqui), com a seta para
+   o capacete; o motoboy do pedido aberto ganha o rótulo azul */
+.fleetbase-portal .entregas-motoboy-icone {
+    border: 0;
+    background: transparent;
+}
+
+.fleetbase-portal .entregas-motoboy {
+    position: relative;
+    width: 36px;
+    height: 36px;
+}
+
+.fleetbase-portal .entregas-motoboy-capacete {
+    display: block;
+    width: 36px;
+    height: 36px;
+}
+
+.fleetbase-portal .entregas-motoboy-nome {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 50%;
     padding: 1px 6px;
-    border: none;
     border-radius: 9999px;
     background: rgb(15 23 42 / 88%);
     box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
@@ -3531,16 +3551,24 @@ body[data-theme='dark'].fleetbase-portal .portal-invoice-notes p {
     font-weight: 600;
     line-height: 16px;
     white-space: nowrap;
+    transform: translateX(-50%);
+    pointer-events: none;
 }
 
-.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-motoboy::before {
+.fleetbase-portal .entregas-motoboy-nome::before {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    margin-left: -5px;
+    border: 5px solid transparent;
     border-bottom-color: rgb(15 23 42 / 88%);
+    content: '';
 }
 
-.fleetbase-portal .leaflet-tooltip.entregas-nome-motoboy.entregas-nome-motoboy-destaque {
+.fleetbase-portal .entregas-motoboy-destaque .entregas-motoboy-nome {
     background: #2563eb;
 }
 
-.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-motoboy.entregas-nome-motoboy-destaque::before {
+.fleetbase-portal .entregas-motoboy-destaque .entregas-motoboy-nome::before {
     border-bottom-color: #2563eb;
 }

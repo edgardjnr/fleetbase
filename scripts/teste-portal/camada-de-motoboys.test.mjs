@@ -1,5 +1,5 @@
 // Camada dos capacetes no mapa do portal (packages/customer-portal/addon/utils/camada-de-motoboys.js), com um Leaflet
-// falso: cria, desliza, salta, destaca e remove os marcadores.
+// e um DOM falsos: cria, desliza, salta, destaca e remove os marcadores.
 // Uso, na raiz do repo: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/*.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,26 +22,33 @@ class ListaDeClasses {
     }
 }
 
+function elementoFalso(tag) {
+    return {
+        tag,
+        className: '',
+        textContent: '',
+        src: '',
+        alt: null,
+        filhos: [],
+        classList: new ListaDeClasses(),
+        append(...filhos) {
+            this.filhos.push(...filhos);
+        },
+    };
+}
+
 function leafletFalso() {
     const marcadores = [];
     const L = {
-        icon: (opcoes) => ({ opcoes }),
+        divIcon: (opcoes) => ({ opcoes }),
         marker(latlng, opcoes) {
-            const elementoDoRotulo = { classList: new ListaDeClasses() };
             const marcador = {
                 latlng: [...latlng],
                 opcoes,
                 icone: opcoes.icon,
+                trocasDeIcone: 0,
                 zIndexOffset: 0,
                 mapa: null,
-                tooltip: null,
-                bindTooltip(conteudo, opcoesDoRotulo) {
-                    this.tooltip = { conteudo, opcoes: opcoesDoRotulo, getElement: () => elementoDoRotulo };
-                    return this;
-                },
-                getTooltip() {
-                    return this.tooltip;
-                },
                 addTo(mapa) {
                     this.mapa = mapa;
                     return this;
@@ -59,6 +66,7 @@ function leafletFalso() {
                 },
                 setIcon(icone) {
                     this.icone = icone;
+                    this.trocasDeIcone++;
                     return this;
                 },
                 setZIndexOffset(z) {
@@ -90,7 +98,7 @@ function montar({ reduzirMovimento = false } = {}) {
         cancelarQuadro: () => {
             quadros.length = 0;
         },
-        criarRotulo: () => ({ textContent: '' }),
+        criarElemento: elementoFalso,
     });
     // roda o próximo quadro pedido pela animação, no instante t
     const quadro = (t) => {
@@ -102,31 +110,43 @@ function montar({ reduzirMovimento = false } = {}) {
     return { camada, marcadores, quadro, quadros, relogio, mapa };
 }
 
+// partes do marcador: o elemento do ícone (raiz), o capacete (img) e o nome (span)
+const partes = (marcador) => {
+    const raiz = marcador.icone.opcoes.html;
+    const [capacete, nome] = raiz.filhos;
+    return { raiz, capacete, nome };
+};
+
 const ana = (latitude, longitude, extra = {}) => ({ id: 'a1', nome: 'Ana', latitude, longitude, situacao: 'livre', pedidos: [], ...extra });
 const bia = (extra = {}) => ({ id: 'b2', nome: 'Bia', latitude: -21.18, longitude: -47.82, situacao: 'coleta', pedidos: ['order_x'], ...extra });
 
-test('cria o capacete na posição, com o ícone da situação e o nome como texto', () => {
+test('cria o capacete na posição, com a imagem da situação e o nome como texto dentro do marcador', () => {
     const { camada, marcadores, mapa } = montar();
     camada.atualizar([ana(-21.17, -47.81)]);
     assert.equal(marcadores.length, 1);
     const [marcador] = marcadores;
+    const { raiz, capacete, nome } = partes(marcador);
     assert.deepEqual(marcador.latlng, [-21.17, -47.81]);
-    assert.equal(marcador.icone.opcoes.iconUrl, '/engines-dist/images/capacete-verde.png');
+    assert.equal(marcador.icone.opcoes.className, 'entregas-motoboy-icone');
     assert.deepEqual(marcador.icone.opcoes.iconSize, [36, 36]);
-    assert.deepEqual(marcador.icone.opcoes.tooltipAnchor, [0, 13]);
+    assert.deepEqual(marcador.icone.opcoes.iconAnchor, [18, 18]);
     assert.equal(marcador.opcoes.interactive, false);
     assert.equal(marcador.opcoes.keyboard, false);
-    assert.equal(marcador.tooltip.opcoes.permanent, true);
-    assert.equal(marcador.tooltip.opcoes.direction, 'bottom');
-    assert.equal(marcador.tooltip.opcoes.className, 'entregas-nome-motoboy');
-    assert.equal(marcador.tooltip.conteudo.textContent, 'Ana');
+    assert.equal(raiz.className, 'entregas-motoboy');
+    assert.equal(capacete.tag, 'img');
+    assert.equal(capacete.className, 'entregas-motoboy-capacete');
+    assert.equal(capacete.src, '/engines-dist/images/capacete-verde.png');
+    assert.equal(capacete.alt, '');
+    assert.equal(nome.tag, 'span');
+    assert.equal(nome.className, 'entregas-motoboy-nome');
+    assert.equal(nome.textContent, 'Ana');
     assert.equal(marcador.mapa, mapa);
 });
 
 test('nome com HTML entra como texto', () => {
     const { camada, marcadores } = montar();
     camada.atualizar([ana(-21.17, -47.81, { nome: '<img src=x onerror=alert(1)>' })]);
-    assert.equal(marcadores[0].tooltip.conteudo.textContent, '<img src=x onerror=alert(1)>');
+    assert.equal(partes(marcadores[0]).nome.textContent, '<img src=x onerror=alert(1)>');
 });
 
 test('posição nova perto: desliza durante DESLIZE_MS', () => {
@@ -179,25 +199,28 @@ test('menos animação no sistema: salta', () => {
     assert.equal(quadros.length, 0);
 });
 
-test('troca de situação troca o ícone; troca de nome troca o rótulo', () => {
+test('troca de situação troca a imagem; troca de nome troca o texto; o ícone não é recriado', () => {
     const { camada, marcadores } = montar();
     camada.atualizar([ana(-21.17, -47.81)]);
     camada.atualizar([ana(-21.17, -47.81, { situacao: 'entrega', nome: 'Ana Paula' })]);
     assert.equal(marcadores.length, 1, 'o mesmo marcador');
-    assert.equal(marcadores[0].icone.opcoes.iconUrl, '/engines-dist/images/capacete-vermelho.png');
-    assert.equal(marcadores[0].tooltip.conteudo.textContent, 'Ana Paula');
+    const { capacete, nome } = partes(marcadores[0]);
+    assert.equal(capacete.src, '/engines-dist/images/capacete-vermelho.png');
+    assert.equal(nome.textContent, 'Ana Paula');
+    assert.equal(marcadores[0].trocasDeIcone, 0);
 });
 
-test('destaque: por cima dos outros e com o rótulo destacado; sai quando o pedido fecha', () => {
+test('destaque: o marcador inteiro (capacete e nome) por cima dos outros; sai quando o pedido fecha', () => {
     const { camada, marcadores } = montar();
     camada.atualizar([ana(-21.17, -47.81), bia()], { destaque: 'b2' });
     const [marcadorDaAna, marcadorDaBia] = marcadores;
     assert.equal(marcadorDaBia.zIndexOffset, 1000);
-    assert.equal(marcadorDaBia.tooltip.getElement().classList.contains('entregas-nome-motoboy-destaque'), true);
+    assert.equal(partes(marcadorDaBia).raiz.classList.contains('entregas-motoboy-destaque'), true);
     assert.equal(marcadorDaAna.zIndexOffset, 0);
+    assert.equal(partes(marcadorDaAna).raiz.classList.contains('entregas-motoboy-destaque'), false);
     camada.atualizar([ana(-21.17, -47.81), bia()], { destaque: null });
     assert.equal(marcadorDaBia.zIndexOffset, 0);
-    assert.equal(marcadorDaBia.tooltip.getElement().classList.contains('entregas-nome-motoboy-destaque'), false);
+    assert.equal(partes(marcadorDaBia).raiz.classList.contains('entregas-motoboy-destaque'), false);
 });
 
 test('quem saiu da lista sai do mapa; quem é inválido não entra', () => {
