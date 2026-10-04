@@ -4,10 +4,8 @@ namespace App\Http\Controllers\Entregas;
 
 use App\Http\Controllers\Controller;
 use App\Support\Entregas\SituacaoDoMotoboy;
-use App\Support\Entregas\StatusDoPedido;
 use Fleetbase\FleetOps\Http\Resources\v1\Index\Place as PlaceIndexResource;
 use Fleetbase\FleetOps\Models\Driver;
-use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Place;
 use Fleetbase\FleetOps\Models\Vendor;
 
@@ -47,19 +45,17 @@ class MapaController extends Controller
             ->applyDirectivesForPermissions('fleet-ops list driver')
             ->get(['uuid', 'public_id', 'online']);
 
-        $statusPorMotoboy = Order::where('company_uuid', session('company'))
-            ->whereIn('driver_assigned_uuid', $motoboys->pluck('uuid'))
-            ->whereNotIn('status', StatusDoPedido::ENCERRADOS)
-            ->where('updated_at', '>=', now()->subHours(SituacaoDoMotoboy::HORAS_PEDIDO_EM_ANDAMENTO))
-            ->get(['driver_assigned_uuid', 'status'])
-            ->groupBy('driver_assigned_uuid')
-            ->map(fn ($pedidos) => $pedidos->pluck('status')->all());
+        $pedidosPorMotoboy = SituacaoDoMotoboy::pedidosEmAndamento(session('company'), $motoboys->pluck('uuid'));
 
         return response()->json([
             'motoboys' => $motoboys->map(fn ($motoboy) => [
                 'uuid'      => $motoboy->uuid,
                 'public_id' => $motoboy->public_id,
-                'situacao'  => SituacaoDoMotoboy::classificar((bool) $motoboy->online, $statusPorMotoboy->get($motoboy->uuid, [])),
+                // array_map, e não array_column: com o model do Eloquent, o array_column pula status nulo
+                'situacao'  => SituacaoDoMotoboy::classificar(
+                    (bool) $motoboy->online,
+                    array_map(fn ($pedido) => $pedido->status, $pedidosPorMotoboy[$motoboy->uuid] ?? [])
+                ),
             ])->values(),
         ]);
     }
