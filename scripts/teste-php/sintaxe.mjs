@@ -3,6 +3,7 @@
 //   PHP_WASM_DIR=<pasta> node scripts/teste-php/sintaxe.mjs api/app/Arquivo.php [outros.php...]
 // Sai com 1 se algum arquivo tiver erro de sintaxe.
 import path from 'node:path';
+import { statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
@@ -19,11 +20,19 @@ const { loadNodeRuntime, createNodeFsMountHandler } = carregar('@php-wasm/node')
 
 let falhas = 0;
 for (const arquivo of arquivos) {
-    // um PHP por arquivo: o modo CLI encerra o runtime quando o comando termina
+    // o php -l aceita pasta (e "", que vira a raiz do repo) e responde OK sem ler nada
+    if (!statSync(arquivo, { throwIfNoEntry: false })?.isFile()) {
+        falhas++;
+        console.log(`ERRO ${arquivo}\n     não é um arquivo (ou não existe)`);
+        continue;
+    }
+    // um PHP por arquivo: depois do cli() a instância não serve mais (reusar devolve o resultado do primeiro arquivo, um falso OK)
+    // processId: fora do Vitest, o php-wasm exige o id do processo (usado pelo gerenciador de travas de arquivo)
     const php = new PHP(await loadNodeRuntime('8.2', { emscriptenOptions: { processId: 1 } }));
     await php.mount('/repo', createNodeFsMountHandler(raiz));
     const caminho = '/repo/' + path.relative(raiz, path.resolve(arquivo)).split(path.sep).join('/');
     const resposta = await php.cli(['php', '-l', caminho]);
+    // em erro, a última linha é a do stderr ("PHP Parse error: ... on line N"); o stdout termina em "Errors parsing"
     const saida = ((await resposta.stdoutText) + (await resposta.stderrText)).trim();
     const ok = (await resposta.exitCode) === 0;
     if (!ok) falhas++;
