@@ -6,7 +6,9 @@ export default buildRoutes(function () {
         this.route('two-fa');
         this.route('verification');
         this.route('forgot-password');
-        this.route('reset-password');
+        // Entregas: o link do e-mail traz o id do código (customer-portal/auth/reset-password/<uuid>?code=...); a rota
+        // lê model({ id }) e, sem o segmento, validava um id vazio
+        this.route('reset-password', { path: '/reset-password/:id' });
     });
     this.route('portal', { path: '/' }, function () {
         this.route('home', { path: '/' });
