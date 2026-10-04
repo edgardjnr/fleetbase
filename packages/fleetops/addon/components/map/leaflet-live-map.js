@@ -9,13 +9,22 @@ import { camelize, capitalize, dasherize } from '@ember/string';
 import { singularize, pluralize } from 'ember-inflector';
 import { all } from 'rsvp';
 import { task, timeout } from 'ember-concurrency';
-import { next } from '@ember/runloop';
+import { next, debounce, cancel } from '@ember/runloop';
 import getModelName from '@fleetbase/ember-core/utils/get-model-name';
 import ensureLeafletPluginsReady, { hasLeafletPluginsReady } from '../../utils/leaflet-plugin-loader';
 import capaceteDoMotoboy, { indexarSituacoes } from '../../utils/entregas-capacete';
 
-/** Entregas: de quanto em quanto tempo o mapa relê a situação dos motoboys (cor do capacete). */
+/** Entregas: de quanto em quanto tempo o mapa relê a situação dos motoboys (cor do capacete), como reserva do socket. */
 const INTERVALO_SITUACOES_MS = 20000;
+
+/**
+ * Entregas: eventos do canal da empresa que podem mudar a cor de um capacete (status, aceite, conclusão e
+ * cancelamento de pedido; online do motoboy). A posição (driver.location_changed) fica de fora: chega o tempo todo.
+ */
+const EVENTOS_DA_SITUACAO = /^(order\.|waypoint\.|entity\.|driver\.(created|updated|deleted)$|entregas\.motoboy_online$)/;
+
+/** Entregas: espera para juntar a rajada de eventos de uma mesma mudança numa releitura só. */
+const ESPERA_EVENTOS_MS = 600;
 
 /** Entregas: o mapa mostra só os locais de coleta (lojas), não todo Place da empresa (ver MapaController). */
 const ENDPOINTS_ENTREGAS = { places: 'entregas/mapa/locais-de-coleta' };
@@ -39,6 +48,7 @@ export default class MapLeafletLiveMapComponent extends Component {
     @service geofence;
     @service location;
     @service fetch;
+    @service socket;
     @service abilities;
     @service intl;
     @service universe;
@@ -100,6 +110,7 @@ export default class MapLeafletLiveMapComponent extends Component {
 
     willDestroy() {
         super.willDestroy();
+        this.#pararSocketDaSituacao();
 
         // Clean up event listener using stored reference
         if (this._locationUpdateHandler) {
@@ -271,6 +282,7 @@ export default class MapLeafletLiveMapComponent extends Component {
             this.trigger('onLoaded', { map: this.map, data });
             this.ready = true;
             this.acompanharSituacoesDosMotoboys.perform();
+            this.#escutarSocketDaSituacao();
         } catch (err) {
             debug('Failed to load live map: ' + err.message);
         }
@@ -326,6 +338,64 @@ export default class MapLeafletLiveMapComponent extends Component {
             }
             yield timeout(INTERVALO_SITUACOES_MS);
         }
+    }
+
+    /**
+     * Entregas: escuta o canal da empresa no socket e relê a situação logo depois de cada evento que pode mudar um
+     * capacete. Usa um consumidor próprio: outras telas usam o mesmo canal, e desinscrever o canal derrubaria a delas.
+     * Se o canal for fechado por outra tela (ou cair), volta a se inscrever em seguida.
+     */
+    async #escutarSocketDaSituacao() {
+        if (this._escutandoSocket) return;
+        this._escutandoSocket = true;
+
+        // com a aba oculta o mapa não lê; ao voltar para a aba, lê na hora (sem esperar a próxima releitura)
+        this._aoMudarVisibilidade = () => {
+            if (!document.hidden) this.#releSituacoesAgora();
+        };
+        document.addEventListener('visibilitychange', this._aoMudarVisibilidade);
+
+        while (this._escutandoSocket && !this.isDestroying && !this.isDestroyed) {
+            try {
+                const empresa = this.currentUser.companyId;
+                if (empresa) {
+                    const canal = this.socket.instance().subscribe(`company.${empresa}`);
+                    this._consumidorSocket = canal.createConsumer();
+                    for await (const mensagem of this._consumidorSocket) {
+                        if (!this._escutandoSocket) break;
+                        if (EVENTOS_DA_SITUACAO.test(String(mensagem?.event ?? ''))) {
+                            this._releituraAgendada = debounce(this, this.#releSituacoesAgora, ESPERA_EVENTOS_MS);
+                        }
+                    }
+                }
+            } catch (err) {
+                debug('Socket da situação dos motoboys: ' + err.message);
+            }
+            if (this._escutandoSocket) {
+                await new Promise((resolve) => setTimeout(resolve, 5000));
+            }
+        }
+    }
+
+    #releSituacoesAgora() {
+        if (this.isDestroying || this.isDestroyed) return;
+        // restartable: cancela a espera atual e lê na hora; depois volta à releitura a cada INTERVALO_SITUACOES_MS
+        this.acompanharSituacoesDosMotoboys.perform();
+    }
+
+    #pararSocketDaSituacao() {
+        this._escutandoSocket = false;
+        cancel(this._releituraAgendada);
+        if (this._aoMudarVisibilidade) {
+            document.removeEventListener('visibilitychange', this._aoMudarVisibilidade);
+            this._aoMudarVisibilidade = null;
+        }
+        try {
+            this._consumidorSocket?.return();
+        } catch (err) {
+            debug('Socket da situação dos motoboys: ' + err.message);
+        }
+        this._consumidorSocket = null;
     }
 
     /** Entregas: capacete do motoboy na cor da situação (usado como helper no template). */
