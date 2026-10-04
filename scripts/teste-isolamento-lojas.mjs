@@ -1446,9 +1446,14 @@ async function etapaPedido() {
                 if (extras.length) {
                     problemas.push(`${loja}: campos a mais (${extras.join(', ')})`);
                 }
+                // o id é um HMAC de 16 caracteres hexadecimais; um uuid ou public_id cru passaria pela checagem do driver_
+                if (!/^[0-9a-f]{16}$/.test(String(motoboy.id))) {
+                    problemas.push(`${loja}: id fora do formato opaco (${String(motoboy.id).slice(0, 40)})`);
+                }
             }
         }
-        // o pedido de teste já foi cancelado (item 13a); vale também para os pedidos em andamento de A no momento
+        // o pedido de teste é aberto e foi cancelado sem motoboy (item 13a): esta comparação só pega pedidos de A que estejam
+        // com motoboy na hora do teste. O filtro de pedidos por loja fica coberto pelo scripts/teste-php/mapa-da-loja.php
         const pedidosDeA = new Set([...ra.json.motoboys.flatMap((m) => m.pedidos ?? []), estado.pedido?.public_id].filter(Boolean));
         const deAEmB = rb.json.motoboys.flatMap((m) => m.pedidos ?? []).filter((id) => pedidosDeA.has(id));
         if (deAEmB.length) {
