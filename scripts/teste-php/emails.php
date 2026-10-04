@@ -327,4 +327,33 @@ confere($canal->send($semEmail, $esqueci) === null && $carteiro->enviados === []
 // a configuração de envio da original (remetente, mailer, etiquetas) passa para a mensagem traduzida
 confere(CanalEmailEntregas::copiarEnvio((new MailMessage())->from('central@exemplo.com', 'Central')->mailer('smtp')->tag('senha'), new MailMessage())->from === ['central@exemplo.com', 'Central'], 'copia o remetente da original');
 
+use App\Listeners\Entregas\AssuntoDosEmailsEmPortugues;
+use Illuminate\Mail\Events\MessageSending;
+use Symfony\Component\Mime\Email;
+
+echo PHP_EOL . '== Assunto dos Mailables' . PHP_EOL;
+
+$escuta = new AssuntoDosEmailsEmPortugues();
+// $data como o Laravel monta: dados da view (Mailable::buildViewData) + 'mailer'
+$casos = [
+    'verificação' => [['code' => '123456', 'type' => 'email_verification', 'mailer' => 'smtp'], '123456 is your Entregas verification code', '123456 é o seu código de verificação'],
+    '2FA'         => [['code' => '123456', 'type' => '2fa', 'mailer' => 'smtp'], '123456 is your Entregas verification code', '123456 é o seu código de acesso'],
+    'motoboy'     => [['code' => '123456', 'type' => 'driver_login', 'mailer' => 'smtp'], '123456 is your Entregas verification code', '123456 é o seu código para entrar no app'],
+    'credenciais' => [['plaintextPassword' => 'x', 'user' => null, 'mailer' => 'smtp'], 'Your login credentials for Central on Entregas', 'Seus dados de acesso ao Entregas RestaurantePro'],
+    'teste'       => [['mailSubject' => '🎉 Your Fleetbase Mail Configuration Works!', 'mailer' => 'smtp'], '🎉 Your Fleetbase Mail Configuration Works!', 'Teste de e-mail do Entregas RestaurantePro'],
+    'notificação' => [['code' => '1', 'type' => '2fa', '__laravel_notification' => UserForgotPassword::class], 'Redefina sua senha do Entregas RestaurantePro', 'Redefina sua senha do Entregas RestaurantePro'],
+    'outro'       => [['qualquer' => 1], 'Assunto qualquer', 'Assunto qualquer'],
+];
+foreach ($casos as $nome => [$dados, $antes, $depois]) {
+    $email   = (new Email())->subject($antes);
+    $retorno = $escuta->handle(new MessageSending($email, $dados));
+    confere($email->getSubject() === $depois, "assunto: {$nome}");
+    confere($retorno === null, "não cancela o envio: {$nome}");
+}
+
+Log::$registros = [];
+$email          = (new Email())->subject('x');
+$escuta->handle(new MessageSending($email, ['code' => '9', 'type' => 'tipo_inventado']));
+confere($email->getSubject() === '9 é o seu código' && (Log::$registros[0][1] ?? null) === '[entregas] e-mail sem tradução', 'código de tipo desconhecido: assunto genérico e log');
+
 resumo();
