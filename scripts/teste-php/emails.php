@@ -280,4 +280,51 @@ $mensagemNovo = EmailsEmPortugues::traduzir($novo, $ana, new MailMessage());
 $textosDoNovo = array_merge([$mensagemNovo->subject], $mensagemNovo->introLines);
 confere(count(array_filter($textosDoNovo, fn ($t) => str_contains($t, '&#'))) === 0, 'novo usuário: nenhuma entidade &# no assunto nem nas linhas');
 
+use App\Notifications\Entregas\Email\CanalEmailEntregas;
+use Fleetbase\FleetOps\Models\Driver;
+
+echo PHP_EOL . '== Canal de e-mail' . PHP_EOL;
+
+$carteiro = new \Teste\CarteiroFalso();
+$canal    = new CanalEmailEntregas($carteiro, null);
+
+// motoboy (Driver) não recebe e-mail de pedido
+Log::$registros = [];
+$motoboy            = new Driver();
+$motoboy->public_id = 'driver_1';
+confere($canal->send($motoboy, $entregue) === null && $carteiro->enviados === [], 'motoboy: e-mail de pedido não sai');
+confere((Log::$registros[0][1] ?? null) === '[entregas] e-mail ao motoboy não enviado' && (Log::$registros[0][2]['motoboy'] ?? null) === 'driver_1', 'motoboy: corte no log');
+
+// usuário do tipo motoboy não recebe o convite de organização
+$usuarioMotoboy = usuario('Carlos', 'carlos@exemplo.com', 'driver');
+confere($canal->send($usuarioMotoboy, $convidou) === null && $carteiro->enviados === [], 'convite para usuário motoboy não sai');
+
+// notificação conhecida sai em pt-BR, com os dados da mensagem e o nome da notificação
+confere($canal->send($ana, $esqueci) === 'enviado', 'esqueci a senha sai');
+$dados = $carteiro->enviados[0]['dados'] ?? [];
+confere(($dados['subject'] ?? null) === 'Redefina sua senha do Entregas RestaurantePro' && ($dados['actionText'] ?? null) === 'Criar nova senha', 'sai com assunto e botão em pt-BR');
+confere(($dados['__laravel_notification'] ?? null) === UserForgotPassword::class, 'mantém o nome da notificação nos dados');
+
+// usuário de loja: link do portal também pelo canal
+$carteiro->enviados = [];
+$canal->send($loja, $esqueci);
+confere(str_contains($carteiro->enviados[0]['dados']['actionUrl'] ?? '', '/customer-portal/auth/reset-password/vc-1'), 'loja: link do portal pelo canal');
+
+// desconhecida: sai como veio, com aviso no log
+$carteiro->enviados = [];
+Log::$registros     = [];
+$semTraducao        = new class extends \Illuminate\Notifications\Notification {
+    public function toMail($notifiable) { return (new MailMessage())->subject('Original in English')->line('english'); }
+};
+confere($canal->send($ana, $semTraducao) === 'enviado' && ($carteiro->enviados[0]['dados']['subject'] ?? null) === 'Original in English', 'desconhecida sai como veio');
+confere((Log::$registros[0][1] ?? null) === '[entregas] e-mail sem tradução', 'desconhecida vai para o log');
+
+// sem endereço de e-mail: não envia (como o MailChannel do Laravel)
+$carteiro->enviados = [];
+$semEmail           = usuario('Sem', '');
+confere($canal->send($semEmail, $esqueci) === null && $carteiro->enviados === [], 'sem e-mail: não envia');
+
+// a configuração de envio da original (remetente, mailer, etiquetas) passa para a mensagem traduzida
+confere(CanalEmailEntregas::copiarEnvio((new MailMessage())->from('central@exemplo.com', 'Central')->mailer('smtp')->tag('senha'), new MailMessage())->from === ['central@exemplo.com', 'Central'], 'copia o remetente da original');
+
 resumo();

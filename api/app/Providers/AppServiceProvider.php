@@ -4,11 +4,13 @@ namespace App\Providers;
 
 use App\Console\Commands\Entregas\ReenviarPedidosAbertos;
 use App\Notifications\Entregas\CanalFcmEntregas;
+use App\Notifications\Entregas\Email\CanalEmailEntregas;
 use Fleetbase\FleetOps\Console\Commands\DispatchAdhocOrders;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Events\TransactionBeginning;
 use Illuminate\Database\Events\TransactionCommitting;
+use Illuminate\Notifications\Channels\MailChannel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
@@ -45,6 +47,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Entregas: todo push (FCM) sai em pt-BR e no formato do app do motoboy (ver CanalFcmEntregas e AvisosDoMotoboy)
         $this->app->bind(FcmChannel::class, CanalFcmEntregas::class);
+
+        // Entregas: todo e-mail de notificação sai em pt-BR e o motoboy não recebe e-mail (ver CanalEmailEntregas)
+        $this->app->bind(MailChannel::class, CanalEmailEntregas::class);
     }
 
     /**
