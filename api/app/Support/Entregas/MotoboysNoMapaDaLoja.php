@@ -67,6 +67,30 @@ class MotoboysNoMapaDaLoja
         return $lista;
     }
 
+    /**
+     * O motoboy de um id opaco, só se ele está no mapa da loja agora (a mesma lista que o portal recebe). Usado pelo chat da
+     * loja (ConversasDaLojaController): a loja escolhe o motoboy no mapa sem nunca receber o id dele.
+     *
+     * @param array<int, string> $donos customer_uuid dos pedidos da loja: o Vendor e o contato do usuário
+     *
+     * @return Driver|null
+     */
+    public static function motoboyDoIdOpaco(string $companyUuid, array $donos, string $id)
+    {
+        $noMapa = array_column(static::listar($companyUuid, $donos), 'id');
+        if ($id === '' || !in_array($id, $noMapa, true)) {
+            return null;
+        }
+
+        foreach (Driver::where('company_uuid', $companyUuid)->with('user')->get() as $motoboy) {
+            if (hash_equals(static::idOpaco($motoboy->uuid), $id)) {
+                return $motoboy;
+            }
+        }
+
+        return null;
+    }
+
     /** Id estável para o portal saber qual capacete mover, sem permitir chegar ao motoboy (nem ao canal do socket). */
     public static function idOpaco(string $uuid): string
     {

@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Entregas;
 
 use App\Http\Controllers\Controller;
 use App\Support\Entregas\CalculoEntregas;
+use App\Support\Entregas\ChatComACentral;
 use App\Support\Entregas\GanhosDoMotoboy;
 use App\Support\Entregas\MotoboyDaSessao;
 use App\Support\Entregas\RotaDoPedido;
 use App\Support\Entregas\SituacaoDoMotoboy;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
+use Fleetbase\Http\Resources\ChatChannel as ChatChannelResource;
 use Fleetbase\Models\Company;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -20,6 +22,8 @@ use Illuminate\Support\Carbon;
  * - valor: km, faixa e valor de um pedido dele ou aberto (card de aceitar e detalhes do pedido);
  * - rota: o traçado loja → cliente de um pedido dele ou aberto e a situação dele (cor do capacete), para o mapa do pedido
  *   no app ficar igual ao do console (RotaDoPedido, SituacaoDoMotoboy).
+ * - chatComACentral: a conversa dele com a central (botão "Chat" do cliente nos detalhes do pedido), no formato do chat
+ *   do Fleetbase, para o app abrir a tela do canal (ChatComACentral).
  * O motoboy vem do token (MotoboyDaSessao); as respostas só trazem o valor pago a ele (GanhosDoMotoboy). Usuário de
  * loja nem chega aqui: o ProtegerPortalLoja nega a API v1 a ele.
  */
@@ -87,6 +91,21 @@ class MotoboyController extends Controller
             'rota'     => $rotas->doPedido($pedido),
             'situacao' => $this->situacao($motoboy),
         ]);
+    }
+
+    public function chatComACentral(Request $request)
+    {
+        $motoboy = MotoboyDaSessao::motoboy($request);
+        if (!$motoboy) {
+            return $this->soParaMotoboy();
+        }
+
+        $canal = ChatComACentral::abrir($motoboy);
+        if (!$canal) {
+            return response()->json(['errors' => ['A central ainda não tem ninguém para conversar.']], 422);
+        }
+
+        return new ChatChannelResource($canal);
     }
 
     /** Pedido da empresa da sessão (pelo public_id ou uuid) que o motoboy pode ver: dele ou aberto. */

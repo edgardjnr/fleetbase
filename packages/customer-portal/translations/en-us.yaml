@@ -621,6 +621,26 @@ customer-portal:
         label: Retail Goods
         description: General consumer or retail merchandise.
     entregas:
+      chat-title: "Chats"
+      chat-new: "New chat"
+      chat-back: "Back"
+      chat-close: "Close"
+      chat-courier: "Courier"
+      chat-with-courier: "Chat with the courier"
+      chat-pick-courier: "Couriers on the map right now. The dispatcher also joins the chat."
+      chat-no-couriers: "No couriers on the map right now."
+      chat-empty: "No chats yet. Tap New chat to talk to a courier."
+      chat-no-messages: "No messages"
+      chat-start: "Write the first message. The dispatcher also sees this chat."
+      chat-placeholder: "Write a message"
+      chat-send: "Send"
+      chat-you: "You"
+      chat-role-loja: "Store"
+      chat-role-motoboy: "Courier"
+      chat-role-central: "Dispatcher"
+      chat-situation-livre: "Available"
+      chat-situation-coleta: "Heading to pickup"
+      chat-situation-entrega: "Delivering"
       orders-in-progress: Orders in progress
       no-orders-in-progress: No orders in progress
       no-orders-in-progress-text: Completed and canceled orders are in the Table view.

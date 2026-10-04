@@ -1,0 +1,87 @@
+{{!-- Entregas: gaveta do chat da loja com os motoboys (serviço entregas-conversas). A central participa de todas as
+     conversas; o motoboy responde pela aba Conversas do app --}}
+{{#if this.conversas.aberta}}
+    <aside class="portal-conversas" aria-label={{t "customer-portal.ui.entregas.chat-title"}}>
+        <header class="portal-conversas-header">
+            {{#if this.podeVoltar}}
+                <Button @icon="arrow-left" @size="sm" @onClick={{this.conversas.voltarParaLista}} title={{t "customer-portal.ui.entregas.chat-back"}} aria-label={{t "customer-portal.ui.entregas.chat-back"}} />
+            {{/if}}
+            <h2 class="portal-conversas-title">{{this.titulo}}</h2>
+            <Button @icon="xmark" @size="sm" @onClick={{this.conversas.fecharGaveta}} title={{t "customer-portal.ui.entregas.chat-close"}} aria-label={{t "customer-portal.ui.entregas.chat-close"}} />
+        </header>
+
+        {{#if this.conversas.escolhendoMotoboy}}
+            <p class="portal-conversas-hint">{{t "customer-portal.ui.entregas.chat-pick-courier"}}</p>
+            <div class="portal-conversas-body">
+                {{#if this.conversas.carregarMotoboys.isRunning}}
+                    <div class="portal-conversas-empty"><Spinner /></div>
+                {{else}}
+                    {{#each this.motoboys as |motoboy|}}
+                        <button type="button" class="portal-conversas-item" disabled={{this.conversas.abrirComMotoboy.isRunning}} {{on "click" (perform this.conversas.abrirComMotoboy motoboy.id)}}>
+                            <span class="portal-conversas-avatar"><FaIcon @icon="motorcycle" /></span>
+                            <span class="portal-conversas-item-text">
+                                <span class="portal-conversas-item-name">{{motoboy.nome}}</span>
+                                <span class="portal-conversas-item-summary">{{motoboy.situacaoTexto}}</span>
+                            </span>
+                        </button>
+                    {{else}}
+                        <div class="portal-conversas-empty">{{t "customer-portal.ui.entregas.chat-no-couriers"}}</div>
+                    {{/each}}
+                {{/if}}
+            </div>
+        {{else if this.conversas.conversaAtual}}
+            <div class="portal-conversas-body portal-conversas-messages" {{did-insert this.rolarParaOFim}} {{did-update this.rolarParaOFim this.mensagens.length}}>
+                {{#if this.conversas.carregandoMensagens}}
+                    <div class="portal-conversas-empty"><Spinner /></div>
+                {{else}}
+                    {{#each this.mensagens as |mensagem|}}
+                        <div class="portal-conversas-message {{if mensagem.minha 'is-mine'}}">
+                            {{#unless mensagem.minha}}
+                                <div class="portal-conversas-message-author">{{mensagem.autor.nome}} · {{mensagem.papel}}</div>
+                            {{/unless}}
+                            <div class="portal-conversas-message-text">{{mensagem.texto}}</div>
+                            <div class="portal-conversas-message-time">{{format-date-fns mensagem.em "dd/MM HH:mm"}}</div>
+                        </div>
+                    {{else}}
+                        <div class="portal-conversas-empty">{{t "customer-portal.ui.entregas.chat-start"}}</div>
+                    {{/each}}
+                {{/if}}
+            </div>
+            <div class="portal-conversas-composer">
+                <Textarea
+                    @value={{this.conversas.rascunho}}
+                    class="form-input w-full portal-conversas-input"
+                    rows="2"
+                    maxlength={{this.maxCaracteres}}
+                    placeholder={{t "customer-portal.ui.entregas.chat-placeholder"}}
+                    {{on "input" this.conversas.atualizarRascunho}}
+                    {{on "keydown" this.teclaNoTexto}}
+                />
+                <Button @type="primary" @icon="paper-plane" @text={{t "customer-portal.ui.entregas.chat-send"}} @onClick={{this.enviar}} @disabled={{not this.podeEnviar}} @isLoading={{this.conversas.enviar.isRunning}} />
+            </div>
+        {{else}}
+            <div class="portal-conversas-actions">
+                <Button @icon="plus" @type="primary" @size="sm" @text={{t "customer-portal.ui.entregas.chat-new"}} @onClick={{this.conversas.novaConversa}} />
+            </div>
+            <div class="portal-conversas-body">
+                {{#each this.itens as |item|}}
+                    <button type="button" class="portal-conversas-item" {{on "click" (fn this.conversas.escolherConversa item.conversa "")}}>
+                        <span class="portal-conversas-avatar">
+                            {{#if item.foto}}<img src={{item.foto}} alt="" />{{else}}<FaIcon @icon="motorcycle" />{{/if}}
+                        </span>
+                        <span class="portal-conversas-item-text">
+                            <span class="portal-conversas-item-name">{{item.nome}}</span>
+                            <span class="portal-conversas-item-summary">{{item.resumo}}</span>
+                        </span>
+                        <span class="portal-conversas-item-meta">
+                            {{#if item.em}}<span class="portal-conversas-item-time">{{format-date-fns item.em "dd/MM HH:mm"}}</span>{{/if}}
+                            {{#if item.naoLidas}}<span class="portal-conversas-badge">{{item.naoLidas}}</span>{{/if}}
+                        </span>
+                    </button>
+                {{else}}
+                    <div class="portal-conversas-empty">{{t "customer-portal.ui.entregas.chat-empty"}}</div>
+                {{/each}}
+            </div>
+        {{/if}}
+    </aside>
+{{/if}}

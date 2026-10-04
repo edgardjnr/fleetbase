@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\Entregas\ConversasDaLojaController;
 use App\Http\Controllers\Entregas\LojasController;
 use App\Http\Controllers\Entregas\MapaController;
 use App\Http\Controllers\Entregas\MotoboyController;
@@ -54,6 +55,10 @@ class RouteServiceProvider extends ServiceProvider
         // chamadas por minuto por usuário, num balde separado do throttle:60,1 que as outras rotas da loja dividem
         RateLimiter::for('entregas-loja-mapa', fn (Request $request) => Limit::perMinute(60)->by('entregas-loja-mapa:' . (session('user') ?: $request->ip())));
 
+        // Entregas RestaurantePro: chat da loja com os motoboys no portal (a lista a cada 20 s e a conversa aberta a cada 5 s, por
+        // aba), até 120 chamadas por minuto por usuário, num balde separado das outras rotas da loja
+        RateLimiter::for('entregas-loja-conversas', fn (Request $request) => Limit::perMinute(120)->by('entregas-loja-conversas:' . (session('user') ?: $request->ip())));
+
         // Entregas RestaurantePro: traçado da rota no mapa do pedido do app (cada card de pedido da lista pede o seu), até 120
         // chamadas por minuto por motoboy, num balde separado do entregas-motoboy (ganhos e valor)
         RateLimiter::for('entregas-motoboy-rota', fn (Request $request) => Limit::perMinute(120)->by('entregas-motoboy-rota:' . (session('user') ?: $request->ip())));
@@ -96,6 +101,14 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('loja/extrato', [PortalLojaController::class, 'extrato'])->middleware('throttle:60,1');
                         Route::get('loja/pedidos/{id}/motoboy', [PortalLojaController::class, 'motoboy'])->middleware('throttle:60,1');
                         Route::get('loja/motoboys', [PortalLojaController::class, 'motoboysNoMapa'])->middleware('throttle:entregas-loja-mapa');
+
+                        // chat da loja com os motoboys (a central participa; o motoboy conversa pelo app)
+                        Route::middleware('throttle:entregas-loja-conversas')->group(function () {
+                            Route::get('loja/conversas', [ConversasDaLojaController::class, 'index']);
+                            Route::post('loja/conversas', [ConversasDaLojaController::class, 'abrir']);
+                            Route::get('loja/conversas/{id}/mensagens', [ConversasDaLojaController::class, 'mensagens']);
+                            Route::post('loja/conversas/{id}/mensagens', [ConversasDaLojaController::class, 'enviar']);
+                        });
                     });
 
                 // Entregas RestaurantePro: ganhos do motoboy no app (tela Início, card de aceitar e detalhes), na API v1 com o
@@ -105,6 +118,8 @@ class RouteServiceProvider extends ServiceProvider
                     ->group(function () {
                         Route::get('ganhos', [MotoboyController::class, 'ganhos']);
                         Route::get('pedidos/{id}/valor', [MotoboyController::class, 'valor']);
+                        // conversa do motoboy com a central (botão "Chat" do cliente nos detalhes do pedido)
+                        Route::post('chat-central', [MotoboyController::class, 'chatComACentral']);
                     });
 
                 // Entregas RestaurantePro: traçado loja → cliente e situação do motoboy no mapa do pedido do app (MotoboyController@rota)

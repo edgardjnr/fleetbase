@@ -16,6 +16,12 @@
                 {{/if}}
             </div>
         </div>
+        {{!-- Entregas: chat da loja com o motoboy do pedido (gaveta Conversas da tela Pedidos) --}}
+        {{#if @onConversar}}
+            <div class="mt-3">
+                <Button @icon="comments" @text={{t "customer-portal.ui.entregas.chat-with-courier"}} @size="sm" @onClick={{@onConversar}} @isLoading={{@abrindoConversa}} />
+            </div>
+        {{/if}}
     {{else if (and @consultado (not @aceito))}}
         <p class="text-sm text-gray-500 dark:text-gray-400">{{t "customer-portal.ui.entregas.courier-waiting"}}</p>
     {{else}}

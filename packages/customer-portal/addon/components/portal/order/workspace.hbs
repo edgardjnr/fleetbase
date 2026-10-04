@@ -24,6 +24,13 @@
                     @wrapperClass="portal-order-view-toggle-item"
                 />
             </div>
+            {{!-- Entregas: chat da loja com os motoboys (gaveta Portal::Conversas), com o total de não lidas --}}
+            <span class="portal-conversas-toggle">
+                <Button @icon="comments" @text={{t "customer-portal.ui.entregas.chat-title"}} @type={{if this.entregasConversas.aberta "primary"}} @onClick={{this.entregasConversas.alternarGaveta}} />
+                {{#if this.entregasConversas.naoLidas}}
+                    <span class="portal-conversas-badge portal-conversas-toggle-badge">{{this.entregasConversas.naoLidas}}</span>
+                {{/if}}
+            </span>
             <Button @icon="rotate" @onClick={{this.reloadOrders}} @isLoading={{@isReloading}} />
             <Button @icon="plus" @type="primary" @text={{t "customer-portal.ui.order.new-order"}} @onClick={{this.createOrder}} />
         </div>
@@ -61,4 +68,5 @@
             </div>
         </div>
     {{/if}}
+    <Portal::Conversas />
 </div>

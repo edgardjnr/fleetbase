@@ -7,6 +7,19 @@ import { pedidosEmAndamento } from '../../../utils/entregas-pedido';
 export default class PortalOrderWorkspaceComponent extends Component {
     @service hostRouter;
     @service customerPortalOrderCreation;
+    @service entregasConversas;
+
+    // Entregas: o chat da loja com os motoboys acompanha a lista de conversas (o total de não lidas no botão Conversas)
+    // enquanto a tela Pedidos existe; ao sair dela, as leituras param e a gaveta fecha
+    constructor() {
+        super(...arguments);
+        this.entregasConversas.acompanharLista.perform();
+    }
+
+    willDestroy() {
+        super.willDestroy(...arguments);
+        this.entregasConversas.encerrar();
+    }
 
     get currentRouteName() {
         return this.hostRouter.currentRouteName ?? '';

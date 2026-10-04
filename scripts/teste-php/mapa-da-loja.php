@@ -327,6 +327,14 @@ namespace {
     confere(in_array('where company_uuid =', \Teste\Consulta::$registro[Driver::class] ?? [], true), 'motoboys filtrados pela empresa');
     confere(in_array('with user', \Teste\Consulta::$registro[Driver::class] ?? [], true), 'usuário do motoboy (nome) carregado junto');
 
+    echo '== MotoboysNoMapaDaLoja::motoboyDoIdOpaco (chat da loja)' . PHP_EOL;
+    $doId = fn (string $id) => MotoboysNoMapaDaLoja::motoboyDoIdOpaco(EMPRESA, ['vendor-a', 'contato-a'], $id)?->uuid;
+    confere($doId($porNome['Coleta']['id'] ?? '') === 'm-coleta', 'id opaco do mapa → o motoboy');
+    confere($doId($porNome['Offline com pedido aceito']['id'] ?? '') === 'm-off-aceito', 'offline trabalhando também (está no mapa)');
+    confere($doId(MotoboysNoMapaDaLoja::idOpaco('m-off')) === null, 'offline sem pedido aceito (fora do mapa): ninguém');
+    confere($doId(MotoboysNoMapaDaLoja::idOpaco('m-outra-empresa')) === null, 'motoboy de outra empresa: ninguém');
+    confere($doId('m-coleta') === null && $doId('') === null && $doId('0123456789abcdef') === null, 'uuid, vazio ou id inventado: ninguém');
+
     echo '== PortalLojaController (rota loja/motoboys e motoboy do pedido sem posição)' . PHP_EOL;
     require '/repo/api/app/Http/Controllers/Entregas/PortalLojaController.php';
 

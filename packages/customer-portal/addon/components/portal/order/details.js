@@ -9,6 +9,7 @@ import { CANCELAVEIS, ENCERRADOS, INTERVALO_MS, VOLTAS_DETALHE, espera, situacao
 
 export default class PortalOrderDetailsComponent extends Component {
     @service customerPortalOrderActions;
+    @service entregasConversas;
     @service fetch;
     @service hostRouter;
     @service modalsManager;
@@ -52,6 +53,13 @@ export default class PortalOrderDetailsComponent extends Component {
     // Entregas: public_id ou uuid (o id do record); a rota do motoboy aceita os dois
     get pedidoId() {
         return valueFor(this.order, 'public_id') ?? valueFor(this.order, 'id');
+    }
+
+    // Entregas: conversa da loja com o motoboy do pedido (a mesma conversa do par loja × motoboy, aberta na gaveta Conversas),
+    // com o número do pedido no começo do texto
+    @action conversarComMotoboy() {
+        const numero = valueFor(this.order, 'tracking_number.tracking_number') ?? this.pedidoId;
+        this.entregasConversas.abrirPorPedido.perform(this.pedidoId, numero);
     }
 
     get labelUrl() {

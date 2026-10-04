@@ -21,7 +21,7 @@
              passa os dados; @aceito é o pedido já aceito, pelo detalhe relido (o painel não diz "aguardando" com ele).
              Com o pedido encerrado, o painel some --}}
         {{#if this.isOpen}}
-            <Portal::Order::Details::Motoboy @motoboy={{this.motoboy}} @consultado={{this.motoboyConsultado}} @aceito={{this.aceito}} />
+            <Portal::Order::Details::Motoboy @motoboy={{this.motoboy}} @consultado={{this.motoboyConsultado}} @aceito={{this.aceito}} @onConversar={{this.conversarComMotoboy}} @abrindoConversa={{this.entregasConversas.abrirPorPedido.isRunning}} />
         {{/if}}
         <Portal::Order::Details::Details @resource={{this.order}} />
         {{!-- Entregas: sem tarifa, carga, documentos e campos personalizados (fora do escopo; arquivos e cotações são negados à loja) --}}

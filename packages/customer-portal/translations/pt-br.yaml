@@ -621,6 +621,26 @@ customer-portal:
         label: Mercadorias de varejo
         description: Mercadorias de consumo ou varejo em geral.
     entregas:
+      chat-title: "Conversas"
+      chat-new: "Nova conversa"
+      chat-back: "Voltar"
+      chat-close: "Fechar"
+      chat-courier: "Motoboy"
+      chat-with-courier: "Conversar com o motoboy"
+      chat-pick-courier: "Os motoboys do mapa agora. A central também participa da conversa."
+      chat-no-couriers: "Nenhum motoboy no mapa agora."
+      chat-empty: "Nenhuma conversa ainda. Toque em Nova conversa para falar com um motoboy."
+      chat-no-messages: "Sem mensagens"
+      chat-start: "Escreva a primeira mensagem. A central também vê esta conversa."
+      chat-placeholder: "Escreva uma mensagem"
+      chat-send: "Enviar"
+      chat-you: "Você"
+      chat-role-loja: "Loja"
+      chat-role-motoboy: "Motoboy"
+      chat-role-central: "Central"
+      chat-situation-livre: "Livre"
+      chat-situation-coleta: "Indo à coleta"
+      chat-situation-entrega: "Em entrega"
       orders-in-progress: Pedidos em andamento
       no-orders-in-progress: Nenhum pedido em andamento
       no-orders-in-progress-text: Os pedidos concluídos e cancelados ficam na Tabela.

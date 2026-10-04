@@ -2436,6 +2436,268 @@ body[data-theme='dark'].fleetbase-portal .portal-order-map {
     z-index: 20;
 }
 
+/* Entregas: chat da loja com os motoboys (Portal::Conversas). Gaveta fixa à direita, por cima do painel do pedido */
+.fleetbase-portal .portal-conversas-toggle {
+    position: relative;
+    display: inline-flex;
+}
+
+.fleetbase-portal .portal-conversas-toggle-badge {
+    position: absolute;
+    top: -0.45rem;
+    right: -0.45rem;
+    pointer-events: none;
+}
+
+.fleetbase-portal .portal-conversas-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    border-radius: 9999px;
+    background-color: #dc2626;
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.fleetbase-portal .portal-conversas {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    width: min(26rem, 100vw);
+    border-left: 1px solid #e5e7eb;
+    background-color: #ffffff;
+    box-shadow: -12px 0 32px rgb(15 23 42 / 18%);
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-conversas {
+    border-color: #374151;
+    background-color: #111827;
+    color: #f3f4f6;
+}
+
+.fleetbase-portal .portal-conversas-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-conversas-header,
+body[data-theme='dark'].fleetbase-portal .portal-conversas-composer,
+body[data-theme='dark'].fleetbase-portal .portal-conversas-item {
+    border-color: #374151;
+}
+
+.fleetbase-portal .portal-conversas-title {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    font-size: 1rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fleetbase-portal .portal-conversas-actions,
+.fleetbase-portal .portal-conversas-hint {
+    margin: 0;
+    padding: 0.75rem 1rem 0.25rem;
+}
+
+.fleetbase-portal .portal-conversas-hint {
+    color: #6b7280;
+    font-size: 0.8rem;
+}
+
+.fleetbase-portal .portal-conversas-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.fleetbase-portal .portal-conversas-empty {
+    display: flex;
+    justify-content: center;
+    padding: 2rem 1rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.fleetbase-portal .portal-conversas-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 0;
+    border-bottom: 1px solid #f3f4f6;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.fleetbase-portal .portal-conversas-item:hover,
+.fleetbase-portal .portal-conversas-item:focus-visible {
+    background-color: #f9fafb;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-conversas-item:hover,
+body[data-theme='dark'].fleetbase-portal .portal-conversas-item:focus-visible {
+    background-color: #1f2937;
+}
+
+.fleetbase-portal .portal-conversas-item:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+.fleetbase-portal .portal-conversas-avatar {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    overflow: hidden;
+    border-radius: 9999px;
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-conversas-avatar {
+    background-color: #374151;
+    color: #e5e7eb;
+}
+
+.fleetbase-portal .portal-conversas-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.fleetbase-portal .portal-conversas-item-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.fleetbase-portal .portal-conversas-item-name {
+    overflow: hidden;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fleetbase-portal .portal-conversas-item-summary,
+.fleetbase-portal .portal-conversas-item-time {
+    overflow: hidden;
+    color: #6b7280;
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fleetbase-portal .portal-conversas-item-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+}
+
+.fleetbase-portal .portal-conversas-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background-color: #f9fafb;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-conversas-messages {
+    background-color: #0b1220;
+}
+
+.fleetbase-portal .portal-conversas-message {
+    align-self: flex-start;
+    max-width: 85%;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.75rem 0.75rem 0.75rem 0.25rem;
+    background-color: #ffffff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 10%);
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-conversas-message {
+    background-color: #1f2937;
+}
+
+.fleetbase-portal .portal-conversas-message.is-mine {
+    align-self: flex-end;
+    border-radius: 0.75rem 0.75rem 0.25rem 0.75rem;
+    background-color: #dbeafe;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-conversas-message.is-mine {
+    background-color: #1e3a8a;
+}
+
+.fleetbase-portal .portal-conversas-message-author {
+    margin-bottom: 0.125rem;
+    color: #2563eb;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-conversas-message-author {
+    color: #93c5fd;
+}
+
+.fleetbase-portal .portal-conversas-message-text {
+    font-size: 0.875rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.fleetbase-portal .portal-conversas-message-time {
+    margin-top: 0.125rem;
+    color: #6b7280;
+    font-size: 0.65rem;
+    text-align: right;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-conversas-message-time,
+body[data-theme='dark'].fleetbase-portal .portal-conversas-item-summary,
+body[data-theme='dark'].fleetbase-portal .portal-conversas-item-time,
+body[data-theme='dark'].fleetbase-portal .portal-conversas-empty,
+body[data-theme='dark'].fleetbase-portal .portal-conversas-hint {
+    color: #9ca3af;
+}
+
+.fleetbase-portal .portal-conversas-composer {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.fleetbase-portal .portal-conversas-input {
+    resize: none;
+}
+
 /* Entregas: com o painel do pedido aberto (à direita, por cima do mapa), os botões de zoom vão para a esquerda dele */
 @media (width > 1024px) {
     .fleetbase-portal .portal-order-workspace.has-panel .portal-order-map .leaflet-right {
