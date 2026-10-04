@@ -621,6 +621,11 @@ customer-portal:
         label: Retail Goods
         description: General consumer or retail merchandise.
     entregas:
+      orders-in-progress: Orders in progress
+      no-orders-in-progress: No orders in progress
+      no-orders-in-progress-text: Completed and canceled orders are in the Table view.
+      zoom-in: Zoom in
+      zoom-out: Zoom out
       statement: Statement
       statement-title: Delivery statement
       period-start: Start

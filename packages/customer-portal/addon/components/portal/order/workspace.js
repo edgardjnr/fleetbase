@@ -1,6 +1,8 @@
 import Component from '@glimmer/component';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
+import { arrayFor, valueFor } from '../../../utils/model-access';
+import { pedidosEmAndamento } from '../../../utils/entregas-pedido';
 
 export default class PortalOrderWorkspaceComponent extends Component {
     @service hostRouter;
@@ -20,6 +22,11 @@ export default class PortalOrderWorkspaceComponent extends Component {
 
     get isViewingDetails() {
         return this.currentRouteName.includes('.details');
+    }
+
+    // Entregas: a lista ao lado do mapa mostra só os pedidos em andamento; os concluídos e cancelados ficam na Tabela
+    get pedidosDaLista() {
+        return pedidosEmAndamento(arrayFor(this.args.orders), (pedido) => valueFor(pedido, 'status'));
     }
 
     get showTable() {

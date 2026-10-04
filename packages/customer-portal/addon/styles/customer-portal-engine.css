@@ -2436,6 +2436,23 @@ body[data-theme='dark'].fleetbase-portal .portal-order-map {
     z-index: 20;
 }
 
+/* Entregas: com o painel do pedido aberto (à direita, por cima do mapa), os botões de zoom vão para a esquerda dele */
+@media (width > 1024px) {
+    .fleetbase-portal .portal-order-workspace.has-panel .portal-order-map .leaflet-right {
+        right: min(31rem, 92%);
+    }
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-order-map .leaflet-bar a {
+    border-bottom-color: #374151;
+    background-color: #1f2937;
+    color: #f3f4f6;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-order-map .leaflet-bar a:hover {
+    background-color: #374151;
+}
+
 .fleetbase-portal .portal-order-route-marker-icon {
     background: transparent;
     border: 0;

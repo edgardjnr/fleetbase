@@ -621,6 +621,11 @@ customer-portal:
         label: Mercadorias de varejo
         description: Mercadorias de consumo ou varejo em geral.
     entregas:
+      orders-in-progress: Pedidos em andamento
+      no-orders-in-progress: Nenhum pedido em andamento
+      no-orders-in-progress-text: Os pedidos concluídos e cancelados ficam na Tabela.
+      zoom-in: Aproximar
+      zoom-out: Afastar
       statement: Extrato
       statement-title: Extrato de entregas
       period-start: Início

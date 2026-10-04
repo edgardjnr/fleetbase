@@ -39,17 +39,18 @@
                     <div class="portal-order-list-panel-header">
                         <div>
                             <div class="portal-section-eyebrow">{{t "customer-portal.ui.order.order-list"}}</div>
-                            <h2>{{t "customer-portal.ui.order.recent-orders"}}</h2>
+                            <h2>{{t "customer-portal.ui.entregas.orders-in-progress"}}</h2>
                         </div>
                     </div>
                     <Input @value={{@query}} class="form-input w-full" placeholder={{t "customer-portal.ui.order.search-orders"}} {{on "input" this.search}} />
                     <div class="portal-order-list-panel-body">
-                        {{#each @orders as |order|}}
+                        {{!-- Entregas: só os pedidos em andamento (os concluídos e cancelados ficam na Tabela) --}}
+                        {{#each this.pedidosDaLista as |order|}}
                             <Portal::Order::ListCard @order={{order}} />
                         {{else}}
                             <div class="portal-empty-state compact">
-                                <div class="portal-empty-state-title">{{t "customer-portal.ui.order.no-orders"}}</div>
-                                <p>{{t "customer-portal.ui.order.no-orders-text"}}</p>
+                                <div class="portal-empty-state-title">{{t "customer-portal.ui.entregas.no-orders-in-progress"}}</div>
+                                <p>{{t "customer-portal.ui.entregas.no-orders-in-progress-text"}}</p>
                             </div>
                         {{/each}}
                     </div>

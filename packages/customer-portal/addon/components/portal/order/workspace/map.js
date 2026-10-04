@@ -131,11 +131,30 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
 
     @action setupMap(event) {
         this.customerPortalOrderRoutePreview.registerMap(event);
+        this.adicionarZoom(event?.target ?? event);
         // Entregas: os capacetes dos motoboys, relidos a cada 5 s enquanto o mapa existe
         this.camadaDeMotoboys?.destruir();
         this.camadaDeMotoboys = new CamadaDeMotoboys(event?.target ?? event);
         this.syncRoutePreview();
         this.acompanharMotoboys.perform();
+    }
+
+    // Entregas: botões + e − no canto inferior direito (o canto superior esquerdo fica sob a lista de pedidos), com as dicas
+    // no idioma ativo. O CSS os afasta do painel do pedido quando ele está aberto
+    adicionarZoom(map) {
+        const L = globalThis.L;
+
+        if (!L?.control?.zoom || typeof map?.addControl !== 'function') {
+            return;
+        }
+
+        map.addControl(
+            L.control.zoom({
+                position: 'bottomright',
+                zoomInTitle: this.intl.t('customer-portal.ui.entregas.zoom-in'),
+                zoomOutTitle: this.intl.t('customer-portal.ui.entregas.zoom-out'),
+            })
+        );
     }
 
     @action syncRoutePreview() {

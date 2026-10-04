@@ -1,5 +1,6 @@
+{{!-- Entregas: zoom pela roda do mouse e pelos botões + e − (criados no setupMap, no canto inferior direito) --}}
 <section class="portal-order-map" {{did-update this.syncRoutePreview @draft @selectedOrder}}>
-    <LeafletMap class="portal-order-leaflet" @lat={{this.center.latitude}} @lng={{this.center.longitude}} @zoom={{11}} @zoomControl={{false}} @scrollWheelZoom={{false}} @onLoad={{this.setupMap}} as |layers|>
+    <LeafletMap class="portal-order-leaflet" @lat={{this.center.latitude}} @lng={{this.center.longitude}} @zoom={{11}} @zoomControl={{false}} @scrollWheelZoom={{true}} @onLoad={{this.setupMap}} as |layers|>
         <layers.tile @url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {{#each this.markers key="id" as |place|}}
             <layers.marker @lat={{place.latitude}} @lng={{place.longitude}} @icon={{place.icon}} as |marker|>

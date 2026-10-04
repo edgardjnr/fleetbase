@@ -38,3 +38,11 @@ export function situacao(motoboy) {
 
     return motoboy.aceitou ? 'aceito' : 'chamado';
 }
+
+/**
+ * Os pedidos da lista ao lado do mapa: só os em andamento (sem os encerrados, isto é, concluídos, cancelados e expirados).
+ * O `status` lê o status de cada pedido (model do Ember Data ou objeto simples).
+ */
+export function pedidosEmAndamento(pedidos, status = (pedido) => pedido?.status) {
+    return Array.from(pedidos ?? []).filter((pedido) => !ENCERRADOS.includes(status(pedido)));
+}
