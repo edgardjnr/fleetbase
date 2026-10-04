@@ -163,7 +163,7 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
   - **a loja vê as entregas das outras lojas** (risco aceito pelo Edgard);
   - `Workspace::Map` consulta `loja/motoboys` a cada 5 s com a aba visível (espera crescente em erro), e `utils/camada-de-motoboys.js` desliza cada capacete até a posição nova (salta na primeira posição, em pulos de mais de 1 km e com "reduzir animações");
   - o motoboy do pedido aberto fica por cima, com o rótulo azul, e entra uma vez no enquadramento (`definirMotoboyDoPedido` no serviço da rota). O painel "Motoboy" do detalhe não tem mais mapinha;
-  - o id do motoboy nunca vai para a loja: com ele, o canal `driver.<id>` do socket entrega a posição ao vivo e o telefone. A resposta traz só um id opaco (HMAC do uuid), nome, coordenadas, situação e os `public_id` dos pedidos da própria loja;
+  - a rota `loja/motoboys` nunca manda o id do motoboy (com ele, o canal `driver.<id>` do socket entrega a posição ao vivo e o telefone): traz só um id opaco (HMAC do uuid), nome, coordenadas, situação e os `public_id` dos pedidos da própria loja. **O detalhe do pedido do portal ainda entrega o motoboy do pedido** (ver "Riscos conhecidos");
   - testes: `scripts/teste-php/mapa-da-loja.php` (php-wasm) e `node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/*.test.mjs`.
 - **Pedido da central:** no formulário do operador, escolher uma loja como cliente põe a coleta no Local da loja e a trava.
   - **Escolha a loja, não o usuário dela.** O contato do usuário também aparece como cliente. Com ele, a coleta não trava e o pedido fica fora do extrato.
@@ -181,7 +181,9 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
   - o login por SMS não limita tentativas e o código de 6 dígitos não expira. Quem extrai a chave pode chegar a um token de motoboy, que lista os pedidos de todas as lojas;
   - o upload do core aceita `disk`/`path` de usuários que não são de loja;
   - a loja vê todos os motoboys online, com nome completo e situação, inclusive os que levam pedidos de outras lojas: um capacete vermelho parado numa casa indica o endereço de um cliente de outra loja;
-  - o motoboy que esquece de ficar offline ao fim do expediente continua no mapa das lojas, possivelmente em casa (o app rastreia mesmo fechado). A central orienta os motoboys.
+  - o motoboy que esquece de ficar offline ao fim do expediente continua no mapa das lojas, possivelmente em casa (o app rastreia mesmo fechado). A central orienta os motoboys;
+  - pedido esquecido aberto: o motoboy que o aceitou continua no mapa das lojas mesmo offline, por até 12 h da última atualização do pedido (mesma regra do mapa do console);
+  - **o pedido do portal entrega o motoboy do pedido** (achado na revisão de 2026-10-04, anterior ao mapa de motoboys; pelo código do core-api 1.6.61 e do customer-portal-api 0.0.13). Rota com segmento `int` é "interna" para o Fleetbase, então a lista e o detalhe de `customer-portal/int/v1/orders` trazem o `driver_assigned_uuid`. O detalhe roda o tracker, que carrega o `driverAssigned` na mesma instância do pedido, e por isso traz também o `driver_assigned` completo (nome, telefone, e-mail e posição atual) e o `tracker_data.driver.location`. Vale para qualquer pedido da loja, inclusive concluído, e com o uuid a loja pode assinar `driver.<uuid>` no socket. O front do portal não usa esses campos: a correção é tirá-los da resposta para o usuário de loja (no `RegrasPortalLoja`, depois do `$next`).
 - **Armadilhas do Fleetbase achadas aqui:**
   - `Contact::user()` filtra pelo `type` da instância e falha em `with`/`whereHas`: use `Contact::anyUser`.
   - O `CompanyScope` existe, mas **não** está registrado nos models desta versão: filtre `company_uuid` de forma explícita.

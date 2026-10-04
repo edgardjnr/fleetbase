@@ -81,6 +81,10 @@ com uns 5 a 10 s de atraso.
 O id do motoboy (`public_id`, uuid), telefone, e-mail, veículo e os pedidos de outras lojas (desses, a loja
 vê só a cor do capacete).
 
+Isso vale para a rota do mapa. A revisão do código achou um vazamento anterior a esta entrega: o pedido do portal
+(`customer-portal/int/v1/orders`) entrega o motoboy do pedido, com uuid, telefone, e-mail e posição atual. O registro está
+em "Riscos conhecidos" no CLAUDE.md; a correção fica para uma entrega própria.
+
 ## 2. API (`api/app`)
 
 ### 2.1 Rota nova
