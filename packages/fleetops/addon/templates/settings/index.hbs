@@ -57,24 +57,7 @@
                     </div>
                 </div>
 
-                <div class="fleet-ops-control-hub-doc-note">
-                    <div class="fleet-ops-control-hub-doc-note-heading">
-                        <FaIcon @icon="lightbulb" />
-                        <span>{{t "fleet-ops.ui.route.settings-index.guides"}}</span>
-                    </div>
-                    <p class="fleet-ops-control-hub-doc-note-copy">{{t "fleet-ops.ui.route.settings-index.read-the-guide-before-changing-settings"}}</p>
-                    <div class="fleet-ops-control-hub-doc-grid">
-                        {{#each this.docs as |doc|}}
-                            <button type="button" class="fleet-ops-control-hub-doc-link" {{on "click" (fn this.openDocs doc)}}>
-                                <FaIcon @icon={{doc.icon}} />
-                                <span class="fleet-ops-control-hub-doc-copy">
-                                    <strong>{{t "fleet-ops.ui.route.settings-index.read-the-guide-on" label=doc.label}}</strong>
-                                    <small>{{doc.description}}</small>
-                                </span>
-                            </button>
-                        {{/each}}
-                    </div>
-                </div>
+                {{!-- Entregas RestaurantePro: sem a caixa "Guias" (abria a documentação da Fleetbase) --}}
             </aside>
         </section>
     </div>

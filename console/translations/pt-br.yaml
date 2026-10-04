@@ -1,5 +1,5 @@
 app:
-  name: Fleetbase
+  name: Entregas RestaurantePro
 common:
   new: Novo
   create: Criar
@@ -620,7 +620,7 @@ auth:
     success-message: Seu endereço de e-mail foi atualizado.
     invalid-verification-code: Este link de alteração de e-mail é inválido ou expirou.
     title: Confirmar alteração de e-mail
-    message-text: Confirme esta alteração para atualizar o e-mail de login da sua conta Fleetbase.
+    message-text: Confirme esta alteração para atualizar o e-mail de login da sua conta no Entregas RestaurantePro.
     form:
       code:
         label: Código de confirmação
@@ -947,7 +947,7 @@ console:
       driver: Driver
       filesystem:
         title: Sistema de arquivos
-        driver-help: Selecione o driver de sistema de arquivos padrão que o Fleetbase deve usar.
+        driver-help: Selecione o driver de sistema de arquivos padrão que o sistema deve usar.
         driver-placeholder: Selecione o driver de sistema de arquivos
         gcs-env-warning: Atenção! O GCS já está configurado no ambiente do servidor. Alterar os valores abaixo pode quebrar essa configuração.
         gcs-key-file: Arquivo de chave da conta de serviço do GCS
@@ -956,7 +956,7 @@ console:
       mail:
         title: E-mail
         mailer: Serviço de envio
-        mailer-help: Selecione o serviço de envio de e-mail padrão que o Fleetbase deve usar.
+        mailer-help: Selecione o serviço de envio de e-mail padrão que o sistema deve usar.
         mailer-placeholder: Selecione o serviço de envio
         smtp-encryption: Criptografia SMTP
         smtp-encryption-help: Ativar criptografia TLS
@@ -966,13 +966,13 @@ console:
         smtp-auth-mode: Modo de autenticação SMTP
         save-to-sent-items: Salvar nos itens enviados
         from-address: Endereço do remetente
-        from-address-help: Informe o endereço de e-mail que o Fleetbase usará como remetente.
+        from-address-help: Informe o endereço de e-mail que o sistema usará como remetente.
         from-name: Nome do remetente
-        from-name-help: Informe o nome que o Fleetbase usará como remetente dos e-mails.
+        from-name-help: Informe o nome que o sistema usará como remetente dos e-mails.
         saved: Configuração de e-mail salva.
       queue:
         title: Fila
-        driver-help: Selecione o driver de fila padrão que o Fleetbase deve usar.
+        driver-help: Selecione o driver de fila padrão que o sistema deve usar.
         driver-placeholder: Selecione o driver de fila
         saved: Configuração de fila salva.
       socket:
@@ -1015,7 +1015,7 @@ console:
         test-message: Mensagem de teste
         test-sms-provider: Testar provedor de SMS
         test-sentry: Testar configuração do Sentry
-        sms-test-message: Este é um SMS de teste do Fleetbase.
+        sms-test-message: Este é um SMS de teste do Entregas RestaurantePro.
         custom-http-gateway: Gateway HTTP personalizado
         gateway-url: URL do gateway
         from: Remetente
@@ -1241,10 +1241,10 @@ console:
         enable-sender-id: Ativar ID de remetente alfanumérico
         sender-id: ID de remetente alfanumérico
         sender-id-help: Defina o nome alfanumérico personalizado que aparecerá como remetente de todos os SMS enviados pela sua organização. Até 11 letras ou números. Não é aceito em todos os países.
-        sender-id-info-1: "IDs de remetente alfanuméricos permitem que sua organização substitua o número de telefone tradicional por um nome de remetente em texto ao enviar notificações por SMS (ex.: Fleetbase, MinhaLoja, CentralDespacho). Isso pode melhorar o reconhecimento da marca, aumentar a confiança nas mensagens e melhorar a entrega em regiões onde as operadoras locais restringem remetentes numéricos."
-        sender-id-info-2: Quando ativado, o Fleetbase usará este ID de remetente em todos os SMS enviados em nome da sua organização, incluindo atualizações de pedidos, códigos de verificação, notificações de motoristas e outros alertas automáticos. IDs de remetente podem ter até 11 caracteres entre letras e números.
+        sender-id-info-1: "IDs de remetente alfanuméricos permitem que sua organização substitua o número de telefone tradicional por um nome de remetente em texto ao enviar notificações por SMS (ex.: RestaurantePro, MinhaLoja, CentralDespacho). Isso pode melhorar o reconhecimento da marca, aumentar a confiança nas mensagens e melhorar a entrega em regiões onde as operadoras locais restringem remetentes numéricos."
+        sender-id-info-2: Quando ativado, o sistema usará este ID de remetente em todos os SMS enviados em nome da sua organização, incluindo atualizações de pedidos, códigos de verificação, notificações de motoristas e outros alertas automáticos. IDs de remetente podem ter até 11 caracteres entre letras e números.
         sender-id-info-3: Alguns países exigem regras específicas de mensagens, e certas operadoras só aceitam remetentes alfanuméricos. Usar um ID de remetente pode melhorar bastante a entrega de mensagens nessas regiões.
-        sender-id-warning: A entrega de SMS com IDs de remetente alfanuméricos depende das políticas das operadoras locais. Algumas regiões podem restringir ou bloquear remetentes numéricos ou exigir remetentes alfanuméricos para a entrega. Embora o Fleetbase tente entregar todas as mensagens usando o ID de remetente configurado, a entrega não pode ser garantida em países com filtragem pelas operadoras ou restrições regulatórias. Sua organização é responsável por cumprir as normas locais de mensagens nos países para os quais envia SMS.
+        sender-id-warning: A entrega de SMS com IDs de remetente alfanuméricos depende das políticas das operadoras locais. Algumas regiões podem restringir ou bloquear remetentes numéricos ou exigir remetentes alfanuméricos para a entrega. Embora o sistema tente entregar todas as mensagens usando o ID de remetente configurado, a entrega não pode ser garantida em países com filtragem pelas operadoras ou restrições regulatórias. Sua organização é responsável por cumprir as normas locais de mensagens nos países para os quais envia SMS.
         saved: Configurações de notificação salvas com sucesso.
       organization-saved: Alterações da organização salvas com sucesso.
     page-titles:
@@ -1266,10 +1266,10 @@ console:
       email-sent: E-mail com o código de verificação enviado!
       welcome-to: "Bem-vindo ao {name}"
     onboarding:
-      welcome: Bem-vindo ao Fleetbase!
+      welcome: Bem-vindo ao Entregas RestaurantePro!
       failed: Falha no cadastro
     invite:
-      accepted: Convite aceito, bem-vindo ao Fleetbase!
+      accepted: Convite aceito, bem-vindo ao Entregas RestaurantePro!
       set-new-password: Defina uma nova senha
     notifications:
       marked-read: Notificação marcada como lida.
@@ -1278,24 +1278,7 @@ console:
     impersonator:
       end: Encerrar personificação
       ending: Encerrando a sessão de personificação.
-    github-card:
-      star: Dar estrela no Github
-      latest-release: "Última versão:"
-      stars: Estrelas
-      watchers: Observadores
-      forks: Forks
-      open: Abertas
-      issues: Issues
-    blog:
-      visit: Visitar blog
-      empty: Nenhuma publicação do blog disponível no momento.
     widgets:
-      fleetbase-blog:
-        name: Blog do Fleetbase
-        description: Lista as últimas notícias e eventos da equipe oficial do Fleetbase.
-      github-card:
-        name: Cartão do Github
-        description: Exibe as estatísticas atuais do repositório oficial do Fleetbase no Github.
       admin:
         metric: Métrica
         summary: Resumo da administração
@@ -1391,8 +1374,8 @@ onboard:
       resend-email: Reenviar E-mail
       send-by-sms: Enviar por SMS
 install:
-  not-configured-title: O Fleetbase não está instalado ou configurado
-  not-configured-message: Conclua a configuração pela CLI do Fleetbase ou pelo contêiner da aplicação e recarregue esta página quando o banco de dados, as migrações e os dados iniciais estiverem prontos.
+  not-configured-title: O sistema não está instalado ou configurado
+  not-configured-message: Conclua a configuração pela CLI do sistema ou pelo contêiner da aplicação e recarregue esta página quando o banco de dados, as migrações e os dados iniciais estiverem prontos.
   running-locally-docs: Ver documentação de execução local
   cloud-docs: Ver documentação de implantação em nuvem
   refreshing: Instalação concluída, atualizando...
@@ -1537,7 +1520,7 @@ ember-ui:
       description: Descrição
       description-placeholder: Descrição opcional
       resource-type: Tipo de recurso
-      resource-type-help: Selecione o modelo do Fleetbase consultado por esta query.
+      resource-type-help: Selecione o modelo do sistema consultado por esta query.
       filter-conditions: Condições de filtro
       add-condition: Adicionar condição
       field-placeholder: campo
@@ -1620,7 +1603,7 @@ ember-ui:
       edit-query: Editar consulta
       delete-query: Excluir consulta
       no-queries: Nenhuma consulta ainda.
-      no-queries-help: As consultas carregam dados dos modelos do Fleetbase na renderização e são salvas com o modelo.
+      no-queries-help: As consultas carregam dados dos modelos do sistema na renderização e são salvas com o modelo.
     layers-panel:
       layers: Camadas
       double-click-rename: Clique duas vezes para renomear
@@ -1659,7 +1642,7 @@ ember-ui:
       join-discord: Entrar na comunidade do Discord
       help-support: Ajuda e suporte
       documentation: Documentação
-      fleetbase-documentation: Documentação do Fleetbase
+      fleetbase-documentation: Documentação do sistema
       dark-mode: Modo escuro
       smart-nav-menu:
         customise-navigation: Personalizar navegação
@@ -1912,7 +1895,7 @@ ember-ui:
     no-conversations: Nenhuma conversa encontrada
     start-new-chat-hint: Inicie uma nova conversa ou ajuste sua busca.
     open-inbox: Abrir caixa de conversas
-    fleetbase-user: Usuário do Fleetbase
+    fleetbase-user: Usuário do sistema
     no-messages-yet: Nenhuma mensagem ainda
     attachment-count: "{count, plural, one {# anexo} other {# anexos}}"
     sent-a-message: Enviou uma mensagem
@@ -2235,7 +2218,7 @@ ember-ui:
   fleetbase-attribution:
     powered-by: Desenvolvido com
     legal: Aviso legal
-    legal-notices: Avisos legais do Fleetbase
+    legal-notices: Avisos legais
   custom-fields-manager:
     empty-hint: "Adicione seu primeiro grupo de campos para começar a criar campos personalizados para {resource}"
     new-field-group: Novo grupo de campos
@@ -2284,7 +2267,7 @@ ember-ui:
     open-new-tab: Abrir documentação em uma nova aba
     close: Fechar documentação
     loading: Carregando documentação...
-    open-fleetbase-docs: Abrir documentação do Fleetbase
+    open-fleetbase-docs: Abrir documentação
     cannot-embed: Esta página não pode ser incorporada aqui, mas você pode abri-la em uma nova aba.
     open-docs: Abrir documentação
   extensions-list:

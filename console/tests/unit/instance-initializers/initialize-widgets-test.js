@@ -58,8 +58,9 @@ module('Unit | Instance Initializer | initialize-widgets', function () {
         bootCallback();
 
         const ids = (widgetService.registeredByDashboard.dashboard ?? []).map((widget) => widget.id);
-        assert.ok(ids.includes('fleetbase-blog'), 'the blog widget is registered on the dashboard');
-        assert.ok(ids.includes('fleetbase-github-card'), 'the github card widget is registered on the dashboard');
+        // Entregas RestaurantePro: o painel não tem mais os cards do blog e do GitHub da Fleetbase
+        assert.notOk(ids.includes('fleetbase-blog'), 'the blog widget is not registered');
+        assert.notOk(ids.includes('fleetbase-github-card'), 'the github card widget is not registered');
         assert.ok(Array.isArray(widgetService.registeredByDashboard.admin), 'admin widgets are registered too');
     });
 });

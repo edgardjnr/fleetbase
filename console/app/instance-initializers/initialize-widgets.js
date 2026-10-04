@@ -1,5 +1,4 @@
 import { Widget } from '@fleetbase/ember-core/contracts';
-import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import { debug } from '@ember/debug';
 
 /**
@@ -24,27 +23,9 @@ export function initialize(appInstance) {
 
     // Wait for all extension to boot
     universe.onBoot(() => {
-        // Create widget definitions
-        const widgets = [
-            new Widget({
-                id: 'fleetbase-blog',
-                name: 'console.ui.widgets.fleetbase-blog.name',
-                description: 'console.ui.widgets.fleetbase-blog.description',
-                icon: 'newspaper',
-                component: 'fleetbase-blog',
-                grid_options: { w: 7, h: 9, minW: 7, minH: 9 },
-                default: true,
-            }),
-            new Widget({
-                id: 'fleetbase-github-card',
-                name: 'console.ui.widgets.github-card.name',
-                description: 'console.ui.widgets.github-card.description',
-                icon: faGithub,
-                component: 'github-card',
-                grid_options: { w: 5, h: 9, minW: 5, minH: 9 },
-                default: true,
-            }),
-        ];
+        // Entregas RestaurantePro: sem os cards do blog e do GitHub da Fleetbase no painel (o painel padrão é montado
+        // no navegador a partir dos widgets "default", então nada fica salvo no servidor)
+        const widgets = [];
 
         const adminKpiTile = (id, name, description, icon, slug, options = {}) =>
             new Widget({

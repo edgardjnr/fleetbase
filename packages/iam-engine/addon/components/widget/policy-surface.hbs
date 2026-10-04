@@ -2,7 +2,7 @@
     <div class="iam-stat-grid iam-stat-grid-3">
         <div class="iam-stat-card"><span>{{data.total}}</span><small>{{t "iam.ui.widgets.policy-surface.total"}}</small></div>
         <div class="iam-stat-card"><span>{{data.organization_managed}}</span><small>{{t "iam.ui.widgets.policy-surface.org-managed"}}</small></div>
-        <div class="iam-stat-card"><span>{{data.fleetbase_managed}}</span><small>Fleetbase</small></div>
+        <div class="iam-stat-card"><span>{{data.fleetbase_managed}}</span><small>{{t "iam.ui.scheme-types.flb-managed"}}</small></div>
     </div>
     <div class="iam-scroll-list mt-3">
         {{#each data.by_service as |service|}}

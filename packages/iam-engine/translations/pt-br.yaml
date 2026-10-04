@@ -161,19 +161,19 @@ iam:
       access-account-or-resources-unless-re-activated: Tem certeza de que deseja desativar este usuário? Ele não poderá mais acessar a conta nem os recursos até ser reativado.
       this-user-will-regain-access-to-your-organization: Tem certeza de que deseja reativar este usuário? Ele voltará a ter acesso à sua organização.
       resend-invitation-to-join-organization: Reenviar convite para entrar na organização
-      confirming-fleetbase-will-re-send-invitation-for-user-to-join-your-organization: Ao confirmar, o Fleetbase reenviará o convite para este usuário entrar na sua organização.
+      confirming-fleetbase-will-re-send-invitation-for-user-to-join-your-organization: Ao confirmar, o sistema reenviará o convite para este usuário entrar na sua organização.
       invitation-resent: Convite reenviado.
       invite-user: Convidar Usuário
     invite:
       title: Convidar Usuário
       description: >-
         Digite o endereço de e-mail da pessoa que você deseja convidar. Se ela já
-        tiver uma conta Fleetbase, receberá um convite para entrar na sua
+        tiver uma conta no Entregas RestaurantePro, receberá um convite para entrar na sua
         organização. Se for nova, uma conta pendente será criada e ela precisará
         definir uma senha ao aceitar.
       email-placeholder: colega@exemplo.com
       name-placeholder: Nome completo (obrigatório para novos usuários)
-      name-help: Obrigatório somente se a pessoa ainda não tiver uma conta Fleetbase.
+      name-help: Obrigatório somente se a pessoa ainda não tiver uma conta no Entregas RestaurantePro.
       send-invitation: Enviar Convite
       email-required: Informe um endereço de e-mail.
       invitation-sent-existing: Convite enviado. O usuário receberá um e-mail para entrar na sua organização.
@@ -220,7 +220,7 @@ iam:
         customerservice: Política para prestar atendimento aos clientes.
         marketplacemanager: Política para gerenciar redes.
       any:
-        administratoraccess: Política de acesso total às extensões e recursos do Fleetbase.
+        administratoraccess: Política de acesso total às extensões e recursos do sistema.
       generated:
         full-access: Política de acesso total a {name}.
         read-only: Política de acesso somente leitura a {name}.
@@ -260,7 +260,7 @@ iam:
       any:
         administrator: Papel com acesso total de administrador a uma organização
     system-role-names:
-      fleetbase-developer: Desenvolvedor Fleetbase
+      fleetbase-developer: Desenvolvedor do sistema
       iam-user-manager: Gerente de usuários (IAM)
       iam-policy-manager: Gerente de políticas (IAM)
       iam-administrator: Administrador do IAM
@@ -288,7 +288,7 @@ iam:
       inventory-manager: Gerente de estoque
       administrator: Administrador
     system-policy-names:
-      flbdeveloper: Desenvolvedor Fleetbase
+      flbdeveloper: Desenvolvedor do sistema
       flbdevprojectmanager: Gerente de projetos de desenvolvimento
       usermanager: Gerente de usuários
       policymanager: Gerente de políticas
@@ -364,7 +364,7 @@ iam:
     dashboard-name: Painel de IAM
     search-placeholder: Buscar no IAM...
     scheme-types:
-      flb-managed: Gerenciado pelo Fleetbase
+      flb-managed: Gerenciado pelo sistema
       org-managed: Gerenciado pela organização
     nav:
       dashboard-description: Visão geral de identidade e acesso.

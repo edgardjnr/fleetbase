@@ -80,7 +80,7 @@ customer-portal:
       eyebrow: Communication settings
       title: Notification Preferences
       description: Choose which customer portal events should be saved as communication preferences for this account.
-      info: These preferences are stored on your portal account. Delivery of actual event notifications depends on operator notification rules configured in Fleetbase.
+      info: These preferences are stored on your portal account. Delivery of actual event notifications depends on operator notification rules configured in the system.
       save: Save Preferences
       saved: Notification preferences saved.
       groups:

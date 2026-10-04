@@ -3369,7 +3369,7 @@ fleet-ops:
                     description: General vendor type for uncategorized services
                 integrated-vendor:
                     label: Integrated Vendor
-                    description: Vendor with native API integration into Fleetbase
+                    description: Vendor with native API integration into the system
                 fuel-supplier:
                     label: Fuel Supplier
                     description: Provides fuel for vehicles
@@ -5484,7 +5484,7 @@ fleet-ops:
                 select-device: Select device
             connectivity-telematics-details-attachments:
                 unable-to-load-device-attachments: Unable to load device attachments
-                fleetbase-could-not-load-the-full: Fleetbase could not load the full provider device list. Refresh the tab or review the connection logs.
+                fleetbase-could-not-load-the-full: The system could not load the full provider device list. Refresh the tab or review the connection logs.
                 sync-devices-before-mapping-vehicles: Sync devices before mapping vehicles
                 vehicle-attachment-starts-after-provider-devices: Vehicle attachment starts after provider devices are synced into this connection.
                 no-mappings-match-these-filters: No mappings match these filters
@@ -7035,7 +7035,7 @@ order:
         add-item-button: Add Item
         add-item-order: Add Item to Order
         add-waypoint: Add Waypoint
-        add-waypoint-help-text: 'Use the `Add Waypoint` button to add more stops for this order. The Fleetbase routing engine will automatically optimize the route as each stop is added or removed.'
+        add-waypoint-help-text: 'Use the `Add Waypoint` button to add more stops for this order. The system routing engine will automatically optimize the route as each stop is added or removed.'
         adhoc-ping: Adhoc Ping Distance
         adhoc-ping-help-text: This setting determines the adhoc distance to ping for this order, if unset it will fallback to the default setting.
         adhoc-ping-message: Distance must be in meters
@@ -7059,7 +7059,7 @@ order:
         facilitator: Facilitator
         facilitator-help-text: Optionally assign a facilitator for this order, a facilitator can be a 3rd party subcontractor or service that will facilitate the transport of this order.
         facilitator-placeholder: Select Facilitator
-        info-text: Select a real time service quote to apply to this order. Once a quote is applied to the order, it will become a purchased rate. Transactions will be tracked within the Fleetbase ledger.
+        info-text: Select a real time service quote to apply to this order. Once a quote is applied to the order, it will become a purchased rate. Transactions will be tracked within the system ledger.
         internal-id: Internal ID
         internal-id-help-text: Use this field to optionally set a custom identifier or internal identifier for the order.
         invalid-coordinates: 'Invalid coordinates!'
@@ -7069,9 +7069,9 @@ order:
         notes-placeholder: Enter order notes here....
         notes-title: Notes
         optimize-route: Optimize Route
-        optimize-route-help-text: Fleetbase will automatically optimize the route.
+        optimize-route-help-text: The system will automatically optimize the route.
         order-type: Order Type
-        order-type-help-text: Selecting the order type will tell fleetbase what order configurations to use.
+        order-type-help-text: Selecting the order type will tell the system what order configurations to use.
         order-type-placeholder: Select Order Type
         payload-entities: Payload / Entities
         pickup: Pickup
@@ -7130,7 +7130,7 @@ order:
         current-destination: Current Destination
         no-service-quotes: No service quotes.
         input-order-routes: Input order route to view service quotes.
-        service-quote-info: Select a real time service quote to apply to this order. Once a quote is applied to the order, it will become a purchased rate. Transactions will be tracked within the Fleetbase ledger.
+        service-quote-info: Select a real time service quote to apply to this order. Once a quote is applied to the order, it will become a purchased rate. Transactions will be tracked within the system ledger.
         id-text: Use this field to optionally set a custom identifier or internal identifier for the order.
         order-details-title: ' Order Details'
         service-type-help-text: 'Select the service type provided by '
@@ -7212,7 +7212,7 @@ order:
 
 order-config-manager:
     title: Orders Configuration
-    message: Order configurations allow you to define dynamic configurations which will tell Fleetbase how different types of orders should be executed.
+    message: Order configurations allow you to define dynamic configurations which will tell the system how different types of orders should be executed.
     configuration: Configuration
     new-order-config: New Order Config
     select-order-config: Select Order Config
@@ -7516,7 +7516,7 @@ integrated-vendor:
         reset-credentials: Click here to reset credentials
         sandbox: Sandbox
         webhook: Webhook URL
-        webhook-help-text: Integrated vendors will typically require this so that Fleetbase can receive activity updates on the order. Do not change unless you know what you are doing! Changing this may break your order updates!
+        webhook-help-text: Integrated vendors will typically require this so that the system can receive activity updates on the order. Do not change unless you know what you are doing! Changing this may break your order updates!
         host: Custom Host
         host-help-text: Optionally provide a custom host that should be used for this integration.
         namespace: Custom Namespace
@@ -8009,21 +8009,21 @@ modals:
     order-new-activity:
         select-message: Select an activity status to update order tracking activity, or input a custom activity.
         order-currently-message: This order is currently {options}, additional activity will overwrite this status.
-        not-recommend-message: Fleetbase does not recommend this unless you absolutely know what you're doing.
+        not-recommend-message: The system does not recommend this unless you absolutely know what you're doing.
         activity-options: Activity Options
         activity: activity
         dispatch: This will trigger the order to dispatch.
         status: Custom activity status
         details: Custom activity details
         code: Custom activity code
-        fleetbase-message: Fleetbase does not recommend this unless you absolutely know what you're doing.
+        fleetbase-message: The system does not recommend this unless you absolutely know what you're doing.
 
     order-route-form:
         toggle: Toggle Multiple Dropoff's
         optimize: Optimize Route
-        optimize-text: Fleetbase will automatically optimize the route.
+        optimize-text: The system will automatically optimize the route.
         add: Add Waypoint
-        add-text: Use the `Add Waypoint` button to add more stops for this order. The Fleetbase routing engine will automatically optimize the route as each stop is added or removed.
+        add-text: Use the `Add Waypoint` button to add more stops for this order. The system routing engine will automatically optimize the route as each stop is added or removed.
         select-waypoint: Select Waypoint
         pickup: Pickup
         edit-address: Edit Address
@@ -8069,7 +8069,7 @@ modals:
         country-text: Optionally set the country in which this service area is located or based in.
 
     set-password:
-        message: Welcome to Fleetbase! Before you get started, set a new password to continue below.
+        message: Welcome to Entregas RestaurantePro! Before you get started, set a new password to continue below.
         new-password: New Password
         confirm-password: Confirm Password
         help-text: Enter a password at-least 8 characters to continue.
@@ -8164,7 +8164,7 @@ modals:
         custom-namespace: Custom Namespace
         namespace-text: Optionally provide a custom namespace or api version that should be used for the integration.
         webhook: Webhook URL
-        webhook-text: Integrated vendors will typically require this so that Fleetbase can receive activity updates on the order. Do not change unless you know what you are doing! Changing this may break your order updates!
+        webhook-text: Integrated vendors will typically require this so that the system can receive activity updates on the order. Do not change unless you know what you are doing! Changing this may break your order updates!
         cancel-credentials: Cancel credentials reset
         reset-message: Sensitive credentials can only be reset, to update credentials you must re-enter the credentials.
         optionally: Optionally supply your own
@@ -8265,7 +8265,7 @@ widget:
         title: Recent Transactions
         loading: Loading recent transactions...
         no-transactions: No transactions this week
-        message: When orders are going through with service rates, Fleetbase tracks transactions automatically.
+        message: When orders are going through with service rates, the system tracks transactions automatically.
 
 display-panel:
     no-address: No {type} address!

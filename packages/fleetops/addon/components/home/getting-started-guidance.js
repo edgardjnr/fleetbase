@@ -93,13 +93,8 @@ export default class HomeGettingStartedGuidanceComponent extends Component {
         return this.openDocs(feature.docs_url, feature.title, 'fleet-ops-recommended-features-guidance');
     }
 
-    openDocs(url, title, source) {
-        if (this.docsPanel?.open) {
-            return this.docsPanel.open(url, { title, source });
-        }
-
-        return window.open(url, '_docs');
-    }
+    // Entregas RestaurantePro: passo sem rota abria a documentação da Fleetbase; agora não abre nada
+    openDocs() {}
 
     @action
     refresh() {

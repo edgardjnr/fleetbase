@@ -4,7 +4,6 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { isArray } from '@ember/array';
 import { getOwner } from '@ember/application';
-import config from 'ember-get-config';
 import { localizeIamName } from '../../utils/localize-iam-name';
 
 /**
@@ -131,17 +130,7 @@ export default class LayoutHeaderComponent extends Component {
             ]);
         }
 
-        // Push the version
-        menuItems.pushObject({
-            id: 'app-version',
-            route: null,
-            text: `v${config.version}`,
-            icon: 'code-branch',
-            iconSize: 'xs',
-            iconClass: 'mr-1.5',
-            wrapperClass: 'app-version-in-nav',
-            overwriteWrapperClass: true,
-        });
+        // Entregas RestaurantePro: sem a versão da Fleetbase no menu
 
         // Merge admin link
         if (this.currentUser.isAdmin) {
@@ -206,13 +195,7 @@ export default class LayoutHeaderComponent extends Component {
             {
                 seperator: true,
             },
-            {
-                id: 'changelog-user-nav-item',
-                wrapperClass: 'changelog-user-nav-item',
-                href: 'javascript:;',
-                text: this.intl.t('ember-ui.layout.header.changelog'),
-                action: 'viewChangelog',
-            },
+            // Entregas RestaurantePro: sem "Novidades" (lista as versões da Fleetbase)
         ];
 
         // Add developer menu item if booted
@@ -225,34 +208,7 @@ export default class LayoutHeaderComponent extends Component {
             });
         }
 
-        // Add more static menu items
-        const supportMenuItems = [
-            {
-                id: 'discord',
-                href: 'https://discord.gg/MJQgxHwN',
-                target: '_discord',
-                text: this.intl.t('ember-ui.layout.header.join-discord'),
-                icon: 'arrow-up-right-from-square',
-            },
-            {
-                id: 'support-user-nav-item',
-                wrapperClass: 'support-user-nav-item',
-                href: 'https://github.com/fleetbase/fleetbase/issues',
-                target: '_support',
-                text: this.intl.t('ember-ui.layout.header.help-support'),
-                icon: 'arrow-up-right-from-square',
-            },
-            {
-                id: 'docs-user-nav-item',
-                wrapperClass: 'docs-user-nav-item',
-                text: this.intl.t('ember-ui.layout.header.documentation'),
-                icon: 'book-open',
-                onClick: () => this.docsPanel.open('https://www.fleetbase.io/docs', { title: this.intl.t('ember-ui.layout.header.fleetbase-documentation'), source: 'user-menu' }),
-            },
-        ];
-
-        // Push support menu items
-        menuItems.pushObjects(supportMenuItems);
+        // Entregas RestaurantePro: sem Discord, "Ajuda e suporte" (GitHub) e "Documentação" da Fleetbase
 
         // Push items from universe registry
         const universeUserMenuItems = this.universe.userMenuItems;

@@ -13,7 +13,8 @@ export default class ConfigureNotificationChannelsComponent extends Component {
     /* istanbul ignore next -- always assigned before first read */
     @tracked isLoading = false;
     @tracked testResponse;
-    @tracked testTitle = 'Hello World from Fleetbase 🚀';
+    // Entregas RestaurantePro: título do push de teste com o nome do produto
+    @tracked testTitle = `${this.intl.t('app.name')} 🚀`;
     @tracked testMessage = this.intl.t('console.ui.configure.push.test-message');
     @tracked apnToken;
     @tracked fcmToken;

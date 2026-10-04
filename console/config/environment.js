@@ -25,7 +25,8 @@ module.exports = function (environment) {
             autoboot: true,
             extensions: asArray(getenv('EXTENSIONS')),
             disableRuntimeConfig: toBoolean(getenv('DISABLE_RUNTIME_CONFIG', environment === 'production')),
-            disableFleetbaseAttribution: toBoolean(getenv('DISABLE_FLEETBASE_ATTRIBUTION', false)),
+            // Entregas RestaurantePro: sem o rodapé "Fleetbase · Aviso legal" (decisão do Edgard em 2026-10-04)
+            disableFleetbaseAttribution: toBoolean(getenv('DISABLE_FLEETBASE_ATTRIBUTION', true)),
         },
 
         API: {

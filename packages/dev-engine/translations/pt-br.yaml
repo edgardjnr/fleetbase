@@ -99,7 +99,7 @@ developers:
         user-password-placeholder: Autentique a solicitação usando sua senha
       webhook-form:
         endpoint-url: URL do Endpoint
-        endpoint-url-help-text: A URL para a qual o Fleetbase deve enviar os callbacks
+        endpoint-url-help-text: A URL para a qual o sistema deve enviar os callbacks
           de eventos.
         endpoint-url-placeholder: https://
         description-label: Descrição
@@ -285,7 +285,7 @@ developers:
       webhook-deleted-success-message: Endpoint do webhook excluído.
       disable-webhook-title: Desativar um endpoint de webhook
       disable-webhook-body: Este endpoint de webhook pode ser temporariamente desativado
-        para que não receba notificações até que seja ativado novamente. A Fleetbase
+        para que não receba notificações até que seja ativado novamente. O sistema
         não tentará reenviar notificações geradas enquanto o endpoint estiver desativado.
       disable-webhook-button-text: Desativar endpoint do webhook
       disable-webhook-success-message: Webhook desativado.
@@ -293,7 +293,7 @@ developers:
       enable-webhook-body: Este webhook está desativado e não recebe mais notificações.
         Isso pode ter sido feito automaticamente porque detectamos um período prolongado
         de falhas. Se você corrigiu o problema, pode reativar o endpoint do webhook
-        aqui. A Fleetbase não tentará reenviar notificações geradas no período intermediário
+        aqui. O sistema não tentará reenviar notificações geradas no período intermediário
         e, se continuarmos a detectar falhas neste endpoint, desativaremos o endpoint
         novamente.
       enable-webhook-button-text: Ativar endpoint do webhook

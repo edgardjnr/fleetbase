@@ -93,7 +93,7 @@ developers:
         user-password-placeholder: Authenticate request using your password
       webhook-form:
         endpoint-url: Endpoint URL
-        endpoint-url-help-text: The URL Fleetbase should send event callbacks to.
+        endpoint-url-help-text: The URL the system should send event callbacks to.
         endpoint-url-placeholder: https://
         description-label: Description
         description-help-text: Optionally add a description for the webhook endpoint.
@@ -260,11 +260,11 @@ developers:
     view:
       webhook-deleted-success-message: Webhook endpoint deleted.
       disable-webhook-title: Disable a webhook endpoint
-      disable-webhook-body: This webhook endpoint may be temporarily disabled so that it will not receive notifications until it is enabled again. Fleetbase will not retry any notifications that are generated while the endpoint is disabled.
+      disable-webhook-body: This webhook endpoint may be temporarily disabled so that it will not receive notifications until it is enabled again. The system will not retry any notifications that are generated while the endpoint is disabled.
       disable-webhook-button-text: Disable webhook endpoint
       disable-webhook-success-message: Webhook disabled.
       enable-webhook-title: Enable a webhook endpoint
-      enable-webhook-body: This webhook is disabled and no longer receives notifications. This may have been done automatically because we detected an extended period of failures. If you've corrected the issue, you can re-enable the webhook endpoint here. Fleetbase will not retry any notifications that were generated in the intervening period, and if we continue to detect failures on this endpoint, we will disable the endpoint again.
+      enable-webhook-body: This webhook is disabled and no longer receives notifications. This may have been done automatically because we detected an extended period of failures. If you've corrected the issue, you can re-enable the webhook endpoint here. The system will not retry any notifications that were generated in the intervening period, and if we continue to detect failures on this endpoint, we will disable the endpoint again.
       enable-webhook-button-text: Enable webhook endpoint
       enable-webhook-success-message: Webhook enabled.
       update-endpoint-button-text: Update endpoint

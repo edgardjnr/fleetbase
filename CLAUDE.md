@@ -191,6 +191,15 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
   - `orders.customer_type` varia com e sem a barra inicial: a loja do pedido é o `customer_uuid`.
   - O `cancelOrder` do portal só troca o status (sem atividade nem evento), e o `startOrder` da API v1 não confere cancelamento: daí a trava e o `BarrarAceiteDePedidoEncerrado`.
 
+## Marca Entregas RestaurantePro (sem Fleetbase na tela)
+
+- Nome: `app.name` = "Entregas RestaurantePro" em todos os idiomas do console (título da aba e `{appName}`). Os textos de tradução não citam a Fleetbase (só os de licença `ember-ui.modals.legal-notice.*`, que não aparecem).
+- Imagens em `console/public`: `images/icon.png` (símbolo num quadrado branco), `images/logo.png` (logo completo) e os favicons, gerados de `Documents/RestaurantePro/logo-512.png` (Pillow).
+- Marca padrão da API (ícone do cabeçalho, login, portal e e-mails): `api/config/fleetbase.php` sobrescreve só `branding` do core-api (`mergeConfigFrom`), apontando para as imagens do console. Imagem enviada em Admin → Marca tem prioridade.
+- Rodapé "Fleetbase vX · Aviso legal" e o modal de licença: desligados (`DISABLE_FLEETBASE_ATTRIBUTION` padrão `true` no `config/environment.js` e no `console/Dockerfile`), por decisão do Edgard em 2026-10-04. A AGPL-3.0 continua exigindo oferecer o código modificado a quem usa pela rede.
+- Fora da tela: menu do usuário sem Discord, Ajuda (GitHub), Documentação, Novidades e versão; tabelas vazias sem botão de guia (`table/empty-state.js`); hubs Recursos/Configurações sem a caixa "Guias"; painel inicial sem os cards Blog/GitHub (componentes apagados) e sem "Recursos recomendados".
+- Ficam com o nome da Fleetbase, de propósito: os modelos de importação baixados do S3 dela (`Fleetbase_*_Import_Template.xlsx`), os e-mails transacionais do PHP e os nomes técnicos (pacotes `@fleetbase/*`, chaves de tradução).
+
 ## Tradução pt-BR (convenções)
 
 O objetivo é que nenhum texto de interface apareça em inglês com pt-BR selecionado. O inglês continua funcionando.

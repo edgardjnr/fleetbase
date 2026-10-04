@@ -72,8 +72,9 @@ export default class TableEmptyStateComponent extends Component {
         return this.args.docsSource ?? 'table-empty-state';
     }
 
+    // Entregas RestaurantePro: sem o botão de guia (abria a documentação da Fleetbase) em nenhuma tabela vazia
     get docsTarget() {
-        return this.args.docsSlug ?? this.args.docsUrl;
+        return null;
     }
 
     @action openDocs() {

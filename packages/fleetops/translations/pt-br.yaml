@@ -3369,7 +3369,7 @@ fleet-ops:
           description: Tipo genérico de fornecedor para serviços sem categoria
         integrated-vendor:
           label: Fornecedor Integrado
-          description: Fornecedor com integração nativa via API ao Fleetbase
+          description: Fornecedor com integração nativa via API ao sistema
         fuel-supplier:
           label: Fornecedor de Combustível
           description: Fornece combustível para os veículos
@@ -5484,7 +5484,7 @@ fleet-ops:
         select-device: Selecione o dispositivo
       connectivity-telematics-details-attachments:
         unable-to-load-device-attachments: Não foi possível carregar as vinculações de dispositivos
-        fleetbase-could-not-load-the-full: O Fleetbase não conseguiu carregar a lista completa de dispositivos do provedor. Atualize a aba ou revise os logs da conexão.
+        fleetbase-could-not-load-the-full: O sistema não conseguiu carregar a lista completa de dispositivos do provedor. Atualize a aba ou revise os logs da conexão.
         sync-devices-before-mapping-vehicles: Sincronize os dispositivos antes de associar veículos
         vehicle-attachment-starts-after-provider-devices: A vinculação a veículos começa depois que os dispositivos do provedor são sincronizados nesta conexão.
         no-mappings-match-these-filters: Nenhuma associação corresponde a estes filtros
@@ -6686,7 +6686,7 @@ order:
     add-item-order: Adicionar Item ao Pedido
     add-waypoint: Adicionar Ponto de Parada
     add-waypoint-help-text: Use o botão `Adicionar Ponto de Parada` para adicionar
-      mais paradas para este pedido. O motor de roteamento da Fleetbase otimizará
+      mais paradas para este pedido. O motor de roteamento do sistema otimizará
       automaticamente a rota conforme cada parada for adicionada ou removida.
     adhoc-ping: Distância de Ping Ad-Hoc
     adhoc-ping-help-text: Esta configuração determina a distância de ping ad-hoc para
@@ -6718,7 +6718,7 @@ order:
     facilitator-placeholder: Selecionar Facilitador
     info-text: Selecione uma cotação de serviço em tempo real para aplicar a este
       pedido. Uma vez aplicada, a cotação se tornará uma tarifa comprada. As transações
-      serão registradas no livro contábil da Fleetbase.
+      serão registradas no livro contábil do sistema.
     internal-id: ID Interno
     internal-id-help-text: Use este campo para definir opcionalmente um identificador
       personalizado ou interno para o pedido.
@@ -6727,9 +6727,9 @@ order:
     loading-message: Carregando cotações de serviço...
     notes-title: Notas
     optimize-route: Otimizar Rota
-    optimize-route-help-text: A Fleetbase otimizará automaticamente a rota.
+    optimize-route-help-text: O sistema otimizará automaticamente a rota.
     order-type: Tipo de Pedido
-    order-type-help-text: Selecionar o tipo de pedido informará à Fleetbase quais
+    order-type-help-text: Selecionar o tipo de pedido informará ao sistema quais
       configurações de pedido usar.
     order-type-placeholder: Selecionar Tipo de Pedido
     payload-entities: Carga / Entidades
@@ -6797,7 +6797,7 @@ order:
     no-order-activity: Nenhuma atividade no pedido
     no-service-quotes: Nenhuma cotação de serviço.
     input-order-routes: Informe a rota do pedido para ver as cotações de serviço.
-    service-quote-info: Selecione uma cotação de serviço em tempo real para aplicar a este pedido. Após aplicada, ela se torna uma tarifa contratada. As transações serão registradas no Ledger do Fleetbase.
+    service-quote-info: Selecione uma cotação de serviço em tempo real para aplicar a este pedido. Após aplicada, ela se torna uma tarifa contratada. As transações serão registradas no livro contábil do sistema.
     id-text: Use este campo para definir, opcionalmente, um identificador personalizado ou interno para o pedido.
     order-details-title: ' — Detalhes do Pedido'
     service-type-help-text: 'Selecione o tipo de serviço oferecido por '
@@ -6885,7 +6885,7 @@ order:
 order-config-manager:
   title: Configuração de Pedidos
   message: As configurações de pedido permitem que você defina configurações dinâmicas
-    que indicarão ao Fleetbase como diferentes tipos de pedidos devem ser executados.
+    que indicarão ao sistema como diferentes tipos de pedidos devem ser executados.
   configuration: Configuração
   new-order-config: Nova Configuração de Pedido
   select-order-config: Selecionar Configuração de Pedido
@@ -7216,7 +7216,7 @@ integrated-vendor:
     sandbox: Ambiente de Testes (Sandbox)
     webhook: URL do Webhook
     webhook-help-text: Fornecedores integrados normalmente exigirão isso para que
-      o Fleetbase possa receber atualizações de atividade no pedido. Não altere a
+      o sistema possa receber atualizações de atividade no pedido. Não altere a
       menos que saiba o que está fazendo! Alterar isso pode quebrar suas atualizações
       de pedido!
     host: Host Personalizado
@@ -7718,7 +7718,7 @@ modals:
       do pedido, ou insira uma atividade personalizada.
     order-currently-message: Este pedido está atualmente {options}, atividade adicional
       substituirá este status.
-    not-recommend-message: O Fleetbase não recomenda isso a menos que você realmente
+    not-recommend-message: O sistema não recomenda isso a menos que você realmente
       saiba o que está fazendo.
     activity-options: Opções de Atividade
     activity: atividade
@@ -7726,15 +7726,15 @@ modals:
     status: Status de atividade personalizada
     details: Detalhes da atividade personalizada
     code: Código da atividade personalizada
-    fleetbase-message: A Fleetbase não recomenda isso a menos que você realmente saiba
+    fleetbase-message: O sistema não recomenda isso a menos que você realmente saiba
       o que está fazendo.
   order-route-form:
     toggle: Alternar Múltiplas Entregas
     optimize: Otimizar Rota
-    optimize-text: A Fleetbase irá otimizar automaticamente a rota.
+    optimize-text: O sistema irá otimizar automaticamente a rota.
     add: Adicionar Ponto de Parada
     add-text: Use o botão `Adicionar Ponto de Parada` para adicionar mais paradas
-      para este pedido. O motor de roteamento da Fleetbase irá otimizar automaticamente
+      para este pedido. O motor de roteamento do sistema irá otimizar automaticamente
       a rota conforme cada parada é adicionada ou removida.
     select-waypoint: Selecionar Ponto de Parada
     pickup: Coleta
@@ -7775,7 +7775,7 @@ modals:
     country-text: Opcionalmente defina o país onde esta área de serviço está localizada
       ou baseada.
   set-password:
-    message: Bem-vindo à Fleetbase! Antes de começar, defina uma nova senha para continuar
+    message: Bem-vindo ao Entregas RestaurantePro! Antes de começar, defina uma nova senha para continuar
       abaixo.
     new-password: Nova Senha
     confirm-password: Confirmar Senha
@@ -7871,7 +7871,7 @@ modals:
     namespace-text: Opcionalmente forneça um namespace personalizado ou versão da
       API que deve ser usado para a integração.
     webhook: URL do Webhook
-    webhook-text: Fornecedores integrados normalmente exigem isso para que o Fleetbase
+    webhook-text: Fornecedores integrados normalmente exigem isso para que o sistema
       possa receber atualizações de atividade no pedido. Não altere a menos que saiba
       o que está fazendo! Alterar isso pode quebrar suas atualizações de pedido!
     cancel-credentials: Cancelar redefinição de credenciais
@@ -7943,7 +7943,7 @@ widget:
     title: Transações Recentes
     loading: Carregando transações recentes...
     no-transactions: Nenhuma transação nesta semana
-    message: Quando os pedidos são processados com taxas de serviço, o Fleetbase rastreia
+    message: Quando os pedidos são processados com taxas de serviço, o sistema rastreia
       as transações automaticamente.
   refresh: Atualizar
   kpi-earnings:

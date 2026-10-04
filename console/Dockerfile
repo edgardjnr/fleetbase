@@ -17,7 +17,7 @@ ENV PNPM_HOME=/root/.pnpm
 ARG ENVIRONMENT=production
 
 # Attribution
-ARG DISABLE_FLEETBASE_ATTRIBUTION=false
+ARG DISABLE_FLEETBASE_ATTRIBUTION=true
 ENV DISABLE_FLEETBASE_ATTRIBUTION=$DISABLE_FLEETBASE_ATTRIBUTION
 
 # Production builds disable /fleetbase.config.json by default (config/environment.js), so the

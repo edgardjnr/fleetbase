@@ -73,7 +73,7 @@ export const vehicleStatuses = [
 
 export const vendorTypes = [
     { label: 'Vendor', value: 'vendor', description: 'General vendor type for uncategorized services' },
-    { label: 'Integrated Vendor', value: 'integrated_vendor', description: 'Vendor with native API integration into Fleetbase' },
+    { label: 'Integrated Vendor', value: 'integrated_vendor', description: 'Vendor with native API integration into the system' },
     { label: 'Fuel Supplier', value: 'fuel_supplier', description: 'Provides fuel for vehicles' },
     { label: 'Maintenance Provider', value: 'maintenance_provider', description: 'Performs vehicle repairs/maintenance' },
     { label: 'Parts Supplier', value: 'parts_supplier', description: 'Supplies vehicle parts' },

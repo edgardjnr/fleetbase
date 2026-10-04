@@ -1,5 +1,5 @@
 app:
-  name: Fleetbase
+  name: Entregas RestaurantePro
 
 common:
   new: New
@@ -639,7 +639,7 @@ auth:
     success-message: Your email address has been updated.
     invalid-verification-code: This email change link is invalid or expired.
     title: Confirm email change
-    message-text: Confirm this change to update the login email for your Fleetbase account.
+    message-text: Confirm this change to update the login email for your Entregas RestaurantePro account.
     form:
       code:
         label: Confirmation code
@@ -954,7 +954,7 @@ console:
       resource-not-found: Requested resource not found.
       dashboard-not-found: Dashboard not found.
       own-comments-only: You can only manage your own comments.
-      console-users-sign-in: Console users must sign in through the Fleetbase console.
+      console-users-sign-in: Console users must sign in through the console.
       customers-sign-in: Customer accounts must sign in through the customer portal.
       portal-no-customer-account: No customer account found for user account.
       portal-no-order-config: No order config available for this company.
@@ -972,7 +972,7 @@ console:
       driver: Driver
       filesystem:
         title: Filesystem
-        driver-help: Select the default filesystem driver for Fleetbase to use.
+        driver-help: Select the default filesystem driver for the system to use.
         driver-placeholder: Select filesystem driver
         gcs-env-warning: Warning! GCS is already configured in the server environment. Changing values below may break this.
         gcs-key-file: GCS Service Account Key File
@@ -981,7 +981,7 @@ console:
       mail:
         title: Mail
         mailer: Mailer
-        mailer-help: Select the default mailer for Fleetbase to use.
+        mailer-help: Select the default mailer for the system to use.
         mailer-placeholder: Select mailer
         smtp-encryption: SMTP Encryption
         smtp-encryption-help: Enabled TLS Encryption
@@ -991,13 +991,13 @@ console:
         smtp-auth-mode: SMTP Auth Mode
         save-to-sent-items: Save to sent items
         from-address: From Address
-        from-address-help: Input the email address for Fleetbase to send emails from.
+        from-address-help: Input the email address for the system to send emails from.
         from-name: From Name
-        from-name-help: Input the name for Fleetbase to send emails from.
+        from-name-help: Input the name for the system to send emails from.
         saved: Mail configuration saved.
       queue:
         title: Queue
-        driver-help: Select the default queue driver for Fleetbase to use.
+        driver-help: Select the default queue driver for the system to use.
         driver-placeholder: Select queue driver
         saved: Queue configuration saved.
       socket:
@@ -1040,7 +1040,7 @@ console:
         test-message: Test Message
         test-sms-provider: Test SMS Provider
         test-sentry: Test Sentry Config
-        sms-test-message: This is a Fleetbase SMS test.
+        sms-test-message: This is an Entregas RestaurantePro SMS test.
         custom-http-gateway: Custom HTTP Gateway
         gateway-url: Gateway URL
         from: From
@@ -1266,10 +1266,10 @@ console:
         enable-sender-id: Enable Alpha-Numeric Sender ID
         sender-id: Alpha-Numeric Sender ID
         sender-id-help: Set the custom alphanumeric name that will appear as the sender for all SMS sent by your organization. Up to 11 letters or numbers. Not supported in all countries.
-        sender-id-info-1: Alphanumeric Sender IDs allow your organization to replace a traditional phone number with a custom text-based sender name when sending SMS notifications (e.g., Fleetbase, MyStore, DispatchHQ). This can improve brand recognition, increase message trust, and enhance deliverability in regions where numeric senders are restricted by local carriers.
-        sender-id-info-2: When enabled, Fleetbase will use this sender ID for all outbound SMS messages sent on behalf of your organization, including order updates, verification codes, driver notifications, and other automated alerts. Sender IDs can contain up to 11 characters using letters and numbers.
+        sender-id-info-1: Alphanumeric Sender IDs allow your organization to replace a traditional phone number with a custom text-based sender name when sending SMS notifications (e.g., RestaurantePro, MyStore, DispatchHQ). This can improve brand recognition, increase message trust, and enhance deliverability in regions where numeric senders are restricted by local carriers.
+        sender-id-info-2: When enabled, the system will use this sender ID for all outbound SMS messages sent on behalf of your organization, including order updates, verification codes, driver notifications, and other automated alerts. Sender IDs can contain up to 11 characters using letters and numbers.
         sender-id-info-3: Some countries require or enforce specific messaging rules, and certain carriers may only support alphanumeric senders. Using a Sender ID can significantly improve message delivery in these regions.
-        sender-id-warning: Delivery of SMS using Alphanumeric Sender IDs depends on local carrier policies. Some regions may restrict or block numeric senders or require the use of alphanumeric senders for successful delivery. While Fleetbase will attempt to deliver all messages using your configured Sender ID, message delivery cannot be guaranteed in countries with carrier-level filtering or regulatory restrictions. Your organization is responsible for ensuring compliance with local messaging regulations in the countries you send SMS to.
+        sender-id-warning: Delivery of SMS using Alphanumeric Sender IDs depends on local carrier policies. Some regions may restrict or block numeric senders or require the use of alphanumeric senders for successful delivery. While the system will attempt to deliver all messages using your configured Sender ID, message delivery cannot be guaranteed in countries with carrier-level filtering or regulatory restrictions. Your organization is responsible for ensuring compliance with local messaging regulations in the countries you send SMS to.
         saved: Notification settings successfully saved.
       organization-saved: Organization changes successfully saved.
     page-titles:
@@ -1291,10 +1291,10 @@ console:
       email-sent: Verification code email sent!
       welcome-to: "Welcome to {name}"
     onboarding:
-      welcome: Welcome to Fleetbase!
+      welcome: Welcome to Entregas RestaurantePro!
       failed: Onboard failed
     invite:
-      accepted: Invitation accepted, welcome to Fleetbase!
+      accepted: Invitation accepted, welcome to Entregas RestaurantePro!
       set-new-password: Set a new password
     notifications:
       marked-read: Notification marked as read.
@@ -1303,24 +1303,7 @@ console:
     impersonator:
       end: End Impersonation
       ending: Ending impersonation session.
-    github-card:
-      star: Star on Github
-      latest-release: "Latest Release:"
-      stars: Stars
-      watchers: Watchers
-      forks: Forks
-      open: Open
-      issues: Issues
-    blog:
-      visit: Visit Blog
-      empty: No blog posts are available right now.
     widgets:
-      fleetbase-blog:
-        name: Fleetbase Blog
-        description: Lists latest news and events from the Fleetbase official team.
-      github-card:
-        name: Github Card
-        description: Displays current Github stats from the official Fleetbase repo.
       admin:
         metric: Metric
         summary: Admin Summary
@@ -1421,8 +1404,8 @@ onboard:
       send-by-sms: Send by SMS
 
 install:
-  not-configured-title: Fleetbase is not installed or configured
-  not-configured-message: Complete setup from the Fleetbase CLI or application container, then reload this page once the database, migrations, and seed data are ready.
+  not-configured-title: The system is not installed or configured
+  not-configured-message: Complete setup from the system CLI or application container, then reload this page once the database, migrations, and seed data are ready.
   running-locally-docs: See running locally docs
   cloud-docs: See cloud deployment docs
   refreshing: Installation complete, refreshing...
@@ -1561,7 +1544,7 @@ ember-ui:
       description: Description
       description-placeholder: Optional description
       resource-type: Resource Type
-      resource-type-help: Select the Fleetbase model this query runs against.
+      resource-type-help: Select the system model this query runs against.
       filter-conditions: Filter Conditions
       add-condition: Add condition
       field-placeholder: field
@@ -1644,7 +1627,7 @@ ember-ui:
       edit-query: Edit query
       delete-query: Delete query
       no-queries: No queries yet.
-      no-queries-help: Queries load data from Fleetbase models at render time and are saved with the template.
+      no-queries-help: Queries load data from system models at render time and are saved with the template.
     layers-panel:
       layers: Layers
       double-click-rename: Double-click to rename
@@ -1683,7 +1666,7 @@ ember-ui:
       join-discord: Join Discord Community
       help-support: Help & Support
       documentation: Documentation
-      fleetbase-documentation: Fleetbase Documentation
+      fleetbase-documentation: System Documentation
       dark-mode: Dark Mode
       smart-nav-menu:
         customise-navigation: Customise navigation
@@ -1936,7 +1919,7 @@ ember-ui:
     no-conversations: No conversations found
     start-new-chat-hint: Start a new chat or adjust your search.
     open-inbox: Open chat inbox
-    fleetbase-user: Fleetbase user
+    fleetbase-user: System user
     no-messages-yet: No messages yet
     attachment-count: "{count, plural, one {# attachment} other {# attachments}}"
     sent-a-message: Sent a message
@@ -2259,7 +2242,7 @@ ember-ui:
   fleetbase-attribution:
     powered-by: Powered by
     legal: Legal
-    legal-notices: Fleetbase Legal Notices
+    legal-notices: Legal Notices
   custom-fields-manager:
     empty-hint: "Add your first field group to start adding custom fields for {resource}"
     new-field-group: New field group
@@ -2308,7 +2291,7 @@ ember-ui:
     open-new-tab: Open documentation in a new tab
     close: Close documentation
     loading: Loading documentation...
-    open-fleetbase-docs: Open Fleetbase documentation
+    open-fleetbase-docs: Open documentation
     cannot-embed: This page cannot be embedded here, but you can open it in a new tab.
     open-docs: Open documentation
   extensions-list:

@@ -70,44 +70,7 @@
                 </div>
             </div>
 
-            <div class="fleet-ops-recommended-features rounded-md border border-gray-200 bg-white shadow-md dark:border-gray-700 dark:bg-gray-800">
-                <div class="border-b border-gray-200 px-3 py-2 dark:border-gray-700">
-                    <div class="truncate text-sm font-bold text-gray-900 dark:text-gray-100">{{t "widget.recommended-features.title"}}</div>
-                    <div class="truncate text-[11px] text-gray-500 dark:text-gray-400">{{t "widget.recommended-features.subtitle"}}</div>
-                </div>
-
-                <div class="p-3">
-                    {{#if this.gettingStarted.load.isRunning}}
-                        <div class="fleet-ops-recommended-features-loading flex items-center justify-center"><Spinner /></div>
-                    {{else if this.gettingStarted.error}}
-                        <div class="fleet-ops-recommended-features-loading flex items-center justify-center text-xs text-red-500">{{this.gettingStarted.error}}</div>
-                    {{else}}
-                        <div class="grid gap-2 sm:grid-cols-2">
-                            {{#each this.recommendations as |feature|}}
-                                <button
-                                    type="button"
-                                    class="fleet-ops-recommended-feature
-                                        {{this.accentClass feature}}
-                                        group flex min-h-[92px] items-start gap-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-left transition hover:border-gray-300 hover:bg-white hover:shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600 dark:hover:bg-gray-700"
-                                    {{on "click" (fn this.openFeature feature)}}
-                                >
-                                    <div class="fleet-ops-recommended-feature-icon flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md">
-                                        <FaIcon @icon={{feature.icon}} />
-                                    </div>
-                                    <div class="flex min-h-0 flex-1 flex-col">
-                                        <div class="truncate text-[12px] font-bold text-gray-900 dark:text-gray-100">{{feature.title}}</div>
-                                        <p class="mt-1 line-clamp-2 flex-1 text-[11px] leading-4 text-gray-500 dark:text-gray-400">{{feature.description}}</p>
-                                        <div class="mt-2 flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-300">
-                                            <span>{{t "widget.recommended-features.learn-more"}}</span>
-                                            <FaIcon @icon="arrow-right" class="transition group-hover:translate-x-0.5" />
-                                        </div>
-                                    </div>
-                                </button>
-                            {{/each}}
-                        </div>
-                    {{/if}}
-                </div>
-            </div>
+            {{!-- Entregas RestaurantePro: sem "Recursos recomendados" (só abria a documentação da Fleetbase) --}}
         </div>
     </section>
 {{/unless}}
