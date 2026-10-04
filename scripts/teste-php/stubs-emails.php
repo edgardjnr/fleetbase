@@ -84,7 +84,29 @@ namespace Fleetbase\Support {
             return 'https://entregas.restaurantepro.com.br/' . ltrim($path, '/') . ($queryParams ? '?' . http_build_query($queryParams) : '');
         }
 
-        public static function delinkify(?string $texto): string { return (string) $texto; }
+        // Cópia fiel do Utils::delinkify do core-api 1.6.61 (packages/core-api/src/Support/Utils.php): escapa HTML com e() e
+        // insere entidades &#8203;. Um stub que devolvesse o texto igual escondia o escape duplo nos e-mails.
+        public static function delinkify(?string $text): string
+        {
+            if ($text === null || $text === '') {
+                return '';
+            }
+
+            $patterns = [
+                '/([A-Za-z0-9])(\.)([A-Za-z]{2,24})(\b)/u',
+                '/(https?:\/\/)/i',
+                '/\b(www\.)/i',
+                '/(@)/',
+            ];
+            $repl = [
+                '$1&#8203;$2&#8203;$3$4',
+                '$1&#8203;',
+                '$1&#8203;',
+                '&#8203;$1',
+            ];
+
+            return preg_replace($patterns, $repl, e($text));
+        }
     }
 }
 
@@ -125,6 +147,12 @@ namespace Teste {
 }
 
 namespace {
+    // e() do Laravel (helpers.php): escapa HTML
+    function e($valor)
+    {
+        return htmlspecialchars((string) $valor, ENT_QUOTES, 'UTF-8', true);
+    }
+
     function config($chave = null, $padrao = null)
     {
         $valores = [

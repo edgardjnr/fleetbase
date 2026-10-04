@@ -76,8 +76,8 @@ class EmailsEmPortugues
 
     private static function convite($n, $notifiable, MailMessage $original): MailMessage
     {
-        $empresa = Utils::delinkify($n->company->name);
-        $quem    = trim(Utils::delinkify($n->sender->name ?? null));
+        $empresa = TextoDoEmail::semLink($n->company->name);
+        $quem    = trim(TextoDoEmail::semLink($n->sender->name ?? null));
         $texto   = $quem !== ''
             ? "{$quem} convidou você para a equipe {$empresa} no Entregas RestaurantePro."
             : "Você foi convidado para a equipe {$empresa} no Entregas RestaurantePro.";
@@ -108,9 +108,9 @@ class EmailsEmPortugues
 
     private static function novoUsuario($n, $notifiable, MailMessage $original): MailMessage
     {
-        $nome    = Utils::delinkify($n->user->name);
-        $email   = Utils::delinkify($n->user->email);
-        $empresa = Utils::delinkify($n->company->name ?? null);
+        $nome    = TextoDoEmail::semLink($n->user->name);
+        $email   = TextoDoEmail::semLink($n->user->email);
+        $empresa = TextoDoEmail::semLink($n->company->name ?? null);
 
         return (new MailMessage())
             ->subject(trim("Novo usuário na equipe {$empresa}"))
@@ -121,8 +121,8 @@ class EmailsEmPortugues
 
     private static function conviteAceito($n, $notifiable, MailMessage $original): MailMessage
     {
-        $nome    = Utils::delinkify($n->user->name);
-        $empresa = Utils::delinkify($n->company->name);
+        $nome    = TextoDoEmail::semLink($n->user->name);
+        $empresa = TextoDoEmail::semLink($n->company->name);
 
         return (new MailMessage())
             ->subject("{$nome} aceitou o convite para a equipe {$empresa}")
@@ -188,7 +188,7 @@ class EmailsEmPortugues
     /** a loja do pedido é o Vendor cliente (orders.customer_uuid); sem cliente, vazio */
     private static function nomeDaLoja($pedido): string
     {
-        return trim(Utils::delinkify($pedido->customer->name ?? null));
+        return trim(TextoDoEmail::semLink($pedido->customer->name ?? null));
     }
 
     private static function comMotivo(MailMessage $mensagem, ?string $motivo): MailMessage

@@ -196,7 +196,7 @@ $novo = notificacao(UserCreated::class, ['user' => usuario('Bruno', 'bruno@exemp
 confere(resumoDoEmail(EmailsEmPortugues::traduzir($novo, $ana, new MailMessage())) === [
     'assunto' => 'Novo usuário na equipe Central Entregas',
     'titulo'  => 'Novo usuário na equipe',
-    'antes'   => ['Bruno (bruno@exemplo.com) entrou na equipe Central Entregas.'],
+    'antes'   => ["Bruno (bruno​@exemplo​.​com) entrou na equipe Central Entregas."], // delinkify real: U+200B quebra o autolink
     'botao'   => 'Ver usuários',
     'url'     => 'https://entregas.restaurantepro.com.br/iam/users',
     'depois'  => [],
@@ -265,5 +265,19 @@ Log::$registros = [];
 $quebrada       = notificacao(UserForgotPassword::class, ['url' => 'x']); // sem verificationCode
 confere(EmailsEmPortugues::conhece($quebrada) && EmailsEmPortugues::traduzir($quebrada, $ana, new MailMessage()) === null, 'leitura que falha: null');
 confere((Log::$registros[0][1] ?? null) === '[entregas] falha ao montar o e-mail em pt-BR', 'leitura que falha vai para o log');
+
+echo PHP_EOL . '== Texto sem escape duplo' . PHP_EOL;
+// o delinkify do core-api já escapa HTML e a view escapa de novo: o texto do e-mail tem de sair puro
+confere(Saudacao::para("Joana D'Arc") === "Olá, Joana D'Arc!", 'saudação com apóstrofo não vira &#039;');
+confere(Saudacao::para("​  ") === 'Olá!', 'saudação: só espaço de largura zero vale sem nome');
+
+$convitePao = notificacao(UserInvited::class, ['invite' => $convite, 'company' => empresa('Pão & Cia'), 'sender' => usuario("Bob's", 'bob@exemplo.com'), 'url' => 'https://entregas.restaurantepro.com.br/join/org/abc']);
+$mensagemPao = EmailsEmPortugues::traduzir($convitePao, $bruno, new MailMessage());
+confere($mensagemPao->subject === 'Você foi convidado para a equipe Pão & Cia', 'convite: assunto com "&" sem escape');
+confere($mensagemPao->introLines === ["Olá, Bruno! Bob's convidou você para a equipe Pão & Cia no Entregas RestaurantePro."], 'convite: linha sem &amp; nem &#039;');
+
+$mensagemNovo = EmailsEmPortugues::traduzir($novo, $ana, new MailMessage());
+$textosDoNovo = array_merge([$mensagemNovo->subject], $mensagemNovo->introLines);
+confere(count(array_filter($textosDoNovo, fn ($t) => str_contains($t, '&#'))) === 0, 'novo usuário: nenhuma entidade &# no assunto nem nas linhas');
 
 resumo();
