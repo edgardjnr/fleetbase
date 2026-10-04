@@ -46,6 +46,12 @@ export default class LayoutResourcePanelComponent extends Component {
 
     get resourceType() {
         const modelName = getModelName(this.resource);
+        // Entregas RestaurantePro: nome do recurso no idioma ativo ("Criar Pedido", e não "Criar Order") quando há
+        // a chave resource.<model>; sem ela, fica o nome do model como antes
+        const chave = typeof modelName === 'string' ? `resource.${modelName}` : null;
+        if (chave && this.intl.exists(chave)) {
+            return this.intl.t(chave);
+        }
         return titleize(modelName) ?? 'Resource';
     }
 
