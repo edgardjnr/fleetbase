@@ -197,7 +197,8 @@ class CalculoEntregas
             return $this->valorDaLinha($linha);
         }
 
-        $faixa = $this->faixaDoKm($faixas, round($metros / 1000, 2));
+        // a faixa sai do mesmo km exibido (metros reais); os metros inteiros só identificam o km da linha congelada
+        $faixa = $this->faixaDoKm($faixas, round((float) $rota['metros'] / 1000, 2));
         if ($faixa === null) {
             return null;
         }

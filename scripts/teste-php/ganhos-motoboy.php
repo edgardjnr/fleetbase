@@ -121,6 +121,10 @@ confere(($entregas[0]['faixa']['acima'] ?? false) === true && $entregas[0]['valo
 [$entregas] = $calculo->entregas($longe, 'America/Sao_Paulo');
 confere(($entregas[0]['faixa']['acima'] ?? false) === true && $entregas[0]['faixa']['de_km'] === 6.0 && Banco::$upserts === 1, 'lida do banco, continua "acima de 6 km", sem regravar');
 
+reiniciar();
+[$entregas] = $calculo->entregas(new Collection([comKm(pedido('order_limite'), 1004.6)]), 'America/Sao_Paulo');
+confere($entregas[0]['km'] === 1.0 && $entregas[0]['valor_motoboy'] === 5.0, 'a faixa sai do km exibido: 1.004,6 m = 1,00 km, primeira faixa (5,00)');
+
 reiniciar([]);
 [$entregas] = $calculo->entregas(new Collection([comKm(pedido('order_b'), 1500.0)]), 'America/Sao_Paulo');
 confere($entregas[0]['km'] === 1.5 && $entregas[0]['faixa'] === null && $entregas[0]['valor_motoboy'] === null && $entregas[0]['valor_loja'] === null, 'sem faixas cadastradas: km aparece, valores nulos');
