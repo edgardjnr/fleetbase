@@ -106,6 +106,7 @@ O produto é só isto: o pedido chega do iFood pela API, é despachado para o mo
     - Do `localhost` o socket de produção recusa a conexão, porque o `SOCKET_ALLOWED_ORIGINS` só aceita o console. Para testar a reação local, injete o evento no canal: `socket.instance()._channelDataDemux.write('company.<uuid>', {event: 'order.updated'})`.
   - O liga/desliga do online no app (`toggleOnline` do Fleet-Ops) grava com `updateQuietly` e não gera evento. O middleware `AvisarOnlineDoMotoboy` (grupo `fleetbase.api`) transmite o `entregas.motoboy_online` (`App\Events\Entregas\OnlineDoMotoboyMudou`, na hora, sem fila). **Ao atualizar o fleetops-api, confira se a ação `Api\v1\DriverController@toggleOnline` ainda existe.**
   - O nome do motoboy fica num rótulo fixo embaixo do capacete. Os detalhes saem no clique (popup). O capacete não gira com a direção do GPS (`@disableRotation` do `leaflet-tracking-marker`).
+  - A consulta dos pedidos em andamento (`SituacaoDoMotoboy::pedidosEmAndamento`) é a mesma do mapa de motoboys do portal da loja.
   - Teste: `scripts/teste-php/mapa.php`.
 - `docker/`: Dockerfile da API, `docker/socket/` (socket ARM) e crontab.
 
@@ -123,7 +124,7 @@ O produto é só isto: o pedido chega do iFood pela API, é despachado para o mo
 
 ## Portal da loja
 
-Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-portal` (login próprio), cria e acompanha os próprios pedidos e vê o extrato, sem enxergar nada de outra loja. Os motoboys continuam recebendo os pedidos de todas. Desenho: `docs/superpowers/specs/2026-10-02-portal-da-loja-design.md`; plano: `docs/superpowers/plans/2026-10-02-portal-da-loja.md`; situação e pendências: `docs/superpowers/plans/2026-10-03-portal-da-loja-continuacao.md`.
+Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-portal` (login próprio), cria e acompanha os próprios pedidos e vê o extrato, sem enxergar os pedidos de outra loja. Os motoboys continuam recebendo os pedidos de todas, e o mapa do portal mostra todos os motoboys online (ver "Mapa de motoboys"). Desenho: `docs/superpowers/specs/2026-10-02-portal-da-loja-design.md`; plano: `docs/superpowers/plans/2026-10-02-portal-da-loja.md`; situação e pendências: `docs/superpowers/plans/2026-10-03-portal-da-loja-continuacao.md`.
 
 - **Cadastro (só a central):** Fleet-Ops → Recursos → Lojas (`management.lojas`, só admin; API `Entregas/LojasController.php`, `int/v1/entregas/lojas*`).
   - Loja = Vendor `type=customer` + um Place próprio (dono = o Vendor), que é a **coleta fixa**.
@@ -148,7 +149,8 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
 - **API do portal** (`Entregas/PortalLojaController.php`, `int/v1/entregas/loja/*`, `throttle:60,1`):
   - `minha-loja`;
   - `extrato`: até 3 meses, com o valor "loja" das faixas;
-  - `pedidos/{id}/motoboy`: nome e foto; a posição só com o pedido aceito há no máximo 4 h.
+  - `pedidos/{id}/motoboy`: nome, foto e aceite (a posição fica no mapa de motoboys);
+  - `motoboys`: o mapa de motoboys (`App\Support\Entregas\MotoboysNoMapaDaLoja`), com limitador próprio `entregas-loja-mapa` (60 por minuto por usuário).
 - **Front** (`packages/customer-portal/addon`):
   - menu enxuto (Início, Pedidos, Extrato, Configurações); as telas fora do escopo redirecionam para Pedidos; membros e login só leitura;
   - novo pedido só com o destino;
@@ -156,6 +158,13 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
   - extrato com CSV.
   - **O servidor não tem geocodificação:** o endereço de entrega é marcado no mapa, que abre na loja. Com `@mapCenter`, o `CoordinatesInput` do ember-ui só marca o ponto com arrasto, autocomplete ou Localizar; sem ele (console), nada mudou.
   - O canal de socket `company.<uuid>` não é usado no portal, porque transmite os pedidos de todas as lojas.
+- **Mapa de motoboys** (decisão de 2026-10-04; desenho: `docs/superpowers/specs/2026-10-04-motoboys-no-mapa-do-portal-design.md`):
+  - a tela Pedidos, no modo Mapa, mostra os motoboys online e os offline que já aceitaram um pedido ainda aberto, com o capacete do console na cor da situação (verde livre, amarelo indo à loja, vermelho a caminho do cliente) e o nome fixo embaixo. Some o offline sem pedido aceito, inclusive com pedido só atribuído pela central (a última posição pode ser a casa dele);
+  - **a loja vê as entregas das outras lojas** (risco aceito pelo Edgard);
+  - `Workspace::Map` consulta `loja/motoboys` a cada 5 s com a aba visível (espera crescente em erro), e `utils/camada-de-motoboys.js` desliza cada capacete até a posição nova (salta na primeira posição, em pulos de mais de 1 km e com "reduzir animações");
+  - o motoboy do pedido aberto fica por cima, com o rótulo azul, e entra uma vez no enquadramento (`definirMotoboyDoPedido` no serviço da rota). O painel "Motoboy" do detalhe não tem mais mapinha;
+  - o id do motoboy nunca vai para a loja: com ele, o canal `driver.<id>` do socket entrega a posição ao vivo e o telefone. A resposta traz só um id opaco (HMAC do uuid), nome, coordenadas, situação e os `public_id` dos pedidos da própria loja;
+  - testes: `scripts/teste-php/mapa-da-loja.php` (php-wasm) e `node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/*.test.mjs`.
 - **Pedido da central:** no formulário do operador, escolher uma loja como cliente põe a coleta no Local da loja e a trava.
   - **Escolha a loja, não o usuário dela.** O contato do usuário também aparece como cliente. Com ele, a coleta não trava e o pedido fica fora do extrato.
 - **Ao atualizar o customer-portal-api:** em `customer-portal/int/v1` o padrão do `ProtegerPortalLoja` é liberar, menos o que está em `NEGADAS_NO_PORTAL`. Revise as rotas novas da versão.
@@ -170,7 +179,9 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
   - o socket não autentica a inscrição nos canais `company.*`;
   - a chave `flb_live_` do APK funciona enquanto a restrição estiver desligada;
   - o login por SMS não limita tentativas e o código de 6 dígitos não expira. Quem extrai a chave pode chegar a um token de motoboy, que lista os pedidos de todas as lojas;
-  - o upload do core aceita `disk`/`path` de usuários que não são de loja.
+  - o upload do core aceita `disk`/`path` de usuários que não são de loja;
+  - a loja vê todos os motoboys online, com nome completo e situação, inclusive os que levam pedidos de outras lojas: um capacete vermelho parado numa casa indica o endereço de um cliente de outra loja;
+  - o motoboy que esquece de ficar offline ao fim do expediente continua no mapa das lojas, possivelmente em casa (o app rastreia mesmo fechado). A central orienta os motoboys.
 - **Armadilhas do Fleetbase achadas aqui:**
   - `Contact::user()` filtra pelo `type` da instância e falha em `with`/`whereHas`: use `Contact::anyUser`.
   - O `CompanyScope` existe, mas **não** está registrado nos models desta versão: filtre `company_uuid` de forma explícita.
@@ -261,3 +272,4 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
     - middlewares de segurança e trava cancelamento × aceite;
     - teste de isolamento.
 11. Ganhos do motoboy no app (2026-10-03): Início com filtro de período e total a receber, valor da entrega no card de aceitar e nos detalhes, e valor congelado por entrega (`entregas_valores_pedido`).
+12. Motoboys no mapa do portal da loja (2026-10-04): todos os motoboys online com o capacete e o nome, posição a cada 5 s com deslize e destaque do motoboy do pedido aberto; a rota do motoboy do pedido deixou de mandar a posição.
