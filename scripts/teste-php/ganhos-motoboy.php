@@ -158,4 +158,53 @@ reiniciar();
 $valor = $calculo->valorDoPedido(pedido('order_g', ['payload' => new Payload(lugar('place_loja', -21.17, -47.81, 'Loja Centro'), lugar('place_y', null, null, 'Cliente'))]));
 confere($valor === ['km' => null, 'fonte' => null, 'faixa' => null, 'valor_motoboy' => null] && OSRM::$chamadas === 0, 'destino sem posição: km e valor nulos');
 
+echo '== O que o app recebe (GanhosDoMotoboy)' . PHP_EOL;
+$entrega = [
+    'loja'          => 'loja:vendor_centro',
+    'loja_nome'     => 'Loja Centro',
+    'pedido'        => 'order_a',
+    'id_interno'    => 'IF-1',
+    'motoboy'       => 'driver_motoca',
+    'motoboy_nome'  => 'Motoca',
+    'concluido_em'  => '2026-10-03T19:42:00-03:00',
+    'origem'        => 'Rua Loja Centro, 10, Centro',
+    'destino'       => 'Rua Cliente, 10, Centro',
+    'km'            => 3.21,
+    'fonte'         => 'estimativa',
+    'faixa'         => ['de_km' => 2.0, 'ate_km' => 4.0, 'motoboy' => 8.0, 'loja' => 11.37],
+    'valor_motoboy' => 8.0,
+    'valor_loja'    => 11.37,
+];
+$linha = GanhosDoMotoboy::linha($entrega);
+confere(array_keys($linha) === ['pedido', 'concluido_em', 'loja', 'destino', 'km', 'aproximado', 'faixa', 'valor'], 'só os campos do app');
+confere($linha['valor'] === 8.0 && $linha['loja'] === 'Loja Centro' && $linha['aproximado'] === true, 'valor do motoboy, nome da loja e km estimado marcado como aproximado');
+confere($linha['faixa'] === ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'a faixa vai só com os limites');
+$semKm  = ['km' => null, 'fonte' => null, 'faixa' => null, 'valor_motoboy' => null, 'valor_loja' => null] + $entrega;
+$resumo = GanhosDoMotoboy::resumo([$entrega, $semKm], '2026-10-01', '2026-10-03', 1);
+confere($resumo['totais'] === ['entregas' => 2, 'km' => 3.21, 'valor' => 8.0] && $resumo['pendentes'] === 1 && $resumo['inicio'] === '2026-10-01', 'totais: corridas, km e valor (só o que tem valor)');
+confere(!str_contains(json_encode($resumo), '11.37'), 'o valor cobrado da loja (11,37) não aparece');
+$valor = GanhosDoMotoboy::valor(new Order(['public_id' => 'order_e']), ['km' => 3.21, 'fonte' => 'osrm', 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'motoboy' => 8.0, 'loja' => 11.37], 'valor_motoboy' => 8.0]);
+confere($valor === ['pedido' => 'order_e', 'km' => 3.21, 'aproximado' => false, 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'valor' => 8.0], 'valor de um pedido no formato do app, sem o valor da loja');
+
+$motoca = new Driver(['uuid' => 'uuid-driver_motoca', 'user_uuid' => 'usuario-motoca', 'public_id' => 'driver_motoca']);
+confere(GanhosDoMotoboy::podeVer(new Order(['driver_assigned_uuid' => 'uuid-driver_motoca']), $motoca), 'vê o pedido dele');
+confere(!GanhosDoMotoboy::podeVer(new Order(['driver_assigned_uuid' => 'uuid-driver_outro']), $motoca), 'não vê o pedido de outro motoboy');
+confere(GanhosDoMotoboy::podeVer(new Order(['adhoc' => true, 'status' => 'dispatched']), $motoca), 'vê o pedido aberto (avulso, sem motoboy)');
+confere(GanhosDoMotoboy::podeVer(new Order(['adhoc' => true, 'status' => 'dispatched', 'driver_assigned_uuid' => '']), $motoca), 'motoboy gravado vazio conta como sem motoboy');
+confere(!GanhosDoMotoboy::podeVer(new Order(['adhoc' => true, 'status' => 'canceled']), $motoca), 'não vê pedido aberto já encerrado');
+confere(!GanhosDoMotoboy::podeVer(new Order(['adhoc' => false, 'status' => 'created']), $motoca), 'não vê pedido sem motoboy que não é aberto');
+confere(GanhosDoMotoboy::diasDoPeriodo('2026-07-01', '2026-10-01') === 92 && GanhosDoMotoboy::diasDoPeriodo('2026-07-01', '2026-10-02') === 93, 'dias do período: de 1º/7 a 1º/10 são 92');
+
+echo '== Quem é o motoboy (MotoboyDaSessao)' . PHP_EOL;
+Driver::$todos     = [$motoca, new Driver(['uuid' => 'uuid-driver_outra-empresa', 'user_uuid' => 'usuario-motoca', 'company_uuid' => 'outra'])];
+$GLOBALS['sessao'] = ['company' => 'empresa', 'user' => 'usuario-motoca'];
+confere(MotoboyDaSessao::motoboy(new Request([], '12|abcdef'))?->uuid === 'uuid-driver_motoca', 'token de usuário: o Driver dele na empresa da sessão');
+confere(MotoboyDaSessao::motoboy(new Request([], 'flb_live_abc123')) === null, 'chave de API: ninguém, mesmo que o dono da chave tenha cadastro de motoboy');
+confere(MotoboyDaSessao::motoboy(new Request([], null)) === null, 'sem token: ninguém');
+$GLOBALS['sessao'] = ['company' => 'empresa', 'user' => 'usuario-admin'];
+confere(MotoboyDaSessao::motoboy(new Request([], '13|xyz')) === null, 'usuário sem cadastro de motoboy: ninguém');
+$GLOBALS['sessao'] = ['company' => 'terceira', 'user' => 'usuario-motoca'];
+confere(MotoboyDaSessao::motoboy(new Request([], '12|abcdef')) === null, 'cadastro de motoboy só em outra empresa: ninguém');
+$GLOBALS['sessao'] = ['company' => 'empresa', 'user' => 'usuario-motoca'];
+
 resumo();
