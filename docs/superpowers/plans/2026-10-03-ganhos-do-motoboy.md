@@ -2561,6 +2561,7 @@ const MeusGanhosScreen = () => {
         if (modo === 'tela') {
             setCarregando(true);
             setDados(null);
+            setErro(false);
         }
         if (modo === 'puxar') setAtualizando(true);
         try {
@@ -2581,25 +2582,36 @@ const MeusGanhosScreen = () => {
         }
     }, []);
 
-    // período em vigor: com um atalho escolhido, recalcula pela data de hoje (o app pode ficar aberto de um dia para o outro)
-    const periodoEmVigor = useCallback((): Periodo => {
+    // período em vigor: com um atalho escolhido, recalcula pela data de hoje (o app pode ficar aberto de um dia para o outro);
+    // `mudou` avisa que o período virou e a lista na tela é de outro período
+    const periodoEmVigor = useCallback((): { periodo: Periodo; mudou: boolean } => {
         const { atalho, periodo } = escolhaRef.current;
-        if (!atalho) return periodo;
+        if (!atalho) return { periodo, mudou: false };
         const atual = periodoDoAtalho(atalho, new Date());
-        if (atual.inicio !== periodo.inicio || atual.fim !== periodo.fim) {
+        const mudou = atual.inicio !== periodo.inicio || atual.fim !== periodo.fim;
+        if (mudou) {
             setEscolha({ atalho, periodo: atual });
         }
-        return atual;
+        return { periodo: atual, mudou };
     }, []);
+
+    // recarrega sem esconder a lista; se o período virou ou nada carregou ainda, mostra o carregando no lugar da lista velha
+    const recarregar = useCallback(
+        (modo: ModoDeCarga) => {
+            const { periodo, mudou } = periodoEmVigor();
+            carregar(periodo, mudou || !carregouRef.current ? 'tela' : modo);
+        },
+        [carregar, periodoEmVigor]
+    );
 
     useFocusEffect(
         useCallback(() => {
-            carregar(periodoEmVigor(), carregouRef.current ? 'silencioso' : 'tela');
-        }, [carregar, periodoEmVigor])
+            recarregar('silencioso');
+        }, [recarregar])
     );
 
     useRessincronizar(() => {
-        carregar(periodoEmVigor(), 'silencioso');
+        recarregar('silencioso');
     });
 
     const aplicar = (nova: Escolha) => {
@@ -2700,10 +2712,10 @@ const MeusGanhosScreen = () => {
                     {t('MeusGanhosScreen.totalAReceber')}
                 </Text>
                 <Text color='$textPrimary' fontSize={30} fontWeight='bold'>
-                    {semValores ? '—' : formatarReais(totais.valor)}
+                    {!dados || semValores ? '—' : formatarReais(totais.valor)}
                 </Text>
                 <Text color='$textSecondary' fontSize={14}>
-                    {corridas(totais.entregas)} · {formatarKm(totais.km)}
+                    {dados ? `${corridas(totais.entregas)} · ${formatarKm(totais.km)}` : '—'}
                 </Text>
             </YStack>
             {semValores && <Aviso tom='warning' texto={t('MeusGanhosScreen.semValores')} />}
@@ -2800,7 +2812,7 @@ const MeusGanhosScreen = () => {
                 ListFooterComponent={<Spacer height={120} />}
                 ItemSeparatorComponent={() => <Separator borderColor='$borderColorWithShadow' />}
                 stickySectionHeadersEnabled={false}
-                refreshControl={<RefreshControl refreshing={atualizando} onRefresh={() => carregar(periodoEmVigor(), 'puxar')} tintColor={theme['$blue-500'].val} />}
+                refreshControl={<RefreshControl refreshing={atualizando} onRefresh={() => recarregar('puxar')} tintColor={theme['$blue-500'].val} />}
                 showsVerticalScrollIndicator={false}
             />
         </YStack>
