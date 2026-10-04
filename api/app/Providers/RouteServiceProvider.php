@@ -54,6 +54,10 @@ class RouteServiceProvider extends ServiceProvider
         // chamadas por minuto por usuário, num balde separado do throttle:60,1 que as outras rotas da loja dividem
         RateLimiter::for('entregas-loja-mapa', fn (Request $request) => Limit::perMinute(60)->by('entregas-loja-mapa:' . (session('user') ?: $request->ip())));
 
+        // Entregas RestaurantePro: traçado da rota no mapa do pedido do app (cada card de pedido da lista pede o seu), até 120
+        // chamadas por minuto por motoboy, num balde separado do entregas-motoboy (ganhos e valor)
+        RateLimiter::for('entregas-motoboy-rota', fn (Request $request) => Limit::perMinute(120)->by('entregas-motoboy-rota:' . (session('user') ?: $request->ip())));
+
         $this->routes(
             function () {
                 Route::get(
@@ -101,6 +105,13 @@ class RouteServiceProvider extends ServiceProvider
                     ->group(function () {
                         Route::get('ganhos', [MotoboyController::class, 'ganhos']);
                         Route::get('pedidos/{id}/valor', [MotoboyController::class, 'valor']);
+                    });
+
+                // Entregas RestaurantePro: traçado loja → cliente e situação do motoboy no mapa do pedido do app (MotoboyController@rota)
+                Route::prefix('v1/entregas/motoboy')
+                    ->middleware(['fleetbase.api', 'throttle:entregas-motoboy-rota'])
+                    ->group(function () {
+                        Route::get('pedidos/{id}/rota', [MotoboyController::class, 'rota']);
                     });
             }
         );

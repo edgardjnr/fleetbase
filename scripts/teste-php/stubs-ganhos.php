@@ -60,11 +60,22 @@ namespace Illuminate\Support {
         public function startOfDay(): static { $this->setTime(0, 0, 0, 0); return $this; }
         public function endOfDay(): static { $this->setTime(23, 59, 59, 999999); return $this; }
         public function utc(): static { return $this->setTimezone('UTC'); }
+        // mutáveis, como no Carbon do Laravel
+        public function subHours($n): static { $this->modify("-{$n} hours"); return $this; }
+        public function subMinutes($n): static { $this->modify("-{$n} minutes"); return $this; }
         public function toIso8601String(): string { return $this->format('Y-m-d\TH:i:sP'); }
     }
 }
 
 namespace Illuminate\Support\Facades {
+    class Cache
+    {
+        public static array $dados = [];
+        public static array $validades = [];
+        public static function get($chave, $padrao = null) { return array_key_exists($chave, self::$dados) ? self::$dados[$chave] : $padrao; }
+        public static function put($chave, $valor, $ttl = null) { self::$dados[$chave] = $valor; self::$validades[$chave] = $ttl; return true; }
+    }
+
     class DB
     {
         public static function table(string $tabela) { return new \Teste\Tabela($tabela); }
@@ -148,12 +159,19 @@ namespace Fleetbase\FleetOps\Support {
         public static int $chamadas = 0;
         /** Metros da rota que o OSRM devolve; null = o serviço falha. */
         public static ?float $metros = 3210.4;
+        /** Resposta inteira do OSRM, quando o teste precisa dela (a geometria da rota do mapa do app). */
+        public static ?array $resposta = null;
+        public static array $pedidos = [];
 
         public static function getRouteFromCoordinatesString($coordenadas, $opcoes = [])
         {
             self::$chamadas++;
+            self::$pedidos[] = [$coordenadas, $opcoes];
             if (self::$metros === null) {
                 throw new \RuntimeException('OSRM fora do ar');
+            }
+            if (self::$resposta !== null) {
+                return self::$resposta;
             }
 
             return ['code' => 'Ok', 'routes' => [['distance' => self::$metros]]];
@@ -218,6 +236,7 @@ namespace Fleetbase\FleetOps\Models {
         public $public_id;
         public $name;
         public $user_uuid;
+        public $online       = false;
         public $company_uuid = 'empresa';
         public static function where($coluna, $valor) { return (new \Teste\Consulta(self::$todos))->where($coluna, $valor); }
     }
@@ -237,6 +256,7 @@ namespace Fleetbase\FleetOps\Models {
         public $payload               = null;
         public $driverAssigned        = null;
         public $entregas_concluido_em = '2026-10-03 22:42:00';
+        public $updated_at            = null;
         public $timestamps            = true;
         public array $meta            = [];
 
@@ -337,11 +357,38 @@ namespace Teste {
         private array $grupos = [[]];
         public function __construct(private array $itens) {}
 
-        public function where($coluna, $valor = null)
+        public function where($coluna, $valor = null, $comparado = null)
         {
+            if (func_num_args() === 3) {
+                // só o ">=" que o pedidosEmAndamento usa, com a data no formato do MySQL
+                $limite = $comparado instanceof \DateTimeInterface ? $comparado->format('Y-m-d H:i:s') : (string) $comparado;
+                $this->grupos[array_key_last($this->grupos)][] = fn ($item) => $valor === '>=' && (string) $item->$coluna >= $limite;
+
+                return $this;
+            }
+
             $this->grupos[array_key_last($this->grupos)][] = $coluna instanceof \Closure ? $this->subgrupo($coluna) : fn ($item) => $item->$coluna === $valor;
 
             return $this;
+        }
+
+        public function whereIn($coluna, $valores)
+        {
+            $this->grupos[array_key_last($this->grupos)][] = fn ($item) => in_array($item->$coluna, (array) $valores, true);
+
+            return $this;
+        }
+
+        public function whereNotIn($coluna, $valores)
+        {
+            $this->grupos[array_key_last($this->grupos)][] = fn ($item) => !in_array($item->$coluna, (array) $valores, true);
+
+            return $this;
+        }
+
+        public function get($colunas = ['*'])
+        {
+            return new \Illuminate\Support\Collection(array_values(array_filter($this->itens, fn ($item) => $this->passa($item))));
         }
 
         public function orWhere($coluna, $valor = null)

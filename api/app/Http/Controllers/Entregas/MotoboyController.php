@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\GanhosDoMotoboy;
 use App\Support\Entregas\MotoboyDaSessao;
+use App\Support\Entregas\RotaDoPedido;
+use App\Support\Entregas\SituacaoDoMotoboy;
+use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\Models\Company;
 use Illuminate\Http\Request;
@@ -14,7 +17,9 @@ use Illuminate\Support\Carbon;
 /**
  * Entregas RestaurantePro: ganhos do motoboy no app (Navigator), na API v1, com o token dele.
  * - ganhos: as entregas concluídas dele no período, com o valor de cada uma e o total (tela Início do app);
- * - valor: km, faixa e valor de um pedido dele ou aberto (card de aceitar e detalhes do pedido).
+ * - valor: km, faixa e valor de um pedido dele ou aberto (card de aceitar e detalhes do pedido);
+ * - rota: o traçado loja → cliente de um pedido dele ou aberto e a situação dele (cor do capacete), para o mapa do pedido
+ *   no app ficar igual ao do console (RotaDoPedido, SituacaoDoMotoboy).
  * O motoboy vem do token (MotoboyDaSessao); as respostas só trazem o valor pago a ele (GanhosDoMotoboy). Usuário de
  * loja nem chega aqui: o ProtegerPortalLoja nega a API v1 a ele.
  */
@@ -57,17 +62,51 @@ class MotoboyController extends Controller
             return $this->soParaMotoboy();
         }
 
+        $pedido = $this->pedidoQuePodeVer($id, $motoboy);
+        if (!$pedido) {
+            return response()->json(['errors' => ['Pedido não encontrado.']], 404);
+        }
+
+        return response()->json(GanhosDoMotoboy::valor($pedido, $calculo->valorDoPedido($pedido)));
+    }
+
+    public function rota(Request $request, string $id, RotaDoPedido $rotas)
+    {
+        $motoboy = MotoboyDaSessao::motoboy($request);
+        if (!$motoboy) {
+            return $this->soParaMotoboy();
+        }
+
+        $pedido = $this->pedidoQuePodeVer($id, $motoboy);
+        if (!$pedido) {
+            return response()->json(['errors' => ['Pedido não encontrado.']], 404);
+        }
+
+        return response()->json([
+            'pedido'   => $pedido->public_id,
+            'rota'     => $rotas->doPedido($pedido),
+            'situacao' => $this->situacao($motoboy),
+        ]);
+    }
+
+    /** Pedido da empresa da sessão (pelo public_id ou uuid) que o motoboy pode ver: dele ou aberto. */
+    protected function pedidoQuePodeVer(string $id, Driver $motoboy): ?Order
+    {
         // nenhum model registra o CompanyScope nesta versão: a empresa é filtrada aqui
         $pedido = Order::where('company_uuid', session('company'))
             ->where(fn ($query) => $query->where('public_id', $id)->orWhere('uuid', $id))
             ->with(['payload.pickup', 'payload.dropoff', 'payload.waypoints'])
             ->first();
 
-        if (!$pedido || !GanhosDoMotoboy::podeVer($pedido, $motoboy)) {
-            return response()->json(['errors' => ['Pedido não encontrado.']], 404);
-        }
+        return $pedido && GanhosDoMotoboy::podeVer($pedido, $motoboy) ? $pedido : null;
+    }
 
-        return response()->json(GanhosDoMotoboy::valor($pedido, $calculo->valorDoPedido($pedido)));
+    /** A situação do motoboy com a mesma regra do capacete do console (MapaController@motoboys). */
+    protected function situacao(Driver $motoboy): string
+    {
+        $pedidos = SituacaoDoMotoboy::pedidosEmAndamento((string) session('company'), [$motoboy->uuid])[$motoboy->uuid] ?? [];
+
+        return SituacaoDoMotoboy::classificar((bool) $motoboy->online, array_map(fn ($pedido) => $pedido->status, $pedidos));
     }
 
     protected function soParaMotoboy()

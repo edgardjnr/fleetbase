@@ -259,7 +259,13 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
   - O card de aceitar (`AdhocOrderCard`) e os detalhes (`OrderScreen`) mostram km (loja → cliente), faixa e o valor do motoboy (`ValorDaEntrega` + `use-valor-da-entrega`, cache de 5 min por pedido).
   - API: `api/app/Http/Controllers/Entregas/MotoboyController.php`, `GET v1/entregas/motoboy/ganhos?inicio&fim` (até 3 meses) e `GET v1/entregas/motoboy/pedidos/{id}/valor` (pedido dele ou aberto). Só token de motoboy (`MotoboyDaSessao`: chave de API → 403), nunca com o valor da loja (`GanhosDoMotoboy`), 60 chamadas por minuto por usuário.
   - Funções puras do app em `src/utils/ganhos.ts`, testadas com `node --experimental-strip-types --test scripts/testes/ganhos.teste.ts`.
-- Mapa: chave do Maps SDK for Android restrita ao app (grátis). Directions e Geocoding do app estão desativadas (pagas acima de 10 mil/mês): o mapa abre sem a linha da rota.
+- Mapa: chave do Maps SDK for Android restrita ao app (grátis). Directions e Geocoding do Google estão desativadas no app (pagas acima de 10 mil/mês).
+- **Mapa do pedido igual ao do console** (`src/components/LiveOrderRoute.tsx`, decisão de 2026-10-04; desenho: `docs/superpowers/specs/2026-10-04-mapa-do-app-igual-ao-console-design.md`):
+  - **P** verde na coleta e **D** vermelho na entrega (`MarcadorParada`), com o endereço no toque;
+  - a linha loja → cliente vem da **nossa API** (`GET v1/entregas/motoboy/pedidos/{id}/rota`, `MotoboyController@rota` + `App\Support\Entregas\RotaDoPedido`), pelo mesmo OSRM do console, na cor do status do pedido. O traçado fica no cache (Redis) por pedido e coordenadas: 24 h do OSRM, 5 min da linha reta (tracejada no app) quando o OSRM falha. Limitador próprio `entregas-motoboy-rota` (120 por minuto por motoboy);
+  - o motoboy é o capacete do console (`MarcadorCapacete`, PNGs em `assets/images/capacete-*.png`) na cor da `situacao` que a mesma rota devolve (`SituacaoDoMotoboy`), com o nome embaixo e sem girar. A posição é a do GPS do celular; some em pedido encerrado e a mais de 30 km das paradas;
+  - resumo "3,2 km · 9 min" no canto ("≈" na linha reta). O card de aceitar mostra loja → cliente, não mais motoboy → loja;
+  - funções puras em `src/utils/mapa-da-entrega.ts`, testadas com `node --experimental-strip-types --test scripts/testes/mapa-da-entrega.teste.ts`; a API, com `scripts/teste-php/rota-do-motoboy.php`.
 - Secrets do repo: `GOOGLE_SERVICES_JSON`, `FLEETBASE_KEY` (chave pública `flb_live_`), `GOOGLE_MAPS_API_KEY`. O projeto Google `entregas-restaurantepro` está no plano Blaze (conta de faturamento vinculada para o Maps).
 - Push: Firebase `entregas-restaurantepro`; o JSON da conta de serviço foi enviado em Admin → Notificações Push.
 - **Tempo real do app:** o socket vem do `.env` gerado no CI (`SOCKETCLUSTER_HOST/PORT/SECURE`). Sem essas variáveis o app conectava no `socket.fleetbase.io` e ficava sem tempo real: pedido novo, status e chat chegavam só por push ou pela atualização periódica da lista. O app também recarrega pedidos e a conversa aberta quando volta para a frente ou o socket reconecta (`src/hooks/use-ressincronizar.ts`).
@@ -285,3 +291,4 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
     - teste de isolamento.
 11. Ganhos do motoboy no app (2026-10-03): Início com filtro de período e total a receber, valor da entrega no card de aceitar e nos detalhes, e valor congelado por entrega (`entregas_valores_pedido`).
 12. Motoboys no mapa do portal da loja (2026-10-04): todos os motoboys online com o capacete e o nome, posição a cada 5 s com deslize e destaque do motoboy do pedido aberto; a rota do motoboy do pedido deixou de mandar a posição.
+13. Mapa do pedido no app do motoboy igual ao do console (2026-10-04): P/D, linha da rota pelo OSRM via API (`v1/entregas/motoboy/pedidos/{id}/rota`), capacete na cor da situação e resumo de km e tempo.
