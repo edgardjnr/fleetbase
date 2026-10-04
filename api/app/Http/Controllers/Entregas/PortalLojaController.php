@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Entregas;
 use App\Http\Controllers\Controller;
 use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\LojaDoUsuario;
+use App\Support\Entregas\MotoboysNoMapaDaLoja;
 use App\Support\Entregas\StatusDoPedido;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
@@ -26,9 +27,6 @@ class PortalLojaController extends Controller
      * máximo, 92 dias). O portal confere o mesmo limite antes de consultar (MAX_DIAS no controller do extrato).
      */
     public const MAX_DIAS_EXTRATO = 92;
-
-    /** A loja só vê a posição do motoboy até estas horas depois do aceite (LGPD). */
-    public const HORAS_POSICAO = 4;
 
     public function minhaLoja(CalculoEntregas $calculo)
     {
@@ -109,21 +107,14 @@ class PortalLojaController extends Controller
         ]);
     }
 
-    /** Motoboy do pedido em andamento (nome, foto e, com o pedido aceito há pouco, a posição). Só pedido que o portal mostra a este usuário. */
+    /** Motoboy do pedido em andamento (nome, foto e aceite). Só pedido que o portal mostra a este usuário. */
     public function motoboy(string $id)
     {
         $vendor = $this->lojaDaSessao();
 
-        // os mesmos donos de pedido que o portal mostra (PortalOrderService::accountCustomerUuids): a loja e o contato do
-        // usuário (a central pode lançar o pedido no contato); só com a loja, esse pedido aparece no portal e aqui dá 404
-        $donos = array_values(array_filter([
-            $vendor->uuid,
-            LojaDoUsuario::contato(session('user'))?->uuid,
-        ]));
-
         // name e photo_url do Driver leem o usuário dele e o avatar do usuário: vêm junto, e não sob demanda dentro dos accessors
         $pedido = Order::where('company_uuid', session('company'))
-            ->whereIn('customer_uuid', $donos)
+            ->whereIn('customer_uuid', $this->donosDosPedidos($vendor))
             ->where(fn ($q) => $q->where('public_id', $id)->orWhere('uuid', $id))
             ->with('driverAssigned.user.avatar')
             ->firstOrFail();
@@ -133,30 +124,41 @@ class PortalLojaController extends Controller
             return response()->json(['motoboy' => null]);
         }
 
-        // LGPD: a posição só aparece com o pedido aceito (started) há no máximo HORAS_POSICAO horas. Antes do aceite, ou num
-        // pedido que ficou aberto por horas, o motoboy pode estar em outra entrega ou fora do expediente
-        $latitude = $longitude = null;
-        if ($pedido->started && $pedido->started_at?->gte(now()->subHours(static::HORAS_POSICAO))) {
-            $posicao   = $motoboy->location;
-            $latitude  = $posicao?->getLat();
-            $longitude = $posicao?->getLng();
-
-            // o Fleetbase grava (0, 0) em motorista que ainda não mandou GPS: é "sem posição", não um ponto no mapa
-            // (mesmo critério do CalculoEntregas::temCoordenadas)
-            if (abs((float) $latitude) <= 0.0001 && abs((float) $longitude) <= 0.0001) {
-                $latitude = $longitude = null;
-            }
-        }
-
+        // a posição fica no mapa de motoboys (motoboysNoMapa), que mostra todos os motoboys online
         return response()->json([
             'motoboy' => [
-                'nome'      => $motoboy->name,
-                'foto'      => $motoboy->photo_url,
-                'aceitou'   => (bool) $pedido->started,
-                'latitude'  => $latitude,
-                'longitude' => $longitude,
+                'nome'    => $motoboy->name,
+                'foto'    => $motoboy->photo_url,
+                'aceitou' => (bool) $pedido->started,
             ],
         ]);
+    }
+
+    /**
+     * Motoboys no mapa do portal (todos os online e os offline com pedido aceito), consultado a cada 5 s com o mapa aberto.
+     * Sem id, telefone nem pedido de outra loja (MotoboysNoMapaDaLoja).
+     */
+    public function motoboysNoMapa()
+    {
+        $vendor = $this->lojaDaSessao();
+
+        return response()->json([
+            'motoboys' => MotoboysNoMapaDaLoja::listar(session('company'), $this->donosDosPedidos($vendor)),
+        ]);
+    }
+
+    /**
+     * Os donos de pedido que o portal mostra a este usuário (PortalOrderService::accountCustomerUuids): a loja e o contato
+     * do usuário (a central pode lançar o pedido no contato; só com a loja, esse pedido aparece no portal).
+     *
+     * @return array<int, string>
+     */
+    protected function donosDosPedidos(Vendor $vendor): array
+    {
+        return array_values(array_filter([
+            $vendor->uuid,
+            LojaDoUsuario::contato(session('user'))?->uuid,
+        ]));
     }
 
     protected function lojaDaSessao(): Vendor

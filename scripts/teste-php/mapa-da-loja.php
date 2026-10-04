@@ -315,5 +315,43 @@ namespace {
     confere(in_array('where company_uuid =', \Teste\Consulta::$registro[Driver::class] ?? [], true), 'motoboys filtrados pela empresa');
     confere(in_array('with user', \Teste\Consulta::$registro[Driver::class] ?? [], true), 'usuário do motoboy (nome) carregado junto');
 
+    echo '== PortalLojaController (rota loja/motoboys e motoboy do pedido sem posição)' . PHP_EOL;
+    require '/repo/api/app/Http/Controllers/Entregas/PortalLojaController.php';
+
+    $controller = new PortalLojaController();
+    $sessao     = ['company' => EMPRESA, 'user' => 'usuario-a'];
+    $resposta   = $controller->motoboysNoMapa()->dados;
+    confere(array_keys($resposta) === ['motoboys'], 'resposta { motoboys: [...] }');
+    confere($resposta['motoboys'] === json_decode(json_encode(MotoboysNoMapaDaLoja::listar(EMPRESA, ['vendor-a', 'contato-a'])), true),
+        'a lista do MotoboysNoMapaDaLoja, com a empresa da sessão e os donos da loja (Vendor e contato do usuário)');
+
+    $sessao = ['company' => EMPRESA, 'user' => 'usuario-sem-loja'];
+    try {
+        $controller->motoboysNoMapa();
+        confere(false, 'usuário sem loja recebe 404');
+    } catch (Abortado $erro) {
+        confere($erro->status === 404, 'usuário sem loja recebe 404');
+    }
+
+    $sessao = ['company' => EMPRESA, 'user' => 'usuario-a'];
+    $doMapa = (object) ['name' => 'Coleta', 'photo_url' => 'https://foto.teste/coleta.jpg', 'location' => new Ponto(-21.18, -47.82)];
+    Order::$todos = [
+        (object) ['company_uuid' => EMPRESA, 'customer_uuid' => 'vendor-a', 'public_id' => 'order_a1', 'uuid' => 'uuid-a1', 'status' => 'started', 'started' => true, 'started_at' => $recente, 'driverAssigned' => $doMapa],
+        (object) ['company_uuid' => EMPRESA, 'customer_uuid' => 'vendor-a', 'public_id' => 'order_a9', 'uuid' => 'uuid-a9', 'status' => 'completed', 'started' => true, 'started_at' => $recente, 'driverAssigned' => $doMapa],
+        (object) ['company_uuid' => EMPRESA, 'customer_uuid' => 'vendor-b', 'public_id' => 'order_b1', 'uuid' => 'uuid-b1', 'status' => 'started', 'started' => true, 'started_at' => $recente, 'driverAssigned' => $doMapa],
+    ];
+    confere(($controller->motoboy('order_a1')->dados['motoboy'] ?? null) === ['nome' => 'Coleta', 'foto' => 'https://foto.teste/coleta.jpg', 'aceitou' => true],
+        'motoboy do pedido: nome, foto e aceite, sem latitude e longitude');
+    confere(($controller->motoboy('uuid-a1')->dados['motoboy']['nome'] ?? null) === 'Coleta', 'pedido também pelo uuid');
+    $encerrado = $controller->motoboy('order_a9')->dados;
+    confere(array_key_exists('motoboy', $encerrado) && $encerrado['motoboy'] === null, 'pedido encerrado: motoboy null');
+    try {
+        $controller->motoboy('order_b1');
+        confere(false, 'pedido de outra loja: 404');
+    } catch (NaoEncontrado) {
+        confere(true, 'pedido de outra loja: 404');
+    }
+    confere(!defined(PortalLojaController::class . '::HORAS_POSICAO'), 'sem a regra das 4 h (HORAS_POSICAO)');
+
     echo PHP_EOL . "FALHAS: {$falhas}" . PHP_EOL;
 }

@@ -5,8 +5,8 @@ namespace App\Support\Entregas;
 /**
  * Entregas RestaurantePro: os status de pedido (orders.status, gravados pelo Fleet-Ops) que as regras do Entregas
  * conferem, numa lista só: o cancelamento pela loja (RegrasPortalLoja), o aceite do motoboy
- * (BarrarAceiteDePedidoEncerrado), a posição do motoboy no portal (PortalLojaController) e o reenvio do aviso de
- * pedido aberto (ReenviarPedidosAbertos).
+ * (BarrarAceiteDePedidoEncerrado), o motoboy do pedido no portal (PortalLojaController), os pedidos em andamento dos
+ * mapas de motoboys (SituacaoDoMotoboy) e o reenvio do aviso de pedido aberto (ReenviarPedidosAbertos).
  */
 class StatusDoPedido
 {

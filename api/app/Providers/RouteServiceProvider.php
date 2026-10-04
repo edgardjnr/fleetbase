@@ -50,6 +50,10 @@ class RouteServiceProvider extends ServiceProvider
         // fleetbase.api conta por IP (roda antes da autenticação); este roda depois dela, com o usuário na sessão
         RateLimiter::for('entregas-motoboy', fn (Request $request) => Limit::perMinute(60)->by('entregas-motoboy:' . (session('user') ?: $request->ip())));
 
+        // Entregas RestaurantePro: mapa de motoboys do portal da loja (cada aba com o mapa aberto consulta a cada 5 s), até 60
+        // chamadas por minuto por usuário, num balde separado do throttle:60,1 que as outras rotas da loja dividem
+        RateLimiter::for('entregas-loja-mapa', fn (Request $request) => Limit::perMinute(60)->by('entregas-loja-mapa:' . (session('user') ?: $request->ip())));
+
         $this->routes(
             function () {
                 Route::get(
@@ -87,6 +91,7 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('loja/minha-loja', [PortalLojaController::class, 'minhaLoja'])->middleware('throttle:60,1');
                         Route::get('loja/extrato', [PortalLojaController::class, 'extrato'])->middleware('throttle:60,1');
                         Route::get('loja/pedidos/{id}/motoboy', [PortalLojaController::class, 'motoboy'])->middleware('throttle:60,1');
+                        Route::get('loja/motoboys', [PortalLojaController::class, 'motoboysNoMapa'])->middleware('throttle:entregas-loja-mapa');
                     });
 
                 // Entregas RestaurantePro: ganhos do motoboy no app (tela Início, card de aceitar e detalhes), na API v1 com o
