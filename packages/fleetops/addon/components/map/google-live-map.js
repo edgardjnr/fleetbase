@@ -6,6 +6,7 @@ import { action } from '@ember/object';
 import { isArray } from '@ember/array';
 import { debug } from '@ember/debug';
 import { guidFor } from '@ember/object/internals';
+import capaceteDoMotoboy from '../../utils/entregas-capacete';
 import { buildDriverLiveMapContent, buildPlaceInfoWindowContent, buildPlaceTooltipContent, buildVehicleLiveMapContent } from '../../utils/live-map-card-content';
 
 export default class MapGoogleLiveMapComponent extends Component {
@@ -60,8 +61,9 @@ export default class MapGoogleLiveMapComponent extends Component {
             const marker = this.mapManager.getMarker(driver.id);
             if (!marker) {
                 const createdMarker = await this.mapManager.addMarker(driver.id, coords.lat, coords.lng, {
-                    iconUrl: driver.avatar_url ?? driver.vehicle_avatar ?? '/engines-dist/images/driver-marker.png',
-                    iconSize: [20, 20],
+                    // Entregas: capacete na cor da situação do motoboy (aqui só ao criar o marcador)
+                    iconUrl: capaceteDoMotoboy(driver, this.args.situacoesDosMotoboys ?? {}),
+                    iconSize: [32, 32],
                     title: driver.name,
                     tooltip: buildDriverLiveMapContent(driver, false, this.intl),
                     tooltipOptions: { html: true },

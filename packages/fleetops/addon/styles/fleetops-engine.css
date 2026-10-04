@@ -8883,3 +8883,23 @@ body[data-theme='dark'] .filter-multi-model > .clear-button {
     height: 1.625rem;
     min-width: 4rem;
 }
+
+/**
+ * Entregas: nome do motoboy fixo embaixo do capacete no mapa ao vivo.
+ */
+.leaflet-tooltip.entregas-nome-motoboy {
+    padding: 1px 6px;
+    border: none;
+    border-radius: 9999px;
+    background: rgba(15, 23, 42, 0.88);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+    color: #f8fafc;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+.leaflet-tooltip-bottom.entregas-nome-motoboy::before {
+    border-bottom-color: rgba(15, 23, 42, 0.88);
+}

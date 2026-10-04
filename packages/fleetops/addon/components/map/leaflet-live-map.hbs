@@ -22,6 +22,7 @@
             @longitude={{this.longitude}}
             @zoom={{this.zoom}}
             @drivers={{this.drivers}}
+            @situacoesDosMotoboys={{this.situacoesDosMotoboys}}
             @vehicles={{this.vehicles}}
             @places={{this.places}}
             @serviceAreas={{this.serviceAreaActions.serviceAreas}}
@@ -75,8 +76,9 @@
                         @id={{driver.id}}
                         @publicId={{driver.public_id}}
                         @location={{point-to-coordinates driver.location}}
-                        @rotationAngle={{driver.heading}}
-                        @icon={{icon iconUrl=(or driver.avatar_url driver.vehicle_avatar) iconSize=(array 24 24)}}
+                        @rotationAngle={{0}}
+                        @disableRotation={{true}}
+                        @icon={{icon iconUrl=(this.capaceteDoMotoboy driver) iconSize=(array 36 36) tooltipAnchor=(array 0 13)}}
                         @onAdd={{fn this.trigger "onDriverAdded" driver}}
                         @onClick={{fn this.trigger "onDriverClicked" driver}}
                         @draggable={{false}}
@@ -134,58 +136,8 @@
                                 </div>
                             </div>
                         </marker.popup>
-                        <marker.tooltip @permanent={{false}} @sticky={{true}}>
-                            <div class="w-[280px] max-w-[calc(100vw-2rem)]">
-                                <div class="flex items-center gap-1.5 text-xs font-semibold mb-1.5">
-                                    <span class="inline-block w-2 h-2 rounded-full {{if driver.online 'bg-green-400' 'bg-red-500'}}"></span>
-                                    <span>{{driver.name}}</span>
-                                    <div
-                                        class="status-badge
-                                            {{if driver.status (dasherize driver.status) 'default'}}-status-badge status-badge-{{if driver.status (dasherize driver.status) 'default'}}
-                                            shadow-none ml-auto"
-                                    >
-                                        <span class="rounded-full text-[9px] px-1.5 py-0.5">{{n-a driver.meta.status_label (smart-humanize driver.status)}}</span>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-1">
-                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
-                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">ID</div>
-                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.public_id driver.id}}</div>
-                                    </div>
-                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
-                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.phone"}}</div>
-                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.phone}}</div>
-                                    </div>
-                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
-                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.vehicle"}}</div>
-                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.vehicle_name}}</div>
-                                    </div>
-                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
-                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.email"}}</div>
-                                        <div class="text-[11px] text-white leading-tight truncate min-w-0 w-full">{{n-a driver.email}}</div>
-                                    </div>
-                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
-                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.order"}}</div>
-                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.meta.current_order_reference}}</div>
-                                    </div>
-                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
-                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.speed"}}</div>
-                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.meta.speed_label}}</div>
-                                    </div>
-                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
-                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.heading"}}</div>
-                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a driver.meta.heading_label}}</div>
-                                    </div>
-                                    <div class="rounded bg-gray-900 shadow-md px-1.5 py-1 min-w-0">
-                                        <div class="text-[9px] font-semibold uppercase text-gray-400 leading-none">{{t "fleet-ops.ui.map.leaflet-live-map.location"}}</div>
-                                        <div class="text-[11px] text-white leading-tight whitespace-normal break-words">{{n-a
-                                                driver.meta.location_coordinates
-                                                (point-coordinates driver.location)
-                                            }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </marker.tooltip>
+                        {{! Entregas: nome do motoboy sempre visível embaixo do capacete (os detalhes ficam no popup do clique) }}
+                        <marker.tooltip @permanent={{true}} @direction="bottom" @className="entregas-nome-motoboy">{{driver.name}}</marker.tooltip>
                     </layers.tracking-marker>
                 {{/each}}
 

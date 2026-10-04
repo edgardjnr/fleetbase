@@ -146,6 +146,10 @@ L.TrackingMarker = L.Marker.extend({
     },
 
     _applyRotation: function () {
+        // Entregas: o capacete do motoboy fica sempre em pé (a direção do GPS o deixaria de lado ou de cabeça para baixo)
+        if (this.options.disableRotation) {
+            return;
+        }
         if (this.options.bearingAngle) {
             this._icon.style[L.DomUtil.TRANSFORM + 'Origin'] = this.options.rotationOrigin;
 
@@ -236,6 +240,14 @@ export default class LeafletTrackingMarkerComponent extends MarkerLayer {
          * @type {String}
          */
         'publicId',
+
+        /**
+         * Entregas: never rotate the icon (heading updates from the socket are ignored).
+         *
+         * @argument disableRotation
+         * @type {Boolean}
+         */
+        'disableRotation',
     ];
 
     /**

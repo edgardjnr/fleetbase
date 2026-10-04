@@ -12,6 +12,13 @@ import { task, timeout } from 'ember-concurrency';
 import { next } from '@ember/runloop';
 import getModelName from '@fleetbase/ember-core/utils/get-model-name';
 import ensureLeafletPluginsReady, { hasLeafletPluginsReady } from '../../utils/leaflet-plugin-loader';
+import capaceteDoMotoboy, { indexarSituacoes } from '../../utils/entregas-capacete';
+
+/** Entregas: de quanto em quanto tempo o mapa relê a situação dos motoboys (cor do capacete). */
+const INTERVALO_SITUACOES_MS = 20000;
+
+/** Entregas: o mapa mostra só os locais de coleta (lojas), não todo Place da empresa (ver MapaController). */
+const ENDPOINTS_ENTREGAS = { places: 'entregas/mapa/locais-de-coleta' };
 
 export default class MapLeafletLiveMapComponent extends Component {
     liveViewportReloadDebounceMs = 300;
@@ -53,6 +60,7 @@ export default class MapLeafletLiveMapComponent extends Component {
     @tracked drivers = [];
     @tracked vehicles = [];
     @tracked places = [];
+    @tracked situacoesDosMotoboys = {};
     @tracked leafletPluginsReady = hasLeafletPluginsReady();
     _viewportReloadLocks = new Set();
 
@@ -262,6 +270,7 @@ export default class MapLeafletLiveMapComponent extends Component {
             this.#createMapContextMenu(this.map);
             this.trigger('onLoaded', { map: this.map, data });
             this.ready = true;
+            this.acompanharSituacoesDosMotoboys.perform();
         } catch (err) {
             debug('Failed to load live map: ' + err.message);
         }
@@ -297,6 +306,31 @@ export default class MapLeafletLiveMapComponent extends Component {
         }
     }
 
+    /**
+     * Entregas: relê a situação dos motoboys (livre, coleta, entrega, offline) enquanto o mapa estiver aberto.
+     * Com a aba oculta não consulta; a task é cancelada quando o componente sai da tela.
+     */
+    @task({ restartable: true }) *acompanharSituacoesDosMotoboys() {
+        while (!this.isDestroying && !this.isDestroyed) {
+            if (typeof document === 'undefined' || !document.hidden) {
+                try {
+                    const resposta = yield this.fetch.get('entregas/mapa/motoboys');
+                    const situacoes = indexarSituacoes(resposta?.motoboys);
+                    // só troca quando algo mudou: cada troca recria o ícone de todos os motoboys
+                    if (JSON.stringify(situacoes) !== JSON.stringify(this.situacoesDosMotoboys)) {
+                        this.situacoesDosMotoboys = situacoes;
+                    }
+                } catch (err) {
+                    debug('Falha ao ler a situação dos motoboys: ' + err.message);
+                }
+            }
+            yield timeout(INTERVALO_SITUACOES_MS);
+        }
+    }
+
+    /** Entregas: capacete do motoboy na cor da situação (usado como helper no template). */
+    capaceteDoMotoboy = (driver) => capaceteDoMotoboy(driver, this.situacoesDosMotoboys);
+
     @task *loadResource(path, options = {}) {
         if (this.abilities.cannot(`fleet-ops list ${path}`)) return [];
 
@@ -309,7 +343,7 @@ export default class MapLeafletLiveMapComponent extends Component {
         const name = camelize(path);
         const callback = `on${capitalize(name)}Loaded`;
         const params = options.params ?? {};
-        const url = `fleet-ops/live/${path}`;
+        const url = ENDPOINTS_ENTREGAS[path] ?? `fleet-ops/live/${path}`;
 
         try {
             const data = yield this.fetch.get(url, params, { normalizeToEmberData: true, normalizeModelType: singularize(dasherize(name)) });
