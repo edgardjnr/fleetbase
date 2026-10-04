@@ -1423,6 +1423,23 @@ layout:
         changelog: Changelog
 
 ember-ui:
+  tracking-status:
+    status:
+      order-created: Order Created
+      order-dispatched: Order Dispatched
+      order-started: Order Started
+      driver-enroute: Driver En Route
+      order-completed: Order Completed
+      order-canceled: Order Canceled
+      arrived: Arrived
+    details:
+      order-created: New order was created.
+      order-dispatched: Order has been dispatched.
+      order-started: Order has been started.
+      driver-enroute: Driver is en route.
+      order-completed: Order has been completed.
+      order-canceled: Order was canceled.
+      arrived-geofence: Driver entered destination geofence "{name}".
   template-builder:
     element-types:
       text: Text

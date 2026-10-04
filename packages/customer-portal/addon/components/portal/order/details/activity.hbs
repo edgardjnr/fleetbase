@@ -7,7 +7,7 @@
                 </div>
                 <div class="portal-activity-content">
                     <div class="flex items-center gap-2">
-                        <div class="font-semibold leading-5">{{smart-humanize status.status}}</div>
+                        <div class="font-semibold leading-5">{{or status.statusTraduzido (smart-humanize status.status)}}</div>
                     </div>
                     <div class="portal-activity-details">{{n-a status.details}}</div>
                 </div>

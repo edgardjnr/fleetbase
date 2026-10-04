@@ -29,10 +29,10 @@
                         </div>
                         <label for={{concat "activity_" index}} class="ml-3 flex flex-col cursor-pointer w-full">
                             <span class="block text-sm font-semibold">
-                                {{activity.status}}
+                                {{tracking-status-text activity.status}}
                             </span>
                             <span class="block text-sm">
-                                {{activity.details}}
+                                {{tracking-status-text activity.details "details"}}
 
                                 {{#if (eq activity.code "dispatched")}}
                                     <InfoBlock

@@ -4,6 +4,7 @@ import { inject as service } from '@ember/service';
 import { action, get } from '@ember/object';
 import { task } from 'ember-concurrency';
 import config from 'ember-get-config';
+import trackingStatusText from '@fleetbase/ember-ui/utils/tracking-status-text';
 import { buildServiceStopsFromPayload } from '../../utils/route-visualization';
 
 export default class ModalsUpdateOrderActivityComponent extends Component {
@@ -169,7 +170,7 @@ export default class ModalsUpdateOrderActivityComponent extends Component {
 
             this.modalsManager.setOption('activityCreated', activity);
             this.modalsManager.setOption('proofCreated', this.hasUploadedProof ? this.proof : null);
-            this.notifications.success(this.intl.t('fleet-ops.ui.modals.update-order-activity.order-activity-has-been-updated-to', { status: activity.status }));
+            this.notifications.success(this.intl.t('fleet-ops.ui.modals.update-order-activity.order-activity-has-been-updated-to', { status: trackingStatusText(this.intl, activity._resolved_status ?? activity.status) }));
             modal.done();
         } catch (error) {
             this.notifications.serverError(error);

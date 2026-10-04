@@ -1399,6 +1399,23 @@ modals:
     help-text: Digite uma senha com pelo menos 6 caracteres para continuar.
 
 ember-ui:
+  tracking-status:
+    status:
+      order-created: Pedido criado
+      order-dispatched: Pedido despachado
+      order-started: Pedido iniciado
+      driver-enroute: Motorista a caminho
+      order-completed: Pedido concluído
+      order-canceled: Pedido cancelado
+      arrived: Chegou ao destino
+    details:
+      order-created: Novo pedido criado.
+      order-dispatched: O pedido foi despachado.
+      order-started: O pedido foi iniciado.
+      driver-enroute: O motorista está a caminho.
+      order-completed: O pedido foi concluído.
+      order-canceled: O pedido foi cancelado.
+      arrived-geofence: O motorista entrou na cerca do destino "{name}".
   template-builder:
     element-types:
       text: Texto

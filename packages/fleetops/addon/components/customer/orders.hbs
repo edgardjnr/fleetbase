@@ -149,10 +149,10 @@
                                                     {{#each order.tracking_statuses as |trackingStatus|}}
                                                         <div class="activity-detail">
                                                             <div class="flex flex-row space-x-1">
-                                                                <h3 class="font-semibold text-sm">{{trackingStatus.status}}</h3>
+                                                                <h3 class="font-semibold text-sm">{{tracking-status-text trackingStatus.status}}</h3>
                                                                 <div class="text-sm">{{trackingStatus.createdAtShortWithTime}}</div>
                                                             </div>
-                                                            <div class="text-sm">{{n-a trackingStatus.details}}</div>
+                                                            <div class="text-sm">{{n-a (tracking-status-text trackingStatus.details "details")}}</div>
                                                         </div>
                                                     {{else}}
                                                         <div class="px-10 py-2 flex items-center justify-center">
