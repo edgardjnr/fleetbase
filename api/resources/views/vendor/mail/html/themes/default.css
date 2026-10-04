@@ -1,0 +1,275 @@
+/* Entregas RestaurantePro: tema dos e-mails no estilo C (minimalista, como carta). */
+
+body,
+body *:not(html):not(style):not(br):not(tr):not(code) {
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+    position: relative;
+}
+
+body {
+    -webkit-text-size-adjust: none;
+    background-color: #ffffff;
+    color: #374151;
+    height: 100%;
+    line-height: 1.5;
+    margin: 0;
+    padding: 0;
+    width: 100% !important;
+}
+
+p,
+ul,
+ol,
+blockquote {
+    line-height: 1.5;
+    text-align: left;
+}
+
+a {
+    color: #111827;
+}
+
+a img {
+    border: none;
+}
+
+h1 {
+    color: #111827;
+    font-size: 20px;
+    font-weight: bold;
+    margin-top: 0;
+    text-align: left;
+}
+
+h2 {
+    color: #111827;
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 0;
+    text-align: left;
+}
+
+h3 {
+    color: #111827;
+    font-size: 14px;
+    font-weight: bold;
+    margin-top: 0;
+    text-align: left;
+}
+
+p {
+    color: #374151;
+    font-size: 15px;
+    line-height: 1.5em;
+    margin-top: 0;
+    text-align: left;
+}
+
+p.sub {
+    font-size: 12px;
+}
+
+img {
+    max-width: 100%;
+}
+
+.wrapper {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    background-color: #ffffff;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.content {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.header {
+    padding: 24px 0 0;
+    text-align: left;
+}
+
+.header a {
+    display: inline-block;
+    text-decoration: none;
+}
+
+.logo {
+    border: 0;
+    height: 40px;
+    max-height: 40px;
+    width: auto;
+}
+
+.body {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    background-color: #ffffff;
+    border: hidden !important;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.inner-body {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 560px;
+    background-color: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    margin: 16px auto 0;
+    padding: 0;
+    width: 560px;
+}
+
+.subcopy {
+    border-top: 1px solid #e5e7eb;
+    margin-top: 24px;
+    padding-top: 16px;
+}
+
+.subcopy p {
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.footer {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 560px;
+    border-top: 1px solid #e5e7eb;
+    margin: 0 auto;
+    padding: 0;
+    text-align: left;
+    width: 560px;
+}
+
+.footer p {
+    color: #9ca3af;
+    font-size: 12px;
+    text-align: left;
+}
+
+.footer a {
+    color: #9ca3af;
+    text-decoration: underline;
+}
+
+.table table {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 16px 0;
+    width: 100%;
+}
+
+.table th {
+    border-bottom: 1px solid #e5e7eb;
+    margin: 0;
+    padding-bottom: 8px;
+    text-align: left;
+}
+
+.table td {
+    color: #374151;
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0;
+    padding: 6px 12px 6px 0;
+}
+
+.content-cell {
+    max-width: 100vw;
+    padding: 24px 0;
+}
+
+.action {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    float: unset;
+    margin: 24px 0;
+    padding: 0;
+    text-align: left;
+    width: 100%;
+}
+
+.button {
+    -webkit-text-size-adjust: none;
+    border-radius: 6px;
+    color: #ffffff;
+    display: inline-block;
+    font-weight: bold;
+    overflow: hidden;
+    text-decoration: none;
+}
+
+.button-blue,
+.button-primary,
+.button-green,
+.button-success,
+.button-red,
+.button-error {
+    background-color: #111827;
+    border-bottom: 10px solid #111827;
+    border-left: 20px solid #111827;
+    border-right: 20px solid #111827;
+    border-top: 10px solid #111827;
+}
+
+.panel {
+    border-left: #F28C13 solid 4px;
+    margin: 16px 0;
+}
+
+.panel-content {
+    background-color: #f3f4f6;
+    color: #374151;
+    padding: 16px;
+}
+
+.panel-content p {
+    color: #374151;
+}
+
+.panel-item {
+    padding: 0;
+}
+
+.panel-item p:last-of-type {
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.codigo {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 16px 0 20px;
+    width: 100%;
+}
+
+.codigo-valor {
+    background-color: #f3f4f6;
+    border-radius: 6px;
+    color: #111827;
+    font-size: 28px;
+    font-weight: bold;
+    letter-spacing: 6px;
+    padding: 14px 0;
+    text-align: center;
+}
+
+.break-all {
+    word-break: break-all;
+}
