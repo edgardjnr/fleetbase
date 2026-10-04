@@ -1,7 +1,8 @@
-{{!-- Entregas: motoboy do pedido (nome, foto e posição), com os dados que o ciclo do detalhe consulta --}}
+{{!-- Entregas: motoboy do pedido (nome e foto), com os dados que o ciclo do detalhe consulta. A posição fica no mapa grande
+     da tela Pedidos, que mostra todos os motoboys online (Workspace::Map) --}}
 <ContentPanel @title={{t "customer-portal.ui.entregas.courier"}} @open={{true}} @wrapperClass="bordered-top">
     {{#if @motoboy}}
-        <div class="flex items-center space-x-3 mb-3">
+        <div class="flex items-center space-x-3">
             {{#if @motoboy.foto}}
                 <img src={{@motoboy.foto}} alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
             {{/if}}
@@ -15,44 +16,6 @@
                 {{/if}}
             </div>
         </div>
-        {{#if this.temPosicao}}
-            <div class="h-56 rounded-md overflow-hidden">
-                {{!-- Entregas: o contêiner do Leaflet não tem altura própria; sem w-full h-full o mapa nasce com 0 px de altura.
-                     Sem arrasto: o mapa volta ao motoboy a cada resposta (desfaria o arrasto), e no celular o dedo rola o
-                     painel em vez de mover o mapa; os botões de zoom continuam --}}
-                <LeafletMap
-                    class="w-full h-full"
-                    @lat={{this.posicao.latitude}}
-                    @lng={{this.posicao.longitude}}
-                    @zoom={{15}}
-                    @scrollWheelZoom={{false}}
-                    @dragging={{false}}
-                    as |layers|
-                >
-                    <layers.tile @url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                    {{!-- Entregas: ícone explícito. O Leaflet acha a pasta do ícone padrão pelo nome marker-icon.png no CSS, e o
-                         fingerprint do build de produção quebra essa busca (a imagem saía quebrada). São os PNGs do próprio Leaflet,
-                         que o ember-ui publica em /assets/images; no build, esses caminhos são reescritos com o fingerprint --}}
-                    <layers.marker
-                        @lat={{this.posicao.latitude}}
-                        @lng={{this.posicao.longitude}}
-                        @icon={{icon
-                            iconUrl="/assets/images/marker-icon.png"
-                            iconRetinaUrl="/assets/images/marker-icon-2x.png"
-                            shadowUrl="/assets/images/marker-shadow.png"
-                            iconSize=(array 25 41)
-                            iconAnchor=(array 12 41)
-                            popupAnchor=(array 1 -34)
-                            tooltipAnchor=(array 16 -28)
-                            shadowSize=(array 41 41)
-                        }}
-                        as |marker|
-                    >
-                        <marker.tooltip @permanent={{true}}>{{t "customer-portal.ui.entregas.courier-position"}}</marker.tooltip>
-                    </layers.marker>
-                </LeafletMap>
-            </div>
-        {{/if}}
     {{else if (and @consultado (not @aceito))}}
         <p class="text-sm text-gray-500 dark:text-gray-400">{{t "customer-portal.ui.entregas.courier-waiting"}}</p>
     {{else}}

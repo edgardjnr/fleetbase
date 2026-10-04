@@ -3517,3 +3517,30 @@ body[data-theme='dark'].fleetbase-portal .portal-invoice-notes p {
     color: rgb(156 163 175);
 }
 /* stylelint-enable no-duplicate-selectors */
+
+/* Entregas: nome do motoboy fixo embaixo do capacete no mapa de motoboys do portal (cópia do entregas-nome-motoboy do mapa
+   do console, cujo CSS não carrega aqui) e o destaque azul do motoboy do pedido aberto */
+.fleetbase-portal .leaflet-tooltip.entregas-nome-motoboy {
+    padding: 1px 6px;
+    border: none;
+    border-radius: 9999px;
+    background: rgb(15 23 42 / 88%);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+    color: #f8fafc;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-motoboy::before {
+    border-bottom-color: rgb(15 23 42 / 88%);
+}
+
+.fleetbase-portal .leaflet-tooltip.entregas-nome-motoboy.entregas-nome-motoboy-destaque {
+    background: #2563eb;
+}
+
+.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-motoboy.entregas-nome-motoboy-destaque::before {
+    border-bottom-color: #2563eb;
+}

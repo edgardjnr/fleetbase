@@ -656,7 +656,6 @@ customer-portal:
       courier-waiting: Aguardando um motoboy aceitar.
       courier-accepted: "{name} está com o pedido."
       courier-assigned: "{name} foi chamado e ainda não aceitou."
-      courier-position: Última posição do motoboy
       cancel-locked: O motoboy já aceitou. Para cancelar, fale com a central.
       members-managed-by-central: Para adicionar ou remover usuários da loja, fale com a central.
       login-managed-by-central: O e-mail e o telefone de acesso só podem ser alterados pela central.
