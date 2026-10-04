@@ -1427,6 +1427,37 @@ async function etapaPedido() {
         return '';
     });
 
+    await item('9b', 'Mapa dos motoboys sem id, telefone nem pedido de outra loja', [[estado.tokenA, SEM_LOGIN_A], ...deB], async () => {
+        const campos = ['id', 'nome', 'latitude', 'longitude', 'situacao', 'pedidos'];
+        const ra = await chamar('GET', 'int/v1/entregas/loja/motoboys', { token: estado.tokenA });
+        exigir(ra.status === 200 && Array.isArray(ra.json?.motoboys), () => `controle (A pede o mapa): ${resumo(ra)}`);
+        const rb = await chamar('GET', 'int/v1/entregas/loja/motoboys', { token: estado.tokenB });
+        exigir(rb.status === 200 && Array.isArray(rb.json?.motoboys), () => `B pede o mapa: ${resumo(rb)}`);
+        const problemas = [];
+        for (const [loja, r] of [
+            ['A', ra],
+            ['B', rb],
+        ]) {
+            if (/driver_/.test(JSON.stringify(r.json))) {
+                problemas.push(`${loja}: a resposta tem um id driver_…`);
+            }
+            for (const motoboy of r.json.motoboys) {
+                const extras = Object.keys(motoboy).filter((chave) => !campos.includes(chave));
+                if (extras.length) {
+                    problemas.push(`${loja}: campos a mais (${extras.join(', ')})`);
+                }
+            }
+        }
+        // o pedido de teste já foi cancelado (item 13a); vale também para os pedidos em andamento de A no momento
+        const pedidosDeA = new Set([...ra.json.motoboys.flatMap((m) => m.pedidos ?? []), estado.pedido?.public_id].filter(Boolean));
+        const deAEmB = rb.json.motoboys.flatMap((m) => m.pedidos ?? []).filter((id) => pedidosDeA.has(id));
+        if (deAEmB.length) {
+            problemas.push(`B vê pedido(s) de A: ${deAEmB.join(', ')}`);
+        }
+        exigir(!problemas.length, () => problemas.join('; '));
+        return `${rb.json.motoboys.length} motoboy(s) no mapa de B`;
+    });
+
     await item(
         '14',
         'Aceite do pedido cancelado é barrado (400) e o pedido continua cancelado',
