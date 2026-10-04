@@ -68,7 +68,7 @@ Depois de cada deploy do console, abra o site com Ctrl+Shift+R. O console guarda
   - **Mudanças em `packages/*/server` (PHP) não chegam à produção.** Texto que vem da API é traduzido no frontend.
   - Código PHP próprio vai em `api/app/` (entra na imagem da API). Exemplo: `Http/Controllers/Entregas/`, com as rotas na `Providers/RouteServiceProvider.php`.
 - `deploy/`: stack, modelo de env, `atualizar.sh` e README do deploy.
-- `scripts/teste-php/`: testes de comportamento do PHP do `api/app` sem PHP instalado (php-wasm, PHP 8.2), com os arquivos reais do Fleet-Ops e do core-api (cópias em `packages/`) e stubs do resto. Uso no cabeçalho do `rodar.mjs`.
+- `scripts/teste-php/`: testes de comportamento do PHP do `api/app` sem PHP instalado (php-wasm, PHP 8.2), com os arquivos reais do Fleet-Ops e do core-api (cópias em `packages/`) e stubs do resto. Uso no cabeçalho do `rodar.mjs`. O `sintaxe.mjs` confere a sintaxe com o `php -l` do PHP 8.2.
 
 ## Escopo enxuto: delivery iFood → motoboy
 
@@ -90,6 +90,10 @@ O produto é só isto: o pedido chega do iFood pela API, é despachado para o mo
   - **Não use `orders.distance`:** é a distância *restante* e vai a ~0 quando o pedido conclui.
   - O período usa a data do tracking status `COMPLETED`, no fuso da organização.
   - **Valores por faixa de km** (`Setting` `company.<uuid>.entregas.faixas` = `[{ate_km, motoboy, loja}]`): uma tabela só, com o valor pago ao motoboy e o cobrado da loja. A entrega vale o valor da faixa em que o km cai (0 < km ≤ 1 → 1ª, 1 < km ≤ 2 → 2ª…); acima da última vale a última. `PUT .../faixas` substitui a tabela.
+  - **Valor congelado por entrega** (tabela `entregas_valores_pedido`, migration em `api/database/migrations`, que o `deploy.sh` roda no banco principal e no sandbox; fica fora do `meta` de propósito, porque o `meta` sai na API v1 e no socket): na primeira vez que o pedido tem km e há faixas, o `CalculoEntregas` grava a faixa e os dois valores (`ValoresCongelados`). Relatório, extrato da loja e app do motoboy leem o congelado.
+    - **Mudar a tabela de faixas só vale para as entregas calculadas depois.** Normalmente o valor congela quando o pedido aparece no card de aceitar do motoboy.
+    - Km diferente (endereço alterado, estimativa trocada pela rota do OSRM) recalcula com a tabela vigente.
+    - Valor congelado errado: apague as linhas do período nessa tabela; elas voltam com a tabela atual na próxima consulta.
 - **Cobrança das lojas** (mesma tela, renomeada "Pagamento e cobrança"): modelo A = **uma organização só** (o operador de entregas) e cada restaurante é uma **Loja** (ver "Portal da loja").
   - **Loja do pedido = o Vendor dono do pedido** (`orders.customer_uuid`), como nos pedidos do portal e nos que a central cria escolhendo a loja.
   - **A integração iFood manda, em cada pedido (`POST v1/orders`), `customer` = `public_id` do Fornecedor da loja (`vendor_…`) e `pickup` = `public_id` do Local da loja (`place_…`).** Os dois ids aparecem na tela Lojas. Assim o pedido entra no portal da loja (lista, acompanhamento e cancelamento antes do aceite), no extrato e na cobrança dela (decisão de 2026-10-03).
@@ -220,6 +224,10 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
   - **Ligada (`1`):** push de dados, e o APK 16+ toca em loop com tela cheia. **Só ligar com todos os motoboys no APK 16:** no antigo, tocar no push de dados não abre o pedido.
   - **Como ligar:** `ENTREGAS_ALARME_POR_DADOS=1` nas variáveis do stack (Portainer, como as demais entradas do `stack.env`). O YAML do stack no Portainer precisa ter a linha `ENTREGAS_ALARME_POR_DADOS: ${ENTREGAS_ALARME_POR_DADOS:-}` do `x-api-env` do `deploy/docker-stack.yml` (copie se o editor do Portainer for anterior a ela) → Update the stack ("Re-pull image" desligado). Conferir: `docker exec $(docker ps -q -f name=entregas_queue) printenv ENTREGAS_ALARME_POR_DADOS` (tem de mostrar `1`). Para desligar, deixe a variável vazia e atualize o stack de novo.
 - **Reenvio de pedido aberto:** o `fleetops:dispatch-adhoc` (agendado pelo Fleet-Ops a cada minuto) roda a nossa `api/app/Console/Commands/Entregas/ReenviarPedidosAbertos.php`, trocada no `AppServiceProvider`. O original nunca achava pedido (Carbon mutável) e, corrigido só nisso, avisaria em dobro por até 2 dias. Agora o aviso volta a cada 4 min, no máximo 3 vezes, para os motoboys livres no raio da coleta, com texto em pt-BR (`LembretePedidoAberto`). **Ao atualizar o fleetops-api, confira se os métodos herdados ainda existem** (lista no docblock da classe).
+- **Início = Meus ganhos** (`src/screens/MeusGanhosScreen.tsx`): atalhos (Hoje, 7 dias, Este mês, Mês passado) e De/Até, total a receber e corridas concluídas por dia. Abre sempre no mês atual; tocar numa corrida abre os detalhes.
+  - O card de aceitar (`AdhocOrderCard`) e os detalhes (`OrderScreen`) mostram km (loja → cliente), faixa e o valor do motoboy (`ValorDaEntrega` + `use-valor-da-entrega`, cache de 5 min por pedido).
+  - API: `api/app/Http/Controllers/Entregas/MotoboyController.php`, `GET v1/entregas/motoboy/ganhos?inicio&fim` (até 3 meses) e `GET v1/entregas/motoboy/pedidos/{id}/valor` (pedido dele ou aberto). Só token de motoboy (`MotoboyDaSessao`: chave de API → 403), nunca com o valor da loja (`GanhosDoMotoboy`), 60 chamadas por minuto por usuário.
+  - Funções puras do app em `src/utils/ganhos.ts`, testadas com `node --experimental-strip-types --test scripts/testes/ganhos.teste.ts`.
 - Mapa: chave do Maps SDK for Android restrita ao app (grátis). Directions e Geocoding do app estão desativadas (pagas acima de 10 mil/mês): o mapa abre sem a linha da rota.
 - Secrets do repo: `GOOGLE_SERVICES_JSON`, `FLEETBASE_KEY` (chave pública `flb_live_`), `GOOGLE_MAPS_API_KEY`. O projeto Google `entregas-restaurantepro` está no plano Blaze (conta de faturamento vinculada para o Maps).
 - Push: Firebase `entregas-restaurantepro`; o JSON da conta de serviço foi enviado em Admin → Notificações Push.
@@ -244,3 +252,4 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
     - cobrança pela loja dona do pedido;
     - middlewares de segurança e trava cancelamento × aceite;
     - teste de isolamento.
+11. Ganhos do motoboy no app (2026-10-03): Início com filtro de período e total a receber, valor da entrega no card de aceitar e nos detalhes, e valor congelado por entrega (`entregas_valores_pedido`).
