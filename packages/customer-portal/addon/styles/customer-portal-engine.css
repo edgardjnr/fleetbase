@@ -2436,7 +2436,9 @@ body[data-theme='dark'].fleetbase-portal .portal-order-map {
     z-index: 20;
 }
 
-/* Entregas: chat da loja com os motoboys (Portal::Conversas). Gaveta fixa à direita, por cima do painel do pedido */
+/* Entregas: chat da loja com os motoboys (Portal::Conversas). Gaveta fixa à direita, por cima do painel do pedido e da
+   barra superior do portal (.portal-topbar, z-index 1200: abaixo dela, o cabeçalho da gaveta com o fechar ficava escondido);
+   abaixo só dos menus suspensos (1300 e 1500) */
 .fleetbase-portal .portal-conversas-toggle {
     position: relative;
     display: inline-flex;
@@ -2469,7 +2471,7 @@ body[data-theme='dark'].fleetbase-portal .portal-order-map {
     top: 0;
     right: 0;
     bottom: 0;
-    z-index: 1100;
+    z-index: 1250;
     display: flex;
     flex-direction: column;
     width: min(26rem, 100vw);

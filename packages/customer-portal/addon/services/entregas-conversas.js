@@ -3,7 +3,8 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { race, restartableTask, task, timeout, waitForEvent } from 'ember-concurrency';
 import { espera } from '../utils/entregas-pedido';
-import { INTERVALO_CONVERSA_MS, INTERVALO_LISTA_CONVERSAS_MS, mesclarMensagens, prefixoDoPedido, textoValido, totalNaoLidas } from '../utils/conversas';
+import { INTERVALO_CONVERSA_MS, INTERVALO_LISTA_CONVERSAS_MS, mesclarMensagens, prefixoDoPedido, registrarUltimas, textoValido, totalNaoLidas, ultimasDosOutros } from '../utils/conversas';
+import { prepararSom, tocarSomDeMensagem } from '../utils/som-de-mensagem';
 
 /**
  * Entregas: o chat da loja com os motoboys (int/v1/entregas/loja/conversas*, App\Http\Controllers\Entregas\ConversasDaLojaController).
@@ -14,7 +15,12 @@ import { INTERVALO_CONVERSA_MS, INTERVALO_LISTA_CONVERSAS_MS, mesclarMensagens, 
  * - a lista de conversas é lida a cada 20 s enquanto a tela Pedidos está aberta (acompanharLista, que o Workspace inicia e
  *   para) e a cada 5 s com a gaveta aberta na lista;
  * - a conversa aberta é lida a cada 5 s (acompanharConversa), o que também a marca como lida no servidor.
- * Com a aba oculta não lê; a próxima leitura sai assim que ela aparece. Em erro (429 inclusive), a espera dobra até 2 min.
+ * Com a aba oculta, a conversa aberta não é lida (volta assim que a aba aparece), mas a lista continua a cada 20 s: é ela
+ * que toca o aviso de mensagem nova com o operador em outra aba. Em erro (429 inclusive), a espera dobra até 2 min.
+ *
+ * Mensagem nova de outra pessoa (motoboy, central ou outro usuário da loja) toca um aviso curto (utils/som-de-mensagem),
+ * uma vez por mensagem (registrarUltimas); a primeira leitura não toca. O navegador só libera o som depois de um clique ou
+ * tecla na página: o primeiro gesto prepara o som.
  */
 export default class EntregasConversasService extends Service {
     @service fetch;
@@ -33,6 +39,11 @@ export default class EntregasConversasService extends Service {
     @tracked motoboys = [];
     /** A primeira leitura da conversa aberta ainda não voltou. */
     @tracked carregandoMensagens = false;
+
+    /** Horário da última mensagem dos outros já avisada, por conversa (null antes da primeira leitura). */
+    avisadas = null;
+    /** O ouvinte do primeiro gesto que libera o som. */
+    liberarSom = null;
 
     get naoLidas() {
         return totalNaoLidas(this.conversas);
@@ -86,23 +97,22 @@ export default class EntregasConversasService extends Service {
     /** A lista de conversas enquanto a tela Pedidos está aberta (o Workspace inicia e cancela). */
     @restartableTask *acompanharLista() {
         let falhas = 0;
+        this.escutarGestos();
 
         while (!this.isDestroying) {
             const oculta = document.hidden;
 
-            if (!oculta) {
-                try {
-                    yield this.lerLista();
-                    falhas = 0;
-                } catch {
-                    falhas++;
-                }
+            // também com a aba oculta, para o aviso de mensagem nova tocar com o operador em outra aba
+            try {
+                yield this.lerLista();
+                falhas = 0;
+            } catch {
+                falhas++;
             }
 
-            // com a gaveta aberta na lista, as conversas novas e as não lidas aparecem mais depressa
-            const intervalo = this.aberta && !this.conversaAtual ? INTERVALO_CONVERSA_MS : INTERVALO_LISTA_CONVERSAS_MS;
-            const proxima = timeout(espera(intervalo, falhas));
-            yield oculta ? race([proxima, waitForEvent(document, 'visibilitychange')]) : proxima;
+            // com a gaveta aberta na lista (e a aba visível), as conversas novas e as não lidas aparecem mais depressa
+            const intervalo = !oculta && this.aberta && !this.conversaAtual ? INTERVALO_CONVERSA_MS : INTERVALO_LISTA_CONVERSAS_MS;
+            yield timeout(espera(intervalo, falhas));
         }
     }
 
@@ -126,6 +136,7 @@ export default class EntregasConversasService extends Service {
                         if (this.conversaAtual?.id === conversa.id) {
                             this.mensagens = Array.isArray(resposta?.mensagens) ? resposta.mensagens : [];
                             this.zerarNaoLidas(conversa.id);
+                            this.avisarNovas(ultimasDosOutros([], conversa.id, this.mensagens));
                         }
                     } catch {
                         falhas++;
@@ -189,6 +200,9 @@ export default class EntregasConversasService extends Service {
     @action encerrar() {
         this.acompanharLista.cancelAll();
         this.fecharGaveta();
+        this.pararDeEscutarGestos();
+        // na volta à tela Pedidos, a primeira leitura registra de novo, sem tocar pelo que chegou enquanto estava fora
+        this.avisadas = null;
     }
 
     async abrir(corpo, rascunho = '') {
@@ -211,6 +225,7 @@ export default class EntregasConversasService extends Service {
     async lerLista() {
         const resposta = await this.fetch.get('entregas/loja/conversas');
         this.conversas = Array.isArray(resposta?.conversas) ? resposta.conversas : [];
+        this.avisarNovas(ultimasDosOutros(this.conversas));
 
         // a conversa aberta acompanha o que a lista traz de novo (nome, foto), mas as não lidas dela ficam zeradas
         if (this.conversaAtual) {
@@ -224,6 +239,38 @@ export default class EntregasConversasService extends Service {
 
     lerListaAgora() {
         this.lerLista().catch(() => {});
+    }
+
+    /** Toca o aviso se há mensagem dos outros ainda não avisada (a primeira leitura só registra). */
+    avisarNovas(itens) {
+        const { avisadas, tocar } = registrarUltimas(this.avisadas, itens);
+        this.avisadas = avisadas;
+
+        if (tocar) {
+            tocarSomDeMensagem();
+        }
+    }
+
+    // o primeiro clique ou tecla na página libera o som do navegador
+    escutarGestos() {
+        if (this.liberarSom) {
+            return;
+        }
+
+        this.liberarSom = () => {
+            prepararSom();
+            this.pararDeEscutarGestos();
+        };
+        document.addEventListener('pointerdown', this.liberarSom, true);
+        document.addEventListener('keydown', this.liberarSom, true);
+    }
+
+    pararDeEscutarGestos() {
+        if (this.liberarSom) {
+            document.removeEventListener('pointerdown', this.liberarSom, true);
+            document.removeEventListener('keydown', this.liberarSom, true);
+            this.liberarSom = null;
+        }
     }
 
     zerarNaoLidas(id) {

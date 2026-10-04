@@ -11,6 +11,8 @@ import {
     prefixoDoPedido,
     resumo,
     textoValido,
+    registrarUltimas,
+    ultimasDosOutros,
 } from '../../packages/customer-portal/addon/utils/conversas.js';
 
 const msg = (id, em, texto = id) => ({ id, em, texto });
@@ -66,4 +68,45 @@ test('texto aceito como no servidor', () => {
     assert.equal(textoValido(undefined), null);
     assert.equal(textoValido('á'.repeat(1000)), 'á'.repeat(1000));
     assert.equal(textoValido('a'.repeat(1001)), null);
+});
+
+test('aviso de mensagem nova: a primeira leitura só registra, sem som', () => {
+    const { avisadas, tocar } = registrarUltimas(null, [{ id: 'c1', em: '2026-10-04T10:00:00-03:00' }]);
+    assert.equal(tocar, false);
+    assert.equal(avisadas.c1, new Date('2026-10-04T10:00:00-03:00').getTime());
+});
+
+test('aviso de mensagem nova: toca com mensagem mais nova ou conversa nova, e não repete', () => {
+    const inicio = registrarUltimas(null, [{ id: 'c1', em: '2026-10-04T10:00:00-03:00' }]).avisadas;
+
+    assert.equal(registrarUltimas(inicio, [{ id: 'c1', em: '2026-10-04T10:00:00-03:00' }]).tocar, false, 'mesma mensagem');
+    const nova = registrarUltimas(inicio, [{ id: 'c1', em: '2026-10-04T10:05:00-03:00' }]);
+    assert.equal(nova.tocar, true, 'mensagem mais nova');
+    assert.equal(registrarUltimas(nova.avisadas, [{ id: 'c1', em: '2026-10-04T10:05:00-03:00' }]).tocar, false, 'já avisada');
+    assert.equal(registrarUltimas(inicio, [{ id: 'c2', em: '2026-10-04T09:00:00-03:00' }]).tocar, true, 'conversa que não existia');
+    assert.equal(registrarUltimas(inicio, [{ id: 'c1', em: '2026-10-04T09:00:00-03:00' }]).avisadas.c1, inicio.c1, 'mais antiga não volta o registro');
+});
+
+test('aviso de mensagem nova: ignora item sem id ou sem horário', () => {
+    const inicio = registrarUltimas(null, []).avisadas;
+    assert.equal(registrarUltimas(inicio, [{ em: '2026-10-04T10:00:00-03:00' }, { id: 'c1', em: null }]).tocar, false);
+});
+
+test('últimas dos outros: da lista (sem as minhas) e da conversa aberta', () => {
+    const conversas = [
+        { id: 'c1', ultima: { em: '2026-10-04T10:00:00-03:00', minha: false } },
+        { id: 'c2', ultima: { em: '2026-10-04T10:01:00-03:00', minha: true } },
+        { id: 'c3', ultima: null },
+    ];
+    assert.deepEqual(ultimasDosOutros(conversas), [{ id: 'c1', em: '2026-10-04T10:00:00-03:00' }]);
+
+    const mensagens = [
+        { id: 'm1', em: '2026-10-04T10:00:00-03:00', minha: false },
+        { id: 'm2', em: '2026-10-04T10:02:00-03:00', minha: false },
+        { id: 'm3', em: '2026-10-04T10:03:00-03:00', minha: true },
+    ];
+    assert.deepEqual(ultimasDosOutros(conversas, 'c9', mensagens), [
+        { id: 'c1', em: '2026-10-04T10:00:00-03:00' },
+        { id: 'c9', em: '2026-10-04T10:02:00-03:00' },
+    ]);
 });

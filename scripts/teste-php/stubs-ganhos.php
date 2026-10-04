@@ -225,7 +225,9 @@ namespace Fleetbase\FleetOps\Models {
         public $uuid;
         public $public_id;
         public $name;
+        public $company_uuid = 'empresa';
         public static function withTrashed() { return new \Teste\ConsultaLojas(); }
+        public static function where($coluna, $valor) { return (new \Teste\Consulta(self::$lojas))->where($coluna, $valor); }
     }
 
     class Driver

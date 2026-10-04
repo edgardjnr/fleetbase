@@ -9,17 +9,17 @@ No portal da loja (`/customer-portal/orders`), o operador da loja conversa com o
 - **do pedido**: no detalhe do pedido, depois que um motoboy foi chamado/aceitou, "Conversar com o motoboy";
 - **livre**: com qualquer motoboy que está no mapa do portal (online ou trabalhando), em "Conversas" → "Nova conversa".
 
-A central participa de todas as conversas e as vê no chat do console. O motoboy conversa pela aba Conversas do app,
-sem mudança no app.
+A conversa é só da loja e do motoboy (revisão de 2026-10-04; a central pode ser adicionada depois pelo chat do console).
+O motoboy conversa pela aba Conversas do app, sem mudança no app.
 
 ## Decisões
 
 - **Uma conversa por par loja × motoboy**, reaproveitada pelos dois caminhos (o do pedido e o livre). O nome é
   "<Loja> · <Motoboy>". Assim a lista de conversas do motoboy não ganha um canal por pedido. Aberta a partir do pedido,
   o campo de texto já vem com "Pedido <número>: ".
-- **Participantes**: todos os usuários ativos da loja (Contact `customer` com VendorPersonnel ativo), o usuário do
-  motoboy e os usuários da central (`ChatComACentral::usuariosDaCentral`: tipo `admin`/`user` da empresa). Quem falta
-  entra a cada abertura (mesma regra do chat do motoboy com a central).
+- **Participantes**: todos os usuários ativos da loja (Contact `customer` com VendorPersonnel ativo) e o usuário do
+  motoboy. Quem falta entra a cada abertura. **Revisão de 2026-10-04 (Edgard):** a central não entra sozinha, nem pelo
+  app nem pelo portal; pode ser adicionada depois pelo chat do console, e quem já estava nas conversas antigas continua.
 - **Por cima do chat do Fleetbase** (`chat_channels`, `chat_participants`, `chat_messages`, `chat_receipts`): o canal é
   marcado no `meta` (`entregas_conversa_loja` = uuid do Vendor, `entregas_conversa_motoboy` = uuid do Driver). A
   mensagem nasce como no core (`ChatMessage::create` + `notifyParticipants()`): o app recebe pelo socket e pelo push

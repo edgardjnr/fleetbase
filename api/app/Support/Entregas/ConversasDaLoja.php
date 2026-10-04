@@ -19,9 +19,10 @@ use Illuminate\Support\Facades\Log;
  * docs/superpowers/specs/2026-10-04-chat-da-loja-design.md.
  *
  * Uma conversa por par loja × motoboy, por cima do chat do Fleetbase: o canal é marcado no `meta` (META_LOJA = uuid do
- * Vendor, META_MOTOBOY = uuid do Driver) e tem os usuários ativos da loja, o motoboy e a central
- * (ChatComACentral::usuariosDaCentral). Quem falta entra a cada abertura. A mensagem nasce como no core
- * (ChatMessage::create + notifyParticipants): o motoboy recebe no app (socket e push) e a central no chat do console.
+ * Vendor, META_MOTOBOY = uuid do Driver) e tem só o motoboy e os usuários ativos da loja (decisão do Edgard em
+ * 2026-10-04: a central não entra sozinha, nem pelo app nem pelo portal; pode ser adicionada depois pelo chat do console,
+ * e quem já está no canal continua). Quem falta da loja ou o motoboy entra a cada abertura. A mensagem nasce como no core
+ * (ChatMessage::create + notifyParticipants): o motoboy recebe no app (socket e push) e a loja no portal.
  *
  * A loja nunca usa as rotas de chat do Fleetbase (a de participantes lista todos os usuários da empresa) e as respostas
  * daqui não trazem id de motoboy, de participante nem de usuário: só o public_id do canal e o das mensagens.
@@ -50,7 +51,7 @@ class ConversasDaLoja
             return null;
         }
 
-        $quemDeveEstar = array_merge([$usuario], static::usuariosDaLoja($loja), [$doMotoboy], ChatComACentral::usuariosDaCentral($empresa, $doMotoboy));
+        $quemDeveEstar = static::participantes($usuario, static::usuariosDaLoja($loja), $doMotoboy);
 
         // a trava (cache = Redis em produção) evita dois canais para o mesmo par com dois toques seguidos
         return Cache::lock("entregas:conversa-loja:{$loja->uuid}:{$motoboy->uuid}", 15)->block(10, function () use ($loja, $motoboy, $empresa, $usuario, $quemDeveEstar) {
@@ -203,6 +204,29 @@ class ConversasDaLoja
             ->pluck('user_uuid')
             ->map(fn ($uuid) => (string) $uuid)
             ->all();
+    }
+
+    /**
+     * Quem a conversa precisa ter: quem abriu (usuário da loja ou o motoboy), os usuários ativos da loja e o motoboy, sem
+     * repetir e sem vazios. A central fica de fora.
+     *
+     * @param array<int, string> $daLoja
+     *
+     * @return array<int, string>
+     */
+    public static function participantes(string $quemAbriu, array $daLoja, string $doMotoboy): array
+    {
+        $todos = [];
+
+        foreach (array_merge([$quemAbriu], $daLoja, [$doMotoboy]) as $quem) {
+            $quem = (string) $quem;
+
+            if ($quem !== '' && !in_array($quem, $todos, true)) {
+                $todos[] = $quem;
+            }
+        }
+
+        return $todos;
     }
 
     /** Nome do canal, como aparece no app do motoboy e no chat do console. */

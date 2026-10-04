@@ -120,6 +120,8 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('pedidos/{id}/valor', [MotoboyController::class, 'valor']);
                         // conversa do motoboy com a central (botão "Chat" do cliente nos detalhes do pedido)
                         Route::post('chat-central', [MotoboyController::class, 'chatComACentral']);
+                        // conversa do motoboy com a loja do pedido (ou com a central, em pedido sem loja)
+                        Route::post('pedidos/{id}/chat', [MotoboyController::class, 'chatDoPedido']);
                     });
 
                 // Entregas RestaurantePro: traçado loja → cliente e situação do motoboy no mapa do pedido do app (MotoboyController@rota)

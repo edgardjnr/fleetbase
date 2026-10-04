@@ -61,3 +61,45 @@ export function textoValido(texto) {
 
     return limpo !== '' && [...limpo].length <= MAX_CARACTERES ? limpo : null;
 }
+
+/**
+ * Aviso sonoro de mensagem nova. `avisadas` = { conversa: horário (ms) da última mensagem dos outros já vista }, ou null
+ * antes da primeira leitura. `itens` = [{ id: conversa, em }] com a última mensagem dos outros de cada conversa.
+ * Toca se alguma conversa traz mensagem mais nova que a registrada (ou é uma conversa nova); a primeira leitura só
+ * registra, para não tocar com as mensagens que já estavam lá.
+ */
+export function registrarUltimas(avisadas, itens) {
+    const registradas = { ...(avisadas ?? {}) };
+    let tocar = false;
+
+    for (const item of itens ?? []) {
+        const em = item?.em ? horario(item) : 0;
+
+        if (!item?.id || !em) {
+            continue;
+        }
+
+        if (avisadas && em > (avisadas[item.id] ?? 0)) {
+            tocar = true;
+        }
+
+        registradas[item.id] = Math.max(registradas[item.id] ?? 0, em);
+    }
+
+    return { avisadas: registradas, tocar };
+}
+
+/**
+ * A última mensagem dos outros por conversa: a `ultima` de cada conversa da lista (quando não é minha) e, com uma conversa
+ * aberta, a mais recente dos outros nas mensagens dela.
+ */
+export function ultimasDosOutros(conversas, conversaAberta = null, mensagens = []) {
+    const itens = (conversas ?? []).filter((conversa) => conversa?.ultima && !conversa.ultima.minha).map((conversa) => ({ id: conversa.id, em: conversa.ultima.em }));
+    const dosOutros = (mensagens ?? []).filter((mensagem) => mensagem && !mensagem.minha);
+
+    if (conversaAberta && dosOutros.length) {
+        itens.push({ id: conversaAberta, em: dosOutros.reduce((maior, mensagem) => (horario(mensagem) > horario(maior) ? mensagem : maior)).em });
+    }
+
+    return itens;
+}

@@ -42,6 +42,12 @@ confere(C::textoValido(['a']) === null, 'lista: recusa');
 confere(C::textoValido(str_repeat('á', 1000)) === str_repeat('á', 1000), '1000 caracteres (multibyte): aceita');
 confere(C::textoValido(str_repeat('a', 1001)) === null, '1001 caracteres: recusa');
 
+echo '== participantes' . PHP_EOL;
+confere(C::participantes('u-loja', ['u-loja', 'u-loja2'], 'u-moto') === ['u-loja', 'u-loja2', 'u-moto'], 'só a loja e o motoboy (a central não entra sozinha)');
+confere(C::participantes('u-moto', ['u-loja'], 'u-moto') === ['u-moto', 'u-loja'], 'aberta pelo motoboy: ele e a loja, sem repetir');
+confere(C::participantes('u-loja', [], 'u-moto') === ['u-loja', 'u-moto'], 'loja sem outros usuários ativos');
+confere(C::participantes('', ['', 'u-loja'], 'u-moto') === ['u-loja', 'u-moto'], 'sem vazios');
+
 echo '== meta' . PHP_EOL;
 confere(C::meta('v-1', 'd-1') === ['entregas_conversa_loja' => 'v-1', 'entregas_conversa_motoboy' => 'd-1'], 'marca do canal: loja e motoboy');
 
