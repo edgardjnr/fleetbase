@@ -48,7 +48,9 @@ class AssuntoDosEmailsEmPortugues
             return CodigosPorEmail::assunto($dados['type'], (string) $dados['code']);
         }
 
-        if (array_key_exists('plaintextPassword', $dados)) {
+        // o CustomerCredentialsMail do Fleet-Ops (acesso ao portal de um contato) também traz plaintextPassword, mas tem
+        // customer e corpo próprio (em inglês): fica com o assunto original
+        if (array_key_exists('plaintextPassword', $dados) && !array_key_exists('customer', $dados)) {
             return 'Seus dados de acesso ao Entregas RestaurantePro';
         }
 

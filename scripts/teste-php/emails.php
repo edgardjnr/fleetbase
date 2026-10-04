@@ -356,4 +356,13 @@ $email          = (new Email())->subject('x');
 $escuta->handle(new MessageSending($email, ['code' => '9', 'type' => 'tipo_inventado']));
 confere($email->getSubject() === '9 é o seu código' && (Log::$registros[0][1] ?? null) === '[entregas] e-mail sem tradução', 'código de tipo desconhecido: assunto genérico e log');
 
+echo PHP_EOL . '== Acesso ao portal (CustomerCredentialsMail do Fleet-Ops)' . PHP_EOL;
+$email = (new Email())->subject('Your Central customer portal access is ready');
+(new AssuntoDosEmailsEmPortugues())->handle(new MessageSending($email, ['plaintextPassword' => 'x', 'customer' => null, 'customerPortalUrl' => 'u', 'mailer' => 'smtp']));
+confere($email->getSubject() === 'Your Central customer portal access is ready', 'acesso ao portal (com customer) fica com o assunto original');
+
+echo PHP_EOL . '== Link de entrada das credenciais' . PHP_EOL;
+confere(\App\Notifications\Entregas\Email\MarcaDoEmail::urlDeEntrada($loja) === 'https://entregas.restaurantepro.com.br/customer-portal', 'loja entra pelo portal');
+confere(\App\Notifications\Entregas\Email\MarcaDoEmail::urlDeEntrada($ana) === 'https://entregas.restaurantepro.com.br/', 'demais entram pelo console');
+
 resumo();

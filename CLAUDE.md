@@ -212,7 +212,7 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
 - **Notificações:**
   - `CanalEmailEntregas` (bind do `MailChannel` no `AppServiceProvider`) monta assunto e texto pelo catálogo `EmailsEmPortugues`.
   - **Não manda e-mail ao motoboy:** nem para o Driver, nem o convite para usuário `type=driver`.
-  - Aviso sem tradução sai em inglês no layout novo e aparece no log como `[entregas] e-mail sem tradução`. O log fica no serviço da **fila**: `docker service logs entregas_queue | grep '[entregas]'`.
+  - Aviso sem tradução sai em inglês no layout novo e aparece no log como `[entregas] e-mail sem tradução`. Notificação na fila registra no serviço da **fila** (`docker service logs entregas_queue | grep '[entregas]'`); as que não vão para a fila, no `entregas_application`.
 - **Mailables (código, credenciais, teste):**
   - Corpo em `vendor/fleetbase/mail/*.blade.php`; os textos do código ficam em `CodigosPorEmail`.
   - Assunto pelo `AssuntoDosEmailsEmPortugues` (`MessageSending`, nunca devolver `false`: cancela o envio).

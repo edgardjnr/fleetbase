@@ -22,6 +22,20 @@ class MarcaDoEmail
         return (string) config('fleetbase.branding.logo_url');
     }
 
+    /** onde o usuário entra: a loja (usuário customer) pelo portal, os demais pelo console */
+    public static function urlDeEntrada($usuario): string
+    {
+        if (($usuario->type ?? null) === 'customer' && class_exists(\Fleetbase\Support\Utils::class)) {
+            try {
+                return \Fleetbase\Support\Utils::consoleUrl('customer-portal');
+            } catch (\Throwable $erro) {
+                // sem config do console: cai no console
+            }
+        }
+
+        return self::urlDoConsole();
+    }
+
     public static function urlDoConsole(): string
     {
         try {

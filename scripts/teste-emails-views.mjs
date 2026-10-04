@@ -9,6 +9,8 @@ const base = 'api/resources/views/vendor';
 const views = {
     'mail/html/message.blade.php': false,
     'mail/html/codigo.blade.php': false,
+    'mail/html/dados.blade.php': false,
+    'mail/text/dados.blade.php': false,
     'mail/html/themes/default.css': false,
     'mail/text/message.blade.php': false,
     'mail/text/codigo.blade.php': false,
@@ -25,7 +27,7 @@ const obrigatorios = {
     'mail/text/message.blade.php': ['Entregas RestaurantePro · e-mail automático, não responda.'],
     'notifications/email.blade.php': ['Se o botão', 'align="left"'],
     'fleetbase/mail/verification.blade.php': ['CodigosPorEmail::textos', '<x-mail::codigo>'],
-    'fleetbase/mail/user-credentials.blade.php': ['Seus dados de acesso', '$plaintextPassword'],
+    'fleetbase/mail/user-credentials.blade.php': ['Seus dados de acesso', '$plaintextPassword', '<x-mail::dados'],
     'fleetbase/mail/test.blade.php': ['O envio de e-mail está funcionando'],
 };
 

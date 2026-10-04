@@ -270,6 +270,31 @@ img {
     text-align: center;
 }
 
+.dados {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 8px 0;
+    width: 100%;
+}
+
+.dados-rotulo {
+    color: #6b7280;
+    font-size: 13px;
+    padding: 4px 12px 4px 0;
+    width: 80px;
+}
+
+.dados-valor {
+    background-color: #f3f4f6;
+    border-radius: 6px;
+    color: #111827;
+    font-family: Consolas, Menlo, monospace;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 8px 12px;
+}
+
 .break-all {
     word-break: break-all;
 }
