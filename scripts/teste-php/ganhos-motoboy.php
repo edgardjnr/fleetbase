@@ -207,4 +207,57 @@ $GLOBALS['sessao'] = ['company' => 'terceira', 'user' => 'usuario-motoca'];
 confere(MotoboyDaSessao::motoboy(new Request([], '12|abcdef')) === null, 'cadastro de motoboy só em outra empresa: ninguém');
 $GLOBALS['sessao'] = ['company' => 'empresa', 'user' => 'usuario-motoca'];
 
+echo '== Rota de ganhos (MotoboyController::ganhos)' . PHP_EOL;
+
+// o pedidosConcluidos real consulta o banco: este registra o filtro que a rota passa e aplica o filtro do motoboy na lista
+class CalculoDeTeste extends CalculoEntregas
+{
+    public array $wheres  = [];
+    public array $periodo = [];
+
+    public function pedidosConcluidos(string $companyUuid, Carbon $inicio, Carbon $fim, ?\Closure $filtro = null): Collection
+    {
+        $consulta = new ConsultaRegistrada();
+        if ($filtro) {
+            $filtro($consulta);
+        }
+        $this->wheres  = $consulta->wheres;
+        $this->periodo = [$inicio->format('Y-m-d H:i:s'), $fim->format('Y-m-d H:i:s')];
+        $motoboy       = $consulta->wheres[0][1] ?? null;
+
+        return new Collection(array_values(array_filter(Order::$todos, fn ($pedido) => $pedido->driver_assigned_uuid === $motoboy)));
+    }
+}
+
+reiniciar();
+Order::$todos = [comKm(pedido('order_meu'), 3210.4), comKm(pedido('order_de-outro', ['driver_assigned_uuid' => 'uuid-driver_outro']), 1500.0)];
+$controller   = new MotoboyController();
+$calculoTeste = new CalculoDeTeste();
+$resposta     = $controller->ganhos(new Request(['inicio' => '2026-10-01', 'fim' => '2026-10-03'], '12|abc'), $calculoTeste);
+confere($resposta->status === 200 && array_column($resposta->dados['entregas'], 'pedido') === ['order_meu'], 'só as corridas do motoboy do token');
+confere($calculoTeste->wheres === [['orders.driver_assigned_uuid', 'uuid-driver_motoca']], 'o filtro vai ao banco pelo motoboy');
+confere($calculoTeste->periodo === ['2026-10-01 03:00:00', '2026-10-04 02:59:59'], 'do dia 1 ao dia 3 no fuso da organização (em UTC: ' . implode(' a ', $calculoTeste->periodo) . ')');
+confere($resposta->dados['totais'] === ['entregas' => 1, 'km' => 3.21, 'valor' => 8.0], 'total a receber do período');
+confere(!str_contains(json_encode($resposta->dados), '11.37') && !str_contains(json_encode($resposta->dados), 'valor_loja'), 'nada do valor cobrado da loja');
+confere($controller->ganhos(new Request(['inicio' => '2026-07-01', 'fim' => '2026-10-02'], '12|abc'), $calculoTeste)->status === 422, 'mais de 3 meses: 422');
+confere($controller->ganhos(new Request(['inicio' => '2026-10-01', 'fim' => '2026-10-03'], 'flb_live_abc'), $calculoTeste)->status === 403, 'chave de API: 403');
+
+echo '== Rota do valor (MotoboyController::valor)' . PHP_EOL;
+reiniciar();
+Order::$todos = [
+    pedido('order_meu', ['status' => 'started']),
+    pedido('order_de-outro', ['driver_assigned_uuid' => 'uuid-driver_outro']),
+    pedido('order_aberto', ['status' => 'dispatched', 'adhoc' => true, 'driver_assigned_uuid' => null, 'driverAssigned' => null]),
+    pedido('order_outra-empresa', ['company_uuid' => 'outra']),
+];
+$resposta = $controller->valor(new Request([], '12|abc'), 'order_meu', new CalculoEntregas());
+confere($resposta->status === 200 && $resposta->dados === ['pedido' => 'order_meu', 'km' => 3.21, 'aproximado' => false, 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'valor' => 8.0], 'pedido dele: km, faixa e valor dele');
+$resposta = $controller->valor(new Request([], '12|abc'), 'uuid-order_aberto', new CalculoEntregas());
+confere($resposta->status === 200 && $resposta->dados['pedido'] === 'order_aberto', 'pedido aberto, achado também pelo uuid');
+confere($controller->valor(new Request([], '12|abc'), 'order_de-outro', new CalculoEntregas())->status === 404, 'pedido de outro motoboy: 404');
+confere($controller->valor(new Request([], '12|abc'), 'order_outra-empresa', new CalculoEntregas())->status === 404, 'pedido de outra empresa: 404');
+confere($controller->valor(new Request([], '12|abc'), 'uuid-order_outra-empresa', new CalculoEntregas())->status === 404, 'pedido de outra empresa, nem pelo uuid: 404 (a empresa não escapa pelo "ou")');
+confere($controller->valor(new Request([], '12|abc'), 'order_nao-existe', new CalculoEntregas())->status === 404, 'pedido que não existe: 404');
+confere($controller->valor(new Request([], 'flb_live_abc'), 'order_meu', new CalculoEntregas())->status === 403, 'chave de API: 403');
+
 resumo();

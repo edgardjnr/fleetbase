@@ -3,11 +3,14 @@
 namespace App\Providers;
 
 use App\Http\Controllers\Entregas\LojasController;
+use App\Http\Controllers\Entregas\MotoboyController;
 use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use App\Http\Controllers\Entregas\PortalLojaController;
 use App\Http\Middleware\BarrarAceiteDePedidoEncerrado;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 
 class RouteServiceProvider extends ServiceProvider
@@ -36,6 +39,10 @@ class RouteServiceProvider extends ServiceProvider
         // dele, e os pacotes sobem antes dos providers do app: este entra no fim do grupo, depois da autenticação
         // (AuthenticateOnceWithBasicAuth) e com a sessão da empresa montada
         $this->app['router']->pushMiddlewareToGroup('fleetbase.api', BarrarAceiteDePedidoEncerrado::class);
+
+        // Entregas RestaurantePro: rotas do app do motoboy, até 60 chamadas por minuto por usuário. O throttle do grupo
+        // fleetbase.api conta por IP (roda antes da autenticação); este roda depois dela, com o usuário na sessão
+        RateLimiter::for('entregas-motoboy', fn (Request $request) => Limit::perMinute(60)->by('entregas-motoboy:' . (session('user') ?: $request->ip())));
 
         $this->routes(
             function () {
@@ -70,6 +77,15 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('loja/minha-loja', [PortalLojaController::class, 'minhaLoja'])->middleware('throttle:60,1');
                         Route::get('loja/extrato', [PortalLojaController::class, 'extrato'])->middleware('throttle:60,1');
                         Route::get('loja/pedidos/{id}/motoboy', [PortalLojaController::class, 'motoboy'])->middleware('throttle:60,1');
+                    });
+
+                // Entregas RestaurantePro: ganhos do motoboy no app (tela Início, card de aceitar e detalhes), na API v1 com o
+                // token dele (MotoboyController; só token de motoboy, nunca com o valor cobrado da loja)
+                Route::prefix('v1/entregas/motoboy')
+                    ->middleware(['fleetbase.api', 'throttle:entregas-motoboy'])
+                    ->group(function () {
+                        Route::get('ganhos', [MotoboyController::class, 'ganhos']);
+                        Route::get('pedidos/{id}/valor', [MotoboyController::class, 'valor']);
                     });
             }
         );
