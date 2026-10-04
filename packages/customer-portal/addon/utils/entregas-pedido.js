@@ -16,6 +16,9 @@ export const VOLTAS_DETALHE = 3;
 /** Intervalo da atualização automática da lista de pedidos. */
 export const INTERVALO_LISTA_MS = 30000;
 
+/** Intervalo da consulta dos motoboys no mapa (posição e situação de todos os motoboys online). */
+export const INTERVALO_MAPA_MS = 5000;
+
 /** Teto da espera depois de falhas seguidas. O throttle:60,1 das rotas loja/* é por usuário e soma as abas abertas. */
 export const ESPERA_MAXIMA_MS = 120000;
 
