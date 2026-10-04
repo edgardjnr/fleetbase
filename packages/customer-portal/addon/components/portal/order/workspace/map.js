@@ -1,13 +1,24 @@
 import Component from '@glimmer/component';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
+import { race, task, timeout, waitForEvent } from 'ember-concurrency';
+import CamadaDeMotoboys from '../../../../utils/camada-de-motoboys';
+import { motoboyDoPedido, motoboysValidos } from '../../../../utils/motoboys-no-mapa';
+import { INTERVALO_MAPA_MS, espera } from '../../../../utils/entregas-pedido';
 
 export default class PortalOrderWorkspaceMapComponent extends Component {
     @service customerPortalOrderRoutePreview;
+    @service fetch;
     @service intl;
+
+    // Entregas: os capacetes dos motoboys (utils/camada-de-motoboys) e a última lista que a API devolveu
+    camadaDeMotoboys = null;
+    ultimosMotoboys = [];
 
     willDestroy() {
         super.willDestroy(...arguments);
+        this.camadaDeMotoboys?.destruir();
+        this.camadaDeMotoboys = null;
         this.customerPortalOrderRoutePreview.unregisterMap();
     }
 
@@ -119,16 +130,58 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
 
     @action setupMap(event) {
         this.customerPortalOrderRoutePreview.registerMap(event);
+        // Entregas: os capacetes dos motoboys, relidos a cada 5 s enquanto o mapa existe
+        this.camadaDeMotoboys?.destruir();
+        this.camadaDeMotoboys = new CamadaDeMotoboys(event?.target ?? event);
         this.syncRoutePreview();
+        this.acompanharMotoboys.perform();
     }
 
     @action syncRoutePreview() {
         if (this.args.selectedOrder) {
             this.customerPortalOrderRoutePreview.updateSelectedOrder(this.args.selectedOrder);
-            return;
+        } else {
+            this.customerPortalOrderRoutePreview.clearSelectedOrder();
+            this.customerPortalOrderRoutePreview.updateDraft(this.args.draft);
         }
 
-        this.customerPortalOrderRoutePreview.clearSelectedOrder();
-        this.customerPortalOrderRoutePreview.updateDraft(this.args.draft);
+        // Entregas: outro pedido aberto (ou nenhum): o destaque e o enquadramento do motoboy mudam na hora, com a última lista
+        this.desenharMotoboys();
+    }
+
+    // Entregas: os motoboys no mapa (GET int/v1/entregas/loja/motoboys) a cada 5 s, enquanto o mapa existe. Com a aba
+    // oculta, não consulta; a próxima volta começa assim que ela aparece. Em falha (429 inclusive), os capacetes ficam onde
+    // estavam e a espera dobra até 2 min. O EC cancela a task quando o mapa sai da tela (Tabela ou outra página)
+    @task({ restartable: true }) *acompanharMotoboys() {
+        let falhas = 0;
+
+        while (!this.isDestroying && !this.isDestroyed) {
+            const oculta = document.hidden;
+
+            if (!oculta) {
+                try {
+                    const resposta = yield this.fetch.get('entregas/loja/motoboys');
+                    this.ultimosMotoboys = Array.isArray(resposta?.motoboys) ? resposta.motoboys : [];
+                    this.desenharMotoboys();
+                    falhas = 0;
+                } catch {
+                    falhas++;
+                }
+            }
+
+            const proxima = timeout(espera(INTERVALO_MAPA_MS, falhas));
+            yield oculta ? race([proxima, waitForEvent(document, 'visibilitychange')]) : proxima;
+        }
+    }
+
+    // Entregas: desenha os capacetes da última consulta, com o motoboy do pedido aberto destacado, e informa ao serviço da
+    // rota onde ele está (para o enquadramento)
+    desenharMotoboys() {
+        const motoboys = motoboysValidos(this.ultimosMotoboys);
+        const publicId = this.args.selectedOrder?.public_id ?? null;
+        const doPedido = motoboyDoPedido(motoboys, publicId);
+
+        this.camadaDeMotoboys?.atualizar(motoboys, { destaque: doPedido?.id ?? null });
+        this.customerPortalOrderRoutePreview.definirMotoboyDoPedido(publicId, doPedido ? [Number(doPedido.latitude), Number(doPedido.longitude)] : null);
     }
 }
