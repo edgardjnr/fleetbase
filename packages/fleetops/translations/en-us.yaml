@@ -96,7 +96,7 @@ fleet-ops:
         driver-payouts:
             title: Payouts and billing
             menu-description: 'What to pay each driver and charge each store, by km band'
-            how-it-works: 'Km = street route from the store (pickup place) to the customer, one way, calculated once per order. Each delivery is worth the value of the km band it falls in: one amount paid to the driver and another charged to the store. Only completed orders count, by completion date.'
+            how-it-works: 'Km = street route from the store (pickup place) to the customer, one way, calculated once per order. Each delivery is worth the value of the km band it falls in: one amount paid to the driver and another charged to the store. The value is saved the first time the delivery is calculated (usually when the order is shown to drivers). Only completed orders count, by completion date.'
             filters: Period
             period-start: Start
             period-end: End
@@ -140,7 +140,7 @@ fleet-ops:
             deliveries-from: 'Deliveries from {name}'
             deliveries-of-from: 'Deliveries by {name} from {store}'
             bands-title: Km bands
-            bands-help: 'Each delivery is worth the value of the band its km falls in (e.g. 2.4 km falls in the 2 to 3 km band). Above the last band, the last band value applies.'
+            bands-help: 'Each delivery is worth the value of the band its km falls in (e.g. 2.4 km falls in the 2 to 3 km band). Above the last band, the last band value applies. Changes apply to deliveries calculated from now on; deliveries already calculated keep their value.'
             band-from: From
             band-to: Up to (km)
             band-driver: Driver (R$)

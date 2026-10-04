@@ -96,7 +96,7 @@ fleet-ops:
     driver-payouts:
       title: Pagamento e cobrança
       menu-description: 'Quanto pagar a cada motoboy e cobrar de cada loja, por faixa de km'
-      how-it-works: 'Km = rota de rua da loja (local de coleta) até o cliente, só ida, calculada uma vez por pedido. Cada entrega vale o valor da faixa de km em que cai: um valor pago ao motoboy e outro cobrado da loja. Contam só pedidos concluídos, pela data de conclusão.'
+      how-it-works: 'Km = rota de rua da loja (local de coleta) até o cliente, só ida, calculada uma vez por pedido. Cada entrega vale o valor da faixa de km em que cai: um valor pago ao motoboy e outro cobrado da loja. O valor fica gravado na primeira vez que a entrega é calculada (normalmente quando o pedido aparece para os motoboys). Contam só pedidos concluídos, pela data de conclusão.'
       filters: Período
       period-start: Início
       period-end: Fim
@@ -140,7 +140,7 @@ fleet-ops:
       deliveries-from: 'Entregas da loja {name}'
       deliveries-of-from: 'Entregas de {name} na loja {store}'
       bands-title: Faixas de km
-      bands-help: 'Cada entrega vale o valor da faixa em que o km dela cai (ex.: 2,4 km cai na faixa de 2 a 3 km). Acima da última faixa, vale o valor da última.'
+      bands-help: 'Cada entrega vale o valor da faixa em que o km dela cai (ex.: 2,4 km cai na faixa de 2 a 3 km). Acima da última faixa, vale o valor da última. Mudanças valem para as entregas calculadas a partir de agora; as já calculadas mantêm o valor.'
       band-from: De
       band-to: Até (km)
       band-driver: Motoboy (R$)
