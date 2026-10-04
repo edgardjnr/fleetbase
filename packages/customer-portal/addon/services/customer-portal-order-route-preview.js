@@ -20,6 +20,12 @@ export default class CustomerPortalOrderRoutePreviewService extends Service {
     @tracked routingError;
     routingControl;
     signature;
+    // Entregas: o pedido aberto no detalhe (public_id), o motoboy dele no mapa ({ pedido, coordenadas }, informado pelo
+    // mapa a cada consulta de 5 s) e o pedido já enquadrado com o motoboy: coleta, entrega e motoboy entram no
+    // enquadramento uma vez por pedido; depois só o capacete anda
+    pedidoSelecionado = null;
+    motoboyDoPedido = null;
+    pedidoEnquadradoComMotoboy = null;
 
     @action registerMap(eventOrMap) {
         const map = eventOrMap?.target ?? eventOrMap;
@@ -86,6 +92,13 @@ export default class CustomerPortalOrderRoutePreviewService extends Service {
 
         this.selectedOrderRoutePoints = routePoints;
 
+        // Entregas: outro pedido no detalhe: o enquadramento com o motoboy vale de novo, uma vez para este pedido
+        const publicId = order?.public_id ?? null;
+        if (publicId !== this.pedidoSelecionado) {
+            this.pedidoSelecionado = publicId;
+            this.pedidoEnquadradoComMotoboy = null;
+        }
+
         if (!this.map || signature === this.signature) {
             return;
         }
@@ -97,7 +110,7 @@ export default class CustomerPortalOrderRoutePreviewService extends Service {
             return;
         }
 
-        this.focusRoute(routeCoordinates, { paddingBottomRight: [560, 0] });
+        this.focusRoute(this.comMotoboyDoPedido(routeCoordinates), { paddingBottomRight: [560, 0] });
 
         if (routeCoordinates.length < 2) {
             this.removeRoutingControl();
@@ -109,10 +122,45 @@ export default class CustomerPortalOrderRoutePreviewService extends Service {
 
     clearSelectedOrder() {
         this.selectedOrderRoutePoints = [];
+        // Entregas: sem pedido aberto, sem motoboy do pedido nem enquadramento pendente
+        this.pedidoSelecionado = null;
+        this.motoboyDoPedido = null;
+        this.pedidoEnquadradoComMotoboy = null;
 
         if (this.signature?.startsWith?.('order:')) {
             this.clear();
         }
+    }
+
+    // Entregas: o mapa informa, a cada consulta de 5 s, onde está o motoboy do pedido aberto (coordenadas [lat, lng]) ou
+    // null quando o pedido não tem motoboy no mapa. Na primeira vez que ele aparece para o pedido, o mapa enquadra coleta,
+    // entrega e motoboy; depois o enquadramento não muda mais
+    definirMotoboyDoPedido(publicId, coordenadas) {
+        this.motoboyDoPedido = publicId && coordenadas ? { pedido: publicId, coordenadas } : null;
+
+        const pedidoNoMapa = Boolean(publicId) && publicId === this.pedidoSelecionado && this.signature?.startsWith?.('order:');
+
+        if (!this.motoboyDoPedido || !pedidoNoMapa || this.pedidoEnquadradoComMotoboy === publicId || !this.map) {
+            return;
+        }
+
+        const routeCoordinates = this.selectedOrderRoutePoints.map((point) => point.coordinates);
+
+        this.focusRoute(this.comMotoboyDoPedido(routeCoordinates), { paddingBottomRight: [560, 0] });
+    }
+
+    // Entregas: as coordenadas do enquadramento do pedido aberto, com o motoboy dele quando já se sabe onde está; marca o
+    // pedido como enquadrado com o motoboy
+    comMotoboyDoPedido(routeCoordinates) {
+        const motoboy = this.motoboyDoPedido;
+
+        if (!motoboy || motoboy.pedido !== this.pedidoSelecionado) {
+            return routeCoordinates;
+        }
+
+        this.pedidoEnquadradoComMotoboy = motoboy.pedido;
+
+        return [...routeCoordinates, motoboy.coordenadas];
     }
 
     routePointsFromDraft(draft) {
@@ -279,7 +327,7 @@ export default class CustomerPortalOrderRoutePreviewService extends Service {
         this.routingControl.on('routesfound', ({ routes }) => {
             this.route = routes?.[0] ?? null;
             this.routingError = null;
-            this.focusRoute(routeCoordinates, { paddingBottomRight: [560, 0] });
+            this.focusRoute(this.comMotoboyDoPedido(routeCoordinates), { paddingBottomRight: [560, 0] });
         });
 
         this.routingControl.on('routingerror', (error) => {
@@ -296,6 +344,9 @@ export default class CustomerPortalOrderRoutePreviewService extends Service {
         this.selectedOrderRoutePoints = [];
         this.routeCoordinates = [];
         this.signature = null;
+        this.pedidoSelecionado = null;
+        this.motoboyDoPedido = null;
+        this.pedidoEnquadradoComMotoboy = null;
     }
 
     removeRoutingControl() {
