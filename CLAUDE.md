@@ -99,6 +99,11 @@ O produto é só isto: o pedido chega do iFood pela API, é despachado para o mo
   - **A integração iFood manda, em cada pedido (`POST v1/orders`), `customer` = `public_id` do Fornecedor da loja (`vendor_…`) e `pickup` = `public_id` do Local da loja (`place_…`).** Os dois ids aparecem na tela Lojas. Assim o pedido entra no portal da loja (lista, acompanhamento e cancelamento antes do aceite), no extrato e na cobrança dela (decisão de 2026-10-03).
   - Pedido sem loja como cliente fica fora do portal e do extrato. Na cobrança, ele agrupa pelo **nome** do local de coleta (a integração pode criar um Place por pedido); sem nome, pelo próprio Place.
   - Cobrança = valor "loja" da faixa do km, igual para todas as lojas. A tela mostra a pagar, a cobrar e a margem; o CSV traz motoboys, lojas e o detalhe com loja, faixa e os dois valores.
+- **Mapa ao vivo** (Fleet-Ops → mapa, `components/map/leaflet-live-map.*`):
+  - **Locais:** só os locais de coleta, isto é, o Local de cada loja. O mapa lê `GET int/v1/entregas/mapa/locais-de-coleta` (`Entregas/MapaController.php`) no lugar do `fleet-ops/live/places`, que trazia um prédio por endereço de entrega.
+  - **Motoboy = capacete na cor da situação** (`packages/fleetops/assets/images/capacete-*.png`, util `entregas-capacete.js`): verde = livre; amarelo = pedido aceito ou atribuído, ainda na coleta (`started`, `dispatched`…); vermelho = a caminho do cliente (`enroute`); cinza = offline sem pedido. A regra fica em `App\Support\Entregas\SituacaoDoMotoboy` e é lida em `GET int/v1/entregas/mapa/motoboys` a cada 20 s com o mapa aberto. Pedido parado há mais de 12 h não conta.
+  - O nome do motoboy fica num rótulo fixo embaixo do capacete. Os detalhes saem no clique (popup). O capacete não gira com a direção do GPS (`@disableRotation` do `leaflet-tracking-marker`).
+  - Teste: `scripts/teste-php/mapa.php`.
 - `docker/`: Dockerfile da API, `docker/socket/` (socket ARM) e crontab.
 
 ### Build do console
