@@ -7,6 +7,7 @@ use App\Http\Controllers\Entregas\MapaController;
 use App\Http\Controllers\Entregas\MotoboyController;
 use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use App\Http\Controllers\Entregas\PortalLojaController;
+use App\Http\Middleware\AvisarOnlineDoMotoboy;
 use App\Http\Middleware\BarrarAceiteDePedidoEncerrado;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
@@ -40,6 +41,10 @@ class RouteServiceProvider extends ServiceProvider
         // dele, e os pacotes sobem antes dos providers do app: este entra no fim do grupo, depois da autenticação
         // (AuthenticateOnceWithBasicAuth) e com a sessão da empresa montada
         $this->app['router']->pushMiddlewareToGroup('fleetbase.api', BarrarAceiteDePedidoEncerrado::class);
+
+        // Entregas RestaurantePro: o motoboy ligou/desligou o online no app → aviso no socket da empresa, para o mapa
+        // ao vivo trocar o capacete na hora (o toggle-online do Fleet-Ops grava sem disparar evento)
+        $this->app['router']->pushMiddlewareToGroup('fleetbase.api', AvisarOnlineDoMotoboy::class);
 
         // Entregas RestaurantePro: rotas do app do motoboy, até 60 chamadas por minuto por usuário. O throttle do grupo
         // fleetbase.api conta por IP (roda antes da autenticação); este roda depois dela, com o usuário na sessão

@@ -1,7 +1,8 @@
 <?php
 
-// Mapa ao vivo do console: situação do motoboy (SituacaoDoMotoboy, cor do capacete) e o MapaController
-// (locais de coleta = só os Locais das lojas; situação de cada motoboy da empresa).
+// Mapa ao vivo do console: situação do motoboy (SituacaoDoMotoboy, cor do capacete), o MapaController
+// (locais de coleta = só os Locais das lojas; situação de cada motoboy da empresa) e o aviso de online no socket
+// (AvisarOnlineDoMotoboy + OnlineDoMotoboyMudou).
 // Uso: PHP_WASM_DIR=<pasta> node scripts/teste-php/rodar.mjs scripts/teste-php/mapa.php
 
 namespace Illuminate\Support {
@@ -38,6 +39,7 @@ namespace Illuminate\Support {
     class Carbon extends \DateTimeImmutable
     {
         public function subHours(int $horas): static { return $this->modify("-{$horas} hours"); }
+        public function toIso8601String(): string { return $this->format('Y-m-d\TH:i:sP'); }
     }
 }
 
@@ -60,6 +62,14 @@ namespace Teste {
 
         public function where($coluna, $operador = null, $valor = null): static
         {
+            if ($coluna instanceof \Closure) {
+                $grupo = new Ou();
+                $coluna($grupo);
+                $this->anotar('where (' . implode(' ou ', array_keys($grupo->condicoes)) . ')');
+                $this->linhas = array_filter($this->linhas, fn ($linha) => (bool) array_filter($grupo->condicoes, fn ($valor, $campo) => ($linha->$campo ?? null) === $valor, ARRAY_FILTER_USE_BOTH));
+
+                return $this;
+            }
             if (func_num_args() === 2) {
                 [$operador, $valor] = ['=', $operador];
             }
@@ -110,6 +120,8 @@ namespace Teste {
         public function pluck(string $campo): Collection { return new Collection(array_values(array_map(fn ($linha) => $linha->$campo, $this->linhas))); }
 
         public function get(array $colunas = ['*']): Collection { return new Collection(array_values($this->linhas)); }
+
+        public function first(array $colunas = ['*']) { return array_values($this->linhas)[0] ?? null; }
     }
 
     abstract class Modelo
@@ -125,6 +137,20 @@ namespace Teste {
     class Resposta
     {
         public function __construct(public $dados) {}
+    }
+
+    /** Grupo de condições "ou" de um where(fn ($q) => ...). */
+    class Ou
+    {
+        public array $condicoes = [];
+        public function where($campo, $valor) { $this->condicoes[$campo] = $valor; return $this; }
+        public function orWhere($campo, $valor) { $this->condicoes[$campo] = $valor; return $this; }
+    }
+
+    class RespostaHttp
+    {
+        public function __construct(public int $status = 200) {}
+        public function getStatusCode(): int { return $this->status; }
     }
 
     class Fabrica
@@ -151,6 +177,48 @@ namespace App\Http\Controllers {
     class Controller {}
 }
 
+namespace Fleetbase\FleetOps\Http\Controllers\Api\v1 {
+    class DriverController {}
+}
+
+namespace Illuminate\Routing {
+    class Route
+    {
+        public function __construct(private string $acao, public array $parametros = []) {}
+        public function getActionName() { return $this->acao; }
+    }
+}
+
+namespace Illuminate\Http {
+    class Request
+    {
+        public function __construct(private ?\Illuminate\Routing\Route $rota = null) {}
+        public function route($parametro = null)
+        {
+            return $parametro === null ? $this->rota : ($this->rota->parametros[$parametro] ?? null);
+        }
+    }
+}
+
+namespace Illuminate\Broadcasting {
+    class Channel
+    {
+        public function __construct(public string $name) {}
+    }
+}
+
+namespace Illuminate\Contracts\Broadcasting {
+    interface ShouldBroadcastNow {}
+}
+
+namespace Illuminate\Support\Facades {
+    class Log
+    {
+        public static array $avisos = [];
+        public static function warning($mensagem, array $contexto = []) { self::$avisos[] = [$mensagem, $contexto]; }
+    }
+}
+
 namespace {
     use App\Http\Controllers\Entregas\MapaController;
     use App\Support\Entregas\SituacaoDoMotoboy as S;
@@ -166,11 +234,25 @@ namespace {
     require '/repo/api/app/Support/Entregas/StatusDoPedido.php';
     require '/repo/api/app/Support/Entregas/SituacaoDoMotoboy.php';
     require '/repo/api/app/Http/Controllers/Entregas/MapaController.php';
+    require '/repo/api/app/Events/Entregas/OnlineDoMotoboyMudou.php';
+    require '/repo/api/app/Http/Middleware/AvisarOnlineDoMotoboy.php';
 
     const EMPRESA = 'empresa-a';
     $agora = new Carbon('2026-10-04 12:00:00');
 
-    function session($chave) { return $chave === 'company' ? EMPRESA : null; }
+    $sessaoEmpresa = EMPRESA;
+    function session($chave) { global $sessaoEmpresa; return $chave === 'company' ? $sessaoEmpresa : null; }
+
+    $transmitidos = [];
+    $falharSocket = false;
+    function broadcast($evento)
+    {
+        global $transmitidos, $falharSocket;
+        if ($falharSocket) {
+            throw new \RuntimeException('socket fora do ar');
+        }
+        $transmitidos[] = $evento;
+    }
     function now() { global $agora; return $agora; }
     function response() { return new \Teste\Fabrica(); }
 
@@ -247,6 +329,45 @@ namespace {
     confere(array_column($resposta, 'public_id', 'uuid')['m-entrega'] === 'driver_entrega', 'resposta traz o public_id');
     confere(in_array('permissao fleet-ops list driver', \Teste\Consulta::$registro[Driver::class], true), 'Driver com o filtro de permissão do Fleet-Ops');
     confere(in_array('where company_uuid =', \Teste\Consulta::$registro[Order::class], true), 'pedidos filtrados pela empresa');
+
+    echo '== AvisarOnlineDoMotoboy + OnlineDoMotoboyMudou' . PHP_EOL;
+    $acao    = \Fleetbase\FleetOps\Http\Controllers\Api\v1\DriverController::class . '@toggleOnline';
+    $proximo = fn ($status) => fn ($request) => new \Teste\RespostaHttp($status);
+    $toggle  = fn ($id, $acaoDaRota = null) => new \Illuminate\Http\Request(new \Illuminate\Routing\Route($acaoDaRota ?? $acao, ['id' => $id]));
+    $avisar  = new \App\Http\Middleware\AvisarOnlineDoMotoboy();
+    Driver::$todos[3]->online = 1; // m-off acabou de ligar o online
+
+    $resposta = $avisar->handle($toggle('driver_off'), $proximo(200));
+    $evento   = $transmitidos[0] ?? null;
+    confere($resposta->getStatusCode() === 200 && count($transmitidos) === 1, 'toggle-online com sucesso: um aviso no socket e a resposta intacta');
+    confere($evento?->broadcastOn()[0]->name === 'company.' . EMPRESA, 'aviso no canal company.<uuid da empresa>');
+    confere($evento?->broadcastAs() === 'entregas.motoboy_online', 'nome do evento entregas.motoboy_online (o filtro do console espera este)');
+    $dados = $evento?->broadcastWith();
+    confere(($dados['event'] ?? null) === 'entregas.motoboy_online' && $dados['data'] === ['id' => 'driver_off', 'uuid' => 'm-off', 'online' => true], 'dados: public_id, uuid e o online já gravado');
+
+    $transmitidos = [];
+    $avisar->handle($toggle('m-coleta'), $proximo(200));
+    confere(count($transmitidos) === 1 && $transmitidos[0]->motoboyPublicId === 'driver_coleta', 'acha o motoboy também pelo uuid');
+
+    $transmitidos = [];
+    $avisar->handle($toggle('driver_outra'), $proximo(200));
+    confere($transmitidos === [], 'motoboy de outra empresa: nenhum aviso');
+
+    $avisar->handle($toggle('driver_off'), $proximo(404));
+    confere($transmitidos === [], 'resposta de erro: nenhum aviso');
+
+    $avisar->handle($toggle('driver_off', 'Fleetbase\FleetOps\Http\Controllers\Api\v1\OrderController@startOrder'), $proximo(200));
+    confere($transmitidos === [], 'outra rota da API v1: nenhum aviso');
+
+    $sessaoEmpresa = null;
+    $avisar->handle($toggle('driver_off'), $proximo(200));
+    confere($transmitidos === [], 'sem empresa na sessão: nenhum aviso');
+    $sessaoEmpresa = EMPRESA;
+
+    $falharSocket = true;
+    $resposta     = $avisar->handle($toggle('driver_off'), $proximo(200));
+    confere($resposta->getStatusCode() === 200 && count(\Illuminate\Support\Facades\Log::$avisos) === 1, 'socket fora do ar: a resposta segue e fica um aviso no log');
+    $falharSocket = false;
 
     echo PHP_EOL . "FALHAS: {$falhas}" . PHP_EOL;
 }
