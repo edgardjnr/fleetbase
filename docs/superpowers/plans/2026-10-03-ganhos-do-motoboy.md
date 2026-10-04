@@ -150,6 +150,7 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>" && git log
 - Create: `scripts/teste-php/stubs-ganhos.php`
 - Create: `scripts/teste-php/ganhos-motoboy.php`
 - Create: `api/database/migrations/2026_10_03_120000_create_entregas_valores_pedido_table.php`
+- Modify: `api/deploy.sh` (migrations do app também no banco sandbox)
 
 - [ ] **Passo 1: criar `scripts/teste-php/stubs-ganhos.php`** (usado por todas as seções do teste; já traz o que as Tarefas 3 a 5 precisam)
 
@@ -461,9 +462,11 @@ namespace Teste {
                     continue;
                 }
                 foreach ($atualizar as $coluna) {
-                    if (array_key_exists($coluna, $linha)) {
-                        $existente[$coluna] = $linha[$coluna];
+                    // no MySQL, a coluna da lista de atualização que não veio na linha daria erro ou voltaria ao padrão
+                    if (!array_key_exists($coluna, $linha)) {
+                        throw new \LogicException("upsert: a coluna {$coluna} não veio na linha");
                     }
+                    $existente[$coluna] = $linha[$coluna];
                 }
                 Banco::$tabelas[$this->nome][$chave] = $existente;
             }
@@ -483,40 +486,28 @@ namespace Teste {
         }
     }
 
-    // consulta sobre uma lista de objetos: where (igualdade, ou um grupo de "ou" numa closure), orWhere e first
+    // consulta sobre uma lista de objetos, com a precedência do SQL: OU de grupos E (o AND liga mais forte que o OR, e um
+    // where com closure vira um subgrupo entre parênteses). Assim, uma consulta sem os parênteses certos falha no teste
+    // como falharia no MySQL (ex.: a empresa escapando por um orWhere solto)
     class Consulta
     {
-        private array $filtros      = [];
-        private array $alternativas = [];
+        private array $grupos = [[]];
         public function __construct(private array $itens) {}
 
         public function where($coluna, $valor = null)
         {
-            if ($coluna instanceof \Closure) {
-                $grupo = new self([]);
-                $coluna($grupo);
-                $alternativas    = $grupo->alternativas;
-                $this->filtros[] = function ($item) use ($alternativas) {
-                    foreach ($alternativas as $alternativa) {
-                        if ($alternativa($item)) {
-                            return true;
-                        }
-                    }
-
-                    return false;
-                };
-
-                return $this;
-            }
-
-            $condicao             = fn ($item) => $item->$coluna === $valor;
-            $this->filtros[]      = $condicao;
-            $this->alternativas[] = $condicao;
+            $this->grupos[array_key_last($this->grupos)][] = $coluna instanceof \Closure ? $this->subgrupo($coluna) : fn ($item) => $item->$coluna === $valor;
 
             return $this;
         }
 
-        public function orWhere($coluna, $valor) { $this->alternativas[] = fn ($item) => $item->$coluna === $valor; return $this; }
+        public function orWhere($coluna, $valor = null)
+        {
+            $this->grupos[] = [];
+
+            return $this->where($coluna, $valor);
+        }
+
         public function with($relacoes) { return $this; }
 
         public function first()
@@ -530,15 +521,27 @@ namespace Teste {
             return null;
         }
 
+        private function subgrupo(\Closure $definicao): \Closure
+        {
+            $subgrupo = new self([]);
+            $definicao($subgrupo);
+
+            return fn ($item) => $subgrupo->passa($item);
+        }
+
         private function passa($item): bool
         {
-            foreach ($this->filtros as $filtro) {
-                if (!$filtro($item)) {
-                    return false;
+            foreach ($this->grupos as $grupo) {
+                foreach ($grupo as $condicao) {
+                    if (!$condicao($item)) {
+                        continue 2;
+                    }
                 }
+
+                return true;
             }
 
-            return true;
+            return false;
         }
     }
 
@@ -726,8 +729,8 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Entregas RestaurantePro: valor congelado de cada entrega (App\Support\Entregas\CalculoEntregas e ValoresCongelados).
  * Fica numa tabela própria, e não no `meta` do pedido, porque o `meta` sai na API v1 e no socket: aqui estão o valor
- * pago ao motoboy e o cobrado da loja. Roda no `php artisan migrate --force` do deploy.sh (o sandbox:migrate só roda as
- * migrations dos pacotes).
+ * pago ao motoboy e o cobrado da loja. Roda no `php artisan migrate --force` do deploy.sh, no banco principal e no sandbox
+ * (o sandbox:migrate dos pacotes não roda esta pasta).
  */
 return new class extends Migration
 {
@@ -767,10 +770,32 @@ PHP_WASM_DIR=$SCRATCH/php-wasm node scripts/teste-php/sintaxe.mjs api/database/m
 ```
 Esperado: 7 linhas `PASSA`, `FALHAS: 0`, `saída=0`; os três arquivos com `OK`.
 
-- [ ] **Passo 6: commit**
+- [ ] **Passo 6: `api/deploy.sh`, as migrations do app também no banco sandbox** — o modo de teste do console usa o banco sandbox, e o `sandbox:migrate` só roda as migrations dos pacotes. Sem esta linha, "Pagamento e cobrança" em modo de teste daria 500 depois da Tarefa 3. Em `api/deploy.sh`, trocar:
+
+```sh
+# Run migrations for sandbox too
+php artisan sandbox:migrate --force
+```
+por:
+```sh
+# Run migrations for sandbox too
+php artisan sandbox:migrate --force
+
+# Entregas RestaurantePro: as migrations do app (api/database/migrations) também no banco sandbox, que o modo de teste
+# do console usa; o sandbox:migrate acima só roda as dos pacotes (mesma conexão: SANDBOX_DB_CONNECTION, padrão "sandbox")
+php artisan migrate --force --database="${SANDBOX_DB_CONNECTION:-sandbox}" --path=database/migrations
+```
+Conferir a sintaxe do shell:
 
 ```bash
-cd /c/tmp/gm && git rev-parse --show-toplevel && git add api/database/migrations/2026_10_03_120000_create_entregas_valores_pedido_table.php scripts/teste-php/stubs-ganhos.php scripts/teste-php/ganhos-motoboy.php && git commit -q -m "API: tabela entregas_valores_pedido (valor congelado de cada entrega) e teste da migration
+cd /c/tmp/gm && bash -n api/deploy.sh && echo SINTAXE_SH_OK
+```
+Esperado: `SINTAXE_SH_OK`.
+
+- [ ] **Passo 7: commit**
+
+```bash
+cd /c/tmp/gm && git rev-parse --show-toplevel && git add api/database/migrations/2026_10_03_120000_create_entregas_valores_pedido_table.php api/deploy.sh scripts/teste-php/stubs-ganhos.php scripts/teste-php/ganhos-motoboy.php && git commit -q -m "API: tabela entregas_valores_pedido (valor congelado de cada entrega) e teste da migration
 
 Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>" && git log --oneline -1
 ```

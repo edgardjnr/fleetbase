@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Entregas RestaurantePro: valor congelado de cada entrega (App\Support\Entregas\CalculoEntregas e ValoresCongelados).
  * Fica numa tabela própria, e não no `meta` do pedido, porque o `meta` sai na API v1 e no socket: aqui estão o valor
- * pago ao motoboy e o cobrado da loja. Roda no `php artisan migrate --force` do deploy.sh (o sandbox:migrate só roda as
- * migrations dos pacotes).
+ * pago ao motoboy e o cobrado da loja. Roda no `php artisan migrate --force` do deploy.sh, no banco principal e no sandbox
+ * (o sandbox:migrate dos pacotes não roda esta pasta).
  */
 return new class extends Migration
 {

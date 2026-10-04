@@ -305,9 +305,11 @@ namespace Teste {
                     continue;
                 }
                 foreach ($atualizar as $coluna) {
-                    if (array_key_exists($coluna, $linha)) {
-                        $existente[$coluna] = $linha[$coluna];
+                    // no MySQL, a coluna da lista de atualização que não veio na linha daria erro ou voltaria ao padrão
+                    if (!array_key_exists($coluna, $linha)) {
+                        throw new \LogicException("upsert: a coluna {$coluna} não veio na linha");
                     }
+                    $existente[$coluna] = $linha[$coluna];
                 }
                 Banco::$tabelas[$this->nome][$chave] = $existente;
             }
@@ -327,40 +329,28 @@ namespace Teste {
         }
     }
 
-    // consulta sobre uma lista de objetos: where (igualdade, ou um grupo de "ou" numa closure), orWhere e first
+    // consulta sobre uma lista de objetos, com a precedência do SQL: OU de grupos E (o AND liga mais forte que o OR, e um
+    // where com closure vira um subgrupo entre parênteses). Assim, uma consulta sem os parênteses certos falha no teste
+    // como falharia no MySQL (ex.: a empresa escapando por um orWhere solto)
     class Consulta
     {
-        private array $filtros      = [];
-        private array $alternativas = [];
+        private array $grupos = [[]];
         public function __construct(private array $itens) {}
 
         public function where($coluna, $valor = null)
         {
-            if ($coluna instanceof \Closure) {
-                $grupo = new self([]);
-                $coluna($grupo);
-                $alternativas    = $grupo->alternativas;
-                $this->filtros[] = function ($item) use ($alternativas) {
-                    foreach ($alternativas as $alternativa) {
-                        if ($alternativa($item)) {
-                            return true;
-                        }
-                    }
-
-                    return false;
-                };
-
-                return $this;
-            }
-
-            $condicao             = fn ($item) => $item->$coluna === $valor;
-            $this->filtros[]      = $condicao;
-            $this->alternativas[] = $condicao;
+            $this->grupos[array_key_last($this->grupos)][] = $coluna instanceof \Closure ? $this->subgrupo($coluna) : fn ($item) => $item->$coluna === $valor;
 
             return $this;
         }
 
-        public function orWhere($coluna, $valor) { $this->alternativas[] = fn ($item) => $item->$coluna === $valor; return $this; }
+        public function orWhere($coluna, $valor = null)
+        {
+            $this->grupos[] = [];
+
+            return $this->where($coluna, $valor);
+        }
+
         public function with($relacoes) { return $this; }
 
         public function first()
@@ -374,15 +364,27 @@ namespace Teste {
             return null;
         }
 
+        private function subgrupo(\Closure $definicao): \Closure
+        {
+            $subgrupo = new self([]);
+            $definicao($subgrupo);
+
+            return fn ($item) => $subgrupo->passa($item);
+        }
+
         private function passa($item): bool
         {
-            foreach ($this->filtros as $filtro) {
-                if (!$filtro($item)) {
-                    return false;
+            foreach ($this->grupos as $grupo) {
+                foreach ($grupo as $condicao) {
+                    if (!$condicao($item)) {
+                        continue 2;
+                    }
                 }
+
+                return true;
             }
 
-            return true;
+            return false;
         }
     }
 

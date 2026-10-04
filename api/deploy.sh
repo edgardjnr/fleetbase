@@ -12,6 +12,10 @@ php artisan migrate --force
 # Run migrations for sandbox too
 php artisan sandbox:migrate --force
 
+# Entregas RestaurantePro: as migrations do app (api/database/migrations) também no banco sandbox, que o modo de teste
+# do console usa; o sandbox:migrate acima só roda as dos pacotes (mesma conexão: SANDBOX_DB_CONNECTION, padrão "sandbox")
+php artisan migrate --force --database="${SANDBOX_DB_CONNECTION:-sandbox}" --path=database/migrations
+
 # Seed database
 php artisan fleetbase:seed
 
