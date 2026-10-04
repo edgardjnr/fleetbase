@@ -6,11 +6,11 @@
             <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.layout.fleet-ops-sidebar-operations-monitor.live-operations"}}</div>
             <div class="mt-1 flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400">
                 <span class="flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>{{this.driverOnlineSummary}}</span>
-                <span class="flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>{{this.vehicleOnlineSummary}}</span>
             </div>
         </div>
     </div>
 
+    {{#if this.mostrarAbas}}
     <div class="mb-2 grid grid-cols-3 gap-1 rounded-md bg-gray-100 p-1 dark:bg-gray-800">
         {{#each this.tabs as |tab|}}
             <button
@@ -23,6 +23,7 @@
             </button>
         {{/each}}
     </div>
+    {{/if}}
 
     <div class="mb-2 flex items-center gap-1.5 rounded-md bg-gray-50 px-2 py-1 text-gray-400 dark:bg-gray-800">
         <FaIcon @icon="magnifying-glass" @size="xs" />
@@ -63,7 +64,6 @@
                                 <a href="javascript:;" class="next-dd-item" {{on "click" (dropdown-fn dd this.editDriver driver)}}>{{t "fleet-ops.ui.layout.fleet-ops-sidebar-operations-monitor.edit-details"}}</a>
                                 <div class="next-dd-menu-seperator"></div>
                                 <a href="javascript:;" class="next-dd-item" {{on "click" (dropdown-fn dd this.assignOrderToDriver driver)}}>{{t "fleet-ops.ui.layout.fleet-ops-sidebar-operations-monitor.assign-order"}}</a>
-                                <a href="javascript:;" class="next-dd-item" {{on "click" (dropdown-fn dd this.assignVehicleToDriver driver)}}>{{t "fleet-ops.ui.layout.fleet-ops-sidebar-operations-monitor.assign-vehicle"}}</a>
                                 <a href="javascript:;" class="next-dd-item" {{on "click" (dropdown-fn dd this.locateDriver driver)}}>{{t "fleet-ops.ui.layout.fleet-ops-sidebar-operations-monitor.locate-on-map"}}</a>
                                 <div class="next-dd-menu-seperator"></div>
                                 <a href="javascript:;" class="next-dd-item text-danger" {{on "click" (dropdown-fn dd this.deleteDriver driver)}}>{{t "fleet-ops.ui.layout.fleet-ops-sidebar-operations-monitor.delete-driver"}}</a>

@@ -17,7 +17,8 @@ export default class LayoutFleetOpsSidebarOperationsMonitorComponent extends Com
     @service fleetActions;
     @service notifications;
 
-    @tracked activeTab = 'fleets';
+    // Entregas: o sistema não usa frotas nem veículos; o monitor mostra só os motoristas (motoboys)
+    @tracked activeTab = 'drivers';
     @tracked query = '';
     @tracked fallbackDrivers = [];
     @tracked fallbackVehicles = [];
@@ -140,12 +141,13 @@ export default class LayoutFleetOpsSidebarOperationsMonitorComponent extends Com
         }[this.activeTab];
     }
 
+    // Entregas: sem as abas Frotas e Veículos (fora do escopo); com uma aba só, a barra de abas some (ver mostrarAbas)
     get tabs() {
-        return [
-            { id: 'fleets', label: this.intl.t('fleet-ops.ui.layout.fleet-ops-sidebar-operations-monitor.fleets') },
-            { id: 'drivers', label: this.intl.t('fleet-ops.ui.layout.fleet-ops-sidebar-operations-monitor.drivers') },
-            { id: 'vehicles', label: this.intl.t('fleet-ops.ui.layout.fleet-ops-sidebar-operations-monitor.vehicles') },
-        ];
+        return [{ id: 'drivers', label: this.intl.t('fleet-ops.ui.layout.fleet-ops-sidebar-operations-monitor.drivers') }];
+    }
+
+    get mostrarAbas() {
+        return this.tabs.length > 1;
     }
 
     filterResources(resources = [], fields = []) {
