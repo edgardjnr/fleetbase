@@ -200,6 +200,33 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
 - Fora da tela: menu do usuário sem Discord, Ajuda (GitHub), Documentação, Novidades e versão; tabelas vazias sem botão de guia (`table/empty-state.js`); hubs Recursos/Configurações sem a caixa "Guias"; painel inicial sem os cards Blog/GitHub (componentes apagados) e sem "Recursos recomendados".
 - Ficam com o nome da Fleetbase, de propósito: os modelos de importação baixados do S3 dela (`Fleetbase_*_Import_Template.xlsx`), os e-mails transacionais do PHP e os nomes técnicos (pacotes `@fleetbase/*`, chaves de tradução).
 
+## E-mails (pt-BR, layout do RestaurantePro)
+
+- Desenho: `docs/superpowers/specs/2026-10-04-emails-em-portugues-design.md`.
+  - Os pacotes trazem os textos fixos em inglês.
+  - Tudo é sobrescrito em `api/`, sem editar os pacotes.
+- **Layout (estilo C):**
+  - `api/resources/views/vendor/mail/html/{message,codigo}.blade.php`, mais `themes/default.css` e `text/*`.
+  - Os Mailables da Fleetbase usam o mesmo layout (`vendor/fleetbase/layout/mail.blade.php`).
+  - Logo: `MarcaDoEmail` (Admin → Marca ou `api/config/fleetbase.php`).
+- **Notificações:**
+  - `CanalEmailEntregas` (bind do `MailChannel` no `AppServiceProvider`) monta assunto e texto pelo catálogo `EmailsEmPortugues`.
+  - **Não manda e-mail ao motoboy:** nem para o Driver, nem o convite para usuário `type=driver`.
+  - Aviso sem tradução sai em inglês no layout novo e aparece no log como `[entregas] e-mail sem tradução`. O log fica no serviço da **fila**: `docker service logs entregas_queue | grep '[entregas]'`.
+- **Mailables (código, credenciais, teste):**
+  - Corpo em `vendor/fleetbase/mail/*.blade.php`; os textos do código ficam em `CodigosPorEmail`.
+  - Assunto pelo `AssuntoDosEmailsEmPortugues` (`MessageSending`, nunca devolver `false`: cancela o envio).
+- **Nomes e e-mails no texto passam pelo `TextoDoEmail::semLink`.** É o `delinkify` do core, que quebra o autolink, desfeito do escape HTML. Sem isso, a view escapava de novo e saíam `&amp;` e `&#8203;`.
+- **"Esqueci a senha" da loja** (usuário `customer`) leva ao portal: `customer-portal/auth/reset-password/<uuid>?code=`.
+  - A rota do portal ganhou o `:id`.
+- Testes:
+  - `scripts/teste-php/emails.php` (php-wasm, com a `MailMessage` real do Laravel 10 em `scripts/teste-php/laravel10/`);
+  - `node scripts/teste-emails-views.mjs`.
+- **Ao atualizar o Laravel, o core-api ou o fleetops-api:** confira a lista no docblock do `CanalEmailEntregas`:
+  - o `send()` do `MailChannel`;
+  - os nomes e as variáveis das views sobrescritas;
+  - as classes e as propriedades do catálogo.
+
 ## Tradução pt-BR (convenções)
 
 O objetivo é que nenhum texto de interface apareça em inglês com pt-BR selecionado. O inglês continua funcionando.
