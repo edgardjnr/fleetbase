@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Controllers\Entregas\LojasController;
+use App\Http\Controllers\Entregas\MapaController;
 use App\Http\Controllers\Entregas\MotoboyController;
 use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use App\Http\Controllers\Entregas\PortalLojaController;
@@ -72,6 +73,10 @@ class RouteServiceProvider extends ServiceProvider
                         Route::post('lojas/{id}/usuarios', [LojasController::class, 'adicionarUsuario']);
                         Route::put('lojas/{id}/usuarios/{contato}/senha', [LojasController::class, 'trocarSenha']);
                         Route::put('lojas/{id}/usuarios/{contato}/ativo', [LojasController::class, 'alterarAcesso']);
+
+                        // mapa ao vivo do console: só os locais de coleta (lojas) e a situação de cada motoboy (cor do capacete)
+                        Route::get('mapa/locais-de-coleta', [MapaController::class, 'locaisDeColeta']);
+                        Route::get('mapa/motoboys', [MapaController::class, 'motoboys']);
 
                         // portal da loja (usuário type=customer; o ProtegerPortalLoja só libera estas), até 60 chamadas por minuto por usuário
                         Route::get('loja/minha-loja', [PortalLojaController::class, 'minhaLoja'])->middleware('throttle:60,1');
