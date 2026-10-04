@@ -262,5 +262,58 @@ namespace {
         'cada pedido traz started e customer_uuid (visibilidade e pedidos da loja)');
     confere(in_array('where company_uuid =', \Teste\Consulta::$registro[Order::class] ?? [], true), 'pedidos filtrados pela empresa');
 
+    echo '== MotoboysNoMapaDaLoja::listar (mapa do portal da loja)' . PHP_EOL;
+    require '/repo/api/app/Support/Entregas/MotoboysNoMapaDaLoja.php';
+
+    $naRua = new Ponto(-21.1702, -47.8101);
+    Driver::$todos = [
+        motoboy('m-livre', true, $naRua, 'Livre'),
+        motoboy('m-coleta', true, new Ponto(-21.18, -47.82), 'Coleta'),
+        motoboy('m-entrega', true, new Ponto(-21.19, -47.83), 'Entrega'),
+        motoboy('m-off', false, $naRua, 'Offline'),
+        motoboy('m-off-atribuido', false, $naRua, 'Offline atribuído'),
+        motoboy('m-off-aceito', false, new Ponto(-21.2, -47.84), 'Offline com pedido aceito'),
+        motoboy('m-sem-gps', true, new Ponto(0.0, 0.0), 'Sem GPS'),
+        motoboy('m-sem-local', true, null, 'Sem local'),
+        motoboy('m-velho', true, $naRua, 'Pedido velho'),
+        motoboy('m-contato', true, $naRua, 'Pedido do contato'),
+        motoboy('m-outra-empresa', true, $naRua, 'Outra empresa', 'empresa-b'),
+    ];
+    Order::$todos = [
+        pedido('m-coleta', 'started', true, 'order_a1', 'vendor-a', $recente),
+        pedido('m-entrega', 'enroute', true, 'order_b1', 'vendor-b', $recente),
+        pedido('m-off-atribuido', 'dispatched', false, 'order_a2', 'vendor-a', $recente),
+        pedido('m-off-aceito', 'started', true, 'order_b2', 'vendor-b', $recente),
+        pedido('m-velho', 'enroute', true, 'order_a3', 'vendor-a', $antigo),
+        pedido('m-contato', 'started', true, 'order_c1', 'contato-a', $recente),
+        pedido('m-livre', 'completed', true, 'order_a4', 'vendor-a', $recente),
+    ];
+    $lista   = MotoboysNoMapaDaLoja::listar(EMPRESA, ['vendor-a', 'contato-a']);
+    $porNome = array_column($lista, null, 'nome');
+    confere(array_keys($porNome) === ['Livre', 'Coleta', 'Entrega', 'Offline com pedido aceito', 'Pedido velho', 'Pedido do contato'],
+        'aparecem os online e o offline com pedido aceito; sem coordenada e outra empresa ficam fora');
+    confere(!isset($porNome['Offline']) && !isset($porNome['Offline atribuído']),
+        'offline sem pedido aceito fica fora, mesmo com pedido só atribuído (a última posição pode ser a casa)');
+    confere(array_column($lista, 'situacao', 'nome') === [
+        'Livre' => 'livre', 'Coleta' => 'coleta', 'Entrega' => 'entrega',
+        'Offline com pedido aceito' => 'coleta', 'Pedido velho' => 'livre', 'Pedido do contato' => 'coleta',
+    ], 'situação pela regra do console; pedido parado há mais de 12 h não conta');
+    confere(array_column($lista, 'pedidos', 'nome') === [
+        'Livre' => [], 'Coleta' => ['order_a1'], 'Entrega' => [],
+        'Offline com pedido aceito' => [], 'Pedido velho' => [], 'Pedido do contato' => ['order_c1'],
+    ], 'pedidos: só os da loja da sessão (Vendor e contato do usuário), nunca os de outra loja');
+    confere(array_keys($lista[0] ?? []) === ['id', 'nome', 'latitude', 'longitude', 'situacao', 'pedidos'],
+        'só id, nome, latitude, longitude, situação e pedidos');
+    confere(($porNome['Livre']['latitude'] ?? null) === -21.1702 && ($porNome['Livre']['longitude'] ?? null) === -47.8101, 'coordenadas em número');
+    $json  = json_encode($lista);
+    $vazou = array_filter(Driver::$todos, fn ($m) => str_contains($json, $m->uuid) || str_contains($json, $m->public_id) || str_contains($json, $m->phone));
+    confere($vazou === [] && !str_contains($json, 'driver_') && !str_contains($json, '@teste.com'), 'sem uuid, public_id, telefone nem e-mail do motoboy');
+    confere(preg_match('/^[0-9a-f]{16}$/', $porNome['Livre']['id'] ?? '') === 1, 'id opaco de 16 caracteres hexadecimais');
+    confere(($porNome['Livre']['id'] ?? null) === substr(hash_hmac('sha256', 'm-livre', 'base64:chave-de-teste'), 0, 16), 'id = HMAC do uuid com a chave do app');
+    confere(count(array_unique(array_column($lista, 'id'))) === count($lista), 'um id diferente por motoboy');
+    confere((MotoboysNoMapaDaLoja::listar(EMPRESA, ['vendor-a', 'contato-a'])[0]['id'] ?? null) === ($lista[0]['id'] ?? false), 'id estável entre consultas');
+    confere(in_array('where company_uuid =', \Teste\Consulta::$registro[Driver::class] ?? [], true), 'motoboys filtrados pela empresa');
+    confere(in_array('with user', \Teste\Consulta::$registro[Driver::class] ?? [], true), 'usuário do motoboy (nome) carregado junto');
+
     echo PHP_EOL . "FALHAS: {$falhas}" . PHP_EOL;
 }
