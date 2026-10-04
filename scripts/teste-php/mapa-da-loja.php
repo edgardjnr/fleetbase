@@ -114,7 +114,16 @@ namespace Teste {
 
         public function with($relacoes): static { return $this->anotar('with ' . implode(',', (array) $relacoes)); }
 
-        public function get(array $colunas = ['*']): Collection { return new Collection(array_values($this->linhas)); }
+        // só as colunas pedidas: se o código deixar de pedir uma coluna que usa, o teste quebra em vez de passar calado
+        public function get(array $colunas = ['*']): Collection
+        {
+            $linhas = array_values($this->linhas);
+            if ($colunas !== ['*']) {
+                $linhas = array_map(fn ($linha) => (object) array_intersect_key((array) $linha, array_flip($colunas)), $linhas);
+            }
+
+            return new Collection($linhas);
+        }
 
         public function firstOrFail()
         {
@@ -261,6 +270,9 @@ namespace {
     confere(($porMotoboy['m-b'][0]->started ?? null) === false && ($porMotoboy['m-a'][1]->customer_uuid ?? null) === 'vendor-b',
         'cada pedido traz started e customer_uuid (visibilidade e pedidos da loja)');
     confere(in_array('where company_uuid =', \Teste\Consulta::$registro[Order::class] ?? [], true), 'pedidos filtrados pela empresa');
+    $deGerador = S::pedidosEmAndamento(EMPRESA, (function () { yield 'm-b'; })());
+    $deArray   = S::pedidosEmAndamento(EMPRESA, ['m-b']);
+    confere($ids($deGerador['m-b'] ?? []) === ['order_3'] && $ids($deArray['m-b'] ?? []) === ['order_3'], 'aceita array e qualquer iterável (generator)');
 
     echo '== MotoboysNoMapaDaLoja::listar (mapa do portal da loja)' . PHP_EOL;
     require '/repo/api/app/Support/Entregas/MotoboysNoMapaDaLoja.php';

@@ -39,8 +39,11 @@ class SituacaoDoMotoboy
      */
     public static function pedidosEmAndamento(string $companyUuid, iterable $motoboyUuids): array
     {
+        // o whereIn aceita array ou Arrayable: um iterável qualquer (generator) vira array antes
+        $uuids = is_array($motoboyUuids) ? $motoboyUuids : iterator_to_array($motoboyUuids, false);
+
         $pedidos = Order::where('company_uuid', $companyUuid)
-            ->whereIn('driver_assigned_uuid', $motoboyUuids)
+            ->whereIn('driver_assigned_uuid', $uuids)
             ->whereNotIn('status', StatusDoPedido::ENCERRADOS)
             ->where('updated_at', '>=', now()->subHours(static::HORAS_PEDIDO_EM_ANDAMENTO))
             ->get(['driver_assigned_uuid', 'status', 'started', 'public_id', 'customer_uuid']);
