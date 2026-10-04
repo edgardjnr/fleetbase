@@ -46,6 +46,7 @@ Repo Delivery (`C:\tmp\gm`):
 | `api/app/Http/Controllers/Entregas/MotoboyController.php` (novo) | `ganhos` e `valor` |
 | `api/app/Providers/RouteServiceProvider.php` (mudar) | rotas `v1/entregas/motoboy/*` e limite por usuário |
 | `packages/fleetops/translations/pt-br.yaml`, `en-us.yaml` (mudar) | textos de Pagamento e cobrança |
+| `api/deploy.sh` (mudar) | migrations do app também no banco sandbox |
 | `CLAUDE.md` (mudar) | documentação |
 
 Repo do app (`C:\tmp\nv`):
@@ -882,7 +883,8 @@ confere(Banco::$upserts === 1, 'nada é regravado');
 comKm($pedidos->first(), 4500.0);
 [$entregas] = $calculo->entregas($pedidos, 'America/Sao_Paulo');
 confere($entregas[0]['valor_motoboy'] === 12.0 && $entregas[0]['valor_loja'] === 16.0, 'km diferente (4,5): recalcula com a tabela vigente, faixa de 4 a 6 km (12,00 / 16,00)');
-confere((Banco::$tabelas['entregas_valores_pedido']['uuid-order_a']['metros'] ?? null) === 4500 && Banco::$upserts === 2, 'e regrava a linha com o km novo');
+$regravada = Banco::$tabelas['entregas_valores_pedido']['uuid-order_a'] ?? [];
+confere(($regravada['metros'] ?? null) === 4500 && ($regravada['de_km'] ?? null) === 4.0 && ($regravada['ate_km'] ?? null) === 6.0 && ($regravada['valor_motoboy'] ?? null) === 12.0 && ($regravada['valor_loja'] ?? null) === 16.0 && Banco::$upserts === 2, 'e regrava a linha com o km, a faixa e os valores novos');
 
 reiniciar();
 $longe      = new Collection([comKm(pedido('order_longe'), 8000.0)]);
@@ -1471,6 +1473,7 @@ $resposta = $controller->valor(new Request([], '12|abc'), 'uuid-order_aberto', n
 confere($resposta->status === 200 && $resposta->dados['pedido'] === 'order_aberto', 'pedido aberto, achado também pelo uuid');
 confere($controller->valor(new Request([], '12|abc'), 'order_de-outro', new CalculoEntregas())->status === 404, 'pedido de outro motoboy: 404');
 confere($controller->valor(new Request([], '12|abc'), 'order_outra-empresa', new CalculoEntregas())->status === 404, 'pedido de outra empresa: 404');
+confere($controller->valor(new Request([], '12|abc'), 'uuid-order_outra-empresa', new CalculoEntregas())->status === 404, 'pedido de outra empresa, nem pelo uuid: 404 (a empresa não escapa pelo "ou")');
 confere($controller->valor(new Request([], '12|abc'), 'order_nao-existe', new CalculoEntregas())->status === 404, 'pedido que não existe: 404');
 confere($controller->valor(new Request([], 'flb_live_abc'), 'order_meu', new CalculoEntregas())->status === 403, 'chave de API: 403');
 ```
@@ -1724,7 +1727,7 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>" && git log
 - [ ] **Passo 1: Pagamento e cobrança** — no `CLAUDE.md`, logo depois do item que começa com `  - **Valores por faixa de km** (`Setting` ...` (termina em `` `PUT .../faixas` substitui a tabela.``), inserir:
 
 ```markdown
-  - **Valor congelado por entrega** (tabela `entregas_valores_pedido`, migration em `api/database/migrations`; fica fora do `meta` de propósito, porque o `meta` sai na API v1 e no socket): na primeira vez que o pedido tem km e há faixas, o `CalculoEntregas` grava a faixa e os dois valores (`ValoresCongelados`). Relatório, extrato da loja e app do motoboy leem o congelado.
+  - **Valor congelado por entrega** (tabela `entregas_valores_pedido`, migration em `api/database/migrations`, que o `deploy.sh` roda no banco principal e no sandbox; fica fora do `meta` de propósito, porque o `meta` sai na API v1 e no socket): na primeira vez que o pedido tem km e há faixas, o `CalculoEntregas` grava a faixa e os dois valores (`ValoresCongelados`). Relatório, extrato da loja e app do motoboy leem o congelado.
     - **Mudar a tabela de faixas só vale para as entregas calculadas depois.** Normalmente o valor congela quando o pedido aparece no card de aceitar do motoboy.
     - Km diferente (endereço alterado, estimativa trocada pela rota do OSRM) recalcula com a tabela vigente.
     - Valor congelado errado: apague as linhas do período nessa tabela; elas voltam com a tabela atual na próxima consulta.
