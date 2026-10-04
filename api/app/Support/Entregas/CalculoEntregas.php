@@ -36,6 +36,11 @@ use Illuminate\Support\Facades\Log;
  *
  * O período é filtrado pela data em que o pedido foi concluído (tracking status COMPLETED),
  * no fuso da organização.
+ *
+ * O valor de cada entrega é congelado (ValoresCongelados, tabela entregas_valores_pedido): na primeira vez que o pedido
+ * tem km e há faixas cadastradas, a faixa e os dois valores ficam gravados, e uma tabela de faixas nova só vale para as
+ * entregas calculadas depois (o app do motoboy calcula ao mostrar o pedido no card de aceitar). Se o km mudar (endereço
+ * alterado, estimativa trocada pela rota do OSRM), o valor é recalculado com a tabela vigente.
  */
 class CalculoEntregas
 {
@@ -59,6 +64,13 @@ class CalculoEntregas
      * for reaproveitada (singleton, injeção no construtor com Octane).
      */
     protected bool $osrmFalhou = false;
+
+    protected ValoresCongelados $congelados;
+
+    public function __construct(?ValoresCongelados $congelados = null)
+    {
+        $this->congelados = $congelados ?? new ValoresCongelados();
+    }
 
     /**
      * Pedidos concluídos no período, com a data de conclusão em `entregas_concluido_em`.
@@ -91,20 +103,22 @@ class CalculoEntregas
     }
 
     /**
-     * Uma linha por pedido, na ordem de conclusão: loja, motoboy, km, faixa e os dois valores.
-     * Calcula no máximo $limiteCalculos rotas (o extrato do portal da loja passa um limite menor),
-     * primeiro as das entregas sem km e depois as estimativas a refazer.
+     * Uma linha por pedido, na ordem de conclusão: loja, motoboy, km, faixa e os dois valores (congelados: ver
+     * valorCongelado). Calcula no máximo $limiteCalculos rotas (o extrato do portal da loja e o app do motoboy passam um
+     * limite menor), primeiro as das entregas sem km e depois as estimativas a refazer.
      * Retorna [entregas, pendentes] (pendentes = pedidos ainda sem km).
      */
     public function entregas(Collection $pedidos, string $fuso, int $limiteCalculos = self::LIMITE_CALCULOS): array
     {
         $this->osrmFalhou = false;
 
-        $pendentes = 0;
-        $entregas  = [];
-        $faixas    = $this->faixas();
-        $lojas     = $this->lojasDosPedidos($pedidos);
-        $comCota   = $this->pedidosComCota($pedidos, $limiteCalculos);
+        $pendentes  = 0;
+        $entregas   = [];
+        $gravar     = [];
+        $faixas     = $this->faixas();
+        $lojas      = $this->lojasDosPedidos($pedidos);
+        $comCota    = $this->pedidosComCota($pedidos, $limiteCalculos);
+        $congelados = $this->congelados->carregar($pedidos->pluck('uuid')->all());
 
         foreach ($pedidos as $i => $pedido) {
             $rota = $this->rotaDoPedido($pedido, isset($comCota[$i]));
@@ -115,7 +129,7 @@ class CalculoEntregas
             $motoboy           = $pedido->driverAssigned;
             $coleta            = $pedido->payload?->getPickupOrFirstWaypoint();
             $km                = $rota ? round($rota['metros'] / 1000, 2) : null;
-            $faixa             = $km === null ? null : $this->faixaDoKm($faixas, $km);
+            $valor             = $rota ? $this->valorCongelado($pedido, $rota, $faixas, $congelados[$pedido->uuid] ?? null, $gravar) : null;
             [$loja, $lojaNome] = $this->lojaDoPedido($pedido, $coleta, $lojas);
 
             $entregas[] = [
@@ -130,13 +144,95 @@ class CalculoEntregas
                 'destino'       => $this->enderecoCurto($pedido->payload?->getDropoffOrLastWaypoint()),
                 'km'            => $km,
                 'fonte'         => $rota['fonte'] ?? null,
-                'faixa'         => $faixa,
-                'valor_motoboy' => $faixa ? $faixa['motoboy'] : null,
-                'valor_loja'    => $faixa ? $faixa['loja'] : null,
+                'faixa'         => $valor['faixa'] ?? null,
+                'valor_motoboy' => $valor['motoboy'] ?? null,
+                'valor_loja'    => $valor['loja'] ?? null,
             ];
         }
 
+        $this->congelados->gravar($gravar);
+
         return [$entregas, $pendentes];
+    }
+
+    /**
+     * Km e valor de um pedido para o app do motoboy (card de aceitar e detalhes): calcula a rota agora, se faltar, e
+     * congela o valor como em entregas().
+     *
+     * @return array{km: ?float, fonte: ?string, faixa: ?array, valor_motoboy: ?float}
+     */
+    public function valorDoPedido(Order $pedido): array
+    {
+        $this->osrmFalhou = false;
+
+        $rota = $this->rotaDoPedido($pedido, true);
+        if ($rota === null) {
+            return ['km' => null, 'fonte' => null, 'faixa' => null, 'valor_motoboy' => null];
+        }
+
+        $gravar = [];
+        $linha  = $this->congelados->carregar([$pedido->uuid])[$pedido->uuid] ?? null;
+        $valor  = $this->valorCongelado($pedido, $rota, $this->faixas(), $linha, $gravar);
+        $this->congelados->gravar($gravar);
+
+        return [
+            'km'            => round($rota['metros'] / 1000, 2),
+            'fonte'         => $rota['fonte'] ?? null,
+            'faixa'         => $valor['faixa'] ?? null,
+            'valor_motoboy' => $valor['motoboy'] ?? null,
+        ];
+    }
+
+    /**
+     * Valor da entrega para esta rota: o congelado, se foi calculado com o mesmo km (metros); senão, a faixa da tabela
+     * vigente, que entra em $gravar (congela, ou recongela quando o km mudou). Sem faixas cadastradas e sem valor
+     * congelado para este km, null.
+     *
+     * @return array{faixa: array, motoboy: float, loja: float}|null
+     */
+    protected function valorCongelado(Order $pedido, array $rota, array $faixas, ?array $linha, array &$gravar): ?array
+    {
+        $metros = (int) round((float) $rota['metros']);
+        if ($linha !== null && (int) $linha['metros'] === $metros) {
+            return $this->valorDaLinha($linha);
+        }
+
+        $faixa = $this->faixaDoKm($faixas, round($metros / 1000, 2));
+        if ($faixa === null) {
+            return null;
+        }
+
+        $nova = [
+            'company_uuid'  => $pedido->company_uuid,
+            'order_uuid'    => $pedido->uuid,
+            'chave'         => $rota['chave'] ?? null,
+            'metros'        => $metros,
+            'fonte'         => $rota['fonte'] ?? 'osrm',
+            'de_km'         => $faixa['de_km'],
+            'ate_km'        => $faixa['ate_km'],
+            'acima'         => !empty($faixa['acima']),
+            'valor_motoboy' => $faixa['motoboy'],
+            'valor_loja'    => $faixa['loja'],
+        ];
+        $gravar[] = $nova;
+
+        return $this->valorDaLinha($nova);
+    }
+
+    /** Linha congelada no formato do relatório: a faixa (com os dois valores) e os valores soltos, em números. */
+    protected function valorDaLinha(array $linha): array
+    {
+        $faixa = [
+            'de_km'   => (float) $linha['de_km'],
+            'ate_km'  => (float) $linha['ate_km'],
+            'motoboy' => (float) $linha['valor_motoboy'],
+            'loja'    => (float) $linha['valor_loja'],
+        ];
+        if (!empty($linha['acima'])) {
+            $faixa['acima'] = true;
+        }
+
+        return ['faixa' => $faixa, 'motoboy' => $faixa['motoboy'], 'loja' => $faixa['loja']];
     }
 
     /**
