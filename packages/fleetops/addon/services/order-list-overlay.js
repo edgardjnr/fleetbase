@@ -78,7 +78,8 @@ export default class OrderListOverlayService extends Service {
         this.searchTask.perform(query ?? '');
     }
 
-    @task *load() {
+    // Entregas: restartable, porque o socket também recarrega o painel (ver recarregar)
+    @task({ restartable: true }) *load() {
         const loadedOrders = this.store.peekAll('order');
         const excludeIds = loadedOrders.map((o) => o.public_id);
 
@@ -90,6 +91,17 @@ export default class OrderListOverlayService extends Service {
             this.loaded = true;
         } catch (err) {
             debug(`OrderListOverlayService.load: ${err?.message ?? err}`);
+        }
+    }
+
+    /**
+     * Entregas: relê as listas do painel depois de um evento de pedido no socket (aceite, status, conclusão,
+     * cancelamento, pedido novo). Sem isso o painel ficava com as listas da hora em que abriu. Antes do painel
+     * carregar pela primeira vez não faz nada: o handleLoad carrega.
+     */
+    recarregar() {
+        if (this.loaded) {
+            this.load.perform();
         }
     }
 
@@ -110,7 +122,7 @@ export default class OrderListOverlayService extends Service {
             // For each driver, expose a consolidated list of active jobs the panel cares about
             const mapped = fleets.map((fleet) => {
                 fleet.drivers = fleet.drivers.map((driver) => {
-                    driver.set('_panelActiveJobs', [...driver.activeJobs, ...this.#peekDriverActiveOrders(driver)]);
+                    driver.set('_panelActiveJobs', this.#semRepetidos([...driver.activeJobs, ...this.#peekDriverActiveOrders(driver)]));
                     return driver;
                 });
                 return fleet;
@@ -138,7 +150,7 @@ export default class OrderListOverlayService extends Service {
                 }
             );
 
-            this.unassignedOrders = [...unassigned, ...this.#peekUnassignedOrders()];
+            this.unassignedOrders = this.#semRepetidos([...unassigned, ...this.#peekUnassignedOrders()]);
         } catch (err) {
             debug(`OrderListOverlayService.#loadUnassignedOrders: ${err?.message ?? err}`);
         }
@@ -160,7 +172,7 @@ export default class OrderListOverlayService extends Service {
                 }
             );
 
-            this.activeOrders = [...active, ...this.#peekActiveOrders()];
+            this.activeOrders = this.#semRepetidos([...active, ...this.#peekActiveOrders()]);
 
             // If needed later: lazily ensure tracker data exists
             // for (const order of this.activeOrders) {
@@ -173,6 +185,20 @@ export default class OrderListOverlayService extends Service {
         }
     }
 
+    /**
+     * Entregas: o fetch com normalizeToEmberData põe no store o pedido que ainda não estava lá, e a leitura do store
+     * logo depois o devolve de novo. Sem isto, todo pedido novo que chega pelo socket aparecia duas vezes no painel.
+     */
+    #semRepetidos(pedidos) {
+        const vistos = new Set();
+        return pedidos.filter((pedido) => {
+            const id = pedido?.public_id ?? pedido?.id;
+            if (!id || vistos.has(id)) return false;
+            vistos.add(id);
+            return true;
+        });
+    }
+
     #peekOrders(filterFn) {
         const records = this.store.peekAll('order');
         const predicate = typeof filterFn === 'function' ? filterFn : () => true;
@@ -180,7 +206,9 @@ export default class OrderListOverlayService extends Service {
     }
 
     #peekUnassignedOrders() {
-        return this.#peekOrders((order) => !order.driver_assigned_uuid);
+        // Entregas: como o servidor (LiveOrderQuery): pedido cancelado, concluído ou expirado não está "sem motoboy"
+        const ENCERRADOS = ['completed', 'canceled', 'expired', 'order_canceled'];
+        return this.#peekOrders((order) => !order.driver_assigned_uuid && !ENCERRADOS.includes(order.status));
     }
 
     #peekActiveOrders() {

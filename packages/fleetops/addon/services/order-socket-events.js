@@ -6,6 +6,9 @@ import { debounce } from '@ember/runloop';
 // Entregas: rota da lista de pedidos, recarregada quando chega pedido novo pelo socket
 const ROTA_PEDIDOS = 'console.fleet-ops.operations.orders.index';
 
+// Entregas: espera para juntar a rajada de eventos de uma mesma mudança (status, atividade, waypoint) numa releitura só
+const ESPERA_PAINEL_MS = 800;
+
 /**
  * SocketCluster-driven order event stream manager.
  *
@@ -22,6 +25,8 @@ export default class OrderSocketEventsService extends Service {
     @service hostRouter;
     // Entregas: faltava; #findOrderByPublicId usava this.store e o 1º evento derrubava o laço da empresa
     @service store;
+    // Entregas: painel de pedidos do mapa, relido a cada evento de pedido
+    @service orderListOverlay;
     @tracked subs = new Map(); // channelId -> { channel, order, onEvent, debounceMs, isActive, pumpPromise, debouncer }
     @tracked _company = null;
     reloadableEvents = new Set(['order.created', 'order.completed', 'waypoint.activity', 'entity.activity']);
@@ -220,6 +225,8 @@ export default class OrderSocketEventsService extends Service {
                                 // adjust key if your relationship is named differently (e.g. 'driverAssigned')
                                 order.set?.('driver_assigned', driver);
                             }
+                            // Entregas: o pedido sai de "sem motoboy" e entra nos ativos do painel do mapa
+                            debounce(this, this.#recarregarPainelDoMapa, ESPERA_PAINEL_MS);
                             break;
                         }
 
@@ -243,6 +250,7 @@ export default class OrderSocketEventsService extends Service {
     async #atualizarPedidoDoEvento(event, data) {
         const publicId = data?.public_id ?? data?.order ?? data?.id;
         const pedido = typeof publicId === 'string' && publicId.startsWith('order_') ? this.store.peekAll('order').find((order) => order.public_id === publicId) : null;
+        const statusAntes = pedido?.status;
 
         if (pedido && !pedido.isDeleted) {
             try {
@@ -252,9 +260,17 @@ export default class OrderSocketEventsService extends Service {
             }
         }
 
-        if (!pedido || event === 'order.created') {
+        // pedido novo, fora da página ou com status novo (a lista pode estar filtrada por status): relê a lista
+        if (!pedido || event === 'order.created' || pedido.status !== statusAntes) {
             debounce(this, this.#recarregarListaDePedidos, 1500);
         }
+
+        // o painel do mapa separa os pedidos por motoboy e situação: relê depois do pedido já relido acima
+        debounce(this, this.#recarregarPainelDoMapa, ESPERA_PAINEL_MS);
+    }
+
+    #recarregarPainelDoMapa() {
+        this.orderListOverlay.recarregar();
     }
 
     #recarregarListaDePedidos() {
