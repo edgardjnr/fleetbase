@@ -1,6 +1,7 @@
 import Component from '@glimmer/component';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
+import { debug } from '@ember/debug';
 import { race, task, timeout, waitForEvent } from 'ember-concurrency';
 import CamadaDeMotoboys from '../../../../utils/camada-de-motoboys';
 import { motoboyDoPedido, motoboysValidos } from '../../../../utils/motoboys-no-mapa';
@@ -157,19 +158,36 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
 
         while (!this.isDestroying && !this.isDestroyed) {
             const oculta = document.hidden;
+            let decorrido = 0;
 
             if (!oculta) {
+                const inicio = Date.now();
+                let resposta;
+
                 try {
-                    const resposta = yield this.fetch.get('entregas/loja/motoboys');
-                    this.ultimosMotoboys = Array.isArray(resposta?.motoboys) ? resposta.motoboys : [];
-                    this.desenharMotoboys();
+                    resposta = yield this.fetch.get('entregas/loja/motoboys');
                     falhas = 0;
                 } catch {
                     falhas++;
                 }
+
+                decorrido = Date.now() - inicio;
+
+                if (resposta) {
+                    this.ultimosMotoboys = Array.isArray(resposta.motoboys) ? resposta.motoboys : [];
+
+                    // erro ao desenhar não é falha da consulta: não aumenta a espera
+                    try {
+                        this.desenharMotoboys();
+                    } catch (erro) {
+                        debug('Entregas: falha ao desenhar os motoboys no mapa: ' + erro.message);
+                    }
+                }
             }
 
-            const proxima = timeout(espera(INTERVALO_MAPA_MS, falhas));
+            // com a consulta em dia, a próxima sai 5 s depois do início desta, e não do fim: o deslize de 4,5 s termina perto
+            // da posição seguinte, e o capacete não para a cada volta. Em falha, vale a espera crescente inteira
+            const proxima = timeout(Math.max(0, espera(INTERVALO_MAPA_MS, falhas) - (falhas ? 0 : decorrido)));
             yield oculta ? race([proxima, waitForEvent(document, 'visibilitychange')]) : proxima;
         }
     }

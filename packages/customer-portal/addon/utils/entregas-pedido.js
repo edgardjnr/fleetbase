@@ -19,7 +19,10 @@ export const INTERVALO_LISTA_MS = 30000;
 /** Intervalo da consulta dos motoboys no mapa (posição e situação de todos os motoboys online). */
 export const INTERVALO_MAPA_MS = 5000;
 
-/** Teto da espera depois de falhas seguidas. O throttle:60,1 das rotas loja/* é por usuário e soma as abas abertas. */
+/**
+ * Teto da espera depois de falhas seguidas. O throttle:60,1 das rotas loja/* é por usuário e soma as abas abertas; o mapa de
+ * motoboys (loja/motoboys) tem um balde próprio, também por usuário (entregas-loja-mapa).
+ */
 export const ESPERA_MAXIMA_MS = 120000;
 
 /** Espera até a próxima consulta: o intervalo, dobrado a cada falha seguida (429 inclusive), até ESPERA_MAXIMA_MS. */
