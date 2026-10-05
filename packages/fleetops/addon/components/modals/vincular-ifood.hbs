@@ -1,0 +1,64 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="px-4 space-y-4 text-gray-900 dark:text-gray-50">
+        {{#if this.escolhendo}}
+            <p class="text-sm">{{t "fleet-ops.ui.lojas.ifood.choose" name=this.loja.nome}}</p>
+            <div class="space-y-2">
+                {{#each this.lojasDoIfood key="id" as |lojaDoIfood|}}
+                    <Button
+                        @size="sm"
+                        @icon="store"
+                        @wrapperClass="w-full"
+                        @text={{lojaDoIfood.nome}}
+                        @isLoading={{this.escolher.isRunning}}
+                        @disabled={{this.escolher.isRunning}}
+                        @onClick={{perform this.escolher lojaDoIfood}}
+                    />
+                {{/each}}
+            </div>
+        {{else if this.gerarCodigo.isRunning}}
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.ifood.generating"}}</p>
+        {{else if this.codigo}}
+            <p class="text-sm">{{t "fleet-ops.ui.lojas.ifood.step-code"}}</p>
+            <div class="text-center">
+                <div class="font-mono text-3xl font-bold tracking-widest select-all">{{this.codigo.codigo}}</div>
+                {{#if this.venceu}}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{t "fleet-ops.ui.lojas.ifood.expired"}}</p>
+                {{else}}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.ifood.expires-in" time=this.tempo}}</p>
+                {{/if}}
+                {{#if this.codigo.link}}
+                    <a href={{this.codigo.link}} target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline">{{t
+                            "fleet-ops.ui.lojas.ifood.open-portal"
+                        }}</a>
+                {{/if}}
+            </div>
+            {{#if this.venceu}}
+                <Button @size="sm" @icon="refresh" @text={{t "fleet-ops.ui.lojas.ifood.new-code"}} @onClick={{perform this.gerarCodigo}} />
+            {{else}}
+                <div class="space-y-2">
+                    <label for="vincular-ifood-autorizacao" class="block text-sm">{{t "fleet-ops.ui.lojas.ifood.step-authorization"}}</label>
+                    <input
+                        id="vincular-ifood-autorizacao"
+                        type="text"
+                        class="form-input form-input-sm w-full font-mono"
+                        autocomplete="off"
+                        placeholder={{t "fleet-ops.ui.lojas.ifood.authorization-placeholder"}}
+                        value={{this.autorizacao}}
+                        {{on "input" this.setAutorizacao}}
+                    />
+                    <Button
+                        @type="primary"
+                        @size="sm"
+                        @icon="link"
+                        @text={{t "fleet-ops.ui.lojas.ifood.confirm"}}
+                        @disabled={{not this.podeVincular}}
+                        @isLoading={{this.vincular.isRunning}}
+                        @onClick={{perform this.vincular}}
+                    />
+                </div>
+            {{/if}}
+        {{else}}
+            <Button @size="sm" @icon="refresh" @text={{t "fleet-ops.ui.lojas.ifood.new-code"}} @onClick={{perform this.gerarCodigo}} />
+        {{/if}}
+    </div>
+</Modal::Default>
