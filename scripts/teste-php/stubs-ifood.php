@@ -81,6 +81,8 @@ namespace Illuminate\Support\Facades {
         public static function get($chave, $padrao = null) { return array_key_exists($chave, self::$dados) ? self::$dados[$chave] : $padrao; }
         public static function put($chave, $valor, $ttl = null) { self::$dados[$chave] = $valor; self::$validades[$chave] = $ttl; return true; }
         public static function forget($chave) { unset(self::$dados[$chave], self::$validades[$chave]); return true; }
+        // grava só se a chave não existe (o teste simula o vencimento com forget)
+        public static function add($chave, $valor, $ttl = null) { if (array_key_exists($chave, self::$dados)) { return false; } return self::put($chave, $valor, $ttl); }
         public static function lock($nome, $segundos = 0) { \Teste\Trava::$validades[$nome] = $segundos; return new \Teste\Trava($nome); }
     }
 
@@ -517,6 +519,7 @@ namespace Teste {
         private array $filtros = [];
         private array $ordem   = [];
         private ?int $limite   = null;
+        private bool $distinta = false;
 
         public function __construct(private string $tabela) {}
 
@@ -583,7 +586,22 @@ namespace Teste {
 
         public function get($colunas = ['*']) { return new \Illuminate\Support\Collection(array_values(array_map(fn ($linha) => (object) $linha, $this->selecionadas()))); }
         public function first() { $linhas = $this->selecionadas(); return $linhas ? (object) reset($linhas) : null; }
-        public function pluck($coluna) { Banco::exigirColuna($this->tabela, $coluna); return new \Illuminate\Support\Collection(array_values(array_map(fn ($linha) => $linha[$coluna] ?? null, $this->selecionadas()))); }
+        public function distinct() { $this->distinta = true; return $this; }
+
+        public function pluck($coluna)
+        {
+            Banco::exigirColuna($this->tabela, $coluna);
+            if (!$this->distinta) {
+                return new \Illuminate\Support\Collection(array_values(array_map(fn ($linha) => $linha[$coluna] ?? null, $this->selecionadas())));
+            }
+            // select distinct: o limit vale depois de tirar os repetidos, como no SQL
+            $limite       = $this->limite;
+            $this->limite = null;
+            $valores      = array_values(array_unique(array_map(fn ($linha) => $linha[$coluna] ?? null, $this->selecionadas()), SORT_REGULAR));
+            $this->limite = $limite;
+
+            return new \Illuminate\Support\Collection($limite === null ? $valores : array_slice($valores, 0, $limite));
+        }
         public function value($coluna) { Banco::exigirColuna($this->tabela, $coluna); $linha = $this->first(); return $linha ? ($linha->$coluna ?? null) : null; }
         public function exists(): bool { return (bool) $this->selecionadas(); }
         public function count(): int { return count($this->selecionadas()); }
