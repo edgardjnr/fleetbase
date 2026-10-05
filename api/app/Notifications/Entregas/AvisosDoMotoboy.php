@@ -10,6 +10,8 @@ use Fleetbase\FleetOps\Notifications\OrderFailed;
 use Fleetbase\FleetOps\Notifications\OrderPing;
 use Fleetbase\FleetOps\Notifications\WaypointCompleted;
 use Fleetbase\Notifications\ChatMessageReceived;
+use App\Support\Entregas\CalculoEntregas;
+use App\Support\Entregas\CartaoDoAlarme;
 use Fleetbase\Notifications\TestPushNotification;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
@@ -24,10 +26,13 @@ use NotificationChannels\Fcm\Resources\Notification as NotificacaoFcm;
  *   código do pedido vem do título original ("Order X …" / "New order X …"); sem ele, a frase sai sem o código. Classe
  *   sem tradução segue como veio e fica registrada no log.
  * - Canal: cada tipo vai para um canal do app (alarme, mensagens, avisos). O APK sem o canal usa o padrão "pedidos".
- * - Alarme (pedido novo, reenvio, atribuído, liberado): com ENTREGAS_ALARME_POR_DADOS ligada, vira push de dados de
- *   alta prioridade, e o app (APK 16+) toca o alarme em loop com tela cheia. Desligada (padrão), vai como push comum no
- *   canal de alarme. Nos dois casos o aviso vale só por 15 min (VALIDADE_ALARME). Só ligar com todos no APK 16: no
- *   antigo, tocar no push de dados não abre o pedido.
+ * - Alarme (pedido novo, reenvio, atribuído, liberado): vira push de dados de alta prioridade, e o app (APK 16+) toca o
+ *   alarme em loop com o cartão em tela cheia (AlarmePedidoActivity): acende a tela com o celular bloqueado e, com a
+ *   permissão de sobrepor, abre por cima do app em uso. Os dados levam o cartão do pedido (CartaoDoAlarme: loja,
+ *   destino, km e valor do motoboy). Ligado por padrão desde 2026-10-04 (antes era preciso ENTREGAS_ALARME_POR_DADOS=1;
+ *   sem ele, o push comum do Android não acende a tela com o app fechado). ENTREGAS_ALARME_POR_DADOS=0 volta ao push
+ *   comum no canal de alarme. Nos dois casos o aviso vale só por 15 min (VALIDADE_ALARME). No APK anterior ao 16, tocar
+ *   no push de dados não abre o pedido.
  */
 class AvisosDoMotoboy
 {
@@ -57,6 +62,12 @@ class AvisosDoMotoboy
     public const VALIDADE_ALARME = '900s';
 
     /**
+     * Quem monta os dados do cartão do pedido (fn (Notification): array). Nulo = CartaoDoAlarme com o pedido da
+     * notificação; o teste troca por dados fixos (o cálculo real usa o banco e o OSRM).
+     */
+    public static ?\Closure $cartao = null;
+
+    /**
      * Adapta o push montado pela notificação: texto em pt-BR, canal e formato. Altera e devolve a mesma instância (o
      * CanalFcmEntregas passa uma cópia da mensagem e, se a adaptação falhar, envia a original).
      */
@@ -74,7 +85,7 @@ class AvisosDoMotoboy
         [$titulo, $corpo] = $texto;
 
         if (in_array($tipo, self::TIPOS_DE_ALARME, true) && static::alarmePorDados()) {
-            return static::comoDados($mensagem, $titulo, $corpo);
+            return static::comoDados($mensagem, $titulo, $corpo, static::cartao($notificacao));
         }
 
         $mensagem->notification = new NotificacaoFcm(title: $titulo, body: $corpo);
@@ -128,12 +139,33 @@ class AvisosDoMotoboy
         return 'Coleta a ' . $texto . ' de você. Toque para ver o pedido.';
     }
 
-    /** ENTREGAS_ALARME_POR_DADOS ligada (1, true ou on): o alarme vai como push de dados. Desligada por padrão. */
+    /** O alarme vai como push de dados, a não ser com ENTREGAS_ALARME_POR_DADOS desligada (0, false ou off). Vazia = ligada. */
     public static function alarmePorDados(): bool
     {
         $valor = getenv('ENTREGAS_ALARME_POR_DADOS');
 
-        return $valor !== false && in_array(strtolower(trim($valor)), ['1', 'true', 'on'], true);
+        return $valor === false || !in_array(strtolower(trim($valor)), ['0', 'false', 'off'], true);
+    }
+
+    /**
+     * Os dados do cartão do pedido para o alarme. Uma falha (banco, OSRM) não impede o alarme: vai sem o cartão, e o app
+     * mostra só o título e o texto.
+     */
+    protected static function cartao(Notification $notificacao): array
+    {
+        try {
+            if (static::$cartao) {
+                return (static::$cartao)($notificacao);
+            }
+
+            $pedido = $notificacao->order ?? null;
+
+            return $pedido ? CartaoDoAlarme::doPedido($pedido, app(CalculoEntregas::class)) : [];
+        } catch (\Throwable $erro) {
+            Log::warning('[entregas] alarme sem o cartão do pedido', ['notificacao' => get_class($notificacao), 'erro' => $erro->getMessage()]);
+
+            return [];
+        }
     }
 
     /** O código de rastreamento que o Fleet-Ops põe no título original ("Order X …" / "New order X …"). */
@@ -188,7 +220,7 @@ class AvisosDoMotoboy
      * Push de dados: sem bloco de notificação (o app monta a notificação), título e texto nos dados, todos os dados como
      * texto (exigência do FCM), prioridade alta e validade curta.
      */
-    protected static function comoDados(FcmMessage $mensagem, string $titulo, string $corpo): FcmMessage
+    protected static function comoDados(FcmMessage $mensagem, string $titulo, string $corpo, array $cartao = []): FcmMessage
     {
         $dados = [];
         foreach ((array) $mensagem->data as $chave => $valor) {
@@ -201,7 +233,7 @@ class AvisosDoMotoboy
             }
         }
 
-        $mensagem->data         = array_merge($dados, ['title' => $titulo, 'body' => $corpo, 'android_channel_id' => self::CANAL_PADRAO]);
+        $mensagem->data         = array_merge($dados, $cartao, ['title' => $titulo, 'body' => $corpo, 'android_channel_id' => self::CANAL_PADRAO]);
         $mensagem->notification = null;
 
         $android = (array) ($mensagem->custom['android'] ?? []);

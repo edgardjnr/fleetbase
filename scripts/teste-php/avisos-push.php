@@ -118,13 +118,16 @@ confere((AvisosDoMotoboy::texto($agendadoSemCodigo)[1] ?? null) === 'Pedido agen
 
 confere(AvisosDoMotoboy::texto(new Illuminate\Notifications\Notification()) === null, 'classe sem tradução devolve null');
 
+// o cartão do pedido (CartaoDoAlarme) usa o banco e o OSRM: aqui sai vazio, e os casos do cartão trocam por dados fixos
+AvisosDoMotoboy::$cartao = fn ($notificacao) => [];
+
 function enviado($notificacao): array
 {
     return AvisosDoMotoboy::adaptar($notificacao, $notificacao->toFcm(null))->toArray();
 }
 
-echo '== Canal e formato (chave desligada, o padrão)' . PHP_EOL;
-putenv('ENTREGAS_ALARME_POR_DADOS');
+echo '== Canal e formato (chave desligada: ENTREGAS_ALARME_POR_DADOS=0)' . PHP_EOL;
+putenv('ENTREGAS_ALARME_POR_DADOS=0');
 $avisos = avisosDoFleetOps();
 $ping   = enviado(new OrderPing(pedidoDoTeste(), 1234));
 confere(($ping['notification'] ?? null) === ['title' => 'Novo pedido disponível', 'body' => 'Coleta a 1,2 km de você. Toque para ver o pedido.'], 'pedido novo: push comum com o texto em pt-BR');
@@ -151,14 +154,16 @@ confere(($chat['android']['notification']['color'] ?? null) === '#4391EA', 'o re
 confere(($chat['android']['notification']['sound'] ?? null) === 'default', 'o som do push do Fleet-Ops também fica');
 confere(isset($chat['android']['fcm_options'], $chat['apns']), 'fcm_options e apns do push do Fleet-Ops ficam no push comum');
 
-echo '== Alarme como push de dados (chave ligada)' . PHP_EOL;
-foreach (['1', 'true', 'on', 'ON'] as $valor) {
+echo '== Alarme como push de dados (o padrão)' . PHP_EOL;
+putenv('ENTREGAS_ALARME_POR_DADOS');
+confere(AvisosDoMotoboy::alarmePorDados(), 'sem a chave: ligado (o padrão desde 2026-10-04)');
+foreach (['1', 'true', 'on', 'ON', '', 'qualquer'] as $valor) {
     putenv("ENTREGAS_ALARME_POR_DADOS={$valor}");
     confere(AvisosDoMotoboy::alarmePorDados(), "chave '{$valor}' liga");
 }
 putenv('ENTREGAS_ALARME_POR_DADOS= on ');
 confere(AvisosDoMotoboy::alarmePorDados(), "chave ' on ' (com espaços em volta) liga");
-foreach (['0', 'false', 'off', ''] as $valor) {
+foreach (['0', 'false', 'off', 'OFF', ' 0 '] as $valor) {
     putenv("ENTREGAS_ALARME_POR_DADOS={$valor}");
     confere(!AvisosDoMotoboy::alarmePorDados(), "chave '{$valor}' desliga");
 }
@@ -169,6 +174,28 @@ confere(($ping['data'] ?? null) === ['id' => 'order_abc', 'type' => 'order_ping'
 confere(($ping['android']['priority'] ?? null) === 'high' && ($ping['android']['ttl'] ?? null) === '900s', 'prioridade alta e validade de 15 min');
 confere(!isset($ping['android']['notification']), 'sem android.notification (senão o Android mostra como push comum)');
 confere(isset($ping['android']['fcm_options'], $ping['apns']), 'o resto do push (fcm_options, apns) fica');
+
+echo '== Cartão do pedido nos dados do alarme' . PHP_EOL;
+$cartao                  = ['entregas_loja' => 'Terraço Pizza', 'entregas_destino' => 'Centro, Ribeirão Preto', 'entregas_km' => '3,2 km', 'entregas_valor' => 'R$ 8,00'];
+$recebeu                 = null;
+AvisosDoMotoboy::$cartao = function ($notificacao) use ($cartao, &$recebeu) {
+    $recebeu = $notificacao;
+
+    return $cartao;
+};
+$aviso = new OrderPing(pedidoDoTeste(), 1234);
+$ping  = enviado($aviso);
+confere($recebeu === $aviso, 'o cartão é montado com a notificação (o pedido dela)');
+confere(array_intersect_key($ping['data'] ?? [], $cartao) === $cartao, 'loja, destino, km e valor vão nos dados');
+confere(($ping['data']['title'] ?? null) === 'Novo pedido disponível' && ($ping['data']['id'] ?? null) === 'order_abc', 'título e id continuam');
+$cancelado = enviado($avisos['cancelado']);
+confere(!isset($cancelado['data']['entregas_loja']), 'aviso que não é alarme não leva o cartão');
+Illuminate\Support\Facades\Log::$registros = [];
+AvisosDoMotoboy::$cartao                   = fn ($notificacao) => throw new RuntimeException('OSRM fora do ar');
+$ping                                      = enviado(new OrderPing(pedidoDoTeste(), 1234));
+confere(($ping['android']['priority'] ?? null) === 'high' && !isset($ping['data']['entregas_loja']), 'falha no cartão: o alarme vai sem ele');
+confere(count(registrosDoLog('[entregas] alarme sem o cartão do pedido')) === 1, 'falha no cartão fica no log');
+AvisosDoMotoboy::$cartao = fn ($notificacao) => [];
 foreach (['atribuído', 'liberado'] as $nome) {
     $mensagem = enviado($avisos[$nome]);
     confere(!isset($mensagem['notification']) && ($mensagem['android']['priority'] ?? null) === 'high', "{$nome} também vai como push de dados");
