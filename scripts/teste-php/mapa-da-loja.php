@@ -275,6 +275,7 @@ namespace {
     confere($ids($deGerador['m-b'] ?? []) === ['order_3'] && $ids($deArray['m-b'] ?? []) === ['order_3'], 'aceita array e qualquer iterável (generator)');
 
     echo '== MotoboysNoMapaDaLoja::listar (mapa do portal da loja)' . PHP_EOL;
+    require '/repo/api/app/Support/Entregas/Coordenada.php';
     require '/repo/api/app/Support/Entregas/MotoboysNoMapaDaLoja.php';
 
     $naRua = new Ponto(-21.1702, -47.8101);
