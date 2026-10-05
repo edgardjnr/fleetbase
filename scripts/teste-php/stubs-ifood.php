@@ -81,7 +81,7 @@ namespace Illuminate\Support\Facades {
         public static function get($chave, $padrao = null) { return array_key_exists($chave, self::$dados) ? self::$dados[$chave] : $padrao; }
         public static function put($chave, $valor, $ttl = null) { self::$dados[$chave] = $valor; self::$validades[$chave] = $ttl; return true; }
         public static function forget($chave) { unset(self::$dados[$chave], self::$validades[$chave]); return true; }
-        public static function lock($nome, $segundos = 0) { return new \Teste\Trava($nome); }
+        public static function lock($nome, $segundos = 0) { \Teste\Trava::$validades[$nome] = $segundos; return new \Teste\Trava($nome); }
     }
 
     class Log
@@ -193,7 +193,10 @@ namespace Illuminate\Queue {
     {
         /** Segundos do release() (o job voltou para a fila), ou null. */
         public ?int $liberadoPor = null;
+        /** Exceção do fail() (o job desistiu sem nova tentativa), ou null. */
+        public ?\Throwable $falhouCom = null;
         public function release($atraso = 0) { $this->liberadoPor = (int) $atraso; }
+        public function fail($erro = null) { $this->falhouCom = $erro instanceof \Throwable ? $erro : new \Exception((string) $erro); }
     }
 }
 
@@ -271,6 +274,8 @@ namespace Teste {
     class Trava
     {
         public static array $ocupadas = [];
+        /** Validade pedida em cada Cache::lock (nome => segundos). */
+        public static array $validades = [];
         public function __construct(private string $nome) {}
 
         public function get($callback = null)
