@@ -24,7 +24,7 @@ Substitui a ideia antiga de um sistema externo chamando `POST v1/orders` (ver `L
 | 6 | Pagamento na entrega | Valor a cobrar, forma e troco no alarme e nos detalhes; sem filtro de motoboy |
 | 7 | iFood cancela depois da coleta | Se o `dispatch` já foi enviado, o motoboy recebe e a loja é cobrada pelo valor da faixa |
 | 8 | Ninguém aceita | Raio crescente nos reenvios e aviso à central no fim |
-| 9 | Alcance do raio crescente | **Todos** os pedidos abertos: R, 1,5R, 2R, 2R; aviso à central no 3º reenvio (~12 min) |
+| 9 | Alcance do raio crescente | **Todos** os pedidos abertos: R, 1,5R, 2R, 2R; aviso à central com 12 min sem aceite (pelo tempo desde o despacho, mesmo sem motoboy no raio) |
 | 10 | Pedido agendado | Vai aos motoboys 40 min antes do início da janela de entrega |
 | — | Arquitetura | Polling pelo agendador, tabela de eventos e fila (abordagem 1; webhook pode ser ligado depois na mesma tabela) |
 
@@ -217,11 +217,11 @@ fluxo do Fleetbase (criado → despachado → iniciado → a caminho → conclu�
 - Selo **iFood #4821** na lista, no quadro e no detalhe do pedido.
 - Painel **iFood** no detalhe: última ação aceita, cobrança e observações (rota interna própria, só admin).
 - Botão **Cancelar** escondido nos pedidos iFood.
-- **Aviso "sem motoboy" (todos os pedidos):** no 3º reenvio, a API transmite `entregas.pedido_sem_motoboy` no canal
+- **Aviso "sem motoboy" (todos os pedidos):** com 12 min sem aceite desde o despacho (mesmo sem motoboy no raio), a API transmite `entregas.pedido_sem_motoboy` no canal
   `company.<uuid>`; o console toca um som e mostra uma notificação fixa com o link do pedido até alguém atribuir um
   motoboy ou cancelar.
 - **Raio crescente (todos os pedidos)**, no `ReenviarPedidosAbertos`: aviso inicial com R
-  (`getAdhocPingDistance()`), reenvios com 1,5R, 2R e 2R.
+  (`getAdhocPingDistance()`), reenvios com 1,5R a partir de ~4 min e 2R a partir de ~8 min do despacho (pelo tempo, mesmo sem reenvio antes).
 
 ### Portal da loja
 
