@@ -5,8 +5,13 @@ import escutarCanalDaEmpresa from '../../packages/fleetops/addon/utils/escutar-c
 
 const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// canal do SocketCluster em memória: o consumidor é um iterador assíncrono com return()
-function canalFalso(nome) {
+// Canal do SocketCluster em memória. Imita o cliente real em três pontos:
+// - o consumidor é um iterador assíncrono com return(), que só marca fechado e NÃO acorda um next() pendente;
+// - existe um data stream por nome: subscribe() de um nome já inscrito devolve o mesmo canal (o consumidor antigo
+//   continua recebendo); só cria canal novo se o anterior foi fechado;
+// - desinscrever() tira o canal da lista de inscritos (isSubscribed) SEM terminar o consumidor, como o
+//   unsubscribe() sem close() que alguns widgets do painel fazem.
+function canalFalso(nome, inscritos) {
     const fila = [];
     let acordar = null;
     let fechado = false;
@@ -23,18 +28,24 @@ function canalFalso(nome) {
         },
         async return() {
             fechado = true;
-            acordar?.();
             return { done: true, value: undefined };
         },
     };
     return {
         nome,
         consumidor,
+        get fechado() {
+            return fechado;
+        },
         emitir(mensagem) {
             fila.push(mensagem);
             acordar?.();
         },
+        desinscrever() {
+            inscritos.delete(nome);
+        },
         fechar() {
+            inscritos.delete(nome);
             fechado = true;
             acordar?.();
         },
@@ -43,13 +54,22 @@ function canalFalso(nome) {
 
 function socketFalso() {
     const canais = [];
+    const inscritos = new Set();
     return {
         canais,
+        inscritos,
         instance() {
             return {
+                isSubscribed(nome) {
+                    return inscritos.has(nome);
+                },
                 subscribe(nome) {
-                    const canal = canalFalso(nome);
-                    canais.push(canal);
+                    let canal = canais.findLast((c) => c.nome === nome && !c.fechado);
+                    if (!canal) {
+                        canal = canalFalso(nome, inscritos);
+                        canais.push(canal);
+                    }
+                    inscritos.add(nome);
                     return { createConsumer: () => canal.consumidor };
                 },
             };
@@ -127,5 +147,66 @@ test('erro no aoReceber não derruba a escuta', async () => {
     await esperar(5);
     assert.deepEqual(recebidas, ['order.updated']);
     assert.deepEqual(erros, ['falhou']);
+    escuta.parar();
+});
+
+test('outra tela só desinscreve (sem fechar): o vigia refaz a inscrição e o consumidor continua recebendo', async () => {
+    const socket = socketFalso();
+    const recebidas = [];
+    const escuta = escutarCanalDaEmpresa({ socket, currentUser: { companyId: 'emp-1' }, aoReceber: (m) => recebidas.push(m.event), esperaMs: 10 });
+    await esperar(5);
+    assert.equal(socket.instance().isSubscribed('company.emp-1', true), true);
+    socket.canais[0].desinscrever();
+    assert.equal(socket.instance().isSubscribed('company.emp-1', true), false);
+    await esperar(30);
+    assert.equal(socket.instance().isSubscribed('company.emp-1', true), true);
+    assert.equal(socket.canais.length, 1);
+    socket.canais[0].emitir({ event: 'order.updated' });
+    await esperar(5);
+    assert.deepEqual(recebidas, ['order.updated']);
+    escuta.parar();
+});
+
+test('parar durante a espera: não se inscreve de novo', async () => {
+    const socket = socketFalso();
+    const escuta = escutarCanalDaEmpresa({ socket, currentUser: { companyId: 'emp-1' }, aoReceber: () => {}, esperaMs: 10 });
+    await esperar(5);
+    socket.canais[0].fechar();
+    await esperar(2);
+    escuta.parar();
+    await esperar(30);
+    assert.equal(socket.canais.length, 1);
+});
+
+test('o vigia para com o parar e não mexe na inscrição depois', async () => {
+    const socket = socketFalso();
+    const escuta = escutarCanalDaEmpresa({ socket, currentUser: { companyId: 'emp-1' }, aoReceber: () => {}, esperaMs: 10 });
+    await esperar(5);
+    escuta.parar();
+    socket.canais[0].desinscrever();
+    await esperar(30);
+    assert.equal(socket.instance().isSubscribed('company.emp-1', true), false);
+});
+
+test('erro lançado pelo aoFalhar não derruba a escuta', async () => {
+    const socket = socketFalso();
+    const recebidas = [];
+    const escuta = escutarCanalDaEmpresa({
+        socket,
+        currentUser: { companyId: 'emp-1' },
+        aoReceber: (m) => {
+            if (m.event === 'quebra') throw new Error('falhou');
+            recebidas.push(m.event);
+        },
+        aoFalhar: () => {
+            throw new Error('aviso quebrado');
+        },
+        esperaMs: 10,
+    });
+    await esperar(5);
+    socket.canais[0].emitir({ event: 'quebra' });
+    socket.canais[0].emitir({ event: 'order.updated' });
+    await esperar(5);
+    assert.deepEqual(recebidas, ['order.updated']);
     escuta.parar();
 });
