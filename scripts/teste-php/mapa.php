@@ -219,6 +219,15 @@ namespace Illuminate\Support\Facades {
     }
 }
 
+namespace App\Support\Entregas {
+    // dublê: a lista real tem teste próprio (pedidos-no-mapa.php)
+    class PedidosNoMapa
+    {
+        public static array $chamadas = [];
+        public static function daCentral(string $empresa): array { static::$chamadas[] = ['daCentral', $empresa]; return [['id' => 'order_x']]; }
+    }
+}
+
 namespace {
     use App\Http\Controllers\Entregas\MapaController;
     use App\Support\Entregas\SituacaoDoMotoboy as S;
@@ -330,6 +339,10 @@ namespace {
     confere(array_column($resposta, 'online', 'uuid')['m-off'] === false && array_column($resposta, 'online', 'uuid')['m-livre'] === true, 'resposta traz o online como booleano');
     confere(in_array('permissao fleet-ops list driver', \Teste\Consulta::$registro[Driver::class], true), 'Driver com o filtro de permissão do Fleet-Ops');
     confere(in_array('where company_uuid =', \Teste\Consulta::$registro[Order::class], true), 'pedidos filtrados pela empresa');
+    $completa = (new MapaController())->motoboys()->dados;
+    confere(array_keys($completa) === ['motoboys', 'pedidos'], 'resposta { motoboys, pedidos }');
+    confere($completa['pedidos'] === [['id' => 'order_x']] && end(\App\Support\Entregas\PedidosNoMapa::$chamadas) === ['daCentral', EMPRESA],
+        'pedidos = PedidosNoMapa::daCentral com a empresa da sessão');
 
     echo '== AvisarOnlineDoMotoboy + OnlineDoMotoboyMudou' . PHP_EOL;
     $acao    = \Fleetbase\FleetOps\Http\Controllers\Api\v1\DriverController::class . '@toggleOnline';

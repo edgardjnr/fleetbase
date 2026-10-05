@@ -169,6 +169,13 @@ namespace App\Http\Controllers {
 }
 
 namespace App\Support\Entregas {
+    // dublê: a lista real tem teste próprio (pedidos-no-mapa.php)
+    class PedidosNoMapa
+    {
+        public static array $chamadas = [];
+        public static function daLoja(string $empresa, array $donos): array { static::$chamadas[] = ['daLoja', $empresa, $donos]; return [['id' => 'order_y']]; }
+    }
+
     // a loja do usuário da sessão: "usuario-a" é da Loja A (Vendor vendor-a, contato contato-a); o resto não tem loja
     class LojaDoUsuario
     {
@@ -342,7 +349,9 @@ namespace {
     $controller = new PortalLojaController();
     $sessao     = ['company' => EMPRESA, 'user' => 'usuario-a'];
     $resposta   = $controller->motoboysNoMapa()->dados;
-    confere(array_keys($resposta) === ['motoboys'], 'resposta { motoboys: [...] }');
+    confere(array_keys($resposta) === ['motoboys', 'pedidos'], 'resposta { motoboys, pedidos }');
+    confere($resposta['pedidos'] === [['id' => 'order_y']] && end(\App\Support\Entregas\PedidosNoMapa::$chamadas) === ['daLoja', EMPRESA, ['vendor-a', 'contato-a']],
+        'pedidos = PedidosNoMapa::daLoja com a empresa e os donos da loja (Vendor e contato do usuário)');
     confere($resposta['motoboys'] === json_decode(json_encode(MotoboysNoMapaDaLoja::listar(EMPRESA, ['vendor-a', 'contato-a'])), true),
         'a lista do MotoboysNoMapaDaLoja, com a empresa da sessão e os donos da loja (Vendor e contato do usuário)');
 

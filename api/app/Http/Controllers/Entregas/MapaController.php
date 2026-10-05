@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Entregas;
 
 use App\Http\Controllers\Controller;
+use App\Support\Entregas\PedidosNoMapa;
 use App\Support\Entregas\SituacaoDoMotoboy;
 use Fleetbase\FleetOps\Http\Resources\v1\Index\Place as PlaceIndexResource;
 use Fleetbase\FleetOps\Models\Driver;
@@ -17,6 +18,7 @@ use Fleetbase\FleetOps\Models\Vendor;
  *   Local antigo de loja que mudou de coordenada fica sem dono e não aparece.
  * - motoboys: a situação de cada motoboy (SituacaoDoMotoboy), que vira a cor do capacete. O console consulta a
  *   cada ~20 s com o mapa aberto.
+ * - motoboys também traz `pedidos`: os pedidos em andamento, um alfinete no endereço de entrega (PedidosNoMapa).
  * Mesmo filtro de permissão do live/* do Fleet-Ops (applyDirectivesForPermissions). Usuário de loja não chega
  * aqui: o ProtegerPortalLoja só libera entregas/loja/*.
  */
@@ -59,6 +61,8 @@ class MapaController extends Controller
                     array_map(fn ($pedido) => $pedido->status, $pedidosPorMotoboy[$motoboy->uuid] ?? [])
                 ),
             ])->values(),
+            // Entregas: os alfinetes dos pedidos em andamento (todos da empresa), relidos junto com os capacetes
+            'pedidos'  => PedidosNoMapa::daCentral(session('company')),
         ]);
     }
 }

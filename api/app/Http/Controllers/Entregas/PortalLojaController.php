@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\LojaDoUsuario;
 use App\Support\Entregas\MotoboysNoMapaDaLoja;
+use App\Support\Entregas\PedidosNoMapa;
 use App\Support\Entregas\StatusDoPedido;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
@@ -136,14 +137,17 @@ class PortalLojaController extends Controller
 
     /**
      * Motoboys no mapa do portal (todos os online e os offline com pedido aceito), consultado a cada 5 s com o mapa aberto.
-     * Sem id, telefone nem pedido de outra loja (MotoboysNoMapaDaLoja).
+     * Sem id, telefone nem pedido de outra loja (MotoboysNoMapaDaLoja). Traz também os alfinetes dos pedidos em andamento
+     * da loja (PedidosNoMapa::daLoja): só os dela, nunca os das outras lojas.
      */
     public function motoboysNoMapa()
     {
         $vendor = $this->lojaDaSessao();
+        $donos  = $this->donosDosPedidos($vendor);
 
         return response()->json([
-            'motoboys' => MotoboysNoMapaDaLoja::listar(session('company'), $this->donosDosPedidos($vendor)),
+            'motoboys' => MotoboysNoMapaDaLoja::listar(session('company'), $donos),
+            'pedidos'  => PedidosNoMapa::daLoja(session('company'), $donos),
         ]);
     }
 
