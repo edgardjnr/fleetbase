@@ -110,6 +110,12 @@ O produto é só isto: o pedido chega do iFood pela API, é despachado para o mo
   - O nome do motoboy fica num rótulo fixo embaixo do capacete. Os detalhes saem no clique (popup). O capacete não gira com a direção do GPS (`@disableRotation` do `leaflet-tracking-marker`).
   - A consulta dos pedidos em andamento (`SituacaoDoMotoboy::pedidosEmAndamento`) é a mesma do mapa de motoboys do portal da loja.
   - Teste: `scripts/teste-php/mapa.php`.
+  - **Pedidos em andamento = alfinete vermelho no endereço de entrega** (decisão de 2026-10-05; desenho: `docs/superpowers/specs/2026-10-05-pedidos-no-mapa-design.md`).
+    - A lista vem em `pedidos`, na mesma resposta de `entregas/mapa/motoboys`, e é relida junto com os capacetes.
+    - Ela sai do `App\Support\Entregas\PedidosNoMapa::daCentral`: pedidos não encerrados e atualizados nas últimas 12 h, com ou sem motoboy, até 300.
+    - O popup mostra número, loja, status, motoboy, "há X min" e endereço, e tem o botão Abrir pedido.
+    - Funções puras: `utils/entregas-pedidos-no-mapa.js`.
+    - Testes: `scripts/teste-php/pedidos-no-mapa.php` e `scripts/teste-portal/entregas-pedidos-no-mapa.test.mjs`.
 - `docker/`: Dockerfile da API, `docker/socket/` (socket ARM) e crontab.
 
 ### Build do console
@@ -167,6 +173,11 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
   - o motoboy do pedido aberto fica por cima, com o rótulo azul, e entra uma vez no enquadramento (`definirMotoboyDoPedido` no serviço da rota). O painel "Motoboy" do detalhe não tem mais mapinha;
   - a rota `loja/motoboys` nunca manda o id do motoboy (com ele, o canal `driver.<id>` do socket entrega a posição ao vivo e o telefone): traz só um id opaco (HMAC do uuid), nome, coordenadas, situação e os `public_id` dos pedidos da própria loja. **O detalhe do pedido do portal ainda entrega o motoboy do pedido** (ver "Riscos conhecidos");
   - testes: `scripts/teste-php/mapa-da-loja.php` (php-wasm) e `node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/*.test.mjs`.
+  - **Pedidos da loja no mapa** (decisão de 2026-10-05): alfinete vermelho no endereço de entrega de cada pedido em andamento, **só da própria loja**.
+    - O endereço é dado do cliente: a loja nunca vê os pedidos das outras lojas.
+    - Os alfinetes vêm em `pedidos`, na resposta de `loja/motoboys` (`PedidosNoMapa::daLoja`, sem o nome da loja e sem id de motoboy), no mesmo ciclo de 5 s dos capacetes.
+    - O pedido aberto no detalhe não ganha alfinete, porque já mostra P e D.
+    - Funções puras: `utils/pedidos-no-mapa.js`.
 - **Chat da loja com os motoboys** (decisão de 2026-10-04; desenho: `docs/superpowers/specs/2026-10-04-chat-da-loja-design.md`):
   - tela Pedidos: botão **Conversas** (com o total de não lidas) abre uma gaveta à direita com as conversas da loja e "Nova conversa" (os motoboys do mapa, pelo id opaco); no detalhe do pedido, **Conversar com o motoboy** abre a mesma conversa com "Pedido <número>: " no texto;
   - **uma conversa por par loja × motoboy**, sobre o chat do Fleetbase (canal marcado no `meta`: `entregas_conversa_loja`/`entregas_conversa_motoboy`), **só com o motoboy e os usuários ativos da loja** (decisão de 2026-10-04: a central não entra sozinha, nem pelo app nem pelo portal; pode ser adicionada depois pelo chat do console, e quem já estava nas conversas antigas continua). O motoboy responde pela aba Conversas do app (push no canal `mensagens`);
@@ -333,3 +344,4 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 12. Motoboys no mapa do portal da loja (2026-10-04): todos os motoboys online com o capacete e o nome, posição a cada 5 s com deslize e destaque do motoboy do pedido aberto; a rota do motoboy do pedido deixou de mandar a posição.
 13. Mapa do pedido no app do motoboy igual ao do console (2026-10-04): P/D, linha da rota pelo OSRM via API (`v1/entregas/motoboy/pedidos/{id}/rota`), capacete na cor da situação e resumo de km e tempo.
 14. Atividades do pedido em pt-BR na tela (2026-10-04), detalhes do pedido no app com fechar e Chat com a central, e chat da loja com os motoboys no portal.
+15. Pedidos em andamento no mapa (2026-10-05): alfinete vermelho no endereço de entrega. O console mostra todos os pedidos; o portal, só os da loja.

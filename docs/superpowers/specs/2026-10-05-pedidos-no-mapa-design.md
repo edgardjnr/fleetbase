@@ -118,7 +118,7 @@ customer-portal não importam um do outro.
 
 ## Textos (pt-BR e en-us)
 
-- Chaves novas em `fleet-ops.ui.map.entregas-pedidos.*` e `customer-portal.ui.entregas.pedidos-no-mapa.*`:
+- Chaves novas em `fleet-ops.ui.map.leaflet-live-map.pedido-*` e `customer-portal.ui.entregas.mapa-pedido-*`:
   - "Sem motoboy";
   - "Abrir pedido";
   - "Ver pedido";
