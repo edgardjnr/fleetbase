@@ -103,7 +103,7 @@ confere($de === '2026-10-03 11:54:00' && $ate === '2026-10-03 12:06:30', "janela
 confere(count(Registro::$avisos) === 1, 'o pedido aberto há 5 min recebe o aviso');
 
 echo '== Linha do tempo: despachado 12:00:30 e ninguém aceita' . PHP_EOL;
-reiniciar([pedido('PED-B', '12:00:30')], [motoboy('Motoca', 1200), motoboy('Ocupado', 800, 'busy'), motoboy('Longe', 9000), motoboy('Offline', 500, 'available', 0)]);
+reiniciar([pedido('PED-B', '12:00:30')], [motoboy('Motoca', 1200), motoboy('Ocupado', 800, 'busy'), motoboy('Longe', 13000), motoboy('Offline', 500, 'available', 0)]);
 rodarMinutos('12:01:00', 30);
 $h = horarios('PED-B');
 confere(count($h) === 3, 'três avisos extras e nada depois, em 30 min (' . implode(', ', $h) . ')');
@@ -118,10 +118,10 @@ confere($aviso?->title === 'Pedido ainda sem motoboy' && $aviso?->message === 'C
 confere($aviso?->data === ['id' => 'PED-B', 'type' => 'order_ping'], 'dados do push iguais aos do primeiro aviso (order_ping)');
 
 echo '== Sem motoboy no raio até 12:07' . PHP_EOL;
-$motoca = motoboy('Motoca', 9000);
+$motoca = motoboy('Motoca', 13000);
 reiniciar([pedido('PED-C', '12:00:30')], [$motoca]);
 rodarMinutos('12:01:00', 30, function ($agora) use ($motoca) {
-    $motoca->distance = $agora >= utc('12:07:00') ? 1200 : 9000;
+    $motoca->distance = $agora >= utc('12:07:00') ? 1200 : 13000;
 });
 $h = horarios('PED-C');
 confere(count($h) === 3 && $h[0] >= '12:07:00' && $h[0] < '12:08:00', 'não gasta reenvio sem motoboy e avisa assim que um entra no raio (' . implode(', ', $h) . ')');
@@ -193,5 +193,24 @@ foreach (App\Support\Entregas\StatusDoPedido::ENCERRADOS as $status) {
     rodarMinutos('12:01:00', 6);
     confere(horarios('PED-S') === [], "pedido {$status} não é reenviado");
 }
+
+echo '== Raio crescente (R = 6000 m)' . PHP_EOL;
+confere(ReenviarPedidosAbertos::raioDoReenvio(6000, 1) === 9000, '1º reenvio: 1,5R');
+confere(ReenviarPedidosAbertos::raioDoReenvio(6000, 2) === 12000, '2º reenvio: 2R');
+confere(ReenviarPedidosAbertos::raioDoReenvio(6000, 3) === 12000, '3º reenvio: 2R');
+confere(ReenviarPedidosAbertos::raioDoReenvio(6000, 9) === 12000, 'além do 3º: continua 2R');
+confere(ReenviarPedidosAbertos::raioDoReenvio(5000, 1) === 7500, 'arredonda para metros inteiros');
+
+reiniciar([pedido('PED-R', '12:00:30')], [motoboy('Perto', 5000), motoboy('Medio', 8000), motoboy('Longe', 11000), motoboy('MuitoLonge', 13000)]);
+rodarMinutos('12:01:00', 30);
+$porMinuto = [];
+foreach (Registro::$avisos as $a) {
+    $porMinuto[$a['quando']->format('H:i')][] = $a['motoboy'];
+}
+$rodadas = array_values($porMinuto);
+confere(count($rodadas) === 3, 'três reenvios (' . implode(', ', array_keys($porMinuto)) . ')');
+confere(($rodadas[0] ?? []) === ['Perto', 'Medio'], '1º reenvio até 9 km: ' . implode(', ', $rodadas[0] ?? []));
+confere(($rodadas[1] ?? []) === ['Perto', 'Medio', 'Longe'], '2º reenvio até 12 km: ' . implode(', ', $rodadas[1] ?? []));
+confere(($rodadas[2] ?? []) === ['Perto', 'Medio', 'Longe'], '3º reenvio até 12 km: ' . implode(', ', $rodadas[2] ?? []));
 
 resumo();

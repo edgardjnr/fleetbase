@@ -21,9 +21,10 @@ use Illuminate\Support\Facades\Cache;
  *   regrava o dispatched_at e dispara o OrderDispatched, que já avisa os motoboys próximos, e o comando avisava de
  *   novo em seguida.
  *
- * Aqui o pedido não é alterado. O aviso volta a cada INTERVALO_MINUTOS, no máximo MAX_REENVIOS vezes, para os mesmos
- * motoboys do primeiro aviso (online, livres e dentro do raio da coleta). Sem motoboy no raio, tenta de novo no minuto
- * seguinte sem gastar reenvio. A contagem fica no cache, por pedido e despacho: despachar o pedido de novo recomeça.
+ * Aqui o pedido não é alterado. O aviso volta a cada INTERVALO_MINUTOS, no máximo MAX_REENVIOS vezes, para os motoboys
+ * online e livres perto da coleta, num raio que cresce a cada reenvio (MULTIPLICADORES_DO_RAIO sobre o raio R do
+ * primeiro aviso: 1,5R, 2R e 2R). Sem motoboy no raio, tenta de novo no minuto seguinte sem gastar reenvio. A contagem
+ * fica no cache, por pedido e despacho: despachar o pedido de novo recomeça.
  *
  * Ao atualizar o fleetops-api, confira se a classe pai ainda tem getNearbyDriversForOrder, newOrderQuery e
  * newDriverQuery.
@@ -38,6 +39,9 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
 
     /** O agendador roda o comando alguns segundos depois do minuto cheio: sem folga, um intervalo às vezes vira 5 min. */
     public const FOLGA_SEGUNDOS = 30;
+
+    /** Raio de cada reenvio em relação ao raio do primeiro aviso (R, getAdhocPingDistance): 1,5R, 2R e 2R. */
+    public const MULTIPLICADORES_DO_RAIO = [1.5, 2, 2];
 
     public function handle(): void
     {
@@ -70,9 +74,10 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
                 continue;
             }
 
-            $motoboys = $this->getNearbyDriversForOrder($pedido, $coleta, $pedido->getAdhocPingDistance(), $testing);
+            $raio     = self::raioDoReenvio($pedido->getAdhocPingDistance(), $estado['vezes'] + 1);
+            $motoboys = $this->getNearbyDriversForOrder($pedido, $coleta, $raio, $testing);
             if ($motoboys->isEmpty()) {
-                $this->line('Pedido ' . $pedido->public_id . ': nenhum motoboy livre no raio da coleta.');
+                $this->line('Pedido ' . $pedido->public_id . ': nenhum motoboy livre a até ' . $raio . ' m da coleta.');
                 continue;
             }
 
@@ -83,8 +88,19 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
             $vezes = $estado['vezes'] + 1;
             Cache::put($chave, ['vezes' => $vezes, 'ultimo' => $agora->getTimestamp()], now()->addDay());
 
-            $this->info('Pedido ' . $pedido->public_id . ': aviso ' . $vezes . ' de ' . self::MAX_REENVIOS . ' reenviado a ' . $motoboys->count() . ' motoboy(s).');
+            $this->info('Pedido ' . $pedido->public_id . ': aviso ' . $vezes . ' de ' . self::MAX_REENVIOS . ' reenviado a ' . $motoboys->count() . ' motoboy(s) (raio ' . $raio . ' m).');
         }
+    }
+
+    /**
+     * Raio do reenvio de número $reenvio (1, 2, 3...), em metros. Depois do último multiplicador, repete o último.
+     */
+    public static function raioDoReenvio(int $raio, int $reenvio): int
+    {
+        $multiplicadores = self::MULTIPLICADORES_DO_RAIO;
+        $indice          = max(0, min($reenvio, count($multiplicadores)) - 1);
+
+        return (int) round($raio * $multiplicadores[$indice]);
     }
 
     /**
