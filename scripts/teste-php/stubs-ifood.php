@@ -205,7 +205,8 @@ namespace Illuminate\Queue {
 namespace Illuminate\Foundation\Bus {
     trait Dispatchable
     {
-        public static function dispatch(...$argumentos) { \Teste\Fila::$jobs[] = new static(...$argumentos); return null; }
+        // com Fila::$falhar, lança como o dispatch com o Redis fora do ar
+        public static function dispatch(...$argumentos) { if (\Teste\Fila::$falhar) { throw \Teste\Fila::$falhar; } \Teste\Fila::$jobs[] = new static(...$argumentos); return null; }
     }
 }
 
@@ -256,6 +257,8 @@ namespace Teste {
     class Fila
     {
         public static array $jobs = [];
+        /** Erro que todo dispatch lança (fila fora do ar), ou null. */
+        public static ?\Throwable $falhar = null;
     }
 
     class Coluna
@@ -520,6 +523,9 @@ namespace Teste {
         private array $ordem   = [];
         private ?int $limite   = null;
         private bool $distinta = false;
+        private ?string $grupo = null;
+        /** [coluna, direção] do orderByRaw('min(coluna) asc|desc'), ou null. */
+        private ?array $ordemPeloMinimo = null;
 
         public function __construct(private string $tabela) {}
 
@@ -540,6 +546,19 @@ namespace Teste {
         public function whereNotNull($coluna) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => ($linha[$coluna] ?? null) !== null; return $this; }
         public function orderBy($coluna, $direcao = 'asc') { Banco::exigirColuna($this->tabela, $coluna); $this->ordem[] = [$coluna, strtolower($direcao)]; return $this; }
         public function limit(int $quantos) { $this->limite = $quantos; return $this; }
+        public function groupBy($coluna) { Banco::exigirColuna($this->tabela, $coluna); $this->grupo = $coluna; return $this; }
+
+        // só "min(<coluna>) [asc|desc]", com groupBy (o que as classes do iFood usam); o resto lança, para não passar calado
+        public function orderByRaw(string $expressao)
+        {
+            if (!preg_match('/^\s*min\((\w+)\)\s*(asc|desc)?\s*$/i', $expressao, $partes)) {
+                throw new \LogicException("orderByRaw não suportado no stub: {$expressao}");
+            }
+            Banco::exigirColuna($this->tabela, $partes[1]);
+            $this->ordemPeloMinimo = [$partes[1], strtolower($partes[2] ?? 'asc')];
+
+            return $this;
+        }
 
         public static function compara($atual, string $operador, $valor): bool
         {
@@ -591,6 +610,9 @@ namespace Teste {
         public function pluck($coluna)
         {
             Banco::exigirColuna($this->tabela, $coluna);
+            if ($this->grupo !== null) {
+                return new \Illuminate\Support\Collection($this->agrupadas($coluna));
+            }
             if (!$this->distinta) {
                 return new \Illuminate\Support\Collection(array_values(array_map(fn ($linha) => $linha[$coluna] ?? null, $this->selecionadas())));
             }
@@ -602,6 +624,38 @@ namespace Teste {
 
             return new \Illuminate\Support\Collection($limite === null ? $valores : array_slice($valores, 0, $limite));
         }
+        /** group by: um valor por grupo, na ordem do orderByRaw('min(...)') se houver; o limit vale depois de agrupar. */
+        private function agrupadas(string $coluna): array
+        {
+            if ($coluna !== $this->grupo) {
+                // como o ONLY_FULL_GROUP_BY do MySQL 8
+                throw new \LogicException("pluck({$coluna}) com groupBy({$this->grupo})");
+            }
+            $limite       = $this->limite;
+            $this->limite = null;
+            $linhas       = $this->selecionadas();
+            $this->limite = $limite;
+
+            // valor do grupo => [valor, mínimo da coluna do orderByRaw]
+            $grupos = [];
+            foreach ($linhas as $linha) {
+                $chave = (string) ($linha[$coluna] ?? '');
+                $valor = $this->ordemPeloMinimo ? ($linha[$this->ordemPeloMinimo[0]] ?? null) : null;
+                if (!isset($grupos[$chave])) {
+                    $grupos[$chave] = [$linha[$coluna] ?? null, $valor];
+                } elseif ($valor !== null && ($grupos[$chave][1] === null || $valor < $grupos[$chave][1])) {
+                    $grupos[$chave][1] = $valor;
+                }
+            }
+            if ($this->ordemPeloMinimo) {
+                $direcao = $this->ordemPeloMinimo[1];
+                uasort($grupos, fn ($a, $b) => $direcao === 'desc' ? ($b[1] <=> $a[1]) : ($a[1] <=> $b[1]));
+            }
+            $valores = array_values(array_map(fn ($par) => $par[0], $grupos));
+
+            return $limite === null ? $valores : array_slice($valores, 0, $limite);
+        }
+
         public function value($coluna) { Banco::exigirColuna($this->tabela, $coluna); $linha = $this->first(); return $linha ? ($linha->$coluna ?? null) : null; }
         public function exists(): bool { return (bool) $this->selecionadas(); }
         public function count(): int { return count($this->selecionadas()); }
@@ -656,6 +710,9 @@ namespace Teste {
 
         public function delete(): int
         {
+            if (isset(Banco::$falhar[$this->tabela])) {
+                throw new ErroDeBanco(Banco::$falhar[$this->tabela]);
+            }
             $apagadas = 0;
             foreach (array_keys($this->selecionadas()) as $id) {
                 unset(Banco::$tabelas[$this->tabela][$id]);
@@ -739,6 +796,7 @@ namespace {
         \Teste\Http::$respostas                       = [];
         \Teste\Http::$chamadas                        = [];
         \Teste\Fila::$jobs                            = [];
+        \Teste\Fila::$falhar                          = null;
         \Teste\Sessao::$dados                         = [];
         \Teste\Relogio::$agora                        = '2026-10-05 18:00:00';
         \Teste\Config::$valores                       = [
