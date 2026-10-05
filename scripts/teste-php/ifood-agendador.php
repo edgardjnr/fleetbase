@@ -99,6 +99,23 @@ $vencido->chamadas = [];
 rodarAgendados();
 confere($vencido->chamadas === [], 'na rodada seguinte, não despacha de novo');
 
+echo '== agendados: reserva do cancelado tira o Order do agendamento' . PHP_EOL;
+reiniciarIfood();
+reiniciarFleetbase();
+$canceladoAgendado = pedidoIfood('cancelado-agendado', '2026-10-05 19:20:00', ['cancelado_pelo_ifood_em' => '2026-10-05 17:30:00'], 'created', ['scheduled_at' => '2026-10-05 19:20:00', 'adhoc' => true]);
+$canceladoAceito   = pedidoIfood('cancelado-aceito', '2026-10-05 19:20:00', ['cancelado_pelo_ifood_em' => '2026-10-05 17:30:00'], 'started', ['scheduled_at' => '2026-10-05 19:20:00', 'adhoc' => true, 'started' => true]);
+$canceladoTravado  = pedidoIfood('cancelado-travado', '2026-10-05 19:20:00', ['cancelado_pelo_ifood_em' => '2026-10-05 17:30:00'], 'created', ['scheduled_at' => '2026-10-05 19:20:00', 'adhoc' => true]);
+Trava::$ocupadas['entregas:pedido:' . $canceladoTravado->uuid] = true;
+confere(excecao(fn () => rodarAgendados()) === null, 'roda sem erro, mesmo com a trava de um pedido ocupada');
+confere($canceladoAgendado->scheduled_at === null && $canceladoAgendado->adhoc === false && $canceladoAgendado->chamadas === ['saveQuietly'] && $canceladoAgendado->travadoNoSalvar === [true], 'cancelado ainda não despachado: scheduled_at nulo e adhoc desligado (saveQuietly, com a trava)');
+confere(linhaDe('cancelado-agendado')->despachar_em === null && !in_array('firstDispatchWithActivity', $canceladoAgendado->chamadas, true), 'e sai da fila, sem despachar');
+confere($canceladoAceito->chamadas === [] && $canceladoAceito->scheduled_at === '2026-10-05 19:20:00' && linhaDe('cancelado-aceito')->despachar_em === null, 'cancelado já aceito: o Order não é mexido; a linha sai da fila');
+confere($canceladoTravado->chamadas === [] && linhaDe('cancelado-travado')->despachar_em === '2026-10-05 19:20:00', 'trava ocupada: o Order e a linha ficam para a rodada seguinte');
+unset(Trava::$ocupadas['entregas:pedido:' . $canceladoTravado->uuid]);
+rodarAgendados();
+confere($canceladoTravado->scheduled_at === null && $canceladoTravado->adhoc === false && linhaDe('cancelado-travado')->despachar_em === null, 'trava solta: sai do agendamento e da fila na rodada seguinte');
+confere(Socket::$transmitidos === [] && !logou('despacho desistiu'), 'sem aviso à central');
+
 echo '== agendados: motoboy atribuído pela central' . PHP_EOL;
 reiniciarIfood();
 reiniciarFleetbase();

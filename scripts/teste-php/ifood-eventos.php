@@ -66,7 +66,12 @@ foreach (['PLC', 'CFM', 'RTP', 'DDCR', 'DPCR'] as $codigo) {
 foreach (['CAN', 'CAR', 'CARF', 'CON', 'DSP', 'CLT', 'AAD', 'DDCS', 'DDD', 'ADR', 'GTO', 'AAO', 'OPA', 'HSD', ''] as $codigo) {
     confere(!EventosIfood::criaPedido($codigo), "{$codigo} não cria");
 }
-confere(EventosIfood::temCancelamento([$plc, evento('ev-9', 'CAN', '2026-10-05T18:30:00Z')]) && !EventosIfood::temCancelamento([$plc, $cfm]), 'acha o CAN entre os eventos');
+confere(!method_exists(EventosIfood::class, 'temCancelamento'), 'sem temCancelamento (o job procura o CAN na tabela)');
+
+echo '== Depois da coleta' . PHP_EOL;
+confere(defined(EventosIfood::class . '::POS_COLETA') && EventosIfood::POS_COLETA === ['DSP', 'CON', 'CLT', 'DDD', 'AAD', 'DDCS', 'GTO', 'ADR', 'AAO'], 'POS_COLETA junto de CRIAM_PEDIDO e ORDEM');
+confere(array_intersect(EventosIfood::POS_COLETA, EventosIfood::CRIAM_PEDIDO) === [], 'nenhum código de depois da coleta cria o pedido');
+confere(!defined(\App\Jobs\Entregas\ProcessarPedidoIfood::class . '::POS_COLETA'), 'o job não tem cópia própria');
 
 echo '== Linha para gravar' . PHP_EOL;
 $comMetadata = evento('ev-4', 'CAN', '2026-10-05T18:26:35.864Z') + ['metadata' => ['CANCEL_ORIGIN' => 'RESTAURANT', 'CANCEL_CODE' => '523']];

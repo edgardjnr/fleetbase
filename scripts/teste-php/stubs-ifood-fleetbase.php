@@ -295,6 +295,7 @@ namespace Fleetbase\FleetOps\Models {
         public $status = 'created';
         public $dispatched = false;
         public $adhoc = false;
+        public $scheduled_at = null;
         public $started = false;
         public $driver_assigned_uuid = null;
         public $deleted_at = null;
@@ -337,7 +338,10 @@ namespace Fleetbase\FleetOps\Models {
         /** O adhoc em cada saveQuietly (o despacho grava o adhoc antes de despachar). */
         public array $adhocAoSalvar = [];
 
-        public function saveQuietly() { $this->chamadas[] = 'saveQuietly'; $this->adhocAoSalvar[] = $this->adhoc; return true; }
+        /** Em cada saveQuietly: se a trava do pedido (TravaDoPedido) estava tomada. */
+        public array $travadoNoSalvar = [];
+
+        public function saveQuietly() { $this->chamadas[] = 'saveQuietly'; $this->adhocAoSalvar[] = $this->adhoc; $this->travadoNoSalvar[] = isset(\Teste\Trava::$ocupadas['entregas:pedido:' . $this->uuid]); return true; }
         private function anotarTrava(): void { $this->travadoNoDespacho[] = isset(\Teste\Trava::$ocupadas['entregas:pedido:' . $this->uuid]); }
         public function hasDispatchedStatus(): bool { return $this->temStatusDespachado; }
 

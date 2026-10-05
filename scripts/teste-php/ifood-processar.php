@@ -160,6 +160,68 @@ rodar($criador);
 confere(linhaDoPedido()->cancelado_pelo_ifood_em === '2026-10-05 18:02:00' && linhaDoPedido()->despachar_em === null, 'CAN: cancelado_pelo_ifood_em gravado e despachar_em nulo (sai da fila)');
 confere(linhaDoPedido()->despachado_em === null, 'continua sem despachado_em');
 
+echo '== CAN de agendado ainda não despachado: o Order sai do agendamento (fleetops:dispatch-orders) e do pedido aberto' . PHP_EOL;
+reiniciarFleetbase();
+reiniciarIfood();
+vinculoDaLojaA();
+gravarEvento('ev-1', 'PLC', '2026-10-05T17:59:00Z');
+Http::responder(200, pedidoEmDinheiroComTroco());
+$criador              = new CriadorFalso();
+$criador->despacharEm = '2026-10-05 18:40:00';
+rodar($criador);
+$agendado               = Order::where('uuid', 'order-1')->first();
+$agendado->scheduled_at = '2026-10-05 18:40:00';
+$agendado->adhoc        = true;
+gravarEvento('ev-2', 'CAN', '2026-10-05T18:02:00Z');
+rodar($criador);
+confere($agendado->scheduled_at === null && $agendado->adhoc === false, 'CAN: scheduled_at nulo e adhoc desligado no Order');
+confere($agendado->chamadas === ['saveQuietly'] && $agendado->travadoNoSalvar === [true], 'gravado com saveQuietly, uma vez, com a trava do pedido (TravaDoPedido)');
+confere(linhaDoPedido()->despachar_em === null && linhaDoPedido()->cancelado_pelo_ifood_em === '2026-10-05 18:02:00', 'e sai da fila do agendador, com o cancelamento registrado');
+confere(!in_array('cancel', $agendado->chamadas, true) && $agendado->status === 'created', 'o Order não é cancelado (etapa 3)');
+
+echo '== CAN de agendado: trava do pedido ocupada → o evento fica pendente e tenta de novo' . PHP_EOL;
+reiniciarFleetbase();
+reiniciarIfood();
+vinculoDaLojaA();
+gravarEvento('ev-1', 'PLC', '2026-10-05T17:59:00Z');
+Http::responder(200, pedidoEmDinheiroComTroco());
+$criador              = new CriadorFalso();
+$criador->despacharEm = '2026-10-05 18:40:00';
+rodar($criador);
+$agendado               = Order::where('uuid', 'order-1')->first();
+$agendado->scheduled_at = '2026-10-05 18:40:00';
+$agendado->adhoc        = true;
+gravarEvento('ev-2', 'CAN', '2026-10-05T18:02:00Z');
+Trava::$ocupadas['entregas:pedido:order-1'] = true;
+$erro = excecao(fn () => rodar($criador));
+confere($erro instanceof \Illuminate\Contracts\Cache\LockTimeoutException && evento('ev-2')->processado_em === null, 'o erro sobe (nova tentativa pela fila) e o CAN fica pendente');
+confere($agendado->scheduled_at === '2026-10-05 18:40:00' && linhaDoPedido()->cancelado_pelo_ifood_em === null && linhaDoPedido()->despachar_em === '2026-10-05 18:40:00', 'nada gravado pela metade');
+unset(Trava::$ocupadas['entregas:pedido:order-1']);
+rodar($criador);
+confere($agendado->scheduled_at === null && $agendado->adhoc === false && evento('ev-2')->processado_em !== null && linhaDoPedido()->despachar_em === null, 'na tentativa seguinte, sai do agendamento e da fila');
+
+echo '== CAN de pedido já despachado ou já aceito: o Order não é mexido' . PHP_EOL;
+foreach (['despachado' => ['dispatched' => true, 'status' => 'dispatched'], 'aceito' => ['started' => true, 'status' => 'started']] as $caso => $estado) {
+    reiniciarFleetbase();
+    reiniciarIfood();
+    vinculoDaLojaA();
+    gravarEvento('ev-1', 'PLC', '2026-10-05T17:59:00Z');
+    Http::responder(200, pedidoEmDinheiroComTroco());
+    $criador              = new CriadorFalso();
+    $criador->despacharEm = '2026-10-05 18:40:00';
+    rodar($criador);
+    $pedidoOrder               = Order::where('uuid', 'order-1')->first();
+    $pedidoOrder->scheduled_at = '2026-10-05 18:40:00';
+    $pedidoOrder->adhoc        = true;
+    foreach ($estado as $campo => $valor) {
+        $pedidoOrder->$campo = $valor;
+    }
+    gravarEvento('ev-2', 'CAN', '2026-10-05T18:02:00Z');
+    rodar($criador);
+    confere($pedidoOrder->chamadas === [] && $pedidoOrder->scheduled_at === '2026-10-05 18:40:00' && $pedidoOrder->adhoc === true, "{$caso}: scheduled_at e adhoc intactos, sem saveQuietly");
+    confere(linhaDoPedido()->cancelado_pelo_ifood_em === '2026-10-05 18:02:00', "{$caso}: o cancelamento é registrado");
+}
+
 echo '== CAN depois do despacho não mexe no despachar_em' . PHP_EOL;
 reiniciarIfood();
 vinculoDaLojaA();

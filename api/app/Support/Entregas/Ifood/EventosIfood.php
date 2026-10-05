@@ -18,7 +18,8 @@ use DateTimeZone;
  *   cancelamento (CAN, CAR, CARF), de etapa da entrega (ADR, GTO, AAO, DDD, CLT, DSP, AAD, DDCS, CON: um entregador já
  *   está nele ou ele já foi coletado/entregue) nem do OPA (alteração, que pode chegar em qualquer etapa);
  * - DDCR (chega logo depois do CFM, sem metadata) marca exige_codigo;
- * - CAN só registra cancelado_pelo_ifood_em (o cancelamento do pedido no Entregas é da etapa 3);
+ * - CAN registra cancelado_pelo_ifood_em e, no pedido ainda não despachado, o tira do agendamento (ver
+ *   ProcessarPedidoIfood; o cancelamento do pedido no Entregas é da etapa 3);
  * - os outros códigos conhecidos só ficam registrados (as ações e o ORDER_PATCHED são da etapa 3);
  * - código desconhecido fica gravado como ignorado; o log dele é warning quando o código exige ação da loja no iFood
  *   (HSD, negociação que "obrigatoriamente deve ser respondida", referência, grupo HANDSHAKE_PLATFORM), info nos outros
@@ -37,6 +38,12 @@ final class EventosIfood
 
     /** Códigos que criam o pedido quando ele ainda não existe: o PLC e, se ele se perdeu, os anteriores à coleta. */
     public const CRIAM_PEDIDO = ['PLC', 'CFM', 'RTP', 'DDCR', 'DPCR'];
+
+    /**
+     * Códigos de depois da coleta: o pedido que já tem um deles não é criado (ProcessarPedidoIfood). Na entrega própria,
+     * GTO, ADR e AAO só vêm de entregador do iFood.
+     */
+    public const POS_COLETA = ['DSP', 'CON', 'CLT', 'DDD', 'AAD', 'DDCS', 'GTO', 'ADR', 'AAO'];
 
     /** Ordem natural do pedido, para o desempate de createdAt igual: criação, preparo, entrega, conclusão, cancelamento. */
     public const ORDEM = ['PLC', 'CFM', 'DDCR', 'DPCR', 'RTP', 'ADR', 'GTO', 'AAO', 'DDD', 'CLT', 'DSP', 'AAD', 'DDCS', 'CON', 'OPA', 'CAR', 'CARF', 'CAN'];
@@ -122,17 +129,6 @@ final class EventosIfood
     public static function nivelDoIgnorado(string $codigo): string
     {
         return in_array($codigo, static::EXIGEM_ACAO_DA_LOJA, true) ? 'warning' : 'info';
-    }
-
-    public static function temCancelamento(array $eventos): bool
-    {
-        foreach ($eventos as $evento) {
-            if (($evento['code'] ?? null) === 'CAN') {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /** A linha da entregas_ifood_eventos para o evento, ou null se faltar id, orderId, merchantId ou code. */

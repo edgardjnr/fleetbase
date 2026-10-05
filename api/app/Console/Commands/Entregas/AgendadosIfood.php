@@ -23,7 +23,8 @@ use Illuminate\Support\Facades\Log;
  *   faltar (listener atrasado na fila ou com falha), sem avisar os motoboys de novo;
  * - o imediato cujo despacho falhou no job (1 min de folga, para não correr junto com o job).
  * Fica de fora: pedido de teste (sem despachar_em), linha sem order_uuid, cancelado pelo iFood (sai da fila sem aviso,
- * mesmo antes da hora) e pedido encerrado ou apagado (sai da fila).
+ * mesmo antes da hora, e o Order sai do agendamento: ver tirarCanceladosDaFila) e pedido encerrado ou apagado (sai da
+ * fila).
  *
  * O CriadorDoPedidoIfood::despachar relê o pedido com a trava (TravaDoPedido) e decide: true = despachado agora ou já
  * estava (só aí o log "despachado pelo agendador"); false = não despachou. No false, ou ele mesmo tirou a linha da fila
@@ -55,13 +56,7 @@ class AgendadosIfood extends Command
             return self::SUCCESS;
         }
 
-        // cancelado pelo iFood antes do despacho: sai da fila sem despachar e sem aviso (o job já faz isso no CAN; aqui
-        // fica a reserva para a linha cancelada antes dessa regra)
-        DB::table(static::PEDIDOS)
-            ->whereNotNull('cancelado_pelo_ifood_em')
-            ->whereNotNull('despachar_em')
-            ->whereNull('despachado_em')
-            ->update(['despachar_em' => null, 'updated_at' => now()->toDateTimeString()]);
+        $this->tirarCanceladosDaFila($criador);
 
         $limite   = now()->subMinute()->toDateTimeString();
         $desistir = now()->subMinutes(static::DESISTIR_DEPOIS_MINUTOS)->toDateTimeString();
@@ -119,6 +114,36 @@ class AgendadosIfood extends Command
 
         if ($erro !== null) {
             Log::warning('[entregas] ifood: aviso de despacho desistido não chegou ao socket', ['pedido' => $pedido->public_id, 'pedido_ifood' => $linha->pedido_ifood_id, 'erro' => $erro]);
+        }
+    }
+
+    /**
+     * Cancelado pelo iFood antes do despacho: sai da fila sem despachar e sem aviso, e o Order sai do agendamento
+     * (CriadorDoPedidoIfood::tirarDoAgendamento: scheduled_at nulo e adhoc desligado, senão o fleetops:dispatch-orders o
+     * despacharia aos motoboys na hora marcada). O job já faz isso no CAN; aqui fica a reserva para a linha cancelada
+     * antes dessa regra. Trava do pedido ocupada ou erro: a linha fica para a rodada seguinte.
+     */
+    protected function tirarCanceladosDaFila(CriadorDoPedidoIfood $criador): void
+    {
+        $linhas = DB::table(static::PEDIDOS)
+            ->whereNotNull('cancelado_pelo_ifood_em')
+            ->whereNotNull('despachar_em')
+            ->whereNull('despachado_em')
+            ->orderBy('despachar_em')
+            ->limit(static::POR_RODADA)
+            ->get()
+            ->all();
+
+        foreach ($linhas as $linha) {
+            if ($linha->order_uuid) {
+                try {
+                    $criador->tirarDoAgendamento((string) $linha->order_uuid);
+                } catch (\Throwable $e) {
+                    Log::warning('[entregas] ifood: cancelado não saiu do agendamento; fica para a próxima rodada', ['pedido_ifood' => $linha->pedido_ifood_id, 'erro' => get_class($e)]);
+                    continue;
+                }
+            }
+            $this->tirarDaFila($linha);
         }
     }
 

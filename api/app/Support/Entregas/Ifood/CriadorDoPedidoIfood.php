@@ -230,6 +230,35 @@ class CriadorDoPedidoIfood
         return true;
     }
 
+    /**
+     * Cancelado pelo iFood (CAN) antes do despacho: tira o Order do agendamento, para não ir aos motoboys. O agendado
+     * nasce com scheduled_at e adhoc ligado, e o fleetops:dispatch-orders o despacharia na hora marcada como pedido
+     * aberto, mesmo fora da fila do entregas:ifood-agendados. Com a trava do pedido (TravaDoPedido) e o Order relido:
+     * só o que ainda não foi despachado nem aceito; zera o scheduled_at e desliga o adhoc com saveQuietly (sem eventos).
+     * Não cancela o Order: o cancelamento no Entregas é da etapa 3. Devolve se mudou algo.
+     *
+     * @throws LockTimeoutException se a trava não sair em TravaDoPedido::ESPERA s (quem chama tenta de novo)
+     */
+    public function tirarDoAgendamento(string $orderUuid): bool
+    {
+        return TravaDoPedido::executar($orderUuid, function () use ($orderUuid) {
+            $atual = Order::where('uuid', $orderUuid)->first();
+            if (!$atual || $atual->dispatched || $atual->started) {
+                return false;
+            }
+            if ($atual->scheduled_at === null && !$atual->adhoc) {
+                return false;
+            }
+
+            $atual->scheduled_at = null;
+            $atual->adhoc        = false;
+            $atual->saveQuietly();
+            Log::info('[entregas] ifood: cancelado pelo iFood antes do despacho; saiu do agendamento', ['pedido' => $atual->public_id]);
+
+            return true;
+        });
+    }
+
     /** Por que o pedido (relido) não deve ser despachado, ou null se pode (motoboy atribuído não impede: vai só a ele). */
     protected function motivoParaNaoDespachar(?Order $pedido): ?string
     {

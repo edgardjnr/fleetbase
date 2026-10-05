@@ -28,12 +28,16 @@ use Illuminate\Support\Facades\Log;
  *   pedido no Logistics e cria o pedido (CriadorDoPedidoIfood). Pedido já existente (pedido_ifood_id único) nunca é
  *   criado de novo; sem pedido e sem evento que cria, os eventos só ficam processados e ignorados (log "evento sem
  *   pedido");
- * - pedido cancelado (CAN) ou que já passou da coleta (POS_COLETA: a coleta, a entrega ou um entregador do iFood já
- *   aconteceram) antes de entrar não é criado, nem por um evento atrasado numa rodada seguinte: os dois são procurados
- *   entre todos os eventos do pedido na tabela, processados ou não, e não só entre os pendentes. São definitivos;
+ * - pedido cancelado (CAN) ou que já passou da coleta (EventosIfood::POS_COLETA: a coleta, a entrega ou um entregador
+ *   do iFood já aconteceram) antes de entrar não é criado, nem por um evento atrasado numa rodada seguinte: os dois são
+ *   procurados entre todos os eventos do pedido na tabela, processados ou não, e não só entre os pendentes. São
+ *   definitivos;
  * - código ignorado: log warning quando exige ação da loja no iFood (EventosIfood::nivelDoIgnorado), info nos outros;
- * - DDCR marca exige_codigo; CAN registra cancelado_pelo_ifood_em e, se ainda não despachado, tira da fila do
- *   agendador (despachar_em nulo); o cancelamento do pedido no Entregas é da etapa 3;
+ * - DDCR marca exige_codigo; CAN registra cancelado_pelo_ifood_em e, se o pedido ainda não foi despachado nem aceito,
+ *   tira o Order do agendamento (CriadorDoPedidoIfood::tirarDoAgendamento: scheduled_at nulo e adhoc desligado, com a
+ *   TravaDoPedido; senão o fleetops:dispatch-orders o despacharia aos motoboys na hora marcada) e a linha da fila do
+ *   agendador (despachar_em nulo). O Order continua aberto no console: o cancelamento dele no Entregas é da etapa 3. O
+ *   pedido já despachado continua aberto aos motoboys até a central cancelar;
  * - código desconhecido, loja não vinculada, vínculo perdido e loja sem Local de coleta ficam processados e ignorados.
  *   Nos três últimos isso não é definitivo: um evento de criação posterior do mesmo pedido (CFM, RTP…) tenta de novo.
  *
@@ -54,9 +58,6 @@ class ProcessarPedidoIfood implements ShouldQueue
 
     public const EVENTOS = 'entregas_ifood_eventos';
     public const PEDIDOS = 'entregas_ifood_pedidos';
-
-    /** Códigos de depois da coleta: na entrega própria, GTO, ADR e AAO só vêm de entregador do iFood. */
-    public const POS_COLETA = ['DSP', 'CON', 'CLT', 'DDD', 'AAD', 'DDCS', 'GTO', 'ADR', 'AAO'];
 
     /** Operação do ErroIfood no GET do pedido (ClienteIfood::pedidoLogistics): só ela leva ao fail(). */
     public const OPERACAO_DO_PEDIDO = 'pedido';
@@ -187,11 +188,18 @@ class ProcessarPedidoIfood implements ShouldQueue
             }
 
             if ($acao === EventosIfood::CANCELA && $pedido && !$pedido->cancelado_pelo_ifood_em) {
+                // ainda não despachado (agendado ou despacho que falhou): o Order sai do agendamento (scheduled_at nulo,
+                // adhoc desligado), senão o fleetops:dispatch-orders o despacharia aos motoboys na hora marcada. Antes
+                // de gravar o cancelamento: com a trava do pedido ocupada, o LockTimeoutException sobe, o CAN fica
+                // pendente e a fila tenta de novo pelo $backoff
+                if ($pedido->order_uuid) {
+                    $criador->tirarDoAgendamento($pedido->order_uuid);
+                }
                 $quando = $evento['createdAt'] ? substr((string) $evento['createdAt'], 0, 19) : now()->toDateTimeString();
                 $this->atualizarPedido($pedido, ['cancelado_pelo_ifood_em' => $quando]);
                 $pedido->cancelado_pelo_ifood_em = $quando;
-                // ainda não despachado (agendado ou despacho que falhou): sai da fila do entregas:ifood-agendados, sem
-                // ir aos motoboys. Condicional no banco: o agendador pode ter despachado depois de a linha ser lida
+                // e a linha sai da fila do entregas:ifood-agendados. Condicional no banco: o agendador pode ter
+                // despachado depois de a linha ser lida
                 DB::table(static::PEDIDOS)->where('id', $pedido->id)->whereNotNull('despachar_em')->whereNull('despachado_em')
                     ->update(['despachar_em' => null, 'updated_at' => now()->toDateTimeString()]);
                 Log::warning('[entregas] ifood: pedido cancelado pelo iFood (o cancelamento no Entregas é da etapa 3)', [
@@ -266,10 +274,10 @@ class ProcessarPedidoIfood implements ShouldQueue
         return DB::table(static::EVENTOS)->where('pedido_ifood_id', $this->pedidoIfoodId)->where('codigo', 'CAN')->exists();
     }
 
-    /** Códigos de depois da coleta (POS_COLETA) deste pedido na tabela, processados ou não; [] se nenhum. */
+    /** Códigos de depois da coleta (EventosIfood::POS_COLETA) deste pedido na tabela, processados ou não; [] se nenhum. */
     protected function codigosDepoisDaColeta(): array
     {
-        $codigos = DB::table(static::EVENTOS)->where('pedido_ifood_id', $this->pedidoIfoodId)->whereIn('codigo', static::POS_COLETA)->pluck('codigo')->all();
+        $codigos = DB::table(static::EVENTOS)->where('pedido_ifood_id', $this->pedidoIfoodId)->whereIn('codigo', EventosIfood::POS_COLETA)->pluck('codigo')->all();
 
         return array_values(array_unique($codigos));
     }
