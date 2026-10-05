@@ -1087,5 +1087,10 @@ da documentação onde os dois divergem.
 - **CAN** traz `metadata.CANCEL_ORIGIN` (ex.: `RESTAURANT`), `CANCEL_CODE`, `CANCEL_REASON`, `CANCEL_STAGE`,
   `CANCELLATION_OCCURRENCE.CONSUMER.FINANCIAL_OCCURRENCE` (ex.: `ESTORNO_TOTAL_PAGAMENTO_ONLINE`). CAR vem antes, com
   `details` e `reason_code`.
-- `POST /order/v1.0/orders/{id}/confirm` sem corpo falhou duas vezes com erro de rede no Node (não investigado; o
-  ambiente de teste já confirma sozinho).
+- **Lojas que o token enxerga:** `GET /merchant/v1.0/merchants` → 200 `[{"id": "<merchant UUID>", "name", "corporateName"}]`.
+  Detalhe: `GET /merchant/v1.0/merchants/{id}` → `{id, name, corporateName, description, averageTicket, exclusive,
+  type: "STORE", createdAt, test: "TEST", status, address{country, state, city, district, street, number, postalCode,
+  latitude, longitude}, operations[{name: "delivery", salesChannels[...]}]}`. É assim que, depois do vínculo, se
+  descobre o `merchantId` (e o endereço para conferir a coleta).
+- O "fetch failed" das primeiras tentativas de `confirm`/`get` era do Git Bash, que converte argumentos começando com
+  `/` em caminho do Windows: rodar a sonda com `MSYS_NO_PATHCONV=1` (ou pelo PowerShell).

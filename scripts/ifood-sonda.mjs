@@ -13,6 +13,9 @@
 //   node scripts/ifood-sonda.mjs uma-vez              um polling só
 //   node scripts/ifood-sonda.mjs pedido <orderId>     grava o pedido do Logistics e do Order
 //   node scripts/ifood-sonda.mjs acao <orderId> <acao> ['<json>']
+//   node scripts/ifood-sonda.mjs get </caminho>       ex.: get /merchant/v1.0/merchants
+//   node scripts/ifood-sonda.mjs post </caminho> ['<json>']
+//   No Git Bash, rode com MSYS_NO_PATHCONV=1 (senão o "/caminho" vira caminho do Windows).
 //        POST /logistics/v1.0/orders/<orderId>/<acao> (assignDriver, goingToOrigin, arrivedAtOrigin, dispatch,
 //        arrivedAtDestination, verifyDeliveryCode) e imprime a resposta
 //
@@ -166,6 +169,10 @@ try {
     } else if (comando === 'acao') {
         if (!args[0] || !args[1]) throw new Error("uso: acao <orderId> <acao> ['<json>']");
         await enviarAcao(args[0], args[1], args[2]);
+    } else if (comando === 'get') {
+        if (!args[0]) throw new Error('uso: get </caminho>');
+        const r = await api('GET', args[0]);
+        console.log(`GET ${args[0]}: HTTP ${r.status} ${r.texto.slice(0, 1500)}`);
     } else if (comando === 'post') {
         // simula a loja (ex.: post /order/v1.0/orders/<id>/confirm) ou testa outro endpoint
         if (!args[0]) throw new Error("uso: post </caminho> ['<json>']");
@@ -186,6 +193,6 @@ try {
         }
     }
 } catch (erro) {
-    console.error(erro.message);
+    console.error(erro.message, erro.cause ? `(${erro.cause.code ?? ''} ${erro.cause.message ?? ''})` : '');
     process.exit(1);
 }
