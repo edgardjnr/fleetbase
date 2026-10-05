@@ -44,6 +44,7 @@ function canalFalso(nome, inscritos) {
         desinscrever() {
             inscritos.delete(nome);
         },
+        // imita o unsubscribe + close do order-socket-events (o close sozinho não desinscreve)
         fechar() {
             inscritos.delete(nome);
             fechado = true;
@@ -77,10 +78,11 @@ function socketFalso() {
     };
 }
 
-test('entrega as mensagens do canal da empresa', async () => {
+test('entrega as mensagens do canal da empresa', async (t) => {
     const socket = socketFalso();
     const recebidas = [];
     const escuta = escutarCanalDaEmpresa({ socket, currentUser: { companyId: 'emp-1' }, aoReceber: (m) => recebidas.push(m), esperaMs: 10 });
+    t.after(() => escuta.parar());
     await esperar(5);
     assert.equal(socket.canais[0].nome, 'company.emp-1');
     socket.canais[0].emitir({ event: 'order.updated' });
@@ -89,10 +91,11 @@ test('entrega as mensagens do canal da empresa', async () => {
     escuta.parar();
 });
 
-test('canal fechado por outra tela: inscreve de novo depois da espera', async () => {
+test('canal fechado por outra tela: inscreve de novo depois da espera', async (t) => {
     const socket = socketFalso();
     const recebidas = [];
     const escuta = escutarCanalDaEmpresa({ socket, currentUser: { companyId: 'emp-1' }, aoReceber: (m) => recebidas.push(m.event), esperaMs: 10 });
+    t.after(() => escuta.parar());
     await esperar(5);
     socket.canais[0].fechar();
     await esperar(30);
@@ -103,10 +106,11 @@ test('canal fechado por outra tela: inscreve de novo depois da espera', async ()
     escuta.parar();
 });
 
-test('sem empresa ainda: espera e tenta de novo', async () => {
+test('sem empresa ainda: espera e tenta de novo', async (t) => {
     const socket = socketFalso();
     const usuario = { companyId: null };
     const escuta = escutarCanalDaEmpresa({ socket, currentUser: usuario, aoReceber: () => {}, esperaMs: 10 });
+    t.after(() => escuta.parar());
     await esperar(5);
     assert.equal(socket.canais.length, 0);
     usuario.companyId = 'emp-2';
@@ -115,10 +119,11 @@ test('sem empresa ainda: espera e tenta de novo', async () => {
     escuta.parar();
 });
 
-test('parar: fecha o consumidor e não entrega mais nada', async () => {
+test('parar: fecha o consumidor e não entrega mais nada', async (t) => {
     const socket = socketFalso();
     const recebidas = [];
     const escuta = escutarCanalDaEmpresa({ socket, currentUser: { companyId: 'emp-1' }, aoReceber: (m) => recebidas.push(m), esperaMs: 10 });
+    t.after(() => escuta.parar());
     await esperar(5);
     escuta.parar();
     socket.canais[0].emitir({ event: 'order.updated' });
@@ -127,7 +132,7 @@ test('parar: fecha o consumidor e não entrega mais nada', async () => {
     assert.equal(socket.canais.length, 1);
 });
 
-test('erro no aoReceber não derruba a escuta', async () => {
+test('erro no aoReceber não derruba a escuta', async (t) => {
     const socket = socketFalso();
     const recebidas = [];
     const erros = [];
@@ -141,6 +146,7 @@ test('erro no aoReceber não derruba a escuta', async () => {
         aoFalhar: (erro) => erros.push(erro.message),
         esperaMs: 10,
     });
+    t.after(() => escuta.parar());
     await esperar(5);
     socket.canais[0].emitir({ event: 'quebra' });
     socket.canais[0].emitir({ event: 'order.updated' });
@@ -150,10 +156,11 @@ test('erro no aoReceber não derruba a escuta', async () => {
     escuta.parar();
 });
 
-test('outra tela só desinscreve (sem fechar): o vigia refaz a inscrição e o consumidor continua recebendo', async () => {
+test('outra tela só desinscreve (sem fechar): o vigia refaz a inscrição e o consumidor continua recebendo', async (t) => {
     const socket = socketFalso();
     const recebidas = [];
     const escuta = escutarCanalDaEmpresa({ socket, currentUser: { companyId: 'emp-1' }, aoReceber: (m) => recebidas.push(m.event), esperaMs: 10 });
+    t.after(() => escuta.parar());
     await esperar(5);
     assert.equal(socket.instance().isSubscribed('company.emp-1', true), true);
     socket.canais[0].desinscrever();
@@ -167,9 +174,10 @@ test('outra tela só desinscreve (sem fechar): o vigia refaz a inscrição e o c
     escuta.parar();
 });
 
-test('parar durante a espera: não se inscreve de novo', async () => {
+test('parar durante a espera: não se inscreve de novo', async (t) => {
     const socket = socketFalso();
     const escuta = escutarCanalDaEmpresa({ socket, currentUser: { companyId: 'emp-1' }, aoReceber: () => {}, esperaMs: 10 });
+    t.after(() => escuta.parar());
     await esperar(5);
     socket.canais[0].fechar();
     await esperar(2);
@@ -178,9 +186,10 @@ test('parar durante a espera: não se inscreve de novo', async () => {
     assert.equal(socket.canais.length, 1);
 });
 
-test('o vigia para com o parar e não mexe na inscrição depois', async () => {
+test('o vigia para com o parar e não mexe na inscrição depois', async (t) => {
     const socket = socketFalso();
     const escuta = escutarCanalDaEmpresa({ socket, currentUser: { companyId: 'emp-1' }, aoReceber: () => {}, esperaMs: 10 });
+    t.after(() => escuta.parar());
     await esperar(5);
     escuta.parar();
     socket.canais[0].desinscrever();
@@ -188,7 +197,7 @@ test('o vigia para com o parar e não mexe na inscrição depois', async () => {
     assert.equal(socket.instance().isSubscribed('company.emp-1', true), false);
 });
 
-test('erro lançado pelo aoFalhar não derruba a escuta', async () => {
+test('erro lançado pelo aoFalhar não derruba a escuta', async (t) => {
     const socket = socketFalso();
     const recebidas = [];
     const escuta = escutarCanalDaEmpresa({
@@ -203,6 +212,7 @@ test('erro lançado pelo aoFalhar não derruba a escuta', async () => {
         },
         esperaMs: 10,
     });
+    t.after(() => escuta.parar());
     await esperar(5);
     socket.canais[0].emitir({ event: 'quebra' });
     socket.canais[0].emitir({ event: 'order.updated' });
