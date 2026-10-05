@@ -1,8 +1,10 @@
 <?php
 
-// Integração iFood: o polling (entregas:ifood-polling): lotes, gravação antes do ack, eventos sem pedido, 429 por token,
-// 401 (polling e ack), 403 (com e sem lista), limites da rodada (tempo e falhas seguidas), limpeza, uma loja com erro
-// inesperado não para as outras e a varredura dos eventos pendentes antigos (marca maior que o prazo do job, ordem).
+// Integração iFood: o polling (entregas:ifood-polling): lotes, gravação antes do ack, eventos sem pedido e sem id, 429
+// por token (polling e ack), 401 (polling e ack), 403 (com e sem lista, erro ao tratar), limites da rodada (tempo e
+// falhas seguidas) com o cursor do ponto de partida, token pedido dentro do laço dos lotes, limpeza, uma loja com erro
+// inesperado não para as outras e a varredura dos eventos pendentes antigos (marca maior que o prazo do job, ordem,
+// dispatch que falha), relógio monotônico.
 // Uso: PHP_WASM_DIR=<pasta> node scripts/teste-php/rodar.mjs scripts/teste-php/ifood-polling.php
 
 require __DIR__ . '/stubs-ifood.php';
@@ -572,11 +574,18 @@ confere(jobs() === ['pedido-antigo'] && idsDosEventos() === ['ev-1'], 'enfileira
 confere(logsSem(['Connection refused']), 'sem a mensagem do erro do banco');
 
 echo '== Varredura falhando: a limpeza roda' . PHP_EOL;
+// a consulta dos pendentes falha (o dispatch que falha é tratado pedido a pedido, mais acima)
+class PollingComVarreduraFalhando extends PollingIfood
+{
+    protected function pedidosPendentes(string $antesDe, string $desde): array
+    {
+        throw new \RuntimeException('falha na consulta dos pendentes');
+    }
+}
 reiniciarIfood();
 pendente('ev-1', 'pedido-antigo', '2026-10-05 17:50:00');
 processado('velho', '2026-09-01 10:00:00');
-Fila::$falhar = new \RuntimeException('fila fora do ar');
-$saida = rodarPolling();
+$saida = rodarPolling(null, new PollingComVarreduraFalhando());
 confere($saida === 1 && logou('varredura dos pendentes falhou', 'error'), 'FAILURE e erro no log');
 confere(idsDosEventos() === ['ev-1'], 'a limpeza apagou o processado antigo');
 
@@ -589,6 +598,165 @@ confere($saida === 1 && logou('limpeza dos eventos antigos falhou', 'error') && 
 unset(Banco::$falhar['entregas_ifood_eventos']);
 rodarPolling();
 confere(idsDosEventos() === [] && isset(Cache::$dados[PollingIfood::CHAVE_LIMPEZA]), 'na rodada seguinte, apaga e marca');
+
+echo '== Cursor: depois do teto de 25 s, a rodada seguinte começa pelo lote não atendido' . PHP_EOL;
+reiniciarIfood();
+lojaVinculada('vendor-a', 'merchant-1', 'token-a');
+lojaVinculada('vendor-b', 'merchant-2', 'token-b');
+lojaVinculada('vendor-c', 'merchant-3', 'token-c');
+$cadaChamadaLeva26s = function () {
+    PollingComRelogio::$agora += 26;
+
+    return [204, null, []];
+};
+$primeirosTokens = [];
+foreach (range(1, 4) as $rodada) {
+    PollingComRelogio::$agora = 1000.0;
+    Http::responderCom($cadaChamadaLeva26s);
+    rodarPolling(null, new PollingComRelogio());
+    $primeirosTokens[] = end(Http::$chamadas)['token'];
+}
+confere($primeirosTokens === ['token-a', 'token-b', 'token-c', 'token-a'], 'cada rodada começa pelo primeiro lote não atendido na anterior; passou do fim, volta ao primeiro');
+confere(Cache::get(PollingIfood::CHAVE_CURSOR) === 1, 'cursor no cache = índice do próximo lote');
+reiniciarIfood();
+lojaVinculada('vendor-a', 'merchant-1', 'token-a');
+lojaVinculada('vendor-b', 'merchant-2', 'token-b');
+Http::responder(204);
+Http::responder(204);
+rodarPolling();
+Http::responder(204);
+Http::responder(204);
+rodarPolling();
+confere(array_column(Http::$chamadas, 'token') === ['token-a', 'token-b', 'token-a', 'token-b'], 'todos atendidos: a rodada seguinte começa do início');
+
+echo '== Cursor: 3 falhas seguidas também avançam o ponto de partida' . PHP_EOL;
+reiniciarIfood();
+foreach (['a', 'b', 'c', 'd'] as $i => $letra) {
+    lojaVinculada("vendor-{$letra}", 'merchant-' . ($i + 1), "token-{$letra}");
+}
+Http::responder(503, 'fora do ar');
+Http::responder(503, 'fora do ar');
+Http::responder(503, 'fora do ar');
+rodarPolling();
+foreach (range(1, 4) as $i) {
+    Http::responder(204);
+}
+rodarPolling();
+confere(array_column(array_slice(Http::$chamadas, 3), 'token') === ['token-d', 'token-a', 'token-b', 'token-c'], 'a rodada seguinte começa pela loja D');
+
+echo '== Token pedido dentro do laço dos lotes, sob o teto de 25 s' . PHP_EOL;
+reiniciarIfood();
+lojaVinculada('vendor-a', 'merchant-1', 'token-a');
+lojaVinculada('vendor-b', 'merchant-2', 'token-b', '2026-10-05 18:02:00');
+lojaVinculada('vendor-c', 'merchant-3', 'token-c', '2026-10-05 18:02:00');
+PollingComRelogio::$agora = 1000.0;
+Http::responderCom($cadaChamadaLeva26s);
+rodarPolling(null, new PollingComRelogio());
+confere(Http::urls() === ['GET /events/v1.0/events:polling'], 'as lojas que ficaram para a próxima rodada não renovam o token nesta');
+reiniciarIfood();
+lojaVinculada('vendor-a', 'merchant-1', 'token-a', '2026-10-05 18:02:00');
+lojaVinculada('vendor-b', 'merchant-2', 'token-b');
+Cache::put(PollingIfood::chaveDaPausa(1), true, 60);
+Http::responder(204);
+rodarPolling();
+confere(Http::urls() === ['GET /events/v1.0/events:polling'] && Http::$chamadas[0]['token'] === 'token-b', 'loja em pausa: nem renova o token');
+
+echo '== Varredura: dispatch que falha tira a marca e não para os outros pedidos' . PHP_EOL;
+class PollingComFilaFalhando extends PollingIfood
+{
+    public static array $falharPara = [];
+
+    protected function despachar(string $pedido): void
+    {
+        if (in_array($pedido, static::$falharPara, true)) {
+            throw new \RuntimeException('Connection refused [tcp://redis:6379]');
+        }
+        parent::despachar($pedido);
+    }
+}
+reiniciarIfood();
+pendente('ev-1', 'pedido-1', '2026-10-05 17:50:00');
+pendente('ev-2', 'pedido-2', '2026-10-05 17:51:00');
+pendente('ev-3', 'pedido-3', '2026-10-05 17:52:00');
+PollingComFilaFalhando::$falharPara = ['pedido-2'];
+$saida = rodarPolling(null, new PollingComFilaFalhando());
+confere(jobs() === ['pedido-1', 'pedido-3'], 'os outros pedidos da rodada são enfileirados');
+confere(!isset(Cache::$dados[PollingIfood::chaveDaVarredura('pedido-2')]) && !isset(Cache::$dados[PollingIfood::chaveDasVezesDaVarredura('pedido-2')]), 'o pedido que falhou fica sem marca e sem contar a vez');
+confere(logou('falha ao enfileirar pedidos da varredura', 'error') && (contextoDoLog('falha ao enfileirar pedidos da varredura')['quantidade'] ?? null) === 1, 'erro no log com a quantidade');
+confere($saida === 0 && !logou('varredura dos pendentes falhou'), 'a varredura não é interrompida');
+PollingComFilaFalhando::$falharPara = [];
+Fila::$jobs = [];
+rodarPolling(null, new PollingComFilaFalhando());
+confere(jobs() === ['pedido-2'], 'na rodada seguinte, o pedido que falhou é enfileirado');
+
+echo '== Erro ao tratar o 403: os outros lotes seguem' . PHP_EOL;
+class VinculosQueNaoPerdem extends VinculosIfood
+{
+    public function __construct()
+    {
+        parent::__construct(new ClienteIfood());
+    }
+
+    public function perderPorMerchant(string $merchantId, int $status): void
+    {
+        throw new Teste\ErroDeBanco("SQLSTATE[HY000]: General error (SQL: update x set merchant_id = 'merchant-1')");
+    }
+}
+reiniciarIfood();
+lojaVinculada('vendor-a', 'merchant-1', 'token-a');
+lojaVinculada('vendor-b', 'merchant-2', 'token-b');
+Http::responder(403, ['unauthorizedMerchants' => ['merchant-1']]);
+Http::responder(204);
+$saida = rodarPolling(new VinculosQueNaoPerdem());
+confere(count(Http::$chamadas) === 2 && Http::$chamadas[1]['token'] === 'token-b' && $saida === 0, 'a loja B faz o polling; a rodada não cai');
+confere(logou('falha ao tratar o 403', 'error') && (contextoDoLog('falha ao tratar o 403')['erro'] ?? null) === 'Teste\ErroDeBanco', 'erro no log, só com a classe');
+confere((Cache::$validades[PollingIfood::chaveDaPausa(1)] ?? null) === 300 && logsSem(['SQL']), 'lote em pausa por 5 min; nada do SQL no log');
+
+echo '== 429 no ack: pausa as lojas do token' . PHP_EOL;
+reiniciarIfood();
+lojaVinculada('vendor-a', 'merchant-1', 'token-a');
+lojaVinculada('vendor-b', 'merchant-2', 'token-b');
+Http::responder(200, [eventoDoIfood('ev-1', 'PLC', 'pedido-1')]);
+Http::responder(429, ['message' => 'Too Many Requests'], ['Retry-After' => '40']);
+Http::responder(204);
+rodarPolling();
+confere(Http::urls() === ['GET /events/v1.0/events:polling', 'POST /events/v1.0/events/acknowledgment', 'GET /events/v1.0/events:polling'] && Http::$chamadas[2]['token'] === 'token-b', 'a loja B (outro token) segue');
+confere(idsDosEventos() === ['ev-1'] && jobs() === ['pedido-1'], 'o evento fica gravado e enfileirado');
+confere((Cache::$validades[PollingIfood::chaveDaPausa(1)] ?? null) === 40 && !isset(Cache::$dados[PollingIfood::chaveDaPausa(2)]), 'só a loja A em pausa, pelo Retry-After');
+confere(logou('429 no ack, esperando 40 s', 'warning'), 'warning no log');
+reiniciarIfood();
+foreach (range(1, 101) as $i) {
+    lojaVinculada("vendor-{$i}", "merchant-{$i}", 'token-unico');
+}
+Http::responder(200, [eventoDoIfood('ev-1', 'PLC', 'pedido-1')]);
+Http::responder(429, null, ['Retry-After' => '25']);
+rodarPolling();
+confere(count(Http::$chamadas) === 2 && (Cache::$validades[PollingIfood::chaveDaPausa(101)] ?? null) === 25, 'o segundo lote do mesmo token fica de fora e em pausa');
+
+echo '== Evento sem id: descartado, contado no log, sem payload' . PHP_EOL;
+reiniciarIfood();
+lojaVinculada('vendor-a', 'merchant-1', 'token-a');
+Http::responder(200, [
+    ['code' => 'PLC', 'orderId' => 'pedido-sem-id', 'merchantId' => 'merchant-1', 'metadata' => ['nota' => 'DADO-DO-PAYLOAD']],
+    ['id' => '', 'code' => 'CFM', 'orderId' => 'pedido-sem-id', 'merchantId' => 'merchant-1'],
+    eventoDoIfood('ev-1', 'PLC', 'pedido-1'),
+]);
+Http::responder(202);
+rodarPolling();
+confere((Http::$chamadas[1]['dados'] ?? null) === [['id' => 'ev-1']] && idsDosEventos() === ['ev-1'], 'ack e gravação só do evento com id');
+$contexto = contextoDoLog('eventos sem id descartados');
+confere(($contexto['quantidade'] ?? null) === 2 && ($contexto['codigos'] ?? null) === ['PLC', 'CFM'], 'log com a quantidade e os códigos');
+confere(logsSem(['DADO-DO-PAYLOAD', 'pedido-sem-id']), 'sem o payload no log');
+
+echo '== Relógio monotônico' . PHP_EOL;
+class PollingRelogioReal extends PollingIfood
+{
+    public function agora(): float
+    {
+        return $this->relogio();
+    }
+}
+confere(abs((new PollingRelogioReal())->agora() - hrtime(true) / 1e9) < 1, 'relogio() = hrtime(true) / 1e9');
 
 echo '== Limpeza: pendentes há mais de 30 dias' . PHP_EOL;
 reiniciarIfood();
