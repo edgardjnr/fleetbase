@@ -92,7 +92,7 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
 
             $segundos = $agora->getTimestamp() - $pedido->dispatched_at->getTimestamp();
             $raio     = self::raioDoReenvio($pedido->getAdhocPingDistance(), self::etapaPeloTempo($segundos));
-            $motoboys =$this->getNearbyDriversForOrder($pedido, $coleta, $raio, $testing);
+            $motoboys = $this->getNearbyDriversForOrder($pedido, $coleta, $raio, $testing);
             if ($motoboys->isEmpty()) {
                 $this->line('Pedido ' . $pedido->public_id . ': nenhum motoboy livre a até ' . $raio . ' m da coleta.');
                 continue;
