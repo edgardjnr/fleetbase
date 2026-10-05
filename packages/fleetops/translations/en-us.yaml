@@ -204,6 +204,30 @@ fleet-ops:
             integration-ids: "Integration (iFood):"
             integration-customer: customer
             integration-pickup: pickup
+            ifood:
+                label: 'iFood:'
+                linked: 'Linked · {name}'
+                lost: Link lost
+                none: '—'
+                link: Link iFood
+                relink: Link again
+                unlink: Unlink iFood
+                unlink-title: Unlink from iFood?
+                unlink-body: 'iFood orders from {name} stop coming in until it is linked again.'
+                unlinked: Store unlinked from iFood.
+                linked-success: Store linked to iFood.
+                modal-title: 'Link {name} to iFood'
+                generating: Requesting the code from iFood…
+                step-code: '1. Give the code below to the store owner. They open the iFood Partner Portal through the link (or type the code there) and authorize Entregas RestaurantePro.'
+                open-portal: Open the Partner Portal with the code
+                expires-in: 'The code expires in {time}.'
+                expired: The code has expired.
+                new-code: Generate another code
+                step-authorization: '2. After authorizing, iFood shows the owner an authorization code. Paste it here:'
+                authorization-placeholder: Authorization code
+                confirm: Link
+                choose: 'The iFood account has more than one store. Choose the one that matches {name}:'
+                close: Close
         pedido-sem-motoboy:
             aviso: 'Order {numero} has had no driver for {minutos} min. Click to open and assign.'
         order-form:

@@ -204,6 +204,30 @@ fleet-ops:
       integration-ids: "Integração (iFood):"
       integration-customer: cliente
       integration-pickup: coleta
+      ifood:
+        label: 'iFood:'
+        linked: 'Vinculada · {name}'
+        lost: Vínculo perdido
+        none: '—'
+        link: Vincular iFood
+        relink: Vincular de novo
+        unlink: Desvincular iFood
+        unlink-title: Desvincular do iFood?
+        unlink-body: 'Os pedidos do iFood da loja {name} deixam de entrar no Entregas até um novo vínculo.'
+        unlinked: Loja desvinculada do iFood.
+        linked-success: Loja vinculada ao iFood.
+        modal-title: 'Vincular {name} ao iFood'
+        generating: Gerando o código no iFood…
+        step-code: '1. Passe o código abaixo ao dono da loja. Ele abre o Portal do Parceiro do iFood pelo link (ou digita o código lá) e autoriza o Entregas RestaurantePro.'
+        open-portal: Abrir o Portal do Parceiro com o código
+        expires-in: 'O código vence em {time}.'
+        expired: O código venceu.
+        new-code: Gerar outro código
+        step-authorization: '2. Depois de autorizar, o iFood mostra ao dono um código de autorização. Cole aqui:'
+        authorization-placeholder: Código de autorização
+        confirm: Vincular
+        choose: 'A conta do iFood tem mais de uma loja. Escolha a que corresponde a {name}:'
+        close: Fechar
     pedido-sem-motoboy:
       aviso: 'Pedido {numero} está há {minutos} min sem motoboy. Clique para abrir e atribuir.'
     order-form:
