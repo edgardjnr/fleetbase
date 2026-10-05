@@ -25,6 +25,7 @@ export default class PedidoSemMotoboyService extends Service {
     /** public_id e uuid do pedido → { publicId, uuid, notificacao } */
     avisos = new Map();
     canal = null;
+    _liberarSom = null;
 
     iniciar() {
         if (this.canal) return;
@@ -64,8 +65,18 @@ export default class PedidoSemMotoboyService extends Service {
     }
 
     #mostrar({ id, uuid, numero, minutos }) {
+        // limpa os avisos já dispensados no "x", para o mapa não acumular
+        for (const entrada of new Set(this.avisos.values())) {
+            if (entrada.notificacao?.dismiss) {
+                this.avisos.delete(entrada.publicId);
+                if (entrada.uuid) {
+                    this.avisos.delete(entrada.uuid);
+                }
+            }
+        }
+
         const atual = this.avisos.get(id);
-        if (atual && !atual.notificacao?.dismiss) return;
+        if (atual) return;
 
         tocarSomDeAlerta();
 

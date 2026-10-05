@@ -26,7 +26,7 @@ function obterContexto() {
 export function prepararSomDeAlerta() {
     const audio = obterContexto();
 
-    if (audio?.state === 'suspended') {
+    if (audio && audio.state !== 'running') {
         audio.resume().catch(() => {});
     }
 }
@@ -39,7 +39,7 @@ export function tocarSomDeAlerta() {
         return;
     }
 
-    if (audio.state === 'suspended') {
+    if (audio.state !== 'running') {
         audio.resume().catch(() => {});
     }
 
