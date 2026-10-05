@@ -14,6 +14,7 @@ export default class ApplicationRoute extends Route {
     @service fetch;
     @service currentUser;
     @service mapSettings;
+    @service pedidoSemMotoboy;
 
     constructor() {
         super(...arguments);
@@ -41,6 +42,9 @@ export default class ApplicationRoute extends Route {
             this.notifications.warning(this.intl.t('common.unauthorized-access'));
             return this.hostRouter.transitionTo('console');
         }
+
+        // Entregas: aviso de pedido aberto sem motoboy (serviço pedido-sem-motoboy); ativo daí em diante
+        this.pedidoSemMotoboy.iniciar();
 
         // primeira entrada no engine já direto numa tela oculta (o listener do constructor ainda não existia)
         if (isEntregasHiddenRoute(transition?.to?.name)) {

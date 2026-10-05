@@ -204,6 +204,8 @@ fleet-ops:
             integration-ids: "Integration (iFood):"
             integration-customer: customer
             integration-pickup: pickup
+        pedido-sem-motoboy:
+            aviso: 'Order {numero} has had no driver for {minutos} min. Click to open and assign.'
         order-form:
             store-or-customer: Store or customer
             store-or-customer-placeholder: Select store or customer

@@ -204,6 +204,8 @@ fleet-ops:
       integration-ids: "Integração (iFood):"
       integration-customer: cliente
       integration-pickup: coleta
+    pedido-sem-motoboy:
+      aviso: 'Pedido {numero} está há {minutos} min sem motoboy. Clique para abrir e atribuir.'
     order-form:
       store-or-customer: Loja ou cliente
       store-or-customer-placeholder: Selecionar loja ou cliente
