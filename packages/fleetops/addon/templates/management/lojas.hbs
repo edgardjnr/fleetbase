@@ -171,7 +171,7 @@
                             {{#if loja.telefone}}
                                 <div class="text-sm text-gray-500 dark:text-gray-400">{{loja.telefone}}</div>
                             {{/if}}
-                            {{! Entregas: ids que a integração do iFood manda em cada pedido (POST v1/orders): customer = id da loja (Vendor), pickup = id do Local de coleta. Um clique copia. Loja sem Local mostra só o do cliente }}
+                            {{! Entregas: ids para uma integração externa que cria pedidos pela API v1 (POST v1/orders): customer = id da loja (Vendor), pickup = id do Local de coleta. Os pedidos do iFood não usam (entram pelo vínculo abaixo). Um clique copia. Loja sem Local mostra só o do cliente }}
                             <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
                                 <span>{{t "fleet-ops.ui.lojas.integration-ids"}}</span>
                                 <span class="inline-flex items-center gap-1">
@@ -215,7 +215,9 @@
                                     {{#if (eq situacao "vinculada")}}
                                         <Button @size="xs" @icon="link-slash" @text={{t "fleet-ops.ui.lojas.ifood.unlink"}} @onClick={{fn this.desvincularIfood loja}} />
                                     {{else if (eq situacao "perdido")}}
+                                        {{! vínculo perdido: "Vincular de novo" (principal) ou "Desvincular iFood" (libera o merchant; a API aceita nesse estado) }}
                                         <Button @size="xs" @type="primary" @icon="link" @text={{t "fleet-ops.ui.lojas.ifood.relink"}} @onClick={{fn this.vincularIfood loja}} />
+                                        <Button @size="xs" @icon="link-slash" @text={{t "fleet-ops.ui.lojas.ifood.unlink"}} @onClick={{fn this.desvincularIfood loja}} />
                                     {{else}}
                                         <Button @size="xs" @icon="link" @text={{t "fleet-ops.ui.lojas.ifood.link"}} @onClick={{fn this.vincularIfood loja}} />
                                     {{/if}}
