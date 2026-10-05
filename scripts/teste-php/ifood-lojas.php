@@ -33,8 +33,12 @@ class Usuario
     public function isNotAdmin(): bool { return !$this->admin; }
 }
 
+// os logs de todos os casos (o reiniciarIfood zera o Log a cada preparar), para conferir no fim que nenhum traz segredo
+$GLOBALS['logsDosCasos'] = [];
+
 function preparar(bool $admin = true): ControllerDeTeste
 {
+    $GLOBALS['logsDosCasos'] = array_merge($GLOBALS['logsDosCasos'], \Illuminate\Support\Facades\Log::$registros);
     reiniciarIfood();
     reiniciarFleetbase();
     Sessao::$dados = ['company' => 'empresa-1'];
@@ -76,7 +80,19 @@ confere($resposta->status === 200 && $resposta->dados === ['codigo' => 'ABCD-EFG
 confere(isset(\Illuminate\Support\Facades\Cache::$dados[VinculosIfood::chaveDoVerificador('vendor-a')]), 'verificador guardado pelo uuid da loja');
 Http::responder(503, 'fora do ar');
 confere($controller->codigo(new Request(), vinculos(), 'vendor_a')->status === 502, 'iFood fora do ar: 502');
-confere(excecao(fn () => $controller->codigo(new Request(), vinculos(), 'vendor_x')) !== null, 'loja de outra empresa ou inexistente: 404');
+confere(excecao(fn () => $controller->codigo(new Request(), vinculos(), 'vendor_x'))?->getMessage() === '404: registro não encontrado', 'loja inexistente: 404 (firstOrFail)');
+
+echo '== Loja de outra empresa ou Fornecedor que não é loja: 404' . PHP_EOL;
+$controller        = preparar();
+Vendor::$todos[]   = new Vendor(['uuid' => 'vendor-b', 'public_id' => 'vendor_b', 'company_uuid' => 'empresa-2', 'type' => 'customer', 'name' => 'Loja de Outra Empresa']);
+Vendor::$todos[]   = new Vendor(['uuid' => 'vendor-c', 'public_id' => 'vendor_c', 'company_uuid' => 'empresa-1', 'type' => 'vendor', 'name' => 'Fornecedor Comum']);
+foreach (['vendor_b' => 'loja de outra empresa', 'vendor-b' => 'loja de outra empresa (pelo uuid)', 'vendor_c' => 'Fornecedor com type vendor', 'vendor-c' => 'Fornecedor com type vendor (pelo uuid)'] as $id => $nome) {
+    foreach (['codigo' => [], 'vincular' => ['authorizationCode' => 'AUTH-1'], 'desvincular' => []] as $metodo => $dados) {
+        $erro = excecao(fn () => $controller->$metodo(new Request($dados), vinculos(), $id));
+        confere($erro?->getMessage() === '404: registro não encontrado', "{$metodo}, {$nome}: 404 (firstOrFail)");
+    }
+}
+confere(Http::$chamadas === [] && Banco::linhas('entregas_ifood_lojas') === [] && \Illuminate\Support\Facades\Cache::$dados === [], 'sem chamar o iFood nem gravar nada');
 
 echo '== Vincular' . PHP_EOL;
 confere($controller->vincular(new Request([]), vinculos(), 'vendor_a')->status === 422, 'sem código: 422');
@@ -87,6 +103,22 @@ Http::responder(200, [['id' => 'merchant-1', 'name' => 'Pizzaria Um']]);
 $resposta = $controller->vincular(new Request(['authorizationCode' => 'AUTH-1']), vinculos(), 'vendor_a');
 confere($resposta->status === 200 && $resposta->dados === ['loja' => ['id' => 'vendor_a', 'ifood' => ['situacao' => 'vinculada', 'nome' => 'Pizzaria Um', 'merchant_id' => 'merchant-1']]], 'devolve a loja com o bloco ifood (sem tokens)');
 confere(Banco::linhas('entregas_ifood_lojas')[0]->company_uuid === 'empresa-1', 'gravado na empresa da sessão');
+
+echo '== Validação no formato da casa' . PHP_EOL;
+$controller = preparar();
+$codigoInvalido   = 'O código de autorização precisa ser um texto de até 500 caracteres.';
+$merchantInvalido = 'A loja do iFood escolhida é inválida. Gere um código de vínculo novo.';
+foreach ([
+    'código que não é texto'   => [['authorizationCode' => ['AUTH-1']], [$codigoInvalido]],
+    'código longo demais'      => [['authorizationCode' => str_repeat('A', 501)], [$codigoInvalido]],
+    'merchant que não é texto' => [['merchant_id' => ['merchant-1']], [$merchantInvalido]],
+    'merchant longo demais'    => [['merchant_id' => str_repeat('m', 65)], [$merchantInvalido]],
+    'os dois inválidos'        => [['authorizationCode' => 123, 'merchant_id' => ['x']], [$codigoInvalido, $merchantInvalido]],
+] as $caso => [$dados, $esperados]) {
+    $resposta = $controller->vincular(new Request($dados), vinculos(), 'vendor_a');
+    confere($resposta->status === 422 && $resposta->dados === ['errors' => $esperados], "{$caso}: 422 {\"errors\": [texto em pt-BR]} (sem o message nem o objeto por campo do Laravel)");
+}
+confere(Http::$chamadas === [], 'sem chamar o iFood');
 
 echo '== Várias lojas no iFood' . PHP_EOL;
 $controller = preparar();
@@ -134,5 +166,22 @@ vinculoDaLojaA();
 Config::$valores['services.ifood.ativo'] = '';
 $resposta = $controller->desvincular(new Request(), vinculos(), 'vendor_a');
 confere($resposta->status === 200 && $resposta->dados['loja']['ifood'] === ['situacao' => null, 'nome' => null, 'merchant_id' => null], 'desvincula (mesmo com a integração desligada)');
+
+echo '== Logs sem segredos' . PHP_EOL;
+$GLOBALS['logsDosCasos'] = array_merge($GLOBALS['logsDosCasos'], \Illuminate\Support\Facades\Log::$registros);
+\Illuminate\Support\Facades\Log::$registros = $GLOBALS['logsDosCasos'];
+confere(count($GLOBALS['logsDosCasos']) > 0, 'houve logs para conferir');
+confere(logsSem(['token-1', 'refresh-1', 'token-a', 'refresh-a', 'AUTH-1', 'AUTH-2', 'AUTH-3', 'ERRADO', 'ABCD-EFGH', 'verificador-1']), 'nenhum log traz token, refresh, código de autorização, código de vínculo ou verificador');
+
+echo '== Limitador das rotas do vínculo' . PHP_EOL;
+$rotas = file_get_contents('/repo/api/app/Providers/RouteServiceProvider.php');
+// o RouteServiceProvider não roda nos stubs: confere o texto (mesmo padrão do entregas-loja-mapa e do entregas-motoboy-rota)
+$limitador = 'RateLimiter::for(\'entregas-ifood-vinculo\', fn (Request $request) => Limit::perMinute(20)->by(\'entregas-ifood-vinculo:\' . (session(\'user\') ?: $request->ip())));';
+confere(str_contains($rotas, $limitador), 'limitador nomeado entregas-ifood-vinculo: 20 por minuto por usuário');
+foreach (['codigo', 'vincular'] as $metodo) {
+    $rota = "Route::post('lojas/{id}/ifood/{$metodo}', [IfoodLojasController::class, '{$metodo}'])->middleware('throttle:entregas-ifood-vinculo');";
+    confere(str_contains($rotas, $rota), "{$metodo}: usa o limitador nomeado");
+}
+confere(!str_contains($rotas, 'throttle:20,1'), 'sem o throttle:20,1 sem nome');
 
 resumo();

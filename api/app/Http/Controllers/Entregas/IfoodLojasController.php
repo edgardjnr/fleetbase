@@ -8,6 +8,7 @@ use App\Support\Entregas\Ifood\ErroIfood;
 use App\Support\Entregas\Ifood\VinculosIfood;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 /**
  * Entregas RestaurantePro: vínculo da Loja com o iFood na tela Lojas (só administradores), pelo fluxo distribuído
@@ -17,7 +18,9 @@ use Illuminate\Support\Facades\Log;
  *   várias lojas na conta do iFood, {escolher: [{id, nome}]}; {merchant_id} conclui a escolha → {loja};
  * - DELETE lojas/{id}/ifood: desvincula → {loja}.
  * Com a integração desligada (ENTREGAS_IFOOD), o código e o vínculo respondem 409; desvincular funciona sempre (não
- * chama o iFood). A {loja} é a do LojasController::formatar, com o bloco `ifood` (sem tokens).
+ * chama o iFood). A {loja} é a do LojasController::formatar, com o bloco `ifood` (sem tokens). Todo erro sai como
+ * {"errors": ["…"]}: 422 (validação, código ausente ou recusado), 409 (desligada), 502 (iFood fora do ar). Código e
+ * vínculo têm o limitador entregas-ifood-vinculo (20 por minuto por usuário, no RouteServiceProvider).
  */
 class IfoodLojasController extends LojasController
 {
@@ -41,10 +44,24 @@ class IfoodLojasController extends LojasController
             return $erro;
         }
         $vendor = $this->acharLoja($id);
-        $dados  = $request->validate([
+        // Validator::make, não $request->validate: o erro sai no formato da casa ({"errors": ["…"]}, 422), que a tela Lojas
+        // mostra, e não no padrão do Laravel ({message, errors: {campo: […]}}); mensagens em pt-BR (o Laravel daqui só
+        // tem as em inglês)
+        $codigoInvalido   = 'O código de autorização precisa ser um texto de até 500 caracteres.';
+        $merchantInvalido = 'A loja do iFood escolhida é inválida. Gere um código de vínculo novo.';
+        $validador        = Validator::make($request->all(), [
             'authorizationCode' => ['nullable', 'string', 'max:500'],
             'merchant_id'       => ['nullable', 'string', 'max:64'],
+        ], [
+            'authorizationCode.string' => $codigoInvalido,
+            'authorizationCode.max'    => $codigoInvalido,
+            'merchant_id.string'       => $merchantInvalido,
+            'merchant_id.max'          => $merchantInvalido,
         ]);
+        if ($validador->fails()) {
+            return response()->json(['errors' => $validador->errors()->all()], 422);
+        }
+        $dados    = $validador->validated();
         $merchant = trim((string) ($dados['merchant_id'] ?? ''));
         $codigo   = trim((string) ($dados['authorizationCode'] ?? ''));
 

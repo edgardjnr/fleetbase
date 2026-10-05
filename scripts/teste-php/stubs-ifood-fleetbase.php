@@ -1,6 +1,6 @@
 <?php
 
-// Stubs dos models do Fleetbase (e do Request e do Auth) para os testes da integração iFood que criam e despacham
+// Stubs dos models do Fleetbase (e do Request, do Validator e do Auth) para os testes da integração iFood que criam e despacham
 // pedidos (ifood-criador.php, ifood-processar.php, ifood-agendador.php) e da tela Lojas (ifood-lojas.php).
 // Carregar depois do stubs-ifood.php. Cada model guarda os seus objetos numa lista estática ($todos), e as consultas
 // (where/orWhere/closure) filtram essa lista com a precedência do SQL.
@@ -39,6 +39,8 @@ namespace Illuminate\Http {
     {
         public function __construct(public array $dados = []) {}
 
+        public function all(): array { return $this->dados; }
+
         // as regras do Laravel não rodam aqui: devolve só os campos que têm regra
         public function validate(array $regras): array
         {
@@ -54,7 +56,64 @@ namespace Illuminate\Http {
     }
 }
 
+namespace Illuminate\Support\Facades {
+    // o Validator::make do Laravel, só com as regras nullable, string e max:N (a primeira regra que falha encerra o
+    // campo). A mensagem é a personalizada ("campo.regra") ou, sem ela, "sem mensagem: campo.regra" (o Laravel sairia em
+    // inglês): assim o teste pega a regra sem texto em pt-BR
+    class Validator
+    {
+        public static function make(array $dados, array $regras, array $mensagens = []) { return new \Teste\Validacao($dados, $regras, $mensagens); }
+    }
+}
+
 namespace Teste {
+    class MensagensDeValidacao
+    {
+        public function __construct(private array $porCampo) {}
+        public function all(): array { return array_merge(...array_values($this->porCampo ?: [[]])); }
+        public function toArray(): array { return $this->porCampo; }
+    }
+
+    class Validacao
+    {
+        private array $erros = [];
+
+        public function __construct(private array $dados, private array $regras, array $mensagens)
+        {
+            foreach ($regras as $campo => $lista) {
+                $valor = $dados[$campo] ?? null;
+                if ($valor === null && in_array('nullable', $lista, true)) {
+                    continue;
+                }
+                foreach ($lista as $regra) {
+                    [$nome, $parametro] = array_pad(explode(':', $regra, 2), 2, null);
+                    $falhou = match ($nome) {
+                        'nullable' => false,
+                        'string'   => !is_string($valor),
+                        'max'      => is_string($valor) && mb_strlen($valor) > (int) $parametro,
+                        default    => throw new \LogicException("regra não suportada no stub: {$regra}"),
+                    };
+                    if ($falhou) {
+                        $this->erros[$campo][] = $mensagens["{$campo}.{$nome}"] ?? "sem mensagem: {$campo}.{$nome}";
+                        break;
+                    }
+                }
+            }
+        }
+
+        public function fails(): bool { return (bool) $this->erros; }
+        public function errors(): MensagensDeValidacao { return new MensagensDeValidacao($this->erros); }
+
+        public function validated(): array
+        {
+            if ($this->erros) {
+                throw new \LogicException('validated() com erros (o Laravel lançaria ValidationException)');
+            }
+
+            return array_intersect_key($this->dados, $this->regras);
+        }
+    }
+
     // consulta de model sobre uma lista de objetos: OU de grupos E; where com closure vira um subgrupo
     class ConsultaDeModelo
     {
