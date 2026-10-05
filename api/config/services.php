@@ -61,4 +61,15 @@ return [
     'entregas' => [
         'chave_app_motoboy' => env('ENTREGAS_CHAVE_APP_MOTOBOY'),
     ],
+
+    // Entregas RestaurantePro: integração iFood Logistics, app distribuído (App\Support\Entregas\Ifood). ENTREGAS_IFOOD
+    // vazio ou 0 = desligada: os comandos agendados saem sem fazer nada e o vínculo na tela Lojas responde 409. As
+    // credenciais ficam só no stack.env (nunca no banco nem no código). Aqui, e não em env() solto, porque o deploy.sh
+    // roda config:cache.
+    'ifood' => [
+        'ativo'         => env('ENTREGAS_IFOOD'),
+        'client_id'     => env('IFOOD_CLIENT_ID'),
+        'client_secret' => env('IFOOD_CLIENT_SECRET'),
+        'base_url'      => env('IFOOD_BASE_URL', 'https://merchant-api.ifood.com.br'),
+    ],
 ];

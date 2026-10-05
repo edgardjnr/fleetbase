@@ -60,6 +60,11 @@ x-api-env: &api-env
   # alarme de pedido do motoboy como push de dados (APK 16+): vazio = desligado, 1 = ligado; só com todos os motoboys no
   # APK 16 (api/app/Notifications/Entregas/AvisosDoMotoboy.php; como ligar: CLAUDE.md, "App do motoboy")
   ENTREGAS_ALARME_POR_DADOS: ${ENTREGAS_ALARME_POR_DADOS:-}
+  # integração iFood Logistics (app distribuído): vazio = desligada; 1 = ligada. Credenciais do app no Portal do
+  # Desenvolvedor do iFood (CLAUDE.md, "Integração iFood")
+  ENTREGAS_IFOOD: ${ENTREGAS_IFOOD:-}
+  IFOOD_CLIENT_ID: ${IFOOD_CLIENT_ID:-}
+  IFOOD_CLIENT_SECRET: ${IFOOD_CLIENT_SECRET:-}
 
 x-deploy: &default-deploy
   replicas: 1
