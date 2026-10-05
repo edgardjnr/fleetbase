@@ -24,10 +24,28 @@ $a = evento('ev-a', 'CFM', '2021-02-17T19:36:55.295Z');
 $b = evento('ev-b', 'RTP', '2021-02-17T19:36:55.2Z');
 $c = evento('ev-c', 'DSP', '2021-02-17T19:36:55Z');
 confere(array_column(EventosIfood::ordenar([$a, $b, $c]), 'id') === ['ev-c', 'ev-b', 'ev-a'], '"55Z" < "55.2Z" (200 ms) < "55.295Z"');
-$empate = [evento('ev-z', 'CFM', '2026-10-05T18:00:00.000Z'), evento('ev-y', 'DDCR', '2026-10-05T18:00:00Z')];
-confere(array_column(EventosIfood::ordenar($empate), 'id') === ['ev-y', 'ev-z'], 'empate: pelo id');
+$empate = [evento('ev-z', 'DDCR', '2026-10-05T18:00:00.000Z'), evento('ev-y', 'CFM', '2026-10-05T18:00:00Z')];
+confere(array_column(EventosIfood::ordenar($empate), 'id') === ['ev-y', 'ev-z'], 'empate: CFM antes do DDCR (ordem natural)');
+$empate = [evento('ev-a', 'CFM', '2026-10-05T18:00:00Z'), evento('ev-b', 'PLC', '2026-10-05T18:00:00Z')];
+confere(array_column(EventosIfood::ordenar($empate), 'id') === ['ev-b', 'ev-a'], 'empate: PLC antes do CFM, mesmo com id maior');
+$empate = [evento('ev-a', 'CAN', '2026-10-05T18:00:00Z'), evento('ev-b', 'CON', '2026-10-05T18:00:00Z'), evento('ev-c', 'PLC', '2026-10-05T18:00:00Z')];
+confere(array_column(EventosIfood::ordenar($empate), 'id') === ['ev-c', 'ev-b', 'ev-a'], 'empate: o CAN fica por último');
+$empate = [evento('ev-z', 'CFM', '2026-10-05T18:00:00Z'), evento('ev-y', 'CFM', '2026-10-05T18:00:00Z')];
+confere(array_column(EventosIfood::ordenar($empate), 'id') === ['ev-y', 'ev-z'], 'empate no mesmo código: pelo id');
+$empate = [evento('ev-a', 'HSD', '2026-10-05T18:00:00Z'), evento('ev-b', 'CAN', '2026-10-05T18:00:00Z')];
+confere(array_column(EventosIfood::ordenar($empate), 'id') === ['ev-b', 'ev-a'], 'empate: código desconhecido depois dos conhecidos');
 $semData = evento('ev-0', 'CFM', 'não é data');
 confere(array_column(EventosIfood::ordenar([$semData, $plc]), 'id') === ['ev-1', 'ev-0'], 'data inválida vai para o fim');
+$numero = ['createdAt' => 1759688680624] + evento('ev-n', 'CFM', '');
+$lista  = ['createdAt' => ['2026-10-05T18:00:00Z']] + evento('ev-l', 'CFM', '');
+$ordem  = null;
+try {
+    $ordem = array_column(EventosIfood::ordenar([$numero, $lista, $plc]), 'id');
+} catch (\TypeError $e) {
+    $ordem = 'TypeError';
+}
+confere($ordem === ['ev-1', 'ev-l', 'ev-n'], 'createdAt que não é texto (número, lista): sem TypeError, vai para o fim');
+confere(EventosIfood::instante(1759688680624) === INF && EventosIfood::instante(null) === INF && EventosIfood::instante(['x']) === INF, 'instante() de não texto = INF');
 confere(EventosIfood::instante('2026-10-05 18:24:40.624') === EventosIfood::instante('2026-10-05T18:24:40.624Z'), 'o formato gravado no banco (UTC, sem fuso) dá o mesmo instante');
 
 echo '== Ação por código' . PHP_EOL;
@@ -38,10 +56,16 @@ foreach (['CFM', 'RTP', 'DSP', 'CON', 'CAR', 'CARF', 'ADR', 'GTO', 'AAO', 'DDD',
     confere(EventosIfood::acao($codigo) === EventosIfood::REGISTRA, "{$codigo} só registra");
 }
 confere(EventosIfood::acao('HSD') === EventosIfood::IGNORA && EventosIfood::acao('') === EventosIfood::IGNORA, 'desconhecido é ignorado');
+confere(EventosIfood::nivelDoIgnorado('HSD') === 'warning', 'HSD ignorado: warning (exige resposta da loja no iFood)');
+confere(EventosIfood::nivelDoIgnorado('XYZ') === 'info' && EventosIfood::nivelDoIgnorado('HSS') === 'info', 'outro desconhecido: info');
 
 echo '== Cria o pedido' . PHP_EOL;
-confere(EventosIfood::criaPedido('PLC') && EventosIfood::criaPedido('CFM') && EventosIfood::criaPedido('DDCR'), 'PLC e, se o PLC se perdeu, outro conhecido');
-confere(!EventosIfood::criaPedido('CAN') && !EventosIfood::criaPedido('HSD'), 'CAN e desconhecido não criam');
+foreach (['PLC', 'CFM', 'RTP', 'DDCR', 'DPCR'] as $codigo) {
+    confere(EventosIfood::criaPedido($codigo), "{$codigo} cria (anterior à coleta; PLC ou, se ele se perdeu, outro anterior)");
+}
+foreach (['CAN', 'CAR', 'CARF', 'CON', 'DSP', 'CLT', 'AAD', 'DDCS', 'DDD', 'ADR', 'GTO', 'AAO', 'OPA', 'HSD', ''] as $codigo) {
+    confere(!EventosIfood::criaPedido($codigo), "{$codigo} não cria");
+}
 confere(EventosIfood::temCancelamento([$plc, evento('ev-9', 'CAN', '2026-10-05T18:30:00Z')]) && !EventosIfood::temCancelamento([$plc, $cfm]), 'acha o CAN entre os eventos');
 
 echo '== Linha para gravar' . PHP_EOL;
@@ -53,5 +77,11 @@ confere(json_decode($linha['payload'], true) === $comMetadata, 'payload = o even
 confere($linha['processado_em'] === null && $linha['ignorado'] === false && $linha['created_at'] === '2026-10-05 18:30:00', 'pendente, com as datas');
 confere(EventosIfood::paraGravar(['id' => 'ev-5', 'code' => 'PLC'], '2026-10-05 18:30:00') === null, 'sem orderId/merchantId: não grava');
 confere(EventosIfood::paraGravar(evento('ev-6', 'PLC', 'sem data'), '2026-10-05 18:30:00')['criado_no_ifood'] === null, 'data inválida grava nula');
+$gravada = null;
+try {
+    $gravada = EventosIfood::paraGravar(['createdAt' => 1759688680624] + evento('ev-7', 'PLC', ''), '2026-10-05 18:30:00');
+} catch (\TypeError $e) {
+}
+confere($gravada !== null && $gravada['criado_no_ifood'] === null, 'createdAt número: grava com data nula, sem TypeError');
 
 resumo();

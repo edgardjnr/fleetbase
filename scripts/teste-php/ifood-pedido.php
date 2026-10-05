@@ -42,6 +42,7 @@ $semCoordenadas                                                = pedidoEmDinheir
 $semCoordenadas['delivery']['deliveryAddress']['coordinates'] = ['latitude' => 0, 'longitude' => 0];
 $dados                                                         = PedidoDoIfood::mapear($semCoordenadas, LAT_COLETA, LNG_COLETA, $agora);
 confere($dados['sem_coordenadas'] === true && $dados['despachar_agora'] === false && $dados['linha']['despachar_em'] === null, 'não despacha: a central confere');
+confere($dados['notas'] === 'iFood #4821 [SEM LOCALIZAÇÃO]', '[SEM LOCALIZAÇÃO] nas notas, para a central ver na lista');
 
 echo '== Agendado' . PHP_EOL;
 $dados = PedidoDoIfood::mapear(pedidoAgendado(), LAT_COLETA, LNG_COLETA, $agora);
@@ -49,10 +50,103 @@ confere($dados['agendado'] === true && $dados['despachar_agora'] === false, 'age
 confere($dados['scheduled_at'] === '2026-10-05 19:20:00' && $dados['linha']['despachar_em'] === '2026-10-05 19:20:00', 'vai aos motoboys 40 min antes da janela (20:00 → 19:20)');
 $dados = PedidoDoIfood::mapear(pedidoAgendado('2026-10-05T18:30:00.000Z'), LAT_COLETA, LNG_COLETA, $agora);
 confere($dados['agendado'] === false && $dados['despachar_agora'] === true && $dados['linha']['despachar_em'] === '2026-10-05 18:00:00', 'menos de 40 min para a janela: despacha na hora');
-$semJanela = pedidoAgendado();
-unset($semJanela['schedule']);
-$semJanela['delivery']['deliveryDateTime'] = '2026-10-05T21:00:00.000Z';
-confere(PedidoDoIfood::mapear($semJanela, LAT_COLETA, LNG_COLETA, $agora)['scheduled_at'] === '2026-10-05 20:20:00', 'sem schedule: usa o deliveryDateTime');
+confere(PedidoDoIfood::mapear(pedidoAgendado(), LAT_COLETA, LNG_COLETA, $agora)['sem_janela'] === false, 'com janela: sem_janela = false');
+
+echo '== Agendado sem janela legível: não despacha e avisa no log' . PHP_EOL;
+$semSchedule = pedidoAgendado();
+unset($semSchedule['schedule']);
+$semSchedule['delivery']['deliveryDateTime'] = '2026-10-05T21:00:00.000Z';
+$naoIso                                      = pedidoAgendado('tomorrow');
+$ilegivel                                    = pedidoAgendado('amanhã à noite');
+$scheduleLista                               = pedidoAgendado();
+$scheduleLista['schedule']                   = ['deliveryDateTimeStart' => ['2026-10-05T20:00:00Z']];
+foreach (['sem schedule (o deliveryDateTime é só estimativa)' => $semSchedule, 'início "tomorrow" (não é data ISO)' => $naoIso, 'início ilegível' => $ilegivel, 'início em lista' => $scheduleLista] as $caso => $pedido) {
+    reiniciarIfood();
+    $dados = PedidoDoIfood::mapear($pedido, LAT_COLETA, LNG_COLETA, $agora);
+    confere($dados['agendado'] === true && $dados['sem_janela'] === true && $dados['despachar_agora'] === false && $dados['scheduled_at'] === null && $dados['linha']['despachar_em'] === null && $dados['linha']['agendado'] === true, "{$caso}: agendado, sem despacho nem scheduled_at");
+    confere($dados['notas'] === 'iFood #5150 [AGENDADO SEM HORÁRIO]', "{$caso}: marca nas notas para a central");
+    confere(logou('[entregas] ifood: agendado sem janela', 'warning') && logsSem(['Cliente Ficticio', 'Rua Ficticia', '0800 000 0002', '33334444']), "{$caso}: log sem dado do cliente");
+}
+reiniciarIfood();
+PedidoDoIfood::mapear(pedidoAgendado(), LAT_COLETA, LNG_COLETA, $agora);
+PedidoDoIfood::mapear(pedidoEmDinheiroComTroco(), LAT_COLETA, LNG_COLETA, $agora);
+confere(!logou('agendado sem janela'), 'agendado com janela e imediato: sem log');
+
+echo '== Agendado que não vai aos motoboys: sem scheduled_at (o fleetops:dispatch-orders despacharia)' . PHP_EOL;
+$agendadoTeste           = pedidoAgendado();
+$agendadoTeste['isTest'] = true;
+$dados                   = PedidoDoIfood::mapear($agendadoTeste, LAT_COLETA, LNG_COLETA, $agora);
+confere($dados['teste'] === true && $dados['agendado'] === true && $dados['scheduled_at'] === null && $dados['despachar_agora'] === false && $dados['linha']['despachar_em'] === null, 'agendado de teste: scheduled_at nulo, fora do agendador');
+confere($dados['notas'] === 'iFood #5150 [TESTE]', 'agendado de teste: [TESTE] nas notas');
+$agendadoSemLugar                                                = pedidoAgendado();
+$agendadoSemLugar['delivery']['deliveryAddress']['coordinates'] = ['latitude' => 0, 'longitude' => 0];
+$dados                                                          = PedidoDoIfood::mapear($agendadoSemLugar, LAT_COLETA, LNG_COLETA, $agora);
+confere($dados['sem_coordenadas'] === true && $dados['agendado'] === true && $dados['scheduled_at'] === null && $dados['despachar_agora'] === false && $dados['linha']['despachar_em'] === null, 'agendado em 0,0: scheduled_at nulo, fora do agendador');
+confere($dados['notas'] === 'iFood #5150 [SEM LOCALIZAÇÃO]', 'agendado em 0,0: [SEM LOCALIZAÇÃO] nas notas');
+
+echo '== Coordenadas inválidas = sem coordenadas' . PHP_EOL;
+$coordenadas = [
+    'latitude 0'                  => ['latitude' => 0, 'longitude' => -47.81],
+    'longitude 0'                 => ['latitude' => -21.17, 'longitude' => 0.0],
+    'sem coordinates'             => null,
+    'só a latitude'               => ['latitude' => -21.17],
+    'não numérica'                => ['latitude' => 'abc', 'longitude' => -47.81],
+    'em lista'                    => ['latitude' => [-21.17], 'longitude' => -47.81],
+    'latitude fora de ±90'        => ['latitude' => -95, 'longitude' => -47.81],
+    'longitude fora de ±180'      => ['latitude' => -21.17, 'longitude' => 190],
+    'a mais de 50 km (São Paulo)' => ['latitude' => -23.55, 'longitude' => -46.63],
+];
+foreach ($coordenadas as $caso => $valor) {
+    $pedido = pedidoEmDinheiroComTroco();
+    if ($valor === null) {
+        unset($pedido['delivery']['deliveryAddress']['coordinates']);
+    } else {
+        $pedido['delivery']['deliveryAddress']['coordinates'] = $valor;
+    }
+    $dados = PedidoDoIfood::mapear($pedido, LAT_COLETA, LNG_COLETA, $agora);
+    confere($dados['sem_coordenadas'] === true && $dados['despachar_agora'] === false && $dados['linha']['despachar_em'] === null && $dados['notas'] === 'iFood #4821 [SEM LOCALIZAÇÃO]' && abs($dados['entrega']['latitude'] - (LAT_COLETA + 0.009)) < 0.000001 && $dados['entrega']['longitude'] === LNG_COLETA, "{$caso}: sem coordenadas, entrega perto da loja, sem despacho");
+}
+$texto                                                = pedidoEmDinheiroComTroco();
+$texto['delivery']['deliveryAddress']['coordinates'] = ['latitude' => '-21.17', 'longitude' => '-47.81'];
+$dados                                                = PedidoDoIfood::mapear($texto, LAT_COLETA, LNG_COLETA, $agora);
+confere($dados['sem_coordenadas'] === false && $dados['entrega']['latitude'] === -21.17 && $dados['despachar_agora'] === true, 'número em texto vale');
+$perto                                                = pedidoEmDinheiroComTroco();
+$perto['delivery']['deliveryAddress']['coordinates'] = ['latitude' => LAT_COLETA - 0.40, 'longitude' => LNG_COLETA];
+$dados                                                = PedidoDoIfood::mapear($perto, LAT_COLETA, LNG_COLETA, $agora);
+confere($dados['sem_coordenadas'] === false && $dados['despachar_agora'] === true && $dados['notas'] === 'iFood #4821', 'a ~44 km da loja ainda vale');
+
+echo '== isTest tolerante' . PHP_EOL;
+foreach ([true, 'true', 'TRUE', 1, '1'] as $valor) {
+    $pedido           = pedidoEmDinheiroComTroco();
+    $pedido['isTest'] = $valor;
+    $dados            = PedidoDoIfood::mapear($pedido, LAT_COLETA, LNG_COLETA, $agora);
+    confere($dados['teste'] === true && $dados['despachar_agora'] === false && $dados['notas'] === 'iFood #4821 [TESTE]', 'isTest ' . var_export($valor, true) . ' = teste');
+}
+foreach ([false, 'false', 0, '0', null, 'sim'] as $valor) {
+    $pedido           = pedidoEmDinheiroComTroco();
+    $pedido['isTest'] = $valor;
+    confere(PedidoDoIfood::mapear($pedido, LAT_COLETA, LNG_COLETA, $agora)['teste'] === false, 'isTest ' . var_export($valor, true) . ' = real');
+}
+
+echo '== Endereço com campos estranhos' . PHP_EOL;
+$endereco = function (array $mudancas, array $remover = []) use ($agora): array {
+    $pedido = pedidoEmDinheiroComTroco();
+    foreach ($remover as $campo) {
+        unset($pedido['delivery']['deliveryAddress'][$campo]);
+    }
+    $pedido['delivery']['deliveryAddress'] = $mudancas + $pedido['delivery']['deliveryAddress'];
+
+    return PedidoDoIfood::mapear($pedido, LAT_COLETA, LNG_COLETA, $agora)['entrega'];
+};
+confere($endereco(['streetName' => ['Rua'], 'formattedAddress' => 'Rua Formatada, 77'])['street1'] === 'Rua Formatada, 77', 'streetName em lista: usa o formattedAddress');
+confere($endereco(['streetNumber' => ['123']])['street1'] === 'Rua Ficticia', 'streetNumber em lista: só a rua');
+confere($endereco(['formattedAddress' => 'Rua Formatada, 77'], ['streetName'])['street1'] === 'Rua Formatada, 77', 'sem streetName: o formattedAddress, não só o número');
+confere($endereco([], ['streetName', 'formattedAddress'])['street1'] === 'Endereço do iFood', 'sem streetName nem formattedAddress: texto padrão');
+confere($endereco(['country' => ['BR']])['country'] === 'BR' && $endereco(['country' => 'br'])['country'] === 'BR', 'país em lista ou minúsculo');
+confere($endereco(['postalCode' => '00000000'])['postal_code'] === null && $endereco(['postalCode' => '00000-000'])['postal_code'] === null && $endereco(['postalCode' => '14000-000'])['postal_code'] === '14000-000', 'CEP só de zeros = nulo');
+confere($endereco(['state' => 'XX'])['province'] === null && $endereco(['state' => 'ZZ'])['province'] === null && $endereco(['state' => ['SP']])['province'] === null, 'estado inválido = nulo');
+confere($endereco(['state' => 'sp'])['province'] === 'SP', 'sigla minúscula vira maiúscula');
+confere(PedidoDoIfood::mapear(pedidoDeTestePagoOnline(), LAT_COLETA, LNG_COLETA, $agora)['entrega']['province'] === null, 'estado "XX" do pedido de teste = nulo');
 
 echo '== Cobrança' . PHP_EOL;
 confere(PedidoDoIfood::cobranca(null) === [0, null, null], 'sem payments');
@@ -60,6 +154,41 @@ confere(PedidoDoIfood::cobranca(['prepaid' => 27, 'pending' => 0, 'methods' => [
 confere(PedidoDoIfood::cobranca(['prepaid' => 0, 'pending' => 323.99, 'methods' => [['value' => 323.99, 'method' => 'CREDIT', 'prepaid' => false, 'type' => 'OFFLINE']]]) === [32399, 'CREDIT', null], 'cartão na porta, sem troco');
 confere(PedidoDoIfood::cobranca(['pending' => 30, 'methods' => [['method' => 'PIX', 'prepaid' => true, 'type' => 'ONLINE'], ['method' => 'CASH', 'prepaid' => false, 'type' => 'OFFLINE', 'cash' => ['changeFor' => 50]]]]) === [3000, 'CASH', 5000], 'pago em parte: a forma é a do método não pago');
 confere(PedidoDoIfood::cobranca(['pending' => 10.1, 'methods' => [['method' => 'CASH', 'prepaid' => false]]]) === [1010, 'CASH', null], 'dinheiro sem troco; centavos arredondados');
+confere(PedidoDoIfood::cobranca(['pending' => '12.5', 'methods' => [['method' => 'DEBIT', 'prepaid' => false]]]) === [1250, 'DEBIT', null], 'pending em texto');
+
+echo '== Cobrança com formato divergente' . PHP_EOL;
+reiniciarIfood();
+$semPending = ['methods' => [['value' => 20, 'method' => 'CASH', 'prepaid' => false, 'type' => 'OFFLINE', 'cash' => ['changeFor' => 50]], ['value' => 10.5, 'method' => 'PIX', 'prepaid' => true, 'type' => 'ONLINE']]];
+confere(PedidoDoIfood::cobranca($semPending) === [2000, 'CASH', 5000], 'sem pending: soma dos métodos não pagos');
+confere(PedidoDoIfood::cobranca(['methods' => [['value' => 20, 'method' => 'CASH', 'type' => 'OFFLINE'], ['value' => 15.25, 'method' => 'CREDIT', 'type' => 'OFFLINE']]]) === [3525, 'CASH+CREDIT', null], 'sem pending, dois OFFLINE (sem o campo prepaid): soma e forma mista');
+confere(!logou('pagamento inconsistente'), 'sem pending, com métodos na porta: sem aviso');
+
+reiniciarIfood();
+confere(PedidoDoIfood::cobranca(['pending' => 30, 'methods' => [['value' => 30, 'method' => 'CREDIT', 'prepaid' => true, 'type' => 'ONLINE']]], ['pedido_ifood' => 'p-1', 'numero' => '4821']) === [3000, null, null], 'pending > 0 sem método na porta: cobra o pending, forma desconhecida');
+confere(logou('[entregas] ifood: pagamento inconsistente', 'warning'), 'pending > 0 sem método na porta: aviso');
+reiniciarIfood();
+confere(PedidoDoIfood::cobranca(['pending' => 12, 'methods' => []]) === [1200, null, null] && logou('pagamento inconsistente', 'warning'), 'pending > 0 sem métodos: cobra e avisa');
+
+reiniciarIfood();
+confere(PedidoDoIfood::cobranca(['pending' => 0, 'methods' => [['value' => 30, 'method' => 'CASH', 'prepaid' => false, 'type' => 'OFFLINE']]], ['pedido_ifood' => 'p-1', 'numero' => '4821']) === [3000, 'CASH', null], 'pending 0 com método não pago: cobra o método (o motoboy confere com o cliente)');
+confere(logou('[entregas] ifood: pagamento inconsistente', 'warning'), 'pending 0 com método não pago: aviso');
+$contexto = Illuminate\Support\Facades\Log::$registros[0][2] ?? [];
+confere(($contexto['pedido_ifood'] ?? null) === 'p-1' && ($contexto['numero'] ?? null) === '4821' && !array_key_exists('methods', $contexto), 'aviso com os ids do pedido, sem o bloco de pagamento');
+
+reiniciarIfood();
+confere(PedidoDoIfood::cobranca(['pending' => 35, 'methods' => [['value' => 20, 'method' => 'CASH', 'prepaid' => false, 'cash' => ['changeFor' => 50]], ['value' => 15, 'method' => 'CREDIT', 'prepaid' => false]]]) === [3500, 'CASH+CREDIT', 5000], 'dois métodos na porta: forma mista, troco do dinheiro');
+confere(PedidoDoIfood::cobranca(['pending' => 35, 'methods' => [['value' => 20, 'method' => 'DEBIT', 'prepaid' => false, 'cash' => ['changeFor' => 50]], ['value' => 15, 'method' => 'CREDIT', 'prepaid' => false]]]) === [3500, 'DEBIT+CREDIT', null], 'sem dinheiro: sem troco');
+confere(PedidoDoIfood::cobranca(['pending' => 40, 'methods' => [['value' => 20, 'method' => 'CASH', 'prepaid' => false], ['value' => 20, 'method' => 'CASH', 'prepaid' => false, 'cash' => ['changeFor' => 50]]]]) === [4000, 'CASH', 5000], 'o mesmo método duas vezes: uma forma só');
+confere(PedidoDoIfood::cobranca(['pending' => 9, 'methods' => [['method' => 'DIGITAL_WALLET', 'prepaid' => false], ['method' => 'MEAL_VOUCHER', 'prepaid' => false], ['method' => 'FOOD_VOUCHER', 'prepaid' => false]]])[1] === 'MISTO', 'formas demais para a coluna (30): MISTO');
+confere(!logou('pagamento inconsistente'), 'pending > 0 com método na porta: sem aviso');
+
+echo '== Cobrança pelo mapear (com os ids no aviso)' . PHP_EOL;
+reiniciarIfood();
+$divergente             = pedidoEmDinheiroComTroco();
+$divergente['payments'] = ['pending' => 0, 'methods' => [['value' => 58.9, 'method' => 'CASH', 'prepaid' => false, 'type' => 'OFFLINE']]];
+$linha                  = PedidoDoIfood::mapear($divergente, LAT_COLETA, LNG_COLETA, $agora)['linha'];
+confere($linha['cobrar_centavos'] === 5890 && $linha['forma_pagamento'] === 'CASH', 'cobra o método não pago');
+confere(logou('pagamento inconsistente', 'warning') && (Illuminate\Support\Facades\Log::$registros[0][2]['numero'] ?? null) === '4821' && logsSem(['Cliente Ficticio', 'Rua Ficticia', '0800 000 0002']), 'aviso com o número do pedido e sem dado do cliente');
 
 echo '== Campos faltando' . PHP_EOL;
 $minimo = ['id' => 'abcdef123456', 'isTest' => false, 'delivery' => ['deliveryAddress' => ['coordinates' => ['latitude' => -21.17, 'longitude' => -47.81]]]];
