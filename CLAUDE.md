@@ -72,13 +72,13 @@ Depois de cada deploy do console, abra o site com Ctrl+Shift+R. O console guarda
 
 ## Escopo enxuto: delivery iFood → motoboy
 
-O produto é só isto: o pedido chega do iFood pela API, é despachado para o motoboy, que usa o app **Navigator**, e o motoboy é pago por km.
+O produto é só isto: o pedido chega do iFood (integração Logistics dentro da `api/app`, ver "Integração iFood"), é despachado para o motoboy, que usa o app **Navigator**, e o motoboy é pago por km.
 
 - **Extensões fora do console:** storefront, ledger, registry-bridge (Extensions), ai, valhalla e vroom.
   - Saíram do `console/package.json`, do `pnpm-workspace.yaml` e do `Dockerfile.dockerignore`.
   - Os `app/router.js` e `app/extensions/*` são gerados no build a partir do `node_modules`.
   - As pastas em `packages/` e as APIs no `api/composer.json` continuam. Para reativar, reverta essas listas.
-- **Ficam:** Fleet-Ops, IAM, **Developers** (chaves de API e webhooks da integração iFood) e o **Portal do Cliente**, que voltou como portal da loja (ver "Portal da loja").
+- **Ficam:** Fleet-Ops, IAM, **Developers** (chaves de API e webhooks; a integração iFood não usa) e o **Portal do Cliente**, que voltou como portal da loja (ver "Portal da loja").
 - **Telas ocultas do Fleet-Ops:** a lista está em `packages/fleetops/addon/utils/entregas-hidden-routes.js`.
   - Inclui manutenção, conectividade/telemática, veículos, frotas, fornecedores, combustível, ocorrências, orquestrador, agenda, tarifas e várias configurações.
   - A lista tira os itens do menu (`fleet-ops-sidebar`) e dos hubs (`localize-hub`, `settings/index`), e a URL direta cai em Pedidos (`routes/application.js`).
@@ -96,7 +96,8 @@ O produto é só isto: o pedido chega do iFood pela API, é despachado para o mo
     - Valor congelado errado: apague as linhas do período nessa tabela; elas voltam com a tabela atual na próxima consulta.
 - **Cobrança das lojas** (mesma tela, renomeada "Pagamento e cobrança"): modelo A = **uma organização só** (o operador de entregas) e cada restaurante é uma **Loja** (ver "Portal da loja").
   - **Loja do pedido = o Vendor dono do pedido** (`orders.customer_uuid`), como nos pedidos do portal e nos que a central cria escolhendo a loja.
-  - **A integração iFood manda, em cada pedido (`POST v1/orders`), `customer` = `public_id` do Fornecedor da loja (`vendor_…`) e `pickup` = `public_id` do Local da loja (`place_…`).** Os dois ids aparecem na tela Lojas. Assim o pedido entra no portal da loja (lista, acompanhamento e cancelamento antes do aceite), no extrato e na cobrança dela (decisão de 2026-10-03).
+  - **Os pedidos do iFood entram com a loja como cliente e o Local dela como coleta** (ver "Integração iFood"). Assim o pedido entra no portal da loja, no extrato e na cobrança dela.
+  - Quem criar pedido pela API v1 (`POST v1/orders`) manda `customer` = `public_id` do Fornecedor da loja (`vendor_…`) e `pickup` = `public_id` do Local da loja (`place_…`). Os dois ids aparecem na tela Lojas. Era o caminho previsto para o iFood em 2026-10-03, substituído em 2026-10-05 pela integração dentro da `api/app`.
   - Pedido sem loja como cliente fica fora do portal e do extrato. Na cobrança, ele agrupa pelo **nome** do local de coleta (a integração pode criar um Place por pedido); sem nome, pelo próprio Place.
   - Cobrança = valor "loja" da faixa do km, igual para todas as lojas. A tela mostra a pagar, a cobrar e a margem; o CSV traz motoboys, lojas e o detalhe com loja, faixa e os dois valores.
 - **Mapa ao vivo** (Fleet-Ops → mapa, `components/map/leaflet-live-map.*`):
@@ -211,6 +212,191 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
   - O `CompanyScope` existe, mas **não** está registrado nos models desta versão: filtre `company_uuid` de forma explícita.
   - `orders.customer_type` varia com e sem a barra inicial: a loja do pedido é o `customer_uuid`.
   - O `cancelOrder` do portal só troca o status (sem atividade nem evento), e o `startOrder` da API v1 não confere cancelamento: daí a trava e o `BarrarAceiteDePedidoEncerrado`.
+
+## Integração iFood (etapa 2: entrada dos pedidos)
+
+Os pedidos iFood dos restaurantes entram pelo módulo **Logistics** da Merchant API: app **distribuído**, entrega própria (`deliveredBy: MERCHANT`).
+
+- **Onde ler mais:**
+  - desenho e decisões: `docs/superpowers/specs/2026-10-05-integracao-ifood-logistics-design.md`;
+  - referência da API: `docs/ifood/referencia-logistics.md` (a seção "Descobertas da sonda" vale mais que o resto);
+  - planos `docs/superpowers/plans/2026-10-05-ifood-etapa-2a-servidor.md` e `-2b-tela-lojas.md`, executados com ajustes de revisão: **o código é a referência**.
+- **Situação:** etapa 2 implementada em 2026-10-05. O primeiro teste real com a loja de teste é a Task 13 do plano 2A. As etapas 3 (ações de logística, GPS, cancelamento) e 4 (APK e console) ainda não existem.
+- **Não vincule loja real antes da etapa 3.**
+  - O CAN só grava `cancelado_pelo_ifood_em`: o pedido já despachado continua aberto aos motoboys, e a central precisa cancelar à mão no console.
+  - Até lá, vincule só a loja de teste.
+
+### Como ligar
+
+- No `stack.env`: `ENTREGAS_IFOOD=1`, `IFOOD_CLIENT_ID` e `IFOOD_CLIENT_SECRET`, as credenciais do app **distribuído** (Portal do Desenvolvedor → Meus Apps → Credenciais).
+  - Os três são lidos em `config('services.ifood')`. O `ClienteIfood::ligada()` exige os três preenchidos.
+- Stacks → entregas → Editor → Update the stack ("Re-pull image" desligado). Depois reinicie a fila e o scheduler: `docker service update --force entregas_queue && docker service update --force entregas_scheduler`.
+- As três tabelas entram com `bash deploy/atualizar.sh api` (migrations).
+- **Desligada:**
+  - os três comandos nem sobem (`when(ClienteIfood::ligada())` no `Kernel`; cada comando confere de novo);
+  - a tela Lojas esconde os botões;
+  - código e vínculo respondem 409. Desvincular funciona sempre.
+
+### Vínculo (tela Lojas)
+
+Fleet-Ops → Recursos → Lojas, só admin. API: `IfoodLojasController`, `int/v1/entregas/lojas/{id}/ifood/*`, limitador `entregas-ifood-vinculo` (20 por minuto por usuário).
+
+- **Vincular iFood** abre o modal (`modals/vincular-ifood`):
+  1. `POST .../ifood/codigo` traz o código de vínculo (userCode), o link do Portal do Parceiro com o código preenchido (só vira botão se for https de `*.ifood.com.br`) e a contagem de 10 min;
+  2. o dono da loja autoriza no Portal do Parceiro e passa o código de autorização à central, que cola no campo (`POST .../ifood/vincular` com `authorizationCode`);
+  3. conta com várias lojas: a central escolhe uma (`POST .../ifood/vincular` com `merchant_id`).
+- **Selo no card:** "Vinculada · <loja no iFood>", "Vínculo perdido" em vermelho (com o botão "Vincular de novo") ou "—". Os botões só aparecem com `ifood_ligado` na lista.
+- **Desvincular iFood** (com confirmação; `DELETE .../ifood`) apaga os tokens e libera o merchant para outra loja.
+- Front: controller e template de `management/lojas`, modal `components/modals/vincular-ifood.*` e funções puras em `packages/fleetops/addon/utils/vinculo-ifood.js`.
+- **Um merchant, uma loja** (checagem e chave única).
+- **Coleta = Local da Loja**, não o endereço do iFood. A mais de 300 m dele, o log avisa (`coleta diverge do iFood (N m)`).
+- **O código de autorização vale uma vez.** Os tokens da troca ficam 10 min no cache, cifrados:
+  - se a lista de lojas falhar por rede ou 5xx, clicar de novo em Vincular usa esses tokens, sem código novo;
+  - se a lista for recusada (400, 401, 403), é preciso um código novo.
+- **Erros**, sempre `{"errors": ["…"]}`:
+  - 422: validação, código vencido ou recusado, merchant já em outra loja, conta sem lojas;
+  - 422 também no pedido do código, quando o iFood recusa as credenciais do app ("Confira as credenciais");
+  - 409: integração desligada;
+  - 502: iFood fora (rede, 429, 5xx, resposta incompleta).
+
+### Código
+
+Em `api/app/Support/Entregas/Ifood/`:
+
+- `ClienteIfood`: única porta HTTP, com erros tipados (`ErroIfood`; rede = status 0);
+- `VinculosIfood`: vínculo, tokens cifrados com `encrypt()` e renovação;
+- `EventosIfood` e `PedidoDoIfood`: funções puras;
+- `CriadorDoPedidoIfood`: adaptador sobre os models do Fleet-Ops.
+
+Fora dessa pasta:
+
+- job `App\Jobs\Entregas\ProcessarPedidoIfood`;
+- comandos `entregas:ifood-polling` (a cada 30 s), `entregas:ifood-agendados` (a cada minuto) e `entregas:ifood-tokens` (a cada 30 min), em `Console/Commands/Entregas/`. No `Kernel`, os três rodam em segundo plano, com `withoutOverlapping`.
+
+### Fluxo do pedido
+
+1. **Polling** (`entregas:ifood-polling`):
+   - agrupa as lojas vinculadas pelo token (até 100 por chamada) e chama com `excludeHeartbeat=true`;
+   - grava em `entregas_ifood_eventos` (o `evento_id` único descarta os repetidos) e **só depois** manda o ack. Banco fora = sem ack, e o iFood reenvia;
+   - enfileira um `ProcessarPedidoIfood` por pedido com evento pendente.
+2. **Job** (trava `entregas:ifood-pedido:<id do iFood>`): processa os pendentes em ordem de `createdAt`.
+   - O pedido nasce no **PLC** ou, se o PLC se perdeu, num evento anterior à coleta (CFM, RTP, DDCR, DPCR).
+   - **Não nasce** se o pedido tem CAN ou já passou da coleta (DSP, CON, CLT, DDD, AAD, DDCS, GTO, ADR, AAO), procurando entre todos os eventos gravados dele. Também não nasce só com eventos de entrega, cancelamento ou alteração.
+3. **Criação** (`GET logistics/orders/{id}`), numa transação só:
+   - Place da entrega com as coordenadas do iFood, sem dono;
+   - Payload com a coleta no Local da loja;
+   - Order: cliente = Vendor da loja, tipo `transport`, `internal_id` = número do iFood, notas "iFood #4821";
+   - a linha de `entregas_ifood_pedidos`. O `pedido_ifood_id` único garante que nunca nascem dois pedidos.
+4. **Despacho como o do portal:** adhoc + `firstDispatchWithActivity`, com a `TravaDoPedido` e o pedido relido.
+
+- **Sem despacho**: nasce com adhoc falso e a central atribui. Cada caso deixa uma marca nas notas:
+  - pedido de teste (`isTest`): "[TESTE]", com a entrega ~1 km ao norte da loja;
+  - pedido real sem coordenadas válidas (ausentes, 0, fora da faixa ou a mais de 50 km da coleta): "[SEM LOCALIZAÇÃO]", com o mesmo deslocamento e um warning no log;
+  - agendado sem janela legível: "[AGENDADO SEM HORÁRIO]", com o log `agendado sem janela`.
+- **Agendado:** `scheduled_at` = `despachar_em` = início da janela − 40 min. Se faltar menos que isso, despacha na hora.
+  - Quem despacha é o `entregas:ifood-agendados` ou o `fleetops:dispatch-orders`, o que vier primeiro.
+  - Se a central atribuiu um motoboy antes do horário, o agendador desliga o adhoc e despacha só para ele.
+- **`entregas:ifood-agendados`:**
+  - refaz o despacho imediato que falhou no job (com 1 min de folga);
+  - pedido encerrado, aceito ou apagado sai da fila;
+  - 30 min depois do `despachar_em` sem conseguir, desiste: tira da fila, grava o log `despacho desistiu` e toca no console o aviso sonoro "sem motoboy" (`entregas.pedido_sem_motoboy`, uma tentativa).
+- **Outros eventos:**
+  - DDCR marca `exige_codigo`;
+  - CAN grava `cancelado_pelo_ifood_em` e tira da fila do agendador o pedido ainda não despachado;
+  - os outros códigos conhecidos só ficam registrados;
+  - código desconhecido fica como ignorado, com warning no HSD (exige resposta da loja no iFood) e info nos outros.
+- **Cobrança:**
+  - sem `payments` = pago online;
+  - o `payments.pending` explícito manda (0 = nada a cobrar). Sem ele, vale a soma dos métodos não pagos;
+  - a forma vem do método não pago; o troco só vale para dinheiro;
+  - formato divergente ou valor implausível (acima de R$ 100 mil) vai para o log `pagamento inconsistente`;
+  - o formato com cobrança na porta ainda é para conferir na homologação.
+
+### Tabelas
+
+As migrations ficam em `api/database/migrations`.
+
+- `entregas_ifood_lojas`: o vínculo. Tokens cifrados (APP_KEY); `situacao` = `vinculada` | `vinculo_perdido` | `desvinculada`.
+- `entregas_ifood_eventos`: um registro por evento. Uma vez por dia, a limpeza apaga os processados há mais de 7 dias e os pendentes há mais de 30.
+- `entregas_ifood_pedidos`: dados do iFood de cada pedido (0800, cobrança, observações, `exige_codigo`, `cancelado_pelo_ifood_em`, `teste`, `agendado`, `despachar_em`, `despachado_em`). Fica fora do `meta` do Order de propósito.
+
+### Tokens e erros
+
+- **Renovação**, com trava por loja e compare-and-set:
+  - antes de usar, quando o token vence em menos de 5 min;
+  - pelo `entregas:ifood-tokens`, que renova os que vencem em menos de 1 h;
+  - no 401: renova e repete uma vez.
+- **Refresh recusado pelo `/oauth/token` (400 ou 401)** = `vinculo_perdido`:
+  - grava o log `vínculo perdido`, apaga o access token e **mantém o refresh cifrado** (para reativar);
+  - um 401 ali pode ser credencial errada no `stack.env`, e não o dono revogando;
+  - os outros erros da renovação (403, 404, 408, 409, 429, 5xx, rede, trava ocupada) não derrubam a loja.
+- **Token ilegível** (APP_KEY trocado ou texto corrompido): a loja vai para `vinculo_perdido` com o texto cifrado mantido, e sai o log `token ilegível (APP_KEY mudou?)`.
+- **429** (polling ou ack): pausa todas as lojas do token pelo `Retry-After` (até 300 s; sem cabeçalho, 60 s). A pausa fica no cache `entregas:ifood-polling-pausa:<id do vínculo>`. No job, o 429 devolve o pedido para a fila pelo `Retry-After`.
+- **403 no polling:** as lojas do lote listadas em `unauthorizedMerchants` viram vínculo perdido. Sem lista legível, o lote fica 5 min em pausa.
+- **Limites da rodada:**
+  - nenhum lote novo depois de 25 s;
+  - para depois de 3 falhas temporárias seguidas;
+  - o cursor `entregas:ifood-polling-cursor` alterna o ponto de partida.
+- **Job:**
+  - prazo de 30 min (`retryUntil`), até 6 exceções, espera de 15 s a 5 min;
+  - 404, 5xx e rede tentam de novo;
+  - 400, 403 ou 401 depois da renovação, no GET do pedido, falham na hora (os eventos ficam pendentes para a varredura);
+  - ao desistir, grava o log `pedido não processado`.
+- **Varredura** (em toda rodada do polling):
+  - o pedido com evento pendente gravado entre 2 min e 6 h atrás volta para a fila (até 50 por rodada; marca de 35 min, depois 2 h e 4 h);
+  - com mais de 6 h, só um warning por pedido (`evento pendente há mais de 6 h`), para a central conferir.
+- **Reativar lojas caídas por credencial errada ou APP_KEY revertido:**
+  1. corrija o `stack.env` e faça o Update the stack;
+  2. rode `UPDATE entregas_ifood_lojas SET situacao='vinculada' WHERE situacao='vinculo_perdido' AND refresh_token IS NOT NULL;` no banco (`docker exec -it $(docker ps -q -f name=entregas_database) mysql -uroot -p fleetbase`).
+  - Sem access token, a renovação usa o refresh. Refresh vencido ou revogado derruba a loja de novo, e aí só um vínculo novo resolve.
+
+### Logs
+
+Todos com o prefixo `[entregas] ifood:` e só com ids, códigos e o número do pedido.
+
+- **Comandos** (polling, agendados, tokens): `docker service logs entregas_scheduler 2>&1 | grep '\[entregas\] ifood'`. Eles rodam em segundo plano e escrevem em `/proc/1/fd/1` (`Kernel::SAIDA_DO_CONTAINER`).
+- **Job** (criação, eventos, `coleta diverge`, `pagamento inconsistente`): `docker service logs entregas_queue`.
+- **Vínculo pela tela** (`vínculo falhou`, `loja vinculada`): `docker service logs entregas_application`.
+
+### Armadilhas
+
+- **Trava do `withoutOverlapping`:** se o processo morrer segurando a trava, ela segura o comando por até 5 min (polling e agendados) ou 10 min (tokens).
+  - `cache:clear` não solta a trava, porque as travas ficam na conexão Redis `default` (`lock_connection` do store `redis`).
+  - Espere vencer, ou rode `php artisan schedule:clear-cache` no scheduler.
+- **`appendOutputTo('/proc/1/fd/1')` depende do go-crond como PID 1 rodando como root.** Sem isso, o redirecionamento falha, e o comando pode nem rodar.
+- **Redis sem persistência** (`--save "" --appendonly no`): um restart perde os jobs da fila. Os eventos continuam pendentes no MySQL, e a varredura enfileira de novo depois de 2 min.
+- **Um worker só** (`queue` com `replicas: 1`, um `queue:work`): o `Order::create` põe o broadcast na fila antes do commit da transação.
+  - Com mais workers, outro worker poderia pegar o broadcast antes do commit.
+  - Antes de aumentar, ver `afterCommit` no docblock do `CriadorDoPedidoIfood`.
+- **A conferir no primeiro vínculo real:** o nome do campo do refresh token (tratamos `refreshToken` e `refresh_token`). Sem ele, o log `resposta do token sem refresh token` lista os campos que vieram, e o vínculo cai quando o token vencer (6 h).
+- **A conferir no primeiro agendado:** o formato do `schedule`.
+
+### Riscos que ficam
+
+- **CAN só registra até a etapa 3** (ver acima). Pela mesma razão, a central e a loja (no portal, antes do aceite) ainda conseguem cancelar o pedido iFood do nosso lado sem o iFood saber.
+- **Agendado com motoboy atribuído pela central antes do horário:** o `fleetops:dispatch-orders` roda no mesmo minuto e pode despachar antes, com o adhoc ainda ligado.
+  - Aí todos os motoboys livres do raio recebem o aviso, e qualquer um pode tomar o pedido.
+  - Ao atribuir um agendado, desligue o "pedido aberto".
+- **Pedido sem coordenadas ou agendado sem janela** fica `created`, sem aviso à central além das notas e do log.
+- **Pedido que entra já depois da coleta** (integração parada) não é criado; fica só o warning `pedido já passou da coleta`.
+- **Na etapa 3, o CAN precisa da `TravaDoPedido`:** a trava do job é por id do iFood, não pelo pedido do Fleetbase.
+
+### Ao atualizar o Laravel, o core-api ou o fleetops-api, confira
+
+- no agendador: `everyThirtySeconds` (Laravel 10.15+), `runInBackground`, `when` e `appendOutputTo`;
+- no Order, os métodos que o `CriadorDoPedidoIfood` usa: `firstDispatchWithActivity`, `insertDispatchActivity`, `hasDispatchedStatus`, `saveQuietly` e `fresh`;
+- `OrderConfig::default()` e o `TrackingNumberObserver`, que leem a empresa da sessão;
+- `Payload::setPickup`/`setDropoff`/`setCurrentWaypoint` e `Utils::getMutationType`;
+- o `HandleOrderDispatched`: com adhoc, avisa todos os motoboys livres do raio; sem adhoc e com motoboy, só o atribuído;
+- a janela de ±1 min do `fleetops:dispatch-orders`.
+
+### Testes
+
+- `scripts/teste-php/ifood-*.php` (php-wasm):
+  - stubs `stubs-ifood.php` e `stubs-ifood-fleetbase.php`;
+  - o banco em memória conhece as colunas das migrations e recusa coluna inexistente (`ifood-stub-banco.php`);
+  - pedidos fictícios em `fixtures-ifood.php`.
+- Funções da tela Lojas: `scripts/teste-portal/vinculo-ifood.test.mjs`.
 
 ## Marca Entregas RestaurantePro (sem Fleetbase na tela)
 
@@ -351,3 +537,4 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 14. Atividades do pedido em pt-BR na tela (2026-10-04), detalhes do pedido no app com fechar e Chat com a central, e chat da loja com os motoboys no portal.
 15. Pedidos em andamento no mapa (2026-10-05): alfinete vermelho no endereço de entrega. O console mostra todos os pedidos; o portal, só os da loja.
 16. Raio crescente nos reenvios de pedido aberto e aviso "sem motoboy" à central no console (2026-10-05), etapa 1 da integração iFood (spec `docs/superpowers/specs/2026-10-05-integracao-ifood-logistics-design.md`).
+17. Integração iFood, etapa 2 (2026-10-05, ramo `ifood-etapa-2`): três tabelas, vínculo das lojas na tela Lojas (app distribuído), polling a cada 30 s com ack depois da gravação, job por pedido que cria o pedido no PLC e despacha como o portal, agendados 40 min antes da janela, renovação dos tokens e varredura dos pendentes (ver "Integração iFood").

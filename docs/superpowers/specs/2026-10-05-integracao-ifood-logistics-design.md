@@ -1,6 +1,6 @@
 # Integração iFood Logistics: desenho
 
-Data: 2026-10-05. Situação: desenho aprovado pelo Edgard; etapa 1 implementada; ajustes da sonda da API (PLC, ações sem evento, DDCR na confirmação, pedido de teste sem código) aprovados em 2026-10-05.
+Data: 2026-10-05. Situação: desenho aprovado pelo Edgard; etapa 1 implementada; ajustes da sonda da API (PLC, ações sem evento, DDCR na confirmação, pedido de teste sem código) aprovados em 2026-10-05; **etapa 2 implementada** em 2026-10-05 (ramo `ifood-etapa-2`, planos `2026-10-05-ifood-etapa-2a-servidor.md` e `2026-10-05-ifood-etapa-2b-tela-lojas.md`), ainda sem push, deploy e teste real. Onde a etapa 2 divergiu deste desenho, o texto abaixo já foi corrigido; o resumo operacional está no `CLAUDE.md`, seção "Integração iFood".
 
 ## Objetivo
 
@@ -70,17 +70,19 @@ Classes novas em `api/app` (PHP próprio entra na imagem da API; nada em `packag
 
 | Unidade | Papel | Depende de |
 |---|---|---|
-| `Support/Entregas/Ifood/ClienteIfood` | Única porta HTTP para o iFood: token, userCode, polling, ack, pedido, ações. Trata 401 (renova uma vez e repete), 429 (`Retry-After`) e devolve erros tipados | `VinculosIfood`, config |
+| `Support/Entregas/Ifood/ClienteIfood` | Única porta HTTP para o iFood: token, userCode, lojas do token, polling, ack, pedido (ações na etapa 3). Devolve erros tipados (`ErroIfood`, com o `Retry-After` do 429, teto de 300 s; rede = status 0). Não renova: o 401 é tratado no `VinculosIfood::comToken` (renova uma vez e repete) | config |
 | `Support/Entregas/Ifood/VinculosIfood` | Lê e grava `entregas_ifood_lojas`; troca código por tokens; renova; marca "vínculo perdido" | `ClienteIfood` |
 | `Support/Entregas/Ifood/EventosIfood` | Funções puras: deduplicar e ordenar eventos, classificar o código (cria, atualiza, cancela, pede código, ignora) | — |
 | `Support/Entregas/Ifood/PedidoDoIfood` | Função pura: payload do iFood → dados do Order (entrega, `internal_id`, agendamento, teste 0,0) e da `entregas_ifood_pedidos` (cobrança, 0800, observações) | — |
+| `Support/Entregas/Ifood/CriadorDoPedidoIfood` (etapa 2) | Adaptador sobre os models do Fleet-Ops: cria Place, Payload, Order e a linha de `entregas_ifood_pedidos` numa transação e despacha (com a `TravaDoPedido`) | `PedidoDoIfood` |
 | `Support/Entregas/Ifood/SequenciaIfood` | Função pura: dada a última ação aceita e a ação desejada, lista as ações a enviar antes | — |
 | `Support/Entregas/Ifood/CobrancaIfood` | Função pura: texto "Cobrar R$ 58,90 · dinheiro · troco p/ R$ 100" | — |
 | `Support/Entregas/Ifood/ChegadaPeloGps` | Função pura: posição do motoboy × coleta/entrega → ação de chegada a enviar (raio de 100 m) | — |
 | `Console/Commands/Entregas/PollingIfood` (`entregas:ifood-polling`) | A cada 30 s, sem sobrepor: polling por grupos de 100 lojas, grava, ack, enfileira | `ClienteIfood`, `EventosIfood` |
-| `Console/Commands/Entregas/AcompanharIfood` (`entregas:ifood-acompanhar`) | A cada 30 s: chegadas pelo GPS e despacho dos agendados iFood vencidos | `ChegadaPeloGps` |
+| `Console/Commands/Entregas/AgendadosIfood` (`entregas:ifood-agendados`, etapa 2) | A cada minuto: despacha os agendados iFood vencidos e refaz o despacho que falhou; desiste depois de 30 min, com aviso à central | `CriadorDoPedidoIfood` |
+| `Console/Commands/Entregas/AcompanharIfood` (`entregas:ifood-acompanhar`, etapa 3) | A cada 30 s: chegadas pelo GPS (o despacho dos agendados ficou no `entregas:ifood-agendados`) | `ChegadaPeloGps` |
 | `Console/Commands/Entregas/RenovarTokensIfood` (`entregas:ifood-tokens`) | A cada 30 min: renova os tokens que vencem em menos de 1 h | `VinculosIfood` |
-| `Jobs/Entregas/ProcessarPedidoIfood` | Processa os eventos pendentes de um pedido, em ordem, com a `TravaDoPedido` | `PedidoDoIfood`, `EventosIfood` |
+| `Jobs/Entregas/ProcessarPedidoIfood` | Processa os eventos pendentes de um pedido, em ordem, com uma trava própria por pedido do iFood (`entregas:ifood-pedido:<id>`; a `TravaDoPedido` fica no despacho) | `CriadorDoPedidoIfood`, `EventosIfood` |
 | `Jobs/Entregas/EnviarAcaoIfood` | Envia uma ação (e as anteriores que faltam), com novas tentativas | `SequenciaIfood`, `ClienteIfood` |
 | Observador dos pedidos iFood | Converte mudança do Order (motoboy definido, `started`, `enroute`) em `EnviarAcaoIfood` | — |
 | `Http/Controllers/Entregas/IfoodLojasController` | Vínculo na tela Lojas | `VinculosIfood` |
@@ -95,11 +97,13 @@ Os comandos entram no agendador da `api/app` e só rodam com `ENTREGAS_IFOOD=1`.
   (`vinculada` | `vinculo_perdido` | `desvinculada`), datas.
 - **`entregas_ifood_eventos`**: `id` do iFood (chave única), `merchant_id`, `pedido_ifood_id`, `codigo`,
   `criado_no_ifood` (`createdAt`), `payload` (JSON), `processado_em`, `ignorado` (bool). Processados há mais de 7
-  dias são apagados.
+  dias e pendentes gravados há mais de 30 dias são apagados (uma vez por dia).
 - **`entregas_ifood_pedidos`**: `order_uuid` (único), `pedido_ifood_id` (único), `numero` (ex.: 4821),
   `merchant_id`, `telefone_0800`, `localizador`, `telefone_expira_em`, `cobrar_centavos`, `forma_pagamento`,
   `troco_para_centavos`, `observacoes`, `complemento`, `referencia`, `exige_codigo` (bool), `ultima_acao`,
-  `cancelado_pelo_ifood_em`, `pago_mesmo_cancelado` (bool), `teste` (bool).
+  `cancelado_pelo_ifood_em`, `pago_mesmo_cancelado` (bool), `teste` (bool) e, desde a etapa 2, também `company_uuid`,
+  `vendor_uuid`, `agendado` (bool), `despachar_em` e `despachado_em` (fila do `entregas:ifood-agendados`, com índice
+  composto `despachado_em, despachar_em`).
   Fica **fora do `meta`** do Order de propósito: o `meta` sai na API v1 e no socket.
 
 As credenciais do app (`IFOOD_CLIENT_ID`, `IFOOD_CLIENT_SECRET`) e o interruptor (`ENTREGAS_IFOOD`) ficam no
@@ -119,8 +123,10 @@ As credenciais do app (`IFOOD_CLIENT_ID`, `IFOOD_CLIENT_SECRET`) e o interruptor
      é escolhida sozinha; várias, a central escolhe.
 - **Desvincular** apaga os tokens e tira a loja do polling.
 - **Renovação:** proativa a cada 30 min (tokens que vencem em menos de 1 h, pelo refresh token) e reativa (401 →
-  renova uma vez e repete). Refresh vencido ou revogado → `vinculo_perdido`, log `[entregas] ifood: vínculo
-  perdido` e a loja sai do polling até novo vínculo.
+  renova uma vez e repete). Refresh recusado pelo `/oauth/token` (400 ou 401) → `vinculo_perdido`, log `[entregas]
+  ifood: vínculo perdido` e a loja sai do polling até novo vínculo. O access token é apagado e o refresh fica cifrado,
+  para reativar se a causa foi configuração (credencial errada, APP_KEY trocado). Os outros erros da renovação não
+  derrubam a loja.
 - **Coleta = Local da Loja**, não o endereço do iFood. A mais de 300 m de `merchant.merchantAddress`, o log avisa
   (`[entregas] ifood: coleta diverge do iFood`), porque um dos cadastros provavelmente está errado.
 
@@ -130,34 +136,46 @@ As credenciais do app (`IFOOD_CLIENT_ID`, `IFOOD_CLIENT_SECRET`) e o interruptor
   (até 100 por chamada) e chama o polling com `excludeHeartbeat=true`.
 - **Gravação e ack:** cada evento entra em `entregas_ifood_eventos` (o `id` único descarta duplicados). O ack só sai
   depois da gravação; se o banco falhar, o iFood reenvia na rodada seguinte.
-- **Processamento:** um `ProcessarPedidoIfood` por pedido com evento novo, com a `TravaDoPedido`, processa os
-  pendentes **em ordem de `createdAt`**. Evento mais antigo que o estado atual é ignorado (um "a caminho" atrasado
-  não volta a etapa). Evento desconhecido fica gravado como ignorado.
+- **Processamento:** um `ProcessarPedidoIfood` por pedido com evento novo, com uma trava própria por pedido do iFood
+  (`entregas:ifood-pedido:<id>`), processa os pendentes **em ordem de `createdAt`**. Evento desconhecido fica gravado
+  como ignorado. Na etapa 2 os eventos de etapa da entrega só ficam registrados; a regra "evento mais antigo que o
+  estado atual é ignorado" (um "a caminho" atrasado não volta a etapa) é da etapa 3. Como o Redis da produção não
+  persiste a fila, cada rodada do polling enfileira de novo os pedidos com evento pendente há mais de 2 min (varredura).
 - **Criação do pedido:** no **PLC** (a sonda de 2026-10-05 mostrou que o pedido já está disponível para a logística no
-  PLC: o `GET logistics/orders/{id}` responde e as ações são aceitas antes do CFM). Se o PLC se perder, o primeiro
-  evento conhecido do pedido também cria. O job busca `GET logistics/orders/{id}` e cria o Order:
+  PLC: o `GET logistics/orders/{id}` responde e as ações são aceitas antes do CFM). Se o PLC se perder, só um evento
+  **anterior à coleta** cria (CFM, RTP, DDCR, DPCR). Pedido com CAN, ou que já passou da coleta (DSP, CON, CLT, DDD,
+  AAD, DDCS, GTO, ADR, AAO entre os eventos gravados dele), nunca é criado: iria aos motoboys um pedido que não existe
+  mais. O job busca `GET logistics/orders/{id}` e cria o Order:
   - cliente = Vendor da Loja; coleta = Local da Loja;
   - entrega = Place novo com coordenadas, rua, número, bairro, complemento, referência e nome do cliente;
-  - tipo `transport`, adhoc, `internal_id` = número curto do iFood (`#4821`), que aparece no console, no app e no
-    portal;
-  - despacho na hora, como no portal;
+  - tipo `transport`, `internal_id` = número curto do iFood (`#4821`), que aparece no console, no app e no portal;
+    adhoc só no pedido que vai aos motoboys sozinho (imediato e agendado com janela);
+  - despacho na hora, como no portal (com a `TravaDoPedido` e o pedido relido);
   - **agendado:** `scheduled_at` = início da janela − 40 min, sem despacho na hora. Quem despacha é o
-    `entregas:ifood-acompanhar` (pedido iFood agendado, não despachado, com `scheduled_at` já passado). O
+    `entregas:ifood-agendados` (a cada minuto: pedido iFood não despachado com `despachar_em` vencido; também refaz o
+    despacho imediato que falhou e desiste depois de 30 min, com o aviso sonoro "sem motoboy" à central). O
     `fleetops:dispatch-orders` não serve sozinho: só despacha quem cai na janela de ±1 min da rodada, e um minuto
-    perdido deixaria o pedido parado. Agendado que chega com menos de 40 min para a janela é despachado na hora;
+    perdido deixaria o pedido parado. Agendado que chega com menos de 40 min para a janela é despachado na hora.
+    Agendado sem janela legível não é despachado: `[AGENDADO SEM HORÁRIO]` nas notas e log, para a central conferir;
+  - **pedido real sem coordenadas válidas** (ausentes, 0, fora da faixa ou a mais de 50 km da coleta): entrega
+    deslocada como a do teste, `[SEM LOCALIZAÇÃO]` nas notas, log e sem despacho (a central confere);
   - **pedido de teste (`isTest: true`, coordenadas 0,0):** marcado `[TESTE]` (`teste = true`), entrega na coordenada da loja
-    deslocada 1 km (para não calcular km absurdo) e **sem aviso aos motoboys próximos**: só a central atribui, a um
-    motoboy de teste.
+    deslocada 1 km (para não calcular km absurdo) e **sem aviso aos motoboys próximos** (adhoc falso): só a central
+    atribui, a um motoboy de teste.
 - **Alteração (ORDER_PATCHED):** busca o pedido de novo e atualiza entrega, observações e pagamento. Endereço
   mudado depois do aceite → push "Endereço alterado" ao motoboy. O km se recalcula pela regra existente
   (`CalculoEntregas`/`ValoresCongelados`).
 - **Pagamento:** pedido todo pago online **não traz `payments`** no Logistics (visto na sonda) = nada a cobrar na
   porta. Com `payments.pending > 0`, vale o formato da documentação (a conferir na homologação: o gerador de pedidos de
-  teste só cria pedido pago online).
+  teste só cria pedido pago online). O `pending` explícito manda (0 = nada a cobrar, mesmo com método não pago); só
+  sem ele vale a soma dos métodos não pagos. Formato divergente ou valor implausível vai para o log
+  `[entregas] ifood: pagamento inconsistente`.
 - **Código de entrega:** o DDCR chega **logo depois do CFM** (na confirmação, sem metadata). O job marca
   `exige_codigo = true` no pedido assim que o recebe.
 - **Recusa da loja antes da coleta:** como o pedido vai aos motoboys já no PLC, a loja pode recusar depois; isso chega
-  como CAN e segue a regra de cancelamento (seção 3), sem pagamento se o `dispatch` ainda não saiu.
+  como CAN e segue a regra de cancelamento (seção 3), sem pagamento se o `dispatch` ainda não saiu. **Até a etapa 3, o
+  CAN só grava `cancelado_pelo_ifood_em`** (e tira da fila do agendador o pedido ainda não despachado): o pedido já
+  despachado continua aberto aos motoboys, por isso nenhuma loja real é vinculada antes da etapa 3.
 - **PII:** os logs `[entregas] ifood:` levam só ids e números de pedido, nunca nome, telefone ou endereço.
 
 ## 3. Ciclo da entrega
@@ -265,7 +283,7 @@ fluxo do Fleetbase (criado → despachado → iniciado → a caminho → conclu�
 |---|---|---|
 | 0 | ✅ (2026-10-05) App de teste **distribuído** "Teste (D)" com todos os módulos (inclusive Logistics), app centralizado "Teste (C)" ativo na loja de teste, loja de teste (merchant `4173843`, UUID `d5d191fa-2e43-4b86-aa9c-9f8c8b251378`, entrega própria) e sonda da API (`scripts/ifood-sonda.mjs`). No deploy da etapa 2: `IFOOD_CLIENT_ID`/`IFOOD_CLIENT_SECRET` do app distribuído no `stack.env` | Edgard + Claude |
 | 1 | Raio crescente e aviso "sem motoboy" (todos os pedidos; independe do iFood) | Claude; deploy pelo Edgard |
-| 2 | API: tabelas, vínculo na tela Lojas, polling, ack e criação do pedido (no PLC). Primeiro teste real com a loja de teste | Claude + Edgard |
+| 2 | ✅ código (2026-10-05, ramo `ifood-etapa-2`; faltam push, deploy e o teste real). API: tabelas, vínculo na tela Lojas, polling, ack e criação do pedido (no PLC). Primeiro teste real com a loja de teste | Claude + Edgard |
 | 3 | Ciclo da entrega, chegada pelo GPS, cancelamento (inclusive o pago mesmo cancelado) e as travas | Claude |
 | 4 | APK novo (cobrança, 0800, código) e console/portal (selo, painel, sem Cancelar) | Claude; instalação pelo Edgard |
 | 5 | Ensaio da homologação com a loja de teste | Claude + Edgard |

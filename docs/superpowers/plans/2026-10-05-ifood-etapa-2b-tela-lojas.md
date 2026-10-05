@@ -1,5 +1,16 @@
 # iFood etapa 2B (console): vínculo na tela Lojas
 
+> **Situação (2026-10-05):** executado no ramo `ifood-etapa-2` (Tasks 1 a 4; na Task 5, o build e o teste manual
+> ficam para depois do deploy, e a documentação entrou no `CLAUDE.md` junto com a do 2A, seção "Integração iFood"), com
+> ajustes de revisão. **O código real é a referência.** Principais divergências:
+> - `limparCodigo` tira todo espaço em branco, inclusive o do meio e as quebras de linha;
+> - `linkSeguro` recusa também URL com usuário, senha ou porta;
+> - `segundosRestantes` trata valor não finito (NaN) como vencido;
+> - o modal relê a lista de lojas ao fechar (`onFinish`) e, depois de um erro ao vincular ou escolher, oferece "Gerar
+>   outro código" também na escolha e com o código ainda válido;
+> - o selo "Vinculada" cai no `merchant_id` quando a loja do iFood não tem nome;
+> - o contrato abaixo foi completado com o 422 do pedido de código e os 409/502 do vínculo.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 > **Depende do plano 2A** (`docs/superpowers/plans/2026-10-05-ifood-etapa-2a-servidor.md`): os endpoints
@@ -22,15 +33,18 @@ botões no corpo e só "Fechar" no rodapé), aberto pelo controller da tela com 
 
 ## Contrato do servidor (plano 2A, Task 11)
 
-Todas em `int/v1/entregas` (o `fetch` do console já usa esse namespace com `ENDPOINT = 'entregas/lojas'`), só admin;
-erros no formato `{"errors": ["…"]}`, que o `notifications.serverError` mostra.
+Todas em `int/v1/entregas` (o `fetch` do console já usa esse namespace com `ENDPOINT = 'entregas/lojas'`), só admin
+(403 para quem não é); loja de outra empresa ou Fornecedor que não é loja = 404. Todo erro do `IfoodLojasController`
+sai no formato `{"errors": ["…"]}` (inclusive a validação, que não usa o 422 padrão do Laravel), que o
+`notifications.serverError` mostra. Código e vínculo têm o limitador `entregas-ifood-vinculo` (20 por minuto por
+usuário).
 
 | Rota | Corpo | Resposta |
 |---|---|---|
 | `GET lojas` | — | `{lojas: [{id, nome, …, ifood: {situacao, nome, merchant_id}}], ifood_ligado: bool}` |
-| `POST lojas/{id}/ifood/codigo` | — | `{codigo: "ABCD-EFGH", link: "https://portal.ifood.com.br/apps/code?c=ABCD-EFGH", expira_em_segundos: 600}`; 409 desligada; 502 iFood fora |
-| `POST lojas/{id}/ifood/vincular` | `{authorizationCode}` ou `{merchant_id}` | `{loja}` ou `{escolher: [{id, nome}]}`; 422 com a mensagem (código vencido, recusado, merchant em outra loja) |
-| `DELETE lojas/{id}/ifood` | — | `{loja}` |
+| `POST lojas/{id}/ifood/codigo` | — | `{codigo: "ABCD-EFGH", link: "https://portal.ifood.com.br/apps/code?c=ABCD-EFGH", expira_em_segundos: 600}`; 422 o iFood recusou o pedido do código (400/401/403: credenciais do app erradas ou app sem o fluxo distribuído); 409 desligada; 502 iFood fora (rede, 429, 5xx, resposta sem `userCode`) |
+| `POST lojas/{id}/ifood/vincular` | `{authorizationCode}` ou `{merchant_id}` | `{loja}` ou `{escolher: [{id, nome}]}`; 422 com a mensagem (validação, código ausente, vencido ou recusado, lista de lojas recusada, conta sem lojas, merchant em outra loja, escolha vencida ou fora da conta); 409 desligada; 502 iFood fora (rede, 429, 5xx: a troca já feita fica 10 min no cache e repetir não pede código novo) |
+| `DELETE lojas/{id}/ifood` | — | `{loja}` (funciona também com a integração desligada) |
 
 `ifood.situacao`: `"vinculada"`, `"vinculo_perdido"` ou `null`.
 

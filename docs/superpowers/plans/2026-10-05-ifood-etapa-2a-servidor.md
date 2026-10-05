@@ -1,5 +1,25 @@
 # iFood etapa 2A (servidor): tabelas, vínculo, polling, ack e criação do pedido
 
+> **Situação (2026-10-05):** executado no ramo `ifood-etapa-2` (Tasks 1 a 12; a Task 13, verificação em produção, fica
+> para depois do deploy), com ajustes das rodadas de revisão. **O código real é a referência**; o código e os textos
+> deste plano ficaram desatualizados em vários pontos. Principais divergências:
+> - `EventosIfood::criaPedido`: só PLC e eventos anteriores à coleta (CFM, RTP, DDCR, DPCR); o job não cria pedido com
+>   CAN nem que já passou da coleta (procura entre todos os eventos gravados) e loga o "evento sem pedido".
+> - `PedidoDoIfood`: pedido real sem coordenadas e agendado sem janela (marcas nas notas, sem despacho); `pending`
+>   explícito manda na cobrança; log de pagamento inconsistente.
+> - Adhoc só no pedido que vai aos motoboys sozinho; `despachar(Order): bool` com a `TravaDoPedido` e o pedido relido;
+>   agendado com motoboy atribuído vai só a ele.
+> - Job com `retryUntil` (30 min) e `$maxExceptions` em vez de `$tries`; `fail()` só no erro do GET do pedido.
+> - Polling: pausa por token no 429 (polling e ack), 403 só nas lojas listadas do lote, teto de 25 s, 3 falhas seguidas,
+>   cursor, varredura dos pendentes (2 min a 6 h) e limpeza dos pendentes de mais de 30 dias.
+> - Agendador: desiste depois de 30 min com o aviso sonoro "sem motoboy"; CAN tira da fila. Os três comandos com
+>   `runInBackground()` e `when(ClienteIfood::ligada())`.
+> - Vínculo: refresh recusado = 400/401 com compare-and-set e refresh mantido cifrado; token ilegível; tokens da troca
+>   no cache (repetir sem código novo); limitador nomeado `entregas-ifood-vinculo`; erros `{"errors": [...]}`
+>   (Validator) e 422 com a mensagem da operação que falhou.
+> - Task 12: a documentação foi escrita a partir do código (`CLAUDE.md`, seção "Integração iFood"), não do texto
+>   proposto aqui.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** etapa 2 da integração iFood Logistics (spec `docs/superpowers/specs/2026-10-05-integracao-ifood-logistics-design.md`),
