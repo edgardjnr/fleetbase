@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Controllers\Entregas\ConversasDaLojaController;
+use App\Http\Controllers\Entregas\IfoodLojasController;
 use App\Http\Controllers\Entregas\LojasController;
 use App\Http\Controllers\Entregas\MapaController;
 use App\Http\Controllers\Entregas\MotoboyController;
@@ -91,6 +92,10 @@ class RouteServiceProvider extends ServiceProvider
                         Route::post('lojas/{id}/usuarios', [LojasController::class, 'adicionarUsuario']);
                         Route::put('lojas/{id}/usuarios/{contato}/senha', [LojasController::class, 'trocarSenha']);
                         Route::put('lojas/{id}/usuarios/{contato}/ativo', [LojasController::class, 'alterarAcesso']);
+                        // vínculo da loja com o iFood: código de vínculo, troca do código de autorização (ou escolha da loja) e desvínculo
+                        Route::post('lojas/{id}/ifood/codigo', [IfoodLojasController::class, 'codigo'])->middleware('throttle:20,1');
+                        Route::post('lojas/{id}/ifood/vincular', [IfoodLojasController::class, 'vincular'])->middleware('throttle:20,1');
+                        Route::delete('lojas/{id}/ifood', [IfoodLojasController::class, 'desvincular']);
 
                         // mapa ao vivo do console: só os locais de coleta (lojas) e a situação de cada motoboy (cor do capacete)
                         Route::get('mapa/locais-de-coleta', [MapaController::class, 'locaisDeColeta']);

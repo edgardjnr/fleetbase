@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Entregas;
 
 use App\Http\Controllers\Controller;
+use App\Support\Entregas\Ifood\ClienteIfood;
+use App\Support\Entregas\Ifood\VinculosIfood;
 use Fleetbase\FleetOps\Exceptions\CustomerUserConflictException;
 use Fleetbase\FleetOps\Exceptions\UserAlreadyExistsException;
 use Fleetbase\FleetOps\Models\Contact;
@@ -37,6 +39,9 @@ class LojasController extends Controller
     /** Tipo de Vendor das lojas. */
     public const TIPO_LOJA = 'customer';
 
+    /** Situação do iFood das lojas da listagem, lida de uma vez no index (uuid do Vendor => resumo). */
+    protected array $resumosIfood = [];
+
     public function index(Request $request)
     {
         if ($erro = $this->negarSeNaoAdmin($request)) {
@@ -46,8 +51,14 @@ class LojasController extends Controller
         $lojas = Vendor::where('company_uuid', session('company'))->where('type', static::TIPO_LOJA)->orderBy('name')->get();
         // o place já vem pelo $with do Vendor; os usuários de todas as lojas, de uma vez
         $lojas->loadMissing('vendorPersonnel.contact.anyUser');
+        // o vínculo com o iFood de todas as lojas, de uma vez
+        $this->resumosIfood = VinculosIfood::resumos($lojas->pluck('uuid')->all());
 
-        return response()->json(['lojas' => $lojas->map(fn ($vendor) => $this->formatar($vendor))->values()]);
+        return response()->json([
+            'lojas'        => $lojas->map(fn ($vendor) => $this->formatar($vendor))->values(),
+            // a tela só mostra "Vincular iFood" com a integração ligada (ENTREGAS_IFOOD)
+            'ifood_ligado' => ClienteIfood::ligada(),
+        ]);
     }
 
     public function store(Request $request)
@@ -353,7 +364,14 @@ class LojasController extends Controller
                 'telefone' => $m->contact->phone,
                 'ativo'    => $m->status === 'active' && $m->contact->anyUser?->status === 'active',
             ])->values(),
+            // vínculo com o iFood: situacao (vinculada | vinculo_perdido | null), nome da loja no iFood e merchant_id; nunca os tokens
+            'ifood'    => $this->resumoIfood($vendor),
         ];
+    }
+
+    protected function resumoIfood(Vendor $vendor): array
+    {
+        return $this->resumosIfood[$vendor->uuid] ?? VinculosIfood::resumo($vendor->uuid);
     }
 
     protected function negarSeNaoAdmin(Request $request)
