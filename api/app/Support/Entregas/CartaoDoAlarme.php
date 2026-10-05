@@ -8,7 +8,8 @@ use Fleetbase\FleetOps\Models\Vendor;
 /**
  * Entregas RestaurantePro: o que o cartão do alarme de pedido mostra no app (AlarmePedidoActivity), como o aviso da Uber:
  * loja, destino, km (loja → cliente) e valor do motoboy. Vai nos dados do push de alarme (AvisosDoMotoboy), já em texto
- * pt-BR, com as chaves entregas_loja, entregas_destino, entregas_km e entregas_valor; o que faltar não vai.
+ * pt-BR, com as chaves entregas_loja, entregas_destino, entregas_km, entregas_tempo (de moto, pelo OSRM) e entregas_valor;
+ * o que faltar não vai.
  *
  * O valor é o mesmo do card de aceitar do app (CalculoEntregas::valorDoPedido, que congela o valor da entrega na primeira
  * vez: ver "Valor congelado por entrega" no CLAUDE.md). Nunca vai o valor cobrado da loja.
@@ -47,20 +48,29 @@ class CartaoDoAlarme
         // a linha da rota sai do cache do RotaDoPedido (OSRM, ou a linha reta quando ele falha)
         $rota = (new RotaDoPedido($calculo))->doPedido($pedido);
 
-        return array_merge($dados, static::mapa(
+        $tempo = static::tempo(empty($rota['aproximado']) ? ($rota['segundos'] ?? null) : null);
+
+        return array_merge($dados, $tempo ? ['entregas_tempo' => $tempo] : [], static::mapa(
             static::coordenada($coleta?->location?->getLat(), $coleta?->location?->getLng()),
             static::coordenada($entrega?->location?->getLat(), $entrega?->location?->getLng()),
-            static::polyline(static::reduzir($rota['linha'] ?? [], static::MAX_PONTOS_DA_ROTA))
+            static::polyline(static::reduzir($rota['linha'] ?? [], static::MAX_PONTOS_DA_ROTA)),
+            $pedido->status,
+            !empty($rota['aproximado'])
         ));
     }
 
-    /** As chaves do mapa do cartão, só com o que existe. */
-    public static function mapa(?string $coleta, ?string $entrega, ?string $rota): array
+    /**
+     * As chaves do mapa do cartão, só com o que existe. O status dá a cor da linha (a do mapa do pedido no app e no
+     * console) e entregas_rota_aproximada = "1" deixa a linha tracejada, como a linha reta do mapa do pedido.
+     */
+    public static function mapa(?string $coleta, ?string $entrega, ?string $rota, ?string $status = null, bool $aproximada = false): array
     {
         return array_filter([
-            'entregas_coleta'  => $coleta,
-            'entregas_entrega' => $entrega,
-            'entregas_rota'    => $rota,
+            'entregas_coleta'          => $coleta,
+            'entregas_entrega'         => $entrega,
+            'entregas_rota'            => $rota,
+            'entregas_status'          => $status,
+            'entregas_rota_aproximada' => $aproximada && $rota ? '1' : null,
         ], fn ($valor) => $valor !== null && $valor !== '');
     }
 
@@ -131,17 +141,41 @@ class CartaoDoAlarme
         ], fn ($valor) => $valor !== null);
     }
 
-    /** "3,2 km", "400 m" abaixo de 1 km, com "≈ " quando é a estimativa em linha reta. */
+    /**
+     * "3,2 km", "400 m" abaixo de 1 km, "menos de 100 m" (coleta e entrega quase no mesmo lugar), com "≈ " quando é a
+     * estimativa em linha reta.
+     */
     public static function km($km, bool $aproximado = false): ?string
     {
-        if ($km === null || (float) $km <= 0) {
+        if ($km === null || (float) $km < 0) {
             return null;
         }
 
         $km    = (float) $km;
-        $texto = $km < 1 ? round($km * 1000) . ' m' : number_format($km, 1, ',', '.') . ' km';
+        $texto = match (true) {
+            $km < 0.1 => 'menos de 100 m',
+            $km < 1   => round($km * 1000) . ' m',
+            default   => number_format($km, 1, ',', '.') . ' km',
+        };
 
         return ($aproximado ? '≈ ' : '') . $texto;
+    }
+
+    /** O tempo da rota de moto, como o resumo do mapa do pedido: "9 min", "1 h 05"; null sem o tempo do OSRM. */
+    public static function tempo($segundos): ?string
+    {
+        if ($segundos === null || (float) $segundos <= 0) {
+            return null;
+        }
+
+        $minutos = max(1, (int) round((float) $segundos / 60));
+        if ($minutos < 60) {
+            return $minutos . ' min';
+        }
+
+        $resto = $minutos % 60;
+
+        return intdiv($minutos, 60) . ' h' . ($resto ? ' ' . str_pad((string) $resto, 2, '0', STR_PAD_LEFT) : '');
     }
 
     /** "R$ 8,00". */

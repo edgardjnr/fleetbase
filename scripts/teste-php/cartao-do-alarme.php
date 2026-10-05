@@ -25,7 +25,14 @@ confere(C::km(3.21) === '3,2 km', 'uma casa decimal, vírgula');
 confere(C::km(0.4) === '400 m', 'menos de 1 km em metros');
 confere(C::km(12.0) === '12,0 km', 'inteiro mantém a casa decimal');
 confere(C::km(3.21, true) === '≈ 3,2 km', 'estimativa (linha reta) com ≈');
-confere(C::km(null) === null && C::km(0) === null, 'sem km: nada');
+confere(C::km(null) === null && C::km(-1) === null, 'sem km: nada');
+confere(C::km(0) === 'menos de 100 m' && C::km(0.05) === 'menos de 100 m', 'coleta e entrega quase no mesmo lugar');
+
+echo '== tempo' . PHP_EOL;
+confere(C::tempo(540) === '9 min', 'minutos');
+confere(C::tempo(20) === '1 min', 'menos de 1 min vale 1 min');
+confere(C::tempo(3900) === '1 h 05' && C::tempo(7200) === '2 h', 'horas');
+confere(C::tempo(null) === null && C::tempo(0) === null, 'sem tempo: nada');
 
 echo '== valor' . PHP_EOL;
 confere(C::valor(8) === 'R$ 8,00', 'reais com centavos');
@@ -64,5 +71,7 @@ confere(C::coordenada(-21.1775, -47.8103) === '-21.177500,-47.810300', 'coordena
 confere(C::coordenada(null, -47.8) === null && C::coordenada(0.0, 0.0) === null, 'sem coordenada (ou 0,0): nada');
 confere(C::mapa('-21.1,-47.8', '-21.2,-47.9', '_p~iF') === ['entregas_coleta' => '-21.1,-47.8', 'entregas_entrega' => '-21.2,-47.9', 'entregas_rota' => '_p~iF'], 'chaves do mapa');
 confere(C::mapa('-21.1,-47.8', null, '') === ['entregas_coleta' => '-21.1,-47.8'], 'só o que existe');
+confere(C::mapa('-21.1,-47.8', '-21.2,-47.9', '_p~iF', 'dispatched', true) === ['entregas_coleta' => '-21.1,-47.8', 'entregas_entrega' => '-21.2,-47.9', 'entregas_rota' => '_p~iF', 'entregas_status' => 'dispatched', 'entregas_rota_aproximada' => '1'], 'status e linha aproximada');
+confere(!isset(C::mapa('-21.1,-47.8', '-21.2,-47.9', '', 'created', true)['entregas_rota_aproximada']), 'sem linha, sem o aproximada');
 
 echo PHP_EOL . "FALHAS: {$falhas}" . PHP_EOL;
