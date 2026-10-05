@@ -30,7 +30,8 @@ use Illuminate\Support\Facades\Log;
  * desvinculada durante a chamada não volta a ter tokens.
  *
  * Vínculo perdido (`vinculo_perdido`, log "[entregas] ifood: vínculo perdido", fora do polling): refresh recusado pelo
- * /oauth/token (400/401), sem refresh com o token já vencido ou recusado, ou merchant revogado no polling (403). O access
+ * /oauth/token (400/401; marcado com compare-and-set: se outro processo gravou tokens novos no meio, valem os dele, e
+ * uma loja que já não está vinculada não é regravada), sem refresh com o token já vencido ou recusado, ou merchant revogado no polling (403). O access
  * token é apagado e o refresh fica cifrado, para dar para reativar depois de corrigir a configuração. Os outros erros
  * da renovação (403, 404, 408, 409, 429, 5xx, rede, 200 sem accessToken, trava ocupada) sobem como ErroIfood e a loja
  * continua vinculada. Token ilegível no banco (APP_KEY trocado ou texto corrompido) também tira a loja do polling, com
@@ -387,9 +388,9 @@ class VinculosIfood
             if (!$e->refreshRecusado()) {
                 throw $e;
             }
-            $this->perder($atual, $e->status);
 
-            throw new VinculoPerdido('refresh recusado: ' . $e->status);
+            // se outro processo gravou tokens novos enquanto o iFood respondia, vale o que ele gravou
+            return $this->perderComoLido($atual, $e->status);
         }
 
         // compare-and-set: só grava se o vínculo continua como foi relido (vinculado e com o mesmo refresh). Se outro
@@ -417,6 +418,40 @@ class VinculosIfood
         Log::info('[entregas] ifood: vínculo mudou durante a renovação; vale o token gravado', ['loja' => $atual->vendor_uuid, 'merchant' => $atual->merchant_id]);
 
         return $this->abrirDoBanco($depois, 'access_token');
+    }
+
+    /**
+     * O refresh foi recusado: marca a loja como perdida só se o vínculo continua como foi relido (vinculado e com o mesmo
+     * refresh cifrado; compare-and-set). Se mudou: com tokens novos gravados por outro processo, devolve o access token
+     * dele (a loja não cai); se a loja já não está vinculada (desvinculada, perdida), só lança VinculoPerdido, sem
+     * regravar a situação (uma loja desvinculada não pode virar vinculo_perdido).
+     */
+    protected function perderComoLido(object $atual, int $status): string
+    {
+        $gravadas = DB::table(static::TABELA)
+            ->where('id', $atual->id)
+            ->where('situacao', static::VINCULADA)
+            ->where('refresh_token', $atual->refresh_token)
+            ->update([
+                'situacao'     => static::PERDIDO,
+                'access_token' => null,
+                'expira_em'    => null,
+                'updated_at'   => now()->toDateTimeString(),
+            ]);
+        if ($gravadas > 0) {
+            Log::warning('[entregas] ifood: vínculo perdido', ['loja' => $atual->vendor_uuid, 'merchant' => $atual->merchant_id, 'status' => $status]);
+
+            throw new VinculoPerdido('refresh recusado: ' . $status);
+        }
+
+        $depois = DB::table(static::TABELA)->where('id', $atual->id)->first();
+        if ($depois && $depois->situacao === static::VINCULADA && $depois->access_token) {
+            Log::info('[entregas] ifood: refresh recusado, mas outro processo já renovou; vale o token gravado', ['loja' => $atual->vendor_uuid, 'merchant' => $atual->merchant_id]);
+
+            return $this->abrirDoBanco($depois, 'access_token');
+        }
+
+        throw new VinculoPerdido('o vínculo mudou durante a renovação');
     }
 
     /**
@@ -517,10 +552,18 @@ class VinculosIfood
         Log::info('[entregas] ifood: loja vinculada', ['loja' => $vendorUuid, 'merchant' => $merchantId]);
     }
 
-    /** Violação de chave única (SQLSTATE 23000). */
+    /**
+     * Violação de chave única: SQLSTATE 23000 e, quando o errorInfo existe, erro 1062 do MySQL (duplicate entry). Outras
+     * violações do 23000 (chave estrangeira 1451/1452, NOT NULL 1048...) não são corrida de chave e sobem como vieram.
+     */
     protected static function chaveRepetida(QueryException $e): bool
     {
-        return ($e->errorInfo[0] ?? null) === '23000' || (string) $e->getCode() === '23000';
+        $info = is_array($e->errorInfo) ? $e->errorInfo : null;
+        if (($info[0] ?? null) !== '23000' && (string) $e->getCode() !== '23000') {
+            return false;
+        }
+
+        return $info === null || (int) ($info[1] ?? 0) === 1062;
     }
 
     /** Classe e mensagem do erro para o log; a do QueryException fica de fora (traz o SQL com os valores). */

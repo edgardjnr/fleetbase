@@ -340,14 +340,15 @@ namespace Teste {
         }
     }
 
-    // erro do banco em memória; $sqlstate '23000' = chave única repetida
+    // erro do banco em memória, com o errorInfo do PDO: [SQLSTATE, código do driver, mensagem]. '23000' + 1062 = chave
+    // única repetida (duplicate entry); '23000' com outro código (1451, 1048...) é outra violação de integridade.
     class ErroDeBanco extends \Illuminate\Database\QueryException
     {
-        public function __construct(string $mensagem, string $sqlstate = 'HY000')
+        public function __construct(string $mensagem, string $sqlstate = 'HY000', ?int $codigoDoDriver = null)
         {
             parent::__construct($mensagem);
             $this->code      = $sqlstate;
-            $this->errorInfo = [$sqlstate, null, $mensagem];
+            $this->errorInfo = [$sqlstate, $codigoDoDriver, $mensagem];
         }
     }
 
@@ -364,6 +365,8 @@ namespace Teste {
         private static ?array $esquema = null;
         /** Tabela => mensagem: toda escrita nela lança ErroDeBanco (banco fora do ar). */
         public static array $falhar = [];
+        /** Tabela => [SQLSTATE, código do driver]: o próximo insert nela lança esse erro (depois do gancho), uma vez. */
+        public static array $falharComo = [];
         /** Tabela => função: roda uma vez, logo antes do próximo insert nela (outro processo gravando no meio). */
         public static array $antesDeInserir = [];
 
@@ -372,6 +375,7 @@ namespace Teste {
             self::$tabelas        = [];
             self::$proximoId      = [];
             self::$falhar         = [];
+            self::$falharComo     = [];
             self::$antesDeInserir = [];
         }
 
@@ -432,6 +436,30 @@ namespace Teste {
             return array_values(array_map(fn ($linha) => (object) $linha, self::$tabelas[$tabela] ?? []));
         }
 
+        /** A primeira coluna única em que $linha repete o valor de alguma das $existentes (NULL não conta), ou null. */
+        public static function colunaRepetida(string $tabela, array $linha, array $existentes): ?string
+        {
+            foreach (self::unicasDe($tabela) as $coluna) {
+                $valor = $linha[$coluna] ?? null;
+                if ($valor === null) {
+                    continue;
+                }
+                foreach ($existentes as $existente) {
+                    if (($existente[$coluna] ?? null) === $valor) {
+                        return $coluna;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /** O erro do MySQL para chave única repetida: SQLSTATE 23000, erro 1062 do driver. */
+        public static function erroDeRepetida(string $tabela, string $coluna, $valor): ErroDeBanco
+        {
+            return new ErroDeBanco("SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '{$valor}' for key '{$tabela}.{$coluna}'", '23000', 1062);
+        }
+
         public static function inserir(string $tabela, array $linha, bool $ignorarRepetida): bool
         {
             if (isset(self::$falhar[$tabela])) {
@@ -442,22 +470,20 @@ namespace Teste {
                 unset(self::$antesDeInserir[$tabela]);
                 $fazer();
             }
+            if (isset(self::$falharComo[$tabela])) {
+                [$sqlstate, $codigoDoDriver] = self::$falharComo[$tabela];
+                unset(self::$falharComo[$tabela]);
+                throw new ErroDeBanco("SQLSTATE[{$sqlstate}]: erro {$codigoDoDriver} simulado", $sqlstate, $codigoDoDriver);
+            }
             foreach (array_keys($linha) as $coluna) {
                 self::exigirColuna($tabela, $coluna);
             }
-            foreach (self::unicasDe($tabela) as $coluna) {
-                $valor = $linha[$coluna] ?? null;
-                if ($valor === null) {
-                    continue;
+            $repetida = self::colunaRepetida($tabela, $linha, self::$tabelas[$tabela] ?? []);
+            if ($repetida !== null) {
+                if ($ignorarRepetida) {
+                    return false;
                 }
-                foreach (self::$tabelas[$tabela] ?? [] as $existente) {
-                    if (($existente[$coluna] ?? null) === $valor) {
-                        if ($ignorarRepetida) {
-                            return false;
-                        }
-                        throw new ErroDeBanco("SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '{$valor}' for key '{$tabela}.{$coluna}'", '23000');
-                    }
-                }
+                throw self::erroDeRepetida($tabela, $repetida, $linha[$repetida]);
             }
             $id                             = self::$proximoId[$tabela] = (self::$proximoId[$tabela] ?? 0) + 1;
             self::$tabelas[$tabela][$id] = ['id' => $id] + $linha;
@@ -570,9 +596,21 @@ namespace Teste {
             foreach (array_keys($valores) as $coluna) {
                 Banco::exigirColuna($this->tabela, $coluna);
             }
+            // todas as linhas novas são conferidas antes de gravar (o update do MySQL é atômico): uma chave única repetida,
+            // com as outras linhas ou entre as próprias linhas alteradas, lança o mesmo erro do insert (23000 / 1062)
+            $novas = Banco::$tabelas[$this->tabela] ?? [];
+            foreach (array_keys($this->selecionadas()) as $id) {
+                $novas[$id] = array_merge($novas[$id], $valores);
+                $outras     = $novas;
+                unset($outras[$id]);
+                $repetida = Banco::colunaRepetida($this->tabela, $novas[$id], $outras);
+                if ($repetida !== null) {
+                    throw Banco::erroDeRepetida($this->tabela, $repetida, $novas[$id][$repetida]);
+                }
+            }
             $alteradas = 0;
             foreach (array_keys($this->selecionadas()) as $id) {
-                Banco::$tabelas[$this->tabela][$id] = array_merge(Banco::$tabelas[$this->tabela][$id], $valores);
+                Banco::$tabelas[$this->tabela][$id] = $novas[$id];
                 $alteradas++;
             }
 
@@ -615,16 +653,19 @@ namespace Teste {
 namespace {
     function now(): \Illuminate\Support\Carbon { return \Illuminate\Support\Carbon::parse(\Teste\Relogio::$agora, 'UTC'); }
     function config($chave, $padrao = null) { return array_key_exists($chave, \Teste\Config::$valores) ? \Teste\Config::$valores[$chave] : $padrao; }
-    function encrypt($valor) { return 'cifrado:' . base64_encode(serialize($valor)); }
+    // como o Encrypter do Laravel, o texto muda a cada chamada (nonce aleatório): quem compara tokens cifrados do banco
+    // precisa comparar o texto lido, não cifrar de novo
+    function encrypt($valor) { return 'cifrado:' . bin2hex(random_bytes(8)) . ':' . base64_encode(serialize($valor)); }
 
     function decrypt($valor)
     {
-        if (!is_string($valor) || !str_starts_with($valor, 'cifrado:')) {
+        $partes = is_string($valor) ? explode(':', $valor, 3) : [];
+        if (count($partes) !== 3 || $partes[0] !== 'cifrado' || !preg_match('/^[0-9a-f]{16}$/', $partes[1])) {
             // como o Encrypter com APP_KEY trocado ou texto corrompido
             throw new \Illuminate\Contracts\Encryption\DecryptException('The MAC is invalid.');
         }
 
-        return unserialize(base64_decode(substr($valor, 8)));
+        return unserialize(base64_decode($partes[2]));
     }
 
     function session($chave = null)

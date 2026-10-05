@@ -79,18 +79,26 @@ final class EventosIfood
         return $posicao === false ? count(static::ORDEM) : $posicao;
     }
 
-    /** Segundos desde 1970, com microssegundos; INF para data ausente, inválida ou que não é texto. Sem fuso, vale UTC. */
+    /**
+     * Segundos desde 1970, com microssegundos; INF para data ausente, inválida ou que não é texto. Só vale texto ISO 8601
+     * com data e hora ("2026-10-05T18:24:40.624Z" ou "2026-10-05 18:24:40"; sem fuso, UTC), com ano de 2000 a 2037:
+     * "tomorrow", "+1 day", só a data ou o ano fora da faixa (que não cabe no DATETIME de quem grava) vão para o fim.
+     */
     public static function instante($createdAt): float
     {
-        if (!is_string($createdAt) || trim($createdAt) === '') {
+        if (!is_string($createdAt) || !preg_match('/^\s*\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/', $createdAt)) {
             return INF;
         }
 
         try {
-            return (float) (new DateTimeImmutable($createdAt, new DateTimeZone('UTC')))->format('U.u');
+            $data = new DateTimeImmutable(trim($createdAt), new DateTimeZone('UTC'));
         } catch (\Exception) {
             return INF;
         }
+
+        $ano = (int) $data->setTimezone(new DateTimeZone('UTC'))->format('Y');
+
+        return $ano >= 2000 && $ano <= 2037 ? (float) $data->format('U.u') : INF;
     }
 
     public static function acao(string $codigo): string

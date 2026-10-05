@@ -60,4 +60,26 @@ confere($vezes === 1, 'roda uma vez só, antes do próximo insert');
 echo '== não estraga o Schema::$criadas' . PHP_EOL;
 confere(\Illuminate\Support\Facades\Schema::$criadas === [], 'as migrations lidas pelo banco não ficam registradas no Schema');
 
+echo '== errorInfo e chaves únicas no update' . PHP_EOL;
+Banco::limpar();
+DB::table('entregas_ifood_eventos')->insert(['evento_id' => 'u1']);
+DB::table('entregas_ifood_eventos')->insert(['evento_id' => 'u2']);
+$repetido = excecao(fn () => DB::table('entregas_ifood_eventos')->insert(['evento_id' => 'u1']));
+confere($repetido instanceof \Illuminate\Database\QueryException && $repetido->errorInfo[0] === '23000' && $repetido->errorInfo[1] === 1062, 'insert repetido: errorInfo = [23000, 1062, mensagem]');
+$repetido = excecao(fn () => DB::table('entregas_ifood_eventos')->where('evento_id', 'u2')->update(['evento_id' => 'u1']));
+confere($repetido instanceof \Illuminate\Database\QueryException && $repetido->getCode() === '23000' && $repetido->errorInfo[1] === 1062, 'update que repete uma chave única: o mesmo erro 23000/1062');
+confere(Banco::linhas('entregas_ifood_eventos')[1]->evento_id === 'u2', 'e a linha não é alterada');
+confere(excecao(fn () => DB::table('entregas_ifood_eventos')->where('evento_id', 'u2')->update(['evento_id' => 'u2', 'ignorado' => true])) === null, 'update que mantém o próprio valor único passa');
+confere(excecao(fn () => DB::table('entregas_ifood_eventos')->where('evento_id', 'u2')->update(['evento_id' => 'u3'])) === null, 'update para valor livre passa');
+Banco::limpar();
+DB::table('entregas_ifood_lojas')->insert(['vendor_uuid' => 'v1', 'merchant_id' => null]);
+DB::table('entregas_ifood_lojas')->insert(['vendor_uuid' => 'v2', 'merchant_id' => null]);
+confere(excecao(fn () => DB::table('entregas_ifood_lojas')->whereNull('merchant_id')->update(['merchant_id' => null])) === null, 'NULL não conta como repetido (vários desvinculados)');
+confere(excecao(fn () => DB::table('entregas_ifood_lojas')->whereNull('merchant_id')->update(['merchant_id' => 'm1'])) instanceof \Illuminate\Database\QueryException, 'duas linhas com o mesmo valor novo numa chave única: erro');
+
+echo '== encrypt() com nonce, como o real' . PHP_EOL;
+confere(encrypt('segredo') !== encrypt('segredo') && decrypt(encrypt('segredo')) === 'segredo', 'o mesmo valor cifra em textos diferentes e decifra igual');
+confere(decrypt(encrypt(['a' => 1])) === ['a' => 1] && !str_contains(encrypt('segredo'), 'segredo'), 'serve para lista e não mostra o valor');
+confere(excecao(fn () => decrypt('lixo')) instanceof \Illuminate\Contracts\Encryption\DecryptException && excecao(fn () => decrypt('cifrado:sem-separador')) instanceof \Illuminate\Contracts\Encryption\DecryptException, 'texto corrompido: DecryptException');
+
 resumo();

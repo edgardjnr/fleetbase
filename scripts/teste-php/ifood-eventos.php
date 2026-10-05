@@ -84,4 +84,16 @@ try {
 }
 confere($gravada !== null && $gravada['criado_no_ifood'] === null, 'createdAt número: grava com data nula, sem TypeError');
 
+echo '== instante(): só ISO 8601 com data e hora, ano de 2000 a 2037' . PHP_EOL;
+confere(EventosIfood::instante('2026-10-05T18:24:40.624-03:00') === EventosIfood::instante('2026-10-05T21:24:40.624Z'), 'com fuso: vale o instante em UTC');
+confere(EventosIfood::instante('2000-01-01T00:00:00Z') < INF && EventosIfood::instante('2037-12-31T23:59:59Z') < INF, 'ano 2000 e 2037 valem');
+foreach (['1999-12-31T23:59:59Z', '2038-01-01T00:00:00Z', '9999-12-31T23:59:59Z', '0000-01-01T00:00:00Z'] as $texto) {
+    confere(EventosIfood::instante($texto) === INF, "{$texto}: fora de 2000-2037, INF");
+}
+foreach (['tomorrow', 'now', '+1 day', 'next monday', '2026-10-05', '18:24:40', '@1759688680', '1759688680', 'sábado, 5 de outubro de 2026', '2026-10-05T', '  '] as $texto) {
+    confere(EventosIfood::instante($texto) === INF, '"' . $texto . '": não é ISO com data e hora, INF');
+}
+confere(array_column(EventosIfood::ordenar([evento('ev-t', 'CFM', 'tomorrow'), evento('ev-d', 'CFM', '2038-06-01T00:00:00Z'), $plc]), 'id') === ['ev-1', 'ev-d', 'ev-t'], 'texto livre e ano fora da faixa vão para o fim (empate pelo id)');
+confere(EventosIfood::paraGravar(evento('ev-8', 'PLC', '2099-01-01T00:00:00Z'), '2026-10-05 18:30:00')['criado_no_ifood'] === null && EventosIfood::paraGravar(evento('ev-8', 'PLC', 'tomorrow'), '2026-10-05 18:30:00')['criado_no_ifood'] === null, 'ano fora da faixa e texto livre: grava a data nula');
+
 resumo();

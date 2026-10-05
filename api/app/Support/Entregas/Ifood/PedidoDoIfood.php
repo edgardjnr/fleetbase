@@ -14,29 +14,34 @@ use Illuminate\Support\Facades\Log;
  *
  * - Número: `displayId` (ex.: 4821) vira o internal_id e o "iFood #4821" das notas.
  * - Entrega: coordenadas, rua + número (sem `streetName`, o `formattedAddress`), bairro, complemento e referência (no
- *   street2, para o motoboy ler) e o nome do cliente (nome do Local). Sem geocodificação: as coordenadas do iFood valem.
+ *   street2, para o motoboy ler) e o nome do cliente (nome do Local). Sem geocodificação: as coordenadas do iFood
+ *   valem.
  *   CEP só de zeros e estado fora das 27 siglas do Brasil ("XX" do teste, nome por extenso) ficam nulos.
  * - Pedido de teste (`isTest` true, "true", 1 ou "1"; entrega em 0,0): entrega na coleta deslocada ~1 km para o norte
  *   (o km não fica absurdo), "[TESTE]" nas notas e sem despacho aos motoboys (só a central atribui).
- * - Pedido real sem coordenadas válidas (ausentes, não numéricas, latitude ou longitude 0, fora de ±90/±180 ou a mais de
- *   50 km da coleta): o mesmo deslocamento, `sem_coordenadas`, "[SEM LOCALIZAÇÃO]" nas notas e sem despacho: a central
- *   confere.
- * - Agendado (`orderTiming = SCHEDULED`): vai aos motoboys 40 min antes do início da janela (`schedule.
- *   deliveryDateTimeStart`, data ISO). A sonda só viu pedidos imediatos: o formato do `schedule` é o da documentação (a
- *   conferir no primeiro agendado). Se faltar menos de 40 min, despacha na hora. Sem janela legível, não despacha (o
- *   `delivery.deliveryDateTime` é só a estimativa, perto do createdAt): `sem_janela`, "[AGENDADO SEM HORÁRIO]" nas
- *   notas e o log `[entregas] ifood: agendado sem janela`, para a central conferir.
- * - `agendado` diz só que o pedido é para depois (SCHEDULED com janela a mais de 40 min ou sem janela). `scheduled_at`
- *   e `despachar_em` só existem quando o pedido vai aos motoboys: o `fleetops:dispatch-orders` do Fleet-Ops despacha
- *   sozinho quem tem `scheduled_at`, então o de teste, o sem coordenadas e o sem janela ficam com os dois nulos.
- * - Cobrança: sem `payments` (pedido pago online, visto na sonda), nada a cobrar; com `pending`, o valor; sem `pending`,
- *   a soma dos métodos não pagos (`prepaid: false`, ou `type: OFFLINE` sem o `prepaid`). O `pending` explícito sempre
- *   vale (0 = nada a cobrar, mesmo com método não pago). A forma é a do método não pago (dois métodos diferentes:
- *   "CASH+CREDIT"; não cabendo em 30 caracteres, "MISTO") e o troco (`methods[].cash.changeFor`) só vale para dinheiro. Formato da documentação, a conferir na homologação: o gerador de
- *   pedidos de teste só cria pedido pago online.
+ * - Pedido real sem coordenadas válidas (ausentes, não numéricas, latitude ou longitude 0, fora de ±90/±180 ou a mais
+ *   de 50 km da coleta): o mesmo deslocamento, `sem_coordenadas`, "[SEM LOCALIZAÇÃO]" nas notas e sem despacho: a
+ *   central confere.
+ * - Agendado (`orderTiming = SCHEDULED`, sem diferença de caixa ou espaços): vai aos motoboys 40 min antes do início
+ *   da janela (`schedule.deliveryDateTimeStart`, data ISO). A sonda só viu pedidos imediatos: o formato do `schedule`
+ *   é o da documentação (a conferir no primeiro agendado). Se faltar menos de 40 min, despacha na hora. Sem janela
+ *   legível, não despacha (o `delivery.deliveryDateTime` é só a estimativa, perto do createdAt): `sem_janela`,
+ *   "[AGENDADO SEM HORÁRIO]" nas notas e o log `[entregas] ifood: agendado sem janela`, para a central conferir.
+ * - `agendado` diz só que o pedido é para depois (SCHEDULED com janela a mais de 40 min ou sem janela).
+ *   `scheduled_at` e `despachar_em` só existem quando o pedido vai aos motoboys: o `fleetops:dispatch-orders` do
+ *   Fleet-Ops despacha sozinho quem tem `scheduled_at`, então o de teste, o sem coordenadas e o sem janela ficam com
+ *   os dois nulos.
+ * - Cobrança: sem `payments` (pedido pago online, visto na sonda), nada a cobrar; com `pending`, o valor; sem
+ *   `pending`, a soma dos métodos não pagos (`prepaid: false`, ou `type: OFFLINE` sem o `prepaid`). O `pending`
+ *   explícito sempre vale (0 = nada a cobrar, mesmo com método não pago). A forma é a do método não pago (dois métodos
+ *   diferentes: "CASH+CREDIT"; não cabendo em 30 caracteres, "MISTO") e o troco (`methods[].cash.changeFor`) só vale
+ *   para dinheiro. Formato da documentação, a conferir na homologação: o gerador de pedidos de teste só cria pedido
+ *   pago online. Valor acima de R$ 100 mil (CENTAVOS_MAXIMO) é implausível: a cobrança vira 0 (com o aviso de
+ *   pagamento inconsistente) e o troco, nulo, para o insert não estourar a coluna.
  * - 0800 e localizador do cliente (`customer.phone`) com a expiração do localizador.
  *
- * Datas em texto 'Y-m-d H:i:s', UTC (o fuso do banco).
+ * Datas em texto 'Y-m-d H:i:s', UTC (o fuso do banco). Data que não é ISO com hora, ou com ano fora de 2000 a 2037
+ * (ANO_MINIMO, ANO_MAXIMO), vale como ausente.
  */
 final class PedidoDoIfood
 {
@@ -51,6 +56,13 @@ final class PedidoDoIfood
 
     /** Tamanho da coluna forma_pagamento. */
     public const FORMA_MAXIMO = 30;
+
+    /** Valor em centavos acima do qual é implausível (R$ 100 mil): cobrança e troco não vão ao banco. */
+    public const CENTAVOS_MAXIMO = 10000000;
+
+    /** Datas fora deste intervalo de anos valem como ausentes (não cabem no DATETIME de quem grava). */
+    public const ANO_MINIMO = 2000;
+    public const ANO_MAXIMO = 2037;
 
     public const UFS = ['AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO'];
 
@@ -74,7 +86,7 @@ final class PedidoDoIfood
             $longitude = $longitudeColeta;
         }
 
-        $programado = ($pedido['orderTiming'] ?? null) === 'SCHEDULED';
+        $programado = is_string($pedido['orderTiming'] ?? null) && strtoupper(trim($pedido['orderTiming'])) === 'SCHEDULED';
         $janela     = is_array($pedido['schedule'] ?? null) ? $pedido['schedule'] : [];
         $inicio     = $programado ? static::data($janela['deliveryDateTimeStart'] ?? null) : null;
         $semJanela  = $programado && $inicio === null;
@@ -145,9 +157,13 @@ final class PedidoDoIfood
 
     /**
      * [centavos a cobrar, forma (CASH, CREDIT…, "CASH+CREDIT" ou "MISTO"), troco para (centavos, só dinheiro) ou null].
-     * O `pending` explícito é a fonte de verdade; só sem ele vale a soma dos métodos não pagos. `pending` > 0 sem método
-     * não pago (cobra o pending, forma desconhecida) ou `pending` = 0 com método não pago (nada a cobrar: cobrar de quem
-     * já pagou é pior que o motoboy conferir na porta) é formato divergente da documentação: `[entregas] ifood: pagamento inconsistente`, com $contexto (ids) e valores.
+     * O `pending` explícito é a fonte de verdade; só sem ele vale a soma dos métodos não pagos. É formato divergente da
+     * documentação, avisado em `[entregas] ifood: pagamento inconsistente` (com $contexto, os ids, e valores):
+     * - `pending` > 0 sem método não pago (cobra o pending, forma desconhecida);
+     * - `pending` = 0 com método não pago (nada a cobrar: cobrar de quem já pagou é pior que o motoboy conferir na
+     *   porta);
+     * - sem `pending`, método não pago e soma 0 (o `value` veio ausente ou ilegível: nada a cobrar, o motoboy confere);
+     * - valor implausível (acima de CENTAVOS_MAXIMO, ou infinito): a cobrança vira 0. O troco implausível vira nulo.
      */
     public static function cobranca($pagamentos, array $contexto = []): array
     {
@@ -157,20 +173,25 @@ final class PedidoDoIfood
 
         $metodos     = is_array($pagamentos['methods'] ?? null) ? array_values(array_filter($pagamentos['methods'], 'is_array')) : [];
         $naPorta     = array_values(array_filter($metodos, fn (array $metodo) => static::naoPago($metodo)));
-        $somaNaPorta = (int) round(array_sum(array_map(fn (array $metodo) => is_numeric($metodo['value'] ?? null) ? max(0.0, (float) $metodo['value']) : 0.0, $naPorta)) * 100);
+        $somaNaPorta = static::centavos(array_sum(array_map(fn (array $metodo) => is_numeric($metodo['value'] ?? null) ? max(0.0, (float) $metodo['value']) : 0.0, $naPorta)));
         $temPending  = is_numeric($pagamentos['pending'] ?? null);
-        $pendente    = $temPending ? max(0, (int) round(((float) $pagamentos['pending']) * 100)) : $somaNaPorta;
+        $pendente    = $temPending ? static::centavos((float) $pagamentos['pending']) : $somaNaPorta;
+        $implausivel = $pendente > static::CENTAVOS_MAXIMO;
 
-        if ($temPending && (($pendente > 0 && !$naPorta) || ($pendente === 0 && $naPorta))) {
+        $inconsistente = $implausivel
+            || ($temPending && (($pendente > 0 && !$naPorta) || ($pendente === 0 && $naPorta)))
+            || (!$temPending && $naPorta && $somaNaPorta === 0);
+        if ($inconsistente) {
             Log::warning('[entregas] ifood: pagamento inconsistente', $contexto + [
-                'pendente_centavos' => $pendente,
-                'na_porta_centavos' => $somaNaPorta,
+                'pendente_centavos' => $implausivel ? null : $pendente,
+                'na_porta_centavos' => $somaNaPorta > static::CENTAVOS_MAXIMO ? null : $somaNaPorta,
+                'implausivel'       => $implausivel,
                 'metodos'           => count($metodos),
                 'metodos_na_porta'  => count($naPorta),
             ]);
         }
 
-        if ($pendente <= 0) {
+        if ($pendente <= 0 || $implausivel) {
             return [0, null, null];
         }
 
@@ -185,12 +206,29 @@ final class PedidoDoIfood
         foreach ($naPorta as $metodo) {
             $para = $metodo['cash']['changeFor'] ?? null;
             if (static::forma($metodo) === 'CASH' && is_numeric($para) && (float) $para > 0) {
-                $troco = (int) round(((float) $para) * 100);
+                $troco = static::centavos((float) $para);
+                if ($troco > static::CENTAVOS_MAXIMO) {
+                    Log::warning('[entregas] ifood: pagamento inconsistente', $contexto + ['troco_implausivel' => true]);
+                    $troco = null;
+                }
                 break;
             }
         }
 
         return [$pendente, $forma, $troco];
+    }
+
+    /**
+     * Reais em centavos inteiros, sem negativo. Acima de CENTAVOS_MAXIMO (ou infinito) devolve CENTAVOS_MAXIMO + 1: o
+     * chamador só precisa saber que passou do limite, e o (int) de um float enorme não fica indefinido.
+     */
+    protected static function centavos(float $reais): int
+    {
+        if (!is_finite($reais) || $reais * 100 > static::CENTAVOS_MAXIMO) {
+            return static::CENTAVOS_MAXIMO + 1;
+        }
+
+        return max(0, (int) round($reais * 100));
     }
 
     /** Distância em linha reta, em metros (haversine). */
@@ -274,7 +312,7 @@ final class PedidoDoIfood
         return $texto === '' ? null : mb_substr($texto, 0, $maximo);
     }
 
-    /** Data ISO (com hora) em UTC; null para o resto ("tomorrow", texto livre, lista). */
+    /** Data ISO (com hora) em UTC, ano de 2000 a 2037; null para o resto ("tomorrow", texto, lista, ano absurdo). */
     protected static function data($valor): ?DateTimeImmutable
     {
         if (!is_string($valor) || !preg_match('/^\s*\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/', $valor)) {
@@ -282,9 +320,13 @@ final class PedidoDoIfood
         }
 
         try {
-            return (new DateTimeImmutable(trim($valor), new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('UTC'));
+            $data = (new DateTimeImmutable(trim($valor), new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('UTC'));
         } catch (\Exception) {
             return null;
         }
+
+        $ano = (int) $data->format('Y');
+
+        return $ano >= static::ANO_MINIMO && $ano <= static::ANO_MAXIMO ? $data : null;
     }
 }

@@ -196,4 +196,59 @@ $dados  = PedidoDoIfood::mapear($minimo, LAT_COLETA, LNG_COLETA, $agora);
 confere($dados['numero'] === 'abcdef12' && $dados['entrega']['nome'] === 'Cliente iFood' && $dados['entrega']['street1'] === 'Endereço do iFood' && $dados['entrega']['street2'] === null, 'sem displayId, nome e rua: valores padrão');
 confere($dados['linha']['telefone_0800'] === null && $dados['linha']['telefone_expira_em'] === null, 'sem telefone');
 
+echo '== Cobrança: pending ausente, método não pago e valor ilegível' . PHP_EOL;
+reiniciarIfood();
+confere(PedidoDoIfood::cobranca(['methods' => [['value' => 'abc', 'method' => 'CASH', 'prepaid' => false]]], ['numero' => '4821']) === [0, null, null], 'sem pending, método não pago com value ilegível: nada a cobrar');
+confere(logou('[entregas] ifood: pagamento inconsistente', 'warning'), '... e avisa "pagamento inconsistente"');
+reiniciarIfood();
+confere(PedidoDoIfood::cobranca(['methods' => [['method' => 'CASH', 'prepaid' => false, 'type' => 'OFFLINE']]]) === [0, null, null] && logou('pagamento inconsistente', 'warning'), 'sem pending, método não pago sem value: avisa também');
+reiniciarIfood();
+PedidoDoIfood::cobranca(['methods' => [['value' => 20, 'method' => 'CASH', 'prepaid' => false]]]);
+PedidoDoIfood::cobranca(['methods' => [['value' => 20, 'method' => 'PIX', 'prepaid' => true]]]);
+PedidoDoIfood::cobranca(['methods' => []]);
+confere(!logou('pagamento inconsistente'), 'sem pending: com valor, só pagos ou sem métodos não avisam');
+
+echo '== orderTiming tolerante (caixa e espaços)' . PHP_EOL;
+foreach (['scheduled', ' SCHEDULED ', "Scheduled\n"] as $valor) {
+    $pedido                = pedidoAgendado();
+    $pedido['orderTiming'] = $valor;
+    $dados                 = PedidoDoIfood::mapear($pedido, LAT_COLETA, LNG_COLETA, $agora);
+    confere($dados['agendado'] === true && $dados['scheduled_at'] === '2026-10-05 19:20:00', 'orderTiming ' . json_encode($valor) . ' = agendado');
+}
+$pedido                = pedidoAgendado();
+$pedido['orderTiming'] = ['SCHEDULED'];
+confere(PedidoDoIfood::mapear($pedido, LAT_COLETA, LNG_COLETA, $agora)['agendado'] === false, 'orderTiming em lista: imediato, sem erro');
+
+echo '== Valores implausíveis não derrubam o insert' . PHP_EOL;
+reiniciarIfood();
+$implausivel = PedidoDoIfood::cobranca(['pending' => 1.0e15, 'methods' => [['value' => 1.0e15, 'method' => 'CASH', 'prepaid' => false]]], ['numero' => '4821']);
+confere($implausivel === [0, null, null] && logou('[entregas] ifood: pagamento inconsistente', 'warning'), 'cobrança acima de R$ 100 mil: 0 e aviso');
+reiniciarIfood();
+confere(PedidoDoIfood::cobranca(['pending' => 100000, 'methods' => [['value' => 100000, 'method' => 'CASH', 'prepaid' => false]]]) === [10000000, 'CASH', null] && !logou('pagamento inconsistente'), 'exatamente R$ 100 mil ainda vale');
+confere(PedidoDoIfood::cobranca(['pending' => 100000.01, 'methods' => [['value' => 100000.01, 'method' => 'CASH', 'prepaid' => false]]]) === [0, null, null], 'um centavo acima: 0');
+confere(PedidoDoIfood::cobranca(['pending' => '1e999', 'methods' => [['method' => 'CASH', 'prepaid' => false]]]) === [0, null, null], 'pending infinito: 0');
+confere(PedidoDoIfood::cobranca(['methods' => [['value' => 1.0e20, 'method' => 'CASH', 'prepaid' => false]]]) === [0, null, null], 'sem pending, soma gigante: 0');
+reiniciarIfood();
+confere(PedidoDoIfood::cobranca(['pending' => 50, 'methods' => [['value' => 50, 'method' => 'CASH', 'prepaid' => false, 'cash' => ['changeFor' => 1.0e15]]]], ['numero' => '4821']) === [5000, 'CASH', null], 'troco implausível: zera o troco e mantém a cobrança');
+confere(PedidoDoIfood::cobranca(['pending' => 50, 'methods' => [['value' => 50, 'method' => 'CASH', 'prepaid' => false, 'cash' => ['changeFor' => 100000]]]]) === [5000, 'CASH', 10000000], 'troco de R$ 100 mil ainda vale');
+$longe                                             = pedidoEmDinheiroComTroco();
+$longe['customer']['phone']['localizerExpiration'] = '2099-12-31T23:59:59.000Z';
+$dados                                             = PedidoDoIfood::mapear($longe, LAT_COLETA, LNG_COLETA, $agora);
+confere($dados['linha']['telefone_expira_em'] === null && $dados['linha']['telefone_0800'] === '0800 000 0002', 'localizerExpiration depois de 2037: nula, o resto do telefone fica');
+$longe['customer']['phone']['localizerExpiration'] = '1850-01-01T00:00:00.000Z';
+confere(PedidoDoIfood::mapear($longe, LAT_COLETA, LNG_COLETA, $agora)['linha']['telefone_expira_em'] === null, 'localizerExpiration antes de 2000: nula');
+$longe['customer']['phone']['localizerExpiration'] = '2037-06-01T00:00:00.000Z';
+confere(PedidoDoIfood::mapear($longe, LAT_COLETA, LNG_COLETA, $agora)['linha']['telefone_expira_em'] === '2037-06-01 00:00:00', 'até 2037 vale');
+$dados = PedidoDoIfood::mapear(pedidoAgendado('2099-01-01T00:00:00.000Z'), LAT_COLETA, LNG_COLETA, $agora);
+confere($dados['sem_janela'] === true && $dados['scheduled_at'] === null && $dados['linha']['despachar_em'] === null, 'janela do agendado em 2099: sem janela (nenhuma data fora da faixa chega ao banco)');
+
+echo '== Docblocks de até 120 colunas' . PHP_EOL;
+$longas = [];
+foreach (file(dirname(__DIR__, 2) . '/api/app/Support/Entregas/Ifood/PedidoDoIfood.php') as $n => $linhaDoArquivo) {
+    if (preg_match('/^\s*(\*|\/\*\*)/', $linhaDoArquivo) && mb_strlen(rtrim($linhaDoArquivo, "\r\n")) > 120) {
+        $longas[] = $n + 1;
+    }
+}
+confere($longas === [], 'nenhuma linha de docblock com mais de 120 colunas' . ($longas ? ' (' . implode(', ', $longas) . ')' : ''));
+
 resumo();

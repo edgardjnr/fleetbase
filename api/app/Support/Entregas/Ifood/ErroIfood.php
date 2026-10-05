@@ -41,10 +41,10 @@ class ErroIfood extends RuntimeException
         return $this->status === 429;
     }
 
-    /** Rede, 429 ou 5xx: vale tentar de novo mais tarde. */
+    /** Rede, 408 (tempo esgotado), 429 ou 5xx: vale tentar de novo mais tarde. */
     public function temporario(): bool
     {
-        return $this->status === 0 || $this->status === 429 || $this->status >= 500;
+        return $this->status === 0 || $this->status === 408 || $this->status === 429 || $this->status >= 500;
     }
 
     /** O corpo como JSON, ou null. */

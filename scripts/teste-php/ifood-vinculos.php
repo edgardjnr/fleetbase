@@ -467,4 +467,68 @@ confere(VinculosIfood::resumos([]) === [], 'lista vazia');
 echo '== Sem tokens nos logs' . PHP_EOL;
 confere(logsSem(['token-', 'refresh-', 'verificador-1', 'AUTH-']), 'nenhum log com token, refresh, verificador ou código');
 
+// ---- ajustes menores das revisões ----
+
+echo '== 11. Refresh recusado: compare-and-set antes de marcar vinculo_perdido' . PHP_EOL;
+reiniciarIfood();
+$vinculo = vinculada(LOJA_A, 'merchant-1', '2026-10-05 18:01:00');
+Http::responderCom(function () {
+    // outro processo renovou (trava vencida) enquanto este esperava a recusa do iFood
+    mexer(LOJA_A, ['access_token' => encrypt('token-outro'), 'refresh_token' => encrypt('refresh-outro'), 'expira_em' => '2026-10-06 00:00:00', 'renovado_em' => '2026-10-05 18:00:00']);
+
+    return [400, ['error' => 'invalid_grant']];
+});
+$resultado = null;
+$erro      = excecao(function () use ($vinculo, &$resultado) { $resultado = vinculos()->tokenValido($vinculo); });
+$linha     = linhaDa(LOJA_A);
+confere($erro === null && $resultado === 'token-outro', 'refresh recusado, mas outro processo gravou tokens novos: usa os dele');
+confere($linha->situacao === 'vinculada' && decrypt($linha->access_token) === 'token-outro' && decrypt($linha->refresh_token) === 'refresh-outro', 'a loja não cai e os tokens do outro processo ficam como estão');
+confere(!logou('[entregas] ifood: vínculo perdido'), 'e não registra "vínculo perdido"');
+reiniciarIfood();
+$vinculo = vinculada(LOJA_A, 'merchant-1', '2026-10-05 18:01:00');
+Http::responderCom(function () {
+    // a central desvinculou a loja durante a chamada
+    vinculos()->desvincular(LOJA_A);
+
+    return [400, ['error' => 'invalid_grant']];
+});
+$erro  = excecao(fn () => vinculos()->tokenValido($vinculo));
+$linha = linhaDa(LOJA_A);
+confere($erro instanceof VinculoPerdido && $linha->situacao === 'desvinculada', 'refresh recusado com a loja desvinculada no meio: continua desvinculada (não vira vinculo_perdido)');
+confere($linha->access_token === null && $linha->refresh_token === null && !logou('[entregas] ifood: vínculo perdido'), 'sem regravar nada e sem o log de vínculo perdido');
+reiniciarIfood();
+$vinculo = vinculada(LOJA_A, 'merchant-1', '2026-10-05 18:01:00');
+Http::responder(400, ['error' => 'invalid_grant']);
+$erro = excecao(fn () => vinculos()->tokenValido($vinculo));
+confere($erro instanceof VinculoPerdido && linhaDa(LOJA_A)->situacao === 'vinculo_perdido' && logou('[entregas] ifood: vínculo perdido', 'warning'), 'sem ninguém mexendo: vira vinculo_perdido, como antes');
+
+echo '== 12. ErroIfood::temporario inclui 408' . PHP_EOL;
+foreach ([0, 408, 429, 500, 503] as $status) {
+    confere((new ErroIfood('x', $status))->temporario(), "{$status} é temporário");
+}
+foreach ([400, 401, 403, 404, 409] as $status) {
+    confere(!(new ErroIfood('x', $status))->temporario(), "{$status} não é temporário");
+}
+
+echo '== 13. Chave repetida: SQLSTATE 23000 e erro 1062' . PHP_EOL;
+$repetida   = new ReflectionMethod(VinculosIfood::class, 'chaveRepetida');
+$ehRepetida = fn (\Throwable $e) => $repetida->invoke(null, $e);
+confere($ehRepetida(new Teste\ErroDeBanco('Duplicate entry', '23000', 1062)), '23000 com 1062: chave repetida');
+confere(!$ehRepetida(new Teste\ErroDeBanco('Cannot delete or update a parent row', '23000', 1451)), '23000 com 1451 (chave estrangeira): não é chave repetida');
+confere(!$ehRepetida(new Teste\ErroDeBanco('Column cannot be null', '23000', 1048)), '23000 com 1048 (NOT NULL): não é chave repetida');
+confere(!$ehRepetida(new Teste\ErroDeBanco('server gone away', 'HY000')), 'outro SQLSTATE: não é');
+$semInfo            = new Teste\ErroDeBanco('Duplicate entry', '23000', 1062);
+$semInfo->errorInfo = null;
+confere($ehRepetida($semInfo), 'sem errorInfo, o código 23000 do QueryException basta');
+reiniciarIfood();
+respostaDoCodigo();
+vinculos()->iniciar(LOJA_A);
+respostaDoToken('token-a', 'refresh-a');
+Http::responder(200, [['id' => 'merchant-1', 'name' => 'Pizzaria Um']]);
+Banco::$antesDeInserir['entregas_ifood_lojas'] = function () {
+    Banco::$falharComo['entregas_ifood_lojas'] = ['23000', 1451];
+};
+$erro = excecao(fn () => vinculos()->concluir(EMPRESA, LOJA_A, 'AUTH-1'));
+confere($erro instanceof Teste\ErroDeBanco && $erro->errorInfo[1] === 1451, 'violação 23000 que não é chave repetida sobe como veio (não vira "outra loja")');
+
 resumo();
