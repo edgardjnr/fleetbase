@@ -167,7 +167,6 @@ confere(logou('[entregas] ifood: trava do pedido ocupada', 'warning') && isset(T
 
 echo '== Despacho: relê o pedido com a trava' . PHP_EOL;
 $resolvidos = [
-    'motoboy atribuído pela central'  => ['driver_assigned_uuid' => 'driver-1'],
     'aceito (started)'                => ['started' => true, 'driver_assigned_uuid' => 'driver-1', 'status' => 'started'],
     'cancelado pela central'          => ['status' => 'canceled'],
     'concluído'                       => ['status' => 'completed'],
@@ -198,6 +197,27 @@ preparar();
 $pedido = pedidoNaFila(['dispatched' => true, 'status' => 'enroute']);
 confere((new CriadorDoPedidoIfood())->despachar($pedido) && $pedido->chamadas === [], 'status já adiante: não insere a atividade');
 confere(linhaDoPedido($pedido)->despachado_em === '2026-10-05 18:00:00', 'e marca despachado_em (já estava com os motoboys)');
+
+echo '== Despacho: agendado com motoboy já atribuído pela central' . PHP_EOL;
+preparar();
+// agendado com janela: nasce adhoc; a central atribui um motoboy antes do despacho
+$pedido                       = pedidoNaFila(['adhoc' => true, 'scheduled_at' => '2026-10-05 18:30:00']);
+$velho                        = copiaVelha($pedido, ['adhoc' => true]);
+$pedido->driver_assigned_uuid = 'driver-1';
+confere((new CriadorDoPedidoIfood())->despachar($velho) === true, 'despacha: true');
+confere($pedido->chamadas === ['saveQuietly', 'firstDispatchWithActivity'] && $pedido->adhocAoSalvar === [false] && $pedido->adhoc === false, 'adhoc falso antes do despacho: o HandleOrderDispatched avisa só o motoboy atribuído');
+confere($pedido->travadoNoDespacho === [true] && $velho->chamadas === [], 'com a trava, no pedido relido');
+confere(linhaDoPedido($pedido)->despachado_em === '2026-10-05 18:00:00', 'marca despachado_em (sai da fila do agendador)');
+confere(logou('[entregas] ifood: pedido despachado só ao motoboy atribuído', 'info') && logsSem(['driver-1']), 'log só com o id do pedido');
+preparar();
+$pedido = pedidoNaFila(['adhoc' => true, 'dispatched' => true, 'status' => 'dispatched', 'driver_assigned_uuid' => 'driver-1']);
+confere((new CriadorDoPedidoIfood())->despachar($pedido) === true && $pedido->chamadas === ['insertDispatchActivity'] && $pedido->adhoc === true, 'já despachado com motoboy atribuído: só a atividade que falta, sem novo aviso');
+preparar();
+$pedido                       = pedidoNaFila(['adhoc' => true]);
+$pedido->driver_assigned_uuid = 'driver-1';
+Order::$falharDespacho        = true;
+confere((new CriadorDoPedidoIfood())->despachar($pedido) === false && logou('falha ao despachar o pedido', 'error') && (linhaDoPedido($pedido)->despachado_em ?? null) === null, 'falha no despacho ao atribuído: false, log e fica na fila');
+Order::$falharDespacho = false;
 
 echo '== Despacho: usa o pedido relido, não o que recebeu' . PHP_EOL;
 preparar();

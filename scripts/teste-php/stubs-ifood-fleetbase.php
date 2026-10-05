@@ -275,7 +275,10 @@ namespace Fleetbase\FleetOps\Models {
             return null;
         }
 
-        public function saveQuietly() { $this->chamadas[] = 'saveQuietly'; return true; }
+        /** O adhoc em cada saveQuietly (o despacho grava o adhoc antes de despachar). */
+        public array $adhocAoSalvar = [];
+
+        public function saveQuietly() { $this->chamadas[] = 'saveQuietly'; $this->adhocAoSalvar[] = $this->adhoc; return true; }
         private function anotarTrava(): void { $this->travadoNoDespacho[] = isset(\Teste\Trava::$ocupadas['entregas:pedido:' . $this->uuid]); }
         public function hasDispatchedStatus(): bool { return $this->temStatusDespachado; }
 

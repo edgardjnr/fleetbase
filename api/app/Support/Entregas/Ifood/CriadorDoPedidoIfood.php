@@ -28,6 +28,12 @@ use Illuminate\Support\Facades\Log;
  *   despacha o agendado sem ligar o adhoc). O de teste, o sem coordenadas e o agendado sem janela nascem com adhoc
  *   falso: a central atribui, e o despacho manual de um pedido adhoc avisaria todos os motoboys livres no raio (um
  *   deles poderia tomar o pedido do motoboy atribuído: HandleOrderDispatched + startOrder com assign);
+ * - agendado em que a central atribuiu um motoboy antes do horário: o despacho daqui desliga o adhoc e vai só ao
+ *   atribuído (ver despachar()). Risco que sobra: o fleetops:dispatch-orders roda no mesmo minuto (scheduled_at =
+ *   despachar_em, com ±1 min de folga) e pode despachar antes, com o adhoc ainda ligado. Aí o HandleOrderDispatched
+ *   avisa todos os motoboys livres no raio da coleta (OrderPing) e não avisa o atribuído em particular; qualquer um
+ *   deles pode aceitar e tomar o pedido. O despacho daqui depois só acrescenta a atividade que falta. Para evitar, a
+ *   central desliga o "pedido aberto" (adhoc) ao atribuir um agendado;
  * - a linha de entregas_ifood_pedidos entra na mesma transação do Order: o pedido_ifood_id único impede um segundo
  *   pedido para o mesmo pedido do iFood (se a linha falhar, o Order, o Payload e o Place da entrega são desfeitos).
  *
@@ -151,19 +157,23 @@ class CriadorDoPedidoIfood
     }
 
     /**
-     * Pedido aberto (adhoc) aos motoboys próximos da coleta, como o portal, com a trava do pedido (TravaDoPedido, a
-     * mesma do aceite do motoboy e do cancelamento) e o pedido relido com ela.
+     * Pedido aberto (adhoc) aos motoboys próximos da coleta, como o portal (ou só ao motoboy que a central atribuiu),
+     * com a trava do pedido (TravaDoPedido, a mesma do aceite do motoboy e do cancelamento) e o pedido relido com ela.
      *
      * Devolve true quando o pedido foi (ou já estava) despachado: marca despachado_em. Devolve false quando não
      * despachou:
      * - falha temporária (trava ocupada por mais de TravaDoPedido::ESPERA s ou erro no despacho): a linha fica na fila
      *   e o entregas:ifood-agendados tenta de novo na rodada seguinte;
-     * - nada a despachar: o pedido sumiu, foi apagado ou encerrado (StatusDoPedido::ENCERRADOS), já foi aceito
-     *   (started) ou a central atribuiu um motoboy. A linha sai da fila (despachar_em nulo, como o agendador faz com o
-     *   encerrado) e o log `[entregas] ifood: pedido não despachado` registra o motivo, só com o id do pedido.
+     * - nada a despachar: o pedido sumiu, foi apagado ou encerrado (StatusDoPedido::ENCERRADOS) ou já foi aceito
+     *   (started). A linha sai da fila (despachar_em nulo, como o agendador faz com o encerrado) e o log
+     *   `[entregas] ifood: pedido não despachado` registra o motivo, só com o id do pedido.
      *
-     * Já despachado (dispatched) sem a atividade "dispatched": só insere a atividade, sem avisar os motoboys de novo, e
-     * só se o status ainda for created/dispatched. É reserva: o fleetops:dispatch-orders despacha o agendado (quem cai a
+     * Motoboy já atribuído pela central (agendado, ainda não despachado nem aceito): despacha só para ele, com adhoc
+     * falso. O HandleOrderDispatched, sem adhoc e com motoboy atribuído, avisa só o atribuído (OrderDispatched); com
+     * adhoc, avisaria todos os motoboys livres no raio.
+     *
+     * Já despachado (dispatched), com ou sem motoboy atribuído, e sem a atividade "dispatched": só insere a atividade,
+     * sem avisar os motoboys de novo, e só se o status ainda for created/dispatched. É reserva: o fleetops:dispatch-orders despacha o agendado (quem cai a
      * ±1 min do scheduled_at) COM a atividade, porque o HandleOrderDispatched cria a DISPATCHED quando falta; ela só
      * faltaria se o listener ainda não tivesse rodado na fila ou tivesse falhado.
      */
@@ -200,6 +210,12 @@ class CriadorDoPedidoIfood
             if (in_array($atual->status, static::STATUS_ANTES_DO_ACEITE, true) && !$atual->hasDispatchedStatus()) {
                 $atual->insertDispatchActivity();
             }
+        } elseif ($atual->driver_assigned_uuid) {
+            // a central atribuiu antes do horário: sem adhoc, o HandleOrderDispatched avisa só o motoboy atribuído
+            $atual->adhoc = false;
+            $atual->saveQuietly();
+            $atual->firstDispatchWithActivity();
+            Log::info('[entregas] ifood: pedido despachado só ao motoboy atribuído', ['pedido' => $pedido->public_id]);
         } else {
             // sem eventos: o despacho logo abaixo grava de novo e emite os eventos
             $atual->adhoc = true;
@@ -214,7 +230,7 @@ class CriadorDoPedidoIfood
         return true;
     }
 
-    /** Por que o pedido (relido) não deve ir aos motoboys, ou null se pode ir. */
+    /** Por que o pedido (relido) não deve ser despachado, ou null se pode (motoboy atribuído não impede: vai só a ele). */
     protected function motivoParaNaoDespachar(?Order $pedido): ?string
     {
         if (!$pedido || $pedido->deleted_at) {
@@ -226,10 +242,6 @@ class CriadorDoPedidoIfood
         if ($pedido->started) {
             return 'aceito';
         }
-        if ($pedido->driver_assigned_uuid) {
-            return 'motoboy atribuído';
-        }
-
         return null;
     }
 

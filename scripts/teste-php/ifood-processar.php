@@ -357,6 +357,20 @@ confere($erro === null && $job->falhouCom instanceof ErroIfood && $job->falhouCo
 confere($job->falhouCom !== null && $job->falhouCom->corpo === '' && !str_contains((string) $job->falhouCom, 'Ficticio'), 'sem o corpo da resposta');
 confere($criador->criados === [] && evento('ev-1')->processado_em === null && Trava::$ocupadas === [], 'nada criado, evento pendente, trava solta');
 
+echo '== Erro na renovação do token (403, 409, 200 sem accessToken): sobe para nova tentativa, sem fail' . PHP_EOL;
+foreach ([[403, ['message' => 'Cliente Ficticio sem acesso']], [409, ['message' => 'conflito']], [200, ['type' => 'bearer']]] as [$status, $corpo]) {
+    reiniciarIfood();
+    vinculoDaLojaA();
+    gravarEvento('ev-1', 'PLC', '2026-10-05T17:59:00Z');
+    Http::responder(401, ['error' => ['code' => 'Unauthorized']]);
+    Http::responder($status, $corpo);
+    $criador = new CriadorFalso();
+    $job     = new ProcessarPedidoIfood('pedido-real-1');
+    $erro    = excecao(fn () => $job->handle(new VinculosIfood(new ClienteIfood()), new ClienteIfood(), $criador));
+    confere($erro instanceof ErroIfood && $erro->operacao === 'refresh' && $erro->status === $status && $job->falhouCom === null && $job->liberadoPor === null, "renovação com {$status}: o ErroIfood sobe (backoff), sem fail nem release");
+    confere($criador->criados === [] && evento('ev-1')->processado_em === null && Trava::$ocupadas === [], "renovação com {$status}: nada criado, evento pendente, trava solta");
+}
+
 echo '== 429: volta para a fila pelo Retry-After' . PHP_EOL;
 reiniciarIfood();
 vinculoDaLojaA();

@@ -37,8 +37,10 @@ use Illuminate\Support\Facades\Log;
  *   Nos três últimos isso não é definitivo: um evento de criação posterior do mesmo pedido (CFM, RTP…) tenta de novo.
  *
  * Erros na busca do pedido no iFood: 404 (ainda indisponível), 5xx, 408 e rede sobem e a fila tenta de novo pelo
- * $backoff; 429 volta para a fila pelo Retry-After (release, sem contar como exceção); os outros (400, 403, 401 depois
- * da renovação) não melhoram com o tempo: fail() na hora. Nos dois últimos casos os eventos continuam pendentes e o
+ * $backoff; 429 volta para a fila pelo Retry-After (release, sem contar como exceção); os outros do GET do pedido
+ * (operação "pedido": 400, 403, 401 depois da renovação) não melhoram com o tempo: fail() na hora. Erro de outra
+ * operação (a renovação do token no 401: 403, 404, 409, 200 sem accessToken, que não derrubam a loja) sobe e a fila
+ * tenta de novo pelo $backoff. Depois do fail() ou de esgotar as tentativas, os eventos continuam pendentes e o
  * próximo evento do pedido no polling enfileira de novo. Erro ao criar o pedido sobe como RuntimeException sem a
  * mensagem original (a do QueryException traz o SQL com nome e endereço do cliente). Logs sem dados do cliente (só ids,
  * códigos e o número do pedido).
@@ -54,6 +56,9 @@ class ProcessarPedidoIfood implements ShouldQueue
 
     /** Códigos de depois da coleta: na entrega própria, GTO, ADR e AAO só vêm de entregador do iFood. */
     public const POS_COLETA = ['DSP', 'CON', 'CLT', 'DDD', 'AAD', 'DDCS', 'GTO', 'ADR', 'AAO'];
+
+    /** Operação do ErroIfood no GET do pedido (ClienteIfood::pedidoLogistics): só ela leva ao fail(). */
+    public const OPERACAO_DO_PEDIDO = 'pedido';
 
     /** Segundos até tentar de novo quando outro job do mesmo pedido está rodando. */
     public const ESPERA_DA_TRAVA = 15;
@@ -106,7 +111,9 @@ class ProcessarPedidoIfood implements ShouldQueue
         } catch (ErroIfood $e) {
             if ($e->limiteExcedido()) {
                 $this->release($e->retryAfter ?? ClienteIfood::ESPERA_PADRAO_429);
-            } elseif ($e->status === 404 || $e->temporario()) {
+            } elseif ($e->status === 404 || $e->temporario() || $e->operacao !== static::OPERACAO_DO_PEDIDO) {
+                // de outra operação (ex.: a renovação do token com 403, 409 ou 200 sem accessToken, que não derrubam a
+                // loja): nova tentativa pelo $backoff
                 throw $e;
             } else {
                 // sem o corpo da resposta (o failed_jobs guarda a exceção inteira)
