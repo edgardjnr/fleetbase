@@ -2,13 +2,16 @@
 
 namespace App\Console\Commands\Entregas;
 
+use App\Events\Entregas\PedidoSemMotoboy;
 use App\Notifications\Entregas\LembretePedidoAberto;
 use App\Support\Entregas\StatusDoPedido;
 use Carbon\CarbonImmutable;
 use Fleetbase\FleetOps\Console\Commands\DispatchAdhocOrders;
+use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Support\Utils;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Entregas RestaurantePro: repete o aviso de pedido aberto (ad hoc, ainda sem motoboy) aos motoboys próximos.
@@ -30,6 +33,10 @@ use Illuminate\Support\Facades\Cache;
  * O motoboy além de R recebe o alarme e pode aceitar por ele, mas o pedido não aparece na lista de pedidos próximos do
  * app, que filtra pelo raio R da empresa.
  *
+ * Aviso à central: com AVISO_CENTRAL_MINUTOS sem aceite desde o despacho (o momento do último reenvio), transmite
+ * entregas.pedido_sem_motoboy (App\Events\Entregas\PedidoSemMotoboy) no canal da empresa, uma vez por despacho, mesmo
+ * sem motoboy no raio. O console toca um som e mostra um aviso fixo até o pedido ganhar motoboy.
+ *
  * Ao atualizar o fleetops-api, confira se a classe pai ainda tem getNearbyDriversForOrder, newOrderQuery e
  * newDriverQuery.
  */
@@ -43,6 +50,9 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
 
     /** O agendador roda o comando alguns segundos depois do minuto cheio: sem folga, um intervalo às vezes vira 5 min. */
     public const FOLGA_SEGUNDOS = 30;
+
+    /** Minutos sem aceite, desde o despacho, para avisar a central (o momento do último reenvio). */
+    public const AVISO_CENTRAL_MINUTOS = self::INTERVALO_MINUTOS * self::MAX_REENVIOS;
 
     /** Raio de cada reenvio em relação ao raio do primeiro aviso (R, getAdhocPingDistance): 1,5R, 2R e 2R. */
     public const MULTIPLICADORES_DO_RAIO = [1.5, 2, 2];
@@ -65,6 +75,8 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
         }
 
         foreach ($pedidos as $pedido) {
+            $this->avisarCentralSeParado($pedido, $agora);
+
             $chave  = 'entregas:reenvio-pedido:' . $pedido->uuid . ':' . $pedido->dispatched_at->getTimestamp();
             $estado = Cache::get($chave, ['vezes' => 0, 'ultimo' => $pedido->dispatched_at->getTimestamp()]);
 
@@ -78,8 +90,9 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
                 continue;
             }
 
-            $raio     = self::raioDoReenvio($pedido->getAdhocPingDistance(), self::etapaPeloTempo($agora->getTimestamp() - $pedido->dispatched_at->getTimestamp()));
-            $motoboys = $this->getNearbyDriversForOrder($pedido, $coleta, $raio, $testing);
+            $segundos = $agora->getTimestamp() - $pedido->dispatched_at->getTimestamp();
+            $raio     = self::raioDoReenvio($pedido->getAdhocPingDistance(), self::etapaPeloTempo($segundos));
+            $motoboys =$this->getNearbyDriversForOrder($pedido, $coleta, $raio, $testing);
             if ($motoboys->isEmpty()) {
                 $this->line('Pedido ' . $pedido->public_id . ': nenhum motoboy livre a até ' . $raio . ' m da coleta.');
                 continue;
@@ -136,6 +149,39 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
             ->whereHas('payload')
             ->with(['company', 'payload'])
             ->get();
+    }
+
+    /**
+     * Com AVISO_CENTRAL_MINUTOS sem aceite desde o despacho, avisa a central no socket (PedidoSemMotoboy), uma vez por
+     * despacho, mesmo sem motoboy no raio. Falha no socket fica no log e tenta de novo no minuto seguinte.
+     */
+    protected function avisarCentralSeParado(Order $pedido, CarbonImmutable $agora): void
+    {
+        $parado = $agora->getTimestamp() - $pedido->dispatched_at->getTimestamp();
+        if ($parado < self::AVISO_CENTRAL_MINUTOS * 60 - self::FOLGA_SEGUNDOS) {
+            return;
+        }
+
+        $chave = 'entregas:pedido-sem-motoboy:' . $pedido->uuid . ':' . $pedido->dispatched_at->getTimestamp();
+        if (Cache::get($chave)) {
+            return;
+        }
+
+        $minutos = (int) round($parado / 60);
+
+        try {
+            broadcast(new PedidoSemMotoboy(
+                (string) $pedido->company_uuid,
+                (string) $pedido->uuid,
+                (string) $pedido->public_id,
+                $pedido->internal_id ? (string) $pedido->internal_id : null,
+                $minutos
+            ));
+            Cache::put($chave, true, now()->addDay());
+            $this->warn('Pedido ' . $pedido->public_id . ': ' . $minutos . ' min sem motoboy; central avisada.');
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] aviso de pedido sem motoboy não chegou ao socket', ['pedido' => $pedido->public_id, 'erro' => $e->getMessage()]);
+        }
     }
 
     protected static function intervaloEmSegundos(): int
