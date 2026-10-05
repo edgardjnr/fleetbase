@@ -53,7 +53,8 @@ const lookup = (intl, key, fallback) => (intl && intl.exists(key) ? intl.t(key) 
 
 /** Default activitylog descriptions/events (the event name), shown with the activity log badge texts. */
 const ACTIVITY_EVENTS = ['created', 'updated', 'deleted', 'restored'];
-const byEvent = (intl, text) => (typeof text === 'string' && ACTIVITY_EVENTS.includes(text.trim().toLowerCase()) ? lookup(intl, `ember-ui.activity-log.badge.${text.trim().toLowerCase()}`, text) : text);
+const byEvent = (intl, text) =>
+    typeof text === 'string' && ACTIVITY_EVENTS.includes(text.trim().toLowerCase()) ? lookup(intl, `ember-ui.activity-log.badge.${text.trim().toLowerCase()}`, text) : text;
 const byText = (intl, table, group, text) => (typeof text === 'string' && table[text] ? lookup(intl, `${BASE}.${group}.${table[text]}`, text) : text);
 
 export function localizeAdminSubtitle(intl, slug, subtitle) {
@@ -76,13 +77,22 @@ export function localizeAdminItems(intl, slug, items) {
             return item;
         }
 
-        return {
-            ...item,
-            title: translateTitle ? lookup(intl, `${BASE}.item.${slugify(item.title)}`, item.title) : byText(intl, TEXTS, 'text', isActivity ? byEvent(intl, item.title) : item.title),
+        // only the fields the item has: an item without title/description/value keeps its shape
+        const localized = { ...item };
+        if ('title' in item) {
+            localized.title = translateTitle
+                ? lookup(intl, `${BASE}.item.${slugify(item.title)}`, item.title)
+                : byText(intl, TEXTS, 'text', isActivity ? byEvent(intl, item.title) : item.title);
+        }
+        if ('description' in item) {
             // "<causer> / 2 hours ago" (Carbon diffForHumans): the relative part is rebuilt in the active language
-            description: isActivity ? localizeTimeAgoText(intl, item.description) : byText(intl, TEXTS, 'text', item.description),
-            value: byText(intl, TEXTS, 'text', isActivity ? byEvent(intl, item.value) : item.value),
-        };
+            localized.description = isActivity ? localizeTimeAgoText(intl, item.description) : byText(intl, TEXTS, 'text', item.description);
+        }
+        if ('value' in item) {
+            localized.value = byText(intl, TEXTS, 'text', isActivity ? byEvent(intl, item.value) : item.value);
+        }
+
+        return localized;
     });
 }
 

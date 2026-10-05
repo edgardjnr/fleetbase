@@ -188,9 +188,16 @@ export default class ConsoleAdminOrganizationsDetailsUsersController extends Con
     }
 
     @action removeUser(user) {
-        return this.confirmUserLifecycleAction(user, this.intl.t('console.ui.admin.org.users.remove-user'), this.intl.t('console.ui.admin.org.users.remove-body', { name: user.name || user.email }), null, this.intl.t('console.ui.admin.org.users.removed'), async () => {
-            await this.fetch.delete(`companies/${this.company.uuid}/users/${this.userIdentifier(user)}`);
-        });
+        return this.confirmUserLifecycleAction(
+            user,
+            this.intl.t('console.ui.admin.org.users.remove-user'),
+            this.intl.t('console.ui.admin.org.users.remove-body', { name: user.name || user.email }),
+            null,
+            this.intl.t('console.ui.admin.org.users.removed'),
+            async () => {
+                await this.fetch.delete(`companies/${this.company.uuid}/users/${this.userIdentifier(user)}`);
+            }
+        );
     }
 
     @action search(event) {

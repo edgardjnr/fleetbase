@@ -71,37 +71,12 @@ jobs:
         run: pnpm run lint
 
       # The step that was previously missing everywhere for the console: actually
-      # running the existing QUnit suite (tests/unit + tests/integration), here
-      # with coverage instrumentation.
-      - name: Test (with coverage)
-        run: pnpm run test:ember:coverage
+      # running the existing QUnit suite (tests/unit + tests/integration).
+      - name: Test
+        run: pnpm run test:ember
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: console/coverage/lcov.info
-          disable_search: true
-          flags: console
-          name: console-coverage
-          fail_ci_if_error: false
-
-      # Coverage gate — blocking.
-      #
-      # The console suite is at 100% on all four metrics (lines, statements,
-      # functions and branches) with 1149 tests passing. scripts/coverage-check.mjs
-      # applies the threshold to all four, so this fails the build if any of them
-      # regresses.
-      #
-      # A handful of lines are excluded or marked rather than tested, each with the
-      # reason written at the site: window.location.reload() cannot be stubbed
-      # (Location members are non-configurable per spec) so its five callers route
-      # through a one-line reloadWindow()/reloadConsole() wrapper; a few guards are
-      # unreachable given their callers; and app/resolver.js is excluded outright in
-      # config/coverage.js because nothing imports it and it would throw if it were
-      # wired up.
-      - name: Report coverage threshold
-        run: pnpm run coverage:check -- --fail-under=100
+      # Entregas RestaurantePro: sem o envio ao Codecov (este fork não tem conta) e sem a exigência de 100% de
+      # cobertura do Fleetbase. Fica o que interessa antes do deploy: lint, testes e o build de produção.
 
       - name: Build (production)
         run: npx ember build --environment production

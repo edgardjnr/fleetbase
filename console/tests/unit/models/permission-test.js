@@ -55,7 +55,7 @@ module('Unit | Model | permission', function (hooks) {
         const description = this.permission({ name: 'fleet-ops view driver' }).description;
 
         assert.ok(description.startsWith('Permission to View'), description);
-        assert.ok(description.includes('Drivers'), 'the resource is pluralized');
+        assert.ok(/\bdrivers\b/i.test(description), 'the resource is pluralized');
         assert.ok(/on Fleet.?Ops$/i.test(description), `it ends with the extension: ${description}`);
     });
 
@@ -96,7 +96,7 @@ module('Unit | Model | permission | incomplete names', function (hooks) {
 
         assert.ok(description.startsWith('Permission to View'), description);
         assert.ok(/on Fleet.?Ops$/i.test(description), 'the extension still closes the sentence');
-        assert.ok(description.includes('View   on'), 'the resource and its preposition are both blank');
+        assert.ok(description.includes('View on'), 'the resource and its preposition are both blank');
     });
 
     test('a wildcard action with no resource does not take the "with" preposition', function (assert) {

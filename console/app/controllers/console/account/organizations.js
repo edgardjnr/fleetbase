@@ -28,8 +28,20 @@ export default class ConsoleAccountOrganizationsController extends Controller {
         }
 
         this.modalsManager.show('modals/leave-organization', {
-            title: this.intl.t(isOwner ? (willBeDeleted ? 'console.ui.account.organizations.delete-organization' : 'console.ui.account.organizations.transfer-and-leave') : 'console.ui.account.organizations.leave-organization'),
-            acceptButtonText: this.intl.t(isOwner ? (willBeDeleted ? 'console.ui.account.organizations.delete-organization' : 'console.ui.account.organizations.transfer-and-leave') : 'console.ui.account.organizations.leave-organization'),
+            title: this.intl.t(
+                isOwner
+                    ? willBeDeleted
+                        ? 'console.ui.account.organizations.delete-organization'
+                        : 'console.ui.account.organizations.transfer-and-leave'
+                    : 'console.ui.account.organizations.leave-organization'
+            ),
+            acceptButtonText: this.intl.t(
+                isOwner
+                    ? willBeDeleted
+                        ? 'console.ui.account.organizations.delete-organization'
+                        : 'console.ui.account.organizations.transfer-and-leave'
+                    : 'console.ui.account.organizations.leave-organization'
+            ),
             acceptButtonScheme: 'danger',
             acceptButtonIcon: isOwner ? (willBeDeleted ? 'trash' : 'person-walking-arrow-right') : 'person-walking-arrow-right',
             acceptButtonDisabled: isOwner && hasOtherMembers,

@@ -32,7 +32,9 @@ export default class ConsoleAdminOrganizationsDetailsSettingsController extends 
     @action setStatus(status) {
         this.modalsManager.confirm({
             title: this.intl.t('console.ui.admin.org.update-status-title'),
-            body: this.intl.t('console.ui.admin.org.update-status-body', { status: this.intl.exists(`console.ui.admin.org.state.${status}`) ? this.intl.t(`console.ui.admin.org.state.${status}`) : status }),
+            body: this.intl.t('console.ui.admin.org.update-status-body', {
+                status: this.intl.exists(`console.ui.admin.org.state.${status}`) ? this.intl.t(`console.ui.admin.org.state.${status}`) : status,
+            }),
             acceptButtonText: this.intl.t('console.ui.admin.org.update-status'),
             confirm: async (modal) => {
                 modal.startLoading();

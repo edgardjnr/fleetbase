@@ -200,7 +200,7 @@ module('Unit | Controller | auth/verification | resend and verify', function (ho
         assert.deepEqual(this.owner.lookup('service:session').authenticated, ['auth-token']);
         assert.deepEqual(this.transitions, ['console']);
         assert.deepEqual(this.notifications().successes, ['Email successfully verified!']);
-        assert.deepEqual(this.notifications().infos, ['Welcome to Fleetbase']);
+        assert.deepEqual(this.notifications().infos, ['Welcome to Entregas RestaurantePro']);
     });
 
     test('verifyCode sends the user to login when no token comes back', async function (assert) {
@@ -297,7 +297,7 @@ module('Unit | Controller | auth/verification | resend and verify', function (ho
 
         await this.owner.lookup('service:modals-manager').shown[0].options.confirm(this.modal({ email: '' }));
 
-        assert.deepEqual(this.notifications().errors, ['No email number provided.']);
+        assert.deepEqual(this.notifications().errors, ['No email address provided.']);
     });
 
     test('a failed email send leaves the modal open', async function (assert) {
