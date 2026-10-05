@@ -14,7 +14,9 @@ function colunasDa(string $arquivo, string $tabela): array
     $migration->up();
     $colunas = [];
     foreach ((Schema::$criadas[$tabela] ?? null)?->colunas ?? [] as $coluna) {
-        $colunas[$coluna->argumentos[0] ?? $coluna->tipo] = $coluna;
+        $primeiro = $coluna->argumentos[0] ?? null;
+        // índice composto ($table->index([...])) fica como "index:a,b"
+        $colunas[is_array($primeiro) ? $coluna->tipo . ':' . implode(',', $primeiro) : ($primeiro ?? $coluna->tipo)] = $coluna;
     }
 
     return $colunas;
@@ -58,6 +60,7 @@ confere(tem($pedidos, 'order_uuid', 'char', ['nullable', 'unique']), 'order_uuid
 foreach (['numero', 'merchant_id', 'vendor_uuid', 'telefone_0800', 'localizador', 'telefone_expira_em', 'cobrar_centavos', 'forma_pagamento', 'troco_para_centavos', 'observacoes', 'complemento', 'referencia', 'exige_codigo', 'ultima_acao', 'cancelado_pelo_ifood_em', 'pago_mesmo_cancelado', 'teste', 'agendado', 'despachar_em', 'despachado_em', 'timestamps'] as $coluna) {
     confere(isset($pedidos[$coluna]), "coluna {$coluna}");
 }
+confere(isset($pedidos['index:despachado_em,despachar_em']), 'índice composto do entregas:ifood-agendados (despachado_em, despachar_em)');
 confere(($pedidos['cobrar_centavos']->modificadores['default'] ?? null) === [0], 'cobrar_centavos começa em 0 (pago online)');
 foreach (['exige_codigo', 'pago_mesmo_cancelado', 'teste', 'agendado'] as $coluna) {
     confere(($pedidos[$coluna]->modificadores['default'] ?? null) === [false], "{$coluna} começa falso");

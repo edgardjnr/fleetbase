@@ -41,8 +41,11 @@ return new class extends Migration
             $table->boolean('pago_mesmo_cancelado')->default(false);
             $table->boolean('teste')->default(false);
             $table->boolean('agendado')->default(false);
-            $table->timestamp('despachar_em')->nullable()->index();
+            $table->timestamp('despachar_em')->nullable();
             $table->timestamp('despachado_em')->nullable();
+            // entregas:ifood-agendados: despachado_em IS NULL e despachar_em vencido, em ordem; só despachar_em no índice
+            // percorreria todo o histórico já despachado a cada minuto
+            $table->index(['despachado_em', 'despachar_em']);
             $table->timestamps();
         });
     }
