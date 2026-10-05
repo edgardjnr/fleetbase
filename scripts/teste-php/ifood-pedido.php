@@ -170,7 +170,7 @@ reiniciarIfood();
 confere(PedidoDoIfood::cobranca(['pending' => 12, 'methods' => []]) === [1200, null, null] && logou('pagamento inconsistente', 'warning'), 'pending > 0 sem métodos: cobra e avisa');
 
 reiniciarIfood();
-confere(PedidoDoIfood::cobranca(['pending' => 0, 'methods' => [['value' => 30, 'method' => 'CASH', 'prepaid' => false, 'type' => 'OFFLINE']]], ['pedido_ifood' => 'p-1', 'numero' => '4821']) === [3000, 'CASH', null], 'pending 0 com método não pago: cobra o método (o motoboy confere com o cliente)');
+confere(PedidoDoIfood::cobranca(['pending' => 0, 'methods' => [['value' => 30, 'method' => 'CASH', 'prepaid' => false, 'type' => 'OFFLINE']]], ['pedido_ifood' => 'p-1', 'numero' => '4821']) === [0, null, null], 'pending 0 com método não pago: o pending explícito vale, nada a cobrar');
 confere(logou('[entregas] ifood: pagamento inconsistente', 'warning'), 'pending 0 com método não pago: aviso');
 $contexto = Illuminate\Support\Facades\Log::$registros[0][2] ?? [];
 confere(($contexto['pedido_ifood'] ?? null) === 'p-1' && ($contexto['numero'] ?? null) === '4821' && !array_key_exists('methods', $contexto), 'aviso com os ids do pedido, sem o bloco de pagamento');
@@ -187,7 +187,7 @@ reiniciarIfood();
 $divergente             = pedidoEmDinheiroComTroco();
 $divergente['payments'] = ['pending' => 0, 'methods' => [['value' => 58.9, 'method' => 'CASH', 'prepaid' => false, 'type' => 'OFFLINE']]];
 $linha                  = PedidoDoIfood::mapear($divergente, LAT_COLETA, LNG_COLETA, $agora)['linha'];
-confere($linha['cobrar_centavos'] === 5890 && $linha['forma_pagamento'] === 'CASH', 'cobra o método não pago');
+confere($linha['cobrar_centavos'] === 0 && $linha['forma_pagamento'] === null && $linha['troco_para_centavos'] === null, 'pending 0 explícito: nada a cobrar');
 confere(logou('pagamento inconsistente', 'warning') && (Illuminate\Support\Facades\Log::$registros[0][2]['numero'] ?? null) === '4821' && logsSem(['Cliente Ficticio', 'Rua Ficticia', '0800 000 0002']), 'aviso com o número do pedido e sem dado do cliente');
 
 echo '== Campos faltando' . PHP_EOL;

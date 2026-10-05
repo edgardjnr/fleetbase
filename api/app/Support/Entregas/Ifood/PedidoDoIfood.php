@@ -30,9 +30,9 @@ use Illuminate\Support\Facades\Log;
  *   e `despachar_em` só existem quando o pedido vai aos motoboys: o `fleetops:dispatch-orders` do Fleet-Ops despacha
  *   sozinho quem tem `scheduled_at`, então o de teste, o sem coordenadas e o sem janela ficam com os dois nulos.
  * - Cobrança: sem `payments` (pedido pago online, visto na sonda), nada a cobrar; com `pending`, o valor; sem `pending`,
- *   a soma dos métodos não pagos (`prepaid: false`, ou `type: OFFLINE` sem o `prepaid`). A forma é a do método não pago
- *   (dois métodos diferentes: "CASH+CREDIT"; não cabendo em 30 caracteres, "MISTO") e o troco
- *   (`methods[].cash.changeFor`) só vale para dinheiro. Formato da documentação, a conferir na homologação: o gerador de
+ *   a soma dos métodos não pagos (`prepaid: false`, ou `type: OFFLINE` sem o `prepaid`). O `pending` explícito sempre
+ *   vale (0 = nada a cobrar, mesmo com método não pago). A forma é a do método não pago (dois métodos diferentes:
+ *   "CASH+CREDIT"; não cabendo em 30 caracteres, "MISTO") e o troco (`methods[].cash.changeFor`) só vale para dinheiro. Formato da documentação, a conferir na homologação: o gerador de
  *   pedidos de teste só cria pedido pago online.
  * - 0800 e localizador do cliente (`customer.phone`) com a expiração do localizador.
  *
@@ -145,9 +145,9 @@ final class PedidoDoIfood
 
     /**
      * [centavos a cobrar, forma (CASH, CREDIT…, "CASH+CREDIT" ou "MISTO"), troco para (centavos, só dinheiro) ou null].
-     * Com `pending`, ele vale; sem ele, a soma dos métodos não pagos. `pending` > 0 sem método não pago (cobra o
-     * pending, forma desconhecida) ou `pending` = 0 com método não pago (cobra o método: o motoboy confere com o cliente)
-     * é formato divergente da documentação: `[entregas] ifood: pagamento inconsistente`, com $contexto (ids) e valores.
+     * O `pending` explícito é a fonte de verdade; só sem ele vale a soma dos métodos não pagos. `pending` > 0 sem método
+     * não pago (cobra o pending, forma desconhecida) ou `pending` = 0 com método não pago (nada a cobrar: cobrar de quem
+     * já pagou é pior que o motoboy conferir na porta) é formato divergente da documentação: `[entregas] ifood: pagamento inconsistente`, com $contexto (ids) e valores.
      */
     public static function cobranca($pagamentos, array $contexto = []): array
     {
@@ -168,9 +168,6 @@ final class PedidoDoIfood
                 'metodos'           => count($metodos),
                 'metodos_na_porta'  => count($naPorta),
             ]);
-            if ($pendente === 0) {
-                $pendente = $somaNaPorta;
-            }
         }
 
         if ($pendente <= 0) {
