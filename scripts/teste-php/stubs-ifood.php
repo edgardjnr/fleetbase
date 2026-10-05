@@ -315,12 +315,12 @@ namespace Teste {
     {
         public static array $tabelas = [];
         public static array $proximoId = [];
-        /** Colunas únicas de cada tabela (NULL não conta, como no MySQL). */
-        public static array $unicas = [
-            'entregas_ifood_lojas'   => ['vendor_uuid', 'merchant_id'],
-            'entregas_ifood_eventos' => ['evento_id'],
-            'entregas_ifood_pedidos' => ['pedido_ifood_id', 'order_uuid'],
-        ];
+        /**
+         * Colunas e colunas únicas das tabelas entregas_ifood_*, lidas das migrations (carregadas uma vez, na primeira
+         * consulta): tabela => ['colunas' => [nomes], 'unicas' => [nomes]]. Assim um nome de coluna errado falha aqui,
+         * como o "Unknown column" do MySQL, e a lista de únicas não se descola das migrations.
+         */
+        private static ?array $esquema = null;
         /** Tabela => mensagem: toda escrita nela lança ErroDeBanco (banco fora do ar). */
         public static array $falhar = [];
 
@@ -329,6 +329,57 @@ namespace Teste {
             self::$tabelas   = [];
             self::$proximoId = [];
             self::$falhar    = [];
+        }
+
+        /** O esquema das migrations do iFood: lê os arquivos uma vez, sem mexer no Schema::$criadas dos testes. */
+        private static function esquema(): array
+        {
+            if (self::$esquema !== null) {
+                return self::$esquema;
+            }
+            $guardadas = \Illuminate\Support\Facades\Schema::$criadas;
+            self::$esquema = [];
+            foreach (glob(dirname(__DIR__, 2) . '/api/database/migrations/*_create_entregas_ifood_*_table.php') ?: [] as $arquivo) {
+                \Illuminate\Support\Facades\Schema::$criadas = [];
+                (require $arquivo)->up();
+                foreach (\Illuminate\Support\Facades\Schema::$criadas as $tabela => $blueprint) {
+                    $colunas = [];
+                    $unicas  = [];
+                    foreach ($blueprint->colunas as $coluna) {
+                        $primeiro = $coluna->argumentos[0] ?? null;
+                        if ($coluna->tipo === 'timestamps') {
+                            array_push($colunas, 'created_at', 'updated_at');
+                        } elseif ($coluna->tipo === 'id') {
+                            $colunas[] = $primeiro ?? 'id';
+                        } elseif (is_string($primeiro)) {
+                            // index([...]) e afins não são colunas (o primeiro argumento é uma lista)
+                            $colunas[] = $primeiro;
+                            if (array_key_exists('unique', $coluna->modificadores)) {
+                                $unicas[] = $primeiro;
+                            }
+                        }
+                    }
+                    self::$esquema[$tabela] = ['colunas' => $colunas, 'unicas' => $unicas];
+                }
+            }
+            \Illuminate\Support\Facades\Schema::$criadas = $guardadas;
+
+            return self::$esquema;
+        }
+
+        /** Colunas únicas da tabela (NULL não conta, como no MySQL); vazio para tabela fora do esquema do iFood. */
+        public static function unicasDe(string $tabela): array
+        {
+            return self::esquema()[$tabela]['unicas'] ?? [];
+        }
+
+        /** Lança como o MySQL ("Unknown column") se a coluna não existe na tabela entregas_ifood_*; as outras tabelas passam. */
+        public static function exigirColuna(string $tabela, $coluna): void
+        {
+            $colunas = self::esquema()[$tabela]['colunas'] ?? null;
+            if ($colunas !== null && is_string($coluna) && $coluna !== '*' && !in_array($coluna, $colunas, true)) {
+                throw new \RuntimeException("coluna desconhecida {$coluna} em {$tabela}");
+            }
         }
 
         /** As linhas da tabela, como objetos (o que o DB::table()->get() devolve). */
@@ -342,7 +393,10 @@ namespace Teste {
             if (isset(self::$falhar[$tabela])) {
                 throw new ErroDeBanco(self::$falhar[$tabela]);
             }
-            foreach (self::$unicas[$tabela] ?? [] as $coluna) {
+            foreach (array_keys($linha) as $coluna) {
+                self::exigirColuna($tabela, $coluna);
+            }
+            foreach (self::unicasDe($tabela) as $coluna) {
                 $valor = $linha[$coluna] ?? null;
                 if ($valor === null) {
                     continue;
@@ -378,15 +432,16 @@ namespace Teste {
                 $valor    = $operador;
                 $operador = '=';
             }
+            Banco::exigirColuna($this->tabela, $coluna);
             $this->filtros[] = fn (array $linha) => static::compara($linha[$coluna] ?? null, $operador, $valor);
 
             return $this;
         }
 
-        public function whereIn($coluna, array $valores) { $this->filtros[] = fn (array $linha) => in_array($linha[$coluna] ?? null, $valores, true); return $this; }
-        public function whereNull($coluna) { $this->filtros[] = fn (array $linha) => ($linha[$coluna] ?? null) === null; return $this; }
-        public function whereNotNull($coluna) { $this->filtros[] = fn (array $linha) => ($linha[$coluna] ?? null) !== null; return $this; }
-        public function orderBy($coluna, $direcao = 'asc') { $this->ordem[] = [$coluna, strtolower($direcao)]; return $this; }
+        public function whereIn($coluna, array $valores) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => in_array($linha[$coluna] ?? null, $valores, true); return $this; }
+        public function whereNull($coluna) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => ($linha[$coluna] ?? null) === null; return $this; }
+        public function whereNotNull($coluna) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => ($linha[$coluna] ?? null) !== null; return $this; }
+        public function orderBy($coluna, $direcao = 'asc') { Banco::exigirColuna($this->tabela, $coluna); $this->ordem[] = [$coluna, strtolower($direcao)]; return $this; }
         public function limit(int $quantos) { $this->limite = $quantos; return $this; }
 
         public static function compara($atual, string $operador, $valor): bool
@@ -434,8 +489,8 @@ namespace Teste {
 
         public function get($colunas = ['*']) { return new \Illuminate\Support\Collection(array_values(array_map(fn ($linha) => (object) $linha, $this->selecionadas()))); }
         public function first() { $linhas = $this->selecionadas(); return $linhas ? (object) reset($linhas) : null; }
-        public function pluck($coluna) { return new \Illuminate\Support\Collection(array_values(array_map(fn ($linha) => $linha[$coluna] ?? null, $this->selecionadas()))); }
-        public function value($coluna) { $linha = $this->first(); return $linha ? ($linha->$coluna ?? null) : null; }
+        public function pluck($coluna) { Banco::exigirColuna($this->tabela, $coluna); return new \Illuminate\Support\Collection(array_values(array_map(fn ($linha) => $linha[$coluna] ?? null, $this->selecionadas()))); }
+        public function value($coluna) { Banco::exigirColuna($this->tabela, $coluna); $linha = $this->first(); return $linha ? ($linha->$coluna ?? null) : null; }
         public function exists(): bool { return (bool) $this->selecionadas(); }
         public function count(): int { return count($this->selecionadas()); }
 
@@ -462,6 +517,9 @@ namespace Teste {
         {
             if (isset(Banco::$falhar[$this->tabela])) {
                 throw new ErroDeBanco(Banco::$falhar[$this->tabela]);
+            }
+            foreach (array_keys($valores) as $coluna) {
+                Banco::exigirColuna($this->tabela, $coluna);
             }
             $alteradas = 0;
             foreach (array_keys($this->selecionadas()) as $id) {
