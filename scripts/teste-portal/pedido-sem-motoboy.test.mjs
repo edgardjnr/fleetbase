@@ -27,11 +27,37 @@ test('eventos que resolvem o pedido devolvem os ids dele', () => {
     for (const event of ['order.driver_assigned', 'order.started', 'order.canceled', 'order.completed', 'order.failed']) {
         assert.deepEqual(pedidosResolvidos({ event, data: { id: 'order_a' } }), ['order_a'], event);
     }
-    assert.deepEqual(pedidosResolvidos({ event: 'order.canceled', data: { id: 'u-a', public_id: 'order_a', uuid: 'u-a' } }), ['u-a', 'order_a']);
+    assert.deepEqual(pedidosResolvidos({ event: 'order.canceled', data: { id: 'u-a', public_id: 'order_a', uuid: 'u-a' } }).sort(), ['order_a', 'u-a']);
 });
 
 test('outros eventos não resolvem nada', () => {
     assert.deepEqual(pedidosResolvidos({ event: 'order.updated', data: { id: 'order_a' } }), []);
     assert.deepEqual(pedidosResolvidos({ event: 'order.started', data: {} }), []);
     assert.deepEqual(pedidosResolvidos(undefined), []);
+});
+
+test('order.updated resolve quando o pedido está encerrado', () => {
+    assert.deepEqual(pedidosResolvidos({ event: 'order.updated', data: { id: 'order_a', status: 'expired' } }), ['order_a']);
+    for (const status of ['completed', 'done', 'canceled', 'cancelled', 'order_canceled', 'expired']) {
+        assert.deepEqual(pedidosResolvidos({ event: 'order.updated', data: { id: 'order_a', status } }), ['order_a'], status);
+    }
+});
+
+test('order.updated resolve quando o pedido já tem motoboy', () => {
+    assert.deepEqual(pedidosResolvidos({ event: 'order.updated', data: { id: 'order_a', status: 'dispatched', driver_assigned: 'driver_x' } }), ['order_a']);
+    assert.deepEqual(pedidosResolvidos({ event: 'order.updated', data: { id: 'order_a', driver_assigned: 'driver_x' } }), ['order_a']);
+});
+
+test('order.updated aberto e sem motoboy não resolve', () => {
+    assert.deepEqual(pedidosResolvidos({ event: 'order.updated', data: { id: 'order_a', status: 'dispatched', driver_assigned: null } }), []);
+    assert.deepEqual(pedidosResolvidos({ event: 'order.updated', data: { id: 'order_a', status: 'created' } }), []);
+});
+
+test('entradas inesperadas', () => {
+    assert.equal(avisoSemMotoboy({ event: 'entregas.pedido_sem_motoboy', data: { id: 123 } }), null);
+    assert.equal(avisoSemMotoboy({ event: 'entregas.pedido_sem_motoboy', data: null }), null);
+    assert.equal(avisoSemMotoboy({ event: 'entregas.pedido_sem_motoboy', data: { id: 'order_a', numero: 4821 } }).numero, '4821');
+    assert.equal(avisoSemMotoboy({ event: 'entregas.pedido_sem_motoboy', data: { id: 'order_a', minutos: 'abc' } }).minutos, 0);
+    assert.deepEqual(pedidosResolvidos('texto'), []);
+    assert.deepEqual(pedidosResolvidos({ event: 'order.canceled', data: null }), []);
 });

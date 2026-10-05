@@ -28,15 +28,30 @@ export function avisoSemMotoboy(mensagem) {
 }
 
 /**
- * Ids (public_id e/ou uuid) do pedido cujo aviso deve sumir. O data.id é o public_id, mas numa chamada interna do
- * console pode vir o uuid: devolve todos os que vierem.
+ * Status que encerram o pedido. É a mesma lista de App\Support\Entregas\StatusDoPedido::ENCERRADOS: manter as duas iguais.
+ */
+const STATUS_ENCERRADOS = new Set(['completed', 'done', 'canceled', 'cancelled', 'order_canceled', 'expired']);
+
+/**
+ * Ids do pedido cujo aviso deve sumir. Resolvem o aviso:
+ * - os eventos de EVENTOS_QUE_RESOLVEM;
+ * - rede de proteção: um `order.updated` com status encerrado (o pedido que expira, ou termina como done/order_canceled,
+ *   não tem evento próprio) ou com `driver_assigned` preenchido (cobre o aceite que chega antes do aviso). O recurso v1
+ *   do pedido manda o public_id do motorista, ou null.
+ *
+ * O payload atual do Fleet-Ops (ResourceLifecycleEvent + Order::toWebhookPayload) traz só `data.id` = public_id;
+ * `public_id` e `uuid` ficam por defesa (uma chamada interna do console pode mandar o uuid): devolve todos os que vierem.
  *
  * @returns {string[]}
  */
 export function pedidosResolvidos(mensagem) {
-    if (!EVENTOS_QUE_RESOLVEM.has(mensagem?.event)) return [];
+    const evento = mensagem?.event;
+    const dados = mensagem?.data ?? {};
 
-    const dados = mensagem.data ?? {};
+    const resolve =
+        EVENTOS_QUE_RESOLVEM.has(evento) ||
+        (evento === 'order.updated' && (STATUS_ENCERRADOS.has(dados.status) || Boolean(dados.driver_assigned)));
+    if (!resolve) return [];
 
     return [...new Set([dados.id, dados.public_id, dados.uuid].filter((id) => typeof id === 'string' && id))];
 }
