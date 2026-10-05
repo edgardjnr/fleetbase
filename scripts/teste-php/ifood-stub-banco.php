@@ -42,7 +42,20 @@ confere(Banco::unicasDe('entregas_ifood_eventos') === ['evento_id'], 'eventos: e
 $pedidosUnicas = Banco::unicasDe('entregas_ifood_pedidos');
 sort($pedidosUnicas);
 confere($pedidosUnicas === ['order_uuid', 'pedido_ifood_id'], 'pedidos: pedido_ifood_id e order_uuid');
-confere(excecao(fn () => DB::table('entregas_ifood_eventos')->insert(['evento_id' => 'e1'])) !== null, 'evento_id repetido continua sendo recusado');
+$repetido = excecao(fn () => DB::table('entregas_ifood_eventos')->insert(['evento_id' => 'e1']));
+confere($repetido !== null, 'evento_id repetido continua sendo recusado');
+confere($repetido instanceof \Illuminate\Database\QueryException && $repetido->getCode() === '23000' && $repetido->errorInfo[0] === '23000', 'como QueryException com SQLSTATE 23000');
+Banco::$falhar['entregas_ifood_eventos'] = 'MySQL server has gone away';
+$fora = excecao(fn () => DB::table('entregas_ifood_eventos')->insert(['evento_id' => 'e9']));
+confere($fora instanceof Teste\ErroDeBanco && $fora->getCode() !== '23000', 'banco fora do ar: outro SQLSTATE');
+unset(Banco::$falhar['entregas_ifood_eventos']);
+
+echo '== gancho antes do insert' . PHP_EOL;
+$vezes = 0;
+Banco::$antesDeInserir['entregas_ifood_eventos'] = function () use (&$vezes) { $vezes++; };
+DB::table('entregas_ifood_eventos')->insert(['evento_id' => 'g1']);
+DB::table('entregas_ifood_eventos')->insert(['evento_id' => 'g2']);
+confere($vezes === 1, 'roda uma vez só, antes do próximo insert');
 
 echo '== não estraga o Schema::$criadas' . PHP_EOL;
 confere(\Illuminate\Support\Facades\Schema::$criadas === [], 'as migrations lidas pelo banco não ficam registradas no Schema');

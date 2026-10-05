@@ -133,6 +133,28 @@ namespace Illuminate\Http\Client {
     }
 }
 
+// o Guzzle (por baixo do Http do Laravel): erros de transferência fora do ConnectionException (redirecionamentos
+// demais, resposta truncada...)
+namespace GuzzleHttp\Exception {
+    interface GuzzleException extends \Throwable {}
+    class TransferException extends \RuntimeException implements GuzzleException {}
+}
+
+// o decrypt() com APP_KEY trocado ou texto corrompido
+namespace Illuminate\Contracts\Encryption {
+    class DecryptException extends \RuntimeException {}
+}
+
+// o block() da trava do Cache que esperou o tempo todo
+namespace Illuminate\Contracts\Cache {
+    class LockTimeoutException extends \Exception {}
+}
+
+// erro do banco: código = SQLSTATE (23000 = chave única), como o QueryException de verdade (que copia o do PDOException)
+namespace Illuminate\Database {
+    class QueryException extends \PDOException {}
+}
+
 namespace Illuminate\Database\Migrations {
     abstract class Migration {}
 }
@@ -258,7 +280,8 @@ namespace Teste {
         public function block($segundos, $callback = null)
         {
             if (isset(self::$ocupadas[$this->nome])) {
-                throw new \RuntimeException("trava ocupada: {$this->nome}");
+                // o Laravel espera $segundos e desiste com LockTimeoutException
+                throw new \Illuminate\Contracts\Cache\LockTimeoutException("trava ocupada: {$this->nome}");
             }
 
             return $this->get($callback);
@@ -274,6 +297,9 @@ namespace Teste {
         public static array $chamadas = [];
         public static function responder(int $status, $corpo = null, array $cabecalhos = []): void { self::$respostas[] = [$status, $corpo, $cabecalhos]; }
         public static function falharConexao(): void { self::$respostas[] = 'conexao'; }
+        public static function falharTransferencia(): void { self::$respostas[] = 'transferencia'; }
+        /** Resposta montada na hora da chamada: $fazer() roda nesse momento (ex.: outro processo mexe no banco) e devolve [status, corpo, cabeçalhos]. */
+        public static function responderCom(\Closure $fazer): void { self::$respostas[] = $fazer; }
 
         /** URLs chamadas, na ordem (sem a base). */
         public static function urls(): array
@@ -303,12 +329,27 @@ namespace Teste {
             if ($resposta === 'conexao') {
                 throw new \Illuminate\Http\Client\ConnectionException('cURL error 28: Operation timed out');
             }
+            if ($resposta === 'transferencia') {
+                throw new \GuzzleHttp\Exception\TransferException('Will not follow more than 5 redirects');
+            }
+            if ($resposta instanceof \Closure) {
+                $resposta = $resposta();
+            }
 
             return new \Illuminate\Http\Client\Response(...$resposta);
         }
     }
 
-    class ErroDeBanco extends \RuntimeException {}
+    // erro do banco em memória; $sqlstate '23000' = chave única repetida
+    class ErroDeBanco extends \Illuminate\Database\QueryException
+    {
+        public function __construct(string $mensagem, string $sqlstate = 'HY000')
+        {
+            parent::__construct($mensagem);
+            $this->code      = $sqlstate;
+            $this->errorInfo = [$sqlstate, null, $mensagem];
+        }
+    }
 
     // tabelas em memória: nome => [id => linha]
     class Banco
@@ -323,12 +364,15 @@ namespace Teste {
         private static ?array $esquema = null;
         /** Tabela => mensagem: toda escrita nela lança ErroDeBanco (banco fora do ar). */
         public static array $falhar = [];
+        /** Tabela => função: roda uma vez, logo antes do próximo insert nela (outro processo gravando no meio). */
+        public static array $antesDeInserir = [];
 
         public static function limpar(): void
         {
-            self::$tabelas   = [];
-            self::$proximoId = [];
-            self::$falhar    = [];
+            self::$tabelas        = [];
+            self::$proximoId      = [];
+            self::$falhar         = [];
+            self::$antesDeInserir = [];
         }
 
         /** O esquema das migrations do iFood: lê os arquivos uma vez, sem mexer no Schema::$criadas dos testes. */
@@ -393,6 +437,11 @@ namespace Teste {
             if (isset(self::$falhar[$tabela])) {
                 throw new ErroDeBanco(self::$falhar[$tabela]);
             }
+            if (isset(self::$antesDeInserir[$tabela])) {
+                $fazer = self::$antesDeInserir[$tabela];
+                unset(self::$antesDeInserir[$tabela]);
+                $fazer();
+            }
             foreach (array_keys($linha) as $coluna) {
                 self::exigirColuna($tabela, $coluna);
             }
@@ -406,7 +455,7 @@ namespace Teste {
                         if ($ignorarRepetida) {
                             return false;
                         }
-                        throw new ErroDeBanco("Duplicate entry '{$valor}' for key '{$tabela}.{$coluna}'");
+                        throw new ErroDeBanco("SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '{$valor}' for key '{$tabela}.{$coluna}'", '23000');
                     }
                 }
             }
@@ -571,7 +620,8 @@ namespace {
     function decrypt($valor)
     {
         if (!is_string($valor) || !str_starts_with($valor, 'cifrado:')) {
-            throw new \RuntimeException('decrypt: valor que não foi cifrado');
+            // como o Encrypter com APP_KEY trocado ou texto corrompido
+            throw new \Illuminate\Contracts\Encryption\DecryptException('The MAC is invalid.');
         }
 
         return unserialize(base64_decode(substr($valor, 8)));

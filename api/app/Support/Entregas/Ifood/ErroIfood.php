@@ -27,6 +27,15 @@ class ErroIfood extends RuntimeException
         return $this->status === 401;
     }
 
+    /**
+     * O /oauth/token recusou o refresh token (400 invalid_grant ou 401): o vínculo caiu. Os outros erros da renovação
+     * (403, 404, 408, 409, 429, 5xx, rede, 200 sem accessToken) não derrubam a loja.
+     */
+    public function refreshRecusado(): bool
+    {
+        return $this->status === 400 || $this->status === 401;
+    }
+
     public function limiteExcedido(): bool
     {
         return $this->status === 429;

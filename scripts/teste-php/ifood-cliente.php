@@ -116,4 +116,43 @@ $erro = excecao(fn () => $cliente->ack('token-1', ['ev-1']));
 confere($erro instanceof ErroIfood && $erro->status === 0 && $erro->temporario(), 'falha de rede vira status 0');
 confere(Log::$registros === [], 'a porta HTTP não registra nada no log');
 
+echo '== Outros erros de transferência e Retry-After exagerado' . PHP_EOL;
+reiniciarIfood();
+Http::falharTransferencia();
+$erro = excecao(fn () => $cliente->pedidoLogistics('token-1', 'pedido-1'));
+confere($erro instanceof ErroIfood && $erro->status === 0 && $erro->temporario() && $erro->operacao === 'pedido', 'erro de transferência do Guzzle (fora o de conexão) também vira status 0');
+Http::responder(429, ['message' => 'Too Many Requests'], ['Retry-After' => '86400']);
+$erro = excecao(fn () => $cliente->polling('token-1', ['merchant-1']));
+confere($erro instanceof ErroIfood && $erro->retryAfter === ClienteIfood::ESPERA_MAXIMA_429 && ClienteIfood::ESPERA_MAXIMA_429 === 300, 'Retry-After acima de 300 s fica em 300 s');
+
+echo '== Segredos fora do stack trace (#[\SensitiveParameter])' . PHP_EOL;
+
+/** O parâmetro tem #[\SensitiveParameter] (o PHP troca o valor por SensitiveParameterValue no stack trace). */
+function sensivel(string $classe, string $metodo, string $parametro): bool
+{
+    foreach ((new ReflectionMethod($classe, $metodo))->getParameters() as $p) {
+        if ($p->getName() === $parametro) {
+            return (bool) $p->getAttributes(SensitiveParameter::class);
+        }
+    }
+
+    return false;
+}
+
+foreach ([
+    ['trocarCodigo', 'codigoDeAutorizacao'], ['trocarCodigo', 'verificador'], ['renovar', 'refreshToken'], ['lojasDoToken', 'token'],
+    ['polling', 'token'], ['ack', 'token'], ['pedidoLogistics', 'token'], ['token', 'campos'], ['comToken', 'token'],
+] as [$metodo, $parametro]) {
+    confere(sensivel(ClienteIfood::class, $metodo, $parametro), "ClienteIfood::{$metodo}(\${$parametro}) sensível");
+}
+reiniciarIfood();
+$erro  = excecao(fn () => $cliente->trocarCodigo('AUTH-SEGREDO', 'verificador-segredo'));
+// só os quadros do ClienteIfood: os do Http (aqui o stub; em produção o PendingRequest do Laravel) não são nossos
+$doCliente = array_filter($erro->getTrace(), fn ($quadro) => ($quadro['class'] ?? '') === ClienteIfood::class);
+// objetos pelo nome da classe, como o getTraceAsString mostra
+$trace = json_encode(array_map(fn ($quadro) => array_map(fn ($arg) => is_object($arg) ? get_class($arg) : $arg, $quadro['args'] ?? []), array_values($doCliente)));
+$troca = array_values(array_filter($doCliente, fn ($quadro) => $quadro['function'] === 'trocarCodigo'))[0] ?? null;
+confere($troca && array_map('get_class', $troca['args']) === ['SensitiveParameterValue', 'SensitiveParameterValue'], 'trocarCodigo no stack trace: SensitiveParameterValue no lugar do código e do verificador');
+confere(!str_contains($trace, 'AUTH-SEGREDO') && !str_contains($trace, 'verificador-segredo'), 'nenhum quadro do ClienteIfood mostra o código ou o verificador');
+
 resumo();
