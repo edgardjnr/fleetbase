@@ -15,6 +15,8 @@ const ENDPOINT = 'entregas/lojas';
  * 2. a central cola o código de autorização que o dono da loja recebeu no portal e vincula (POST .../ifood/vincular);
  * 3. com várias lojas na conta do iFood, a central escolhe uma (POST .../ifood/vincular com merchant_id).
  * Os botões ficam no corpo (o rodapé só tem Fechar). Vinculada, avisa a tela (options.onVinculado) e fecha.
+ * Depois de um erro ao vincular ou escolher (código vencido, recusado, loja em outra conta: o servidor responde 422 e o
+ * console não repassa o status), "Gerar outro código" aparece também na escolha e com o código ainda válido.
  */
 export default class ModalsVincularIfoodComponent extends Component {
     @service fetch;
@@ -29,6 +31,8 @@ export default class ModalsVincularIfoodComponent extends Component {
     @tracked autorizacao = '';
     // lojas da conta do iFood para a central escolher (vazio = não está escolhendo)
     @tracked lojasDoIfood = [];
+    // o último vincular/escolher deu erro: oferece "Gerar outro código" sem precisar fechar e abrir de novo
+    @tracked falhou = false;
 
     constructor(owner, { options }) {
         super(...arguments);
@@ -73,6 +77,7 @@ export default class ModalsVincularIfoodComponent extends Component {
         this.codigo = null;
         this.autorizacao = '';
         this.lojasDoIfood = [];
+        this.falhou = false;
 
         try {
             const resposta = yield this.fetch.post(`${ENDPOINT}/${this.loja.id}/ifood/codigo`);
@@ -91,8 +96,10 @@ export default class ModalsVincularIfoodComponent extends Component {
 
         try {
             const resposta = yield this.fetch.post(`${ENDPOINT}/${this.loja.id}/ifood/vincular`, { authorizationCode: limparCodigo(this.autorizacao) });
+            this.falhou = false;
             this.concluir(resposta);
         } catch (error) {
+            this.falhou = true;
             this.notifications.serverError(error);
         }
     }
@@ -100,8 +107,10 @@ export default class ModalsVincularIfoodComponent extends Component {
     @task({ drop: true }) *escolher(lojaDoIfood) {
         try {
             const resposta = yield this.fetch.post(`${ENDPOINT}/${this.loja.id}/ifood/vincular`, { merchant_id: lojaDoIfood.id });
+            this.falhou = false;
             this.concluir(resposta);
         } catch (error) {
+            this.falhou = true;
             this.notifications.serverError(error);
         }
     }

@@ -23,9 +23,10 @@ export function vencimentoDoCodigo(expiraEmSegundos, recebidoEm) {
     return recebidoEm + (Number.isFinite(segundos) && segundos > 0 ? segundos : VALIDADE_PADRAO_SEGUNDOS) * 1000;
 }
 
-/** Segundos que faltam até o vencimento (nunca negativo; arredonda para cima). */
+/** Segundos que faltam até o vencimento (nunca negativo; arredonda para cima). Valor não finito (NaN, undefined) conta como vencido (0). */
 export function segundosRestantes(vencimento, agora) {
-    return Math.max(0, Math.ceil((vencimento - agora) / 1000));
+    const restante = Math.ceil((Number(vencimento) - Number(agora)) / 1000);
+    return Number.isFinite(restante) ? Math.max(0, restante) : 0;
 }
 
 /** Contagem regressiva "9:05", "0:59", "0:00". */
@@ -34,18 +35,21 @@ export function contagem(segundos) {
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
-/** O código de autorização como foi colado, sem espaços nas pontas nem quebras de linha. */
+/** O código de autorização como foi colado, sem nenhum espaço em branco (o código do iFood não tem espaços; tira também os do meio e as quebras de linha). */
 export function limparCodigo(texto) {
-    return String(texto ?? '')
-        .replace(/\s+/g, ' ')
-        .trim();
+    return String(texto ?? '').replace(/\s+/g, '');
 }
 
-/** Só um link https do iFood vira botão (o servidor devolve o verificationUrlComplete do Portal do Parceiro). */
+/**
+ * Só um link https do iFood vira botão (o servidor devolve o verificationUrlComplete do Portal do Parceiro).
+ * O host precisa ser ifood.com.br ou um subdomínio dele ("evilifood.com.br" não vale), e a URL não pode ter usuário,
+ * senha nem porta ("https://x@evil.com", "https://evil.com@portal.ifood.com.br", ":8443").
+ */
 export function linkSeguro(link) {
     try {
         const url = new URL(String(link ?? ''));
-        return url.protocol === 'https:' && /(^|\.)ifood\.com\.br$/.test(url.hostname) ? url.href : null;
+        const hostDoIfood = /(^|\.)ifood\.com\.br$/.test(url.hostname);
+        return url.protocol === 'https:' && hostDoIfood && !url.username && !url.password && !url.port ? url.href : null;
     } catch {
         return null;
     }

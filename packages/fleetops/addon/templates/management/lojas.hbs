@@ -197,7 +197,7 @@
                                     {{#if (eq situacao "vinculada")}}
                                         <span class="font-medium rounded px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">{{t
                                                 "fleet-ops.ui.lojas.ifood.linked"
-                                                name=loja.ifood.nome
+                                                name=(or loja.ifood.nome loja.ifood.merchant_id)
                                             }}</span>
                                     {{else if (eq situacao "perdido")}}
                                         <span class="font-medium rounded px-2 py-0.5 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">{{t "fleet-ops.ui.lojas.ifood.lost"}}</span>

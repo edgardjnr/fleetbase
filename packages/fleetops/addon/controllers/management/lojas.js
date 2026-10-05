@@ -275,6 +275,12 @@ export default class ManagementLojasController extends Controller {
             hideAcceptButton: true,
             declineButtonText: this.intl.t('fleet-ops.ui.lojas.ifood.close'),
             onVinculado: (lojaAtualizada) => this.substituirLoja(lojaAtualizada),
+            // fechou no meio do vínculo (o servidor pode ter concluído): relê a lista para o card não ficar desatualizado
+            onFinish: () => {
+                if (this.carregado) {
+                    this.carregar.perform();
+                }
+            },
         });
     }
 

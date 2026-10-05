@@ -15,6 +15,9 @@
                     />
                 {{/each}}
             </div>
+            {{#if this.falhou}}
+                <Button @size="sm" @icon="refresh" @text={{t "fleet-ops.ui.lojas.ifood.new-code"}} @onClick={{perform this.gerarCodigo}} />
+            {{/if}}
         {{else if this.gerarCodigo.isRunning}}
             <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.ifood.generating"}}</p>
         {{else if this.codigo}}
@@ -55,6 +58,9 @@
                         @isLoading={{this.vincular.isRunning}}
                         @onClick={{perform this.vincular}}
                     />
+                    {{#if this.falhou}}
+                        <Button @size="sm" @icon="refresh" @text={{t "fleet-ops.ui.lojas.ifood.new-code"}} @onClick={{perform this.gerarCodigo}} />
+                    {{/if}}
                 </div>
             {{/if}}
         {{else}}
