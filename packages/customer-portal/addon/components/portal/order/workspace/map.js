@@ -1,4 +1,5 @@
 import Component from '@glimmer/component';
+import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { debug } from '@ember/debug';
@@ -6,6 +7,7 @@ import { race, task, timeout, waitForEvent } from 'ember-concurrency';
 import CamadaDeMotoboys from '../../../../utils/camada-de-motoboys';
 import { motoboyDoPedido, motoboysValidos } from '../../../../utils/motoboys-no-mapa';
 import { INTERVALO_MAPA_MS, espera } from '../../../../utils/entregas-pedido';
+import { ALFINETE, mesmaLista, pedidosValidos, semOPedidoAberto, tempoDesde } from '../../../../utils/pedidos-no-mapa';
 
 export default class PortalOrderWorkspaceMapComponent extends Component {
     @service customerPortalOrderRoutePreview;
@@ -15,6 +17,11 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
     // Entregas: os capacetes dos motoboys (utils/camada-de-motoboys) e a última lista que a API devolveu
     camadaDeMotoboys = null;
     ultimosMotoboys = [];
+
+    // Entregas: os pedidos em andamento da loja (alfinete vermelho no endereço de entrega) e o relógio do "há X min"
+    @tracked pedidosNoMapa = [];
+    @tracked relogio = Date.now();
+    _iconeDoAlfinete = null;
 
     willDestroy() {
         super.willDestroy(...arguments);
@@ -39,6 +46,29 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
             ...this.customerPortalOrderRoutePreview.selectedOrderRoutePoints.map((point) => this.markerForRoutePoint(point, 'selected')),
         ].slice(0, 150);
     }
+
+    // Entregas: o pedido aberto no detalhe já mostra P e D pela rota: o alfinete dele sai
+    get alfinetes() {
+        return semOPedidoAberto(this.pedidosNoMapa, this.args.selectedOrder?.public_id ?? null);
+    }
+
+    // um ícone só para todos os alfinetes (criado quando o Leaflet já existe)
+    get iconeDoAlfinete() {
+        const L = globalThis.L;
+
+        if (!this._iconeDoAlfinete && L?.icon) {
+            this._iconeDoAlfinete = L.icon({ iconUrl: ALFINETE.url, iconSize: ALFINETE.tamanho, iconAnchor: ALFINETE.ponta, popupAnchor: ALFINETE.popup });
+        }
+
+        return this._iconeDoAlfinete ?? undefined;
+    }
+
+    // "há X min" do alfinete; o relogio (atualizado a cada consulta) faz o texto andar
+    tempoDoPedido = (pedido, relogio) => {
+        const tempo = tempoDesde(pedido?.criado_em, relogio);
+
+        return tempo ? this.intl.t(`customer-portal.ui.entregas.mapa-pedido-ha-${tempo.unidade}`, { n: tempo.n }) : '';
+    };
 
     markersForOrder(order, source = 'order') {
         const payload = order?.payload;
@@ -194,6 +224,13 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
 
                 if (resposta) {
                     this.ultimosMotoboys = Array.isArray(resposta.motoboys) ? resposta.motoboys : [];
+
+                    // os alfinetes dos pedidos da loja vêm na mesma resposta; API antiga (sem pedidos) = nenhum alfinete
+                    const pedidos = pedidosValidos(resposta.pedidos);
+                    if (!mesmaLista(pedidos, this.pedidosNoMapa)) {
+                        this.pedidosNoMapa = pedidos;
+                    }
+                    this.relogio = Date.now();
 
                     // erro ao desenhar não é falha da consulta: não aumenta a espera
                     try {

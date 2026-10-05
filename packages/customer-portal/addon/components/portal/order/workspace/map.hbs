@@ -19,5 +19,19 @@
                 </marker.popup>
             </layers.marker>
         {{/each}}
+        {{!-- Entregas: alfinete vermelho no endereço de entrega de cada pedido em andamento da loja (PedidosNoMapa::daLoja), por baixo dos capacetes --}}
+        {{#each this.alfinetes key="id" as |pedido|}}
+            <layers.marker @lat={{pedido.latitude}} @lng={{pedido.longitude}} @icon={{this.iconeDoAlfinete}} @zIndexOffset={{-1000}} @riseOnHover={{true}} as |marker|>
+                <marker.popup @minWidth="200">
+                    <div class="text-sm font-semibold">{{pedido.numero}}</div>
+                    <div class="text-xs"><span class="text-gray-500">{{t "customer-portal.ui.entregas.mapa-pedido-status"}}:</span> {{smart-humanize pedido.status}}</div>
+                    <div class="text-xs"><span class="text-gray-500">{{t "customer-portal.ui.entregas.mapa-pedido-motoboy"}}:</span>
+                        {{or pedido.motoboy (t "customer-portal.ui.entregas.mapa-pedido-sem-motoboy")}}</div>
+                    <div class="text-xs"><span class="text-gray-500">{{t "customer-portal.ui.entregas.mapa-pedido-criado"}}:</span> {{this.tempoDoPedido pedido this.relogio}}</div>
+                    <div class="text-xs"><span class="text-gray-500">{{t "customer-portal.ui.entregas.mapa-pedido-entrega"}}:</span> {{n-a pedido.endereco}}</div>
+                    <LinkTo @route="portal.orders.details" @model={{pedido.id}} class="text-xs font-semibold mt-1 inline-block">{{t "customer-portal.ui.entregas.mapa-pedido-ver"}}</LinkTo>
+                </marker.popup>
+            </layers.marker>
+        {{/each}}
     </LeafletMap>
 </section>

@@ -645,6 +645,15 @@ customer-portal:
       no-orders-in-progress: No orders in progress
       no-orders-in-progress-text: Completed and canceled orders are in the Table view.
       zoom-in: Zoom in
+      mapa-pedido-status: Status
+      mapa-pedido-motoboy: Courier
+      mapa-pedido-sem-motoboy: No courier
+      mapa-pedido-criado: Created
+      mapa-pedido-entrega: Delivery
+      mapa-pedido-ver: View order
+      mapa-pedido-ha-agora: just now
+      mapa-pedido-ha-min: "{n} min ago"
+      mapa-pedido-ha-h: "{n} h ago"
       zoom-out: Zoom out
       statement: Statement
       statement-title: Delivery statement

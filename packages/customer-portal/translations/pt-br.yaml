@@ -645,6 +645,15 @@ customer-portal:
       no-orders-in-progress: Nenhum pedido em andamento
       no-orders-in-progress-text: Os pedidos concluídos e cancelados ficam na Tabela.
       zoom-in: Aproximar
+      mapa-pedido-status: Status
+      mapa-pedido-motoboy: Motoboy
+      mapa-pedido-sem-motoboy: Sem motoboy
+      mapa-pedido-criado: Criado
+      mapa-pedido-entrega: Entrega
+      mapa-pedido-ver: Ver pedido
+      mapa-pedido-ha-agora: agora mesmo
+      mapa-pedido-ha-min: "há {n} min"
+      mapa-pedido-ha-h: "há {n} h"
       zoom-out: Afastar
       statement: Extrato
       statement-title: Extrato de entregas
