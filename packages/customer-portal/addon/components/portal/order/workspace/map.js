@@ -7,7 +7,7 @@ import { race, task, timeout, waitForEvent } from 'ember-concurrency';
 import CamadaDeMotoboys from '../../../../utils/camada-de-motoboys';
 import { motoboyDoPedido, motoboysValidos } from '../../../../utils/motoboys-no-mapa';
 import { INTERVALO_MAPA_MS, espera } from '../../../../utils/entregas-pedido';
-import { ALFINETE, mesmaLista, pedidosValidos, semOPedidoAberto, tempoDesde } from '../../../../utils/pedidos-no-mapa';
+import { ALFINETE, mesmaLista, nomeNoAlfinete, pedidosValidos, semOPedidoAberto, tempoDesde } from '../../../../utils/pedidos-no-mapa';
 
 export default class PortalOrderWorkspaceMapComponent extends Component {
     @service customerPortalOrderRoutePreview;
@@ -22,6 +22,7 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
     @tracked pedidosNoMapa = [];
     @tracked relogio = Date.now();
     _iconeDoAlfinete = null;
+    nomeNoAlfinete = nomeNoAlfinete;
 
     willDestroy() {
         super.willDestroy(...arguments);

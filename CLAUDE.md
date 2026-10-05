@@ -114,6 +114,7 @@ O produto é só isto: o pedido chega do iFood pela API, é despachado para o mo
     - A lista vem em `pedidos`, na mesma resposta de `entregas/mapa/motoboys`, e é relida junto com os capacetes.
     - Ela sai do `App\Support\Entregas\PedidosNoMapa::daCentral`: pedidos não encerrados e atualizados nas últimas 12 h, com ou sem motoboy, até 300.
     - O popup mostra número, loja, status, motoboy, "há X min" e endereço, e tem o botão Abrir pedido.
+    - Pedido **aceito** (`aceito` = `orders.started`): o nome do motoboy fica fixo embaixo do alfinete, num rótulo vermelho-escuro (`entregas-nome-no-alfinete`), diferente do rótulo do capacete. Pedido só atribuído pela central fica sem rótulo. Vale também para o portal.
     - Funções puras: `utils/entregas-pedidos-no-mapa.js`.
     - Testes: `scripts/teste-php/pedidos-no-mapa.php` e `scripts/teste-portal/entregas-pedidos-no-mapa.test.mjs`.
 - `docker/`: Dockerfile da API, `docker/socket/` (socket ARM) e crontab.

@@ -2,7 +2,7 @@
 // Uso, na raiz do repo: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/*.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALFINETE, mesmaLista, pedidosValidos, tempoDesde } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
+import { ALFINETE, nomeNoAlfinete, mesmaLista, pedidosValidos, tempoDesde } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
 
 test('alfinete vermelho em SVG, com a ponta embaixo no meio', () => {
     assert.match(ALFINETE.url, /^data:image\/svg\+xml;charset=UTF-8,/);
@@ -41,4 +41,14 @@ test('tempo desde a criação: agora, minutos e horas', () => {
     assert.deepEqual(tempoDesde('2026-10-05T12:05:00Z', agora), { unidade: 'agora', n: 0 }, 'relógio adiantado do servidor');
     assert.equal(tempoDesde(null, agora), null);
     assert.equal(tempoDesde('xx', agora), null);
+});
+
+test('nome fixo no alfinete: só com o pedido aceito por um motoboy', () => {
+    assert.equal(nomeNoAlfinete({ motoboy: 'João', aceito: true }), 'João');
+    assert.equal(nomeNoAlfinete({ motoboy: '  João  ', aceito: true }), 'João');
+    assert.equal(nomeNoAlfinete({ motoboy: 'João', aceito: false }), null, 'atribuído pela central, ainda não aceito');
+    assert.equal(nomeNoAlfinete({ motoboy: 'João' }), null, 'API sem o campo aceito');
+    assert.equal(nomeNoAlfinete({ motoboy: null, aceito: true }), null);
+    assert.equal(nomeNoAlfinete({ motoboy: '   ', aceito: true }), null);
+    assert.equal(nomeNoAlfinete(null), null);
 });

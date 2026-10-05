@@ -45,6 +45,13 @@ export function pedidosValidos(pedidos) {
         .map((pedido) => ({ ...pedido, latitude: Number(pedido.latitude), longitude: Number(pedido.longitude) }));
 }
 
+/** Nome fixo embaixo do alfinete: só com o pedido já aceito por um motoboy (atribuído pela central e não aceito: nenhum). */
+export function nomeNoAlfinete(pedido) {
+    const nome = typeof pedido?.motoboy === 'string' ? pedido.motoboy.trim() : '';
+
+    return pedido?.aceito === true && nome !== '' ? nome : null;
+}
+
 /** Mesma lista? Só troca (e redesenha os alfinetes) quando algo mudou. */
 export function mesmaLista(a, b) {
     return JSON.stringify(a ?? []) === JSON.stringify(b ?? []);

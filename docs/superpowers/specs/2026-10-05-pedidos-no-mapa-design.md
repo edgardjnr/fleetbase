@@ -46,6 +46,7 @@ Cada item:
 | `endereco` | sim | sim | endereço do dropoff |
 | `status` | sim | sim | `orders.status` cru (o front traduz por `ember-ui.status.*`) |
 | `motoboy` | sim | sim | nome do motoboy atribuído ou `null` |
+| `aceito` | sim | sim | `orders.started`: o motoboy já aceitou (não só foi atribuído pela central) |
 | `criado_em` | sim | sim | `created_at` em ISO 8601 |
 | `loja` | sim | **não** | nome do Vendor do `customer_uuid`; sem Vendor, o nome do local de coleta; senão `null` |
 
@@ -93,6 +94,14 @@ O portal **nunca** recebe id do motoboy (uuid ou public_id), telefone, nem pedid
   - botão **Ver pedido**, que abre o detalhe do pedido (rota `portal.orders.details` com o `public_id`, a mesma do
     `Portal::Order::ListCard`).
 - Os capacetes ficam por cima dos alfinetes.
+
+## Nome do motoboy no alfinete (adendo de 2026-10-05)
+
+Com o pedido **aceito** por um motoboy (`aceito` = `orders.started`), o alfinete ganha o nome dele num rótulo fixo
+embaixo, nos dois mapas, no formato do nome do capacete, mas em vermelho-escuro (classe `entregas-nome-no-alfinete`).
+A cor diferente evita confundir os dois nomes quando o motoboy está perto da entrega. Pedido só atribuído pela central,
+ainda não aceito, fica sem rótulo; o popup continua mostrando o motoboy atribuído. A regra fica na função pura
+`nomeNoAlfinete` dos dois utils.
 
 ## Ícone
 

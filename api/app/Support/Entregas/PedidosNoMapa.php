@@ -24,7 +24,7 @@ class PedidosNoMapa
     public const LIMITE = 300;
 
     /**
-     * @return array<int, array{id: string, numero: string, latitude: float, longitude: float, endereco: ?string, status: ?string, motoboy: ?string, criado_em: ?string, loja: ?string}>
+     * @return array<int, array{id: string, numero: string, latitude: float, longitude: float, endereco: ?string, status: ?string, motoboy: ?string, aceito: bool, criado_em: ?string, loja: ?string}>
      */
     public static function daCentral(string $companyUuid): array
     {
@@ -40,7 +40,7 @@ class PedidosNoMapa
     /**
      * @param array<int, string> $donos customer_uuid dos pedidos da loja: o Vendor e o contato do usuário
      *
-     * @return array<int, array{id: string, numero: string, latitude: float, longitude: float, endereco: ?string, status: ?string, motoboy: ?string, criado_em: ?string}>
+     * @return array<int, array{id: string, numero: string, latitude: float, longitude: float, endereco: ?string, status: ?string, motoboy: ?string, aceito: bool, criado_em: ?string}>
      */
     public static function daLoja(string $companyUuid, array $donos): array
     {
@@ -84,6 +84,8 @@ class PedidosNoMapa
                 'endereco'  => $destino->address ?: $destino->name,
                 'status'    => $pedido->status,
                 'motoboy'   => $pedido->driverAssigned?->name,
+                // o motoboy já aceitou (não só foi atribuído pela central): o alfinete ganha o nome dele fixo embaixo
+                'aceito'    => (bool) $pedido->started,
                 'criado_em' => $pedido->created_at?->toIso8601String(),
             ], $extra ? $extra($pedido) : []);
         }

@@ -152,7 +152,7 @@ namespace {
         return (object) array_merge([
             'company_uuid' => EMPRESA, 'public_id' => $id, 'status' => $status, 'customer_uuid' => $dono, 'updated_at' => $atualizado,
             'created_at' => new Carbon($criado), 'payload' => (object) ['dropoff' => $destino, 'pickup' => null],
-            'driverAssigned' => null, 'trackingNumber' => null,
+            'driverAssigned' => null, 'trackingNumber' => null, 'started' => false,
         ], $extra);
     }
 
@@ -174,9 +174,9 @@ namespace {
     ];
     Order::$todos = [
         pedido('order_sem_motoboy', 'created', 'vendor-a', $recente, '2026-10-05 11:00:00', $rua, ['trackingNumber' => (object) ['tracking_number' => 'RP123']]),
-        pedido('order_coleta', 'started', 'vendor-b', $recente, '2026-10-05 11:10:00', lugar(-21.19, -47.82, 'Rua B, 20'), ['driverAssigned' => $motoboy]),
-        pedido('order_entrega', 'enroute', 'contato-a', $recente, '2026-10-05 11:20:00', lugar(-21.2, -47.83, null, 'Casa do cliente'), ['driverAssigned' => $motoboy]),
-        pedido('order_sem_loja', 'dispatched', 'contato-x', $recente, '2026-10-05 10:50:00', $rua, ['payload' => (object) ['dropoff' => $rua, 'pickup' => (object) ['name' => 'Pizzaria Sem Cadastro']]]),
+        pedido('order_coleta', 'started', 'vendor-b', $recente, '2026-10-05 11:10:00', lugar(-21.19, -47.82, 'Rua B, 20'), ['driverAssigned' => $motoboy, 'started' => true]),
+        pedido('order_entrega', 'enroute', 'contato-a', $recente, '2026-10-05 11:20:00', lugar(-21.2, -47.83, null, 'Casa do cliente'), ['driverAssigned' => $motoboy, 'started' => true]),
+        pedido('order_sem_loja', 'dispatched', 'contato-x', $recente, '2026-10-05 10:50:00', $rua, ['payload' => (object) ['dropoff' => $rua, 'pickup' => (object) ['name' => 'Pizzaria Sem Cadastro']], 'driverAssigned' => $motoboy]),
         pedido('order_concluido', 'completed', 'vendor-a', $recente, '2026-10-05 11:05:00', $rua),
         pedido('order_cancelado', 'canceled', 'vendor-a', $recente, '2026-10-05 11:05:00', $rua),
         pedido('order_expirado', 'expired', 'vendor-a', $recente, '2026-10-05 11:05:00', $rua),
@@ -199,7 +199,7 @@ namespace {
     confere(!isset($porId['order_sem_destino']) && !isset($porId['order_sem_local']) && !isset($porId['order_zero']),
         'sem destino, sem coordenada ou no (0, 0) fica fora');
     confere(!isset($porId['order_outra_empresa']), 'pedido de outra empresa fica fora');
-    confere(array_keys($central[0] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'criado_em', 'loja'],
+    confere(array_keys($central[0] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'aceito', 'criado_em', 'loja'],
         'campos do console, com a loja');
     confere(($porId['order_sem_motoboy']['numero'] ?? null) === 'RP123' && ($porId['order_coleta']['numero'] ?? null) === 'order_coleta',
         'número de rastreio; sem ele, o public_id');
@@ -208,6 +208,8 @@ namespace {
         'endereço do destino; sem endereço, o nome do local');
     confere(($porId['order_coleta']['motoboy'] ?? null) === 'João Motoboy' && array_key_exists('motoboy', $porId['order_sem_motoboy'] ?? []) && $porId['order_sem_motoboy']['motoboy'] === null,
         'nome do motoboy; sem motoboy, null');
+    confere(($porId['order_coleta']['aceito'] ?? null) === true && ($porId['order_sem_loja']['aceito'] ?? null) === false && ($porId['order_sem_loja']['motoboy'] ?? null) === 'João Motoboy' && ($porId['order_sem_motoboy']['aceito'] ?? null) === false,
+        'aceito: true só depois do aceite do motoboy (atribuído pela central e ainda não aceito: false, com o nome)');
     confere(($porId['order_coleta']['status'] ?? null) === 'started', 'status cru (o front traduz)');
     confere(($porId['order_sem_motoboy']['criado_em'] ?? null) === '2026-10-05T11:00:00+00:00', 'criado_em em ISO 8601');
     confere(($porId['order_sem_motoboy']['loja'] ?? null) === 'Loja A' && ($porId['order_coleta']['loja'] ?? null) === 'Loja B',
@@ -222,7 +224,7 @@ namespace {
     echo '== PedidosNoMapa::daLoja (portal da loja)' . PHP_EOL;
     $loja = PedidosNoMapa::daLoja(EMPRESA, ['vendor-a', 'contato-a']);
     confere(array_column($loja, 'id') === ['order_entrega', 'order_sem_motoboy'], 'só os pedidos da loja (Fornecedor e contato do usuário)');
-    confere(array_keys($loja[0] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'criado_em'],
+    confere(array_keys($loja[0] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'aceito', 'criado_em'],
         'campos do portal, sem a loja');
     $json = json_encode($loja);
     confere(!str_contains($json, 'uuid-motoboy-1') && !str_contains($json, 'driver_m1') && !str_contains($json, '+5516'),

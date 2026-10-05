@@ -14,7 +14,7 @@ import getModelName from '@fleetbase/ember-core/utils/get-model-name';
 import ensureLeafletPluginsReady, { hasLeafletPluginsReady } from '../../utils/leaflet-plugin-loader';
 import capaceteDoMotoboy, { indexarSituacoes } from '../../utils/entregas-capacete';
 import aplicarOnlineDoMotoboy from '../../utils/entregas-online-do-motoboy';
-import { ALFINETE, mesmaLista, pedidosValidos, tempoDesde } from '../../utils/entregas-pedidos-no-mapa';
+import { ALFINETE, mesmaLista, nomeNoAlfinete, pedidosValidos, tempoDesde } from '../../utils/entregas-pedidos-no-mapa';
 
 /** Entregas: de quanto em quanto tempo o mapa relê a situação dos motoboys (cor do capacete), como reserva do socket. */
 const INTERVALO_SITUACOES_MS = 20000;
@@ -79,6 +79,7 @@ export default class MapLeafletLiveMapComponent extends Component {
     @tracked pedidosNoMapa = [];
     @tracked relogio = Date.now();
     alfinete = ALFINETE;
+    nomeNoAlfinete = nomeNoAlfinete;
     @tracked leafletPluginsReady = hasLeafletPluginsReady();
     _viewportReloadLocks = new Set();
 

@@ -3799,6 +3799,25 @@ body[data-theme='dark'].fleetbase-portal .portal-invoice-notes p {
 }
 /* stylelint-enable no-duplicate-selectors */
 
+/* Entregas: nome do motoboy fixo embaixo do alfinete do pedido aceito (Workspace::Map). Vermelho-escuro, como o alfinete,
+   para não confundir com o nome do capacete quando o motoboy está perto da entrega */
+.fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete {
+    padding: 1px 6px;
+    border: none;
+    border-radius: 9999px;
+    background: rgb(153 27 27 / 92%);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+    color: #fef2f2;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-no-alfinete::before {
+    border-bottom-color: rgb(153 27 27 / 92%);
+}
+
 /* Entregas: capacete e nome do motoboy no mapa de motoboys do portal (utils/camada-de-motoboys.js). O nome fica dentro do
    marcador, num rótulo no estilo do entregas-nome-motoboy do mapa do console (cujo CSS não carrega aqui), com a seta para
    o capacete; o motoboy do pedido aberto ganha o rótulo azul */
