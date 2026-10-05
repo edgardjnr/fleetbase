@@ -48,4 +48,21 @@ confere(C::dados('Terraço Pizza', 'Centro, Ribeirão Preto', 3.21, 8.0) === [
 confere(C::dados(null, null, null, null) === [], 'sem nada: nenhuma chave (o app mostra só título e texto)');
 confere(array_keys(C::dados('Loja', null, 2.0, null)) === ['entregas_loja', 'entregas_km'], 'só o que existe');
 
+echo '== mapa' . PHP_EOL;
+// exemplo da documentação do Google: (38.5, -120.2), (40.7, -120.95), (43.252, -126.453)
+confere(C::polyline([[38.5, -120.2], [40.7, -120.95], [43.252, -126.453]]) === '_p~iF~ps|U_ulLnnqC_mqNvxq`@', 'polyline no formato do Google (precisão 5)');
+confere(C::polyline([]) === '', 'sem pontos: vazio');
+$longa = [];
+for ($i = 0; $i < 500; $i++) {
+    $longa[] = [-21.0 - $i / 10000, -47.0 + $i / 20000];
+}
+$reduzida = C::reduzir($longa, 80);
+confere(count($reduzida) <= 80 && $reduzida[0] === $longa[0] && end($reduzida) === end($longa), 'rota longa reduzida a 80 pontos, com o início e o fim (' . count($reduzida) . ')');
+confere(C::reduzir([[1, 2], [3, 4]], 80) === [[1, 2], [3, 4]], 'rota curta fica como está');
+confere(strlen(C::polyline($reduzida)) < 1000, 'a rota reduzida cabe no push (' . strlen(C::polyline($reduzida)) . ' caracteres)');
+confere(C::coordenada(-21.1775, -47.8103) === '-21.177500,-47.810300', 'coordenada "lat,lng" com 6 casas');
+confere(C::coordenada(null, -47.8) === null && C::coordenada(0.0, 0.0) === null, 'sem coordenada (ou 0,0): nada');
+confere(C::mapa('-21.1,-47.8', '-21.2,-47.9', '_p~iF') === ['entregas_coleta' => '-21.1,-47.8', 'entregas_entrega' => '-21.2,-47.9', 'entregas_rota' => '_p~iF'], 'chaves do mapa');
+confere(C::mapa('-21.1,-47.8', null, '') === ['entregas_coleta' => '-21.1,-47.8'], 'só o que existe');
+
 echo PHP_EOL . "FALHAS: {$falhas}" . PHP_EOL;
