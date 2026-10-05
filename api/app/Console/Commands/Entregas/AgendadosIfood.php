@@ -2,11 +2,14 @@
 
 namespace App\Console\Commands\Entregas;
 
+use App\Events\Entregas\PedidoSemMotoboy;
 use App\Support\Entregas\Ifood\ClienteIfood;
 use App\Support\Entregas\Ifood\CriadorDoPedidoIfood;
 use App\Support\Entregas\StatusDoPedido;
+use App\Support\Entregas\TransmissaoNoSocket;
 use Fleetbase\FleetOps\Models\Order;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -19,14 +22,17 @@ use Illuminate\Support\Facades\Log;
  *   CriadorDoPedidoIfood::despachar só marca despachado_em; a atividade só é inserida por ele, como reserva, se ainda
  *   faltar (listener atrasado na fila ou com falha), sem avisar os motoboys de novo;
  * - o imediato cujo despacho falhou no job (1 min de folga, para não correr junto com o job).
- * Fica de fora: pedido de teste (sem despachar_em), cancelado pelo iFood e pedido encerrado ou apagado (sai da fila).
+ * Fica de fora: pedido de teste (sem despachar_em), linha sem order_uuid, cancelado pelo iFood (sai da fila sem aviso,
+ * mesmo antes da hora) e pedido encerrado ou apagado (sai da fila).
  *
  * O CriadorDoPedidoIfood::despachar relê o pedido com a trava (TravaDoPedido) e decide: true = despachado agora ou já
  * estava (só aí o log "despachado pelo agendador"); false = não despachou. No false, ou ele mesmo tirou a linha da fila
  * (pedido encerrado, aceito ou apagado), ou foi falha temporária (trava ocupada, erro no despacho) e a linha fica para
  * a rodada seguinte. Para um despacho que falha sempre não voltar para sempre: com despachar_em vencido há mais de
  * DESISTIR_DEPOIS_MINUTOS e o despacho ainda sem sair nesta tentativa, a linha sai da fila (despachar_em nulo) e o log
- * `[entregas] ifood: despacho desistiu` (warning, só com ids) avisa; a central despacha à mão. Sempre há ao menos uma
+ * `[entregas] ifood: despacho desistiu` (warning, só com ids) avisa. A central também recebe no console o mesmo aviso
+ * sonoro do pedido sem motoboy (PedidoSemMotoboy, pelo TransmissaoNoSocket, uma tentativa só; falha no socket vira o log
+ * `[entregas] ifood: aviso de despacho desistido não chegou ao socket`) e despacha à mão. Sempre há ao menos uma
  * tentativa: um agendador parado por mais de 30 min não descarta o pedido sem tentar.
  * A chegada pelo GPS entra aqui na etapa 3 (entregas:ifood-acompanhar da spec).
  */
@@ -48,6 +54,14 @@ class AgendadosIfood extends Command
         if (!ClienteIfood::ligada()) {
             return self::SUCCESS;
         }
+
+        // cancelado pelo iFood antes do despacho: sai da fila sem despachar e sem aviso (o job já faz isso no CAN; aqui
+        // fica a reserva para a linha cancelada antes dessa regra)
+        DB::table(static::PEDIDOS)
+            ->whereNotNull('cancelado_pelo_ifood_em')
+            ->whereNotNull('despachar_em')
+            ->whereNull('despachado_em')
+            ->update(['despachar_em' => null, 'updated_at' => now()->toDateTimeString()]);
 
         $limite   = now()->subMinute()->toDateTimeString();
         $desistir = now()->subMinutes(static::DESISTIR_DEPOIS_MINUTOS)->toDateTimeString();
@@ -79,10 +93,33 @@ class AgendadosIfood extends Command
             // não saiu nesta tentativa: se a linha ainda está na fila (o despachar não a tirou) e já passou do prazo, desiste
             if ((string) $linha->despachar_em <= $desistir && $this->tirarDaFila($linha)) {
                 Log::warning('[entregas] ifood: despacho desistiu', ['pedido' => $pedido->public_id, 'pedido_ifood' => $linha->pedido_ifood_id]);
+                $this->avisarCentral($pedido, $linha);
             }
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Desistência: avisa a central pelo mesmo aviso sonoro do console do pedido aberto sem aceite
+     * (App\Events\Entregas\PedidoSemMotoboy, serviço pedido-sem-motoboy do Fleet-Ops), com os minutos desde o
+     * despachar_em. Uma tentativa só: se o socket falhar, fica o log (o warning da desistência já saiu).
+     */
+    protected function avisarCentral(Order $pedido, object $linha): void
+    {
+        $minutos = (int) round((now()->getTimestamp() - Carbon::parse((string) $linha->despachar_em)->getTimestamp()) / 60);
+
+        $erro = TransmissaoNoSocket::enviar(new PedidoSemMotoboy(
+            (string) $pedido->company_uuid,
+            (string) $pedido->uuid,
+            (string) $pedido->public_id,
+            $linha->numero ? (string) $linha->numero : null,
+            $minutos
+        ));
+
+        if ($erro !== null) {
+            Log::warning('[entregas] ifood: aviso de despacho desistido não chegou ao socket', ['pedido' => $pedido->public_id, 'pedido_ifood' => $linha->pedido_ifood_id, 'erro' => $erro]);
+        }
     }
 
     /** despachar_em nulo (se ainda não estava); devolve se a linha saiu da fila agora. */

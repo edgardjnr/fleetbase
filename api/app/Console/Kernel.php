@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Support\Entregas\Ifood\ClienteIfood;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -22,14 +23,21 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // Entregas RestaurantePro: integração iFood (cada comando sai sem fazer nada com ENTREGAS_IFOOD desligado).
-        // everyThirtySeconds é do Laravel 10.15+ (o composer.lock está no 10.x de 2026-08): o schedule:run que o go-crond
-        // chama a cada minuto fica rodando o minuto inteiro e repete o polling aos 30 s. runInBackground: o polling não
-        // espera os comandos do Fleet-Ops da mesma rodada. withoutOverlapping com validade curta (minutos): se o processo
-        // morrer segurando a trava, ela some logo (o padrão é 24 h).
-        $schedule->command('entregas:ifood-polling')->everyThirtySeconds()->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
-        $schedule->command('entregas:ifood-agendados')->everyMinute()->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
-        $schedule->command('entregas:ifood-tokens')->everyThirtyMinutes()->withoutOverlapping(10)->appendOutputTo(static::SAIDA_DO_CONTAINER);
+        // Entregas RestaurantePro: integração iFood. when(ClienteIfood::ligada()): com ENTREGAS_IFOOD desligado (ou sem as
+        // credenciais) nem sobe o processo; cada comando confere de novo e sai sem fazer nada.
+        // everyThirtySeconds é do Laravel 10.15+ (o composer.lock está no 10.x de 2026-08). O schedule:run que o go-crond
+        // chama a cada minuto roda primeiro, em primeiro plano, os eventos da rodada que não são em segundo plano (os
+        // comandos do Fleet-Ops); só depois fica esperando para repetir o polling aos 30 s. Por isso a repetição sai aos
+        // 30 s do minuto ou depois, se essa passada demorar mais (e nem sai, se ela passar do fim do minuto: aí o polling
+        // roda só na rodada seguinte). runInBackground nos três: nenhum deles segura os
+        // comandos do Fleet-Ops da mesma rodada (ex.: o fleetops:dispatch-orders, que só pega quem cai a ±1 min do
+        // scheduled_at). withoutOverlapping com validade curta (minutos): se o processo morrer segurando a trava, ela
+        // some logo (o padrão é 24 h).
+        $ligada = fn () => ClienteIfood::ligada();
+
+        $schedule->command('entregas:ifood-polling')->everyThirtySeconds()->when($ligada)->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
+        $schedule->command('entregas:ifood-agendados')->everyMinute()->when($ligada)->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
+        $schedule->command('entregas:ifood-tokens')->everyThirtyMinutes()->when($ligada)->withoutOverlapping(10)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
     }
 
     /**

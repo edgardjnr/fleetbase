@@ -32,7 +32,8 @@ use Illuminate\Support\Facades\Log;
  *   aconteceram) antes de entrar não é criado, nem por um evento atrasado numa rodada seguinte: os dois são procurados
  *   entre todos os eventos do pedido na tabela, processados ou não, e não só entre os pendentes. São definitivos;
  * - código ignorado: log warning quando exige ação da loja no iFood (EventosIfood::nivelDoIgnorado), info nos outros;
- * - DDCR marca exige_codigo; CAN só registra cancelado_pelo_ifood_em (o cancelamento no Entregas é da etapa 3);
+ * - DDCR marca exige_codigo; CAN registra cancelado_pelo_ifood_em e, se ainda não despachado, tira da fila do
+ *   agendador (despachar_em nulo); o cancelamento do pedido no Entregas é da etapa 3;
  * - código desconhecido, loja não vinculada, vínculo perdido e loja sem Local de coleta ficam processados e ignorados.
  *   Nos três últimos isso não é definitivo: um evento de criação posterior do mesmo pedido (CFM, RTP…) tenta de novo.
  *
@@ -189,6 +190,10 @@ class ProcessarPedidoIfood implements ShouldQueue
                 $quando = $evento['createdAt'] ? substr((string) $evento['createdAt'], 0, 19) : now()->toDateTimeString();
                 $this->atualizarPedido($pedido, ['cancelado_pelo_ifood_em' => $quando]);
                 $pedido->cancelado_pelo_ifood_em = $quando;
+                // ainda não despachado (agendado ou despacho que falhou): sai da fila do entregas:ifood-agendados, sem
+                // ir aos motoboys. Condicional no banco: o agendador pode ter despachado depois de a linha ser lida
+                DB::table(static::PEDIDOS)->where('id', $pedido->id)->whereNotNull('despachar_em')->whereNull('despachado_em')
+                    ->update(['despachar_em' => null, 'updated_at' => now()->toDateTimeString()]);
                 Log::warning('[entregas] ifood: pedido cancelado pelo iFood (o cancelamento no Entregas é da etapa 3)', [
                     'pedido'     => $this->publicIdDoOrder($pedido),
                     'order_uuid' => $pedido->order_uuid,

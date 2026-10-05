@@ -27,6 +27,9 @@ class CriadorFalso extends CriadorDoPedidoIfood
     /** Lança esta exceção antes de gravar ('antes') ou depois de gravar a linha ('depois'). */
     public ?\Throwable $erro = null;
     public string $quando = 'antes';
+    /** despachar_em e despachado_em gravados na linha (o agendado ou o despacho que falhou ficam na fila do agendador). */
+    public ?string $despacharEm  = null;
+    public ?string $despachadoEm = null;
 
     public function criar(object $vinculo, array $pedidoIfood): ?object
     {
@@ -42,6 +45,7 @@ class CriadorFalso extends CriadorDoPedidoIfood
         Banco::inserir('entregas_ifood_pedidos', [
             'company_uuid' => $vinculo->company_uuid, 'order_uuid' => 'order-' . $numero, 'pedido_ifood_id' => $pedidoIfood['id'],
             'numero' => $pedidoIfood['displayId'], 'merchant_id' => $vinculo->merchant_id, 'exige_codigo' => false, 'cancelado_pelo_ifood_em' => null,
+            'despachar_em' => $this->despacharEm, 'despachado_em' => $this->despachadoEm,
         ], false);
         if ($this->erro) {
             throw $this->erro;
@@ -141,6 +145,33 @@ foreach (\Illuminate\Support\Facades\Log::$registros as [$nivel, $mensagem, $con
     }
 }
 confere(($contextoDoCan['pedido'] ?? null) === 'order_pub1' && ($contextoDoCan['order_uuid'] ?? null) === 'order-1', 'log do CAN com o public_id do Order e o order_uuid');
+
+echo '== CAN tira da fila do agendador o pedido ainda não despachado' . PHP_EOL;
+reiniciarIfood();
+vinculoDaLojaA();
+gravarEvento('ev-1', 'PLC', '2026-10-05T17:59:00Z');
+Http::responder(200, pedidoEmDinheiroComTroco());
+$criador              = new CriadorFalso();
+$criador->despacharEm = '2026-10-05 18:40:00';
+rodar($criador);
+confere(linhaDoPedido()->despachar_em === '2026-10-05 18:40:00', 'agendado na fila');
+gravarEvento('ev-2', 'CAN', '2026-10-05T18:02:00Z');
+rodar($criador);
+confere(linhaDoPedido()->cancelado_pelo_ifood_em === '2026-10-05 18:02:00' && linhaDoPedido()->despachar_em === null, 'CAN: cancelado_pelo_ifood_em gravado e despachar_em nulo (sai da fila)');
+confere(linhaDoPedido()->despachado_em === null, 'continua sem despachado_em');
+
+echo '== CAN depois do despacho não mexe no despachar_em' . PHP_EOL;
+reiniciarIfood();
+vinculoDaLojaA();
+gravarEvento('ev-1', 'PLC', '2026-10-05T17:59:00Z');
+Http::responder(200, pedidoEmDinheiroComTroco());
+$criador               = new CriadorFalso();
+$criador->despacharEm  = '2026-10-05 17:59:30';
+$criador->despachadoEm = '2026-10-05 17:59:30';
+rodar($criador);
+gravarEvento('ev-2', 'CAN', '2026-10-05T18:02:00Z');
+rodar($criador);
+confere(linhaDoPedido()->cancelado_pelo_ifood_em === '2026-10-05 18:02:00' && linhaDoPedido()->despachar_em === '2026-10-05 17:59:30', 'já despachado: só registra o cancelamento');
 
 echo '== Cancelado antes de entrar: não cria' . PHP_EOL;
 reiniciarIfood();

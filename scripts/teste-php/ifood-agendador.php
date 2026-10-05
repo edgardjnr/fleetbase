@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 use Teste\Banco;
 use Teste\Config;
 use Teste\Http;
+use Teste\Socket;
 use Teste\Trava;
 
 /** Linha de entregas_ifood_pedidos com um Order; devolve o Order. */
@@ -55,7 +56,11 @@ vinculoDaLojaA('2026-10-05 18:40:00');
 Config::$valores['services.ifood.ativo'] = '';
 (new RenovarTokensIfood())->handle(new VinculosIfood(new ClienteIfood()));
 confere(Http::$chamadas === [], 'desligada: não renova');
-Config::$valores['services.ifood.ativo'] = '1';
+Config::$valores['services.ifood.ativo']     = '1';
+Config::$valores['services.ifood.client_id'] = '';
+(new RenovarTokensIfood())->handle(new VinculosIfood(new ClienteIfood()));
+confere(Http::$chamadas === [], 'ENTREGAS_IFOOD=1 sem IFOOD_CLIENT_ID: desligada, não renova');
+Config::$valores['services.ifood.client_id'] = 'cliente-teste';
 Http::responder(200, ['accessToken' => 'token-a2', 'type' => 'bearer', 'expiresIn' => 21600, 'refreshToken' => 'refresh-a2']);
 confere((new RenovarTokensIfood())->handle(new VinculosIfood(new ClienteIfood())) === 0, 'sai com 0');
 confere(Http::urls() === ['POST /authentication/v1.0/oauth/token'] && logou('[entregas] ifood: renovação dos tokens', 'info'), 'renova o que vence em 40 min e registra a contagem');
@@ -73,12 +78,21 @@ $encerrado = pedidoIfood('encerrado', '2026-10-05 17:00:00', [], 'canceled');
 Config::$valores['services.ifood.ativo'] = '';
 rodarAgendados();
 confere($vencido->chamadas === [], 'desligada: não despacha');
-Config::$valores['services.ifood.ativo'] = '1';
+Config::$valores['services.ifood.ativo']     = '1';
+Config::$valores['services.ifood.client_id'] = '';
+rodarAgendados();
+confere($vencido->chamadas === [] && linhaDe('cancelado')->despachar_em !== null, 'ENTREGAS_IFOOD=1 sem IFOOD_CLIENT_ID: desligada, não despacha nem mexe na fila');
+Config::$valores['services.ifood.client_id'] = 'cliente-teste';
+$canceladoFuturo = pedidoIfood('cancelado-futuro', '2026-10-05 19:20:00', ['cancelado_pelo_ifood_em' => '2026-10-05 17:30:00']);
 rodarAgendados();
 confere($vencido->chamadas === ['saveQuietly', 'firstDispatchWithActivity'] && linhaDe('vencido')->despachado_em === '2026-10-05 18:00:00', 'despacha o vencido e marca despachado_em');
 confere($futuro->chamadas === [] && $agora->chamadas === [], 'o futuro espera; o recém-criado tem 1 min de folga (o job despacha)');
 confere($teste->chamadas === [] && $cancelado->chamadas === [] && $feito->chamadas === [], 'teste, cancelado pelo iFood e já despachado ficam de fora');
 confere($encerrado->chamadas === [] && linhaDe('encerrado')->despachar_em === null, 'encerrado pela central: sai da fila');
+confere(linhaDe('cancelado')->despachar_em === null && linhaDe('cancelado')->despachado_em === null, 'cancelado pelo iFood: sai da fila (despachar_em nulo), sem despachar');
+confere($canceladoFuturo->chamadas === [] && linhaDe('cancelado-futuro')->despachar_em === null, 'cancelado pelo iFood antes da hora do agendado: também sai da fila');
+confere(linhaDe('feito')->despachar_em === '2026-10-05 17:00:00', 'o já despachado não é mexido');
+confere(Socket::$transmitidos === [], 'sem aviso à central (nem pelo cancelado nem pelo encerrado)');
 confere(count(logsCom('[entregas] ifood: pedido despachado pelo agendador')) === 1 && logou('[entregas] ifood: pedido despachado pelo agendador', 'info'), 'log do despacho (só o despachado)');
 confere(!logou('despacho desistiu'), 'ninguém desistiu (o encerrado sai da fila sem o aviso)');
 $vencido->chamadas = [];
@@ -130,14 +144,68 @@ confere(linhaDe('velho')->despachar_em === null && linhaDe('velho')->despachado_
 $desistencias = logsCom('[entregas] ifood: despacho desistiu');
 confere(count($desistencias) === 1 && $desistencias[0][0] === 'warning', 'um warning de desistência');
 confere(($desistencias[0][2] ?? null) === ['pedido' => $velho->public_id, 'pedido_ifood' => 'velho'], 'o warning só com ids (pedido e pedido_ifood)');
+$avisos = Socket::$transmitidos;
+confere(count($avisos) === 1 && $avisos[0]['canal'] === 'company.empresa-1', 'desistiu: um aviso à central no canal da empresa');
+confere(($avisos[0]['dados']['event'] ?? null) === 'entregas.pedido_sem_motoboy', 'o mesmo evento do aviso sonoro do console (entregas.pedido_sem_motoboy)');
+confere(($avisos[0]['dados']['data'] ?? null) === ['id' => $velho->public_id, 'uuid' => $velho->uuid, 'numero' => 'velho', 'minutos' => 40], 'com o pedido, o número do iFood e os minutos desde o despachar_em (40)');
 $velho->chamadas = [];
 Log::$registros  = [];
 rodarAgendados();
-confere($velho->chamadas === [] && !logou('despacho desistiu'), 'na rodada seguinte, não tenta nem avisa de novo');
+confere($velho->chamadas === [] && !logou('despacho desistiu') && count(Socket::$transmitidos) === 1, 'na rodada seguinte, não tenta nem avisa de novo');
 Order::$falharDespacho = false;
 $antigoBom = pedidoIfood('antigo-bom', '2026-10-05 17:00:00');
 rodarAgendados();
 confere(linhaDe('antigo-bom')->despachado_em === '2026-10-05 18:00:00' && !logou('despacho desistiu'), 'vencido há 1 h mas o despacho sai (agendador parado): despacha, sem desistir');
+
+echo '== agendados: desistiu com o socket fora do ar' . PHP_EOL;
+reiniciarIfood();
+reiniciarFleetbase();
+$semSocket = pedidoIfood('sem-socket', '2026-10-05 17:25:00');
+Order::$falharDespacho = true;
+Socket::$falhar        = true;
+rodarAgendados();
+confere(linhaDe('sem-socket')->despachar_em === null && logou('despacho desistiu', 'warning'), 'desiste e sai da fila mesmo sem o socket');
+$falhasDoAviso = logsCom('[entregas] ifood: aviso de despacho desistido não chegou ao socket');
+confere(count($falhasDoAviso) === 1 && $falhasDoAviso[0][0] === 'warning', 'a falha do aviso vai para o log (warning)');
+confere(($falhasDoAviso[0][2] ?? null) === ['pedido' => $semSocket->public_id, 'pedido_ifood' => 'sem-socket', 'erro' => 'socket fora do ar'], 'o log com os ids e o erro do socket');
+Socket::$falhar = false;
+rodarAgendados();
+confere(Socket::$tentativas === 1 && Socket::$transmitidos === [], 'sem nova tentativa do aviso na rodada seguinte');
+Order::$falharDespacho = false;
+
+echo '== agendados: pedido apagado e linha sem order_uuid' . PHP_EOL;
+reiniciarIfood();
+reiniciarFleetbase();
+$apagado      = pedidoIfood('apagado', '2026-10-05 17:50:00');
+Order::$todos = array_values(array_filter(Order::$todos, fn ($pedido) => $pedido !== $apagado));
+Banco::inserir('entregas_ifood_pedidos', [
+    'company_uuid' => 'empresa-1', 'order_uuid' => null, 'pedido_ifood_id' => 'sem-order', 'numero' => 'sem-order', 'merchant_id' => 'merchant-1',
+    'teste' => false, 'agendado' => true, 'despachar_em' => '2026-10-05 17:00:00', 'despachado_em' => null, 'cancelado_pelo_ifood_em' => null,
+], false);
+confere(excecao(fn () => rodarAgendados()) === null, 'roda sem erro');
+confere($apagado->chamadas === [] && linhaDe('apagado')->despachar_em === null && linhaDe('apagado')->despachado_em === null, 'pedido apagado: não despacha e sai da fila');
+confere(linhaDe('sem-order')->despachar_em === '2026-10-05 17:00:00' && linhaDe('sem-order')->despachado_em === null, 'linha sem order_uuid: fica de fora, intacta');
+confere(!logou('despachado pelo agendador') && !logou('despacho desistiu') && Socket::$transmitidos === [], 'sem log de despacho, desistência nem aviso');
+
+echo '== agendados: no máximo POR_RODADA por rodada, na ordem do despachar_em' . PHP_EOL;
+reiniciarIfood();
+reiniciarFleetbase();
+$total = AgendadosIfood::POR_RODADA + 1;
+// gravados fora de ordem: o mais antigo é o último gravado
+foreach (array_merge(range(2, $total), [1]) as $n) {
+    pedidoIfood(sprintf('lote-%02d', $n), sprintf('2026-10-05 17:%02d:00', $n - 1));
+}
+/** Os números dos pedidos despachados pelo agendador, na ordem dos logs. */
+function numerosDespachados(): array
+{
+    return array_map(fn ($registro) => $registro[2]['numero'] ?? null, logsCom('pedido despachado pelo agendador'));
+}
+rodarAgendados();
+confere(numerosDespachados() === array_map(fn ($n) => sprintf('lote-%02d', $n), range(1, AgendadosIfood::POR_RODADA)), AgendadosIfood::POR_RODADA . ' na primeira rodada, do despachar_em mais antigo ao mais novo');
+confere(linhaDe(sprintf('lote-%02d', $total))->despachado_em === null, "o {$total}º fica para a rodada seguinte");
+Log::$registros = [];
+rodarAgendados();
+confere(numerosDespachados() === [sprintf('lote-%02d', $total)], 'na rodada seguinte, só o que sobrou');
 
 echo '== Kernel' . PHP_EOL;
 $schedule = new Schedule();
@@ -155,6 +223,20 @@ foreach ($porComando as $comando => $chamadas) {
     confere(($chamadas['appendOutputTo'] ?? null) === ['/proc/1/fd/1'], "{$comando}: saída no stdout do container");
     confere(!isset($chamadas['storeOutputInDb']), "{$comando}: sem storeOutputInDb");
 }
-confere(isset($porComando['entregas:ifood-polling']['runInBackground']), 'polling em segundo plano (não espera os comandos do Fleet-Ops)');
+foreach ($porComando as $comando => $chamadas) {
+    confere(isset($chamadas['runInBackground']), "{$comando}: em segundo plano (não segura os comandos do Fleet-Ops da mesma rodada)");
+    $quando = $chamadas['when'][0] ?? null;
+    confere($quando instanceof Closure, "{$comando}: com when() (não sobe processo com a integração desligada)");
+    if ($quando instanceof Closure) {
+        reiniciarIfood();
+        $ligada                                  = $quando();
+        Config::$valores['services.ifood.ativo'] = '';
+        $desligada                               = $quando();
+        Config::$valores['services.ifood.ativo']     = '1';
+        Config::$valores['services.ifood.client_id'] = '';
+        $semCredencial                               = $quando();
+        confere($ligada === true && $desligada === false && $semCredencial === false, "{$comando}: o when() segue o ClienteIfood::ligada()");
+    }
+}
 
 resumo();

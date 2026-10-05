@@ -3,8 +3,9 @@
 // Stubs dos testes da integração iFood (scripts/teste-php/ifood-*.php). Independentes dos outros stubs: aqui ficam o
 // Http do Laravel (fila de respostas e registro das chamadas), o DB (tabelas em memória, com o pouco de query builder
 // que as classes do iFood usam e as chaves únicas das tabelas novas), o Cache (com trava), o Log, o encrypt/decrypt, o
-// relógio (now()), a fila de jobs, o Command, o Schedule e o Schema das migrations. Os models do Fleetbase (Order,
-// Place, Payload, Vendor, OrderConfig) e o Request ficam no stubs-ifood-fleetbase.php.
+// relógio (now()), a fila de jobs, o Command, o Schedule, o Schema das migrations e o socket (SocketClusterService e
+// Channel, para o aviso à central). Os models do Fleetbase (Order, Place, Payload, Vendor, OrderConfig), o Request e o
+// Validator ficam no stubs-ifood-fleetbase.php.
 
 namespace Illuminate\Support {
     class Collection implements \IteratorAggregate, \Countable
@@ -186,6 +187,41 @@ namespace Illuminate\Contracts\Queue {
     interface ShouldQueue {}
 }
 
+// o aviso à central (App\Events\Entregas\PedidoSemMotoboy) e a transmissão no socket (TransmissaoNoSocket)
+namespace Illuminate\Broadcasting {
+    class Channel
+    {
+        public function __construct(public string $name) {}
+    }
+}
+
+namespace Illuminate\Contracts\Broadcasting {
+    interface ShouldBroadcastNow {}
+}
+
+namespace Fleetbase\Support\SocketCluster {
+    // como o real: send() não lança, guarda a mensagem em error e devolve false
+    class SocketClusterService
+    {
+        protected ?string $error = null;
+
+        public function send($canal, array $dados = []): bool
+        {
+            \Teste\Socket::$tentativas++;
+            if (\Teste\Socket::$falhar) {
+                $this->error = 'socket fora do ar';
+
+                return false;
+            }
+            \Teste\Socket::$transmitidos[] = ['canal' => $canal, 'dados' => $dados];
+
+            return true;
+        }
+
+        public function error(): ?string { return $this->error; }
+    }
+}
+
 namespace Illuminate\Bus {
     trait Queueable {}
 }
@@ -252,6 +288,14 @@ namespace Teste {
     class Sessao
     {
         public static array $dados = [];
+    }
+
+    // o que o SocketClusterService falso transmitiu; com $falhar, todo send() devolve false
+    class Socket
+    {
+        public static array $transmitidos = [];
+        public static bool $falhar        = false;
+        public static int $tentativas     = 0;
     }
 
     class Fila
@@ -797,6 +841,9 @@ namespace {
         \Teste\Http::$chamadas                        = [];
         \Teste\Fila::$jobs                            = [];
         \Teste\Fila::$falhar                          = null;
+        \Teste\Socket::$transmitidos                  = [];
+        \Teste\Socket::$falhar                        = false;
+        \Teste\Socket::$tentativas                    = 0;
         \Teste\Sessao::$dados                         = [];
         \Teste\Relogio::$agora                        = '2026-10-05 18:00:00';
         \Teste\Config::$valores                       = [
