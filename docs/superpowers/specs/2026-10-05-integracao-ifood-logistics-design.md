@@ -174,8 +174,11 @@ As credenciais do app (`IFOOD_CLIENT_ID`, `IFOOD_CLIENT_SECRET`) e o interruptor
   `exige_codigo = true` no pedido assim que o recebe.
 - **Recusa da loja antes da coleta:** como o pedido vai aos motoboys já no PLC, a loja pode recusar depois; isso chega
   como CAN e segue a regra de cancelamento (seção 3), sem pagamento se o `dispatch` ainda não saiu. **Até a etapa 3, o
-  CAN só grava `cancelado_pelo_ifood_em`** (e tira da fila do agendador o pedido ainda não despachado): o pedido já
-  despachado continua aberto aos motoboys, por isso nenhuma loja real é vinculada antes da etapa 3.
+  CAN não cancela o pedido no Entregas:** grava `cancelado_pelo_ifood_em` e, no pedido ainda não despachado nem aceito
+  (agendado ou despacho que falhou), tira o Order do agendamento (`scheduled_at` nulo e adhoc desligado, com a
+  `TravaDoPedido`; senão o `fleetops:dispatch-orders` o despacharia aos motoboys na hora marcada) e a linha da fila do
+  agendador. O pedido já despachado continua aberto aos motoboys, por isso nenhuma loja real é vinculada antes da
+  etapa 3.
 - **PII:** os logs `[entregas] ifood:` levam só ids e números de pedido, nunca nome, telefone ou endereço.
 
 ## 3. Ciclo da entrega

@@ -5062,3 +5062,22 @@ anterior ao 10.15: pare e avise (troque por `everyMinute()` e reabra a decisão)
    Vincule de novo para deixar a loja de teste pronta para a etapa 3.
 3. Decida com o Edgard se `ENTREGAS_IFOOD` fica `1` (só a loja de teste está vinculada; nenhum restaurante real entra
    antes da etapa 4 e da homologação).
+
+- [ ] **Step 6: como saber que o polling roda (Edgard)**
+
+Acrescentado na revisão final da branch: o polling sem eventos não loga, então "nada no log" não prova que ele roda.
+
+1. Agendamento: `docker exec $(docker ps -q -f name=entregas_scheduler) php artisan schedule:list | grep ifood`
+   Expected: os três comandos `entregas:ifood-*` com o próximo horário (polling a cada 30 s).
+2. Depois da primeira rodada do polling (~1 min depois de ligar), a marca da limpeza diária dos eventos
+   (`PollingIfood::CHAVE_LIMPEZA`) fica no cache:
+   `docker exec $(docker ps -q -f name=entregas_scheduler) php artisan tinker --execute="dump(cache('entregas:ifood-eventos-limpeza'))"`
+   Expected: `true`. `null` depois de alguns minutos = o polling não rodou ou a limpeza falhou: veja
+   `docker service logs --since 10m entregas_scheduler 2>&1 | grep '\[entregas\] ifood'` ("limpeza dos eventos antigos
+   falhou", "polling falhou") e a trava do `withoutOverlapping` (seção "Armadilhas" do `CLAUDE.md`).
+3. **Não rode `php artisan entregas:ifood-polling` à mão para testar:** o comando à mão ignora o `withoutOverlapping`
+   (a trava é do agendamento no `Kernel`, não do comando) e corre junto com a rodada agendada, com chamadas e acks em
+   dobro ao iFood. Se precisar, só para diagnóstico e com o scheduler parado.
+4. Depois do "Desvincular iFood" (Step 5), os tokens são apagados: para a loja voltar, é preciso um **vínculo novo
+   completo**, com código novo na tela Lojas e nova autorização do dono no Portal do Parceiro. Não há como reativar o
+   vínculo desvinculado.

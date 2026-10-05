@@ -223,15 +223,17 @@ Os pedidos iFood dos restaurantes entram pelo módulo **Logistics** da Merchant 
   - planos `docs/superpowers/plans/2026-10-05-ifood-etapa-2a-servidor.md` e `-2b-tela-lojas.md`, executados com ajustes de revisão: **o código é a referência**.
 - **Situação:** etapa 2 implementada em 2026-10-05. O primeiro teste real com a loja de teste é a Task 13 do plano 2A. As etapas 3 (ações de logística, GPS, cancelamento) e 4 (APK e console) ainda não existem.
 - **Não vincule loja real antes da etapa 3.**
-  - O CAN só grava `cancelado_pelo_ifood_em`: o pedido já despachado continua aberto aos motoboys, e a central precisa cancelar à mão no console.
+  - O CAN não cancela o pedido no Entregas: só grava `cancelado_pelo_ifood_em` e, se o pedido ainda não foi despachado (agendado ou despacho que falhou), o tira do agendamento e da fila. O pedido já despachado continua aberto aos motoboys, e a central precisa cancelar à mão no console.
   - Até lá, vincule só a loja de teste.
 
 ### Como ligar
 
-- No `stack.env`: `ENTREGAS_IFOOD=1`, `IFOOD_CLIENT_ID` e `IFOOD_CLIENT_SECRET`, as credenciais do app **distribuído** (Portal do Desenvolvedor → Meus Apps → Credenciais).
-  - Os três são lidos em `config('services.ifood')`. O `ClienteIfood::ligada()` exige os três preenchidos.
-- Stacks → entregas → Editor → Update the stack ("Re-pull image" desligado). Depois reinicie a fila e o scheduler: `docker service update --force entregas_queue && docker service update --force entregas_scheduler`.
-- As três tabelas entram com `bash deploy/atualizar.sh api` (migrations).
+Nesta ordem:
+
+1. Preencha o `stack.env` com `ENTREGAS_IFOOD=1`, `IFOOD_CLIENT_ID` e `IFOOD_CLIENT_SECRET`, as credenciais do app **distribuído** (Portal do Desenvolvedor → Meus Apps → Credenciais), e faça Stacks → entregas → Editor → Update the stack ("Re-pull image" desligado).
+   - Os três são lidos em `config('services.ifood')`. O `ClienteIfood::ligada()` exige os três preenchidos.
+   - O Update the stack já recria a API, a fila e o scheduler, porque as variáveis mudaram. Reiniciar à mão é opcional: `docker service update --force entregas_queue && docker service update --force entregas_scheduler`.
+2. Se houver código novo, rode `bash deploy/atualizar.sh api`: ele roda as migrations (as três tabelas) e o `config:cache`.
 - **Desligada:**
   - os três comandos nem sobem (`when(ClienteIfood::ligada())` no `Kernel`; cada comando confere de novo);
   - a tela Lojas esconde os botões;
@@ -239,13 +241,13 @@ Os pedidos iFood dos restaurantes entram pelo módulo **Logistics** da Merchant 
 
 ### Vínculo (tela Lojas)
 
-Fleet-Ops → Recursos → Lojas, só admin. API: `IfoodLojasController`, `int/v1/entregas/lojas/{id}/ifood/*`, limitador `entregas-ifood-vinculo` (20 por minuto por usuário).
+Fleet-Ops → Recursos → Lojas, só admin. API: `IfoodLojasController`, `int/v1/entregas/lojas/{id}/ifood/*`, limitador `entregas-ifood-vinculo` (20 por minuto por usuário) no pedido do código e no vínculo (`POST .../ifood/codigo` e `POST .../ifood/vincular`). O `DELETE .../ifood` (desvincular) não tem limitador.
 
 - **Vincular iFood** abre o modal (`modals/vincular-ifood`):
   1. `POST .../ifood/codigo` traz o código de vínculo (userCode), o link do Portal do Parceiro com o código preenchido (só vira botão se for https de `*.ifood.com.br`) e a contagem de 10 min;
   2. o dono da loja autoriza no Portal do Parceiro e passa o código de autorização à central, que cola no campo (`POST .../ifood/vincular` com `authorizationCode`);
   3. conta com várias lojas: a central escolhe uma (`POST .../ifood/vincular` com `merchant_id`).
-- **Selo no card:** "Vinculada · <loja no iFood>", "Vínculo perdido" em vermelho (com o botão "Vincular de novo") ou "—". Os botões só aparecem com `ifood_ligado` na lista.
+- **Selo no card:** "Vinculada · <loja no iFood>", "Vínculo perdido" em vermelho (com os botões "Vincular de novo" e "Desvincular iFood") ou "—". Os botões só aparecem com `ifood_ligado` na lista.
 - **Desvincular iFood** (com confirmação; `DELETE .../ifood`) apaga os tokens e libera o merchant para outra loja.
 - Front: controller e template de `management/lojas`, modal `components/modals/vincular-ifood.*` e funções puras em `packages/fleetops/addon/utils/vinculo-ifood.js`.
 - **Um merchant, uma loja** (checagem e chave única).
@@ -302,7 +304,7 @@ Fora dessa pasta:
   - 30 min depois do `despachar_em` sem conseguir, desiste: tira da fila, grava o log `despacho desistiu` e toca no console o aviso sonoro "sem motoboy" (`entregas.pedido_sem_motoboy`, uma tentativa).
 - **Outros eventos:**
   - DDCR marca `exige_codigo`;
-  - CAN grava `cancelado_pelo_ifood_em` e tira da fila do agendador o pedido ainda não despachado;
+  - CAN grava `cancelado_pelo_ifood_em`. No pedido ainda não despachado nem aceito (agendado ou despacho que falhou), tira o Order do agendamento (`CriadorDoPedidoIfood::tirarDoAgendamento`: `scheduled_at` nulo e adhoc desligado, com a `TravaDoPedido`; senão o `fleetops:dispatch-orders` o despacharia aos motoboys na hora marcada) e a linha da fila do agendador. O Order **não é cancelado** (etapa 3). Com a trava ocupada, o CAN fica pendente e o job tenta de novo; o `entregas:ifood-agendados` faz o mesmo como reserva;
   - os outros códigos conhecidos só ficam registrados;
   - código desconhecido fica como ignorado, com warning no HSD (exige resposta da loja no iFood) e info nos outros.
 - **Cobrança:**
@@ -373,7 +375,7 @@ Todos com o prefixo `[entregas] ifood:` e só com ids, códigos e o número do p
 
 ### Riscos que ficam
 
-- **CAN só registra até a etapa 3** (ver acima). Pela mesma razão, a central e a loja (no portal, antes do aceite) ainda conseguem cancelar o pedido iFood do nosso lado sem o iFood saber.
+- **CAN não cancela o pedido até a etapa 3** (ver acima): o já despachado continua aberto aos motoboys; o não despachado só sai do agendamento. Pela mesma razão, a central e a loja (no portal, antes do aceite) ainda conseguem cancelar o pedido iFood do nosso lado sem o iFood saber.
 - **Agendado com motoboy atribuído pela central antes do horário:** o `fleetops:dispatch-orders` roda no mesmo minuto e pode despachar antes, com o adhoc ainda ligado.
   - Aí todos os motoboys livres do raio recebem o aviso, e qualquer um pode tomar o pedido.
   - Ao atribuir um agendado, desligue o "pedido aberto".
