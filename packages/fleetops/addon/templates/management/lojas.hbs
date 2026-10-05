@@ -190,10 +190,37 @@
                                     </span>
                                 {{/if}}
                             </div>
+                            {{! Entregas: vínculo com o iFood (IfoodLojasController): "Vinculada · <loja no iFood>", "Vínculo perdido" em vermelho ou "—" }}
+                            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                                <span class="text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.ifood.label"}}</span>
+                                {{#let (this.situacaoIfood loja) as |situacao|}}
+                                    {{#if (eq situacao "vinculada")}}
+                                        <span class="font-medium rounded px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">{{t
+                                                "fleet-ops.ui.lojas.ifood.linked"
+                                                name=loja.ifood.nome
+                                            }}</span>
+                                    {{else if (eq situacao "perdido")}}
+                                        <span class="font-medium rounded px-2 py-0.5 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">{{t "fleet-ops.ui.lojas.ifood.lost"}}</span>
+                                    {{else}}
+                                        <span class="text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.ifood.none"}}</span>
+                                    {{/if}}
+                                {{/let}}
+                            </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <Button @size="xs" @icon="pen-to-square" @text={{t "fleet-ops.ui.lojas.edit"}} @onClick={{fn this.editar loja}} />
                             <Button @size="xs" @icon="user-plus" @text={{t "fleet-ops.ui.lojas.add-user"}} @onClick={{fn this.abrirNovoUsuario loja}} />
+                            {{#if this.ifoodLigado}}
+                                {{#let (this.situacaoIfood loja) as |situacao|}}
+                                    {{#if (eq situacao "vinculada")}}
+                                        <Button @size="xs" @icon="link-slash" @text={{t "fleet-ops.ui.lojas.ifood.unlink"}} @onClick={{fn this.desvincularIfood loja}} />
+                                    {{else if (eq situacao "perdido")}}
+                                        <Button @size="xs" @type="primary" @icon="link" @text={{t "fleet-ops.ui.lojas.ifood.relink"}} @onClick={{fn this.vincularIfood loja}} />
+                                    {{else}}
+                                        <Button @size="xs" @icon="link" @text={{t "fleet-ops.ui.lojas.ifood.link"}} @onClick={{fn this.vincularIfood loja}} />
+                                    {{/if}}
+                                {{/let}}
+                            {{/if}}
                         </div>
                     </div>
 
