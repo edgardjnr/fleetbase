@@ -6,10 +6,10 @@ use Illuminate\Broadcasting\Channel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 
 /**
- * Entregas RestaurantePro: pedido aberto que ninguém aceitou em ~12 min do despacho (ReenviarPedidosAbertos). Vai no
- * canal da empresa para o console avisar a central com som e notificação fixa (serviço pedido-sem-motoboy do
- * Fleet-Ops), que atribui um motoboy à mão. Transmitido na hora (ShouldBroadcastNow): o comando roda no agendador, sem
- * passar pela fila.
+ * Entregas RestaurantePro: pedido aberto que ninguém aceitou em ReenviarPedidosAbertos::AVISO_CENTRAL_MINUTOS do
+ * despacho. Vai no canal da empresa para o console avisar a central com som e notificação fixa (serviço
+ * pedido-sem-motoboy do Fleet-Ops), que atribui um motoboy à mão. Enviado por TransmissaoNoSocket, que confere o
+ * retorno do socket; o ShouldBroadcastNow só marca o evento como imediato, sem fila.
  */
 class PedidoSemMotoboy implements ShouldBroadcastNow
 {
