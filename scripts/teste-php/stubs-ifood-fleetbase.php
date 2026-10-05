@@ -236,7 +236,14 @@ namespace Fleetbase\FleetOps\Models {
         public $status = 'created';
         public $dispatched = false;
         public $adhoc = false;
+        public $started = false;
+        public $driver_assigned_uuid = null;
+        public $deleted_at = null;
         public array $chamadas = [];
+        /** O adhoc com que o pedido foi criado (o despacho liga o adhoc depois). */
+        public ?bool $adhocAoCriar = null;
+        /** Em cada firstDispatchWithActivity/insertDispatchActivity: se a trava do pedido (TravaDoPedido) estava tomada. */
+        public array $travadoNoDespacho = [];
         public bool $temStatusDespachado = false;
         /** A empresa da sessão no momento do create (o TrackingNumberObserver depende dela). */
         public ?string $empresaNaSessao = null;
@@ -248,18 +255,34 @@ namespace Fleetbase\FleetOps\Models {
             $pedido->uuid          ??= 'order-uuid-' . $numero;
             $pedido->public_id     ??= 'order_' . $numero;
             $pedido->empresaNaSessao = session('company');
+            $pedido->adhocAoCriar    = $pedido->adhoc;
             self::$criados[]         = $pedido;
             self::$todos[]           = $pedido;
 
             return $pedido;
         }
 
+        // relê "do banco": o objeto guardado com o mesmo uuid (null se sumiu); como o fresh() do Eloquent, que ignora os
+        // escopos globais, o apagado (deleted_at) também volta
+        public function fresh()
+        {
+            foreach (self::$todos as $pedido) {
+                if ($pedido->uuid === $this->uuid) {
+                    return $pedido;
+                }
+            }
+
+            return null;
+        }
+
         public function saveQuietly() { $this->chamadas[] = 'saveQuietly'; return true; }
+        private function anotarTrava(): void { $this->travadoNoDespacho[] = isset(\Teste\Trava::$ocupadas['entregas:pedido:' . $this->uuid]); }
         public function hasDispatchedStatus(): bool { return $this->temStatusDespachado; }
 
         public function firstDispatchWithActivity()
         {
             $this->chamadas[] = 'firstDispatchWithActivity';
+            $this->anotarTrava();
             if (self::$falharDespacho) {
                 throw new \RuntimeException('falha no despacho');
             }
@@ -273,6 +296,7 @@ namespace Fleetbase\FleetOps\Models {
         public function insertDispatchActivity()
         {
             $this->chamadas[]          = 'insertDispatchActivity';
+            $this->anotarTrava();
             $this->temStatusDespachado = true;
 
             return $this;
@@ -281,6 +305,13 @@ namespace Fleetbase\FleetOps\Models {
 }
 
 namespace {
+    // o DB::transaction falso desfaz estas listas junto com as tabelas (rollback)
+    \Teste\Banco::$modelos = [
+        \Fleetbase\FleetOps\Models\Order::class   => ['todos', 'criados'],
+        \Fleetbase\FleetOps\Models\Place::class   => ['todos', 'criados'],
+        \Fleetbase\FleetOps\Models\Payload::class => ['salvos'],
+    ];
+
     /** Zera os models e cria a loja de teste: Vendor com o Local de coleta e o tipo de pedido transport da empresa. */
     function reiniciarFleetbase(): void
     {
@@ -294,7 +325,7 @@ namespace {
         \Fleetbase\FleetOps\Models\Order::$falharDespacho = false;
         \Fleetbase\Support\Auth::$usuario              = null;
 
-        \Fleetbase\FleetOps\Models\Place::$todos[]       = new \Fleetbase\FleetOps\Models\Place(['uuid' => 'place-loja', 'company_uuid' => 'empresa-1', 'name' => 'PIZZARIA FICTICIA', 'location' => new \Fleetbase\LaravelMysqlSpatial\Types\Point(-21.1775, -47.8103)]);
+        \Fleetbase\FleetOps\Models\Place::$todos[]       = new \Fleetbase\FleetOps\Models\Place(['uuid' => 'place-loja', 'company_uuid' => 'empresa-1', 'name' => 'PIZZARIA FICTICIA', 'owner_uuid' => 'vendor-a', 'owner_type' => 'fleet-ops:vendor', 'location' => new \Fleetbase\LaravelMysqlSpatial\Types\Point(-21.1775, -47.8103)]);
         \Fleetbase\FleetOps\Models\Vendor::$todos[]      = new \Fleetbase\FleetOps\Models\Vendor(['uuid' => 'vendor-a', 'public_id' => 'vendor_a', 'company_uuid' => 'empresa-1', 'name' => 'Pizzaria Ficticia', 'place_uuid' => 'place-loja']);
         \Fleetbase\FleetOps\Models\OrderConfig::$todos[] = new \Fleetbase\FleetOps\Models\OrderConfig(['uuid' => 'config-transport', 'key' => 'transport', 'company_uuid' => 'empresa-1', 'namespace' => 'system:order-config:transport']);
     }

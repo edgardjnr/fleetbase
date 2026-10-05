@@ -49,14 +49,26 @@ namespace Illuminate\Support\Facades {
     {
         public static function table(string $tabela) { return new \Teste\Consulta($tabela); }
 
-        // desfaz as escritas nas tabelas em memória se a função lançar (como o rollback do MySQL)
+        // desfaz as escritas nas tabelas em memória e nas listas dos models falsos (Banco::$modelos) se a função lançar
+        // (como o rollback do MySQL)
         public static function transaction(\Closure $fazer)
         {
-            $copia = \Teste\Banco::$tabelas;
+            $copia   = \Teste\Banco::$tabelas;
+            $modelos = [];
+            foreach (\Teste\Banco::$modelos as $classe => $listas) {
+                foreach ($listas as $lista) {
+                    $modelos[$classe][$lista] = $classe::$$lista;
+                }
+            }
             try {
                 return $fazer();
             } catch (\Throwable $e) {
                 \Teste\Banco::$tabelas = $copia;
+                foreach ($modelos as $classe => $listas) {
+                    foreach ($listas as $lista => $valor) {
+                        $classe::$$lista = $valor;
+                    }
+                }
                 throw $e;
             }
         }
@@ -357,6 +369,8 @@ namespace Teste {
     {
         public static array $tabelas = [];
         public static array $proximoId = [];
+        /** Classe => [nomes das listas estáticas]: models falsos que o DB::transaction desfaz junto (stubs-ifood-fleetbase.php). */
+        public static array $modelos = [];
         /**
          * Colunas e colunas únicas das tabelas entregas_ifood_*, lidas das migrations (carregadas uma vez, na primeira
          * consulta): tabela => ['colunas' => [nomes], 'unicas' => [nomes]]. Assim um nome de coluna errado falha aqui,
