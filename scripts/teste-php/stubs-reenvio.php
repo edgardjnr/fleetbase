@@ -31,6 +31,7 @@ namespace Fleetbase\Support\SocketCluster {
 
         public function send($canal, array $dados = []): bool
         {
+            \Teste\Socket::$tentativas++;
             if (\Teste\Socket::$falhar) {
                 $this->error = 'socket fora do ar';
 
@@ -53,5 +54,6 @@ namespace Teste {
     {
         public static array $transmitidos = [];
         public static bool $falhar        = false;
+        public static int $tentativas     = 0;
     }
 }

@@ -39,7 +39,9 @@ use Illuminate\Support\Facades\Log;
  * sem motoboy no raio. O console toca um som e mostra um aviso fixo até o pedido ganhar motoboy. O envio confere o
  * retorno do socket (TransmissaoNoSocket, porque o broadcast() do Fleetbase engole a falha): se não chegou, vai para o
  * log e o aviso é tentado de novo no minuto seguinte, por até JANELA_AVISO_CENTRAL_MINUTOS (60 min) depois do despacho.
- * Passada a janela dos reenvios (16 min), o pedido só recebe o aviso à central, não mais os motoboys.
+ * Passada a janela dos reenvios (16 min), o pedido só recebe o aviso à central, não mais os motoboys. Os avisos saem
+ * depois dos reenvios aos motoboys e, na primeira falha, os demais ficam para o minuto seguinte (socket pendurado não
+ * atrasa os motoboys). A falha também é gravada na saída do container (registrarFalhaDoAviso).
  *
  * Ao atualizar o fleetops-api, confira se a classe pai ainda tem getNearbyDriversForOrder, newOrderQuery e
  * newDriverQuery.
@@ -61,6 +63,12 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
     /** Por quanto tempo depois do despacho o aviso à central ainda é tentado (socket fora, agendador parado num deploy). */
     public const JANELA_AVISO_CENTRAL_MINUTOS = 60;
 
+    /**
+     * Saída de erro do container do agendador (PID 1), onde a falha do aviso é gravada: veja registrarFalhaDoAviso. Nos
+     * testes, aponta para um arquivo.
+     */
+    protected const SAIDA_DO_CONTAINER = '/proc/1/fd/2';
+
     /** Raio de cada reenvio em relação ao raio do primeiro aviso (R, getAdhocPingDistance): 1,5R, 2R e 2R. */
     public const MULTIPLICADORES_DO_RAIO = [1.5, 2, 2];
 
@@ -81,10 +89,16 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
             return;
         }
 
+        $paraAvisar = [];
+
         foreach ($pedidos as $pedido) {
             $segundos = $agora->getTimestamp() - $pedido->dispatched_at->getTimestamp();
 
-            $this->avisarCentralSeParado($pedido, $agora);
+            // o aviso à central sai só depois do laço: com o socket pendurado, cada envio pode demorar segundos e não
+            // pode atrasar o reenvio aos motoboys
+            if ($this->precisaAvisarCentral($pedido, $segundos)) {
+                $paraAvisar[] = $pedido;
+            }
 
             // depois da janela dos reenvios, só o aviso à central; sem esta trava, um pedido que nunca achou motoboy
             // seria reenviado até o fim da janela do aviso
@@ -121,6 +135,8 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
 
             $this->info('Pedido ' . $pedido->public_id . ': aviso ' . $vezes . ' de ' . self::MAX_REENVIOS . ' reenviado a ' . $motoboys->count() . ' motoboy(s) (raio ' . $raio . ' m).');
         }
+
+        $this->avisarCentral($paraAvisar, $agora);
     }
 
     /**
@@ -167,40 +183,68 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
     }
 
     /**
-     * Com AVISO_CENTRAL_MINUTOS sem aceite desde o despacho, avisa a central no socket (PedidoSemMotoboy), uma vez por
-     * despacho, mesmo sem motoboy no raio. Falha no socket (TransmissaoNoSocket devolve o erro) fica no log e tenta de
-     * novo no minuto seguinte.
+     * Com AVISO_CENTRAL_MINUTOS sem aceite desde o despacho e sem o aviso já enviado (uma vez por despacho, mesmo sem
+     * motoboy no raio).
      */
-    protected function avisarCentralSeParado(Order $pedido, CarbonImmutable $agora): void
+    protected function precisaAvisarCentral(Order $pedido, int $segundosParado): bool
     {
-        $parado = $agora->getTimestamp() - $pedido->dispatched_at->getTimestamp();
-        if ($parado < self::AVISO_CENTRAL_MINUTOS * 60 - self::FOLGA_SEGUNDOS) {
-            return;
+        return $segundosParado >= self::AVISO_CENTRAL_MINUTOS * 60 - self::FOLGA_SEGUNDOS && !Cache::get($this->chaveDoAvisoCentral($pedido));
+    }
+
+    protected function chaveDoAvisoCentral(Order $pedido): string
+    {
+        return 'entregas:pedido-sem-motoboy:' . $pedido->uuid . ':' . $pedido->dispatched_at->getTimestamp();
+    }
+
+    /**
+     * Avisa a central no socket (PedidoSemMotoboy), em sequência, depois dos reenvios aos motoboys. Na primeira falha
+     * (TransmissaoNoSocket devolve o erro) registra e para: com o socket fora do ar, tentar os demais só atrasaria o
+     * comando. Os que sobram tentam de novo no minuto seguinte.
+     *
+     * @param Order[] $pedidos
+     */
+    protected function avisarCentral(array $pedidos, CarbonImmutable $agora): void
+    {
+        foreach ($pedidos as $indice => $pedido) {
+            $minutos = (int) round(($agora->getTimestamp() - $pedido->dispatched_at->getTimestamp()) / 60);
+
+            $erro = TransmissaoNoSocket::enviar(new PedidoSemMotoboy(
+                (string) $pedido->company_uuid,
+                (string) $pedido->uuid,
+                (string) $pedido->public_id,
+                $pedido->internal_id ? (string) $pedido->internal_id : null,
+                $minutos
+            ));
+
+            if ($erro !== null) {
+                $this->registrarFalhaDoAviso((string) $pedido->public_id, $erro);
+                $this->warn(count($pedidos) - $indice . ' aviso(s) à central ficam para o próximo minuto (socket: ' . $erro . ').');
+
+                return;
+            }
+
+            Cache::put($this->chaveDoAvisoCentral($pedido), true, now()->addDay());
+            $this->warn('Pedido ' . $pedido->public_id . ': ' . $minutos . ' min sem motoboy; central avisada.');
         }
+    }
 
-        $chave = 'entregas:pedido-sem-motoboy:' . $pedido->uuid . ':' . $pedido->dispatched_at->getTimestamp();
-        if (Cache::get($chave)) {
-            return;
+    /**
+     * Registra a falha no Log e também direto na saída de erro do container. O Fleet-Ops agenda este comando com
+     * storeOutputInDb(), que redireciona a saída do processo filho para storage/logs/schedule-<hash>.log: com
+     * LOG_CHANNEL=stdout, o Log::warning iria para esse arquivo e não apareceria em `docker service logs
+     * entregas_scheduler`. No container do agendador o PID 1 é o ssm-parent e o go-crond roda como root, então dá para
+     * escrever em /proc/1/fd/2. Fora do container (ou sem permissão) a saída não existe e é ignorada em silêncio.
+     */
+    protected function registrarFalhaDoAviso(string $publicId, string $erro): void
+    {
+        $mensagem = '[entregas] aviso de pedido sem motoboy não chegou ao socket';
+
+        Log::warning($mensagem, ['pedido' => $publicId, 'erro' => $erro]);
+
+        if (is_writable(static::SAIDA_DO_CONTAINER)) {
+            $linha = json_encode(['message' => $mensagem, 'pedido' => $publicId, 'erro' => $erro, 'datetime' => now()->toIso8601String()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            @file_put_contents(static::SAIDA_DO_CONTAINER, $linha . PHP_EOL, FILE_APPEND);
         }
-
-        $minutos = (int) round($parado / 60);
-
-        $erro = TransmissaoNoSocket::enviar(new PedidoSemMotoboy(
-            (string) $pedido->company_uuid,
-            (string) $pedido->uuid,
-            (string) $pedido->public_id,
-            $pedido->internal_id ? (string) $pedido->internal_id : null,
-            $minutos
-        ));
-
-        if ($erro !== null) {
-            Log::warning('[entregas] aviso de pedido sem motoboy não chegou ao socket', ['pedido' => $pedido->public_id, 'erro' => $erro]);
-
-            return;
-        }
-
-        Cache::put($chave, true, now()->addDay());
-        $this->warn('Pedido ' . $pedido->public_id . ': ' . $minutos . ' min sem motoboy; central avisada.');
     }
 
     protected static function intervaloEmSegundos(): int

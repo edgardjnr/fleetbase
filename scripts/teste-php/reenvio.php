@@ -58,11 +58,12 @@ function reiniciar(array $pedidos, array $motoboys): void
     Registro::$avisos           = [];
     Socket::$transmitidos       = [];
     Socket::$falhar             = false;
+    Socket::$tentativas         = 0;
     Log::$linhas                = [];
 }
 
 // roda o comando a cada minuto, de 2 a 6 s depois do minuto cheio, como o agendador
-function rodarMinutos(string $de, int $minutos, ?callable $antes = null): void
+function rodarMinutos(string $de, int $minutos, ?callable $antes = null, string $comando = ReenviarPedidosAbertos::class): void
 {
     for ($i = 0; $i < $minutos; $i++) {
         $agora                       = utc($de)->modify("+{$i} minutes")->modify('+' . (2 + ($i * 7) % 5) . ' seconds');
@@ -70,7 +71,7 @@ function rodarMinutos(string $de, int $minutos, ?callable $antes = null): void
         if ($antes) {
             $antes($agora);
         }
-        (new ReenviarPedidosAbertos())->handle();
+        (new $comando())->handle();
     }
 }
 
@@ -347,5 +348,48 @@ foreach (['12:11:59' => 0, '12:12:00' => 1] as $hora => $esperado) {
     (new ReenviarPedidosAbertos())->handle();
     confere(count(Socket::$transmitidos) === $esperado, "às {$hora}: " . ($esperado ? 'avisa' : 'ainda não avisa'));
 }
+
+echo '== Aviso à central: dois pedidos parados e o socket fora até 12:14' . PHP_EOL;
+reiniciar([pedido('PED-V1', '12:00:30'), pedido('PED-V2', '12:00:40')], [motoboy('Motoca', 1200)]);
+$tentativasPorExecucao = [];
+$anteriores            = 0;
+rodarMinutos('12:01:00', 30, function ($agora) use (&$tentativasPorExecucao, &$anteriores) {
+    // fecha a contagem da execução anterior e abre a desta
+    $tentativasPorExecucao[] = Socket::$tentativas - $anteriores;
+    $anteriores              = Socket::$tentativas;
+    Socket::$falhar          = $agora < utc('12:14:00');
+});
+$ate1214 = array_slice($tentativasPorExecucao, 0, 14);
+confere(max($ate1214) === 1, 'com o socket fora, 1 tentativa por execução, não 2 (' . implode(',', $ate1214) . ')');
+confere(Socket::$tentativas === 4, '2 falhas (12:12 e 12:13) e os 2 avisos quando o socket volta (' . Socket::$tentativas . ' tentativas)');
+confere(count(avisosACentral()) === 2, 'com o socket de volta, os dois pedidos são avisados (' . implode(', ', avisosACentral()) . ')');
+confere(count(horarios('PED-V1')) === 3 && count(horarios('PED-V2')) === 3, 'o socket fora não atrasa nem tira os reenvios aos motoboys');
+
+echo '== Aviso à central: a falha vai também para a saída do container' . PHP_EOL;
+$saida = sys_get_temp_dir() . '/saida-do-container.txt';
+file_put_contents($saida, '');
+define('SAIDA_TESTE', $saida);
+class ReenviarPedidosAbertosComSaida extends ReenviarPedidosAbertos
+{
+    protected const SAIDA_DO_CONTAINER = SAIDA_TESTE;
+}
+reiniciar([pedido('PED-W1', '12:00:30')], [motoboy('Motoca', 1200)]);
+rodarMinutos('12:01:00', 30, function ($agora) {
+    Socket::$falhar = $agora < utc('12:13:30');
+}, ReenviarPedidosAbertosComSaida::class);
+$linhas = array_values(array_filter(explode(PHP_EOL, (string) file_get_contents($saida))));
+confere(count($linhas) === 2, 'uma linha por falha (' . count($linhas) . ')');
+$linha = json_decode($linhas[0] ?? 'null', true) ?: [];
+confere(($linha['message'] ?? null) === '[entregas] aviso de pedido sem motoboy não chegou ao socket', 'message igual à do log');
+confere(($linha['pedido'] ?? null) === 'PED-W1' && ($linha['erro'] ?? null) === 'socket fora do ar', 'traz o pedido e o erro');
+confere(isset($linha['datetime']) && strlen($linha['datetime']) >= 20, 'traz a data e hora (' . ($linha['datetime'] ?? '') . ')');
+confere(count(array_filter(Log::$linhas, fn ($l) => $l[0] === 'warning')) === 2, 'e continua no Log do Laravel');
+
+echo '== Aviso à central: sem /proc/1/fd/2 (aqui), nada quebra' . PHP_EOL;
+reiniciar([pedido('PED-W2', '12:00:30')], [motoboy('Motoca', 1200)]);
+rodarMinutos('12:01:00', 30, function ($agora) {
+    Socket::$falhar = $agora < utc('12:13:30');
+});
+confere(count(avisosACentral()) === 1, 'o comando padrão ignora a saída que não existe e avisa depois');
 
 resumo();
