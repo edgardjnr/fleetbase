@@ -232,8 +232,9 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
      * Registra a falha no Log e também direto na saída de erro do container. O Fleet-Ops agenda este comando com
      * storeOutputInDb(), que redireciona a saída do processo filho para storage/logs/schedule-<hash>.log: com
      * LOG_CHANNEL=stdout, o Log::warning iria para esse arquivo e não apareceria em `docker service logs
-     * entregas_scheduler`. No container do agendador o PID 1 é o ssm-parent e o go-crond roda como root, então dá para
-     * escrever em /proc/1/fd/2. Fora do container (ou sem permissão) a saída não existe e é ignorada em silêncio.
+     * entregas_scheduler`. No serviço scheduler (imagem app-release, que só troca o command) o docker-php-entrypoint faz
+     * exec do go-crond: ele é o PID 1 e roda como root, então dá para escrever em /proc/1/fd/2, o stderr do container.
+     * Fora do container (ou sem permissão) a saída não existe e é ignorada em silêncio.
      */
     protected function registrarFalhaDoAviso(string $publicId, string $erro): void
     {
