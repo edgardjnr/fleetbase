@@ -6,6 +6,7 @@ import { registerDestructor } from '@ember/destroyable';
 import { debug } from '@ember/debug';
 import { task } from 'ember-concurrency';
 import aplicarOnlineDoMotoboy from '../../../utils/entregas-online-do-motoboy';
+import escutarCanalDaEmpresa from '../../../utils/escutar-canal-da-empresa';
 
 /** Entregas: evento nosso (App\Events\Entregas\OnlineDoMotoboyMudou), o motoboy ligou ou desligou o online no app. */
 const EVENTO_ONLINE_DO_MOTOBOY = 'entregas.motoboy_online';
@@ -409,44 +410,25 @@ export default class LayoutFleetOpsSidebarOperationsMonitorComponent extends Com
     }
 
     /**
-     * Entregas: o online do motoboy muda na lista assim que ele liga ou desliga no app, como o capacete do mapa.
-     * Consumidor próprio do canal da empresa: outras telas usam o mesmo canal e desinscrever derrubaria a delas. Se o
-     * canal for fechado por outra tela (o order-socket-events fecha ao sair de Pedidos) ou cair, volta a se inscrever.
+     * Entregas: o online do motoboy muda na lista assim que ele liga ou desliga no app, como o capacete do mapa
+     * (util escutar-canal-da-empresa: consumidor próprio, que volta a se inscrever se outra tela fechar o canal).
      */
-    async escutarSocketDoOnline() {
-        if (this._escutandoSocket) return;
-        this._escutandoSocket = true;
-
-        while (this._escutandoSocket && !this.isDestroying && !this.isDestroyed) {
-            try {
-                const empresa = this.currentUser.companyId;
-                if (empresa) {
-                    const canal = this.socket.instance().subscribe(`company.${empresa}`);
-                    this._consumidorSocket = canal.createConsumer();
-                    for await (const mensagem of this._consumidorSocket) {
-                        if (!this._escutandoSocket) break;
-                        if (mensagem?.event === EVENTO_ONLINE_DO_MOTOBOY) {
-                            aplicarOnlineDoMotoboy(this.store, mensagem.data);
-                        }
-                    }
+    escutarSocketDoOnline() {
+        this._canalDaEmpresa ??= escutarCanalDaEmpresa({
+            socket: this.socket,
+            currentUser: this.currentUser,
+            aoReceber: (mensagem) => {
+                if (mensagem?.event === EVENTO_ONLINE_DO_MOTOBOY) {
+                    aplicarOnlineDoMotoboy(this.store, mensagem.data);
                 }
-            } catch (err) {
-                debug('Socket do online dos motoboys: ' + err.message);
-            }
-            if (this._escutandoSocket) {
-                await new Promise((resolve) => setTimeout(resolve, 5000));
-            }
-        }
+            },
+            aoFalhar: (err) => debug('Socket do online dos motoboys: ' + err?.message),
+        });
     }
 
     pararSocketDoOnline() {
-        this._escutandoSocket = false;
-        try {
-            this._consumidorSocket?.return();
-        } catch (err) {
-            debug('Socket do online dos motoboys: ' + err.message);
-        }
-        this._consumidorSocket = null;
+        this._canalDaEmpresa?.parar();
+        this._canalDaEmpresa = null;
     }
 
     @action setActiveTab(tab) {
