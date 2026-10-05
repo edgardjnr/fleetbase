@@ -22,9 +22,13 @@ use Illuminate\Support\Facades\Cache;
  *   novo em seguida.
  *
  * Aqui o pedido não é alterado. O aviso volta a cada INTERVALO_MINUTOS, no máximo MAX_REENVIOS vezes, para os motoboys
- * online e livres perto da coleta, num raio que cresce a cada reenvio (MULTIPLICADORES_DO_RAIO sobre o raio R do
- * primeiro aviso: 1,5R, 2R e 2R). Sem motoboy no raio, tenta de novo no minuto seguinte sem gastar reenvio. A contagem
- * fica no cache, por pedido e despacho: despachar o pedido de novo recomeça.
+ * online e livres perto da coleta. O raio cresce com o tempo desde o despacho (MULTIPLICADORES_DO_RAIO sobre o raio R
+ * do primeiro aviso: 1,5R a partir de ~4 min, 2R a partir de ~8 min), mesmo quando um reenvio não achou ninguém. Sem
+ * motoboy no raio, tenta de novo no minuto seguinte sem gastar reenvio. A contagem fica no cache, por pedido e
+ * despacho: despachar o pedido de novo recomeça.
+ *
+ * O motoboy além de R recebe o alarme e pode aceitar por ele, mas o pedido não aparece na lista de pedidos próximos do
+ * app, que filtra pelo raio R da empresa.
  *
  * Ao atualizar o fleetops-api, confira se a classe pai ainda tem getNearbyDriversForOrder, newOrderQuery e
  * newDriverQuery.
@@ -74,7 +78,7 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
                 continue;
             }
 
-            $raio     = self::raioDoReenvio($pedido->getAdhocPingDistance(), $estado['vezes'] + 1);
+            $raio     = self::raioDoReenvio($pedido->getAdhocPingDistance(), self::etapaPeloTempo($agora->getTimestamp() - $pedido->dispatched_at->getTimestamp()));
             $motoboys = $this->getNearbyDriversForOrder($pedido, $coleta, $raio, $testing);
             if ($motoboys->isEmpty()) {
                 $this->line('Pedido ' . $pedido->public_id . ': nenhum motoboy livre a até ' . $raio . ' m da coleta.');
@@ -93,14 +97,23 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
     }
 
     /**
-     * Raio do reenvio de número $reenvio (1, 2, 3...), em metros. Depois do último multiplicador, repete o último.
+     * Raio do reenvio na etapa $etapa (1, 2, 3...), em metros. Depois do último multiplicador, repete o último.
      */
-    public static function raioDoReenvio(int $raio, int $reenvio): int
+    public static function raioDoReenvio(int $raio, int $etapa): int
     {
         $multiplicadores = self::MULTIPLICADORES_DO_RAIO;
-        $indice          = max(0, min($reenvio, count($multiplicadores)) - 1);
+        $indice          = max(0, min($etapa, count($multiplicadores)) - 1);
 
         return (int) round($raio * $multiplicadores[$indice]);
+    }
+
+    /**
+     * Etapa do raio pelo tempo desde o despacho (1 a partir de ~4 min, 2 a partir de ~8 min...), com a mesma folga do
+     * intervalo. Independe de algum reenvio ter achado motoboy: sem ninguém perto, o raio cresce do mesmo jeito.
+     */
+    public static function etapaPeloTempo(int $segundosDesdeODespacho): int
+    {
+        return max(1, intdiv($segundosDesdeODespacho + self::FOLGA_SEGUNDOS, self::INTERVALO_MINUTOS * 60));
     }
 
     /**
@@ -131,7 +144,7 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
     }
 
     /**
-     * Os mesmos motoboys do primeiro aviso (HandleOrderDispatched do Fleet-Ops): online e livres.
+     * O mesmo filtro do primeiro aviso (HandleOrderDispatched do Fleet-Ops): online e livres.
      */
     protected function newDriverQuery()
     {

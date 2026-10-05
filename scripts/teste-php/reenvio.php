@@ -213,4 +213,29 @@ confere(($rodadas[0] ?? []) === ['Perto', 'Medio'], '1º reenvio até 9 km: ' . 
 confere(($rodadas[1] ?? []) === ['Perto', 'Medio', 'Longe'], '2º reenvio até 12 km: ' . implode(', ', $rodadas[1] ?? []));
 confere(($rodadas[2] ?? []) === ['Perto', 'Medio', 'Longe'], '3º reenvio até 12 km: ' . implode(', ', $rodadas[2] ?? []));
 
+echo '== Etapa do raio pelo tempo' . PHP_EOL;
+confere(ReenviarPedidosAbertos::etapaPeloTempo(100) === 1, 'antes de 4 min: etapa 1');
+confere(ReenviarPedidosAbertos::etapaPeloTempo(212) === 1, '~4 min: etapa 1');
+confere(ReenviarPedidosAbertos::etapaPeloTempo(452) === 2, '~8 min: etapa 2');
+confere(ReenviarPedidosAbertos::etapaPeloTempo(692) === 3, '~12 min: etapa 3');
+
+echo '== Só há motoboy a 10 km (entre 1,5R e 2R)' . PHP_EOL;
+reiniciar([pedido('PED-T', '12:00:30')], [motoboy('Dez', 10000)]);
+rodarMinutos('12:01:00', 30);
+$h = horarios('PED-T');
+confere(($h[0] ?? '') >= '12:08:00' && ($h[0] ?? '') < '12:09:00', 'recebe quando o raio chega a 2R, mesmo sem reenvio antes (' . implode(', ', $h) . ')');
+
+echo '== R do próprio pedido (4000 m)' . PHP_EOL;
+$p                 = pedido('PED-U', '12:00:30');
+$p->adhoc_distance = 4000;
+reiniciar([$p], [motoboy('A', 5500), motoboy('B', 6500)]);
+rodarMinutos('12:01:00', 30);
+$porMinuto = [];
+foreach (Registro::$avisos as $a) {
+    $porMinuto[$a['quando']->format('H:i')][] = $a['motoboy'];
+}
+$rodadas = array_values($porMinuto);
+confere(($rodadas[0] ?? []) === ['A'], '1º reenvio até 6 km (1,5 × 4000): ' . implode(', ', $rodadas[0] ?? []));
+confere(($rodadas[1] ?? []) === ['A', 'B'], '2º reenvio até 8 km: ' . implode(', ', $rodadas[1] ?? []));
+
 resumo();
