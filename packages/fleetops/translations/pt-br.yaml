@@ -1247,6 +1247,16 @@ fleet-ops:
         no-positions-loaded: Nenhuma posição carregada
         select-a-trackable-and-date-range: Selecione um item rastreável e um período para carregar o histórico de posições para reprodução.
       leaflet-live-map:
+        pedido-loja: Loja
+        pedido-status: Status
+        pedido-motoboy: Motoboy
+        pedido-sem-motoboy: Sem motoboy
+        pedido-criado: Criado
+        pedido-entrega: Entrega
+        pedido-abrir: Abrir pedido
+        pedido-ha-agora: agora mesmo
+        pedido-ha-min: "há {n} min"
+        pedido-ha-h: "há {n} h"
         phone: Telefone
         vehicle: Veículo
         email: E-mail

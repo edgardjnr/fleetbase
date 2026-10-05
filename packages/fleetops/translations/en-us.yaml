@@ -1247,6 +1247,16 @@ fleet-ops:
                 no-positions-loaded: No positions loaded
                 select-a-trackable-and-date-range: Select a trackable and date range to load position history for replay.
             leaflet-live-map:
+                pedido-loja: Store
+                pedido-status: Status
+                pedido-motoboy: Courier
+                pedido-sem-motoboy: No courier
+                pedido-criado: Created
+                pedido-entrega: Delivery
+                pedido-abrir: Open order
+                pedido-ha-agora: just now
+                pedido-ha-min: "{n} min ago"
+                pedido-ha-h: "{n} h ago"
                 phone: Phone
                 vehicle: Vehicle
                 email: Email

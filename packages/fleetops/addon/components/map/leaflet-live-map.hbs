@@ -324,6 +324,39 @@
                     </layers.marker>
                 {{/each}}
 
+                {{! Entregas: um alfinete vermelho no endereço de entrega de cada pedido em andamento (PedidosNoMapa), por baixo dos capacetes }}
+                {{#each this.pedidosNoMapa key="id" as |pedido|}}
+                    <layers.marker
+                        @lat={{pedido.latitude}}
+                        @lng={{pedido.longitude}}
+                        @icon={{icon iconUrl=this.alfinete.url iconSize=this.alfinete.tamanho iconAnchor=this.alfinete.ponta popupAnchor=this.alfinete.popup}}
+                        @zIndexOffset={{-1000}}
+                        @riseOnHover={{true}}
+                        @title={{pedido.numero}}
+                        @draggable={{false}}
+                        as |marker|
+                    >
+                        <marker.popup @minWidth="220">
+                            <div class="text-xs space-y-0.5">
+                                <div class="text-sm font-semibold">{{pedido.numero}}</div>
+                                <div><span class="text-gray-500">{{t "fleet-ops.ui.map.leaflet-live-map.pedido-loja"}}:</span> {{n-a pedido.loja}}</div>
+                                <div><span class="text-gray-500">{{t "fleet-ops.ui.map.leaflet-live-map.pedido-status"}}:</span> {{smart-humanize pedido.status}}</div>
+                                <div><span class="text-gray-500">{{t "fleet-ops.ui.map.leaflet-live-map.pedido-motoboy"}}:</span>
+                                    {{or pedido.motoboy (t "fleet-ops.ui.map.leaflet-live-map.pedido-sem-motoboy")}}</div>
+                                <div><span class="text-gray-500">{{t "fleet-ops.ui.map.leaflet-live-map.pedido-criado"}}:</span> {{this.tempoDoPedido pedido this.relogio}}</div>
+                                <div><span class="text-gray-500">{{t "fleet-ops.ui.map.leaflet-live-map.pedido-entrega"}}:</span> {{n-a pedido.endereco}}</div>
+                                <Button
+                                    @size="xs"
+                                    @type="primary"
+                                    @text={{t "fleet-ops.ui.map.leaflet-live-map.pedido-abrir"}}
+                                    @onClick={{fn this.abrirPedido pedido.id}}
+                                    @wrapperClass="pt-1"
+                                />
+                            </div>
+                        </marker.popup>
+                    </layers.marker>
+                {{/each}}
+
                 {{#each this.serviceAreaActions.serviceAreas as |serviceArea|}}
                     <layers.polygon
                         @id={{serviceArea.id}}

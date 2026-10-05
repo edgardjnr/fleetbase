@@ -14,6 +14,7 @@ import getModelName from '@fleetbase/ember-core/utils/get-model-name';
 import ensureLeafletPluginsReady, { hasLeafletPluginsReady } from '../../utils/leaflet-plugin-loader';
 import capaceteDoMotoboy, { indexarSituacoes } from '../../utils/entregas-capacete';
 import aplicarOnlineDoMotoboy from '../../utils/entregas-online-do-motoboy';
+import { ALFINETE, mesmaLista, pedidosValidos, tempoDesde } from '../../utils/entregas-pedidos-no-mapa';
 
 /** Entregas: de quanto em quanto tempo o mapa relê a situação dos motoboys (cor do capacete), como reserva do socket. */
 const INTERVALO_SITUACOES_MS = 20000;
@@ -57,6 +58,7 @@ export default class MapLeafletLiveMapComponent extends Component {
     @service geofenceEventBus;
     @service currentUser;
     @service store;
+    @service hostRouter;
 
     /** properties */
     id = guidFor(this);
@@ -73,6 +75,10 @@ export default class MapLeafletLiveMapComponent extends Component {
     @tracked vehicles = [];
     @tracked places = [];
     @tracked situacoesDosMotoboys = {};
+    /** Entregas: os pedidos em andamento (alfinete vermelho no endereço de entrega) e o relógio do "há X min". */
+    @tracked pedidosNoMapa = [];
+    @tracked relogio = Date.now();
+    alfinete = ALFINETE;
     @tracked leafletPluginsReady = hasLeafletPluginsReady();
     _viewportReloadLocks = new Set();
 
@@ -336,6 +342,12 @@ export default class MapLeafletLiveMapComponent extends Component {
                     if (JSON.stringify(situacoes) !== JSON.stringify(this.situacoesDosMotoboys)) {
                         this.situacoesDosMotoboys = situacoes;
                     }
+                    // os alfinetes dos pedidos vêm na mesma resposta; API antiga (sem pedidos) = nenhum alfinete
+                    const pedidos = pedidosValidos(resposta?.pedidos);
+                    if (!mesmaLista(pedidos, this.pedidosNoMapa)) {
+                        this.pedidosNoMapa = pedidos;
+                    }
+                    this.relogio = Date.now();
                 } catch (err) {
                     debug('Falha ao ler a situação dos motoboys: ' + err.message);
                 }
@@ -404,6 +416,18 @@ export default class MapLeafletLiveMapComponent extends Component {
 
     /** Entregas: capacete do motoboy na cor da situação (usado como helper no template). */
     capaceteDoMotoboy = (driver) => capaceteDoMotoboy(driver, this.situacoesDosMotoboys);
+
+    /** Entregas: "há X min" do alfinete; o relogio (atualizado a cada releitura) faz o texto andar. */
+    tempoDoPedido = (pedido, relogio) => {
+        const tempo = tempoDesde(pedido?.criado_em, relogio);
+
+        return tempo ? this.intl.t(`fleet-ops.ui.map.leaflet-live-map.pedido-ha-${tempo.unidade}`, { n: tempo.n }) : '';
+    };
+
+    /** Entregas: o botão "Abrir pedido" do alfinete. */
+    @action abrirPedido(id) {
+        this.hostRouter.transitionTo('console.fleet-ops.operations.orders.index.details', id);
+    }
 
     @task *loadResource(path, options = {}) {
         if (this.abilities.cannot(`fleet-ops list ${path}`)) return [];
