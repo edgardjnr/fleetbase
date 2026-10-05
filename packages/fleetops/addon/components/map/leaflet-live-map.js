@@ -13,6 +13,7 @@ import { next, debounce, cancel } from '@ember/runloop';
 import getModelName from '@fleetbase/ember-core/utils/get-model-name';
 import ensureLeafletPluginsReady, { hasLeafletPluginsReady } from '../../utils/leaflet-plugin-loader';
 import capaceteDoMotoboy, { indexarSituacoes } from '../../utils/entregas-capacete';
+import aplicarOnlineDoMotoboy from '../../utils/entregas-online-do-motoboy';
 
 /** Entregas: de quanto em quanto tempo o mapa relê a situação dos motoboys (cor do capacete), como reserva do socket. */
 const INTERVALO_SITUACOES_MS = 20000;
@@ -55,6 +56,7 @@ export default class MapLeafletLiveMapComponent extends Component {
     @service('universe/menu-service') menuService;
     @service geofenceEventBus;
     @service currentUser;
+    @service store;
 
     /** properties */
     id = guidFor(this);
@@ -328,6 +330,8 @@ export default class MapLeafletLiveMapComponent extends Component {
                 try {
                     const resposta = yield this.fetch.get('entregas/mapa/motoboys');
                     const situacoes = indexarSituacoes(resposta?.motoboys);
+                    // a lista "Operações ao vivo" da barra lateral lê o online do store: reserva do evento do socket
+                    (resposta?.motoboys ?? []).forEach((motoboy) => aplicarOnlineDoMotoboy(this.store, motoboy));
                     // só troca quando algo mudou: cada troca recria o ícone de todos os motoboys
                     if (JSON.stringify(situacoes) !== JSON.stringify(this.situacoesDosMotoboys)) {
                         this.situacoesDosMotoboys = situacoes;

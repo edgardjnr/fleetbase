@@ -51,6 +51,8 @@ class MapaController extends Controller
             'motoboys' => $motoboys->map(fn ($motoboy) => [
                 'uuid'      => $motoboy->uuid,
                 'public_id' => $motoboy->public_id,
+                // o console grava no store para a lista "Operações ao vivo" (reserva do evento entregas.motoboy_online)
+                'online'    => (bool) $motoboy->online,
                 // array_map, e não array_column: com o model do Eloquent, o array_column pula status nulo
                 'situacao'  => SituacaoDoMotoboy::classificar(
                     (bool) $motoboy->online,

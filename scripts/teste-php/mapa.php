@@ -327,6 +327,7 @@ namespace {
         'livre, coleta, entrega e offline; sem motoboy de outra empresa');
     confere(($porId['m-velho'] ?? null) === 'livre', 'pedido parado há mais de 12 h não ocupa o motoboy');
     confere(array_column($resposta, 'public_id', 'uuid')['m-entrega'] === 'driver_entrega', 'resposta traz o public_id');
+    confere(array_column($resposta, 'online', 'uuid')['m-off'] === false && array_column($resposta, 'online', 'uuid')['m-livre'] === true, 'resposta traz o online como booleano');
     confere(in_array('permissao fleet-ops list driver', \Teste\Consulta::$registro[Driver::class], true), 'Driver com o filtro de permissão do Fleet-Ops');
     confere(in_array('where company_uuid =', \Teste\Consulta::$registro[Order::class], true), 'pedidos filtrados pela empresa');
 

@@ -3,7 +3,12 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { registerDestructor } from '@ember/destroyable';
+import { debug } from '@ember/debug';
 import { task } from 'ember-concurrency';
+import aplicarOnlineDoMotoboy from '../../../utils/entregas-online-do-motoboy';
+
+/** Entregas: evento nosso (App\Events\Entregas\OnlineDoMotoboyMudou), o motoboy ligou ou desligou o online no app. */
+const EVENTO_ONLINE_DO_MOTOBOY = 'entregas.motoboy_online';
 
 export default class LayoutFleetOpsSidebarOperationsMonitorComponent extends Component {
     @service intl;
@@ -16,6 +21,8 @@ export default class LayoutFleetOpsSidebarOperationsMonitorComponent extends Com
     @service vehicleActions;
     @service fleetActions;
     @service notifications;
+    @service socket;
+    @service currentUser;
 
     // Entregas: o sistema não usa frotas nem veículos; o monitor mostra só os motoristas (motoboys)
     @tracked activeTab = 'drivers';
@@ -33,8 +40,10 @@ export default class LayoutFleetOpsSidebarOperationsMonitorComponent extends Com
     constructor() {
         super(...arguments);
         registerDestructor(this, () => this.teardownLayoutObservers());
+        registerDestructor(this, () => this.pararSocketDoOnline());
         this.loadFallbackResources.perform();
         this.listenForChanges();
+        this.escutarSocketDoOnline();
     }
 
     get driverSource() {
@@ -397,6 +406,47 @@ export default class LayoutFleetOpsSidebarOperationsMonitorComponent extends Com
         this.universe.on('fleet-ops.fleet.vehicle_unassigned', () => this.loadFallbackResources.perform());
         this.universe.on('fleet-ops.fleet.driver_assigned', () => this.loadFallbackResources.perform());
         this.universe.on('fleet-ops.fleet.driver_unassigned', () => this.loadFallbackResources.perform());
+    }
+
+    /**
+     * Entregas: o online do motoboy muda na lista assim que ele liga ou desliga no app, como o capacete do mapa.
+     * Consumidor próprio do canal da empresa: outras telas usam o mesmo canal e desinscrever derrubaria a delas. Se o
+     * canal for fechado por outra tela (o order-socket-events fecha ao sair de Pedidos) ou cair, volta a se inscrever.
+     */
+    async escutarSocketDoOnline() {
+        if (this._escutandoSocket) return;
+        this._escutandoSocket = true;
+
+        while (this._escutandoSocket && !this.isDestroying && !this.isDestroyed) {
+            try {
+                const empresa = this.currentUser.companyId;
+                if (empresa) {
+                    const canal = this.socket.instance().subscribe(`company.${empresa}`);
+                    this._consumidorSocket = canal.createConsumer();
+                    for await (const mensagem of this._consumidorSocket) {
+                        if (!this._escutandoSocket) break;
+                        if (mensagem?.event === EVENTO_ONLINE_DO_MOTOBOY) {
+                            aplicarOnlineDoMotoboy(this.store, mensagem.data);
+                        }
+                    }
+                }
+            } catch (err) {
+                debug('Socket do online dos motoboys: ' + err.message);
+            }
+            if (this._escutandoSocket) {
+                await new Promise((resolve) => setTimeout(resolve, 5000));
+            }
+        }
+    }
+
+    pararSocketDoOnline() {
+        this._escutandoSocket = false;
+        try {
+            this._consumidorSocket?.return();
+        } catch (err) {
+            debug('Socket do online dos motoboys: ' + err.message);
+        }
+        this._consumidorSocket = null;
     }
 
     @action setActiveTab(tab) {
