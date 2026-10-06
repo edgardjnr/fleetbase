@@ -77,6 +77,11 @@ class RouteServiceProvider extends ServiceProvider
         // chamadas por minuto por motoboy, num balde separado do entregas-motoboy (ganhos e valor)
         RateLimiter::for('entregas-motoboy-rota', fn (Request $request) => Limit::perMinute(120)->by('entregas-motoboy-rota:' . (session('user') ?: $request->ip())));
 
+        // Entregas RestaurantePro: dados do pedido iFood no app (cada card de pedido aberto e os detalhes, relidos a cada
+        // mudança do pedido), até 120 chamadas por minuto por motoboy, num balde separado do entregas-motoboy: assim a lista
+        // de pedidos não gasta o limite do concluir-ifood
+        RateLimiter::for('entregas-motoboy-ifood', fn (Request $request) => Limit::perMinute(120)->by('entregas-motoboy-ifood:' . (session('user') ?: $request->ip())));
+
         // Entregas RestaurantePro: código de entrega do iFood digitado pelo motoboy, até 10 tentativas por minuto por motoboy
         // (contra tentar todos os códigos), além do entregas-motoboy e do teto de erros por pedido (ConclusaoIfood)
         RateLimiter::for('entregas-ifood-codigo', fn (Request $request) => Limit::perMinute(10)->by('entregas-ifood-codigo:' . (session('user') ?: $request->ip())));
@@ -151,8 +156,7 @@ class RouteServiceProvider extends ServiceProvider
                         Route::post('chat-central', [MotoboyController::class, 'chatComACentral']);
                         // conversa do motoboy com a loja do pedido (ou com a central, em pedido sem loja)
                         Route::post('pedidos/{id}/chat', [MotoboyController::class, 'chatDoPedido']);
-                        // pedido iFood: dados (card e detalhes), conclusão e código de entrega do cliente
-                        Route::get('pedidos/{id}/ifood', [MotoboyController::class, 'ifood']);
+                        // pedido iFood: conclusão e código de entrega do cliente (os dados ficam no grupo de baixo)
                         Route::post('pedidos/{id}/concluir-ifood', [MotoboyController::class, 'concluirIfood']);
                         Route::post('pedidos/{id}/codigo-ifood', [MotoboyController::class, 'codigoIfood'])->middleware('throttle:entregas-ifood-codigo');
                     });
@@ -162,6 +166,13 @@ class RouteServiceProvider extends ServiceProvider
                     ->middleware(['fleetbase.api', 'throttle:entregas-motoboy-rota'])
                     ->group(function () {
                         Route::get('pedidos/{id}/rota', [MotoboyController::class, 'rota']);
+                    });
+
+                // Entregas RestaurantePro: dados do pedido iFood no app (card de aceitar e detalhes; MotoboyController@ifood)
+                Route::prefix('v1/entregas/motoboy')
+                    ->middleware(['fleetbase.api', 'throttle:entregas-motoboy-ifood'])
+                    ->group(function () {
+                        Route::get('pedidos/{id}/ifood', [MotoboyController::class, 'ifood']);
                     });
             }
         );

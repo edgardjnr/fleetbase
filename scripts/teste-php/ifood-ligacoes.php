@@ -38,6 +38,9 @@ foreach ([
     "Route::get('pedidos/{id}/ifood', [IfoodPedidosController::class, 'painel']);",
     "Route::post('pedidos/{id}/ifood/liberar-sem-codigo', [IfoodPedidosController::class, 'liberarSemCodigo']);",
     "RateLimiter::for('entregas-ifood-codigo'",
+    // os dados do pedido iFood (card e detalhes do app) num balde próprio, fora do entregas-motoboy do concluir-ifood
+    "RateLimiter::for('entregas-motoboy-ifood'",
+    "->middleware(['fleetbase.api', 'throttle:entregas-motoboy-ifood'])",
 ] as $trecho) {
     confere(str_contains($rotas, $trecho), "rota/limitador: {$trecho}");
 }
