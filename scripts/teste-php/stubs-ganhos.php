@@ -4,6 +4,12 @@
 // Carbon daqui têm o que o CalculoEntregas, o MotoboyController e a migration usam. Sem vendor e sem banco: a tabela
 // entregas_valores_pedido é um arranjo em memória (Teste\Banco) e as consultas filtram listas (Teste\Consulta).
 
+namespace {
+    // como na produção: o Laravel faz date_default_timezone_set(config('app.timezone')), que é America/Sao_Paulo
+    // (horário de Brasília). Ver CLAUDE.md, "Fuso (horário de Brasília)"
+    date_default_timezone_set('America/Sao_Paulo');
+}
+
 namespace Illuminate\Support {
     class Collection implements \IteratorAggregate, \Countable, \ArrayAccess
     {
@@ -257,7 +263,7 @@ namespace Fleetbase\FleetOps\Models {
         public $internal_id           = null;
         public $payload               = null;
         public $driverAssigned        = null;
-        public $entregas_concluido_em = '2026-10-03 22:42:00';
+        public $entregas_concluido_em = '2026-10-03 19:42:00'; // texto do banco, em hora de Brasília
         public $updated_at            = null;
         public $timestamps            = true;
         public array $meta            = [];
@@ -492,7 +498,7 @@ namespace {
 
     function now()
     {
-        return new \Illuminate\Support\Carbon('now', new \DateTimeZone('UTC'));
+        return new \Illuminate\Support\Carbon('now', new \DateTimeZone(date_default_timezone_get()));
     }
 
     function collect($itens = [])

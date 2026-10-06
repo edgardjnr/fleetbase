@@ -135,10 +135,13 @@ namespace {
     require '/repo/api/app/Support/Entregas/Coordenada.php';
     require '/repo/api/app/Support/Entregas/PedidosNoMapa.php';
 
+    // como na produção: o PHP no fuso do app (America/Sao_Paulo), o mesmo da sessão do MySQL
+    date_default_timezone_set('America/Sao_Paulo');
+
     const EMPRESA = 'empresa-a';
-    $agora   = new Carbon('2026-10-05 12:00:00');
-    $recente = new Carbon('2026-10-05 11:30:00');
-    $antigo  = new Carbon('2026-10-04 20:00:00');
+    $agora   = new Carbon('2026-10-05 09:00:00');
+    $recente = new Carbon('2026-10-05 08:30:00');
+    $antigo  = new Carbon('2026-10-04 17:00:00');
 
     function now() { global $agora; return $agora; }
 
@@ -173,19 +176,19 @@ namespace {
         (object) ['uuid' => 'vendor-b', 'name' => 'Loja B', 'company_uuid' => EMPRESA],
     ];
     Order::$todos = [
-        pedido('order_sem_motoboy', 'created', 'vendor-a', $recente, '2026-10-05 11:00:00', $rua, ['trackingNumber' => (object) ['tracking_number' => 'RP123']]),
-        pedido('order_coleta', 'started', 'vendor-b', $recente, '2026-10-05 11:10:00', lugar(-21.19, -47.82, 'Rua B, 20'), ['driverAssigned' => $motoboy, 'started' => true]),
-        pedido('order_entrega', 'enroute', 'contato-a', $recente, '2026-10-05 11:20:00', lugar(-21.2, -47.83, null, 'Casa do cliente'), ['driverAssigned' => $motoboy, 'started' => true]),
-        pedido('order_sem_loja', 'dispatched', 'contato-x', $recente, '2026-10-05 10:50:00', $rua, ['payload' => (object) ['dropoff' => $rua, 'pickup' => (object) ['name' => 'Pizzaria Sem Cadastro']], 'driverAssigned' => $motoboy]),
-        pedido('order_concluido', 'completed', 'vendor-a', $recente, '2026-10-05 11:05:00', $rua),
-        pedido('order_cancelado', 'canceled', 'vendor-a', $recente, '2026-10-05 11:05:00', $rua),
-        pedido('order_expirado', 'expired', 'vendor-a', $recente, '2026-10-05 11:05:00', $rua),
-        pedido('order_sem_status', null, 'vendor-a', $recente, '2026-10-05 11:05:00', $rua),
-        pedido('order_velho', 'started', 'vendor-a', $antigo, '2026-10-04 19:00:00', $rua),
-        pedido('order_sem_destino', 'created', 'vendor-a', $recente, '2026-10-05 11:05:00', null),
-        pedido('order_sem_local', 'created', 'vendor-a', $recente, '2026-10-05 11:05:00', lugar(null, null, 'Rua sem GPS')),
-        pedido('order_zero', 'created', 'vendor-a', $recente, '2026-10-05 11:05:00', lugar(0.0, 0.0, 'Rua (0, 0)')),
-        pedido('order_outra_empresa', 'created', 'vendor-a', $recente, '2026-10-05 11:05:00', $rua, ['company_uuid' => 'empresa-b']),
+        pedido('order_sem_motoboy', 'created', 'vendor-a', $recente, '2026-10-05 08:00:00', $rua, ['trackingNumber' => (object) ['tracking_number' => 'RP123']]),
+        pedido('order_coleta', 'started', 'vendor-b', $recente, '2026-10-05 08:10:00', lugar(-21.19, -47.82, 'Rua B, 20'), ['driverAssigned' => $motoboy, 'started' => true]),
+        pedido('order_entrega', 'enroute', 'contato-a', $recente, '2026-10-05 08:20:00', lugar(-21.2, -47.83, null, 'Casa do cliente'), ['driverAssigned' => $motoboy, 'started' => true]),
+        pedido('order_sem_loja', 'dispatched', 'contato-x', $recente, '2026-10-05 07:50:00', $rua, ['payload' => (object) ['dropoff' => $rua, 'pickup' => (object) ['name' => 'Pizzaria Sem Cadastro']], 'driverAssigned' => $motoboy]),
+        pedido('order_concluido', 'completed', 'vendor-a', $recente, '2026-10-05 08:05:00', $rua),
+        pedido('order_cancelado', 'canceled', 'vendor-a', $recente, '2026-10-05 08:05:00', $rua),
+        pedido('order_expirado', 'expired', 'vendor-a', $recente, '2026-10-05 08:05:00', $rua),
+        pedido('order_sem_status', null, 'vendor-a', $recente, '2026-10-05 08:05:00', $rua),
+        pedido('order_velho', 'started', 'vendor-a', $antigo, '2026-10-04 16:00:00', $rua),
+        pedido('order_sem_destino', 'created', 'vendor-a', $recente, '2026-10-05 08:05:00', null),
+        pedido('order_sem_local', 'created', 'vendor-a', $recente, '2026-10-05 08:05:00', lugar(null, null, 'Rua sem GPS')),
+        pedido('order_zero', 'created', 'vendor-a', $recente, '2026-10-05 08:05:00', lugar(0.0, 0.0, 'Rua (0, 0)')),
+        pedido('order_outra_empresa', 'created', 'vendor-a', $recente, '2026-10-05 08:05:00', $rua, ['company_uuid' => 'empresa-b']),
     ];
 
     echo '== PedidosNoMapa::daCentral (mapa ao vivo do console)' . PHP_EOL;
@@ -211,7 +214,7 @@ namespace {
     confere(($porId['order_coleta']['aceito'] ?? null) === true && ($porId['order_sem_loja']['aceito'] ?? null) === false && ($porId['order_sem_loja']['motoboy'] ?? null) === 'João Motoboy' && ($porId['order_sem_motoboy']['aceito'] ?? null) === false,
         'aceito: true só depois do aceite do motoboy (atribuído pela central e ainda não aceito: false, com o nome)');
     confere(($porId['order_coleta']['status'] ?? null) === 'started', 'status cru (o front traduz)');
-    confere(($porId['order_sem_motoboy']['criado_em'] ?? null) === '2026-10-05T11:00:00+00:00', 'criado_em em ISO 8601');
+    confere(($porId['order_sem_motoboy']['criado_em'] ?? null) === '2026-10-05T08:00:00-03:00', 'criado_em em ISO 8601, no fuso do app');
     confere(($porId['order_sem_motoboy']['loja'] ?? null) === 'Loja A' && ($porId['order_coleta']['loja'] ?? null) === 'Loja B',
         'loja = nome do Fornecedor dono do pedido');
     confere(($porId['order_sem_loja']['loja'] ?? null) === 'Pizzaria Sem Cadastro', 'sem loja cadastrada: o nome do local de coleta');
@@ -232,7 +235,7 @@ namespace {
     confere(PedidosNoMapa::daLoja(EMPRESA, []) === [], 'sem donos: lista vazia');
 
     echo '== limite' . PHP_EOL;
-    Order::$todos = array_map(fn ($n) => pedido("order_{$n}", 'created', 'vendor-a', $recente, '2026-10-05 11:00:00', $rua), range(1, 305));
+    Order::$todos = array_map(fn ($n) => pedido("order_{$n}", 'created', 'vendor-a', $recente, '2026-10-05 08:00:00', $rua), range(1, 305));
     confere(count(PedidosNoMapa::daCentral(EMPRESA)) === 300, 'no máximo 300 alfinetes');
 
     echo PHP_EOL . "FALHAS: {$falhas}" . PHP_EOL;

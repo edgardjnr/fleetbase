@@ -212,10 +212,13 @@ namespace {
     require '/repo/api/app/Support/Entregas/StatusDoPedido.php';
     require '/repo/api/app/Support/Entregas/SituacaoDoMotoboy.php';
 
+    // como na produção: o PHP no fuso do app (America/Sao_Paulo), o mesmo da sessão do MySQL
+    date_default_timezone_set('America/Sao_Paulo');
+
     const EMPRESA = 'empresa-a';
-    $agora   = new Carbon('2026-10-04 12:00:00');
-    $recente = new Carbon('2026-10-04 11:30:00');
-    $antigo  = new Carbon('2026-10-03 20:00:00');
+    $agora   = new Carbon('2026-10-04 09:00:00');
+    $recente = new Carbon('2026-10-04 08:30:00');
+    $antigo  = new Carbon('2026-10-03 17:00:00');
     $sessao  = ['company' => EMPRESA, 'user' => 'usuario-a'];
 
     function session($chave) { global $sessao; return $sessao[$chave] ?? null; }

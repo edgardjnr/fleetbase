@@ -7,6 +7,12 @@
 // Channel, para o aviso à central). Os models do Fleetbase (Order, Place, Payload, Vendor, OrderConfig), o Request e o
 // Validator ficam no stubs-ifood-fleetbase.php.
 
+namespace {
+    // como na produção: o Laravel faz date_default_timezone_set(config('app.timezone')), que é America/Sao_Paulo
+    // (horário de Brasília). Ver CLAUDE.md, "Fuso (horário de Brasília)"
+    date_default_timezone_set('America/Sao_Paulo');
+}
+
 namespace Illuminate\Support {
     class Collection implements \IteratorAggregate, \Countable
     {
@@ -30,7 +36,7 @@ namespace Illuminate\Support {
                 return new static($valor->format('Y-m-d H:i:s.u'), $valor->getTimezone());
             }
 
-            return new static((string) $valor, is_string($fuso) ? new \DateTimeZone($fuso) : ($fuso ?? new \DateTimeZone('UTC')));
+            return new static((string) $valor, is_string($fuso) ? new \DateTimeZone($fuso) : ($fuso ?? new \DateTimeZone(date_default_timezone_get())));
         }
 
         public function addSeconds($n): static { $this->modify('+' . (int) $n . ' seconds'); return $this; }
@@ -277,7 +283,8 @@ namespace Illuminate\Foundation\Console {
 namespace Teste {
     class Relogio
     {
-        public static string $agora = '2026-10-05 18:00:00';
+        // hora de Brasília (15:00 = 18:00 UTC)
+        public static string $agora = '2026-10-05 15:00:00';
     }
 
     class Config
@@ -789,7 +796,8 @@ namespace Teste {
 }
 
 namespace {
-    function now(): \Illuminate\Support\Carbon { return \Illuminate\Support\Carbon::parse(\Teste\Relogio::$agora, 'UTC'); }
+    // o relógio em hora de Brasília (o fuso do app)
+    function now(): \Illuminate\Support\Carbon { return \Illuminate\Support\Carbon::parse(\Teste\Relogio::$agora); }
     function config($chave, $padrao = null) { return array_key_exists($chave, \Teste\Config::$valores) ? \Teste\Config::$valores[$chave] : $padrao; }
     // como o Encrypter do Laravel, o texto muda a cada chamada (nonce aleatório): quem compara tokens cifrados do banco
     // precisa comparar o texto lido, não cifrar de novo
@@ -845,8 +853,9 @@ namespace {
         \Teste\Socket::$falhar                        = false;
         \Teste\Socket::$tentativas                    = 0;
         \Teste\Sessao::$dados                         = [];
-        \Teste\Relogio::$agora                        = '2026-10-05 18:00:00';
+        \Teste\Relogio::$agora                        = '2026-10-05 15:00:00';
         \Teste\Config::$valores                       = [
+            'app.timezone'                 => 'America/Sao_Paulo',
             'services.ifood.ativo'         => '1',
             'services.ifood.client_id'     => 'cliente-teste',
             'services.ifood.client_secret' => 'segredo-teste',

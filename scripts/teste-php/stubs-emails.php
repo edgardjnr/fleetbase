@@ -157,6 +157,7 @@ namespace {
     {
         $valores = [
             'app.name'                  => 'Entregas',
+            'app.timezone'              => 'America/Sao_Paulo',
             'fleetbase.branding.logo_url' => 'https://entregas.restaurantepro.com.br/images/logo.png',
         ];
 

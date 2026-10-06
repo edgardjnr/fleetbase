@@ -22,9 +22,11 @@ use Teste\ConsultaPedidos;
 use Teste\Registro;
 use Teste\Socket;
 
-function utc(string $hora): DateTimeImmutable
+// hora de Brasília, o fuso do app: o Eloquent devolve o dispatched_at (DATETIME, gravado pela sessão do MySQL em
+// -03:00) nesse fuso, e o CarbonImmutable::now() do comando também está nele (09:00 aqui = 12:00 UTC)
+function brasilia(string $hora): DateTimeImmutable
 {
-    return new DateTimeImmutable('2026-10-03 ' . $hora, new DateTimeZone('UTC'));
+    return new DateTimeImmutable('2026-10-03 ' . $hora, new DateTimeZone('America/Sao_Paulo'));
 }
 
 function pedido(string $id, string $despachadoEm): Order
@@ -32,8 +34,8 @@ function pedido(string $id, string $despachadoEm): Order
     $p                = new Order();
     $p->uuid          = 'uuid-' . $id;
     $p->public_id     = $id;
-    $p->created_at    = utc('11:50:00');
-    $p->dispatched_at = utc($despachadoEm);
+    $p->created_at    = brasilia('08:50:00');
+    $p->dispatched_at = brasilia($despachadoEm);
 
     return $p;
 }
@@ -66,7 +68,7 @@ function reiniciar(array $pedidos, array $motoboys): void
 function rodarMinutos(string $de, int $minutos, ?callable $antes = null, string $comando = ReenviarPedidosAbertos::class): void
 {
     for ($i = 0; $i < $minutos; $i++) {
-        $agora                       = utc($de)->modify("+{$i} minutes")->modify('+' . (2 + ($i * 7) % 5) . ' seconds');
+        $agora                       = brasilia($de)->modify("+{$i} minutes")->modify('+' . (2 + ($i * 7) % 5) . ' seconds');
         CarbonImmutable::$agoraTeste = $agora->format('Y-m-d H:i:s');
         if ($antes) {
             $antes($agora);
@@ -86,7 +88,7 @@ function intervalos(array $horarios): array
 {
     $saida = [];
     for ($i = 1; $i < count($horarios); $i++) {
-        $saida[] = utc($horarios[$i])->getTimestamp() - utc($horarios[$i - 1])->getTimestamp();
+        $saida[] = brasilia($horarios[$i])->getTimestamp() - brasilia($horarios[$i - 1])->getTimestamp();
     }
 
     return $saida;
@@ -95,27 +97,27 @@ function intervalos(array $horarios): array
 confereVersaoDoFleetOps();
 
 echo '== Original do Fleet-Ops (fleetops-api 0.6.65)' . PHP_EOL;
-reiniciar([pedido('PED-A', '12:05:00')], [motoboy('Motoca', 1200)]);
-CarbonImmutable::$agoraTeste = '2026-10-03 12:10:00';
+reiniciar([pedido('PED-A', '09:05:00')], [motoboy('Motoca', 1200)]);
+CarbonImmutable::$agoraTeste = '2026-10-03 09:10:00';
 $encontrados                 = (new DispatchAdhocOrders())->getDispatchableOrders(2);
 [$de, $ate]                  = ConsultaPedidos::$limitesUsados;
 confere($de === $ate, "os dois limites do whereBetween viram o mesmo instante ({$de} e {$ate})");
 confere($encontrados->isEmpty(), 'o pedido aberto há 5 min não é encontrado');
 
 echo '== Nosso comando, mesmo pedido' . PHP_EOL;
-reiniciar([pedido('PED-A', '12:05:00')], [motoboy('Motoca', 1200)]);
-CarbonImmutable::$agoraTeste = '2026-10-03 12:10:00';
+reiniciar([pedido('PED-A', '09:05:00')], [motoboy('Motoca', 1200)]);
+CarbonImmutable::$agoraTeste = '2026-10-03 09:10:00';
 (new ReenviarPedidosAbertos())->handle();
 [$de, $ate] = ConsultaPedidos::$limitesUsados;
-confere($de === '2026-10-03 11:10:00' && $ate === '2026-10-03 12:06:30', "janela de despacho de {$de} a {$ate} (60 min para o aviso à central)");
+confere($de === '2026-10-03 08:10:00' && $ate === '2026-10-03 09:06:30', "janela de despacho de {$de} a {$ate} (60 min para o aviso à central)");
 confere(count(Registro::$avisos) === 1, 'o pedido aberto há 5 min recebe o aviso');
 
-echo '== Linha do tempo: despachado 12:00:30 e ninguém aceita' . PHP_EOL;
-reiniciar([pedido('PED-B', '12:00:30')], [motoboy('Motoca', 1200), motoboy('Ocupado', 800, 'busy'), motoboy('Longe', 13000), motoboy('Offline', 500, 'available', 0)]);
-rodarMinutos('12:01:00', 30);
+echo '== Linha do tempo: despachado 09:00:30 e ninguém aceita' . PHP_EOL;
+reiniciar([pedido('PED-B', '09:00:30')], [motoboy('Motoca', 1200), motoboy('Ocupado', 800, 'busy'), motoboy('Longe', 13000), motoboy('Offline', 500, 'available', 0)]);
+rodarMinutos('09:01:00', 30);
 $h = horarios('PED-B');
 confere(count($h) === 3, 'três avisos extras e nada depois, em 30 min (' . implode(', ', $h) . ')');
-confere(($h[0] ?? '') >= '12:04:00' && ($h[0] ?? '') < '12:05:00', 'o primeiro sai uns 4 min depois do despacho');
+confere(($h[0] ?? '') >= '09:04:00' && ($h[0] ?? '') < '09:05:00', 'o primeiro sai uns 4 min depois do despacho');
 $gaps = intervalos($h);
 confere($gaps && min($gaps) >= 230 && max($gaps) <= 250, 'cerca de 4 min entre um aviso e outro (' . implode('s, ', $gaps) . 's)');
 $nomes = array_values(array_unique(array_map(fn ($a) => $a['motoboy'], Registro::$avisos)));
@@ -125,69 +127,69 @@ confere($aviso instanceof LembretePedidoAberto, 'o aviso é o LembretePedidoAber
 confere($aviso?->title === 'Pedido ainda sem motoboy' && $aviso?->message === 'Coleta a 1,2 km de você. Toque para ver o pedido.', "texto em pt-BR: {$aviso?->title} / {$aviso?->message}");
 confere($aviso?->data === ['id' => 'PED-B', 'type' => 'order_ping'], 'dados do push iguais aos do primeiro aviso (order_ping)');
 
-echo '== Sem motoboy no raio até 12:07' . PHP_EOL;
+echo '== Sem motoboy no raio até 09:07' . PHP_EOL;
 $motoca = motoboy('Motoca', 13000);
-reiniciar([pedido('PED-C', '12:00:30')], [$motoca]);
-rodarMinutos('12:01:00', 30, function ($agora) use ($motoca) {
-    $motoca->distance = $agora >= utc('12:07:00') ? 1200 : 13000;
+reiniciar([pedido('PED-C', '09:00:30')], [$motoca]);
+rodarMinutos('09:01:00', 30, function ($agora) use ($motoca) {
+    $motoca->distance = $agora >= brasilia('09:07:00') ? 1200 : 13000;
 });
 $h = horarios('PED-C');
-confere(count($h) === 3 && $h[0] >= '12:07:00' && $h[0] < '12:08:00', 'não gasta reenvio sem motoboy e avisa assim que um entra no raio (' . implode(', ', $h) . ')');
+confere(count($h) === 3 && $h[0] >= '09:07:00' && $h[0] < '09:08:00', 'não gasta reenvio sem motoboy e avisa assim que um entra no raio (' . implode(', ', $h) . ')');
 
-echo '== Aceito às 12:06' . PHP_EOL;
-$p = pedido('PED-D', '12:00:30');
+echo '== Aceito às 09:06' . PHP_EOL;
+$p = pedido('PED-D', '09:00:30');
 reiniciar([$p], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 20, function ($agora) use ($p) {
-    if ($agora >= utc('12:06:00')) {
+rodarMinutos('09:01:00', 20, function ($agora) use ($p) {
+    if ($agora >= brasilia('09:06:00')) {
         $p->driver_assigned_uuid = 'uuid-motoca';
     }
 });
 confere(count(horarios('PED-D')) === 1, 'para de avisar depois do aceite (' . implode(', ', horarios('PED-D')) . ')');
 
-echo '== Cancelado pela loja às 12:06' . PHP_EOL;
-$p = pedido('PED-E', '12:00:30');
+echo '== Cancelado pela loja às 09:06' . PHP_EOL;
+$p = pedido('PED-E', '09:00:30');
 reiniciar([$p], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 20, function ($agora) use ($p) {
-    if ($agora >= utc('12:06:00')) {
+rodarMinutos('09:01:00', 20, function ($agora) use ($p) {
+    if ($agora >= brasilia('09:06:00')) {
         $p->status = 'canceled';
     }
 });
 confere(count(horarios('PED-E')) === 1, 'para de avisar depois do cancelamento (' . implode(', ', horarios('PED-E')) . ')');
 
-echo '== Despachado de novo às 12:20' . PHP_EOL;
-$p = pedido('PED-F', '12:00:30');
+echo '== Despachado de novo às 09:20' . PHP_EOL;
+$p = pedido('PED-F', '09:00:30');
 reiniciar([$p], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 40, function ($agora) use ($p) {
-    if ($agora->format('H:i') === '12:20') {
-        $p->dispatched_at = utc('12:20:00');
+rodarMinutos('09:01:00', 40, function ($agora) use ($p) {
+    if ($agora->format('H:i') === '09:20') {
+        $p->dispatched_at = brasilia('09:20:00');
     }
 });
 $h = horarios('PED-F');
-confere(count($h) === 6 && ($h[3] ?? '') >= '12:23:30' && ($h[3] ?? '') < '12:25:00', 'um novo despacho recomeça a contagem (' . implode(', ', $h) . ')');
+confere(count($h) === 6 && ($h[3] ?? '') >= '09:23:30' && ($h[3] ?? '') < '09:25:00', 'um novo despacho recomeça a contagem (' . implode(', ', $h) . ')');
 
 echo '== Dois pedidos ao mesmo tempo' . PHP_EOL;
-reiniciar([pedido('PED-G1', '12:00:30'), pedido('PED-G2', '12:02:10')], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 30);
+reiniciar([pedido('PED-G1', '09:00:30'), pedido('PED-G2', '09:02:10')], [motoboy('Motoca', 1200)]);
+rodarMinutos('09:01:00', 30);
 confere(count(horarios('PED-G1')) === 3 && count(horarios('PED-G2')) === 3, 'cada pedido tem a própria contagem (' . implode(', ', horarios('PED-G1')) . ' | ' . implode(', ', horarios('PED-G2')) . ')');
 
 echo '== Pedidos que não são oferecidos aos motoboys' . PHP_EOL;
 $fora = [
     'não ad hoc'       => fn ($p) => $p->adhoc = 0,
     'já iniciado'      => fn ($p) => $p->started = 1,
-    'apagado'          => fn ($p) => $p->deleted_at = utc('11:55:00'),
+    'apagado'          => fn ($p) => $p->deleted_at = brasilia('08:55:00'),
     'sem carga'        => fn ($p) => $p->payload = false,
-    'criado há 3 dias' => fn ($p) => $p->created_at = utc('11:50:00')->modify('-3 days'),
+    'criado há 3 dias' => fn ($p) => $p->created_at = brasilia('08:50:00')->modify('-3 days'),
 ];
 foreach ($fora as $nome => $ajustar) {
-    $p = pedido('PED-X', '12:00:30');
+    $p = pedido('PED-X', '09:00:30');
     $ajustar($p);
     reiniciar([$p], [motoboy('Motoca', 1200)]);
-    rodarMinutos('12:01:00', 10);
+    rodarMinutos('09:01:00', 10);
     confere(horarios('PED-X') === [], "{$nome}: nenhum aviso");
 }
 
 echo '== Texto da distância' . PHP_EOL;
-$p = pedido('PED-H', '12:00:00');
+$p = pedido('PED-H', '09:00:00');
 confere((new LembretePedidoAberto($p, 800))->message === 'Coleta a 800 m de você. Toque para ver o pedido.', '800 m');
 confere((new LembretePedidoAberto($p, 15000))->message === 'Coleta a 15,0 km de você. Toque para ver o pedido.', '15,0 km');
 confere((new LembretePedidoAberto($p, null))->message === 'Toque para ver o pedido.', 'sem distância');
@@ -195,10 +197,10 @@ confere((new LembretePedidoAberto($p, null))->message === 'Toque para ver o pedi
 echo '== Lista única de status encerrados' . PHP_EOL;
 confere(!defined(ReenviarPedidosAbertos::class . '::ENCERRADOS'), 'o reenvio usa StatusDoPedido::ENCERRADOS, sem lista própria');
 foreach (App\Support\Entregas\StatusDoPedido::ENCERRADOS as $status) {
-    $p         = pedido('PED-S', '12:00:30');
+    $p         = pedido('PED-S', '09:00:30');
     $p->status = $status;
     reiniciar([$p], [motoboy('Motoca', 1200)]);
-    rodarMinutos('12:01:00', 6);
+    rodarMinutos('09:01:00', 6);
     confere(horarios('PED-S') === [], "pedido {$status} não é reenviado");
 }
 
@@ -209,8 +211,8 @@ confere(ReenviarPedidosAbertos::raioDoReenvio(6000, 3) === 12000, '3º reenvio: 
 confere(ReenviarPedidosAbertos::raioDoReenvio(6000, 9) === 12000, 'além do 3º: continua 2R');
 confere(ReenviarPedidosAbertos::raioDoReenvio(5000, 1) === 7500, 'arredonda para metros inteiros');
 
-reiniciar([pedido('PED-R', '12:00:30')], [motoboy('Perto', 5000), motoboy('Medio', 8000), motoboy('Longe', 11000), motoboy('MuitoLonge', 13000)]);
-rodarMinutos('12:01:00', 30);
+reiniciar([pedido('PED-R', '09:00:30')], [motoboy('Perto', 5000), motoboy('Medio', 8000), motoboy('Longe', 11000), motoboy('MuitoLonge', 13000)]);
+rodarMinutos('09:01:00', 30);
 $porMinuto = [];
 foreach (Registro::$avisos as $a) {
     $porMinuto[$a['quando']->format('H:i')][] = $a['motoboy'];
@@ -232,16 +234,16 @@ confere(ReenviarPedidosAbertos::etapaPeloTempo(450) === 2, 'virada: 450 s já et
 confere(ReenviarPedidosAbertos::etapaPeloTempo(690) === 3, 'virada: 690 s já etapa 3');
 
 echo '== Só há motoboy a 10 km (entre 1,5R e 2R)' . PHP_EOL;
-reiniciar([pedido('PED-T', '12:00:30')], [motoboy('Dez', 10000)]);
-rodarMinutos('12:01:00', 30);
+reiniciar([pedido('PED-T', '09:00:30')], [motoboy('Dez', 10000)]);
+rodarMinutos('09:01:00', 30);
 $h = horarios('PED-T');
-confere(($h[0] ?? '') >= '12:08:00' && ($h[0] ?? '') < '12:09:00', 'recebe quando o raio chega a 2R, mesmo sem reenvio antes (' . implode(', ', $h) . ')');
+confere(($h[0] ?? '') >= '09:08:00' && ($h[0] ?? '') < '09:09:00', 'recebe quando o raio chega a 2R, mesmo sem reenvio antes (' . implode(', ', $h) . ')');
 
 echo '== R do próprio pedido (4000 m)' . PHP_EOL;
-$p                 = pedido('PED-U', '12:00:30');
+$p                 = pedido('PED-U', '09:00:30');
 $p->adhoc_distance = 4000;
 reiniciar([$p], [motoboy('A', 5500), motoboy('B', 6500)]);
-rodarMinutos('12:01:00', 30);
+rodarMinutos('09:01:00', 30);
 $porMinuto = [];
 foreach (Registro::$avisos as $a) {
     $porMinuto[$a['quando']->format('H:i')][] = $a['motoboy'];
@@ -256,13 +258,13 @@ function avisosACentral(): array
 }
 
 echo '== Aviso à central: ninguém aceita' . PHP_EOL;
-$p              = pedido('PED-S1', '12:00:30');
+$p              = pedido('PED-S1', '09:00:30');
 $p->internal_id = '4821';
 reiniciar([$p], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 30);
+rodarMinutos('09:01:00', 30);
 $h = avisosACentral();
 confere(count($h) === 1, 'um aviso só em 30 min (' . implode(', ', $h) . ')');
-confere(($h[0] ?? '') >= '12:12:00' && ($h[0] ?? '') < '12:13:00', 'sai uns 12 min depois do despacho');
+confere(($h[0] ?? '') >= '09:12:00' && ($h[0] ?? '') < '09:13:00', 'sai uns 12 min depois do despacho');
 $enviado = Socket::$transmitidos[0] ?? [];
 confere(($enviado['canal'] ?? null) === 'company.empresa', 'no canal company.<uuid da empresa>');
 confere(($enviado['dados']['event'] ?? null) === 'entregas.pedido_sem_motoboy', 'event no corpo da mensagem (o console lê o event de dentro do corpo)');
@@ -272,96 +274,96 @@ confere($direto->broadcastAs() === 'entregas.pedido_sem_motoboy', 'nome entregas
 confere($direto->broadcastOn()[0]->name === 'company.empresa', 'broadcastOn: canal company.<uuid da empresa>');
 
 echo '== Aviso à central: sem número interno' . PHP_EOL;
-reiniciar([pedido('PED-S2', '12:00:30')], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 15);
+reiniciar([pedido('PED-S2', '09:00:30')], [motoboy('Motoca', 1200)]);
+rodarMinutos('09:01:00', 15);
 confere((Socket::$transmitidos[0]['dados']['data']['numero'] ?? null) === 'PED-S2', 'número = public_id');
 
 echo '== Aviso à central: nenhum motoboy no raio o tempo todo' . PHP_EOL;
-reiniciar([pedido('PED-S3', '12:00:30')], [motoboy('Motoca', 20000)]);
-rodarMinutos('12:01:00', 30);
+reiniciar([pedido('PED-S3', '09:00:30')], [motoboy('Motoca', 20000)]);
+rodarMinutos('09:01:00', 30);
 confere(horarios('PED-S3') === [] && count(avisosACentral()) === 1, 'sem reenvio, mas a central é avisada (' . implode(', ', avisosACentral()) . ')');
 
-echo '== Aviso à central: aceito às 12:06' . PHP_EOL;
-$p = pedido('PED-S4', '12:00:30');
+echo '== Aviso à central: aceito às 09:06' . PHP_EOL;
+$p = pedido('PED-S4', '09:00:30');
 reiniciar([$p], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 30, function ($agora) use ($p) {
-    if ($agora >= utc('12:06:00')) {
+rodarMinutos('09:01:00', 30, function ($agora) use ($p) {
+    if ($agora >= brasilia('09:06:00')) {
         $p->driver_assigned_uuid = 'uuid-motoca';
     }
 });
 confere(avisosACentral() === [], 'pedido aceito não avisa a central');
 
-echo '== Aviso à central: despachado de novo às 12:20' . PHP_EOL;
-$p = pedido('PED-S5', '12:00:30');
+echo '== Aviso à central: despachado de novo às 09:20' . PHP_EOL;
+$p = pedido('PED-S5', '09:00:30');
 reiniciar([$p], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 40, function ($agora) use ($p) {
-    if ($agora->format('H:i') === '12:20') {
-        $p->dispatched_at = utc('12:20:00');
+rodarMinutos('09:01:00', 40, function ($agora) use ($p) {
+    if ($agora->format('H:i') === '09:20') {
+        $p->dispatched_at = brasilia('09:20:00');
     }
 });
 $h = avisosACentral();
-confere(count($h) === 2 && ($h[1] ?? '') >= '12:31:30' && ($h[1] ?? '') < '12:33:00', 'um aviso por despacho (' . implode(', ', $h) . ')');
+confere(count($h) === 2 && ($h[1] ?? '') >= '09:31:30' && ($h[1] ?? '') < '09:33:00', 'um aviso por despacho (' . implode(', ', $h) . ')');
 
-echo '== Aviso à central: socket fora do ar até 12:13:30' . PHP_EOL;
-reiniciar([pedido('PED-S6', '12:00:30')], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 30, function ($agora) {
-    Socket::$falhar = $agora < utc('12:13:30');
+echo '== Aviso à central: socket fora do ar até 09:13:30' . PHP_EOL;
+reiniciar([pedido('PED-S6', '09:00:30')], [motoboy('Motoca', 1200)]);
+rodarMinutos('09:01:00', 30, function ($agora) {
+    Socket::$falhar = $agora < brasilia('09:13:30');
 });
 $h = avisosACentral();
-confere(count($h) === 1 && ($h[0] ?? '') >= '12:14:00' && ($h[0] ?? '') < '12:15:00', 'tenta de novo no minuto seguinte e avisa uma vez (' . implode(', ', $h) . ')');
+confere(count($h) === 1 && ($h[0] ?? '') >= '09:14:00' && ($h[0] ?? '') < '09:15:00', 'tenta de novo no minuto seguinte e avisa uma vez (' . implode(', ', $h) . ')');
 $falhasNoLog = array_filter(Log::$linhas, fn ($l) => $l[1] === '[entregas] aviso de pedido sem motoboy não chegou ao socket');
 confere(count($falhasNoLog) === 2, 'cada falha fica no log (' . count($falhasNoLog) . ')');
 confere((array_values($falhasNoLog)[0][2]['erro'] ?? null) === 'socket fora do ar', 'o log traz o erro do socket');
 confere(count(horarios('PED-S6')) === 3, 'os reenvios aos motoboys não param por causa do socket');
 
-echo '== Aviso à central: socket fora até 12:19:30 (aviso perdido aos 12 min sai depois)' . PHP_EOL;
-reiniciar([pedido('PED-S7', '12:00:30')], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 40, function ($agora) {
-    Socket::$falhar = $agora < utc('12:19:30');
+echo '== Aviso à central: socket fora até 09:19:30 (aviso perdido aos 12 min sai depois)' . PHP_EOL;
+reiniciar([pedido('PED-S7', '09:00:30')], [motoboy('Motoca', 1200)]);
+rodarMinutos('09:01:00', 40, function ($agora) {
+    Socket::$falhar = $agora < brasilia('09:19:30');
 });
 $h = avisosACentral();
-confere(count($h) === 1 && ($h[0] ?? '') >= '12:20:00' && ($h[0] ?? '') < '12:21:00', 'sai assim que o socket volta, bem depois dos 16 min (' . implode(', ', $h) . ')');
+confere(count($h) === 1 && ($h[0] ?? '') >= '09:20:00' && ($h[0] ?? '') < '09:21:00', 'sai assim que o socket volta, bem depois dos 16 min (' . implode(', ', $h) . ')');
 
 echo '== Aviso à central: sem reenvio aos motoboys depois dos 16 min' . PHP_EOL;
 $motoca = motoboy('Motoca', 20000);
-reiniciar([pedido('PED-S8', '12:00:30')], [$motoca]);
-rodarMinutos('12:01:00', 40, function ($agora) use ($motoca) {
-    $motoca->distance = $agora >= utc('12:20:00') ? 1200 : 20000;
+reiniciar([pedido('PED-S8', '09:00:30')], [$motoca]);
+rodarMinutos('09:01:00', 40, function ($agora) use ($motoca) {
+    $motoca->distance = $agora >= brasilia('09:20:00') ? 1200 : 20000;
 });
 confere(horarios('PED-S8') === [], 'só o aviso à central; nenhum reenvio aos motoboys (' . implode(', ', horarios('PED-S8')) . ')');
 confere(count(avisosACentral()) === 1, 'e a central é avisada uma vez');
 
-echo '== Aviso à central: aceito às 12:14, depois do aviso' . PHP_EOL;
-$p = pedido('PED-S9', '12:00:30');
+echo '== Aviso à central: aceito às 09:14, depois do aviso' . PHP_EOL;
+$p = pedido('PED-S9', '09:00:30');
 reiniciar([$p], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 30, function ($agora) use ($p) {
-    if ($agora >= utc('12:14:00')) {
+rodarMinutos('09:01:00', 30, function ($agora) use ($p) {
+    if ($agora >= brasilia('09:14:00')) {
         $p->driver_assigned_uuid = 'uuid-motoca';
     }
 });
 confere(count(avisosACentral()) === 1 && count(horarios('PED-S9')) === 3, 'um aviso à central e os 3 reenvios; depois do aceite, nada mais');
 
 echo '== Aviso à central: limite exato (690 s menos 30 s de folga)' . PHP_EOL;
-foreach (['12:11:59' => 0, '12:12:00' => 1] as $hora => $esperado) {
-    reiniciar([pedido('PED-S10', '12:00:30')], [motoboy('Motoca', 20000)]);
+foreach (['09:08:59' => 0, '09:12:00' => 1] as $hora => $esperado) {
+    reiniciar([pedido('PED-S10', '09:00:30')], [motoboy('Motoca', 20000)]);
     CarbonImmutable::$agoraTeste = '2026-10-03 ' . $hora;
     (new ReenviarPedidosAbertos())->handle();
     confere(count(Socket::$transmitidos) === $esperado, "às {$hora}: " . ($esperado ? 'avisa' : 'ainda não avisa'));
 }
 
-echo '== Aviso à central: dois pedidos parados e o socket fora até 12:14' . PHP_EOL;
-reiniciar([pedido('PED-V1', '12:00:30'), pedido('PED-V2', '12:00:40')], [motoboy('Motoca', 1200)]);
+echo '== Aviso à central: dois pedidos parados e o socket fora até 09:14' . PHP_EOL;
+reiniciar([pedido('PED-V1', '09:00:30'), pedido('PED-V2', '09:00:40')], [motoboy('Motoca', 1200)]);
 $tentativasPorExecucao = [];
 $anteriores            = 0;
-rodarMinutos('12:01:00', 30, function ($agora) use (&$tentativasPorExecucao, &$anteriores) {
+rodarMinutos('09:01:00', 30, function ($agora) use (&$tentativasPorExecucao, &$anteriores) {
     // fecha a contagem da execução anterior e abre a desta
     $tentativasPorExecucao[] = Socket::$tentativas - $anteriores;
     $anteriores              = Socket::$tentativas;
-    Socket::$falhar          = $agora < utc('12:14:00');
+    Socket::$falhar          = $agora < brasilia('09:14:00');
 });
 $ate1214 = array_slice($tentativasPorExecucao, 0, 14);
 confere(max($ate1214) === 1, 'com o socket fora, 1 tentativa por execução, não 2 (' . implode(',', $ate1214) . ')');
-confere(Socket::$tentativas === 4, '2 falhas (12:12 e 12:13) e os 2 avisos quando o socket volta (' . Socket::$tentativas . ' tentativas)');
+confere(Socket::$tentativas === 4, '2 falhas (09:12 e 09:13) e os 2 avisos quando o socket volta (' . Socket::$tentativas . ' tentativas)');
 confere(count(avisosACentral()) === 2, 'com o socket de volta, os dois pedidos são avisados (' . implode(', ', avisosACentral()) . ')');
 confere(count(horarios('PED-V1')) === 3 && count(horarios('PED-V2')) === 3, 'o socket fora não atrasa nem tira os reenvios aos motoboys');
 
@@ -373,9 +375,9 @@ class ReenviarPedidosAbertosComSaida extends ReenviarPedidosAbertos
 {
     protected const SAIDA_DO_CONTAINER = SAIDA_TESTE;
 }
-reiniciar([pedido('PED-W1', '12:00:30')], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 30, function ($agora) {
-    Socket::$falhar = $agora < utc('12:13:30');
+reiniciar([pedido('PED-W1', '09:00:30')], [motoboy('Motoca', 1200)]);
+rodarMinutos('09:01:00', 30, function ($agora) {
+    Socket::$falhar = $agora < brasilia('09:13:30');
 }, ReenviarPedidosAbertosComSaida::class);
 $linhas = array_values(array_filter(explode(PHP_EOL, (string) file_get_contents($saida))));
 confere(count($linhas) === 2, 'uma linha por falha (' . count($linhas) . ')');
@@ -386,10 +388,30 @@ confere(isset($linha['datetime']) && strlen($linha['datetime']) >= 20, 'traz a d
 confere(count(array_filter(Log::$linhas, fn ($l) => $l[0] === 'warning')) === 2, 'e continua no Log do Laravel');
 
 echo '== Aviso à central: sem /proc/1/fd/2 (aqui), nada quebra' . PHP_EOL;
-reiniciar([pedido('PED-W2', '12:00:30')], [motoboy('Motoca', 1200)]);
-rodarMinutos('12:01:00', 30, function ($agora) {
-    Socket::$falhar = $agora < utc('12:13:30');
+reiniciar([pedido('PED-W2', '09:00:30')], [motoboy('Motoca', 1200)]);
+rodarMinutos('09:01:00', 30, function ($agora) {
+    Socket::$falhar = $agora < brasilia('09:13:30');
 });
 confere(count(avisosACentral()) === 1, 'o comando padrão ignora a saída que não existe e avisa depois');
+
+echo '== Fuso: a janela vai ao banco em hora de Brasília (dispatched_at é DATETIME; sessão do MySQL em -03:00)' . PHP_EOL;
+$p                = pedido('PED-F', '09:05:00');
+$p->dispatched_at = new DateTimeImmutable('2026-10-03 09:05:00'); // como o Eloquent lê o texto do banco: no fuso do app
+reiniciar([$p], [motoboy('Motoca', 1200)]);
+CarbonImmutable::$agoraTeste = '2026-10-03 09:10:00';
+(new ReenviarPedidosAbertos())->handle();
+[$de, $ate] = ConsultaPedidos::$limitesUsados;
+confere(date_default_timezone_get() === 'America/Sao_Paulo', 'o comando não troca o fuso do PHP (sem o date_default_timezone_set(\'UTC\') do original)');
+confere($de === '2026-10-03 08:10:00' && $ate === '2026-10-03 09:06:30', "a janela vai ao MySQL em hora de Brasília ({$de} a {$ate})");
+confere($de <= '2026-10-03 09:05:00' && '2026-10-03 09:05:00' <= $ate, 'o texto gravado no banco (09:05:00) cai na janela, como o MySQL compara o DATETIME');
+confere(count(horarios('PED-F')) === 1, 'e o pedido despachado há 5 min recebe o reenvio');
+// com o PHP em UTC (o que o original fazia), a mesma janela iria ao MySQL 3 h adiantada e não acharia o pedido
+date_default_timezone_set('UTC');
+reiniciar([$p], [motoboy('Motoca', 1200)]);
+CarbonImmutable::$agoraTeste = '2026-10-03 12:10:00'; // o mesmo instante, em UTC
+(new ReenviarPedidosAbertos())->handle();
+[$deUtc, $ateUtc] = ConsultaPedidos::$limitesUsados;
+date_default_timezone_set('America/Sao_Paulo');
+confere($deUtc === '2026-10-03 11:10:00' && $ateUtc === '2026-10-03 12:06:30' && '2026-10-03 09:05:00' < $deUtc, "em UTC, a janela iria ao MySQL como {$deUtc} a {$ateUtc}, e o texto 09:05:00 ficaria de fora");
 
 resumo();

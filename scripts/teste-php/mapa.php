@@ -246,8 +246,11 @@ namespace {
     require '/repo/api/app/Events/Entregas/OnlineDoMotoboyMudou.php';
     require '/repo/api/app/Http/Middleware/AvisarOnlineDoMotoboy.php';
 
+    // como na produção: o PHP no fuso do app (America/Sao_Paulo), o mesmo da sessão do MySQL
+    date_default_timezone_set('America/Sao_Paulo');
+
     const EMPRESA = 'empresa-a';
-    $agora = new Carbon('2026-10-04 12:00:00');
+    $agora = new Carbon('2026-10-04 09:00:00');
 
     $sessaoEmpresa = EMPRESA;
     function session($chave) { global $sessaoEmpresa; return $chave === 'company' ? $sessaoEmpresa : null; }
@@ -320,8 +323,8 @@ namespace {
         (object) ['uuid' => 'm-velho', 'public_id' => 'driver_velho', 'company_uuid' => EMPRESA, 'online' => 1],
         (object) ['uuid' => 'm-outra', 'public_id' => 'driver_outra', 'company_uuid' => 'empresa-b', 'online' => 1],
     ];
-    $recente = new Carbon('2026-10-04 11:30:00');
-    $antigo  = new Carbon('2026-10-03 20:00:00');
+    $recente = new Carbon('2026-10-04 08:30:00');
+    $antigo  = new Carbon('2026-10-03 17:00:00');
     Order::$todos = [
         (object) ['company_uuid' => EMPRESA, 'driver_assigned_uuid' => 'm-livre', 'status' => 'completed', 'updated_at' => $recente],
         (object) ['company_uuid' => EMPRESA, 'driver_assigned_uuid' => 'm-coleta', 'status' => 'started', 'updated_at' => $recente],

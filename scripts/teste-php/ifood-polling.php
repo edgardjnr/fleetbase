@@ -19,12 +19,12 @@ use Teste\Config;
 use Teste\Fila;
 use Teste\Http;
 
-function lojaVinculada(string $vendor, string $merchant, string $token, string $expiraEm = '2026-10-05 23:00:00'): void
+function lojaVinculada(string $vendor, string $merchant, string $token, string $expiraEm = '2026-10-05 20:00:00'): void
 {
     Banco::inserir('entregas_ifood_lojas', [
         'company_uuid' => 'empresa-1', 'vendor_uuid' => $vendor, 'merchant_id' => $merchant, 'nome_ifood' => 'Loja ' . $merchant,
         'access_token' => encrypt($token), 'refresh_token' => encrypt('refresh-' . $merchant), 'expira_em' => $expiraEm, 'situacao' => 'vinculada',
-        'vinculado_em' => '2026-10-05 12:00:00', 'renovado_em' => null, 'created_at' => '2026-10-05 12:00:00', 'updated_at' => '2026-10-05 12:00:00',
+        'vinculado_em' => '2026-10-05 09:00:00', 'renovado_em' => null, 'created_at' => '2026-10-05 09:00:00', 'updated_at' => '2026-10-05 09:00:00',
     ], false);
 }
 
@@ -159,7 +159,7 @@ confere(jobs() === ['pedido-1'], 'um processamento por pedido');
 echo '== Evento repetido em outra rodada' . PHP_EOL;
 Fila::$jobs = [];
 foreach (Banco::$tabelas['entregas_ifood_eventos'] as $id => $linha) {
-    Banco::$tabelas['entregas_ifood_eventos'][$id]['processado_em'] = '2026-10-05 18:00:10';
+    Banco::$tabelas['entregas_ifood_eventos'][$id]['processado_em'] = '2026-10-05 15:00:10';
 }
 Http::responder(200, [eventoDoIfood('ev-1', 'PLC', 'pedido-1')]);
 Http::responder(202);
@@ -245,7 +245,7 @@ confere(Http::urls() === ['GET /events/v1.0/events:polling', 'POST /authenticati
 
 echo '== Token vencendo: renova antes do polling' . PHP_EOL;
 reiniciarIfood();
-lojaVinculada('vendor-a', 'merchant-1', 'token-a', '2026-10-05 18:02:00');
+lojaVinculada('vendor-a', 'merchant-1', 'token-a', '2026-10-05 15:02:00');
 Http::responder(200, ['accessToken' => 'token-a2', 'type' => 'bearer', 'expiresIn' => 21600, 'refreshToken' => 'refresh-2']);
 Http::responder(204);
 rodarPolling();
@@ -253,7 +253,7 @@ confere(Http::urls() === ['POST /authentication/v1.0/oauth/token', 'GET /events/
 
 echo '== Vínculo perdido sai do polling' . PHP_EOL;
 reiniciarIfood();
-lojaVinculada('vendor-a', 'merchant-1', 'token-a', '2026-10-05 18:02:00');
+lojaVinculada('vendor-a', 'merchant-1', 'token-a', '2026-10-05 15:02:00');
 lojaVinculada('vendor-b', 'merchant-2', 'token-b');
 Http::responder(400, ['error' => 'invalid_grant']);
 Http::responder(204);
@@ -313,13 +313,13 @@ confere($lotes[1]['vinculo']->id === 101 && $lotes[2]['token'] === 'token-outro'
 
 echo '== Limpeza diária' . PHP_EOL;
 reiniciarIfood();
-foreach (['velho' => '2026-09-27 10:00:00', 'recente' => '2026-10-01 10:00:00', 'pendente' => null] as $id => $processado) {
+foreach (['velho' => '2026-09-27 07:00:00', 'recente' => '2026-10-01 07:00:00', 'pendente' => null] as $id => $processado) {
     Banco::inserir('entregas_ifood_eventos', ['evento_id' => $id, 'merchant_id' => 'm', 'pedido_ifood_id' => 'p', 'codigo' => 'CFM', 'processado_em' => $processado], false);
 }
 rodarPolling();
 confere(array_column(Banco::linhas('entregas_ifood_eventos'), 'evento_id') === ['recente', 'pendente'], 'apaga só os processados há mais de 7 dias');
 confere(Cache::$validades[PollingIfood::CHAVE_LIMPEZA] === 86400, 'uma vez por dia');
-Banco::inserir('entregas_ifood_eventos', ['evento_id' => 'velho-2', 'merchant_id' => 'm', 'pedido_ifood_id' => 'p', 'codigo' => 'CFM', 'processado_em' => '2026-09-01 10:00:00'], false);
+Banco::inserir('entregas_ifood_eventos', ['evento_id' => 'velho-2', 'merchant_id' => 'm', 'pedido_ifood_id' => 'p', 'codigo' => 'CFM', 'processado_em' => '2026-09-01 07:00:00'], false);
 rodarPolling();
 confere(count(Banco::linhas('entregas_ifood_eventos')) === 3, 'na mesma data, não apaga de novo');
 
@@ -360,10 +360,10 @@ confere(jobs() === ['pedido-9'] && ($contexto['merchants'] ?? null) === ['mercha
 
 echo '== Varredura: pendente antigo volta para a fila; recente não' . PHP_EOL;
 reiniciarIfood();
-pendente('ev-1', 'pedido-antigo', '2026-10-05 17:50:00');
-pendente('ev-2', 'pedido-antigo', '2026-10-05 17:51:00', 'CFM');
-pendente('ev-3', 'pedido-recente', '2026-10-05 17:59:00');
-pendente('ev-4', 'pedido-limite', '2026-10-05 12:00:00');
+pendente('ev-1', 'pedido-antigo', '2026-10-05 14:50:00');
+pendente('ev-2', 'pedido-antigo', '2026-10-05 14:51:00', 'CFM');
+pendente('ev-3', 'pedido-recente', '2026-10-05 14:59:00');
+pendente('ev-4', 'pedido-limite', '2026-10-05 09:00:00');
 rodarPolling();
 confere(jobs() === ['pedido-limite', 'pedido-antigo'], 'gravados entre 2 min e 6 h atrás: um job por pedido, o mais antigo primeiro; o de 1 min fica');
 confere(ProcessarPedidoIfood::PRAZO_MINUTOS * 60 + 300 === 2100, 'prazo do job + 5 min = 35 min');
@@ -386,9 +386,9 @@ confere(Cache::$validades[PollingIfood::chaveDaVarredura('pedido-antigo')] === 1
 
 echo '== Varredura: pendente há mais de 6 h só vai para o log, uma vez' . PHP_EOL;
 reiniciarIfood();
-pendente('ev-1', 'pedido-velho', '2026-10-05 11:59:59');
-pendente('ev-2', 'pedido-velho', '2026-10-05 10:00:00', 'CFM');
-pendente('ev-3', 'pedido-de-8-dias', '2026-09-27 10:00:00');
+pendente('ev-1', 'pedido-velho', '2026-10-05 08:59:59');
+pendente('ev-2', 'pedido-velho', '2026-10-05 07:00:00', 'CFM');
+pendente('ev-3', 'pedido-de-8-dias', '2026-09-27 07:00:00');
 rodarPolling();
 rodarPolling();
 confere(jobs() === [], 'não enfileira');
@@ -398,7 +398,7 @@ confere((contextoDoLog('evento pendente há mais de 6 h')['pedido_ifood'] ?? nul
 echo '== Varredura: até 50 por rodada, sem deixar os outros para trás' . PHP_EOL;
 reiniciarIfood();
 foreach (range(1, 60) as $i) {
-    pendente("ev-{$i}", "pedido-{$i}", '2026-10-05 17:00:00');
+    pendente("ev-{$i}", "pedido-{$i}", '2026-10-05 14:00:00');
 }
 rodarPolling();
 confere(count(jobs()) === 50, '50 na primeira rodada');
@@ -412,9 +412,9 @@ reiniciarIfood();
 // gravados do mais novo (pedido-1, 3 min atrás) para o mais antigo (pedido-60, 62 min atrás); o pedido-5 tem também um
 // evento de 5 h30 atrás, que conta como o mais antigo dele
 foreach (range(1, 60) as $i) {
-    pendente("ev-{$i}", "pedido-{$i}", date('Y-m-d H:i:s', strtotime('2026-10-05 17:57:00') - ($i - 1) * 60));
+    pendente("ev-{$i}", "pedido-{$i}", date('Y-m-d H:i:s', strtotime('2026-10-05 14:57:00') - ($i - 1) * 60));
 }
-pendente('ev-61', 'pedido-5', '2026-10-05 12:30:00', 'CFM');
+pendente('ev-61', 'pedido-5', '2026-10-05 09:30:00', 'CFM');
 rodarPolling();
 $esperados = array_merge(['pedido-5'], array_map(fn ($i) => "pedido-{$i}", array_values(array_diff(range(60, 12), [5]))));
 confere(jobs() === $esperados, 'na ordem do evento mais antigo de cada pedido; os mais novos ficam para a seguinte');
@@ -422,24 +422,24 @@ confere(jobs() === $esperados, 'na ordem do evento mais antigo de cada pedido; o
 echo '== Varredura com o polling falhando (5xx, rede) ou em pausa' . PHP_EOL;
 reiniciarIfood();
 lojaVinculada('vendor-a', 'merchant-1', 'token-a');
-pendente('ev-1', 'pedido-antigo', '2026-10-05 17:50:00');
+pendente('ev-1', 'pedido-antigo', '2026-10-05 14:50:00');
 Http::responder(503, 'fora do ar');
 rodarPolling();
 confere(logou('polling falhou', 'warning') && jobs() === ['pedido-antigo'], '503: enfileira o pendente antigo mesmo assim');
 reiniciarIfood();
 lojaVinculada('vendor-a', 'merchant-1', 'token-a');
-pendente('ev-1', 'pedido-antigo', '2026-10-05 17:50:00');
+pendente('ev-1', 'pedido-antigo', '2026-10-05 14:50:00');
 Http::falharConexao();
 rodarPolling();
 confere(jobs() === ['pedido-antigo'], 'rede fora: idem');
 reiniciarIfood();
 lojaVinculada('vendor-a', 'merchant-1', 'token-a');
-pendente('ev-1', 'pedido-antigo', '2026-10-05 17:50:00');
+pendente('ev-1', 'pedido-antigo', '2026-10-05 14:50:00');
 Cache::put(PollingIfood::chaveDaPausa(1), true, 60);
 rodarPolling();
 confere(Http::$chamadas === [] && jobs() === ['pedido-antigo'], 'em pausa (429): sem chamar o iFood, mas enfileira');
 reiniciarIfood();
-pendente('ev-1', 'pedido-antigo', '2026-10-05 17:50:00');
+pendente('ev-1', 'pedido-antigo', '2026-10-05 14:50:00');
 Config::$valores['services.ifood.ativo'] = '';
 rodarPolling();
 confere(jobs() === [], 'integração desligada: nada');
@@ -447,7 +447,7 @@ confere(jobs() === [], 'integração desligada: nada');
 echo '== Pedido com evento novo e pendente antigo: um job só' . PHP_EOL;
 reiniciarIfood();
 lojaVinculada('vendor-a', 'merchant-1', 'token-a');
-pendente('ev-0', 'pedido-1', '2026-10-05 17:50:00');
+pendente('ev-0', 'pedido-1', '2026-10-05 14:50:00');
 Http::responder(200, [eventoDoIfood('ev-1', 'CFM', 'pedido-1')]);
 Http::responder(202);
 rodarPolling();
@@ -505,7 +505,7 @@ reiniciarIfood();
 lojaVinculada('vendor-a', 'merchant-1', 'token-a');
 lojaVinculada('vendor-b', 'merchant-2', 'token-b');
 lojaVinculada('vendor-c', 'merchant-3', 'token-c');
-pendente('ev-0', 'pedido-antigo', '2026-10-05 17:50:00');
+pendente('ev-0', 'pedido-antigo', '2026-10-05 14:50:00');
 PollingComRelogio::$agora = 1000.0;
 Http::responderCom(function () {
     PollingComRelogio::$agora += 26;
@@ -534,7 +534,7 @@ reiniciarIfood();
 foreach (['a', 'b', 'c', 'd'] as $i => $letra) {
     lojaVinculada("vendor-{$letra}", 'merchant-' . ($i + 1), "token-{$letra}");
 }
-pendente('ev-0', 'pedido-antigo', '2026-10-05 17:50:00');
+pendente('ev-0', 'pedido-antigo', '2026-10-05 14:50:00');
 Http::responder(503, 'fora do ar');
 Http::falharConexao();
 Http::responder(502, 'bad gateway');
@@ -566,8 +566,8 @@ confere(count(Http::$chamadas) === 4, '400 não é falha temporária: segue com 
 
 echo '== Erro não tratado na busca: varredura e limpeza rodam' . PHP_EOL;
 reiniciarIfood();
-pendente('ev-1', 'pedido-antigo', '2026-10-05 17:50:00');
-processado('velho', '2026-09-01 10:00:00');
+pendente('ev-1', 'pedido-antigo', '2026-10-05 14:50:00');
+processado('velho', '2026-09-01 07:00:00');
 $saida = rodarPolling(new VinculosForaDoAr());
 confere($saida === 1 && logou('polling interrompido', 'error'), 'FAILURE e erro no log');
 confere(jobs() === ['pedido-antigo'] && idsDosEventos() === ['ev-1'], 'enfileira o pendente e apaga o processado antigo');
@@ -583,15 +583,15 @@ class PollingComVarreduraFalhando extends PollingIfood
     }
 }
 reiniciarIfood();
-pendente('ev-1', 'pedido-antigo', '2026-10-05 17:50:00');
-processado('velho', '2026-09-01 10:00:00');
+pendente('ev-1', 'pedido-antigo', '2026-10-05 14:50:00');
+processado('velho', '2026-09-01 07:00:00');
 $saida = rodarPolling(null, new PollingComVarreduraFalhando());
 confere($saida === 1 && logou('varredura dos pendentes falhou', 'error'), 'FAILURE e erro no log');
 confere(idsDosEventos() === ['ev-1'], 'a limpeza apagou o processado antigo');
 
 echo '== Limpeza falhando: a marca do dia fica para depois' . PHP_EOL;
 reiniciarIfood();
-processado('velho', '2026-09-01 10:00:00');
+processado('velho', '2026-09-01 07:00:00');
 Banco::$falhar['entregas_ifood_eventos'] = 'MySQL server has gone away';
 $saida = rodarPolling();
 confere($saida === 1 && logou('limpeza dos eventos antigos falhou', 'error') && !isset(Cache::$dados[PollingIfood::CHAVE_LIMPEZA]), 'erro no log, sem a marca do dia');
@@ -647,14 +647,14 @@ confere(array_column(array_slice(Http::$chamadas, 3), 'token') === ['token-d', '
 echo '== Token pedido dentro do laço dos lotes, sob o teto de 25 s' . PHP_EOL;
 reiniciarIfood();
 lojaVinculada('vendor-a', 'merchant-1', 'token-a');
-lojaVinculada('vendor-b', 'merchant-2', 'token-b', '2026-10-05 18:02:00');
-lojaVinculada('vendor-c', 'merchant-3', 'token-c', '2026-10-05 18:02:00');
+lojaVinculada('vendor-b', 'merchant-2', 'token-b', '2026-10-05 15:02:00');
+lojaVinculada('vendor-c', 'merchant-3', 'token-c', '2026-10-05 15:02:00');
 PollingComRelogio::$agora = 1000.0;
 Http::responderCom($cadaChamadaLeva26s);
 rodarPolling(null, new PollingComRelogio());
 confere(Http::urls() === ['GET /events/v1.0/events:polling'], 'as lojas que ficaram para a próxima rodada não renovam o token nesta');
 reiniciarIfood();
-lojaVinculada('vendor-a', 'merchant-1', 'token-a', '2026-10-05 18:02:00');
+lojaVinculada('vendor-a', 'merchant-1', 'token-a', '2026-10-05 15:02:00');
 lojaVinculada('vendor-b', 'merchant-2', 'token-b');
 Cache::put(PollingIfood::chaveDaPausa(1), true, 60);
 Http::responder(204);
@@ -675,9 +675,9 @@ class PollingComFilaFalhando extends PollingIfood
     }
 }
 reiniciarIfood();
-pendente('ev-1', 'pedido-1', '2026-10-05 17:50:00');
-pendente('ev-2', 'pedido-2', '2026-10-05 17:51:00');
-pendente('ev-3', 'pedido-3', '2026-10-05 17:52:00');
+pendente('ev-1', 'pedido-1', '2026-10-05 14:50:00');
+pendente('ev-2', 'pedido-2', '2026-10-05 14:51:00');
+pendente('ev-3', 'pedido-3', '2026-10-05 14:52:00');
 PollingComFilaFalhando::$falharPara = ['pedido-2'];
 $saida = rodarPolling(null, new PollingComFilaFalhando());
 confere(jobs() === ['pedido-1', 'pedido-3'], 'os outros pedidos da rodada são enfileirados');
@@ -760,8 +760,8 @@ confere(abs((new PollingRelogioReal())->agora() - hrtime(true) / 1e9) < 1, 'relo
 
 echo '== Limpeza: pendentes há mais de 30 dias' . PHP_EOL;
 reiniciarIfood();
-pendente('ev-31', 'pedido-31', '2026-09-04 17:00:00');
-pendente('ev-25', 'pedido-25', '2026-09-10 17:00:00');
+pendente('ev-31', 'pedido-31', '2026-09-04 14:00:00');
+pendente('ev-25', 'pedido-25', '2026-09-10 14:00:00');
 rodarPolling();
 confere(idsDosEventos() === ['ev-25'], 'apaga o pendente de 31 dias; o de 25 fica');
 confere(logou('pendentes há mais de 30 dias apagados', 'warning') && (contextoDoLog('pendentes há mais de 30 dias')['quantidade'] ?? null) === 1, 'warning com a quantidade');

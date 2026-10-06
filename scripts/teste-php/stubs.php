@@ -3,6 +3,12 @@
 // Stubs mínimos do Laravel/Fleetbase para os testes de scripts/teste-php: rodam os arquivos reais do Fleet-Ops
 // (fleetops-api 0.6.65) e os nossos do api/app sem vendor nem banco. Ver rodar.mjs.
 
+namespace {
+    // como na produção: o Laravel faz date_default_timezone_set(config('app.timezone')), que é America/Sao_Paulo
+    // (horário de Brasília). Ver CLAUDE.md, "Fuso (horário de Brasília)"
+    date_default_timezone_set('America/Sao_Paulo');
+}
+
 namespace Illuminate\Console {
     class Command
     {
@@ -34,7 +40,7 @@ namespace Illuminate\Support {
     // como o Carbon mutável do Laravel: sub* altera o próprio objeto e devolve $this
     class Carbon extends \DateTime
     {
-        public static function now($tz = null): static { return new static(\Carbon\CarbonImmutable::$agoraTeste ?? 'now', new \DateTimeZone('UTC')); }
+        public static function now($tz = null): static { return new static(\Carbon\CarbonImmutable::$agoraTeste ?? 'now', new \DateTimeZone(date_default_timezone_get())); }
         public function subHours($n) { $this->modify("-{$n} hours"); return $this; }
         public function subMinutes($n) { $this->modify("-{$n} minutes"); return $this; }
         public function subDays($n) { $this->modify("-{$n} days"); return $this; }
@@ -58,7 +64,7 @@ namespace Carbon {
     class CarbonImmutable extends \DateTimeImmutable
     {
         public static ?string $agoraTeste = null;
-        public static function now($tz = null): static { return new static(self::$agoraTeste ?? 'now', new \DateTimeZone('UTC')); }
+        public static function now($tz = null): static { return new static(self::$agoraTeste ?? 'now', new \DateTimeZone(date_default_timezone_get())); }
         public function subMinutes($n) { return $this->modify("-{$n} minutes"); }
         public function subSeconds($n) { return $this->modify("-{$n} seconds"); }
         public function subDays($n) { return $this->modify("-{$n} days"); }
