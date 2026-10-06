@@ -160,6 +160,44 @@ pedidoIfood([], ['ultima_acao' => 'arrivedAtDestination']);
 Trava::$ocupadas['entregas:ifood-acao:order-1'] = true;
 confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '1234']), 'order_1', conclusao())->status === 503, 'trava das ações ocupada: tente de novo');
 
+echo '== Código de entrega: dois cliques e teto de erros' . PHP_EOL;
+pedidoIfood([], ['ultima_acao' => 'arrivedAtDestination']);
+$linhaVelha = linha();
+Banco::$tabelas['entregas_ifood_pedidos'][1]['conclusao_liberada_em'] = '2026-10-05 14:59:50';
+$resultado  = conclusao()->conferirCodigo($linhaVelha, Order::$todos[0], '1234');
+confere($resultado === 'pode_concluir' && Http::$chamadas === [], 'outro clique já liberou (linha lida antes): pode concluir, sem chamar o verifyDeliveryCode');
+
+pedidoIfood([], ['ultima_acao' => 'arrivedAtDestination']);
+for ($i = 0; $i < 10; $i++) {
+    Http::responder(400, ['errorType' => 'NOT_FOUND', 'description' => 'Confirmation code is invalid', 'code' => '400']);
+    (new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao());
+}
+$chamadas = count(Http::$chamadas);
+$resposta = (new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao());
+confere($chamadas === 10 && count(Http::$chamadas) === 10, '10 códigos errados no pedido: a 11ª tentativa nem chama o iFood');
+confere($resposta->status === 429 && $resposta->dados['resultado'] === 'muitas_tentativas' && str_contains($resposta->dados['errors'][0], 'Muitas tentativas') && str_contains($resposta->dados['errors'][0], 'central'), 'resposta "Muitas tentativas: peça à central para liberar"');
+Banco::$tabelas['entregas_ifood_pedidos'][1]['conclusao_liberada_em'] = '2026-10-05 15:00:00';
+confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao())->dados === ['resultado' => 'pode_concluir'], 'liberado pela central depois do teto: pode concluir');
+pedidoIfood([], ['ultima_acao' => 'arrivedAtDestination']);
+for ($i = 0; $i < 10; $i++) {
+    Http::responder(500, 'erro');
+    (new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao());
+}
+Http::responder(200, ['success' => true]);
+confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '1234']), 'order_1', conclusao())->dados === ['resultado' => 'pode_concluir'], 'iFood fora do ar não conta como código errado');
+
+echo '== Concluir: orçamento de tempo das ações estourado' . PHP_EOL;
+pedidoIfood([], ['ultima_acao' => 'assignDriver']);
+for ($i = 0; $i < 4; $i++) {
+    Http::responder(202);
+}
+$acoesLentas = new class (new VinculosIfood(new ClienteIfood()), new ClienteIfood()) extends AcoesIfood {
+    public float $relogio = 0;
+    protected function agora(): float { return $this->relogio += 30; }
+};
+$resultado = (new ConclusaoIfood($acoesLentas, new VinculosIfood(new ClienteIfood()), new ClienteIfood()))->concluir(linha(), Order::$todos[0]);
+confere($resultado === 'tente_de_novo' && linha()->conclusao_liberada_em === null && linha()->ultima_acao !== 'arrivedAtDestination', 'arrivedAtDestination ainda não enviado: tente de novo');
+
 echo '== Painel do console e a liberação sem código' . PHP_EOL;
 $admin = new class {
     public function isNotAdmin() { return false; }
@@ -177,6 +215,10 @@ confere(!array_key_exists('telefone_0800', $painel) && !str_contains(json_encode
 $resposta = (new IfoodPedidosController())->liberarSemCodigo(new Request(), 'order_1', conclusao());
 confere($resposta->dados['conclusao_sem_codigo'] === true && $resposta->dados['conclusao_liberada_em'] === '2026-10-05T15:00:00-03:00', 'liberar sem código: liberado e registrado');
 confere(logou('conclusão sem código liberada pela central', 'warning'), 'com log (e o usuário)');
+pedidoIfood([], ['conclusao_liberada_em' => '2026-10-05 14:58:00']);
+\Fleetbase\Support\Auth::$usuario = $admin;
+$resposta = (new IfoodPedidosController())->liberarSemCodigo(new Request(), 'order_1', conclusao());
+confere($resposta->dados['conclusao_sem_codigo'] === false && $resposta->dados['conclusao_liberada_em'] === '2026-10-05T14:58:00-03:00' && !logou('conclusão sem código liberada pela central'), 'já liberado (código conferido): devolve o estado, sem marcar sem código nem registrar');
 \Fleetbase\Support\Auth::$usuario = $naoAdmin;
 confere((new IfoodPedidosController())->painel(new Request(), 'order_1')->status === 403, 'não admin: 403');
 \Fleetbase\Support\Auth::$usuario = $admin;

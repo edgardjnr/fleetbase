@@ -227,12 +227,13 @@ class MotoboyController extends Controller
         return [$pedido, $linha, null];
     }
 
-    /** O resultado da ConclusaoIfood como resposta: 200 com o resultado, 422 código incorreto, 503 tente de novo. */
+    /** O resultado da ConclusaoIfood como resposta: 200 com o resultado, 422 código incorreto, 429 muitas tentativas, 503 tente de novo. */
     protected function respostaDaConclusao(string $resultado)
     {
         return match ($resultado) {
             ConclusaoIfood::PODE_CONCLUIR, ConclusaoIfood::PRECISA_CODIGO => response()->json(['resultado' => $resultado]),
             ConclusaoIfood::CODIGO_INCORRETO => response()->json(['resultado' => $resultado, 'errors' => ['Código incorreto. Peça o código de novo ao cliente.']], 422),
+            ConclusaoIfood::MUITAS_TENTATIVAS => response()->json(['resultado' => $resultado, 'errors' => ['Muitas tentativas: peça à central para liberar.']], 429),
             default => response()->json(['resultado' => ConclusaoIfood::TENTE_DE_NOVO, 'errors' => ['Não consegui falar com o iFood agora. Tente de novo em alguns segundos.']], 503),
         };
     }
