@@ -25,12 +25,20 @@ use Illuminate\Support\Facades\Log;
  *    - console: PATCH int/v1/orders/cancel (corpo `order` = uuid), PATCH int/v1/orders/bulk-cancel (`ids`), a
  *      atividade "canceled" (PATCH int/v1/orders/update-activity/{id}, que o quadro usa ao arrastar o card) e o
  *      PUT/PATCH int/v1/orders/{id} (updateRecord) com `order.status` (ou `status`) de cancelamento.
- *    - O portal da loja é barrado no RegrasPortalLoja (rota do customer-portal).
+ *    - O portal da loja é barrado no RegrasPortalLoja (rota do customer-portal), sempre.
+ *    - Saída da central (console e API v1): o cancelamento passa quando a linha já tem cancelado_pelo_ifood_em (o
+ *      iFood já cancelou: CAN que chegou sem cancelar o Order, ou cancelamento local que falhou) ou quando a integração
+ *      está desligada (!ClienteIfood::ligada(), o desligamento de emergência com ENTREGAS_IFOOD vazio). Fica no log
+ *      ("cancelamento liberado no pedido do iFood", só com ids nossos).
  * 2. Trava "Atualize o app" (só com ClienteIfood::exigeAppNovo(), ENTREGAS_IFOOD_EXIGE_APP_NOVO=1): a conclusão comum
  *    pela API v1 (atividade "completed" ou que conclui o pedido no update-activity, e o POST v1/orders/{id}/complete) de
  *    pedido iFood é recusada com 400 até a rota concluir-ifood do APK novo liberar (conclusao_liberada_em: chegada
  *    avisada e, se exigido, código conferido). O APK antigo não conhece a rota e não consegue concluir. A conclusão
  *    pelo console é decisão da central e passa (o AcoesIfood registra conclusao_sem_codigo quando faltou o código).
+ *
+ * O pedido só é consultado quando a ação pode ser barrada (cancelamento, ou conclusão com a trava ligada): as outras
+ * atividades do app (update-activity neutra) passam sem ir ao banco. As recusas ficam no log ("ação barrada no pedido do
+ * iFood", só com ids nossos).
  *
  * Registrado nos grupos fleetbase.api (v1) e fleetbase.protected (int/v1) pelo RouteServiceProvider, antes do
  * BarrarAceiteDePedidoEncerrado: roda depois da autenticação, com a empresa na sessão (o filtro da empresa é explícito;
@@ -61,47 +69,60 @@ class RegrasDoPedidoIfood
 
         switch ($acao) {
             case static::CANCELAR_NA_API:
-                return $this->ehDoIfood($this->pedidoPeloId($request->route('id'))) ? $this->recusarNaApi($request, static::MENSAGEM_CANCELAMENTO) : $next($request);
+                return $this->cancelamentoBarrado($this->pedidoPeloId($request->route('id'))) ? $this->recusarNaApi($request, static::MENSAGEM_CANCELAMENTO) : $next($request);
 
             case static::CONCLUIR_NA_API:
-                return $this->travaDoAppAntigo($this->pedidoPeloId($request->route('id'))) ? $this->recusarNaApi($request, static::MENSAGEM_APP_ANTIGO) : $next($request);
+                return ClienteIfood::exigeAppNovo() && $this->travaDoAppAntigo($this->pedidoPeloId($request->route('id'))) ? $this->recusarNaApi($request, static::MENSAGEM_APP_ANTIGO) : $next($request);
 
             case static::ATIVIDADE_NA_API:
-                $pedido    = $this->pedidoPeloId($request->route('id'));
+                // decide pela atividade antes de ir ao banco: a atividade neutra do app passa sem consulta
                 $atividade = $request->array('activity');
-                if ($this->cancela($atividade) && $this->ehDoIfood($pedido)) {
-                    return $this->recusarNaApi($request, static::MENSAGEM_CANCELAMENTO);
+                if ($this->cancela($atividade)) {
+                    return $this->cancelamentoBarrado($this->pedidoPeloId($request->route('id'))) ? $this->recusarNaApi($request, static::MENSAGEM_CANCELAMENTO) : $next($request);
                 }
-                if ($this->conclui($atividade) && $this->travaDoAppAntigo($pedido)) {
-                    return $this->recusarNaApi($request, static::MENSAGEM_APP_ANTIGO);
+                if ($this->conclui($atividade) && ClienteIfood::exigeAppNovo()) {
+                    return $this->travaDoAppAntigo($this->pedidoPeloId($request->route('id'))) ? $this->recusarNaApi($request, static::MENSAGEM_APP_ANTIGO) : $next($request);
                 }
 
                 return $next($request);
 
             case static::ATUALIZAR_NA_API:
-                return $this->statusCancela($request->input('status')) && $this->ehDoIfood($this->pedidoPeloId($request->route('id'))) ? $this->recusarNaApi($request, static::MENSAGEM_CANCELAMENTO) : $next($request);
+                return $this->statusCancela($request->input('status')) && $this->cancelamentoBarrado($this->pedidoPeloId($request->route('id'))) ? $this->recusarNaApi($request, static::MENSAGEM_CANCELAMENTO) : $next($request);
 
             case static::ATUALIZAR_NO_CONSOLE:
                 // o updateRecord lê o corpo em `order` (ou o corpo inteiro): HasApiModelBehavior::getApiPayloadFromRequest
                 $dados  = $request->input('order');
                 $status = is_array($dados) && array_key_exists('status', $dados) ? $dados['status'] : $request->input('status');
 
-                return $this->statusCancela($status) && $this->ehDoIfood($this->pedidoPeloId($request->route('id'))) ? $this->recusarNoConsole() : $next($request);
+                if (!$this->statusCancela($status)) {
+                    return $next($request);
+                }
+                $pedido = $this->pedidoPeloId($request->route('id'));
+
+                return $this->cancelamentoBarrado($pedido) ? $this->recusarNoConsole($pedido) : $next($request);
 
             case static::CANCELAR_NO_CONSOLE:
-                return $this->ehDoIfood($this->pedidoPeloId($request->input('order'))) ? $this->recusarNoConsole() : $next($request);
+                $pedido = $this->pedidoPeloId($request->input('order'));
+
+                return $this->cancelamentoBarrado($pedido) ? $this->recusarNoConsole($pedido) : $next($request);
 
             case static::CANCELAR_EM_LOTE:
                 foreach ((array) $request->input('ids', []) as $id) {
-                    if ($this->ehDoIfood($this->pedidoPeloId($id))) {
-                        return $this->recusarNoConsole('Há pedido do iFood na seleção: o cancelamento dele é feito no iFood. Tire-o da seleção e tente de novo.');
+                    $pedido = $this->pedidoPeloId($id);
+                    if ($this->cancelamentoBarrado($pedido)) {
+                        return $this->recusarNoConsole($pedido, 'Há pedido do iFood na seleção: o cancelamento dele é feito no iFood. Tire-o da seleção e tente de novo.');
                     }
                 }
 
                 return $next($request);
 
             case static::ATIVIDADE_NO_CONSOLE:
-                return $this->cancela($request->array('activity')) && $this->ehDoIfood($this->pedidoPeloId($request->route('id'))) ? $this->recusarNoConsole() : $next($request);
+                if (!$this->cancela($request->array('activity'))) {
+                    return $next($request);
+                }
+                $pedido = $this->pedidoPeloId($request->route('id'));
+
+                return $this->cancelamentoBarrado($pedido) ? $this->recusarNoConsole($pedido) : $next($request);
         }
 
         return $next($request);
@@ -119,9 +140,25 @@ class RegrasDoPedidoIfood
             ->first();
     }
 
-    protected function ehDoIfood(?Order $pedido): bool
+    /**
+     * Cancelamento pela central (console ou API v1) barrado: pedido do iFood, com a integração ligada e sem
+     * cancelado_pelo_ifood_em. Com o iFood já cancelado ou a integração desligada, passa (e fica no log).
+     */
+    protected function cancelamentoBarrado(?Order $pedido): bool
     {
-        return $pedido !== null && PedidosIfood::ehDoIfood((string) $pedido->uuid);
+        $linha = $pedido !== null ? PedidosIfood::doPedido((string) $pedido->uuid) : null;
+        if ($linha === null) {
+            return false;
+        }
+
+        $motivo = $linha->cancelado_pelo_ifood_em ? 'cancelado pelo iFood' : (ClienteIfood::ligada() ? null : 'integração desligada');
+        if ($motivo === null) {
+            return true;
+        }
+
+        Log::info('[entregas] ifood: cancelamento liberado no pedido do iFood', ['motivo' => $motivo, 'pedido' => $pedido->public_id, 'order_uuid' => $pedido->uuid]);
+
+        return false;
     }
 
     /** Trava ligada, pedido iFood e conclusão ainda não liberada pela rota concluir-ifood. */
@@ -159,8 +196,10 @@ class RegrasDoPedidoIfood
         return response()->apiError($mensagem, 400);
     }
 
-    protected function recusarNoConsole(string $mensagem = self::MENSAGEM_CANCELAMENTO)
+    protected function recusarNoConsole(?Order $pedido, string $mensagem = self::MENSAGEM_CANCELAMENTO)
     {
+        Log::info('[entregas] ifood: ação barrada no pedido do iFood', ['motivo' => $mensagem, 'pedido' => $pedido?->public_id, 'order_uuid' => $pedido?->uuid]);
+
         return response()->json(['errors' => [$mensagem]], 400);
     }
 }

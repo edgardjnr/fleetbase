@@ -202,7 +202,10 @@ class RegrasPortalLoja
         }
 
         // pedido do iFood: para nós vale o cancelamento do iFood (CAN), que a loja faz no Gestor de Pedidos
+        // (sempre: a saída da central com o iFood já cancelado ou a integração desligada não vale para a loja)
         if (PedidosIfood::ehDoIfood((string) $pedido->uuid)) {
+            Log::info('[entregas] ifood: ação barrada no pedido do iFood', ['motivo' => 'cancelamento pelo portal da loja', 'pedido' => $pedido->public_id, 'order_uuid' => $pedido->uuid, 'usuario' => $usuario->uuid ?? null]);
+
             return $this->erro(400, RegrasDoPedidoIfood::MENSAGEM_CANCELAMENTO);
         }
 

@@ -63,6 +63,56 @@ confere(rodar(CONSOLE . 'updateRecord', ['id' => 'order-1'], ['order' => ['notes
 session(['company' => 'outra-empresa']);
 confere(rodar(API . 'cancelOrder', ['id' => 'order_1']) === 'passou', 'pedido de outra empresa: passa (o Fleet-Ops responde 404)');
 
+echo '== Cancelamento pela central liberado quando o iFood já cancelou ou a integração está desligada' . PHP_EOL;
+pedidos(['cancelado_pelo_ifood_em' => '2026-10-05 14:59:00']);
+confere(rodar(API . 'cancelOrder', ['id' => 'order_1']) === 'passou', 'iFood já cancelou (CAN perdido ou cancelamento local que falhou): API v1 passa');
+confere(rodar(CONSOLE . 'cancel', [], ['order' => 'order-1']) === 'passou', 'iFood já cancelou: console passa');
+confere(rodar(CONSOLE . 'bulkCancel', [], ['ids' => ['order-2', 'order-1']]) === 'passou', 'iFood já cancelou: lote passa');
+confere(rodar(CONSOLE . 'updateActivity', ['id' => 'order-1'], ['activity' => ['code' => 'canceled']]) === 'passou', 'iFood já cancelou: atividade "canceled" no console passa');
+confere(rodar(CONSOLE . 'updateRecord', ['id' => 'order-1'], ['order' => ['status' => 'canceled']]) === 'passou', 'iFood já cancelou: PUT do console passa');
+confere(logou('cancelamento liberado no pedido do iFood', 'info') && logsSem(['pedido-real-1']), 'liberação registrada no log, só com ids nossos');
+pedidos();
+Config::$valores['services.ifood.ativo'] = '';
+confere(rodar(API . 'cancelOrder', ['id' => 'order_1']) === 'passou', 'integração desligada (emergência): API v1 passa');
+confere(rodar(API . 'update', ['id' => 'order_1'], ['status' => 'canceled']) === 'passou', 'integração desligada: PUT v1 passa');
+confere(rodar(CONSOLE . 'cancel', [], ['order' => 'order-1']) === 'passou', 'integração desligada: console passa');
+
+echo '== Ação barrada registrada no log (console)' . PHP_EOL;
+pedidos();
+rodar(CONSOLE . 'cancel', [], ['order' => 'order-1']);
+confere(logou('ação barrada no pedido do iFood', 'info'), 'console: "ação barrada no pedido do iFood" no log');
+confere(logsSem(['pedido-real-1', '4821']), 'log só com ids nossos (sem o id nem o número do iFood)');
+
+echo '== Só consulta o pedido quando a ação pode ser barrada' . PHP_EOL;
+class RegrasQueContam extends RegrasDoPedidoIfood
+{
+    public int $consultas = 0;
+
+    protected function pedidoPeloId($id): ?Order
+    {
+        $this->consultas++;
+
+        return parent::pedidoPeloId($id);
+    }
+}
+function consultas(string $acao, array $parametros = [], array $dados = []): int
+{
+    $request       = new Request($dados);
+    $request->rota = new Route($acao, $parametros);
+    $regras        = new RegrasQueContam();
+    $regras->handle($request, fn () => 'passou');
+
+    return $regras->consultas;
+}
+pedidos();
+confere(consultas(API . 'updateActivity', ['id' => 'order_1'], ['activity' => ['code' => 'enroute']]) === 0, 'update-activity neutra (API v1): não consulta o pedido');
+confere(consultas(API . 'updateActivity', ['id' => 'order_1'], ['activity' => ['code' => 'completed', 'complete' => true]]) === 0, 'conclusão com a trava desligada: não consulta');
+confere(consultas(API . 'completeOrder', ['id' => 'order_1']) === 0, 'POST complete com a trava desligada: não consulta');
+confere(consultas(CONSOLE . 'updateActivity', ['id' => 'order-1'], ['activity' => ['code' => 'completed']]) === 0, 'atividade neutra no console: não consulta');
+confere(consultas(API . 'updateActivity', ['id' => 'order_1'], ['activity' => ['code' => 'canceled']]) === 1, 'cancelamento: consulta uma vez');
+Config::$valores['services.ifood.exige_app_novo'] = '1';
+confere(consultas(API . 'updateActivity', ['id' => 'order_1'], ['activity' => ['code' => 'completed', 'complete' => true]]) === 1, 'conclusão com a trava ligada: consulta uma vez');
+
 echo '== Trava "Atualize o app" (desligada por padrão)' . PHP_EOL;
 pedidos();
 confere(rodar(API . 'updateActivity', ['id' => 'order_1'], ['activity' => ['code' => 'completed', 'complete' => true]]) === 'passou', 'desligada: a conclusão comum passa');
@@ -95,6 +145,11 @@ Order::$todos[1]->customer_uuid = 'vendor-b';
 $resposta = cancelarNoPortal('order_1');
 confere(($resposta->status ?? null) === 400 && $resposta->dados === ['errors' => ['Pedido do iFood: o cancelamento é feito no iFood.']] && Order::$todos[0]->status === 'enroute', 'pedido iFood da loja: 400, sem cancelar');
 confere(cancelarNoPortal('order_2') === 'passou', 'pedido de outra loja: segue para o portal (404)');
+confere(logou('ação barrada no pedido do iFood', 'info') && logsSem(['pedido-real-1', '4821']), 'portal: "ação barrada no pedido do iFood" no log, só com ids nossos');
+pedidos(['cancelado_pelo_ifood_em' => '2026-10-05 14:59:00']);
+Config::$valores['services.ifood.ativo'] = '';
+Order::$todos[0]->customer_uuid = 'vendor-a';
+confere((cancelarNoPortal('order_1')->status ?? null) === 400 && Order::$todos[0]->status === 'enroute', 'portal continua barrado mesmo com o iFood já cancelado e a integração desligada');
 
 echo '== Outras ações' . PHP_EOL;
 pedidos();
