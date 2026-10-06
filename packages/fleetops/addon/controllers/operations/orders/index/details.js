@@ -6,6 +6,7 @@ import { isArray } from '@ember/array';
 import { task } from 'ember-concurrency';
 import { colorForId, routeColorForStatus, routeStyleForStatus } from '../../../../utils/route-colors';
 import { buildRoutePointMarkerPresentation, buildRoutePointsFromPayload } from '../../../../utils/route-visualization';
+import { ehPedidoIfood } from '../../../../utils/pedido-ifood';
 
 export default class OperationsOrdersIndexDetailsController extends Controller {
     @service intl;
@@ -130,13 +131,18 @@ export default class OperationsOrdersIndexDetailsController extends Controller {
                     {
                         separator: true,
                     },
-                    {
-                        text: this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.cancel-order'),
-                        icon: 'ban',
-                        class: 'text-danger',
-                        disabled: this.model.status === 'canceled',
-                        fn: () => this.orderActions.cancel(this.model),
-                    },
+                    // Entregas: pedido do iFood não se cancela pelo console (o cancelamento é no iFood; o servidor recusa)
+                    ...(ehPedidoIfood(this.model)
+                        ? []
+                        : [
+                              {
+                                  text: this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.cancel-order'),
+                                  icon: 'ban',
+                                  class: 'text-danger',
+                                  disabled: this.model.status === 'canceled',
+                                  fn: () => this.orderActions.cancel(this.model),
+                              },
+                          ]),
                     {
                         text: this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.delete-order'),
                         icon: 'trash',

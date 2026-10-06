@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { ehPedidoIfood } from '../../../utils/pedido-ifood';
 
 export default class OperationsOrdersIndexController extends Controller {
     @service orderActions;
@@ -413,6 +414,8 @@ export default class OperationsOrdersIndexController extends Controller {
                         icon: 'ban',
                         fn: this.orderActions.cancel,
                         permission: 'fleet-ops cancel order',
+                        // Entregas: pedido do iFood não se cancela pelo console
+                        isVisible: (order) => !ehPedidoIfood(order),
                     },
                     {
                         separator: true,

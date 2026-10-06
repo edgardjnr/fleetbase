@@ -3,6 +3,7 @@ import { action } from '@ember/object';
 import { isArray } from '@ember/array';
 import { debug } from '@ember/debug';
 import { task } from 'ember-concurrency';
+import { algumPedidoIfood, ehPedidoIfood } from '../utils/pedido-ifood';
 
 export default class OrderActionsService extends ResourceActionService {
     @service store;
@@ -132,6 +133,12 @@ export default class OrderActionsService extends ResourceActionService {
     }
 
     @action cancel(order, options = {}) {
+        // Entregas: pedido do iFood se cancela no iFood (o servidor recusa com 400)
+        if (ehPedidoIfood(order)) {
+            this.notifications.warning(this.intl.t('fleet-ops.ui.ifood.nao-cancela'));
+            return;
+        }
+
         this.modalsManager.confirm({
             title: this.intl.t('order.prompts.cancel-title'),
             body: this.intl.t('order.prompts.cancel-body'),
@@ -184,6 +191,11 @@ export default class OrderActionsService extends ResourceActionService {
     @action bulkCancel(selected = []) {
         selected = [...(isArray(selected) ? selected : []), ...this.tableContext.getSelectedRows()];
         if (!selected) return;
+        // Entregas: com pedido do iFood na seleção, nada é cancelado (o servidor recusaria o lote inteiro)
+        if (algumPedidoIfood(selected)) {
+            this.notifications.warning(this.intl.t('fleet-ops.ui.ifood.cancelar-em-lote'));
+            return;
+        }
 
         return this.crud.bulkAction('cancel', selected, {
             acceptButtonText: this.intl.t('common.bulk-cancel-resource', { resource: this.intl.t('resource.orders') }),
