@@ -20,14 +20,18 @@ use Illuminate\Support\Facades\Log;
  *
  * Um job por pedido de cada vez: enfileirar() marca o pedido como "pendente" no cache (PENDENTE) e não enfileira outro
  * enquanto a marca existir. O job apaga a marca antes de ler o pedido, então uma mudança que chega depois da leitura
- * enfileira um job novo, e as que chegam antes são lidas por este (ele lê o estado na hora em que roda). afterCommit:
- * uma mudança gravada dentro de uma transação só é lida depois do commit.
+ * enfileira um job novo, e as que chegam antes são lidas por este (ele lê o estado na hora em que roda). Quando o job
+ * volta para a fila (release ou exceção para nova tentativa), a marca volta junto, valendo mais que a espera; failed()
+ * apaga a marca. afterCommit: uma mudança gravada dentro de uma transação só é lida depois do commit. A marca vale só
+ * VALIDADE_DO_PENDENTE s: enfileirado numa transação desfeita, o job não sai e a marca não segura o pedido por muito
+ * tempo (o entregas:ifood-acompanhar reconcilia depois que ela vence).
  *
  * Falhas: 429 volta para a fila pelo Retry-After (release, não conta como exceção); trava das ações ocupada volta em
- * ESPERA_DA_TRAVA s; 5xx, 408 e rede sobem e a fila tenta de novo pelo $backoff, até $maxExceptions (5) vezes, dentro de
- * PRAZO_MINUTOS. Esgotadas, failed() registra `[entregas] ifood: ação não enviada` e transforma a próxima ação numa
- * recusa (AcoesIfood::desistir: aviso à central). 409 e outros 4xx são recusas tratadas no AcoesIfood, sem nova
- * tentativa.
+ * ESPERA_DA_TRAVA s; orçamento de tempo do laço estourado (AcoesIfood::ORCAMENTO_SEGUNDOS) volta em ESPERA_DO_RESTO s;
+ * 5xx, 408 e rede sobem e a fila tenta de novo pelo $backoff, até $maxExceptions (5) vezes, dentro de PRAZO_MINUTOS.
+ * Esgotadas, failed() registra `[entregas] ifood: ação não enviada` e transforma a próxima ação numa recusa
+ * (AcoesIfood::desistir: aviso à central). 4xx são recusas tratadas no AcoesIfood (o 409 numa ação reenviada conta
+ * como aceita), sem nova tentativa.
  */
 class EnviarAcaoIfood implements ShouldQueue
 {
@@ -37,10 +41,13 @@ class EnviarAcaoIfood implements ShouldQueue
 
     public const PENDENTE = 'entregas:ifood-acao-pendente:';
 
-    /** Validade da marca de pendente, em segundos (se o job se perder, a marca some sozinha). */
-    public const VALIDADE_DO_PENDENTE = 600;
+    /** Validade da marca de pendente, em segundos (se o job se perder, ou não sair, a marca some sozinha). */
+    public const VALIDADE_DO_PENDENTE = 120;
 
     public const ESPERA_DA_TRAVA = 5;
+
+    /** Espera, em segundos, para o job continuar as ações que passaram do orçamento de tempo. */
+    public const ESPERA_DO_RESTO = 1;
 
     public const PRAZO_MINUTOS = 30;
 
@@ -90,22 +97,31 @@ class EnviarAcaoIfood implements ShouldQueue
         }
 
         try {
-            $acoes->sincronizar($this->orderUuid, $this->alvoMinimo);
+            $resultado = $acoes->sincronizar($this->orderUuid, $this->alvoMinimo);
         } catch (LockTimeoutException $e) {
-            $this->release(static::ESPERA_DA_TRAVA);
+            $this->voltarParaAFila(static::ESPERA_DA_TRAVA);
+
+            return;
         } catch (ErroIfood $e) {
             if ($e->limiteExcedido()) {
-                $this->release($e->retryAfter ?? ClienteIfood::ESPERA_PADRAO_429);
+                $this->voltarParaAFila($e->retryAfter ?? ClienteIfood::ESPERA_PADRAO_429);
 
                 return;
             }
             // temporário (5xx, 408, rede): nova tentativa pelo $backoff, sem o corpo da resposta no failed_jobs
+            $this->marcarPendente(max($this->backoff));
             throw new ErroIfood($e->operacao, $e->status);
+        }
+
+        if ($resultado['incompleto'] ?? false) {
+            $this->voltarParaAFila(static::ESPERA_DO_RESTO);
         }
     }
 
     public function failed(\Throwable $erro): void
     {
+        Cache::forget(static::PENDENTE . $this->orderUuid);
+
         $status = $erro instanceof ErroIfood ? $erro->status : 0;
         Log::error('[entregas] ifood: ação não enviada; tentativas esgotadas', [
             'order_uuid' => $this->orderUuid,
@@ -114,9 +130,21 @@ class EnviarAcaoIfood implements ShouldQueue
         ]);
 
         try {
-            app(AcoesIfood::class)->desistir($this->orderUuid, $status);
+            app(AcoesIfood::class)->desistir($this->orderUuid, $status, $this->alvoMinimo);
         } catch (\Throwable $e) {
             Log::warning('[entregas] ifood: falha ao registrar a desistência da ação', ['order_uuid' => $this->orderUuid, 'erro' => get_class($e)]);
         }
+    }
+
+    /** release() com a marca de pendente de volta: o job continua na fila e outro do mesmo pedido não entra. */
+    protected function voltarParaAFila(int $espera): void
+    {
+        $this->marcarPendente($espera);
+        $this->release($espera);
+    }
+
+    protected function marcarPendente(int $espera): void
+    {
+        Cache::put(static::PENDENTE . $this->orderUuid, true, $espera + static::VALIDADE_DO_PENDENTE);
     }
 }

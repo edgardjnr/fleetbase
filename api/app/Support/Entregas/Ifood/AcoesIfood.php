@@ -17,15 +17,22 @@ use Illuminate\Support\Facades\Log;
  * `entregas:ifood-acao:<order uuid>`: dois envios do mesmo pedido nunca correm juntos), calcula a ação alvo
  * (SequenciaIfood::alvoPeloPedido, ou $alvoMinimo quando mais adiante: a chegada pelo GPS e a conclusão do app) e envia,
  * em ordem, as que faltam depois da `ultima_acao` (SequenciaIfood::faltando). Cada ação aceita grava a `ultima_acao` na
- * hora: uma falha no meio guarda o que já foi.
+ * hora: uma falha no meio guarda o que já foi. Passados ORCAMENTO_SEGUNDOS no laço, para antes da próxima ação e
+ * devolve `incompleto` (o job volta para a fila com o resto; a rota do app responde "tente de novo").
  *
+ * - 409 numa ação da sequência = a ação já foi aceita antes ("operação já concluída", referência do Logistics): um
+ *   reenvio depois de uma resposta perdida, ou de uma escrita da `ultima_acao` que não chegou ao banco. Avança a
+ *   `ultima_acao`, registra `[entregas] ifood: ação já aceita pelo iFood (409)` (info) e segue.
  * - Troca de motoboy: com o iFood já tendo recebido outro motoboy (`motoboy_no_ifood`) e o pedido com um novo,
- *   assignDriver de novo antes de seguir. A documentação não diz se o iFood aceita depois do goingToOrigin; um 409 vira
- *   recusa (abaixo).
- * - Recusa (409 ou outro 4xx do iFood, vínculo perdido ou motoboy sem nome/telefone): não tenta de novo; grava
- *   recusa_acao/recusa_status/recusa_em, registra `[entregas] ifood: ação recusada` (ação, status e o corpo da resposta,
- *   que não traz dados do cliente) e avisa a central no console (IfoodAcaoRecusada). Para nesta ação: as seguintes
- *   ficam para a próxima mudança do pedido. Uma ação aceita depois limpa a recusa.
+ *   assignDriver de novo antes de seguir. A documentação não diz se o iFood aceita depois do goingToOrigin. Um 409 na
+ *   troca é recusa com aviso à central, uma vez só: o motoboy novo fica gravado em `motoboy_no_ifood` como marca (o
+ *   iFood continua com o anterior) e as ações seguintes da sequência são enviadas mesmo assim (uma ação aceita depois
+ *   limpa a recusa, como sempre). Outra recusa na troca para a sequência.
+ * - Recusa (4xx do iFood que não seja o 409 acima, vínculo perdido ou motoboy sem nome/telefone): não tenta de novo;
+ *   grava recusa_acao/recusa_status/recusa_em, registra `[entregas] ifood: ação recusada` (ação, status e só o
+ *   errorType/code/description do corpo; no assignDriver, sem o nome e o telefone do motoboy) e avisa a central no
+ *   console (IfoodAcaoRecusada). Para nesta ação: as seguintes ficam para a próxima mudança do pedido. Uma ação aceita
+ *   depois limpa a recusa.
  * - Falha temporária (429, 408, 5xx, rede): o ErroIfood sobe para quem chamou (o job EnviarAcaoIfood tenta de novo; a
  *   rota do app responde "tente de novo").
  * - Pedido cancelado pelo iFood, sem linha, sem Order ou sem motoboy: nada.
@@ -43,12 +50,18 @@ class AcoesIfood
     /** Espera pela trava, em segundos, antes de desistir com LockTimeoutException. */
     public const ESPERA_DA_TRAVA = 10;
 
+    /** Espera pela trava na desistência do job: ocupada, quem está com ela registra o resultado. */
+    public const ESPERA_DA_TRAVA_NA_DESISTENCIA = 2;
+
+    /** Tempo máximo do laço de envios, em segundos (abaixo do $timeout do job, 80 s; cada chamada pode levar 15 s). */
+    public const ORCAMENTO_SEGUNDOS = 45;
+
     public const VEICULO = 'MOTORCYCLE';
 
     public function __construct(protected VinculosIfood $vinculos, protected ClienteIfood $cliente) {}
 
     /**
-     * @return array{enviadas: string[], recusada: ?array{acao: string, status: int}}
+     * @return array{enviadas: string[], recusada: ?array{acao: string, status: int}, incompleto: bool}
      *
      * @throws LockTimeoutException trava das ações do pedido ocupada por mais de ESPERA_DA_TRAVA s
      * @throws ErroIfood            falha temporária do iFood (quem chama tenta de novo)
@@ -64,24 +77,47 @@ class AcoesIfood
         return Cache::lock(static::TRAVA . $orderUuid, static::VALIDADE_DA_TRAVA)->block(static::ESPERA_DA_TRAVA, $fazer);
     }
 
-    /** O job desistiu (tentativas esgotadas com o iFood fora do ar): a próxima ação que faltava vira recusa, com aviso. */
-    public function desistir(string $orderUuid, int $status): void
+    /**
+     * O job desistiu (tentativas esgotadas com o iFood fora do ar): a próxima ação que faltava vira recusa, com aviso.
+     * Sai sem gravar nada quando já há uma recusa registrada (sem aviso repetido), quando nada falta (ou não há
+     * motoboy) e quando a trava das ações está ocupada (quem está com ela registra o resultado do envio).
+     */
+    public function desistir(string $orderUuid, int $status, ?string $alvoMinimo = null): void
+    {
+        try {
+            Cache::lock(static::TRAVA . $orderUuid, static::VALIDADE_DA_TRAVA)
+                ->block(static::ESPERA_DA_TRAVA_NA_DESISTENCIA, fn () => $this->desistirComATrava($orderUuid, $status, $alvoMinimo));
+        } catch (LockTimeoutException) {
+            Log::info('[entregas] ifood: desistência não registrada; outro envio do pedido em andamento', ['order_uuid' => $orderUuid]);
+        }
+    }
+
+    protected function desistirComATrava(string $orderUuid, int $status, ?string $alvoMinimo): void
     {
         $linha  = PedidosIfood::doPedido($orderUuid);
-        $pedido = Order::where('uuid', $orderUuid)->first();
-        if (!$linha || !$pedido || $linha->cancelado_pelo_ifood_em) {
+        $pedido = $linha ? Order::where('uuid', $orderUuid)->first() : null;
+        if (!$linha || !$pedido || $linha->cancelado_pelo_ifood_em || $linha->recusa_acao) {
             return;
         }
 
         $motoboy = $pedido->driver_assigned_uuid ? (string) $pedido->driver_assigned_uuid : null;
-        $alvo    = SequenciaIfood::alvoPeloPedido($pedido->status, (bool) $pedido->started, $motoboy);
-        $proxima = SequenciaIfood::faltando($linha->ultima_acao, $alvo)[0] ?? SequenciaIfood::ATRIBUIR;
+        if ($motoboy === null) {
+            return;
+        }
+
+        $alvo    = SequenciaIfood::maisAdiante(SequenciaIfood::alvoPeloPedido($pedido->status, (bool) $pedido->started, $motoboy), $alvoMinimo);
+        $proxima = static::trocaPendente($linha, $motoboy) ? SequenciaIfood::ATRIBUIR : (SequenciaIfood::faltando($linha->ultima_acao, $alvo)[0] ?? null);
+        if ($proxima === null) {
+            return;
+        }
+
         $this->recusar($linha, $pedido, $proxima, $status, 'iFood fora do ar: tentativas esgotadas');
     }
 
     protected function sincronizarComATrava(string $orderUuid, ?string $alvoMinimo): array
     {
-        $resultado = ['enviadas' => [], 'recusada' => null];
+        $resultado = ['enviadas' => [], 'recusada' => null, 'incompleto' => false];
+        $inicio    = $this->agora();
 
         $linha  = PedidosIfood::doPedido($orderUuid);
         $pedido = $linha ? Order::where('uuid', $orderUuid)->first() : null;
@@ -105,13 +141,20 @@ class AcoesIfood
         $alvo = SequenciaIfood::maisAdiante(SequenciaIfood::alvoPeloPedido($pedido->status, (bool) $pedido->started, $motoboy), $alvoMinimo);
 
         // troca de motoboy: o iFood tem outro (o pedido já passou do assignDriver)
-        if ($linha->ultima_acao !== null && $linha->motoboy_no_ifood && $linha->motoboy_no_ifood !== $motoboy) {
-            if (!$this->enviar($linha, $pedido, SequenciaIfood::ATRIBUIR, $motoboy, $resultado)) {
+        if (static::trocaPendente($linha, $motoboy) && !$this->enviar($linha, $pedido, SequenciaIfood::ATRIBUIR, $motoboy, $resultado, true)) {
+            if (($resultado['recusada']['status'] ?? null) !== 409) {
                 return $resultado;
             }
+            // 409 na troca: a central já foi avisada; o motoboy novo vira a marca (não repete) e a sequência segue
+            PedidosIfood::atualizar($linha, ['motoboy_no_ifood' => $motoboy]);
         }
 
         foreach (SequenciaIfood::faltando($linha->ultima_acao, $alvo) as $acao) {
+            if (($resultado['enviadas'] || $resultado['recusada']) && $this->agora() - $inicio >= static::ORCAMENTO_SEGUNDOS) {
+                $resultado['incompleto'] = true;
+                Log::info('[entregas] ifood: envio das ações passou do tempo; o resto fica para o próximo job', ['acao' => $acao, 'pedido' => $pedido->public_id]);
+                break;
+            }
             if (!$this->enviar($linha, $pedido, $acao, $motoboy, $resultado)) {
                 break;
             }
@@ -120,8 +163,23 @@ class AcoesIfood
         return $resultado;
     }
 
-    /** Envia uma ação; true se o iFood aceitou. Recusa grava, registra e avisa (false); falha temporária sobe. */
-    protected function enviar(object $linha, Order $pedido, string $acao, string $motoboyUuid, array &$resultado): bool
+    /** O iFood já recebeu um motoboy (assignDriver aceito) e o pedido está com outro. */
+    protected static function trocaPendente(object $linha, string $motoboy): bool
+    {
+        return $linha->ultima_acao !== null && $linha->motoboy_no_ifood && $linha->motoboy_no_ifood !== $motoboy;
+    }
+
+    /** Segundos do relógio (o teste troca, para o orçamento de tempo do laço). */
+    protected function agora(): float
+    {
+        return microtime(true);
+    }
+
+    /**
+     * Envia uma ação; true se o iFood aceitou (ou respondeu 409 fora da troca: já aceita). Recusa grava, registra e
+     * avisa (false); falha temporária sobe.
+     */
+    protected function enviar(object $linha, Order $pedido, string $acao, string $motoboyUuid, array &$resultado, bool $troca = false): bool
     {
         $vinculo = $this->vinculos->porMerchant((string) $linha->merchant_id);
         if (!$vinculo) {
@@ -144,8 +202,11 @@ class AcoesIfood
             if ($e->temporario()) {
                 throw $e;
             }
-
-            return $this->recusa($linha, $pedido, $acao, $e->status, $e->operacao . ': ' . $e->corpo, $resultado);
+            if ($e->status !== 409 || $troca) {
+                return $this->recusa($linha, $pedido, $acao, $e->status, static::resumoDoErro($e, $corpo), $resultado);
+            }
+            // 409 numa ação da sequência: já aceita antes (reenvio depois de uma resposta ou de uma gravação perdida)
+            Log::info('[entregas] ifood: ação já aceita pelo iFood (409)', ['acao' => $acao, 'pedido' => $pedido->public_id, 'numero' => $linha->numero]);
         }
 
         $valores = ['recusa_acao' => null, 'recusa_status' => null, 'recusa_em' => null];
@@ -161,6 +222,22 @@ class AcoesIfood
         $resultado['enviadas'][] = $acao;
 
         return true;
+    }
+
+    /**
+     * "<ação>: {errorType, code, description}" para o log, nunca o corpo cru da resposta. No assignDriver, o nome e o
+     * telefone do motoboy (e qualquer sequência longa de dígitos) saem mascarados da descrição.
+     */
+    protected static function resumoDoErro(ErroIfood $e, ?array $corpoEnviado): string
+    {
+        $resumo = array_intersect_key($e->corpoJson() ?? [], array_flip(['errorType', 'code', 'description']));
+        $resumo = array_map(fn ($valor) => is_scalar($valor) ? mb_substr((string) $valor, 0, 200) : '?', $resumo);
+        if ($corpoEnviado !== null && isset($resumo['description'])) {
+            $sensiveis = array_filter([(string) ($corpoEnviado['workerName'] ?? ''), (string) ($corpoEnviado['workerPhone'] ?? '')], fn ($v) => $v !== '');
+            $resumo['description'] = preg_replace('/\d{6,}/', '***', str_ireplace($sensiveis, '***', $resumo['description']));
+        }
+
+        return $e->operacao . ': ' . ($resumo ? json_encode($resumo, JSON_UNESCAPED_UNICODE) : '(sem errorType/code/description)');
     }
 
     protected function recusa(object $linha, Order $pedido, string $acao, int $status, string $detalhe, array &$resultado): bool

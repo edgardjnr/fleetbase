@@ -105,9 +105,13 @@ Http::responder(503, 'indisponível');
 $resposta = (new MotoboyController())->concluirIfood(doMotoboy(), 'order_1', conclusao());
 confere($resposta->status === 503 && $resposta->dados['resultado'] === 'tente_de_novo' && str_contains($resposta->dados['errors'][0], 'Tente de novo'), '503: tente de novo');
 pedidoIfood();
-Http::responder(409, ['description' => 'Invalid state']);
+Http::responder(400, ['errorType' => 'BAD_REQUEST', 'description' => 'Invalid state']);
 $resposta = (new MotoboyController())->concluirIfood(doMotoboy(), 'order_1', conclusao());
-confere($resposta->dados === ['resultado' => 'precisa_codigo'] && linha()->recusa_acao === 'arrivedAtDestination', '409 na chegada: não prende o motoboy (segue para o código), com a recusa registrada');
+confere($resposta->dados === ['resultado' => 'precisa_codigo'] && linha()->recusa_acao === 'arrivedAtDestination', 'recusa (400) na chegada: não prende o motoboy (segue para o código), com a recusa registrada');
+pedidoIfood();
+Http::responder(409, ['errorType' => 'CONFLICT', 'description' => 'Invalid state']);
+$resposta = (new MotoboyController())->concluirIfood(doMotoboy(), 'order_1', conclusao());
+confere($resposta->dados === ['resultado' => 'precisa_codigo'] && linha()->recusa_acao === null && linha()->ultima_acao === 'arrivedAtDestination', '409 na chegada (reenvio): conta como aceita, sem recusa');
 
 echo '== Concluir: só o pedido iFood dele, iniciado e aberto' . PHP_EOL;
 pedidoIfood(['started' => false, 'status' => 'dispatched']);

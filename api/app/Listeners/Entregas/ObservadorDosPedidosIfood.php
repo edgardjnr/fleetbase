@@ -42,16 +42,17 @@ class ObservadorDosPedidosIfood
         }
     }
 
-    /** OrderDriverAssigned (Fleet-Ops): o evento guarda só o uuid; getModelRecord() relê o pedido. */
+    /** OrderDriverAssigned (Fleet-Ops): o evento guarda o uuid do pedido (modelUuid). */
     public static function aoAtribuirMotoboy(object $evento): void
     {
         try {
             if (!ClienteIfood::ligada()) {
                 return;
             }
-            $pedido = $evento->getModelRecord();
-            if ($pedido) {
-                static::avisar((string) $pedido->uuid);
+            // o evento já traz o uuid do pedido (ResourceLifecycleEvent::$modelUuid): sem reler o Order no banco
+            $uuid = $evento->modelUuid ?? null;
+            if (is_string($uuid) && $uuid !== '') {
+                static::avisar($uuid);
             }
         } catch (\Throwable $e) {
             Log::warning('[entregas] ifood: falha ao enfileirar a ação do pedido', ['erro' => get_class($e)]);
