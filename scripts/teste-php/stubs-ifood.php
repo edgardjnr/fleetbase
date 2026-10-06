@@ -401,6 +401,8 @@ namespace Teste {
         public function timeout($segundos) { $this->opcoes['timeout'] = $segundos; return $this; }
         public function get($url, $query = []) { return $this->enviar('GET', $url, $query); }
         public function post($url, $dados = []) { return $this->enviar('POST', $url, $dados); }
+        // send('POST', $url) sem opções = POST sem corpo (as ações de logística do iFood); dados = null
+        public function send($metodo, $url, array $opcoes = []) { return $this->enviar(strtoupper($metodo), $url, $opcoes['json'] ?? null); }
 
         private function enviar(string $metodo, string $url, $dados)
         {

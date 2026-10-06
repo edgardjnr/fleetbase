@@ -57,6 +57,16 @@ class ClienteIfood
             && (string) config('services.ifood.client_secret') !== '';
     }
 
+    /**
+     * Trava "Atualize o app" ligada (ENTREGAS_IFOOD_EXIGE_APP_NOVO=1): a conclusão comum de pedido iFood (atividade
+     * "completed" da API v1) só passa depois da rota concluir-ifood do APK novo (RegrasDoPedidoIfood). Desligada por
+     * padrão: só ligar com o APK novo em todos os celulares.
+     */
+    public static function exigeAppNovo(): bool
+    {
+        return filter_var(config('services.ifood.exige_app_novo'), FILTER_VALIDATE_BOOLEAN);
+    }
+
     /** Código de vínculo (userCode, authorizationCodeVerifier, verificationUrl, verificationUrlComplete, expiresIn). */
     public function pedirCodigoDeVinculo(): array
     {
@@ -126,6 +136,36 @@ class ClienteIfood
     public function pedidoLogistics(#[\SensitiveParameter] string $token, string $pedidoId): array
     {
         $resposta = $this->enviar('pedido', fn () => $this->comToken($token)->get($this->baseUrl . '/logistics/v1.0/orders/' . rawurlencode($pedidoId)));
+
+        return (array) $resposta->json();
+    }
+
+    /**
+     * Ação de logística (POST /logistics/v1.0/orders/{id}/<acao>, SequenciaIfood::ACOES), que responde 202 sem corpo e
+     * sem evento de volta (sonda de 2026-10-05). Só o assignDriver leva corpo ({workerName, workerPhone,
+     * workerVehicleType}); as outras vão sem corpo nenhum, como na sonda. O ErroIfood leva o nome da ação na operação.
+     */
+    public function acaoLogistica(#[\SensitiveParameter] string $token, string $pedidoId, string $acao, ?array $corpo = null): void
+    {
+        if (!in_array($acao, SequenciaIfood::ACOES, true)) {
+            throw new InvalidArgumentException("ação de logística desconhecida: {$acao}");
+        }
+
+        $url = $this->baseUrl . '/logistics/v1.0/orders/' . rawurlencode($pedidoId) . '/' . $acao;
+        $this->enviar($acao, fn () => $corpo === null
+            ? $this->comToken($token)->send('POST', $url)
+            : $this->comToken($token)->post($url, $corpo));
+    }
+
+    /**
+     * Confere o código de entrega que o cliente passou ao motoboy (POST .../verifyDeliveryCode com {"code"}). Devolve o
+     * JSON da resposta 2xx (a documentação diz {"success": true|false}). Código errado veio como HTTP 400
+     * "Confirmation code is invalid" na sonda (a documentação dizia 422): os dois chegam aqui como ErroIfood.
+     */
+    public function verificarCodigo(#[\SensitiveParameter] string $token, string $pedidoId, #[\SensitiveParameter] string $codigo): array
+    {
+        $resposta = $this->enviar('verifyDeliveryCode', fn () => $this->comToken($token)
+            ->post($this->baseUrl . '/logistics/v1.0/orders/' . rawurlencode($pedidoId) . '/verifyDeliveryCode', ['code' => $codigo]));
 
         return (array) $resposta->json();
     }

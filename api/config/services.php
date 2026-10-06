@@ -71,5 +71,7 @@ return [
         'client_id'     => env('IFOOD_CLIENT_ID'),
         'client_secret' => env('IFOOD_CLIENT_SECRET'),
         'base_url'      => env('IFOOD_BASE_URL', 'https://merchant-api.ifood.com.br'),
+        // trava "Atualize o app" (RegrasDoPedidoIfood): 1 só depois do APK com a conclusão iFood em todos os celulares
+        'exige_app_novo' => env('ENTREGAS_IFOOD_EXIGE_APP_NOVO'),
     ],
 ];
