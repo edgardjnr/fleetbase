@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Support\Entregas\Ifood\ClienteIfood;
 use App\Support\Entregas\Ifood\PedidosIfood;
+use App\Support\Entregas\StatusDoPedido;
 use Closure;
 use Fleetbase\FleetOps\Http\Controllers\Api\v1\OrderController as OrderDaApi;
 use Fleetbase\FleetOps\Http\Controllers\Internal\v1\OrderController as OrderDoConsole;
@@ -19,9 +20,11 @@ use Illuminate\Support\Facades\Log;
  * 1. Cancelamento do nosso lado é proibido (400 "Pedido do iFood: o cancelamento é feito no iFood"): o Logistics não
  *    tem ação de cancelar, e para nós vale o CAN do iFood (CancelamentoPeloIfood). Com problema do motoboy, a central
  *    troca o motoboy.
- *    - API v1: DELETE v1/orders/{id}/cancel (cancelOrder) e a atividade "canceled" (update-activity);
- *    - console: PATCH int/v1/orders/cancel (corpo `order` = uuid), PATCH int/v1/orders/bulk-cancel (`ids`) e a
- *      atividade "canceled" (PATCH int/v1/orders/update-activity/{id}, que o quadro usa ao arrastar o card).
+ *    - API v1: DELETE v1/orders/{id}/cancel (cancelOrder), a atividade "canceled" (update-activity) e o PUT
+ *      v1/orders/{id} (update) com `status` de cancelamento;
+ *    - console: PATCH int/v1/orders/cancel (corpo `order` = uuid), PATCH int/v1/orders/bulk-cancel (`ids`), a
+ *      atividade "canceled" (PATCH int/v1/orders/update-activity/{id}, que o quadro usa ao arrastar o card) e o
+ *      PUT/PATCH int/v1/orders/{id} (updateRecord) com `order.status` (ou `status`) de cancelamento.
  *    - O portal da loja é barrado no RegrasPortalLoja (rota do customer-portal).
  * 2. Trava "Atualize o app" (só com ClienteIfood::exigeAppNovo(), ENTREGAS_IFOOD_EXIGE_APP_NOVO=1): a conclusão comum
  *    pela API v1 (atividade "completed" ou que conclui o pedido no update-activity, e o POST v1/orders/{id}/complete) de
@@ -37,6 +40,8 @@ use Illuminate\Support\Facades\Log;
 class RegrasDoPedidoIfood
 {
     public const CANCELAR_NA_API     = OrderDaApi::class . '@cancelOrder';
+    public const ATUALIZAR_NA_API    = OrderDaApi::class . '@update';
+    public const ATUALIZAR_NO_CONSOLE = OrderDoConsole::class . '@updateRecord';
     public const ATIVIDADE_NA_API    = OrderDaApi::class . '@updateActivity';
     public const CONCLUIR_NA_API     = OrderDaApi::class . '@completeOrder';
     public const CANCELAR_NO_CONSOLE = OrderDoConsole::class . '@cancel';
@@ -72,6 +77,16 @@ class RegrasDoPedidoIfood
                 }
 
                 return $next($request);
+
+            case static::ATUALIZAR_NA_API:
+                return $this->statusCancela($request->input('status')) && $this->ehDoIfood($this->pedidoPeloId($request->route('id'))) ? $this->recusarNaApi($request, static::MENSAGEM_CANCELAMENTO) : $next($request);
+
+            case static::ATUALIZAR_NO_CONSOLE:
+                // o updateRecord lê o corpo em `order` (ou o corpo inteiro): HasApiModelBehavior::getApiPayloadFromRequest
+                $dados  = $request->input('order');
+                $status = is_array($dados) && array_key_exists('status', $dados) ? $dados['status'] : $request->input('status');
+
+                return $this->statusCancela($status) && $this->ehDoIfood($this->pedidoPeloId($request->route('id'))) ? $this->recusarNoConsole() : $next($request);
 
             case static::CANCELAR_NO_CONSOLE:
                 return $this->ehDoIfood($this->pedidoPeloId($request->input('order'))) ? $this->recusarNoConsole() : $next($request);
@@ -124,6 +139,12 @@ class RegrasDoPedidoIfood
     protected function cancela(array $atividade): bool
     {
         return in_array($atividade['code'] ?? null, static::ATIVIDADES_DE_CANCELAMENTO, true);
+    }
+
+    /** O status gravado direto no pedido (PUT do pedido) é de cancelamento? */
+    protected function statusCancela($status): bool
+    {
+        return is_string($status) && in_array(strtolower(trim($status)), StatusDoPedido::CANCELADOS, true);
     }
 
     protected function conclui(array $atividade): bool

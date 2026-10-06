@@ -155,6 +155,13 @@ namespace Teste {
             return $this;
         }
 
+        public function whereIn($coluna, array $valores)
+        {
+            $this->grupos[array_key_last($this->grupos)][] = fn ($item) => in_array($item->$coluna ?? null, $valores, true);
+
+            return $this;
+        }
+
         public function orWhere($coluna, $valor = null)
         {
             $this->grupos[] = [];

@@ -51,6 +51,15 @@ confere(rodar(CONSOLE . 'bulkCancel', [], ['ids' => ['order-2']]) === 'passou', 
 confere(rodar(CONSOLE . 'updateActivity', ['id' => 'order-1'], ['activity' => ['code' => 'canceled']])->status === 400, 'atividade "canceled" no console (quadro): 400');
 confere(rodar(CONSOLE . 'updateActivity', ['id' => 'order-1'], ['activity' => ['code' => 'completed']]) === 'passou', 'conclusão pelo console: passa (decisão da central)');
 confere(rodar(API . 'updateActivity', ['id' => 'order_1'], ['activity' => ['code' => 'canceled']])->status === 400, 'atividade "canceled" na API v1: 400');
+$resposta = rodar(API . 'update', ['id' => 'order_1'], ['status' => 'canceled']);
+confere($resposta->status === 400 && $resposta->dados === ['error' => 'Pedido do iFood: o cancelamento é feito no iFood.'], 'PUT v1/orders/{id} com status cancelado: 400');
+confere(rodar(API . 'update', ['id' => 'order_1'], ['status' => 'order_canceled'])->status === 400, 'PUT v1/orders/{id} com order_canceled: 400');
+confere(rodar(API . 'update', ['id' => 'order_1'], ['notes' => 'portão azul']) === 'passou', 'PUT v1/orders/{id} sem mudar para cancelado: passa');
+confere(rodar(API . 'update', ['id' => 'order_2'], ['status' => 'canceled']) === 'passou', 'PUT v1/orders/{id} de outro pedido: passa');
+$resposta = rodar(CONSOLE . 'updateRecord', ['id' => 'order-1'], ['order' => ['status' => 'canceled']]);
+confere($resposta->status === 400 && $resposta->dados === ['errors' => ['Pedido do iFood: o cancelamento é feito no iFood.']], 'PUT int/v1/orders/{id} (console) com status cancelado: 400 no formato do console');
+confere(rodar(CONSOLE . 'updateRecord', ['id' => 'order-1'], ['status' => 'cancelled'])->status === 400, 'console com o status fora da chave order: 400');
+confere(rodar(CONSOLE . 'updateRecord', ['id' => 'order-1'], ['order' => ['notes' => 'x', 'driver_assigned_uuid' => 'driver-2']]) === 'passou', 'console sem cancelar (troca de motoboy): passa');
 session(['company' => 'outra-empresa']);
 confere(rodar(API . 'cancelOrder', ['id' => 'order_1']) === 'passou', 'pedido de outra empresa: passa (o Fleet-Ops responde 404)');
 
@@ -67,6 +76,25 @@ confere(rodar(API . 'updateActivity', ['id' => 'order_2'], ['activity' => ['code
 pedidos(['conclusao_liberada_em' => '2026-10-05 14:59:00']);
 Config::$valores['services.ifood.exige_app_novo'] = '1';
 confere(rodar(API . 'updateActivity', ['id' => 'order_1'], ['activity' => ['code' => 'completed', 'complete' => true]]) === 'passou', 'liberado pela rota concluir-ifood: passa');
+
+echo '== Portal da loja (RegrasPortalLoja): pedido do iFood não se cancela' . PHP_EOL;
+// só o ramo do cancelamento (método protegido), com a loja do usuário falsa: a loja é o Vendor vendor-a
+eval('namespace App\Support\Entregas; class LojaDoUsuario { public static function vendor($usuario) { return \Fleetbase\FleetOps\Models\Vendor::$todos[0] ?? null; } public static function contato($usuario) { return null; } }');
+if (!class_exists('Fleetbase\Models\User')) {
+    eval('namespace Fleetbase\Models; #[\AllowDynamicProperties] class User { public $uuid = "user-loja"; public $company_uuid = "empresa-1"; }');
+}
+function cancelarNoPortal(string $id)
+{
+    $metodo = new ReflectionMethod(\App\Http\Middleware\RegrasPortalLoja::class, 'cancelamento');
+
+    return $metodo->invoke(new \App\Http\Middleware\RegrasPortalLoja(), new Request(), fn () => 'passou', new \Fleetbase\Models\User(), $id);
+}
+pedidos();
+Order::$todos[0]->customer_uuid = 'vendor-a';
+Order::$todos[1]->customer_uuid = 'vendor-b';
+$resposta = cancelarNoPortal('order_1');
+confere(($resposta->status ?? null) === 400 && $resposta->dados === ['errors' => ['Pedido do iFood: o cancelamento é feito no iFood.']] && Order::$todos[0]->status === 'enroute', 'pedido iFood da loja: 400, sem cancelar');
+confere(cancelarNoPortal('order_2') === 'passou', 'pedido de outra loja: segue para o portal (404)');
 
 echo '== Outras ações' . PHP_EOL;
 pedidos();
