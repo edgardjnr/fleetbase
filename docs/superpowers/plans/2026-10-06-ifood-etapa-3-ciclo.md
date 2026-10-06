@@ -4662,3 +4662,69 @@ Num pedido de teste já com `goingToOrigin`, troque o motoboy pelo console. Expe
 
 Atualize o `CLAUDE.md` (seção da etapa 3) com o que foi conferido: troca de motoboy, raio de 100 m, origem do código do
 pedido de teste, formato do `workerPhone`. Commit só desse arquivo, com o trailer.
+
+## Ajustes das revisões
+
+Aplicados depois da revisão das Tasks 1–12 (commits "iFood etapa 3 (revisão): …"). O que muda o comportamento
+descrito acima e o que fica só como texto para a Task 14 (documentação), a Task 15 (produção) e o plano 2.
+
+### Comportamento novo (Task 14: levar ao `CLAUDE.md` e à spec)
+
+- **409 numa ação da sequência = já aceita** (decisão do responsável): reenvio depois de uma resposta ou de uma
+  gravação perdida ("operação já concluída" na referência). O `AcoesIfood` avança a `ultima_acao`, registra
+  `[entregas] ifood: ação já aceita pelo iFood (409)` (info) e segue, sem recusa nem aviso. Efeito colateral a
+  conhecer: um 409 por ordem errada (ex.: `arrivedAtDestination` depois de um `dispatch` recusado) também avança.
+- **409 no `assignDriver` de troca de motoboy**: recusa com aviso à central **uma vez** (o motoboy novo fica em
+  `motoboy_no_ifood` como marca; o iFood continua com o anterior) e as ações seguintes da sequência continuam (não
+  trava o `dispatch` nem o `arrivedAtDestination`). Outra recusa na troca (400, vínculo, cadastro) ainda para.
+- **Log da recusa** só com `errorType`/`code`/`description` (nunca o corpo cru); no `assignDriver`, o nome e o
+  telefone do motoboy (e sequências de 6+ dígitos) saem mascarados. O corpo do `acaoLogistica` tem
+  `#[\SensitiveParameter]`, e corpo `[]` vai sem corpo.
+- **Orçamento de 45 s** no laço do `AcoesIfood` (`ORCAMENTO_SEGUNDOS`): o resto volta como `incompleto`; o job volta
+  para a fila (1 s) e a rota `concluir-ifood` responde "tente de novo".
+- **Marca de pendente do job** vale 120 s, volta junto com o `release()` e com a exceção de nova tentativa (valendo
+  mais que a espera) e some no `failed()`. `desistir()` toma a trava com 2 s de espera e sai sem gravar com recusa já
+  registrada, sem motoboy ou com nada faltando (usa o alvo mínimo do job).
+- **`entregas:ifood-acompanhar`**: filtro no SQL (join com `orders`; sem `arrivedAtDestination`; Order não encerrado,
+  exceto o concluído; não apagado) antes do limite de 300; janela de 24 h pelo `despachado_em` ou pelo `created_at`
+  (o agendado criado há mais de 24 h entra pelo despacho). Migration nova `2026_10_06_130000_add_indice_acompanhar_*`
+  (índice em `created_at`; o `despachado_em` já estava indexado). Posição do motoboy com mais de 5 min
+  (`drivers.updated_at`) não vale como chegada.
+- **Pago mesmo cancelado** também com o Order `enroute` (o motoboy tocou "A caminho"), além da `ultima_acao` no
+  `dispatch` ou depois (decisão do responsável). CAN sem Order: log info. Exceção no cancelamento sobe como
+  `RuntimeException` só com a classe e o SQLSTATE (o `failed_jobs` não guarda o SQL); `LockTimeoutException` passa.
+- **Cancelamento barrado também no PUT do pedido**: `PUT v1/orders/{id}` (`update`) e `PUT/PATCH int/v1/orders/{id}`
+  do console (`updateRecord`) com `status` (ou `order.status`) de cancelamento, em pedido iFood. **Ao atualizar o
+  fleetops-api, conferir se as ações `Api\v1\OrderController@update` e `Internal\v1\OrderController@updateRecord`
+  ainda existem.**
+- **Código de entrega**: com a trava das ações, a linha é relida antes do `verifyDeliveryCode` (dois cliques ou a
+  central já liberou → `pode_concluir` sem chamar o iFood). Teto de **10 códigos errados por pedido** (contador no
+  cache `entregas:ifood-codigo-erros:<uuid>`, 3 dias; iFood fora do ar não conta): depois dele, **429**
+  `{"resultado": "muitas_tentativas", "errors": ["Muitas tentativas: peça à central para liberar."]}` sem chamar o
+  iFood. "Liberar sem código" com a conclusão já liberada devolve o estado sem gravar nem registrar.
+- **Cobrança no app**: o troco aparece sempre que existe (o `PedidoDoIfood` só o grava do bloco de dinheiro, então
+  vale também com "MISTO"); `GIFT_CARD` = "vale-presente", `OTHER` = "outra forma".
+
+### Só documentar (Task 14)
+
+- O `LogApiRequests` do core grava o corpo das chamadas da API v1, inclusive o `POST v1/entregas/motoboy/pedidos/{id}/codigo-ifood`
+  (o código de entrega) e o token, em `api_request_logs` (Developers → Logs, só admin). Anotar no `CLAUDE.md`.
+- O `internal_id` do pedido pode repetir entre pedidos; o app e as rotas do motoboy usam o `public_id` (a busca do
+  `RegrasDoPedidoIfood` aceita os três, sempre filtrada pela empresa).
+
+### Task 15 (produção)
+
+- Conferir uma ação sem corpo (ex.: `goingToOrigin`) indo com `Content-Type: application/json` do `send('POST')`: se o
+  iFood responder 400 ou 415, é isso (trocar por um POST sem cabeçalho de corpo).
+- No roteiro: uma ação recusada antes (ex.: `dispatch` com 400) impede o `arrivedAtDestination` de ser aceito pelo
+  iFood na ordem; o motoboy segue para o código, e a central usa "Liberar sem código" no painel iFood do console.
+- Conferir o 409 de troca de motoboy (aviso uma vez só no console, `dispatch` seguindo) e o 409 de uma ação reenviada
+  (log info "ação já aceita pelo iFood (409)").
+
+### Plano 2 (`2026-10-06-ifood-etapa-4-app-console.md`)
+
+- Extrato da loja (`PortalLojaController@extrato`, o `array_map` das entregas, ~linhas 86–95) não repassa o
+  `cancelado_pago`: acrescentar o campo para o portal mostrar "pago mesmo cancelado".
+- App: o `codigo-ifood` pode responder 429 `muitas_tentativas` com o texto do servidor; o `resultadoDaConclusao` já
+  trata resultado desconhecido como "tente de novo" e o erro mostra a mensagem do servidor, mas vale acrescentar
+  `'muitas_tentativas'` ao tipo e uma mensagem própria no campo do código.
