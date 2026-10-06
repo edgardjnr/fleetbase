@@ -25,8 +25,8 @@ use Illuminate\Support\Facades\Log;
  *   da loja no portal);
  * - Order tipo transport, status created, internal_id = número do iFood, notas "iFood #4821";
  * - adhoc só no pedido que vai aos motoboys sozinho: o imediato e o agendado com janela (o fleetops:dispatch-orders
- *   despacha o agendado sem ligar o adhoc). O de teste, o sem coordenadas e o agendado sem janela nascem com adhoc
- *   falso: a central atribui, e o despacho manual de um pedido adhoc avisaria todos os motoboys livres no raio (um
+ *   despacha o agendado sem ligar o adhoc). O sem coordenadas e o agendado sem janela nascem com adhoc
+ *   falso (o de teste segue a regra do real): a central atribui, e o despacho manual de um pedido adhoc avisaria todos os motoboys livres no raio (um
  *   deles poderia tomar o pedido do motoboy atribuído: HandleOrderDispatched + startOrder com assign);
  * - agendado em que a central atribuiu um motoboy antes do horário: o despacho daqui desliga o adhoc e vai só ao
  *   atribuído (ver despachar()). Risco que sobra: o fleetops:dispatch-orders roda no mesmo minuto (scheduled_at =
@@ -42,7 +42,7 @@ use Illuminate\Support\Facades\Log;
  *
  * A empresa vai para a sessão antes de criar: o TrackingNumberObserver e o OrderConfig::default() a leem de lá.
  * Despacho como o do portal (RegrasPortalLoja::despacharParaMotoboys): adhoc + firstDispatchWithActivity, com a trava
- * do pedido (TravaDoPedido). Pedido de teste, sem coordenadas ou agendado não é despachado aqui (o agendado sai pelo
+ * do pedido (TravaDoPedido). Pedido sem coordenadas ou agendado não é despachado aqui (o agendado sai pelo
  * entregas:ifood-agendados). Coleta a mais de 300 m do endereço da loja no iFood gera aviso no log (um dos cadastros
  * deve estar errado).
  *

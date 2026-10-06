@@ -32,7 +32,7 @@ confere($linha['despachar_em'] === '2026-10-05 15:00:00' && $linha['agendado'] =
 echo '== Pedido de teste pago online (como os da sonda)' . PHP_EOL;
 $dados = PedidoDoIfood::mapear(pedidoDeTestePagoOnline(), LAT_COLETA, LNG_COLETA, $agora);
 confere($dados['teste'] === true && $dados['notas'] === 'iFood #9753 [TESTE]', 'marcado [TESTE]');
-confere($dados['despachar_agora'] === false && $dados['linha']['despachar_em'] === null, 'sem aviso aos motoboys (só a central atribui)');
+confere($dados['despachar_agora'] === true && $dados['scheduled_at'] === null && $dados['linha']['despachar_em'] === '2026-10-05 15:00:00', 'vai aos motoboys como o real: despacha na hora (despachar_em = agora)');
 $metros = PedidoDoIfood::metrosEntre(LAT_COLETA, LNG_COLETA, $dados['entrega']['latitude'], $dados['entrega']['longitude']);
 confere(abs($metros - 1000) < 15 && $dados['entrega']['longitude'] === LNG_COLETA, 'entrega ~1 km ao norte da loja (' . round($metros) . ' m), não em 0,0');
 confere($dados['entrega']['country'] === 'BR', 'país "XX" do teste vira BR');
@@ -73,11 +73,12 @@ PedidoDoIfood::mapear(pedidoAgendado(), LAT_COLETA, LNG_COLETA, $agora);
 PedidoDoIfood::mapear(pedidoEmDinheiroComTroco(), LAT_COLETA, LNG_COLETA, $agora);
 confere(!logou('agendado sem janela'), 'agendado com janela e imediato: sem log');
 
-echo '== Agendado que não vai aos motoboys: sem scheduled_at (o fleetops:dispatch-orders despacharia)' . PHP_EOL;
+echo '== Agendado de teste com janela: vai aos motoboys 40 min antes, como o real' . PHP_EOL;
+$dadosReal                = PedidoDoIfood::mapear(pedidoAgendado(), LAT_COLETA, LNG_COLETA, $agora);
 $agendadoTeste           = pedidoAgendado();
 $agendadoTeste['isTest'] = true;
 $dados                   = PedidoDoIfood::mapear($agendadoTeste, LAT_COLETA, LNG_COLETA, $agora);
-confere($dados['teste'] === true && $dados['agendado'] === true && $dados['scheduled_at'] === null && $dados['despachar_agora'] === false && $dados['linha']['despachar_em'] === null, 'agendado de teste: scheduled_at nulo, fora do agendador');
+confere($dados['teste'] === true && $dados['agendado'] === true && $dados['despachar_agora'] === false && $dados['scheduled_at'] === $dadosReal['scheduled_at'] && $dados['scheduled_at'] !== null && $dados['linha']['despachar_em'] === $dadosReal['linha']['despachar_em'], 'agendado de teste: scheduled_at e despachar_em 40 min antes, igual ao real');
 confere($dados['notas'] === 'iFood #5150 [TESTE]', 'agendado de teste: [TESTE] nas notas');
 $agendadoSemLugar                                                = pedidoAgendado();
 $agendadoSemLugar['delivery']['deliveryAddress']['coordinates'] = ['latitude' => 0, 'longitude' => 0];
@@ -121,7 +122,7 @@ foreach ([true, 'true', 'TRUE', 1, '1'] as $valor) {
     $pedido           = pedidoEmDinheiroComTroco();
     $pedido['isTest'] = $valor;
     $dados            = PedidoDoIfood::mapear($pedido, LAT_COLETA, LNG_COLETA, $agora);
-    confere($dados['teste'] === true && $dados['despachar_agora'] === false && $dados['notas'] === 'iFood #4821 [TESTE]', 'isTest ' . var_export($valor, true) . ' = teste');
+    confere($dados['teste'] === true && $dados['despachar_agora'] === true && $dados['notas'] === 'iFood #4821 [TESTE]', 'isTest ' . var_export($valor, true) . ' = teste');
 }
 foreach ([false, 'false', 0, '0', null, 'sim'] as $valor) {
     $pedido           = pedidoEmDinheiroComTroco();

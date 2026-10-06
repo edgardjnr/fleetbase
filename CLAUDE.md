@@ -251,10 +251,11 @@ Os pedidos iFood dos restaurantes entram pelo módulo **Logistics** da Merchant 
   - desenho e decisões: `docs/superpowers/specs/2026-10-05-integracao-ifood-logistics-design.md`;
   - referência da API: `docs/ifood/referencia-logistics.md` (a seção "Descobertas da sonda" vale mais que o resto);
   - planos `docs/superpowers/plans/2026-10-05-ifood-etapa-2a-servidor.md` e `-2b-tela-lojas.md`, executados com ajustes de revisão: **o código é a referência**.
-- **Situação:** etapa 2 implementada em 2026-10-05. O primeiro teste real com a loja de teste é a Task 13 do plano 2A. As etapas 3 (ações de logística, GPS, cancelamento) e 4 (APK e console) ainda não existem.
+- **Situação:** etapa 2 em produção e testada com a loja de teste em 2026-10-06. As etapas 3 (ações de logística, GPS, cancelamento) e 4 (APK e console) ainda não existem.
 - **Não vincule loja real antes da etapa 3.**
   - O CAN não cancela o pedido no Entregas: só grava `cancelado_pelo_ifood_em` e, se o pedido ainda não foi despachado (agendado ou despacho que falhou), o tira do agendamento e da fila. O pedido já despachado continua aberto aos motoboys, e a central precisa cancelar à mão no console.
   - Até lá, vincule só a loja de teste.
+  - **O pedido de teste (`isTest`) vai aos motoboys como o real** (decisão de 2026-10-06): os motoboys online perto da loja de teste recebem o alarme, com o endereço falso "RUA TESTE" (entrega ~1 km ao norte). Avise-os antes de gerar um pedido de teste.
 
 ### Como ligar
 
@@ -321,8 +322,8 @@ Fora dessa pasta:
    - a linha de `entregas_ifood_pedidos`. O `pedido_ifood_id` único garante que nunca nascem dois pedidos.
 4. **Despacho como o do portal:** adhoc + `firstDispatchWithActivity`, com a `TravaDoPedido` e o pedido relido.
 
+- **Pedido de teste (`isTest`):** "[TESTE]" nas notas e a entrega ~1 km ao norte da loja (o iFood manda 0,0). Despacha como o real: imediato na hora, agendado com janela 40 min antes, e o `entregas:ifood-agendados` o recupera se o despacho falhar.
 - **Sem despacho**: nasce com adhoc falso e a central atribui. Cada caso deixa uma marca nas notas:
-  - pedido de teste (`isTest`): "[TESTE]", com a entrega ~1 km ao norte da loja;
   - pedido real sem coordenadas válidas (ausentes, 0, fora da faixa ou a mais de 50 km da coleta): "[SEM LOCALIZAÇÃO]", com o mesmo deslocamento e um warning no log;
   - agendado sem janela legível: "[AGENDADO SEM HORÁRIO]", com o log `agendado sem janela`.
 - **Agendado:** `scheduled_at` = `despachar_em` = início da janela − 40 min. Se faltar menos que isso, despacha na hora.

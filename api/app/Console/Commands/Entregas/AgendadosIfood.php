@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Log;
  *   CriadorDoPedidoIfood::despachar só marca despachado_em; a atividade só é inserida por ele, como reserva, se ainda
  *   faltar (listener atrasado na fila ou com falha), sem avisar os motoboys de novo;
  * - o imediato cujo despacho falhou no job (1 min de folga, para não correr junto com o job).
- * Fica de fora: pedido de teste (sem despachar_em), linha sem order_uuid, cancelado pelo iFood (sai da fila sem aviso,
+ * Fica de fora: linha sem despachar_em (sem coordenadas ou sem janela), linha sem order_uuid, cancelado pelo iFood (sai da fila sem aviso,
  * mesmo antes da hora, e o Order sai do agendamento: ver tirarCanceladosDaFila) e pedido encerrado ou apagado (sai da
  * fila).
  *
@@ -66,7 +66,6 @@ class AgendadosIfood extends Command
             ->whereNotNull('order_uuid')
             ->whereNotNull('despachar_em')
             ->where('despachar_em', '<=', $limite)
-            ->where('teste', false)
             ->orderBy('despachar_em')
             ->limit(static::POR_RODADA)
             ->get()
