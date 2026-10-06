@@ -2589,7 +2589,8 @@ Pré-requisito: o plano 1 em produção (Task 15 dele feita). O Claude não tem 
    "iFood #N" na tabela, no quadro e no detalhe; o painel iFood com "Nenhuma ainda"; o menu do detalhe sem "Cancelar".
    No portal (usuário da loja de teste): o selo na lista e no cabeçalho, e o aviso "o cancelamento é feito no Gestor de
    Pedidos do iFood". **A conferir aqui:** se o portal recebe `notes` e `internal_id` (sem selo = não recebe; anote).
-2. Atribua ao motoboy de teste. Expected no app: o card/detalhe com o selo; sem cobrança (pedido de teste é pago online);
+2. O pedido de teste já vai aos motoboys próximos como o real (avise-os antes): aceite pelo app do motoboy de teste
+   (ou atribua pelo console). Expected no app: o card/detalhe com o selo; sem cobrança (pedido de teste é pago online);
    "Ligar para o cliente" com o 0800 e o localizador (o pedido de teste traz `customer.phone`?; anote se não vier).
 3. Iniciar → perto da loja → "A caminho": o painel iFood mostra "Saiu para entrega".
 4. Concluir pelo app: abre o campo do código (o pedido de teste traz o DDCR). Digite um código errado → "Código
@@ -2600,8 +2601,8 @@ Pré-requisito: o plano 1 em produção (Task 15 dele feita). O Claude não tem 
 
 - [ ] **Step 3: alarme, recusa e cancelamento**
 
-1. Num segundo pedido de teste (ele nasce sem despacho), atribua pelo console ao motoboy de teste com o app dele fechado.
-   Expected: o cartão do alarme com o selo "iFood #N" (pedido de teste é pago online: sem a faixa da cobrança).
+1. Gere um segundo pedido de teste com o app do motoboy de teste fechado (ele é despachado aos motoboys próximos como o
+   real). Expected: o cartão do alarme com o selo "iFood #N" (pedido de teste é pago online: sem a faixa da cobrança).
 2. Troque o motoboy depois do "iniciado": se o iFood recusar (409), o console toca o aviso "O iFood recusou "Motoboy
    informado"…" e o painel mostra a recusa.
 3. Cancele pelo Gestor de Pedidos do iFood: o app mostra "Cancelado pelo iFood…" nos detalhes e o push chega com o texto

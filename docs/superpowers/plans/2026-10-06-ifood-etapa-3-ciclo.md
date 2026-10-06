@@ -4633,8 +4633,8 @@ loja de teste. Em até 30 s ele aparece no console com "[TESTE]" e **já despach
 (PR #3, ramo `ifood-teste-despacha`), o pedido de teste vai aos motoboys próximos como o real (o alarme toca, com o
 endereço falso "RUA TESTE" ~1 km ao norte da loja). Aceite pelo app do motoboy de teste (ou atribua pelo console).
 Confira: `docker service logs entregas_queue --since 5m 2>&1 | grep '\[entregas\] ifood'` mostra `ação enviada`
-(`assignDriver`). No Gestor de Pedidos do iFood o pedido mostra o entregador. Se o ramo do PR #3 ainda não estiver na
-imagem, o pedido nasce sem despacho e a central atribui pelo console.
+(`assignDriver`). No Gestor de Pedidos do iFood o pedido mostra o entregador. O PR #3 entrou no ramo `ifood-etapa-3` pelo
+merge da `main`, então a imagem da etapa 3 já o traz.
 
 - [ ] **Step 3: iniciar, chegada e "A caminho"**
 

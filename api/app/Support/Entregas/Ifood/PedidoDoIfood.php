@@ -18,7 +18,8 @@ use Illuminate\Support\Facades\Log;
  *   valem.
  *   CEP só de zeros e estado fora das 27 siglas do Brasil ("XX" do teste, nome por extenso) ficam nulos.
  * - Pedido de teste (`isTest` true, "true", 1 ou "1"; entrega em 0,0): entrega na coleta deslocada ~1 km para o norte
- *   (o km não fica absurdo), "[TESTE]" nas notas e sem despacho aos motoboys (só a central atribui).
+ *   (o km não fica absurdo) e "[TESTE]" nas notas. Vai aos motoboys como o real (imediato na hora; agendado com janela,
+ *   40 min antes): quem está online perto da loja recebe o alarme, com o endereço falso.
  * - Pedido real sem coordenadas válidas (ausentes, não numéricas, latitude ou longitude 0, fora de ±90/±180 ou a mais
  *   de 50 km da coleta): o mesmo deslocamento, `sem_coordenadas`, "[SEM LOCALIZAÇÃO]" nas notas e sem despacho: a
  *   central confere.
@@ -29,8 +30,8 @@ use Illuminate\Support\Facades\Log;
  *   "[AGENDADO SEM HORÁRIO]" nas notas e o log `[entregas] ifood: agendado sem janela`, para a central conferir.
  * - `agendado` diz só que o pedido é para depois (SCHEDULED com janela a mais de 40 min ou sem janela).
  *   `scheduled_at` e `despachar_em` só existem quando o pedido vai aos motoboys: o `fleetops:dispatch-orders` do
- *   Fleet-Ops despacha sozinho quem tem `scheduled_at`, então o de teste, o sem coordenadas e o sem janela ficam com
- *   os dois nulos.
+ *   Fleet-Ops despacha sozinho quem tem `scheduled_at`, então o sem coordenadas e o sem janela ficam com
+ *   os dois nulos (o de teste segue a regra do real).
  * - Cobrança: sem `payments` (pedido pago online, visto na sonda), nada a cobrar; com `pending`, o valor; sem
  *   `pending`, a soma dos métodos não pagos (`prepaid: false`, ou `type: OFFLINE` sem o `prepaid`). O `pending`
  *   explícito sempre vale (0 = nada a cobrar, mesmo com método não pago). A forma é a do método não pago (dois métodos
@@ -99,7 +100,7 @@ final class PedidoDoIfood
         if ($despacharEm < $agora) {
             $despacharEm = $agora;
         }
-        $semDespacho = $teste || $semCoordenadas || $semJanela;
+        $semDespacho = $semCoordenadas || $semJanela;
 
         [$cobrar, $forma, $troco] = static::cobranca($pedido['payments'] ?? null, $ids);
 

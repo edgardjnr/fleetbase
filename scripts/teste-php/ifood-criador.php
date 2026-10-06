@@ -48,13 +48,13 @@ confere($linha->despachado_em === '2026-10-05 15:00:00', 'despachado_em marcado'
 confere(!logou('coleta diverge'), 'coleta a menos de 300 m do endereço do iFood: sem aviso');
 confere(logou('[entregas] ifood: pedido criado', 'info') && logsSem(['Cliente Ficticio', 'CLIENTE FICTICIO', '0800 000 0002', 'Rua Ficticia', '33334444']), 'log sem nome, telefone, endereço nem localizador');
 
-echo '== Pedido de teste: não despacha' . PHP_EOL;
+echo '== Pedido de teste: vai aos motoboys como o real' . PHP_EOL;
 $vinculo = preparar();
 $linha   = (new CriadorDoPedidoIfood())->criar($vinculo, pedidoDeTestePagoOnline());
 $pedido  = Order::$criados[0];
-confere($pedido->notes === 'iFood #9753 [TESTE]' && $pedido->chamadas === [] && $pedido->status === 'created', '[TESTE], sem aviso aos motoboys');
-confere($pedido->adhocAoCriar === false && $pedido->adhoc === false, 'não nasce adhoc: a central atribui (um despacho manual não vai a todos os motoboys)');
-confere($linha->teste === true && $linha->despachar_em === null && ($linha->despachado_em ?? null) === null, 'linha de teste, fora do agendador');
+confere($pedido->notes === 'iFood #9753 [TESTE]' && $pedido->chamadas === ['saveQuietly', 'firstDispatchWithActivity'], '[TESTE], despachado aos motoboys como o real');
+confere($pedido->adhocAoCriar === true && $pedido->adhoc === true, 'nasce adhoc, como o real: vai aos motoboys agora');
+confere($linha->teste === true && $linha->despachar_em === '2026-10-05 15:00:00' && $linha->despachado_em === '2026-10-05 15:00:00', 'linha de teste: despachar_em e despachado_em = agora');
 confere(abs(Place::$criados[0]->location->getLat() - (-21.1775 + 0.009)) < 0.000001, 'entrega ~1 km ao norte da loja');
 confere(!logou('coleta diverge'), 'loja de teste (Acre) não gera aviso de divergência');
 

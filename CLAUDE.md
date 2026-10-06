@@ -251,8 +251,9 @@ Os pedidos iFood dos restaurantes entram pelo módulo **Logistics** da Merchant 
   - desenho e decisões: `docs/superpowers/specs/2026-10-05-integracao-ifood-logistics-design.md`;
   - referência da API: `docs/ifood/referencia-logistics.md` (a seção "Descobertas da sonda" vale mais que o resto);
   - planos `docs/superpowers/plans/2026-10-05-ifood-etapa-2a-servidor.md` e `-2b-tela-lojas.md`, executados com ajustes de revisão: **o código é a referência**.
-- **Situação:** etapa 2 em produção; etapa 3 (ações de logística, GPS, cancelamento, rotas do motoboy) implementada em 2026-10-06, ramo `ifood-etapa-3` (plano `docs/superpowers/plans/2026-10-06-ifood-etapa-3-ciclo.md`), ainda sem push, deploy e teste real. A etapa 4 (APK, console e portal) é o plano `2026-10-06-ifood-etapa-4-app-console.md`.
+- **Situação:** etapa 2 em produção e testada com a loja de teste em 2026-10-06; etapa 3 (ações de logística, GPS, cancelamento, rotas do motoboy) implementada em 2026-10-06, ramo `ifood-etapa-3` (plano `docs/superpowers/plans/2026-10-06-ifood-etapa-3-ciclo.md`), ainda sem push, deploy e teste real. A etapa 4 (APK, console e portal) é o plano `2026-10-06-ifood-etapa-4-app-console.md`.
 - **Não vincule loja real antes do APK da etapa 4 em todos os celulares** e da trava "Atualize o app" ligada (ver "Integração iFood (etapa 3: ciclo da entrega)"). Até lá, só a loja de teste.
+- **O pedido de teste (`isTest`) vai aos motoboys como o real** (decisão de 2026-10-06): os motoboys online perto da loja de teste recebem o alarme, com o endereço falso "RUA TESTE" (entrega ~1 km ao norte). Avise-os antes de gerar um pedido de teste. Desde a etapa 3 ele também pede o código de entrega quando o iFood exige (a central pode usar "Liberar sem código").
 
 ### Como ligar
 
@@ -319,8 +320,8 @@ Fora dessa pasta:
    - a linha de `entregas_ifood_pedidos`. O `pedido_ifood_id` único garante que nunca nascem dois pedidos.
 4. **Despacho como o do portal:** adhoc + `firstDispatchWithActivity`, com a `TravaDoPedido` e o pedido relido.
 
+- **Pedido de teste (`isTest`):** "[TESTE]" nas notas e a entrega ~1 km ao norte da loja (o iFood manda 0,0). Despacha como o real: imediato na hora, agendado com janela 40 min antes, e o `entregas:ifood-agendados` o recupera se o despacho falhar.
 - **Sem despacho**: nasce com adhoc falso e a central atribui. Cada caso deixa uma marca nas notas:
-  - pedido de teste (`isTest`): "[TESTE]", com a entrega ~1 km ao norte da loja;
   - pedido real sem coordenadas válidas (ausentes, 0, fora da faixa ou a mais de 50 km da coleta): "[SEM LOCALIZAÇÃO]", com o mesmo deslocamento e um warning no log;
   - agendado sem janela legível: "[AGENDADO SEM HORÁRIO]", com o log `agendado sem janela`.
 - **Agendado:** `scheduled_at` = `despachar_em` = início da janela − 40 min. Se faltar menos que isso, despacha na hora.
