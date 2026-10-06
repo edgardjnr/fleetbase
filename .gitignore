@@ -64,6 +64,9 @@ builds/osx/frankenphp
 deploy/stack.env
 # teste de isolamento do portal da loja (scripts/teste-isolamento-lojas.mjs): senhas e chave de API
 deploy/teste-lojas.env
+# sonda da API do iFood (scripts/ifood-sonda.mjs): credenciais do app de teste e eventos/pedidos gravados (dados do cliente)
+deploy/ifood-teste.env
+deploy/ifood-sonda/
 
 # companheiro visual do brainstorming (prévias locais)
 .superpowers/

@@ -41,6 +41,7 @@ namespace Illuminate\Support {
         public function subSeconds($n) { $this->modify("-{$n} seconds"); return $this; }
         public function addDay() { $this->modify('+1 day'); return $this; }
         public function toDateTimeString() { return $this->format('Y-m-d H:i:s'); }
+        public function toIso8601String() { return $this->format('Y-m-d\TH:i:sP'); }
     }
 }
 
@@ -88,6 +89,7 @@ namespace Fleetbase\FleetOps\Models {
         public $dispatched           = 1;
         public $started              = 0;
         public $driver_assigned_uuid = null;
+        public $internal_id          = null;
         public $deleted_at           = null;
         public $status               = 'dispatched';
         public $created_at;

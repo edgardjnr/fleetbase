@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
+import { situacaoDoIfood } from '../../utils/vinculo-ifood';
 
 const ENDPOINT = 'entregas/lojas';
 const TAMANHO_MINIMO_SENHA = 8;
@@ -78,9 +79,12 @@ export default class ManagementLojasController extends Controller {
     @service fetch;
     @service intl;
     @service notifications;
+    @service modalsManager;
 
     @tracked lojas = [];
     @tracked carregado = false;
+    // integração iFood ligada no servidor (ENTREGAS_IFOOD): só então aparecem "Vincular iFood" e "Desvincular iFood"
+    @tracked ifoodLigado = false;
     // loja em edição (rascunho, tudo como texto) ou nova; null = painel fechado
     @tracked editando = null;
     // sobe a cada abertura do painel de edição, para a tela rolar até ele mesmo se já estava aberto
@@ -172,6 +176,7 @@ export default class ManagementLojasController extends Controller {
         this.carregar.cancelAll();
         this.lojas = [];
         this.carregado = false;
+        this.ifoodLigado = false;
         this.editando = null;
         this.fecharNovoUsuario();
         this.fecharTrocarSenha();
@@ -257,6 +262,48 @@ export default class ManagementLojasController extends Controller {
         this.novaSenha = '';
     }
 
+    /** Selo do iFood no card: 'vinculada', 'perdido' ou 'nenhum'. */
+    @action situacaoIfood(loja) {
+        return situacaoDoIfood(loja?.ifood);
+    }
+
+    /** Modal "Vincular iFood" (código de vínculo, código de autorização e, se preciso, a escolha da loja do iFood). */
+    @action vincularIfood(loja) {
+        this.modalsManager.show('modals/vincular-ifood', {
+            title: this.intl.t('fleet-ops.ui.lojas.ifood.modal-title', { name: loja.nome }),
+            loja,
+            hideAcceptButton: true,
+            declineButtonText: this.intl.t('fleet-ops.ui.lojas.ifood.close'),
+            onVinculado: (lojaAtualizada) => this.substituirLoja(lojaAtualizada),
+            // fechou no meio do vínculo (o servidor pode ter concluído): relê a lista para o card não ficar desatualizado
+            onFinish: () => {
+                if (this.carregado) {
+                    this.carregar.perform();
+                }
+            },
+        });
+    }
+
+    /** Desvincula do iFood: os pedidos da loja deixam de entrar até um novo vínculo. */
+    @action desvincularIfood(loja) {
+        this.modalsManager.confirm({
+            title: this.intl.t('fleet-ops.ui.lojas.ifood.unlink-title'),
+            body: this.intl.t('fleet-ops.ui.lojas.ifood.unlink-body', { name: loja.nome }),
+            acceptButtonText: this.intl.t('fleet-ops.ui.lojas.ifood.unlink'),
+            acceptButtonScheme: 'danger',
+            confirm: async (modal) => {
+                modal.startLoading();
+                try {
+                    const resposta = await this.fetch.delete(`${ENDPOINT}/${loja.id}/ifood`);
+                    this.substituirLoja(resposta.loja);
+                    this.notifications.success(this.intl.t('fleet-ops.ui.lojas.ifood.unlinked'));
+                } catch (error) {
+                    this.notifications.serverError(error);
+                }
+            },
+        });
+    }
+
     /** Põe a loja devolvida pela API na lista (nova ou atualizada), na ordem alfabética. */
     substituirLoja(loja) {
         const existe = this.lojas.some((atual) => atual.id === loja.id);
@@ -270,6 +317,7 @@ export default class ManagementLojasController extends Controller {
         try {
             const resposta = yield this.fetch.get(ENDPOINT);
             this.lojas = resposta.lojas ?? [];
+            this.ifoodLigado = Boolean(resposta.ifood_ligado);
             this.carregado = true;
         } catch (error) {
             this.notifications.serverError(error);
