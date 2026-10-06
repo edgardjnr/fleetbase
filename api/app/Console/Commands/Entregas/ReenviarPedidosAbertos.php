@@ -74,8 +74,8 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
 
     public function handle(): void
     {
-        date_default_timezone_set('UTC');
-
+        // sem o date_default_timezone_set('UTC') do original: o PHP fica no fuso do app, o mesmo da sessão do MySQL (o
+        // dispatched_at é DATETIME, em hora de Brasília). Ver CLAUDE.md, "Fuso (horário de Brasília)"
         $sandbox = Utils::castBoolean($this->option('sandbox'));
         $testing = Utils::castBoolean($this->option('testing'));
         $dias    = max(1, (int) $this->option('days'));
