@@ -17,7 +17,7 @@
                 <div class="flex flex-row flex-wrap gap-1">
                     <Badge @status={{@resource.status}} />
                     {{#if this.numeroIfood}}
-                        <span class="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-semibold text-white" style="background-color: #EA1D2C;">{{t "customer-portal.ui.entregas.ifood-selo" numero=this.numeroIfood}}</span>
+                        <span class="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold text-white" style="background-color: #EA1D2C;">{{t "customer-portal.ui.entregas.ifood-selo" numero=this.numeroIfood}}</span>
                     {{/if}}
                     {{#if @resource.dispatched_at}}
                         <Badge @status="dispatched">{{t "customer-portal.ui.order.dispatched-at" date=this.dispatchedAt}}</Badge>

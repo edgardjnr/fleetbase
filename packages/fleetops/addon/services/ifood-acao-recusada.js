@@ -21,6 +21,8 @@ export default class IfoodAcaoRecusadaService extends Service {
     @service intl;
     @service hostRouter;
 
+    /** "<id>:<acao>" → notificação aberta (não repete o aviso do mesmo pedido e da mesma ação enquanto ele estiver aberto) */
+    avisos = new Map();
     canal = null;
 
     iniciar() {
@@ -46,11 +48,44 @@ export default class IfoodAcaoRecusadaService extends Service {
         if (!aviso) {
             return;
         }
+
+        // limpa os avisos já dispensados no "x", para a mesma recusa poder voltar a avisar
+        for (const [chave, notificacao] of this.avisos) {
+            if (notificacao?.dismiss) {
+                this.avisos.delete(chave);
+            }
+        }
+
+        const chave = `${aviso.id}:${aviso.acao}`;
+        if (this.avisos.has(chave)) {
+            return;
+        }
+
         tocarSomDeAlerta();
         const acao = this.intl.t(`fleet-ops.ui.ifood.acao.${aviso.acao}`);
-        this.notifications.warning(this.intl.t('fleet-ops.ui.ifood.aviso-recusa', { numero: aviso.numero, acao, status: aviso.status || '—' }), {
+        // status 0 = a ação nem chegou a ser uma resposta do iFood (vínculo perdido, motoboy sem telefone, iFood fora do ar)
+        const texto =
+            aviso.status === 0
+                ? this.intl.t('fleet-ops.ui.ifood.aviso-falha', { numero: aviso.numero, acao })
+                : this.intl.t('fleet-ops.ui.ifood.aviso-recusa', { numero: aviso.numero, acao, status: aviso.status });
+        const notificacao = this.notifications.warning(texto, {
             autoClear: false,
-            onClick: () => this.hostRouter.transitionTo(ROTA_DO_PEDIDO, aviso.id),
+            onClick: () => {
+                this.hostRouter.transitionTo(ROTA_DO_PEDIDO, aviso.id);
+                this.#fechar(chave);
+            },
         });
+
+        this.avisos.set(chave, notificacao);
+    }
+
+    #fechar(chave) {
+        const notificacao = this.avisos.get(chave);
+        if (!notificacao) {
+            return;
+        }
+
+        this.avisos.delete(chave);
+        this.notifications.removeNotification(notificacao);
     }
 }

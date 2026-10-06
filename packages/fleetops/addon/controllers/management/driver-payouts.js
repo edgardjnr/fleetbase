@@ -224,7 +224,7 @@ export default class ManagementDriverPayoutsController extends Controller {
         linhas.push([celula(t('total')), this.totais.entregas, num(this.totais.km), num(this.totais.cobrar)].join(';'));
         linhas.push([celula(t('margin')), '', '', num(this.totais.margem)].join(';'));
         linhas.push('');
-        linhas.push([t('store'), t('driver'), t('order'), t('completed-at'), t('pickup'), t('dropoff'), t('km'), t('source'), t('band'), t('driver-amount'), t('store-amount')].map(celula).join(';'));
+        linhas.push([t('store'), t('driver'), t('order'), t('completed-at'), t('pickup'), t('dropoff'), t('km'), t('source'), t('band'), t('driver-amount'), t('store-amount'), t('cancelado-pago')].map(celula).join(';'));
         for (const entrega of this.relatorio?.entregas ?? []) {
             linhas.push(
                 [
@@ -239,6 +239,7 @@ export default class ManagementDriverPayoutsController extends Controller {
                     celula(this.textoFaixa(entrega.faixa)),
                     entrega.valor_motoboy === null ? '' : num(entrega.valor_motoboy),
                     entrega.valor_loja === null ? '' : num(entrega.valor_loja),
+                    celula(entrega.cancelado_pago ? t('cancelado-pago') : ''),
                 ].join(';')
             );
         }

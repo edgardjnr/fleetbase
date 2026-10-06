@@ -261,6 +261,7 @@ fleet-ops:
       nao-cancela: 'Pedido do iFood: o cancelamento é feito no iFood (Gestor de Pedidos).'
       cancelar-em-lote: Há pedido do iFood na seleção. O cancelamento dele é feito no iFood; tire-o da seleção.
       aviso-recusa: 'O iFood recusou "{acao}" no pedido {numero} (erro {status}). Clique para abrir e conferir no Gestor de Pedidos.'
+      aviso-falha: 'Não foi possível informar ao iFood "{acao}" no pedido {numero} (vínculo perdido, motoboy sem telefone ou iFood fora do ar). Clique para abrir e conferir.'
       acao:
         assignDriver: Motoboy informado
         goingToOrigin: A caminho da loja

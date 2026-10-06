@@ -261,6 +261,7 @@ fleet-ops:
             nao-cancela: 'iFood order: cancel it in iFood (order manager).'
             cancelar-em-lote: There is an iFood order in the selection. Cancel it in iFood; remove it from the selection.
             aviso-recusa: 'iFood refused "{acao}" for order {numero} (error {status}). Click to open and check the iFood order manager.'
+            aviso-falha: 'Could not send "{acao}" to iFood for order {numero} (lost link, courier without phone or iFood down). Click to open and check.'
             acao:
                 assignDriver: Courier assigned
                 goingToOrigin: Going to the store
