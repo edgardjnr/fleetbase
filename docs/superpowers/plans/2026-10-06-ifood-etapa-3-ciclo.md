@@ -4611,8 +4611,9 @@ O Claude não tem SSH: os comandos na VPS são do Edgard. A trava "Atualize o ap
 
 - [ ] **Step 1: deploy da API**
 
-Depois do merge e do push (decisão do Edgard), na VPS: `cd ~/entregas && bash deploy/atualizar.sh api`. Ele roda a
-migration nova no banco principal e no sandbox e o `config:cache`. Confira:
+Depois do merge e do push (decisão do Edgard), na VPS: `cd ~/entregas && bash deploy/atualizar.sh api`. Ele roda as
+**duas** migrations novas (`2026_10_06_120000_add_ciclo_*`: colunas do ciclo; `2026_10_06_130000_add_indice_acompanhar_*`:
+índice em `created_at`) no banco principal e no sandbox e o `config:cache`. Confira:
 
 ```bash
 docker exec $(docker ps -q -f name=entregas_application) php artisan schedule:list | grep ifood
@@ -4620,29 +4621,59 @@ docker exec $(docker ps -q -f name=entregas_application) php artisan route:list 
 docker exec -it $(docker ps -q -f name=entregas_database) mysql -uroot -p fleetbase -e "SHOW COLUMNS FROM entregas_ifood_pedidos LIKE 'recusa%'"
 ```
 
-Expected: o `entregas:ifood-acompanhar` na lista (a cada 30 s), as 5 rotas novas, as 3 colunas `recusa_*`.
+Expected: o `entregas:ifood-acompanhar` na lista (a cada 30 s); o grep de rotas mostra **8 linhas** (as 5 novas:
+`pedidos/{id}/ifood` e `.../liberar-sem-codigo` do console, `pedidos/{id}/ifood`, `concluir-ifood` e `codigo-ifood` do
+motoboy; mais as 3 da etapa 2: `lojas/{id}/ifood/codigo`, `.../vincular` e o `DELETE lojas/{id}/ifood`); as 3 colunas
+`recusa_*`.
 
-- [ ] **Step 2: pedido de teste até o despacho**
+- [ ] **Step 2: pedido de teste até o aceite**
 
-Gere um pedido de teste no Portal do Desenvolvedor do iFood para a loja de teste. Em até 30 s ele aparece no console com
-"[TESTE]" e sem despacho (pedido de teste não vai aos motoboys). Atribua a um motoboy de teste pelo console.
+Avise antes os motoboys online perto da loja de teste. Gere um pedido de teste no Portal do Desenvolvedor do iFood para a
+loja de teste. Em até 30 s ele aparece no console com "[TESTE]" e **já despachado**: desde a mudança de 2026-10-06
+(PR #3, ramo `ifood-teste-despacha`), o pedido de teste vai aos motoboys próximos como o real (o alarme toca, com o
+endereço falso "RUA TESTE" ~1 km ao norte da loja). Aceite pelo app do motoboy de teste (ou atribua pelo console).
 Confira: `docker service logs entregas_queue --since 5m 2>&1 | grep '\[entregas\] ifood'` mostra `ação enviada`
-(`assignDriver`). No Gestor de Pedidos do iFood o pedido mostra o entregador.
+(`assignDriver`). No Gestor de Pedidos do iFood o pedido mostra o entregador. Se o ramo do PR #3 ainda não estiver na
+imagem, o pedido nasce sem despacho e a central atribui pelo console.
 
 - [ ] **Step 3: iniciar, chegada e "A caminho"**
 
 No app do motoboy de teste: iniciar o pedido → `ação enviada` com `goingToOrigin`. Perto da loja (100 m), em até 30 s, o
 scheduler mostra `chegada pelo GPS` e a fila `arrivedAtOrigin` (`docker service logs entregas_scheduler --since 5m 2>&1 |
 grep 'chegada pelo GPS'`). "A caminho" → `dispatch`. No Gestor de Pedidos: "Em rota".
+**Se a ação sem corpo falhar:** `docker service logs entregas_queue --since 5m 2>&1 | grep 'ação recusada'` com 400 ou
+415 no `goingToOrigin` (ou no `arrivedAtOrigin`) é o `Content-Type: application/json` que o `send('POST')` do Laravel
+põe sem corpo: trocar por um POST sem cabeçalho de corpo no `ClienteIfood::acaoLogistica`. Com essa recusa, o
+`dispatch` e o `arrivedAtDestination` não vão na ordem (ver "Ajustes das revisões"): siga o roteiro com "Liberar sem
+código" no passo 4.
 
-- [ ] **Step 4: conclusão (APK antigo, trava desligada)**
+- [ ] **Step 4: conclusão (APK antigo, trava desligada) e as rotas novas**
 
-Conclua pelo app. Expected: a fila mostra `arrivedAtDestination` e, como o pedido de teste trouxe o DDCR,
-`pedido concluído sem o código do cliente` (warning). No painel (`GET int/v1/entregas/pedidos/<id>/ifood` pelo console
-logado) `conclusao_sem_codigo: true`. O iFood fica com a confirmação pendente e conclui sozinho em 4 h.
+Primeiro as rotas do APK novo, com `curl` e o token de motoboy do motoboy de teste (pedido iniciado, ainda não
+concluído; `<pedido>` = `public_id`):
+
+```bash
+curl -s -X POST -H "Authorization: Bearer <token do motoboy>" \
+  https://entregas-api.restaurantepro.com.br/v1/entregas/motoboy/pedidos/<pedido>/concluir-ifood
+```
+
+Expected: `{"resultado":"precisa_codigo"}` (o pedido de teste trouxe o DDCR) ou `{"resultado":"pode_concluir"}`, e a
+fila/aplicação com o `arrivedAtDestination` **na hora** (o Gestor de Pedidos mostra "Entregador chegou no cliente").
+503 "tente de novo" = iFood fora do ar ou ação ainda por enviar (repita em alguns segundos).
+
+Com `precisa_codigo`: no console logado (admin), o painel iFood do pedido → **Liberar sem código** (ou, no console de
+desenvolvedor do navegador, na aba do console logado, um `fetch` de `POST int/v1/entregas/pedidos/<id>/ifood/liberar-sem-codigo`
+com o mesmo cabeçalho `Authorization` das outras chamadas do console). Confira no painel
+(`GET int/v1/entregas/pedidos/<id>/ifood`) `conclusao_liberada_em` preenchido e `conclusao_sem_codigo: true`, e o log
+`conclusão sem código liberada pela central` (`entregas_application`). Repetir o `concluir-ifood` agora responde
+`pode_concluir`.
+
+Depois conclua pelo app (APK antigo). Sem a liberação, a fila mostra `pedido concluído sem o código do cliente`
+(warning) e o painel `conclusao_sem_codigo: true`. O iFood fica com a confirmação pendente e conclui sozinho em 4 h.
 **A conferir aqui:** se a página de testes do Portal do Desenvolvedor mostra o código do pedido de teste. Se mostrar,
-teste com `curl` (token de motoboy) a rota `codigo-ifood` num segundo pedido: código errado → 422 "Código incorreto";
-certo → `pode_concluir`. Anote no `CLAUDE.md` de onde o código veio.
+teste com `curl` (token de motoboy) a rota `codigo-ifood` (`-d '{"codigo":"1234"}' -H 'Content-Type: application/json'`)
+num segundo pedido: código errado → 422 "Código incorreto"; certo → `pode_concluir`; outro 4xx do iFood → 409
+`codigo_nao_conferido` (a central libera). Anote no `CLAUDE.md` de onde o código veio.
 
 - [ ] **Step 5: cancelamento proibido e CAN**
 
@@ -4662,6 +4693,12 @@ Num pedido de teste já com `goingToOrigin`, troque o motoboy pelo console. Expe
 
 Atualize o `CLAUDE.md` (seção da etapa 3) com o que foi conferido: troca de motoboy, raio de 100 m, origem do código do
 pedido de teste, formato do `workerPhone`. Commit só desse arquivo, com o trailer.
+
+**Plano de recuo:** `ENTREGAS_IFOOD=` vazio no `stack.env` (Stacks → entregas → Editor → Update the stack, sem
+"Re-pull image"), que recria a API, a fila e o scheduler. Com a integração desligada, as ações de logística e
+o `entregas:ifood-acompanhar` param, e o `RegrasDoPedidoIfood` libera o cancelamento pela central (console e API v1)
+para limpar os pedidos iFood que ficaram abertos. O portal da loja continua sem cancelar pedido iFood. Pedido em que o
+iFood já cancelou (`cancelado_pelo_ifood_em`) a central cancela mesmo com a integração ligada.
 
 ## Ajustes das revisões
 
@@ -4728,3 +4765,28 @@ descrito acima e o que fica só como texto para a Task 14 (documentação), a Ta
 - App: o `codigo-ifood` pode responder 429 `muitas_tentativas` com o texto do servidor; o `resultadoDaConclusao` já
   trata resultado desconhecido como "tente de novo" e o erro mostra a mensagem do servidor, mas vale acrescentar
   `'muitas_tentativas'` ao tipo e uma mensagem própria no campo do código.
+- App: o `codigo-ifood` também pode responder **409 `codigo_nao_conferido`** ("Não foi possível conferir o código
+  neste pedido. Peça à central para liberar.", revisão final abaixo): mostrar a mensagem do servidor e não oferecer
+  "tentar de novo" sem fim.
+
+### Revisão final (2026-10-06)
+
+Aplicados nos commits "iFood etapa 3 (revisão final): …":
+
+- **Saída da central para cancelar** (`RegrasDoPedidoIfood`): o cancelamento pelo console e pela API v1 passa quando a
+  linha já tem `cancelado_pelo_ifood_em` (CAN perdido ou cancelamento local que falhou) ou com a integração desligada
+  (`!ClienteIfood::ligada()`, desligamento de emergência), com log `cancelamento liberado no pedido do iFood`. O portal
+  da loja continua barrado sempre.
+- **Consulta só quando pode barrar:** o middleware decide pela ação antes de buscar o pedido (cancelamento, ou
+  conclusão com a trava ligada); a `update-activity` neutra não vai ao banco.
+- **Log das recusas:** `ação barrada no pedido do iFood` também no console e no portal da loja, só com ids nossos.
+- **Código de entrega:** só o 400/422 cuja `description`/`message`/`code` diz código inválido conta como "Código
+  incorreto" e para o teto de 10. Outro 4xx (inclusive 409 e 412) → 409 `codigo_nao_conferido`, sem contar no teto.
+  O log da falha leva o resumo do `AcoesIfood::resumoDoErro` (agora público), com o código digitado mascarado.
+- **Orçamento menor nas rotas síncronas:** `concluir-ifood`/`codigo-ifood` chamam o `sincronizar` com 20 s
+  (`ConclusaoIfood::ORCAMENTO_NA_ROTA`); o job continua com 45 s.
+- **Fila separada (não implementado; precisa de worker novo no stack/Portainer):** os jobs iFood (`EnviarAcaoIfood`,
+  `ProcessarPedidoIfood`) dividem o único worker (`entregas_queue`) com os push e as notificações. **Antes da primeira
+  loja real**, entram `onQueue('ifood')` nesses jobs e um segundo worker no stack (`queue:work --queue=ifood`).
+- **Roteiro da Task 15** corrigido: duas migrations, 8 linhas no grep de rotas, pedido de teste já despachado (PR #3),
+  o que procurar se a ação sem corpo falhar, `curl` no `concluir-ifood`, "Liberar sem código" e o plano de recuo.
