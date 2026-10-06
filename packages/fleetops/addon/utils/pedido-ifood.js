@@ -7,6 +7,12 @@ export const EVENTO_ACAO_RECUSADA = 'entregas.ifood_acao_recusada';
 /** Ações de logística, na ordem do iFood (App\Support\Entregas\Ifood\SequenciaIfood::ACOES). */
 export const ACOES_IFOOD = ['assignDriver', 'goingToOrigin', 'arrivedAtOrigin', 'dispatch', 'arrivedAtDestination'];
 
+/** Status de pedido encerrado: igual a App\Support\Entregas\StatusDoPedido::ENCERRADOS. */
+export const ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled', 'order_canceled', 'expired'];
+
+/** Os encerrados por cancelamento: igual a App\Support\Entregas\StatusDoPedido::CANCELADOS (e ao que o RegrasDoPedidoIfood barra). */
+export const CANCELADOS = ['canceled', 'cancelled', 'order_canceled'];
+
 /** Formas de pagamento do iFood → chave de tradução (fleet-ops.ui.ifood.forma.<chave>). */
 export const FORMAS = {
     CASH: 'dinheiro',

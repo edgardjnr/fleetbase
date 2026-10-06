@@ -8,7 +8,7 @@ import { task } from 'ember-concurrency';
 import titleize from 'ember-cli-string-helpers/utils/titleize';
 import smartHumanize from '@fleetbase/ember-ui/utils/smart-humanize';
 import isUuid from '@fleetbase/ember-core/utils/is-uuid';
-import { ehPedidoIfood } from '../../utils/pedido-ifood';
+import { CANCELADOS, ehPedidoIfood } from '../../utils/pedido-ifood';
 
 export default class OrderKanbanComponent extends Component {
     @service fetch;
@@ -75,7 +75,7 @@ export default class OrderKanbanComponent extends Component {
         const prevStatus = order.status;
 
         // Entregas: pedido do iFood não vai para "cancelado" pelo quadro (o cancelamento é no iFood)
-        if (['canceled', 'cancelled'].includes(targetColumnId) && ehPedidoIfood(order)) {
+        if (CANCELADOS.includes(targetColumnId) && ehPedidoIfood(order)) {
             this.notifications.warning(this.intl.t('fleet-ops.ui.ifood.nao-cancela'));
             this.orders = this.orders.slice();
             return;

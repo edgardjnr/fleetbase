@@ -3,7 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
-import { ACOES_IFOOD, ehPedidoIfood, mostraTroco, numeroIfoodDoPedido, partesDaForma, reais } from '../../../utils/pedido-ifood';
+import { ACOES_IFOOD, ENCERRADOS, ehPedidoIfood, mostraTroco, numeroIfoodDoPedido, partesDaForma, reais } from '../../../utils/pedido-ifood';
 
 /**
  * Entregas: painel "iFood" no detalhe do pedido (só pedidos do iFood; rota GET int/v1/entregas/pedidos/{id}/ifood, só
@@ -19,13 +19,8 @@ export default class OrderDetailsIfoodComponent extends Component {
     @service modalsManager;
     @tracked painel = null;
     @tracked erro = false;
-
-    constructor() {
-        super(...arguments);
-        if (this.ehIfood) {
-            this.carregar.perform();
-        }
-    }
+    // o pedido do último carregamento (não rastreado: só o `recarregar` lê e grava)
+    ultimoId = null;
 
     get ehIfood() {
         return ehPedidoIfood(this.args.resource);
@@ -86,14 +81,31 @@ export default class OrderDetailsIfoodComponent extends Component {
     get podeLiberar() {
         const painel = this.painel;
 
-        return Boolean(painel?.exige_codigo && !painel.conclusao_liberada_em && !painel.cancelado_pelo_ifood_em && !['completed', 'canceled'].includes(this.args.resource?.status));
+        return Boolean(painel?.exige_codigo && !painel.conclusao_liberada_em && !painel.cancelado_pelo_ifood_em && !ENCERRADOS.includes(this.args.resource?.status));
     }
 
     textoDaAcao(acao) {
         return this.intl.t(`fleet-ops.ui.ifood.acao.${ACOES_IFOOD.includes(acao) ? acao : 'desconhecida'}`);
     }
 
-    @task *carregar() {
+    /**
+     * O Glimmer reaproveita o componente quando o @resource muda (outro pedido com o detalhe aberto, ou o refresh do socket
+     * que devolve a mesma instância): carrega na entrada e a cada mudança de id, status ou atualização do pedido. Trocou de
+     * pedido: zera o painel antes, para não mostrar os dados do anterior.
+     */
+    @action recarregar() {
+        const id = this.id;
+        if (id !== this.ultimoId) {
+            this.ultimoId = id;
+            this.painel = null;
+            this.erro = false;
+        }
+        if (this.ehIfood) {
+            this.carregar.perform();
+        }
+    }
+
+    @task({ restartable: true }) *carregar() {
         try {
             this.painel = yield this.fetch.get(`entregas/pedidos/${this.id}/ifood`);
             this.erro = false;
