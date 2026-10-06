@@ -132,7 +132,7 @@ $criador = new CriadorFalso();
 rodar($criador);
 confere(count($criador->criados) === 1, 'CFM sem PLC também cria');
 
-echo '== CAN depois de criado: só registra' . PHP_EOL;
+echo '== CAN depois de criado: cancela o pedido no Entregas (etapa 3)' . PHP_EOL;
 gravarEvento('ev-4', 'CAR', '2026-10-05T18:05:00Z');
 gravarEvento('ev-5', 'CAN', '2026-10-05T18:05:00.500Z');
 rodar($criador);
@@ -145,6 +145,7 @@ foreach (\Illuminate\Support\Facades\Log::$registros as [$nivel, $mensagem, $con
     }
 }
 confere(($contextoDoCan['pedido'] ?? null) === 'order_pub1' && ($contextoDoCan['order_uuid'] ?? null) === 'order-1', 'log do CAN com o public_id do Order e o order_uuid');
+confere(Order::where('uuid', 'order-1')->first()->status === 'canceled', 'o Order é cancelado');
 
 echo '== CAN tira da fila do agendador o pedido ainda não despachado' . PHP_EOL;
 reiniciarIfood();
@@ -160,7 +161,7 @@ rodar($criador);
 confere(linhaDoPedido()->cancelado_pelo_ifood_em === '2026-10-05 15:02:00' && linhaDoPedido()->despachar_em === null, 'CAN: cancelado_pelo_ifood_em gravado e despachar_em nulo (sai da fila)');
 confere(linhaDoPedido()->despachado_em === null, 'continua sem despachado_em');
 
-echo '== CAN de agendado ainda não despachado: o Order sai do agendamento (fleetops:dispatch-orders) e do pedido aberto' . PHP_EOL;
+echo '== CAN de agendado ainda não despachado: cancelado, fora do agendamento (fleetops:dispatch-orders) e do pedido aberto' . PHP_EOL;
 reiniciarFleetbase();
 reiniciarIfood();
 vinculoDaLojaA();
@@ -175,9 +176,9 @@ $agendado->adhoc        = true;
 gravarEvento('ev-2', 'CAN', '2026-10-05T18:02:00Z');
 rodar($criador);
 confere($agendado->scheduled_at === null && $agendado->adhoc === false, 'CAN: scheduled_at nulo e adhoc desligado no Order');
-confere($agendado->chamadas === ['saveQuietly'] && $agendado->travadoNoSalvar === [true], 'gravado com saveQuietly, uma vez, com a trava do pedido (TravaDoPedido)');
+confere($agendado->chamadas === ['saveQuietly', 'cancel'] && $agendado->travadoNoSalvar === [true], 'sai dos abertos com saveQuietly, com a trava do pedido (TravaDoPedido), e depois cancel()');
 confere(linhaDoPedido()->despachar_em === null && linhaDoPedido()->cancelado_pelo_ifood_em === '2026-10-05 15:02:00', 'e sai da fila do agendador, com o cancelamento registrado');
-confere(!in_array('cancel', $agendado->chamadas, true) && $agendado->status === 'created', 'o Order não é cancelado (etapa 3)');
+confere($agendado->status === 'canceled' && $agendado->travadoNoCancelar === [[true, true]], 'Order cancelado com a trava do pedido e a das ações do iFood');
 
 echo '== CAN de agendado: trava do pedido ocupada → o evento fica pendente e tenta de novo' . PHP_EOL;
 reiniciarFleetbase();
@@ -200,7 +201,7 @@ unset(Trava::$ocupadas['entregas:pedido:order-1']);
 rodar($criador);
 confere($agendado->scheduled_at === null && $agendado->adhoc === false && evento('ev-2')->processado_em !== null && linhaDoPedido()->despachar_em === null, 'na tentativa seguinte, sai do agendamento e da fila');
 
-echo '== CAN de pedido já despachado ou já aceito: o Order não é mexido' . PHP_EOL;
+echo '== CAN de pedido já despachado ou já aceito (sem dispatch no iFood): cancelado, sem pagamento' . PHP_EOL;
 foreach (['despachado' => ['dispatched' => true, 'status' => 'dispatched'], 'aceito' => ['started' => true, 'status' => 'started']] as $caso => $estado) {
     reiniciarFleetbase();
     reiniciarIfood();
@@ -218,8 +219,8 @@ foreach (['despachado' => ['dispatched' => true, 'status' => 'dispatched'], 'ace
     }
     gravarEvento('ev-2', 'CAN', '2026-10-05T18:02:00Z');
     rodar($criador);
-    confere($pedidoOrder->chamadas === [] && $pedidoOrder->scheduled_at === '2026-10-05 15:40:00' && $pedidoOrder->adhoc === true, "{$caso}: scheduled_at e adhoc intactos, sem saveQuietly");
-    confere(linhaDoPedido()->cancelado_pelo_ifood_em === '2026-10-05 15:02:00', "{$caso}: o cancelamento é registrado");
+    confere($pedidoOrder->chamadas === ['saveQuietly', 'cancel'] && $pedidoOrder->status === 'canceled' && $pedidoOrder->dispatched === false && $pedidoOrder->adhoc === false && $pedidoOrder->scheduled_at === null, "{$caso}: cancelado e fora dos pedidos abertos");
+    confere(linhaDoPedido()->cancelado_pelo_ifood_em === '2026-10-05 15:02:00' && !linhaDoPedido()->pago_mesmo_cancelado, "{$caso}: registrado, sem pagamento (o dispatch não tinha saído)");
 }
 
 echo '== CAN depois do despacho não mexe no despachar_em' . PHP_EOL;

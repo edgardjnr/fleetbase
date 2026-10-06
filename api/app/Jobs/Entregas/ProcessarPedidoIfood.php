@@ -2,13 +2,13 @@
 
 namespace App\Jobs\Entregas;
 
+use App\Support\Entregas\Ifood\CancelamentoPeloIfood;
 use App\Support\Entregas\Ifood\ClienteIfood;
 use App\Support\Entregas\Ifood\CriadorDoPedidoIfood;
 use App\Support\Entregas\Ifood\ErroIfood;
 use App\Support\Entregas\Ifood\EventosIfood;
 use App\Support\Entregas\Ifood\VinculoPerdido;
 use App\Support\Entregas\Ifood\VinculosIfood;
-use Fleetbase\FleetOps\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\QueryException;
@@ -33,11 +33,10 @@ use Illuminate\Support\Facades\Log;
  *   procurados entre todos os eventos do pedido na tabela, processados ou não, e não só entre os pendentes. São
  *   definitivos;
  * - código ignorado: log warning quando exige ação da loja no iFood (EventosIfood::nivelDoIgnorado), info nos outros;
- * - DDCR marca exige_codigo; CAN registra cancelado_pelo_ifood_em e, se o pedido ainda não foi despachado nem aceito,
- *   tira o Order do agendamento (CriadorDoPedidoIfood::tirarDoAgendamento: scheduled_at nulo e adhoc desligado, com a
- *   TravaDoPedido; senão o fleetops:dispatch-orders o despacharia aos motoboys na hora marcada) e a linha da fila do
- *   agendador (despachar_em nulo). O Order continua aberto no console: o cancelamento dele no Entregas é da etapa 3. O
- *   pedido já despachado continua aberto aos motoboys até a central cancelar;
+ * - DDCR marca exige_codigo; CAN cancela o pedido no Entregas (CancelamentoPeloIfood, etapa 3: como o portal, com o
+ *   push ao motoboy e o pago_mesmo_cancelado quando o dispatch já tinha saído) e tira a linha da fila do agendador
+ *   (despachar_em nulo). Com a trava do pedido ocupada, o LockTimeoutException sobe, o CAN fica pendente e a fila tenta
+ *   de novo pelo $backoff; o cancelamento é idempotente;
  * - código desconhecido, loja não vinculada, vínculo perdido e loja sem Local de coleta ficam processados e ignorados.
  *   Nos três últimos isso não é definitivo: um evento de criação posterior do mesmo pedido (CFM, RTP…) tenta de novo.
  *
@@ -89,6 +88,9 @@ class ProcessarPedidoIfood implements ShouldQueue
 
     public array $backoff = [15, 30, 60, 120, 300];
 
+    /** O cancelamento do CAN (injetado no handle; o teste pode trocar). */
+    protected ?CancelamentoPeloIfood $cancelamento = null;
+
     public function __construct(public string $pedidoIfoodId)
     {
     }
@@ -99,8 +101,10 @@ class ProcessarPedidoIfood implements ShouldQueue
         return now()->addMinutes(static::PRAZO_MINUTOS);
     }
 
-    public function handle(VinculosIfood $vinculos, ClienteIfood $cliente, CriadorDoPedidoIfood $criador): void
+    public function handle(VinculosIfood $vinculos, ClienteIfood $cliente, CriadorDoPedidoIfood $criador, ?CancelamentoPeloIfood $cancelamento = null): void
     {
+        $this->cancelamento = $cancelamento ?? app(CancelamentoPeloIfood::class);
+
         $trava = Cache::lock("entregas:ifood-pedido:{$this->pedidoIfoodId}", static::VALIDADE_DA_TRAVA);
         if (!$trava->get()) {
             $this->release(static::ESPERA_DA_TRAVA);
@@ -187,26 +191,16 @@ class ProcessarPedidoIfood implements ShouldQueue
                 $pedido->exige_codigo = true;
             }
 
-            if ($acao === EventosIfood::CANCELA && $pedido && !$pedido->cancelado_pelo_ifood_em) {
-                // ainda não despachado (agendado ou despacho que falhou): o Order sai do agendamento (scheduled_at nulo,
-                // adhoc desligado), senão o fleetops:dispatch-orders o despacharia aos motoboys na hora marcada. Antes
-                // de gravar o cancelamento: com a trava do pedido ocupada, o LockTimeoutException sobe, o CAN fica
-                // pendente e a fila tenta de novo pelo $backoff
-                if ($pedido->order_uuid) {
-                    $criador->tirarDoAgendamento($pedido->order_uuid);
-                }
+            if ($acao === EventosIfood::CANCELA && $pedido) {
+                // cancela no Entregas (etapa 3), com a trava do pedido: ocupada, o LockTimeoutException sobe, o CAN fica
+                // pendente e a fila tenta de novo pelo $backoff. Idempotente (o CAN repetido não cancela duas vezes)
                 $quando = $evento['createdAt'] ? substr((string) $evento['createdAt'], 0, 19) : now()->toDateTimeString();
-                $this->atualizarPedido($pedido, ['cancelado_pelo_ifood_em' => $quando]);
-                $pedido->cancelado_pelo_ifood_em = $quando;
+                $this->cancelamento->aplicar($pedido, $quando);
                 // e a linha sai da fila do entregas:ifood-agendados. Condicional no banco: o agendador pode ter
                 // despachado depois de a linha ser lida
                 DB::table(static::PEDIDOS)->where('id', $pedido->id)->whereNotNull('despachar_em')->whereNull('despachado_em')
                     ->update(['despachar_em' => null, 'updated_at' => now()->toDateTimeString()]);
-                Log::warning('[entregas] ifood: pedido cancelado pelo iFood (o cancelamento no Entregas é da etapa 3)', [
-                    'pedido'     => $this->publicIdDoOrder($pedido),
-                    'order_uuid' => $pedido->order_uuid,
-                    'numero'     => $pedido->numero,
-                ]);
+                $pedido = DB::table(static::PEDIDOS)->where('id', $pedido->id)->first();
             }
 
             if ($acao === EventosIfood::IGNORA) {
@@ -280,12 +274,6 @@ class ProcessarPedidoIfood implements ShouldQueue
         $codigos = DB::table(static::EVENTOS)->where('pedido_ifood_id', $this->pedidoIfoodId)->whereIn('codigo', EventosIfood::POS_COLETA)->pluck('codigo')->all();
 
         return array_values(array_unique($codigos));
-    }
-
-    /** O public_id do Order (o que a central vê), ou null se o Order sumiu. */
-    protected function publicIdDoOrder(object $pedido): ?string
-    {
-        return $pedido->order_uuid ? Order::where('uuid', $pedido->order_uuid)->first()?->public_id : null;
     }
 
     protected function atualizarPedido(object $pedido, array $valores): void
