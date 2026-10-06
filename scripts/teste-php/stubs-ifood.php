@@ -55,7 +55,15 @@ namespace Illuminate\Support {
 namespace Illuminate\Support\Facades {
     class DB
     {
-        public static function table(string $tabela) { return new \Teste\Consulta($tabela); }
+        public static function table(string $tabela)
+        {
+            \Teste\Banco::$consultadas[] = $tabela;
+            if (isset(\Teste\Banco::$falharAoConsultar[$tabela])) {
+                throw \Teste\Banco::$falharAoConsultar[$tabela];
+            }
+
+            return new \Teste\Consulta($tabela);
+        }
 
         // desfaz as escritas nas tabelas em memória e nas listas dos models falsos (Banco::$modelos) se a função lançar
         // (como o rollback do MySQL)
@@ -457,6 +465,10 @@ namespace Teste {
         public static array $modelos = [];
         /** Tabela => função que devolve as linhas (arrays) de uma tabela fora do banco em memória, para o join (ex.: orders). */
         public static array $externas = [];
+        /** As tabelas abertas com DB::table, na ordem (o teste conta as consultas). */
+        public static array $consultadas = [];
+        /** Tabela => exceção que o DB::table lança (o banco fora do ar). */
+        public static array $falharAoConsultar = [];
         /**
          * Colunas e colunas únicas das tabelas entregas_ifood_*, lidas das migrations (carregadas uma vez, na primeira
          * consulta): tabela => ['colunas' => [nomes], 'unicas' => [nomes]]. Assim um nome de coluna errado falha aqui,
@@ -477,6 +489,8 @@ namespace Teste {
             self::$falhar         = [];
             self::$falharComo     = [];
             self::$antesDeInserir = [];
+            self::$consultadas    = [];
+            self::$falharAoConsultar = [];
         }
 
         /** O esquema das migrations do iFood: lê os arquivos uma vez, sem mexer no Schema::$criadas dos testes. */
@@ -810,9 +824,19 @@ namespace Teste {
         public function first() { $linhas = $this->selecionadas(); return $linhas ? (object) reset($linhas) : null; }
         public function distinct() { $this->distinta = true; return $this; }
 
-        public function pluck($coluna)
+        public function pluck($coluna, $chave = null)
         {
             Banco::exigirColuna($this->tabela, $coluna);
+            // pluck('coluna', 'chave'): um valor por chave (o pedido por uuid)
+            if ($chave !== null) {
+                Banco::exigirColuna($this->tabela, $chave);
+                $porChave = [];
+                foreach ($this->selecionadas() as $linha) {
+                    $porChave[$linha[$chave] ?? ''] = $linha[$coluna] ?? null;
+                }
+
+                return new \Illuminate\Support\Collection($porChave);
+            }
             if ($this->grupo !== null) {
                 return new \Illuminate\Support\Collection($this->agrupadas($coluna));
             }

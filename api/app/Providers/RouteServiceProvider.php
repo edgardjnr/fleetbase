@@ -12,6 +12,7 @@ use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use App\Http\Controllers\Entregas\PortalLojaController;
 use App\Http\Middleware\AvisarOnlineDoMotoboy;
 use App\Http\Middleware\BarrarAceiteDePedidoEncerrado;
+use App\Http\Middleware\IncluirNotasNaListaDePedidos;
 use App\Http\Middleware\RegrasDoPedidoIfood;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
@@ -45,6 +46,10 @@ class RouteServiceProvider extends ServiceProvider
         // do BarrarAceiteDePedidoEncerrado: o cancelamento recusado nem pega a trava do pedido
         $this->app['router']->pushMiddlewareToGroup('fleetbase.api', RegrasDoPedidoIfood::class);
         $this->app['router']->pushMiddlewareToGroup('fleetbase.protected', RegrasDoPedidoIfood::class);
+
+        // Entregas RestaurantePro: as listas de pedidos do console (tabela, quadro e painel do mapa) usam o recurso enxuto, sem
+        // `notes`; o selo "iFood #N" precisa delas (ver IncluirNotasNaListaDePedidos). Só GET, só nas duas rotas de lista
+        $this->app['router']->pushMiddlewareToGroup('fleetbase.protected', IncluirNotasNaListaDePedidos::class);
 
         // Entregas RestaurantePro: aceite do motoboy (v1/orders/{id}/start) de pedido encerrado é barrado, e o
         // cancelamento da API v1 roda com a mesma trava do aceite. O core preenche o grupo fleetbase.api no boot()

@@ -51,9 +51,14 @@ namespace Illuminate\Http {
         /** A rota casada (middlewares que olham a ação), ou null. */
         public ?\Illuminate\Routing\Route $rota = null;
 
+        /** O método HTTP (middlewares que só olham o GET). */
+        public string $metodo = 'GET';
+
         public function __construct(public array $dados = []) {}
 
         public function all(): array { return $this->dados; }
+        public function method(): string { return $this->metodo; }
+        public function boolean($chave, $padrao = false): bool { return filter_var($this->dados[$chave] ?? $padrao, FILTER_VALIDATE_BOOLEAN); }
         public function bearerToken(): ?string { return $this->token; }
         public function input($chave = null, $padrao = null) { return $chave === null ? $this->dados : ($this->dados[$chave] ?? $padrao); }
         public function array($chave): array { return (array) ($this->dados[$chave] ?? []); }
