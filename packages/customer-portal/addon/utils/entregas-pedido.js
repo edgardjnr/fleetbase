@@ -46,3 +46,17 @@ export function situacao(motoboy) {
 export function pedidosEmAndamento(pedidos, status = (pedido) => pedido?.status) {
     return Array.from(pedidos ?? []).filter((pedido) => !ENCERRADOS.includes(status(pedido)));
 }
+
+/**
+ * Número do iFood do pedido, ou null: as notas começam com "iFood #<número>" e o internal_id é o mesmo número
+ * (CriadorDoPedidoIfood). O portal mostra o selo e esconde o Cancelar; o servidor recusa o cancelamento de qualquer
+ * jeito (RegrasPortalLoja). Mesma regra do console (packages/fleetops/addon/utils/pedido-ifood.js).
+ */
+export function numeroIfood(notas, idInterno) {
+    if (typeof notas !== 'string' || idInterno === null || idInterno === undefined || idInterno === '') {
+        return null;
+    }
+    const achado = /^iFood #(\S+)/.exec(notas.trim());
+
+    return achado && achado[1] === String(idInterno) ? achado[1] : null;
+}
