@@ -118,6 +118,18 @@ confere((AvisosDoMotoboy::texto($agendadoSemCodigo)[1] ?? null) === 'Pedido agen
 
 confere(AvisosDoMotoboy::texto(new Illuminate\Notifications\Notification()) === null, 'classe sem tradução devolve null');
 
+// pedido iFood cancelado pelo iFood (CAN): o OrderCanceled sai com o texto do iFood (CancelamentoPeloIfood::textoDoPush).
+// DB mínimo, só a consulta do PedidosIfood::doPedido (linhas por order_uuid)
+eval('namespace Illuminate\Support\Facades; class DB { public static array $linhas = []; public static function table($tabela) { return new class { private $uuid; public function where($coluna, $valor) { $this->uuid = $valor; return $this; } public function first() { return DB::$linhas[$this->uuid] ?? null; } }; } }');
+Illuminate\Support\Facades\DB::$linhas['uuid-1'] = (object) ['order_uuid' => 'uuid-1', 'numero' => '4821', 'cancelado_pelo_ifood_em' => '2026-10-05 14:58:00', 'pago_mesmo_cancelado' => true];
+$canceladoIfood        = aviso(OrderCanceled::class, 'Order RP-1 was canceled', 'Order RP-1 has been canceled.', ['id' => 'order_abc', 'type' => 'order_canceled']);
+$canceladoIfood->order = pedidoDoTeste();
+confere(AvisosDoMotoboy::texto($canceladoIfood) === ['Pedido #4821 cancelado pelo iFood', 'Você recebe por esta entrega. Combine com a loja a devolução.'], 'OrderCanceled de pedido cancelado pelo iFood: texto do iFood (pago mesmo cancelado)');
+Illuminate\Support\Facades\DB::$linhas['uuid-1']->pago_mesmo_cancelado = false;
+confere(AvisosDoMotoboy::texto($canceladoIfood) === ['Pedido #4821 cancelado pelo iFood', 'Não precisa mais fazer esta entrega.'], 'OrderCanceled de pedido cancelado pelo iFood, sem pagamento');
+Illuminate\Support\Facades\DB::$linhas = [];
+confere(AvisosDoMotoboy::texto($canceladoIfood) === ['Pedido RP-1 cancelado', 'O pedido RP-1 foi cancelado.'], 'OrderCanceled de pedido que não é do iFood: texto comum');
+
 // o cartão do pedido (CartaoDoAlarme) usa o banco e o OSRM: aqui sai vazio, e os casos do cartão trocam por dados fixos
 AvisosDoMotoboy::$cartao = fn ($notificacao) => [];
 

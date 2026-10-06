@@ -24,7 +24,7 @@ function pedidoIfood(array $order = [], array $linha = [], ?array $posicao = nul
 {
     reiniciarFleetbase();
     reiniciarIfood();
-    Driver::$todos[]  = new Driver(['uuid' => 'driver-1', 'company_uuid' => 'empresa-1', 'location' => $posicao ? new Point($posicao[0], $posicao[1]) : null]);
+    Driver::$todos[]  = new Driver(['uuid' => 'driver-1', 'company_uuid' => 'empresa-1', 'location' => $posicao ? new Point($posicao[0], $posicao[1]) : null, 'updated_at' => '2026-10-05 14:59:30']);
     $payload          = new Payload();
     $payload->pickup  = new Place(['location' => new Point(-21.1775, -47.8103)]);
     $payload->dropoff = new Place(['location' => new Point(-21.1685, -47.8103)]);
@@ -103,6 +103,35 @@ pedidoIfood([], [], [-21.1780, -47.8103]);
 Config::$valores['services.ifood.ativo'] = '';
 rodar();
 confere(enfileirados() === [], 'integração desligada: nada');
+
+echo '== Posição velha do GPS' . PHP_EOL;
+pedidoIfood([], [], [-21.1780, -47.8103]);
+Driver::$todos[0]->updated_at = '2026-10-05 14:54:00';
+rodar();
+confere(enfileirados() === [], 'posição de 6 min atrás (drivers.updated_at): não vale como chegada');
+pedidoIfood([], [], [-21.1780, -47.8103]);
+Driver::$todos[0]->updated_at = '2026-10-05 14:56:00';
+rodar();
+confere(enfileirados() === [['order-1', 'arrivedAtOrigin']], 'posição de 4 min atrás: vale');
+
+echo '== Janela e limite da rodada no SQL' . PHP_EOL;
+pedidoIfood([], ['created_at' => '2026-10-04 10:00:00', 'agendado' => true, 'despachado_em' => '2026-10-05 14:40:00'], [-21.1780, -47.8103]);
+rodar();
+confere(enfileirados() === [['order-1', 'arrivedAtOrigin']], 'agendado criado há mais de 24 h, despachado há 20 min: acompanhado');
+pedidoIfood([], [], [-21.1780, -47.8103]);
+$nossa = Banco::$tabelas['entregas_ifood_pedidos'][1];
+Banco::$tabelas['entregas_ifood_pedidos'] = [];
+for ($i = 0; $i < AcompanharIfood::POR_RODADA; $i++) {
+    Order::$todos[] = new Order(['uuid' => "fechado-{$i}", 'company_uuid' => 'empresa-1', 'status' => $i % 2 ? 'canceled' : 'completed', 'driver_assigned_uuid' => 'driver-1']);
+    Banco::inserir('entregas_ifood_pedidos', [
+        'company_uuid' => 'empresa-1', 'order_uuid' => "fechado-{$i}", 'pedido_ifood_id' => "pedido-{$i}", 'merchant_id' => 'merchant-1',
+        'ultima_acao' => $i % 2 ? 'goingToOrigin' : 'arrivedAtDestination', 'created_at' => '2026-10-05 14:00:00', 'updated_at' => '2026-10-05 14:00:00',
+    ], false);
+}
+unset($nossa['id']);
+Banco::inserir('entregas_ifood_pedidos', $nossa, false);
+rodar();
+confere(enfileirados() === [['order-1', 'arrivedAtOrigin']], 'os encerrados (Order cancelado, já com arrivedAtDestination) ficam fora no SQL e não gastam o limite da rodada');
 
 echo '== Um pedido com erro não para a rodada' . PHP_EOL;
 pedidoIfood([], [], [-21.1780, -47.8103]);

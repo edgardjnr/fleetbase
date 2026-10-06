@@ -445,6 +445,8 @@ namespace Teste {
         public static array $proximoId = [];
         /** Classe => [nomes das listas estáticas]: models falsos que o DB::transaction desfaz junto (stubs-ifood-fleetbase.php). */
         public static array $modelos = [];
+        /** Tabela => função que devolve as linhas (arrays) de uma tabela fora do banco em memória, para o join (ex.: orders). */
+        public static array $externas = [];
         /**
          * Colunas e colunas únicas das tabelas entregas_ifood_*, lidas das migrations (carregadas uma vez, na primeira
          * consulta): tabela => ['colunas' => [nomes], 'unicas' => [nomes]]. Assim um nome de coluna errado falha aqui,
@@ -535,10 +537,20 @@ namespace Teste {
         /** Lança como o MySQL ("Unknown column") se a coluna não existe na tabela entregas_ifood_*; as outras tabelas passam. */
         public static function exigirColuna(string $tabela, $coluna): void
         {
+            // "tabela.coluna" (com join): confere na tabela do prefixo
+            if (is_string($coluna) && str_contains($coluna, '.')) {
+                [$tabela, $coluna] = explode('.', $coluna, 2);
+            }
             $colunas = self::esquema()[$tabela]['colunas'] ?? null;
             if ($colunas !== null && is_string($coluna) && $coluna !== '*' && !in_array($coluna, $colunas, true)) {
                 throw new \RuntimeException("coluna desconhecida {$coluna} em {$tabela}");
             }
+        }
+
+        /** As linhas (arrays) de uma tabela para o join: as do banco em memória ou as de Banco::$externas. */
+        public static function linhasDe(string $tabela): array
+        {
+            return isset(self::$externas[$tabela]) ? (self::$externas[$tabela])() : (self::$tabelas[$tabela] ?? []);
         }
 
         /** As linhas da tabela, como objetos (o que o DB::table()->get() devolve). */
@@ -605,7 +617,38 @@ namespace Teste {
         }
     }
 
-    // o query builder do DB::table, só no que as classes do iFood usam (todos os where ligados por E)
+    // subgrupo de um where(function ($q) {...}): OU de grupos E, com where, orWhere, whereNull e orWhereNull
+    class GrupoDeFiltros
+    {
+        private array $grupos = [[]];
+        public function __construct(private string $tabela) {}
+        public function where($coluna, $operador = null, $valor = null)
+        {
+            if (func_num_args() === 2) {
+                $valor    = $operador;
+                $operador = '=';
+            }
+            Banco::exigirColuna($this->tabela, $coluna);
+            $this->grupos[array_key_last($this->grupos)][] = fn (array $linha) => Consulta::compara($linha[$coluna] ?? null, $operador, $valor);
+
+            return $this;
+        }
+        public function orWhere(...$argumentos) { $this->grupos[] = []; return $this->where(...$argumentos); }
+        public function whereNull($coluna) { Banco::exigirColuna($this->tabela, $coluna); $this->grupos[array_key_last($this->grupos)][] = fn (array $linha) => ($linha[$coluna] ?? null) === null; return $this; }
+        public function orWhereNull($coluna) { $this->grupos[] = []; return $this->whereNull($coluna); }
+        public function passa(array $linha): bool
+        {
+            foreach ($this->grupos as $grupo) {
+                if ($grupo && array_reduce($grupo, fn ($todos, $filtro) => $todos && $filtro($linha), true)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    // o query builder do DB::table, só no que as classes do iFood usam (where ligados por E; where com closure = subgrupo OU)
     class Consulta
     {
         private array $filtros = [];
@@ -613,6 +656,8 @@ namespace Teste {
         private ?int $limite   = null;
         private bool $distinta = false;
         private ?string $grupo = null;
+        /** [tabela, coluna, coluna] de cada join(). */
+        private array $juncoes = [];
         /** [coluna, direção] do orderByRaw('min(coluna) asc|desc'), ou null. */
         private ?array $ordemPeloMinimo = null;
 
@@ -620,6 +665,14 @@ namespace Teste {
 
         public function where($coluna, $operador = null, $valor = null)
         {
+            // where(function ($q) {...}): subgrupo com orWhere (OU de grupos E)
+            if ($coluna instanceof \Closure) {
+                $grupo = new GrupoDeFiltros($this->tabela);
+                $coluna($grupo);
+                $this->filtros[] = fn (array $linha) => $grupo->passa($linha);
+
+                return $this;
+            }
             if (func_num_args() === 2) {
                 $valor    = $operador;
                 $operador = '=';
@@ -631,6 +684,11 @@ namespace Teste {
         }
 
         public function whereIn($coluna, array $valores) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => in_array($linha[$coluna] ?? null, $valores, true); return $this; }
+        public function whereNotIn($coluna, array $valores) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => ($linha[$coluna] ?? null) !== null && !in_array($linha[$coluna], $valores, true); return $this; }
+        // join(tabela, 'tabela.coluna', '=', 'outra.coluna'): inner join; os filtros e a ordem usam "tabela.coluna"
+        public function join(string $tabela, string $primeira, string $operador, string $segunda) { $this->juncoes[] = [$tabela, $primeira, $segunda]; return $this; }
+        // select('tabela.*'): com join, o get() devolve só as colunas da tabela principal (o único select usado com join)
+        public function select(...$colunas) { return $this; }
         public function whereNull($coluna) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => ($linha[$coluna] ?? null) === null; return $this; }
         public function whereNotNull($coluna) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => ($linha[$coluna] ?? null) !== null; return $this; }
         public function orderBy($coluna, $direcao = 'asc') { Banco::exigirColuna($this->tabela, $coluna); $this->ordem[] = [$coluna, strtolower($direcao)]; return $this; }
@@ -673,9 +731,43 @@ namespace Teste {
             };
         }
 
+        /** Linhas da tabela principal com as colunas das tabelas do join (inner: sem par, a linha sai), por id. */
+        private function juntadas(array $base): array
+        {
+            $saida = [];
+            foreach ($base as $id => $linha) {
+                $junta = $linha;
+                foreach ($linha as $coluna => $valor) {
+                    $junta[$this->tabela . '.' . $coluna] = $valor;
+                }
+                foreach ($this->juncoes as [$tabela, $primeira, $segunda]) {
+                    [$daJuntada, $daOutra] = str_starts_with($primeira, $tabela . '.') ? [$primeira, $segunda] : [$segunda, $primeira];
+                    $chave = substr($daJuntada, strlen($tabela) + 1);
+                    $par   = null;
+                    foreach (Banco::linhasDe($tabela) as $outra) {
+                        if (($outra[$chave] ?? null) !== null && ($outra[$chave] ?? null) === ($junta[$daOutra] ?? null)) {
+                            $par = $outra;
+                            break;
+                        }
+                    }
+                    if ($par === null) {
+                        continue 2;
+                    }
+                    foreach ($par as $coluna => $valor) {
+                        $junta[$tabela . '.' . $coluna] = $valor;
+                    }
+                }
+                $saida[$id] = $junta;
+            }
+
+            return $saida;
+        }
+
         private function selecionadas(): array
         {
-            $linhas = array_filter(Banco::$tabelas[$this->tabela] ?? [], function (array $linha) {
+            $base   = Banco::$tabelas[$this->tabela] ?? [];
+            $linhas = $this->juncoes ? $this->juntadas($base) : $base;
+            $linhas = array_filter($linhas, function (array $linha) {
                 foreach ($this->filtros as $filtro) {
                     if (!$filtro($linha)) {
                         return false;
@@ -689,7 +781,19 @@ namespace Teste {
                 uasort($linhas, fn ($a, $b) => $direcao === 'desc' ? (($b[$coluna] ?? null) <=> ($a[$coluna] ?? null)) : (($a[$coluna] ?? null) <=> ($b[$coluna] ?? null)));
             }
 
-            return $this->limite === null ? $linhas : array_slice($linhas, 0, $this->limite, true);
+            $linhas = $this->limite === null ? $linhas : array_slice($linhas, 0, $this->limite, true);
+
+            // com join, devolve as linhas da tabela principal, na ordem já calculada
+            if ($this->juncoes) {
+                $principais = [];
+                foreach (array_keys($linhas) as $id) {
+                    $principais[$id] = $base[$id];
+                }
+
+                return $principais;
+            }
+
+            return $linhas;
         }
 
         public function get($colunas = ['*']) { return new \Illuminate\Support\Collection(array_values(array_map(fn ($linha) => (object) $linha, $this->selecionadas()))); }

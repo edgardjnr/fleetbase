@@ -6,6 +6,7 @@ use App\Support\Entregas\StatusDoPedido;
 use App\Support\Entregas\TravaDoPedido;
 use Fleetbase\FleetOps\Models\Order;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -16,10 +17,15 @@ use Illuminate\Support\Facades\Log;
  *   sem eventos (dispatched e adhoc falsos, scheduled_at nulo, saveQuietly) e depois Order::cancel(): atividade
  *   "canceled" e OrderCanceled na fila (depois do commit), que o HandleOrderCanceled do Fleet-Ops transforma no push
  *   OrderCanceled ao motoboy atribuído. O texto do push sai do AvisosDoMotoboy: "Pedido #4821 cancelado pelo iFood";
- * - com o dispatch já aceito pelo iFood (ultima_acao dispatch ou depois): pago_mesmo_cancelado. O relatório de
+ * - com o dispatch já aceito pelo iFood (ultima_acao dispatch ou depois) ou com o Order já "A caminho" (enroute: o
+ *   motoboy saiu com o pedido, mesmo que o dispatch ainda não tenha chegado ao iFood): pago_mesmo_cancelado. O relatório de
  *   pagamento, a cobrança da loja e os ganhos do motoboy contam o pedido pelo valor congelado da faixa, na data do
  *   cancelamento (CalculoEntregas::pedidosConcluidos), e o push acrescenta "Você recebe por esta entrega…";
- * - pedido já cancelado (por uma tentativa anterior que caiu depois do cancel): só grava o que faltar.
+ * - pedido já cancelado (por uma tentativa anterior que caiu depois do cancel): só grava o que faltar;
+ * - sem Order no Entregas: só grava o cancelado_pelo_ifood_em, com log info.
+ *
+ * Uma exceção no cancelamento sobe como RuntimeException com só a classe e o SQLSTATE (o failed_jobs guarda a exceção
+ * inteira, e a do banco traz o SQL com dados do pedido); LockTimeoutException sobe como veio (o CAN fica pendente).
  *
  * Roda com a trava do pedido (TravaDoPedido, a mesma do aceite do motoboy) e, dentro dela, a das ações do iFood
  * (AcoesIfood::comATrava): um aceite ou um dispatch no mesmo instante esperam, e a ultima_acao lida é a definitiva.
@@ -50,13 +56,26 @@ class CancelamentoPeloIfood
     {
         if (!$linha->order_uuid) {
             PedidosIfood::atualizar($linha, ['cancelado_pelo_ifood_em' => $linha->cancelado_pelo_ifood_em ?? $quando]);
+            static::logSemOrder($linha);
 
             return static::SEM_PEDIDO;
         }
 
         $orderUuid = (string) $linha->order_uuid;
 
-        return TravaDoPedido::executar($orderUuid, fn () => $this->acoes->comATrava($orderUuid, fn () => $this->aplicarComAsTravas($orderUuid, $quando)));
+        try {
+            return TravaDoPedido::executar($orderUuid, fn () => $this->acoes->comATrava($orderUuid, fn () => $this->aplicarComAsTravas($orderUuid, $quando)));
+        } catch (LockTimeoutException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            $sqlstate = $e instanceof QueryException ? preg_replace('/[^0-9A-Z]/', '', (string) $e->getCode()) : null;
+            throw new \RuntimeException('cancelamento pelo iFood falhou: ' . get_class($e) . ($sqlstate ? " (SQLSTATE {$sqlstate})" : ''));
+        }
+    }
+
+    protected static function logSemOrder(object $linha): void
+    {
+        Log::info('[entregas] ifood: CAN de pedido sem Order no Entregas; só registrado', ['pedido_ifood' => $linha->pedido_ifood_id ?? null, 'numero' => $linha->numero ?? null]);
     }
 
     /**
@@ -86,6 +105,7 @@ class CancelamentoPeloIfood
 
         if (!$pedido) {
             PedidosIfood::atualizar($linha, ['cancelado_pelo_ifood_em' => $quando]);
+            static::logSemOrder($linha);
 
             return static::SEM_PEDIDO;
         }
@@ -97,7 +117,8 @@ class CancelamentoPeloIfood
             return static::JA_CONCLUIDO;
         }
 
-        $pago = (bool) $linha->pago_mesmo_cancelado || SequenciaIfood::saiuParaEntrega($linha->ultima_acao);
+        // o motoboy já saiu com o pedido: o dispatch aceito pelo iFood ou o "A caminho" tocado no app (Order enroute)
+        $pago = (bool) $linha->pago_mesmo_cancelado || SequenciaIfood::saiuParaEntrega($linha->ultima_acao) || $pedido->status === 'enroute';
         PedidosIfood::atualizar($linha, ['cancelado_pelo_ifood_em' => $quando, 'pago_mesmo_cancelado' => $pago]);
 
         if (in_array($pedido->status, StatusDoPedido::CANCELADOS, true)) {

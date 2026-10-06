@@ -56,6 +56,9 @@ foreach ([null, 'assignDriver', 'goingToOrigin', 'arrivedAtOrigin'] as $ultima) 
     confere(cancelar() === CancelamentoPeloIfood::CANCELADO && $pedido->status === 'canceled' && linha()->pago_mesmo_cancelado === false, 'última ação ' . ($ultima ?? 'nenhuma') . ': cancelado, sem pagamento');
 }
 
+$pedido = pedidoIfood(['status' => 'enroute'], ['ultima_acao' => 'arrivedAtOrigin']);
+confere(cancelar() === CancelamentoPeloIfood::CANCELADO_PAGO && linha()->pago_mesmo_cancelado === true, 'motoboy já tocou "A caminho" (Order enroute) sem o dispatch aceito no iFood: pago mesmo cancelado');
+
 echo '== Pedido já concluído: nada muda' . PHP_EOL;
 $pedido = pedidoIfood(['status' => 'completed'], ['ultima_acao' => 'arrivedAtDestination']);
 confere(cancelar() === CancelamentoPeloIfood::JA_CONCLUIDO && $pedido->chamadas === [] && $pedido->status === 'completed', 'não mexe no Order');
@@ -74,6 +77,12 @@ $erro                         = excecao(fn () => cancelar());
 confere($erro instanceof RuntimeException && $pedido->dispatched === false && linha()->cancelado_pelo_ifood_em !== null, 'o erro sobe (o CAN fica pendente); já saiu dos abertos');
 Order::$falharCancelamento = false;
 confere(cancelar() === CancelamentoPeloIfood::CANCELADO_PAGO && $pedido->status === 'canceled', 'na tentativa seguinte, cancela');
+$pedido                    = pedidoIfood([], ['ultima_acao' => 'dispatch']);
+Order::$falharCancelamento = new \Teste\ErroDeBanco("SQLSTATE[40001]: Serialization failure: 1213 Deadlock (SQL: update orders set notes = 'Rua do Cliente, 123')", '40001', 1213);
+$erro                      = excecao(fn () => cancelar());
+confere($erro instanceof RuntimeException && !($erro instanceof \Illuminate\Database\QueryException) && $erro->getPrevious() === null, 'erro do banco no cancel(): sobe como RuntimeException, sem a exceção original');
+confere(!str_contains($erro->getMessage(), 'Rua do Cliente') && str_contains($erro->getMessage(), 'ErroDeBanco') && str_contains($erro->getMessage(), '40001'), 'a mensagem leva só a classe e o SQLSTATE, sem o SQL');
+Order::$falharCancelamento = false;
 
 echo '== Travas ocupadas: nada gravado' . PHP_EOL;
 foreach (['entregas:pedido:order-1' => 'do pedido', 'entregas:ifood-acao:order-1' => 'das ações'] as $trava => $nome) {
@@ -90,6 +99,7 @@ confere((new CancelamentoPeloIfood(app(AcoesIfood::class)))->aplicar($semOrder, 
 pedidoIfood();
 Order::$todos = [];
 confere(cancelar() === CancelamentoPeloIfood::SEM_PEDIDO && linha()->cancelado_pelo_ifood_em === '2026-10-05 14:58:00', 'Order sumiu: só registra');
+confere(logou('CAN de pedido sem Order no Entregas', 'info'), 'sem Order: log info');
 
 echo '== Texto do push ao motoboy' . PHP_EOL;
 confere(CancelamentoPeloIfood::textoDoPush((object) ['numero' => '4821', 'cancelado_pelo_ifood_em' => '2026-10-05 14:58:00', 'pago_mesmo_cancelado' => true]) === ['Pedido #4821 cancelado pelo iFood', 'Você recebe por esta entrega. Combine com a loja a devolução.'], 'pago: título com o número e o aviso do pagamento');

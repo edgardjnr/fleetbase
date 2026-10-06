@@ -349,8 +349,8 @@ namespace Fleetbase\FleetOps\Models {
         public bool $temStatusDespachado = false;
         /** Campos que mudaram no último save (o wasChanged do Eloquent). */
         public array $alterados = [];
-        /** Com true, o cancel() lança (o OrderCanceled falhou). */
-        public static bool $falharCancelamento = false;
+        /** Com true, o cancel() lança (o OrderCanceled falhou); com uma exceção, lança ela. */
+        public static bool|\Throwable $falharCancelamento = false;
         /** Em cada cancel(): se a trava do pedido (TravaDoPedido) e a das ações (AcoesIfood) estavam tomadas. */
         public array $travadoNoCancelar = [];
         /** A empresa da sessão no momento do create (o TrackingNumberObserver depende dela). */
@@ -406,7 +406,7 @@ namespace Fleetbase\FleetOps\Models {
             $this->chamadas[]          = 'cancel';
             $this->travadoNoCancelar[] = [isset(\Teste\Trava::$ocupadas['entregas:pedido:' . $this->uuid]), isset(\Teste\Trava::$ocupadas['entregas:ifood-acao:' . $this->uuid])];
             if (self::$falharCancelamento) {
-                throw new \RuntimeException('falha no cancelamento');
+                throw self::$falharCancelamento instanceof \Throwable ? self::$falharCancelamento : new \RuntimeException('falha no cancelamento');
             }
             $this->status = 'canceled';
 
@@ -493,6 +493,9 @@ namespace {
         \Fleetbase\FleetOps\Models\Place::class   => ['todos', 'criados'],
         \Fleetbase\FleetOps\Models\Payload::class => ['salvos'],
     ];
+
+    // a tabela orders do join do entregas:ifood-acompanhar: os Orders falsos
+    \Teste\Banco::$externas['orders'] = fn () => array_map(fn ($pedido) => get_object_vars($pedido), \Fleetbase\FleetOps\Models\Order::$todos);
 
     /** Zera os models e cria a loja de teste: Vendor com o Local de coleta e o tipo de pedido transport da empresa. */
     function reiniciarFleetbase(): void
