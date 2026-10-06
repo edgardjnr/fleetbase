@@ -691,6 +691,8 @@ customer-portal:
       courier-accepted: "{name} has the order."
       courier-assigned: "{name} was assigned and hasn't accepted yet."
       cancel-locked: The courier already accepted. To cancel, contact the dispatcher.
+      cancel-ifood: "iFood order: cancel it in the iFood order manager."
+      ifood-selo: "iFood #{numero}"
       members-managed-by-central: To add or remove store users, contact the dispatcher.
       login-managed-by-central: The sign-in email and phone can only be changed by the dispatcher.
       dashboard-name: Overview

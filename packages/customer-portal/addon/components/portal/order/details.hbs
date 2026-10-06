@@ -13,7 +13,7 @@
             {{!-- Entregas: depois do aceite o cancelar fica desabilitado no menu de ações; o aviso explica o motivo --}}
             <div class="flex items-start px-4 py-2 space-x-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                 <FaIcon @icon="lock" class="mt-0.5" />
-                <span>{{t "customer-portal.ui.entregas.cancel-locked"}}</span>
+                <span>{{if this.numeroIfood (t "customer-portal.ui.entregas.cancel-ifood") (t "customer-portal.ui.entregas.cancel-locked")}}</span>
             </div>
         {{/if}}
         <Portal::Order::Details::Activity @resource={{this.order}} />

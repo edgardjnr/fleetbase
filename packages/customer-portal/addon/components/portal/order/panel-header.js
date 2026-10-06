@@ -1,6 +1,7 @@
 import Component from '@glimmer/component';
 import { format } from 'date-fns';
 import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
+import { numeroIfood } from '../../../utils/entregas-pedido';
 
 export default class PortalOrderPanelHeaderComponent extends Component {
     get resource() {
@@ -9,6 +10,11 @@ export default class PortalOrderPanelHeaderComponent extends Component {
 
     get trackingNumber() {
         return this.resource.tracking_number?.tracking_number ?? this.resource.tracking ?? this.resource.public_id ?? this.resource.id;
+    }
+
+    // Entregas: selo do pedido que veio do iFood
+    get numeroIfood() {
+        return numeroIfood(this.resource.notes, this.resource.internal_id);
     }
 
     get qrCode() {

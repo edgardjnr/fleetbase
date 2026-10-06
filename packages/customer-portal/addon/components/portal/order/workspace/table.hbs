@@ -18,6 +18,10 @@
                     <tr>
                         <td>
                             <div class="font-semibold truncate">{{or order.tracking_number.tracking_number order.public_id order.id}}</div>
+                            {{!-- Entregas: selo do pedido do iFood (notas exatamente "iFood #N"; o de teste, com marcas, fica sem selo aqui) --}}
+                            {{#if (and order.internal_id (eq order.notes (concat "iFood #" order.internal_id)))}}
+                                <span class="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-semibold text-white" style="background-color: #EA1D2C;">{{t "customer-portal.ui.entregas.ifood-selo" numero=order.internal_id}}</span>
+                            {{/if}}
                             <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{n-a (humanize order.type)}}</div>
                         </td>
                         <td><Badge @status={{order.status}} /></td>

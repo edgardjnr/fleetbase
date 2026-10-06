@@ -1,4 +1,5 @@
 import Component from '@glimmer/component';
+import { numeroIfood } from '../../../utils/entregas-pedido';
 
 const COMPLETE_STATUSES = ['completed', 'delivered'];
 const ACTIVE_STATUSES = ['dispatched', 'started', 'in_progress', 'driver_enroute', 'driver_nearby'];
@@ -14,6 +15,11 @@ export default class PortalOrderListCardComponent extends Component {
 
     get trackingNumber() {
         return this.order.tracking_number?.tracking_number ?? this.order.tracking_number ?? this.order.public_id ?? this.order.id;
+    }
+
+    // Entregas: selo do pedido que veio do iFood
+    get numeroIfood() {
+        return numeroIfood(this.order.notes, this.order.internal_id);
     }
 
     get stops() {

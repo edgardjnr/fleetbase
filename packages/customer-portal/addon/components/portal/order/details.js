@@ -5,7 +5,7 @@ import { action } from '@ember/object';
 import { enqueueTask, race, task, timeout, waitForEvent } from 'ember-concurrency';
 import { arrayFor, valueFor } from '../../../utils/model-access';
 // Entregas: status, intervalos e situação do motoboy numa lista só, espelho da API
-import { CANCELAVEIS, ENCERRADOS, INTERVALO_MS, VOLTAS_DETALHE, espera, situacao } from '../../../utils/entregas-pedido';
+import { CANCELAVEIS, ENCERRADOS, INTERVALO_MS, VOLTAS_DETALHE, espera, numeroIfood, situacao } from '../../../utils/entregas-pedido';
 
 export default class PortalOrderDetailsComponent extends Component {
     @service customerPortalOrderActions;
@@ -40,9 +40,14 @@ export default class PortalOrderDetailsComponent extends Component {
         return Boolean(valueFor(this.order, 'started'));
     }
 
-    // Entregas: cancelamento só antes do aceite (depois dele o servidor recusa com 422)
+    // Entregas: pedido do iFood (notas "iFood #N" + internal_id N): a loja cancela no Gestor de Pedidos do iFood
+    get numeroIfood() {
+        return this.order ? numeroIfood(valueFor(this.order, 'notes'), valueFor(this.order, 'internal_id')) : null;
+    }
+
+    // Entregas: cancelamento só antes do aceite (depois dele o servidor recusa com 422); pedido do iFood nunca (400)
     get canCancel() {
-        return Boolean(this.order) && !valueFor(this.order, 'started') && CANCELAVEIS.includes(valueFor(this.order, 'status'));
+        return Boolean(this.order) && !this.numeroIfood && !valueFor(this.order, 'started') && CANCELAVEIS.includes(valueFor(this.order, 'status'));
     }
 
     // Entregas: pedido aberto que a loja já não cancela; o aviso fica no topo do painel, logo abaixo das ações
