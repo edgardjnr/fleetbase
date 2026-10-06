@@ -156,4 +156,27 @@ pedidoIfood([], ['ultima_acao' => 'arrivedAtDestination']);
 Trava::$ocupadas['entregas:ifood-acao:order-1'] = true;
 confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '1234']), 'order_1', conclusao())->status === 503, 'trava das ações ocupada: tente de novo');
 
+echo '== Painel do console e a liberação sem código' . PHP_EOL;
+$admin = new class {
+    public function isNotAdmin() { return false; }
+};
+$naoAdmin = new class {
+    public function isNotAdmin() { return true; }
+};
+pedidoIfood([], ['recusa_acao' => 'arrivedAtDestination', 'recusa_status' => 409, 'recusa_em' => '2026-10-05 14:59:00']);
+\Fleetbase\Support\Auth::$usuario = $admin;
+$painel                           = (new IfoodPedidosController())->painel(new Request(), 'order_1')->dados;
+confere($painel['ifood'] === true && $painel['numero'] === '4821' && $painel['ultima_acao'] === 'dispatch', 'número e última ação');
+confere($painel['recusa'] === ['acao' => 'arrivedAtDestination', 'status' => 409, 'em' => '2026-10-05T14:59:00-03:00'], 'a última recusa');
+confere($painel['exige_codigo'] === true && $painel['conclusao_liberada_em'] === null && $painel['conclusao_sem_codigo'] === false, 'código exigido, ainda não liberado');
+confere(!array_key_exists('telefone_0800', $painel) && !str_contains(json_encode($painel), '0800700'), 'sem o 0800 do cliente');
+$resposta = (new IfoodPedidosController())->liberarSemCodigo(new Request(), 'order_1', conclusao());
+confere($resposta->dados['conclusao_sem_codigo'] === true && $resposta->dados['conclusao_liberada_em'] === '2026-10-05T15:00:00-03:00', 'liberar sem código: liberado e registrado');
+confere(logou('conclusão sem código liberada pela central', 'warning'), 'com log (e o usuário)');
+\Fleetbase\Support\Auth::$usuario = $naoAdmin;
+confere((new IfoodPedidosController())->painel(new Request(), 'order_1')->status === 403, 'não admin: 403');
+\Fleetbase\Support\Auth::$usuario = $admin;
+Banco::$tabelas['entregas_ifood_pedidos'] = [];
+confere((new IfoodPedidosController())->painel(new Request(), 'order_1')->dados === ['ifood' => false], 'pedido que não é do iFood: ifood falso');
+
 resumo();

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Http\Controllers\Entregas\ConversasDaLojaController;
 use App\Http\Controllers\Entregas\IfoodLojasController;
+use App\Http\Controllers\Entregas\IfoodPedidosController;
 use App\Http\Controllers\Entregas\LojasController;
 use App\Http\Controllers\Entregas\MapaController;
 use App\Http\Controllers\Entregas\MotoboyController;
@@ -111,6 +112,9 @@ class RouteServiceProvider extends ServiceProvider
                         Route::post('lojas/{id}/ifood/codigo', [IfoodLojasController::class, 'codigo'])->middleware('throttle:entregas-ifood-vinculo');
                         Route::post('lojas/{id}/ifood/vincular', [IfoodLojasController::class, 'vincular'])->middleware('throttle:entregas-ifood-vinculo');
                         Route::delete('lojas/{id}/ifood', [IfoodLojasController::class, 'desvincular']);
+                        // painel iFood no detalhe do pedido e a liberação da conclusão sem o código do cliente
+                        Route::get('pedidos/{id}/ifood', [IfoodPedidosController::class, 'painel']);
+                        Route::post('pedidos/{id}/ifood/liberar-sem-codigo', [IfoodPedidosController::class, 'liberarSemCodigo']);
 
                         // mapa ao vivo do console: só os locais de coleta (lojas) e a situação de cada motoboy (cor do capacete)
                         Route::get('mapa/locais-de-coleta', [MapaController::class, 'locaisDeColeta']);
