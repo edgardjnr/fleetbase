@@ -117,6 +117,8 @@ $agendadoSemCodigo->order = (object) ['scheduled_at' => new DateTimeImmutable('2
 confere((AvisosDoMotoboy::texto($agendadoSemCodigo)[1] ?? null) === 'Pedido agendado para 03/10 às 15:00.', 'agendado sem código de rastreamento: frase sem o código');
 
 confere(AvisosDoMotoboy::texto(new Illuminate\Notifications\Notification()) === null, 'classe sem tradução devolve null');
+$trocado = new App\Notifications\Entregas\PedidoPassadoParaOutro('4821', 'order_abc');
+confere(AvisosDoMotoboy::texto($trocado) === ['Pedido passado para outro motoboy', 'Pedido #4821 passou para outro motoboy.'], 'pedido passado para outro motoboy (líder dos motoboys): texto da própria notificação');
 
 // pedido iFood cancelado pelo iFood (CAN): o OrderCanceled sai com o texto do iFood (CancelamentoPeloIfood::textoDoPush).
 // DB mínimo, só a consulta do PedidosIfood::doPedido (linhas por order_uuid)
@@ -165,6 +167,9 @@ confere(($chat['notification']['title'] ?? null) === 'Mensagem de Edgard Junior'
 confere(($chat['android']['notification']['color'] ?? null) === '#4391EA', 'o resto do push do Fleet-Ops (cor, som) fica');
 confere(($chat['android']['notification']['sound'] ?? null) === 'default', 'o som do push do Fleet-Ops também fica');
 confere(isset($chat['android']['fcm_options'], $chat['apns']), 'fcm_options e apns do push do Fleet-Ops ficam no push comum');
+$trocadoEnviado = enviado($trocado);
+confere(($trocadoEnviado['android']['notification']['channel_id'] ?? null) === 'avisos' && !isset($trocadoEnviado['android']['ttl']), 'pedido passado para outro motoboy: canal "avisos", sem validade curta');
+confere(($trocadoEnviado['data'] ?? null) === ['type' => 'entregas_pedido_trocado', 'pedido' => 'order_abc'], 'pedido passado para outro motoboy: dados sem "id" (o app não abre o pedido)');
 
 echo '== Alarme como push de dados (o padrão)' . PHP_EOL;
 putenv('ENTREGAS_ALARME_POR_DADOS');
@@ -186,6 +191,7 @@ confere(($ping['data'] ?? null) === ['id' => 'order_abc', 'type' => 'order_ping'
 confere(($ping['android']['priority'] ?? null) === 'high' && ($ping['android']['ttl'] ?? null) === '900s', 'prioridade alta e validade de 15 min');
 confere(!isset($ping['android']['notification']), 'sem android.notification (senão o Android mostra como push comum)');
 confere(isset($ping['android']['fcm_options'], $ping['apns']), 'o resto do push (fcm_options, apns) fica');
+confere((enviado($trocado)['notification']['title'] ?? null) === 'Pedido passado para outro motoboy', 'pedido passado para outro motoboy: push comum também com o alarme por dados ligado (não é alarme)');
 
 echo '== Cartão do pedido nos dados do alarme' . PHP_EOL;
 $cartao                  = ['entregas_loja' => 'Terraço Pizza', 'entregas_destino' => 'Centro, Ribeirão Preto', 'entregas_km' => '3,2 km', 'entregas_valor' => 'R$ 8,00'];
