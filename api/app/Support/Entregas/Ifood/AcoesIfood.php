@@ -17,8 +17,9 @@ use Illuminate\Support\Facades\Log;
  * `entregas:ifood-acao:<order uuid>`: dois envios do mesmo pedido nunca correm juntos), calcula a ação alvo
  * (SequenciaIfood::alvoPeloPedido, ou $alvoMinimo quando mais adiante: a chegada pelo GPS e a conclusão do app) e envia,
  * em ordem, as que faltam depois da `ultima_acao` (SequenciaIfood::faltando). Cada ação aceita grava a `ultima_acao` na
- * hora: uma falha no meio guarda o que já foi. Passados ORCAMENTO_SEGUNDOS no laço, para antes da próxima ação e
- * devolve `incompleto` (o job volta para a fila com o resto; a rota do app responde "tente de novo").
+ * hora: uma falha no meio guarda o que já foi. Passados ORCAMENTO_SEGUNDOS no laço (no job; a rota síncrona do app
+ * passa ConclusaoIfood::ORCAMENTO_NA_ROTA), para antes da próxima ação e devolve `incompleto` (o job volta para a fila
+ * com o resto; a rota do app responde "tente de novo").
  *
  * - 409 numa ação da sequência = a ação já foi aceita antes ("operação já concluída", referência do Logistics): um
  *   reenvio depois de uma resposta perdida, ou de uma escrita da `ultima_acao` que não chegou ao banco. Avança a
@@ -66,9 +67,10 @@ class AcoesIfood
      * @throws LockTimeoutException trava das ações do pedido ocupada por mais de ESPERA_DA_TRAVA s
      * @throws ErroIfood            falha temporária do iFood (quem chama tenta de novo)
      */
-    public function sincronizar(string $orderUuid, ?string $alvoMinimo = null): array
+    public function sincronizar(string $orderUuid, ?string $alvoMinimo = null, ?int $orcamentoSegundos = null): array
     {
-        return $this->comATrava($orderUuid, fn () => $this->sincronizarComATrava($orderUuid, $alvoMinimo));
+        // o job usa o ORCAMENTO_SEGUNDOS; a rota síncrona do app (ConclusaoIfood) passa um menor
+        return $this->comATrava($orderUuid, fn () => $this->sincronizarComATrava($orderUuid, $alvoMinimo, $orcamentoSegundos ?? static::ORCAMENTO_SEGUNDOS));
     }
 
     /** Roda $fazer com a trava das ações do pedido (a mesma do sincronizar; a ConclusaoIfood confere o código com ela). */
@@ -114,7 +116,7 @@ class AcoesIfood
         $this->recusar($linha, $pedido, $proxima, $status, 'iFood fora do ar: tentativas esgotadas');
     }
 
-    protected function sincronizarComATrava(string $orderUuid, ?string $alvoMinimo): array
+    protected function sincronizarComATrava(string $orderUuid, ?string $alvoMinimo, int $orcamentoSegundos): array
     {
         $resultado = ['enviadas' => [], 'recusada' => null, 'incompleto' => false];
         $inicio    = $this->agora();
@@ -150,7 +152,7 @@ class AcoesIfood
         }
 
         foreach (SequenciaIfood::faltando($linha->ultima_acao, $alvo) as $acao) {
-            if (($resultado['enviadas'] || $resultado['recusada']) && $this->agora() - $inicio >= static::ORCAMENTO_SEGUNDOS) {
+            if (($resultado['enviadas'] || $resultado['recusada']) && $this->agora() - $inicio >= $orcamentoSegundos) {
                 $resultado['incompleto'] = true;
                 Log::info('[entregas] ifood: envio das ações passou do tempo; o resto fica para o próximo job', ['acao' => $acao, 'pedido' => $pedido->public_id]);
                 break;
@@ -226,9 +228,10 @@ class AcoesIfood
 
     /**
      * "<ação>: {errorType, code, description}" para o log, nunca o corpo cru da resposta. No assignDriver, o nome e o
-     * telefone do motoboy (e qualquer sequência longa de dígitos) saem mascarados da descrição.
+     * telefone do motoboy (e qualquer sequência longa de dígitos) saem mascarados da descrição. Também usado pela
+     * ConclusaoIfood no verifyDeliveryCode.
      */
-    protected static function resumoDoErro(ErroIfood $e, ?array $corpoEnviado): string
+    public static function resumoDoErro(ErroIfood $e, ?array $corpoEnviado = null): string
     {
         $resumo = array_intersect_key($e->corpoJson() ?? [], array_flip(['errorType', 'code', 'description']));
         $resumo = array_map(fn ($valor) => is_scalar($valor) ? mb_substr((string) $valor, 0, 200) : '?', $resumo);

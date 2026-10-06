@@ -143,9 +143,23 @@ confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 
 Http::responder(200, ['success' => false]);
 confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao())->dados['resultado'] === 'codigo_incorreto', '200 com success falso: código incorreto');
 Http::responder(412, ['message' => 'Order not eligible']);
-confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao())->status === 503, '412 (outro erro): tente de novo');
-Http::responder(500, 'erro');
+$resposta = (new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao());
+confere($resposta->status === 409 && $resposta->dados['resultado'] === 'codigo_nao_conferido' && $resposta->dados['errors'] === ['Não foi possível conferir o código neste pedido. Peça à central para liberar.'], '412 (outro 4xx): não conferido, peça à central');
+Http::responder(409, ['errorType' => 'CONFLICT', 'description' => 'Invalid state']);
+confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao())->dados['resultado'] === 'codigo_nao_conferido', '409: não conferido (não "tente de novo" sem fim)');
+Http::responder(400, ['errorType' => 'BAD_REQUEST', 'description' => 'Order is not in a valid state', 'code' => '400']);
+confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao())->dados['resultado'] === 'codigo_nao_conferido', '400 sem indicar código inválido: não conferido');
+Http::responder(422, ['errorType' => 'UNPROCESSABLE', 'description' => 'Missing field']);
+confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao())->dados['resultado'] === 'codigo_nao_conferido', '422 sem indicar código inválido: não conferido');
+Http::responder(400, ['statusCode' => 400, 'message' => 'Invalid delivery code']);
+confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao())->dados['resultado'] === 'codigo_incorreto', '400 "Invalid delivery code" (documentação): código incorreto');
+confere(logou('código de entrega não conferido', 'warning'), 'não conferido: aviso no log');
+Http::responder(500, ['errorType' => 'INTERNAL', 'description' => 'falhou', 'trace' => 'segredo-do-corpo']);
 confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao())->status === 503, '500: tente de novo');
+confere(logou('falha ao conferir o código de entrega', 'warning') && str_contains(json_encode(Illuminate\Support\Facades\Log::$registros), 'INTERNAL') && logsSem(['segredo-do-corpo']), 'log da falha só com o resumo (errorType/code/description), sem o corpo cru');
+Http::responder(400, ['errorType' => 'BAD_REQUEST', 'description' => 'Code 9999 rejected for order', 'extra' => 'segredo-2']);
+(new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao());
+confere(logsSem(['segredo-2', '9999']), 'log do não conferido: resumo sem o código digitado');
 Http::falharConexao();
 confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao())->status === 503, 'rede fora: tente de novo');
 confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '12a4']), 'order_1', conclusao())->status === 422 && count(Http::$respostas) === 0, 'código com letra: 422 sem chamar o iFood');
@@ -185,6 +199,13 @@ for ($i = 0; $i < 10; $i++) {
 }
 Http::responder(200, ['success' => true]);
 confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '1234']), 'order_1', conclusao())->dados === ['resultado' => 'pode_concluir'], 'iFood fora do ar não conta como código errado');
+pedidoIfood([], ['ultima_acao' => 'arrivedAtDestination']);
+for ($i = 0; $i < 10; $i++) {
+    Http::responder(400, ['errorType' => 'BAD_REQUEST', 'description' => 'Order is not in a valid state']);
+    (new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '9999']), 'order_1', conclusao());
+}
+Http::responder(200, ['success' => true]);
+confere((new MotoboyController())->codigoIfood(doMotoboy(['codigo' => '1234']), 'order_1', conclusao())->dados === ['resultado' => 'pode_concluir'], '4xx que não indica código inválido não conta para o teto');
 
 echo '== Concluir: orçamento de tempo das ações estourado' . PHP_EOL;
 pedidoIfood([], ['ultima_acao' => 'assignDriver']);
@@ -197,6 +218,28 @@ $acoesLentas = new class (new VinculosIfood(new ClienteIfood()), new ClienteIfoo
 };
 $resultado = (new ConclusaoIfood($acoesLentas, new VinculosIfood(new ClienteIfood()), new ClienteIfood()))->concluir(linha(), Order::$todos[0]);
 confere($resultado === 'tente_de_novo' && linha()->conclusao_liberada_em === null && linha()->ultima_acao !== 'arrivedAtDestination', 'arrivedAtDestination ainda não enviado: tente de novo');
+
+echo '== Rota síncrona: orçamento menor que o do job' . PHP_EOL;
+function acoesComRelogio(): AcoesIfood
+{
+    return new class (new VinculosIfood(new ClienteIfood()), new ClienteIfood()) extends AcoesIfood {
+        public float $relogio = 0;
+        protected function agora(): float { return $this->relogio += 25; }
+    };
+}
+pedidoIfood([], ['ultima_acao' => 'assignDriver']);
+for ($i = 0; $i < 4; $i++) {
+    Http::responder(202);
+}
+(new ConclusaoIfood(acoesComRelogio(), new VinculosIfood(new ClienteIfood()), new ClienteIfood()))->concluir(linha(), Order::$todos[0]);
+confere(count(Http::$chamadas) === 1, 'concluir-ifood (rota): para no orçamento da rota (uma ação de 25 s)');
+confere(defined(ConclusaoIfood::class . '::ORCAMENTO_NA_ROTA') && ConclusaoIfood::ORCAMENTO_NA_ROTA === 20 && AcoesIfood::ORCAMENTO_SEGUNDOS === 45, 'rota com 20 s, job com 45 s');
+pedidoIfood([], ['ultima_acao' => 'assignDriver']);
+for ($i = 0; $i < 4; $i++) {
+    Http::responder(202);
+}
+acoesComRelogio()->sincronizar('order-1', 'arrivedAtDestination');
+confere(count(Http::$chamadas) === 2, 'job (sincronizar sem orçamento): segue até os 45 s (duas ações de 25 s)');
 
 echo '== Painel do console e a liberação sem código' . PHP_EOL;
 $admin = new class {
