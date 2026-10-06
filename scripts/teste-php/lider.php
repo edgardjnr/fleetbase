@@ -160,7 +160,16 @@ namespace Fleetbase\FleetOps\Models {
         public $user_uuid;
         public $company_uuid;
         public $name;
+        public $current_job_uuid = null;
         public array $avisos = [];
+        public function update(array $dados): bool
+        {
+            foreach ($dados as $campo => $valor) {
+                $this->$campo = $valor;
+            }
+
+            return true;
+        }
         public function notify($aviso): void
         {
             if (\Teste\Falhas::$aviso) {
@@ -178,6 +187,7 @@ namespace Fleetbase\FleetOps\Models {
         public $company_uuid;
         public $status = 'started';
         public $adhoc = true;
+        public $dispatched = true;
         public $driver_assigned_uuid = null;
         public $internal_id = null;
         public $trackingNumber = null;
@@ -297,6 +307,7 @@ namespace {
         $p->status               = $status;
         $p->driver_assigned_uuid = $motoboy;
         $p->adhoc                = $extra['adhoc'] ?? false;
+        $p->dispatched           = $extra['dispatched'] ?? true;
         $p->internal_id          = $extra['internal_id'] ?? null;
         $p->trackingNumber       = isset($extra['rastreio']) ? (object) ['tracking_number' => $extra['rastreio']] : null;
 
@@ -360,6 +371,7 @@ namespace {
         pedido('o-concluido', 'completed', 'm-comum'),
         pedido('o-cancelado', 'canceled', 'm-comum'),
         pedido('o-outra', 'started', 'm-comum', ['company_uuid' => 'empresa-b']),
+        pedido('o-nao-despachado', 'created', 'm-comum', ['dispatched' => false]),
     ];
 
     confere($troca('order_ifood', 'driver_novo')->status === 403, 'quem não é líder não troca: 403');
@@ -376,6 +388,12 @@ namespace {
     confere($resposta->status === 422 && $resposta->dados === ['errors' => ['Escolha um motoboy da lista.']], 'motoboy de outra empresa: 422');
     confere($troca('order_ifood', 'driver_inexistente')->status === 422 && $troca('order_ifood', null)->status === 422 && $troca('order_ifood', '  ')->status === 422,
         'motoboy que não existe, sem motoboy ou em branco: 422');
+    $resposta = $troca('order_nao-despachado', 'driver_novo');
+    confere($resposta->status === 409 && $resposta->dados === ['errors' => ['Este pedido ainda não foi despachado pela central.']], 'pedido criado e nunca despachado (ex.: iFood sem localização, agendado): 409');
+    confere(Order::$todos[6]->atribuicoes === [] && Driver::$todos[1]->avisos === [], 'o não despachado não muda nem avisa ninguém');
+    $resposta = $controller->trocarMotoboy(new Request('12|token-do-motoboy', ['motoboy' => ['driver_novo']]), 'order_ifood');
+    confere($resposta->status === 422 && $resposta->dados === ['errors' => ['Escolha um motoboy da lista.']], 'motoboy que não é texto (lista): 422, e não 500');
+    confere($controller->trocarMotoboy(new Request('12|token-do-motoboy', ['motoboy' => 123]), 'order_ifood')->status === 422, 'motoboy numérico: 422');
     confere(Order::$todos[0]->atribuicoes === [], 'nenhuma recusa mexeu no pedido');
 
     Cache::$travas = [];
@@ -400,12 +418,23 @@ namespace {
     confere(Log::$linhas === [['info', '[entregas] líder trocou o motoboy', ['pedido' => 'order_ifood', 'anterior' => 'driver_comum', 'novo' => 'driver_novo', 'lider' => 'u-lider']]],
         'log "[entregas] líder trocou o motoboy" só com ids');
 
+    echo '== current_job_uuid do motoboy anterior' . PHP_EOL;
+    Order::$todos[] = pedido('o-corrente', 'started', 'm-comum');
+    Order::$todos[] = pedido('o-outro-corrente', 'started', 'm-comum');
+    Driver::$todos[1]->current_job_uuid = 'o-corrente';
+    $troca('order_outro-corrente', 'driver_novo');
+    confere(Driver::$todos[1]->current_job_uuid === 'o-corrente', 'troca de outro pedido do anterior: o pedido atual dele continua');
+    $troca('order_corrente', 'driver_novo');
+    confere(Driver::$todos[1]->current_job_uuid === null, 'o pedido trocado era o atual do anterior: current_job_uuid limpo');
+    confere(Driver::$todos[2]->current_job_uuid === null, 'o novo não ganha pedido atual (ele o define ao aceitar)');
+    Driver::$todos[1]->avisos = [];
+
     Log::$linhas = [];
     $resposta    = $troca('order_aberto', 'driver_comum');
     $aberto      = Order::$todos[1];
     confere($resposta->status === 200 && $aberto->adhoc === false && $aberto->driver_assigned_uuid === 'm-comum', 'pedido aberto sem motoboy: passa a ser do escolhido, com o adhoc desligado');
     confere(($aberto->atribuicoes[0]['adhoc_no_save'] ?? null) === false, 'adhoc desligado antes do save (o HandleOrderDriverAssigned só avisa pedido não aberto)');
-    confere(array_key_exists('anterior', Log::$linhas[0][2] ?? []) && Log::$linhas[0][2]['anterior'] === null && count(Driver::$todos[1]->avisos) === 1, 'sem motoboy anterior: ninguém é avisado e o log fica com anterior nulo');
+    confere(array_key_exists('anterior', Log::$linhas[0][2] ?? []) && Log::$linhas[0][2]['anterior'] === null && count(Driver::$todos[1]->avisos) === 0, 'sem motoboy anterior: ninguém é avisado e o log fica com anterior nulo');
 
     Driver::$todos[1]->avisos = [];
     $troca('order_rastreio', 'driver_novo');

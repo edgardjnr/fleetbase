@@ -35,6 +35,9 @@ class TrocaDoMotoboy
         if (static::encerrado($pedido)) {
             return [409, ['errors' => ['Este pedido já foi encerrado.']]];
         }
+        if (static::naoDespachado($pedido)) {
+            return [409, ['errors' => ['Este pedido ainda não foi despachado pela central.']]];
+        }
 
         // nenhum model registra o CompanyScope nesta versão: a empresa é filtrada aqui
         $novo = $motoboyId === '' ? null : Driver::where('company_uuid', $empresaUuid)->where('public_id', $motoboyId)->first();
@@ -53,6 +56,9 @@ class TrocaDoMotoboy
         }
         if ($resultado === 'encerrado') {
             return [409, ['errors' => ['Este pedido já foi encerrado.']]];
+        }
+        if ($resultado === 'nao_despachado') {
+            return [409, ['errors' => ['Este pedido ainda não foi despachado pela central.']]];
         }
 
         $atualizado = static::pedido($empresaUuid, (string) $pedido->uuid, PedidosNoMapa::RELACOES_DO_LIDER) ?? $pedido;
@@ -83,6 +89,9 @@ class TrocaDoMotoboy
         if (static::encerrado($pedido)) {
             return ['encerrado', null];
         }
+        if (static::naoDespachado($pedido)) {
+            return ['nao_despachado', null];
+        }
         if ((string) $pedido->driver_assigned_uuid === (string) $novo->uuid) {
             return ['igual', null];
         }
@@ -90,8 +99,30 @@ class TrocaDoMotoboy
         $anterior      = $pedido->driver_assigned_uuid ?: null;
         $pedido->adhoc = false;
         $pedido->assignDriver($novo, true);
+        static::limparPedidoAtualDoAnterior($empresaUuid, $anterior, $pedidoUuid);
 
         return ['trocado', $anterior];
+    }
+
+    /**
+     * O pedido que o anterior aceitou fica como o "pedido atual" dele (drivers.current_job_uuid, gravado no aceite): sem
+     * limpar, o mapa e as métricas do Fleet-Ops (motoboy ocupado) seguiriam contando o pedido que já passou para outro.
+     * Como o console ao desatribuir (Internal\DriverController): só se o atual é este pedido. Não desfaz a troca se falhar.
+     */
+    protected static function limparPedidoAtualDoAnterior(string $empresaUuid, ?string $anteriorUuid, string $pedidoUuid): void
+    {
+        if (!$anteriorUuid) {
+            return;
+        }
+
+        try {
+            $anterior = Driver::where('company_uuid', $empresaUuid)->where('uuid', $anteriorUuid)->first();
+            if ($anterior && (string) $anterior->current_job_uuid === $pedidoUuid) {
+                $anterior->update(['current_job_uuid' => null]);
+            }
+        } catch (\Throwable $erro) {
+            Log::warning('[entregas] líder trocou o motoboy, mas o pedido atual do anterior não foi limpo', ['pedido' => $pedidoUuid, 'erro' => get_class($erro)]);
+        }
     }
 
     /** O push ao motoboy anterior; uma falha aqui não desfaz a troca (fica no log). Devolve o public_id dele. */
@@ -129,6 +160,16 @@ class TrocaDoMotoboy
             ->where(fn ($query) => $query->where('public_id', $id)->orWhere('uuid', $id))
             ->with($relacoes)
             ->first();
+    }
+
+    /**
+     * Pedido que a central ainda não despachou (status created e dispatched falso: iFood "[SEM LOCALIZAÇÃO]", agendado antes
+     * da hora, pedido criado sem despacho): o startOrder o recusaria ("has not been dispatched"), e o motoboy receberia o
+     * alarme à toa. A central despacha primeiro.
+     */
+    protected static function naoDespachado($pedido): bool
+    {
+        return $pedido->status === 'created' && !$pedido->dispatched;
     }
 
     protected static function encerrado($pedido): bool

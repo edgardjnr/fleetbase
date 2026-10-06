@@ -38,7 +38,11 @@ class LiderController extends Controller
             return $this->soParaLider();
         }
 
-        [$status, $corpo] = TrocaDoMotoboy::trocar((string) session('company'), $id, trim((string) $request->input('motoboy', '')), (string) session('user'));
+        // só texto: uma lista ou um número no corpo viraria erro 500 no trim/cast; vazio cai no 422 da TrocaDoMotoboy
+        $motoboy = $request->input('motoboy');
+        $motoboy = is_string($motoboy) ? trim($motoboy) : '';
+
+        [$status, $corpo] = TrocaDoMotoboy::trocar((string) session('company'), $id, $motoboy, (string) session('user'));
 
         return response()->json($corpo, $status);
     }
