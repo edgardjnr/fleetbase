@@ -37,6 +37,8 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('entregas:ifood-polling')->everyThirtySeconds()->when($ligada)->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
         $schedule->command('entregas:ifood-agendados')->everyMinute()->when($ligada)->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
+        // etapa 3: chegada pelo GPS e reconciliação das ações de logística (AcompanharIfood)
+        $schedule->command('entregas:ifood-acompanhar')->everyThirtySeconds()->when($ligada)->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
         $schedule->command('entregas:ifood-tokens')->everyThirtyMinutes()->when($ligada)->withoutOverlapping(10)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
     }
 

@@ -233,8 +233,8 @@ $porComando = [];
 foreach ($schedule->eventos as $evento) {
     $porComando[$evento->comando] = $evento->chamadas;
 }
-confere(array_keys($porComando) === ['entregas:ifood-polling', 'entregas:ifood-agendados', 'entregas:ifood-tokens'], 'os três comandos agendados');
-confere(isset($porComando['entregas:ifood-polling']['everyThirtySeconds']) && isset($porComando['entregas:ifood-agendados']['everyMinute']) && isset($porComando['entregas:ifood-tokens']['everyThirtyMinutes']), 'a cada 30 s, a cada minuto e a cada 30 min');
+confere(array_keys($porComando) === ['entregas:ifood-polling', 'entregas:ifood-agendados', 'entregas:ifood-acompanhar', 'entregas:ifood-tokens'], 'os quatro comandos agendados');
+confere(isset($porComando['entregas:ifood-polling']['everyThirtySeconds']) && isset($porComando['entregas:ifood-agendados']['everyMinute']) && isset($porComando['entregas:ifood-acompanhar']['everyThirtySeconds']) && isset($porComando['entregas:ifood-tokens']['everyThirtyMinutes']), 'a cada 30 s, a cada minuto, a cada 30 s e a cada 30 min');
 foreach ($porComando as $comando => $chamadas) {
     confere(($chamadas['withoutOverlapping'][0] ?? 0) > 0 && ($chamadas['withoutOverlapping'][0] ?? 99) <= 10, "{$comando}: sem sobrepor, com trava de validade curta");
     confere(($chamadas['appendOutputTo'] ?? null) === ['/proc/1/fd/1'], "{$comando}: saída no stdout do container");
