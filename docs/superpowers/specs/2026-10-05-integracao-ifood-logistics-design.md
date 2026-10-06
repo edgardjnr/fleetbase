@@ -1,6 +1,6 @@
 # Integração iFood Logistics: desenho
 
-Data: 2026-10-05. Situação: desenho aprovado pelo Edgard; etapa 1 implementada; ajustes da sonda da API (PLC, ações sem evento, DDCR na confirmação, pedido de teste sem código) aprovados em 2026-10-05; **etapa 2 implementada** em 2026-10-05 (ramo `ifood-etapa-2`, planos `2026-10-05-ifood-etapa-2a-servidor.md` e `2026-10-05-ifood-etapa-2b-tela-lojas.md`), ainda sem push, deploy e teste real. Onde a etapa 2 divergiu deste desenho, o texto abaixo já foi corrigido; o resumo operacional está no `CLAUDE.md`, seção "Integração iFood".
+Data: 2026-10-05. Situação: desenho aprovado pelo Edgard; etapa 1 implementada; ajustes da sonda da API (PLC, ações sem evento, DDCR na confirmação; "pedido de teste sem código" foi desfeito na etapa 3) aprovados em 2026-10-05; **etapa 2 implementada** em 2026-10-05 (ramo `ifood-etapa-2`, planos `2026-10-05-ifood-etapa-2a-servidor.md` e `2026-10-05-ifood-etapa-2b-tela-lojas.md`), ainda sem push, deploy e teste real. Onde a etapa 2 divergiu deste desenho, o texto abaixo já foi corrigido; o resumo operacional está no `CLAUDE.md`, seção "Integração iFood". **Etapa 3 implementada em 2026-10-06** (ramo `ifood-etapa-3`, plano `2026-10-06-ifood-etapa-3-ciclo.md`; ainda sem push, deploy e teste real): pedido de teste também exige o código; saída da central "Liberar sem código"; cancelamento proibido num middleware só (`RegrasDoPedidoIfood`); 409 numa ação da sequência conta como já aceita; trava "Atualize o app" atrás do interruptor `ENTREGAS_IFOOD_EXIGE_APP_NOVO` (desligado). O texto das seções 3 e 4 já foi corrigido para o código real.
 
 ## Objetivo
 
@@ -193,31 +193,43 @@ fluxo do Fleetbase (criado → despachado → iniciado → a caminho → conclu�
 | Motoboy a até 100 m da coleta, pelo GPS | `arrivedAtOrigin` |
 | Motoboy toca "A caminho" (`enroute`) | `dispatch` |
 | Motoboy a até 100 m da entrega, pelo GPS | `arrivedAtDestination` |
-| Motoboy conclui | `verifyDeliveryCode`, quando exigido (seção 4) |
+| Motoboy conclui | `arrivedAtDestination` (se o GPS não o enviou) e `verifyDeliveryCode`, quando exigido (seção 4) |
 
-- **Sequência garantida:** `ultima_acao` guarda a última ação aceita. Antes de qualquer ação, o job envia as
-  anteriores que faltam (ex.: GPS falhou e o motoboy tocou "A caminho" → `arrivedAtOrigin` e depois `dispatch`).
+- **Sequência garantida:** `ultima_acao` guarda a última ação aceita. O job não recebe "a ação a enviar": relê o pedido,
+  calcula a ação alvo pelo estado (`SequenciaIfood::alvoPeloPedido`) e envia, em ordem, as que faltam depois da
+  `ultima_acao` (ex.: GPS falhou e o motoboy tocou "A caminho" → `arrivedAtOrigin` e depois `dispatch`). Um job atrasado
+  ou repetido nunca manda nada fora de ordem, e o `entregas:ifood-acompanhar` conserta o que o gancho perdeu.
   **A `ultima_acao` é a única fonte do estado das ações:** o iFood não devolve evento para as nossas próprias ações e
   o pedido do Logistics não tem campo de status (visto na sonda). As ações respondem 202 sem corpo.
 - **Chegada pelo GPS:** o `entregas:ifood-acompanhar` (30 s) compara a última posição do motoboy dos pedidos iFood
   em andamento com a coleta ou a entrega. Não escuta cada posição, então não pesa no socket.
 - **Troca de motoboy pela central:** `assignDriver` de novo com o motoboy novo. Se o iFood responder 409 (a
-  documentação não diz se aceita depois do `goingToOrigin`), a central recebe aviso e o log registra.
-- **Falhas das ações:** 429 → espera o `Retry-After`; 5xx ou rede → até 5 tentativas com espera crescente; 409 (ou
-  outro 4xx) → não há estado no iFood para consultar: registra `[entregas] ifood: ação recusada` (com a ação, o status
-  e o corpo da resposta) e avisa a central no console, sem nova tentativa. Tudo roda na fila; nada trava o app.
+  documentação não diz se aceita depois do `goingToOrigin`), a central recebe aviso **uma vez só** e o log registra; o
+  motoboy novo fica gravado como marca (o iFood continua com o anterior) e as ações seguintes da sequência continuam a
+  ser enviadas. Outra recusa na troca (400, vínculo perdido, motoboy sem telefone) para a sequência.
+- **Falhas das ações:** 429 → espera o `Retry-After`; 5xx, 408 ou rede → até 5 tentativas com espera crescente, em 30
+  min; esgotadas, a próxima ação vira recusa com aviso. **409 numa ação da sequência = já aceita** ("operação já
+  concluída" da referência: reenvio depois de uma resposta ou de uma gravação perdida): avança a `ultima_acao` e só
+  registra `ação já aceita pelo iFood (409)`, sem recusa nem aviso (efeito colateral: um 409 por ordem errada também
+  avança). Outro 4xx (ou o 409 da troca de motoboy) → não há estado no iFood para consultar: registra `[entregas]
+  ifood: ação recusada` (com a ação, o status e só o `errorType`/`code`/`description` da resposta, nunca o corpo cru nem
+  o nome e o telefone do motoboy) e avisa a central no console, sem nova tentativa; a próxima mudança do pedido tenta
+  de novo. O laço de envio tem orçamento de 45 s; o resto volta para a fila. Tudo roda na fila; nada trava o app.
 - **Cancelamento pelo iFood (CAN)**, com a `TravaDoPedido`:
   - pedido já concluído: nada muda, só log;
   - nos outros casos, cancela como o portal (atividade, evento `OrderCanceled`, sai dos abertos), e o motoboy, se
     houver, recebe o push "Pedido #4821 cancelado pelo iFood";
-  - **se o `dispatch` já tinha sido enviado:** `pago_mesmo_cancelado = true`. O relatório de pagamento e a cobrança
+  - **se o `dispatch` já tinha sido aceito pelo iFood, ou o pedido já está "A caminho" (`enroute`, o motoboy saiu com
+    ele mesmo que o `dispatch` não tenha chegado):** `pago_mesmo_cancelado = true`. O relatório de pagamento e a cobrança
     da loja passam a contar o pedido pelo valor congelado da faixa, **na data do cancelamento** (os concluídos
     continuam pela data do `COMPLETED`). O push acrescenta "Você recebe por esta entrega. Combine com a loja a
     devolução.";
   - o pedido de cancelamento da loja (CAR) só fica registrado: quem decide é o iFood, e para nós vale o CAN.
 - **Cancelamento do nosso lado é proibido** no pedido iFood: portal da loja, console e API v1 respondem 400 "Pedido
-  do iFood: o cancelamento é feito no iFood" (no `RegrasPortalLoja`, no `BarrarAceiteDePedidoEncerrado` e na rota de
-  cancelar do console). O Logistics não tem ação de cancelar; com problema do motoboy, a central troca o motoboy.
+  do iFood: o cancelamento é feito no iFood" (no `RegrasPortalLoja` e no `RegrasDoPedidoIfood`, que cobre a API v1 e o
+  console: `cancelOrder`, `cancel`, `bulkCancel`, a atividade "canceled" (inclusive o arrastar do quadro) e o `PUT` do
+  pedido com `status` de cancelamento). O Logistics não tem ação de cancelar; com problema do motoboy, a central troca
+  o motoboy.
 
 ## 4. App do motoboy, console e portal
 
@@ -238,12 +250,20 @@ fluxo do Fleetbase (criado → despachado → iniciado → a caminho → conclu�
   3. com `exige_codigo`, a resposta é "precisa de código"; o app abre o campo do código e envia
      `POST .../codigo-ifood`. O servidor confere com o iFood **na hora, fora da fila**: certo → conclui; **400
      `Confirmation code is invalid`** (visto na sonda; a documentação dizia 422) → "Código incorreto, peça de novo ao
-     cliente"; outro erro → "Não consegui conferir agora, tente de novo";
+     cliente" (contado: depois de **10 códigos errados no mesmo pedido** a rota responde 429 "Muitas tentativas: peça à
+     central para liberar" sem chamar o iFood); outro erro → "Não consegui conferir agora, tente de novo";
   4. sem `exige_codigo`, conclui direto;
-  5. **pedido de teste (`isTest`) conclui sem código**: o código só aparece no app do cliente, que não existe no teste.
-     O código de verdade é testado na sessão de homologação.
-- **Trava:** a conclusão comum (atividade `completed` da API v1) de pedido iFood é recusada com 400 "Atualize o
-  app". **O APK novo precisa estar em todos os celulares antes de vincular a primeira loja real.**
+  5. **pedido de teste segue o `exige_codigo`** como qualquer outro: ao concluir um pedido de teste pelo Gestor de
+     Pedidos, o iFood pediu o código. De onde tirar o código de um pedido de teste fica a conferir (página de testes do
+     Portal do Desenvolvedor); sem ele, a central usa **"Liberar sem código"** no painel iFood do console (registrado no
+     banco e no log; o iFood conclui sozinho 4 h depois).
+  6. a conclusão em si continua sendo a do Fleet-Ops (atividade `completed` da API v1, prova de entrega): as rotas
+     `concluir-ifood` e `codigo-ifood` só avisam o iFood, conferem o código e gravam `conclusao_liberada_em`.
+- **Trava:** a conclusão comum (atividade `completed` da API v1 ou `POST v1/orders/{id}/complete`) de pedido iFood é
+  recusada com 400 "Atualize o app" até a rota concluir-ifood liberar. Fica atrás do interruptor
+  `ENTREGAS_IFOOD_EXIGE_APP_NOVO` (desligado por padrão): **o APK novo precisa estar em todos os celulares antes de
+  ligar a trava e de vincular a primeira loja real.** Com ela desligada, o APK antigo conclui sem código (o iFood
+  conclui sozinho 4 h depois).
 
 ### Console (central)
 
@@ -287,7 +307,7 @@ fluxo do Fleetbase (criado → despachado → iniciado → a caminho → conclu�
 | 0 | ✅ (2026-10-05) App de teste **distribuído** "Teste (D)" com todos os módulos (inclusive Logistics), app centralizado "Teste (C)" ativo na loja de teste, loja de teste (merchant `4173843`, UUID `d5d191fa-2e43-4b86-aa9c-9f8c8b251378`, entrega própria) e sonda da API (`scripts/ifood-sonda.mjs`). No deploy da etapa 2: `IFOOD_CLIENT_ID`/`IFOOD_CLIENT_SECRET` do app distribuído no `stack.env` | Edgard + Claude |
 | 1 | Raio crescente e aviso "sem motoboy" (todos os pedidos; independe do iFood) | Claude; deploy pelo Edgard |
 | 2 | ✅ código (2026-10-05, ramo `ifood-etapa-2`; faltam push, deploy e o teste real). API: tabelas, vínculo na tela Lojas, polling, ack e criação do pedido (no PLC). Primeiro teste real com a loja de teste | Claude + Edgard |
-| 3 | Ciclo da entrega, chegada pelo GPS, cancelamento (inclusive o pago mesmo cancelado) e as travas | Claude |
+| 3 | ✅ código (2026-10-06, ramo `ifood-etapa-3`; faltam push, deploy e o teste real, plano Task 15). Ciclo da entrega, chegada pelo GPS, cancelamento (inclusive o pago mesmo cancelado), rotas do motoboy e as travas | Claude |
 | 4 | APK novo (cobrança, 0800, código) e console/portal (selo, painel, sem Cancelar) | Claude; instalação pelo Edgard |
 | 5 | Ensaio da homologação com a loja de teste | Claude + Edgard |
 | 6 | Chamado "Solicitação de Homologação - Logistics API" e sessão com o iFood | Edgard |
@@ -302,7 +322,9 @@ Cada etapa (1 a 4) vira um plano de implementação próprio.
   o formato de `payments` com cobrança na porta e se o raio de 100 m da chegada é adequado. Confirmar nas etapas 3 e 5.
 - O pedido vai aos motoboys no PLC, antes de a loja confirmar: a recusa da loja vira CAN com o motoboy talvez a
   caminho (sem pagamento antes da coleta).
-- O código de entrega não pode ser testado com pedido de teste; só na homologação.
+- O código de entrega do pedido de teste: de onde obtê-lo ainda é a conferir; sem ele, a central libera sem código.
+- O `LogApiRequests` do core grava o corpo das chamadas da API v1, inclusive o código de entrega digitado pelo motoboy
+  (`POST v1/entregas/motoboy/pedidos/{id}/codigo-ifood`) e o token, em `api_request_logs` (Developers → Logs, só admin).
 - Reprovação na homologação = 15 dias de espera.
 - O raio crescente e o aviso "sem motoboy" mudam o comportamento de todos os pedidos abertos (portal e central).
 - A trava de conclusão faz um APK antigo não conseguir concluir pedido iFood.
@@ -312,4 +334,4 @@ Cada etapa (1 a 4) vira um plano de implementação próprio.
 - Webhook (a tabela de eventos já deixa o caminho pronto).
 - Atraso de despacho configurável por loja.
 - Filtro de motoboy por troco ou maquininha.
-- Código de entrega digitado pela central.
+- Código de entrega digitado pela central (a central só libera a conclusão sem código).
