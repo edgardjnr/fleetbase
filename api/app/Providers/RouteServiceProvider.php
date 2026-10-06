@@ -11,6 +11,7 @@ use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use App\Http\Controllers\Entregas\PortalLojaController;
 use App\Http\Middleware\AvisarOnlineDoMotoboy;
 use App\Http\Middleware\BarrarAceiteDePedidoEncerrado;
+use App\Http\Middleware\RegrasDoPedidoIfood;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
@@ -42,6 +43,12 @@ class RouteServiceProvider extends ServiceProvider
         // cancelamento da API v1 roda com a mesma trava do aceite. O core preenche o grupo fleetbase.api no boot()
         // dele, e os pacotes sobem antes dos providers do app: este entra no fim do grupo, depois da autenticação
         // (AuthenticateOnceWithBasicAuth) e com a sessão da empresa montada
+        // Entregas RestaurantePro: pedido iFood não se cancela do nosso lado (API v1, console) e, com a trava
+        // ENTREGAS_IFOOD_EXIGE_APP_NOVO, só se conclui pela rota concluir-ifood do APK novo (ver RegrasDoPedidoIfood). Antes
+        // do BarrarAceiteDePedidoEncerrado: o cancelamento recusado nem pega a trava do pedido
+        $this->app['router']->pushMiddlewareToGroup('fleetbase.api', RegrasDoPedidoIfood::class);
+        $this->app['router']->pushMiddlewareToGroup('fleetbase.protected', RegrasDoPedidoIfood::class);
+
         $this->app['router']->pushMiddlewareToGroup('fleetbase.api', BarrarAceiteDePedidoEncerrado::class);
 
         // Entregas RestaurantePro: o motoboy ligou/desligou o online no app → aviso no socket da empresa, para o mapa
