@@ -2,10 +2,12 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Entregas\MotoboyDaSessao;
 use App\Support\Entregas\StatusDoPedido;
 use App\Support\Entregas\TravaDoPedido;
 use Closure;
 use Fleetbase\FleetOps\Http\Controllers\Api\v1\OrderController;
+use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
@@ -25,6 +27,13 @@ use Illuminate\Support\Facades\Log;
  * portal da loja (RegrasPortalLoja): ou o cancelamento termina antes e o aceite é barrado aqui, ou o aceite
  * termina antes e o cancelamento vê o pedido iniciado. Dois motoboys aceitando juntos também entram em fila,
  * e o segundo leva o "Order has already started." do Fleet-Ops.
+ *
+ * Pedido passado para outro motoboy (o líder dos motoboys pela aba Mapa do app, ou a central pelo console): o pedido
+ * deixa de ser aberto (adhoc falso) e fica atribuído ao novo. O motoboy anterior ainda pode ter o card do pedido aberto
+ * e tocar em Aceitar (POST v1/orders/{id}/start com assign = ele): como o startOrder do Fleet-Ops só usa o `assign`
+ * em pedido aberto, ele iniciaria o pedido em nome do novo motoboy. Aqui o aceite é barrado (409) quando o pedido não
+ * é aberto, tem motoboy atribuído e quem aceita é outro: o motoboy da sessão (token de motoboy, MotoboyDaSessao; chave
+ * de API não tem motoboy da sessão e não é conferida por aí) ou o `assign` enviado.
  *
  * O cancelamento da API v1 (DELETE v1/orders/{id}/cancel, OrderController@cancelOrder, o caminho provável da
  * integração iFood) também roda com a trava, sem conferência nenhuma: ele cancela até pedido iniciado, que é
@@ -117,8 +126,10 @@ class BarrarAceiteDePedidoEncerrado
 
     protected function aceitarComATrava(Request $request, Closure $next, Order $pedido)
     {
-        // relido com a trava: um cancelamento que terminou enquanto esta requisição esperava aparece aqui
-        $status = Order::where('uuid', $pedido->uuid)->value('status');
+        // relido com a trava: um cancelamento (ou uma troca de motoboy) que terminou enquanto esta requisição esperava
+        // aparece aqui
+        $atual  = Order::where('uuid', $pedido->uuid)->first();
+        $status = $atual?->status;
 
         if (in_array($status, StatusDoPedido::ENCERRADOS, true)) {
             Log::info('[entregas] aceite do motoboy barrado: pedido encerrado', [
@@ -133,7 +144,43 @@ class BarrarAceiteDePedidoEncerrado
                 : 'Este pedido já foi encerrado.');
         }
 
+        if ($atual && $this->passouParaOutroMotoboy($request, $atual)) {
+            Log::info('[entregas] aceite do motoboy barrado: pedido passou para outro motoboy', [
+                'pedido'  => $pedido->public_id,
+                'motoboy' => $request->input('assign'),
+                'ip'      => $request->ip(),
+            ]);
+
+            return response()->apiError('Este pedido passou para outro motoboy.', 409);
+        }
+
         // o aceite inteiro com a trava: um cancelamento que chegar agora espera o aceite terminar
         return $next($request);
+    }
+
+    /**
+     * Pedido não aberto (adhoc falso) com motoboy atribuído, aceito por outro: o motoboy da sessão é diferente do
+     * atribuído, ou o `assign` enviado não é o public_id do atribuído. Sem motoboy da sessão (chave de API) e sem `assign`,
+     * nada a conferir.
+     */
+    protected function passouParaOutroMotoboy(Request $request, $pedido): bool
+    {
+        if ($pedido->adhoc || !$pedido->driver_assigned_uuid) {
+            return false;
+        }
+
+        $daSessao = MotoboyDaSessao::motoboy($request);
+        if ($daSessao && (string) $daSessao->uuid !== (string) $pedido->driver_assigned_uuid) {
+            return true;
+        }
+
+        $assign = $request->input('assign');
+        if (is_string($assign) && $assign !== '') {
+            $atribuido = Driver::where('uuid', $pedido->driver_assigned_uuid)->first();
+
+            return $atribuido && (string) $atribuido->public_id !== $assign;
+        }
+
+        return false;
     }
 }
