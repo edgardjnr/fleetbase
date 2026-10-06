@@ -1,4 +1,4 @@
-{{#if this.ehIfood}}
+{{#if this.mostrar}}
     <div {{did-insert this.recarregar}} {{did-update this.recarregar @resource.id @resource.status @resource.updated_at}}>
         <ContentPanel @title={{t "fleet-ops.ui.ifood.painel-titulo" numero=this.numero}} @isLoading={{or @isLoading this.carregar.isRunning}} @open={{true}} @wrapperClass="bordered-top">
             {{#if this.erro}}

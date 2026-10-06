@@ -7,13 +7,14 @@ import { ACOES_IFOOD, ENCERRADOS, ehPedidoIfood, mostraTroco, numeroIfoodDoPedid
 
 /**
  * Entregas: painel "iFood" no detalhe do pedido (só pedidos do iFood; rota GET int/v1/entregas/pedidos/{id}/ifood, só
- * administradores). Mostra a última ação aceita pelo iFood, a última recusa, a cobrança na porta, o código de entrega,
+ * administradores: para os demais o painel nem aparece, nem carrega). Mostra a última ação aceita pelo iFood, a última recusa, a cobrança na porta, o código de entrega,
  * observações, complemento e referência, e o cancelamento pelo iFood. "Liberar sem código" é a saída da central quando o
  * motoboy não consegue o código do cliente (POST .../ifood/liberar-sem-codigo): o app conclui pelo fluxo comum e o
  * iFood conclui sozinho 4 h depois. As ações chegam pelo código (assignDriver…) e são traduzidas aqui.
  */
 export default class OrderDetailsIfoodComponent extends Component {
     @service fetch;
+    @service currentUser;
     @service intl;
     @service notifications;
     @service modalsManager;
@@ -24,6 +25,11 @@ export default class OrderDetailsIfoodComponent extends Component {
 
     get ehIfood() {
         return ehPedidoIfood(this.args.resource);
+    }
+
+    // só administrador vê (e carrega) o painel: a rota do servidor é só de admin e os demais veriam só o aviso de erro
+    get mostrar() {
+        return this.ehIfood && this.currentUser.isAdmin === true;
     }
 
     get numero() {
@@ -100,7 +106,7 @@ export default class OrderDetailsIfoodComponent extends Component {
             this.painel = null;
             this.erro = false;
         }
-        if (this.ehIfood) {
+        if (this.mostrar) {
             this.carregar.perform();
         }
     }
