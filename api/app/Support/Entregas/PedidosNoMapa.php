@@ -12,6 +12,10 @@ use Fleetbase\FleetOps\Models\Vendor;
  * - daCentral: todos os pedidos da empresa, com o nome da loja (MapaController@motoboys, mapa ao vivo do console);
  * - daLoja: só os pedidos dos donos informados (a loja da sessão e o contato do usuário), sem o nome da loja
  *   (PortalLojaController@motoboysNoMapa). A loja nunca recebe pedido, endereço ou cliente de outra loja (LGPD).
+ * - doLider: os pedidos de daCentral para a aba Mapa do líder dos motoboys no app (LiderController), com o número do
+ *   pedido (internal_id, o número do iFood), o public_id do motoboy (para a troca), a coleta e a hora da última
+ *   atualização. É a exceção à regra do id do motoboy abaixo: o líder faz o papel da central (LiderDosMotoboys).
+ *   umDoLider: um pedido nesse formato (resposta da troca do motoboy).
  *
  * Em andamento = status fora de StatusDoPedido::ENCERRADOS e atualizado nas últimas
  * SituacaoDoMotoboy::HORAS_PEDIDO_EM_ANDAMENTO horas, com ou sem motoboy (a mesma regra dos capacetes). Pedido sem destino
@@ -22,6 +26,9 @@ class PedidosNoMapa
 {
     /** No máximo tantos alfinetes, dos pedidos mais novos para os mais antigos. */
     public const LIMITE = 300;
+
+    /** Relações que o doLider e o umDoLider leem (coleta, destino, motoboy com o nome e o número de rastreio). */
+    public const RELACOES_DO_LIDER = ['payload.pickup', 'payload.dropoff', 'driverAssigned.user', 'trackingNumber'];
 
     /**
      * @return array<int, array{id: string, numero: string, latitude: float, longitude: float, endereco: ?string, status: ?string, motoboy: ?string, aceito: bool, criado_em: ?string, loja: ?string}>
@@ -54,6 +61,44 @@ class PedidosNoMapa
             ->get();
 
         return static::itens($pedidos);
+    }
+
+    /**
+     * @return array<int, array{id: string, numero: string, latitude: float, longitude: float, endereco: ?string, status: ?string, motoboy: ?string, aceito: bool, criado_em: ?string, loja: ?string, motoboy_id: ?string, atualizado_em: ?string, coleta: ?array{latitude: float, longitude: float}}>
+     */
+    public static function doLider(string $companyUuid): array
+    {
+        $pedidos = static::consulta($companyUuid)
+            ->applyDirectivesForPermissions('fleet-ops list order')
+            ->with(static::RELACOES_DO_LIDER)
+            ->get();
+        $lojas = static::nomesDasLojas($pedidos);
+
+        return static::itens($pedidos, fn ($pedido) => static::doLiderExtra($pedido, $lojas));
+    }
+
+    /** Um pedido no formato do doLider (o pedido já vem com as RELACOES_DO_LIDER); null se o destino não tem coordenada. */
+    public static function umDoLider($pedido): ?array
+    {
+        $lojas = static::nomesDasLojas([$pedido]);
+
+        return static::itens([$pedido], fn ($pedido) => static::doLiderExtra($pedido, $lojas))[0] ?? null;
+    }
+
+    protected static function doLiderExtra($pedido, array $lojas): array
+    {
+        $coleta    = $pedido->payload?->pickup;
+        $latitude  = $coleta?->location?->getLat();
+        $longitude = $coleta?->location?->getLng();
+
+        return [
+            // o número que o motoboy e a loja conhecem: o do iFood (internal_id); sem ele, o de rastreio
+            'numero'        => $pedido->internal_id ?: ($pedido->trackingNumber?->tracking_number ?: $pedido->public_id),
+            'loja'          => static::nomeDaLoja($pedido, $lojas),
+            'motoboy_id'    => $pedido->driverAssigned?->public_id,
+            'atualizado_em' => $pedido->updated_at?->toIso8601String(),
+            'coleta'        => Coordenada::valida($latitude, $longitude) ? ['latitude' => (float) $latitude, 'longitude' => (float) $longitude] : null,
+        ];
     }
 
     protected static function consulta(string $companyUuid)
