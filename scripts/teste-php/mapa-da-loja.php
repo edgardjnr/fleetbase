@@ -174,6 +174,7 @@ namespace App\Support\Entregas {
     {
         public static array $chamadas = [];
         public static function daLoja(string $empresa, array $donos): array { static::$chamadas[] = ['daLoja', $empresa, $donos]; return [['id' => 'order_y']]; }
+        public static function doLider(string $empresa): array { static::$chamadas[] = ['doLider', $empresa]; return [['id' => 'order_lider']]; }
     }
 
     // a loja do usuário da sessão: "usuario-a" é da Loja A (Vendor vendor-a, contato contato-a); o resto não tem loja
@@ -345,6 +346,21 @@ namespace {
     confere($doId(MotoboysNoMapaDaLoja::idOpaco('m-off')) === null, 'offline sem pedido aceito (fora do mapa): ninguém');
     confere($doId(MotoboysNoMapaDaLoja::idOpaco('m-outra-empresa')) === null, 'motoboy de outra empresa: ninguém');
     confere($doId('m-coleta') === null && $doId('') === null && $doId('0123456789abcdef') === null, 'uuid, vazio ou id inventado: ninguém');
+
+    echo '== MapaDoLider (aba Mapa do líder dos motoboys no app)' . PHP_EOL;
+    require '/repo/api/app/Support/Entregas/MapaDoLider.php';
+
+    $doLider  = \App\Support\Entregas\MapaDoLider::motoboys(EMPRESA);
+    $liderPor = array_column($doLider, null, 'nome');
+    confere(array_keys($liderPor) === array_keys($porNome), 'os mesmos motoboys do mapa do portal (online e offline com pedido aceito)');
+    confere(array_keys($doLider[0] ?? []) === ['id', 'nome', 'latitude', 'longitude', 'situacao', 'online'], 'só id, nome, latitude, longitude, situação e online');
+    confere(($liderPor['Coleta']['id'] ?? null) === 'driver_coleta' && ($liderPor['Coleta']['situacao'] ?? null) === 'coleta', 'id = public_id do motoboy (a troca usa) e a situação do capacete');
+    confere(($liderPor['Offline com pedido aceito']['online'] ?? null) === false && ($liderPor['Livre']['online'] ?? null) === true, 'online em booleano');
+    $jsonLider = json_encode($doLider);
+    confere(!str_contains($jsonLider, '+55169') && !str_contains($jsonLider, '@teste.com') && !str_contains($jsonLider, '"m-livre"'), 'sem telefone, e-mail nem uuid do motoboy');
+    $mapaLider = \App\Support\Entregas\MapaDoLider::mapa(EMPRESA);
+    confere(array_keys($mapaLider) === ['pedidos', 'motoboys'] && $mapaLider['pedidos'] === [['id' => 'order_lider']] && end(\App\Support\Entregas\PedidosNoMapa::$chamadas) === ['doLider', EMPRESA],
+        'mapa = { pedidos: PedidosNoMapa::doLider, motoboys }');
 
     echo '== PortalLojaController (rota loja/motoboys e motoboy do pedido sem posição)' . PHP_EOL;
     require '/repo/api/app/Http/Controllers/Entregas/PortalLojaController.php';

@@ -26,6 +26,32 @@ class MotoboysNoMapaDaLoja
      */
     public static function listar(string $companyUuid, array $donos): array
     {
+        $lista = [];
+        foreach (static::noMapa($companyUuid) as $linha) {
+            $daLoja = array_filter($linha['pedidos'], fn ($pedido) => in_array($pedido->customer_uuid, $donos, true));
+
+            $lista[] = [
+                'id'        => static::idOpaco($linha['motoboy']->uuid),
+                'nome'      => $linha['motoboy']->name,
+                'latitude'  => $linha['latitude'],
+                'longitude' => $linha['longitude'],
+                'situacao'  => $linha['situacao'],
+                'pedidos'   => array_values(array_map(fn ($pedido) => $pedido->public_id, $daLoja)),
+            ];
+        }
+
+        return $lista;
+    }
+
+    /**
+     * Os motoboys que aparecem no mapa (a regra acima), com os pedidos em andamento de cada um, a situação e a posição.
+     * Base da lista do portal (listar) e da aba Mapa do líder dos motoboys no app (MapaDoLider): os dois mapas mostram
+     * os mesmos motoboys.
+     *
+     * @return array<int, array{motoboy: Driver, pedidos: array<int, object>, situacao: string, latitude: float, longitude: float}>
+     */
+    public static function noMapa(string $companyUuid): array
+    {
         // o nome do motoboy vem do usuário dele: carregado junto, e não um a um dentro do accessor
         $motoboys          = Driver::where('company_uuid', $companyUuid)->with('user')->get();
         $pedidosPorMotoboy = SituacaoDoMotoboy::pedidosEmAndamento($companyUuid, $motoboys->pluck('uuid'));
@@ -52,15 +78,12 @@ class MotoboysNoMapaDaLoja
                 continue;
             }
 
-            $daLoja = array_filter($pedidos, fn ($pedido) => in_array($pedido->customer_uuid, $donos, true));
-
             $lista[] = [
-                'id'        => static::idOpaco($motoboy->uuid),
-                'nome'      => $motoboy->name,
+                'motoboy'   => $motoboy,
+                'pedidos'   => $pedidos,
+                'situacao'  => $situacao,
                 'latitude'  => (float) $latitude,
                 'longitude' => (float) $longitude,
-                'situacao'  => $situacao,
-                'pedidos'   => array_values(array_map(fn ($pedido) => $pedido->public_id, $daLoja)),
             ];
         }
 
