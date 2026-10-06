@@ -53,9 +53,9 @@ use Illuminate\Support\Facades\Log;
  * do pedido filtra pela empresa da sessão, como o findRecordOrFail das duas ações (nenhum model registra o
  * CompanyScope nesta versão: o filtro tem de ser explícito).
  *
- * Os erros saem no formato da API v1 (`{"error": "..."}`, o mesmo do startOrder). O app do motoboy ainda não mostra
- * a mensagem: os dois aceites dele (AdhocOrderCard e OrderScreen, no entregas-navigator) só fazem console.warn.
- * Mostrar o erro ao motoboy é ajuste do app.
+ * Os erros saem com as duas chaves, `{"error": "...", "errors": ["..."]}` (recusar()): `error` é o formato da API v1
+ * (o mesmo do startOrder) e `errors` é o que o @fleetbase/sdk lê para montar a mensagem do erro. Os dois aceites do app
+ * (AdhocOrderCard e OrderScreen, no entregas-navigator) mostram essa mensagem em toast e recarregam a lista.
  */
 class BarrarAceiteDePedidoEncerrado
 {
@@ -104,11 +104,17 @@ class BarrarAceiteDePedidoEncerrado
                 ['pedido' => $pedido->public_id, 'ip' => $request->ip()]
             );
 
-            return response()->apiError(
+            return $this->recusar(
                 'Este pedido está sendo atualizado neste momento. Tente aceitar de novo em alguns segundos.',
                 409
             );
         }
+    }
+
+    /** A recusa com as duas chaves: `error` (formato da API v1) e `errors` (o que o @fleetbase/sdk do app lê). */
+    protected function recusar(string $mensagem, int $status = 400)
+    {
+        return response()->json(['error' => $mensagem, 'errors' => [$mensagem]], $status);
     }
 
     /**
@@ -141,7 +147,7 @@ class BarrarAceiteDePedidoEncerrado
                 'ip'      => $request->ip(),
             ]);
 
-            return response()->apiError(in_array($status, StatusDoPedido::CANCELADOS, true)
+            return $this->recusar(in_array($status, StatusDoPedido::CANCELADOS, true)
                 ? 'Este pedido foi cancelado.'
                 : 'Este pedido já foi encerrado.');
         }
@@ -153,7 +159,7 @@ class BarrarAceiteDePedidoEncerrado
                 'ip'      => $request->ip(),
             ]);
 
-            return response()->apiError('Este pedido passou para outro motoboy.', 409);
+            return $this->recusar('Este pedido passou para outro motoboy.', 409);
         }
 
         // o aceite inteiro com a trava: um cancelamento que chegar agora espera o aceite terminar

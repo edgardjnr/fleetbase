@@ -43,7 +43,7 @@ const TOKEN_A = '12|token-do-motoboy-a';
 echo '== Pedido encerrado' . PHP_EOL;
 cenario(['status' => 'canceled']);
 $resposta = aceitar(TOKEN_A);
-confere($resposta->status === 400 && $resposta->dados === ['error' => 'Este pedido foi cancelado.'], 'cancelado: barrado');
+confere($resposta->status === 400 && $resposta->dados === ['error' => 'Este pedido foi cancelado.', 'errors' => ['Este pedido foi cancelado.']], 'cancelado: barrado');
 cenario(['status' => 'completed']);
 confere((aceitar(TOKEN_A)->dados['error'] ?? null) === 'Este pedido já foi encerrado.', 'concluído: barrado');
 
@@ -51,7 +51,7 @@ echo '== Pedido passado para outro motoboy (líder ou central)' . PHP_EOL;
 cenario();
 Log::$registros = [];
 $resposta       = aceitar(TOKEN_A);
-confere($resposta->status === 409 && $resposta->dados === ['error' => 'Este pedido passou para outro motoboy.'], 'o motoboy A tenta aceitar o pedido atribuído a B: 409');
+confere($resposta->status === 409 && $resposta->dados === ['error' => 'Este pedido passou para outro motoboy.', 'errors' => ['Este pedido passou para outro motoboy.']], 'o motoboy A tenta aceitar o pedido atribuído a B: 409');
 confere(count(array_filter(Log::$registros, fn ($linha) => str_contains(json_encode($linha), 'passou para outro'))) === 1, 'fica no log');
 confere(!isset(Trava::$ocupadas['entregas:pedido:order-1']), 'a trava é solta');
 
@@ -72,7 +72,7 @@ confere(aceitar(TOKEN_A) === 'passou', 'sem motoboy atribuído e não aberto: pa
 cenario();
 confere(aceitar('flb_live_chave-do-apk') === 'passou', 'sem motoboy da sessão (chave de API) e sem assign: passa');
 $resposta = aceitar('flb_live_chave-do-apk', ['assign' => 'driver_a']);
-confere($resposta->status === 409 && $resposta->dados === ['error' => 'Este pedido passou para outro motoboy.'], 'assign de outro motoboy num pedido não aberto atribuído a B: 409');
+confere($resposta->status === 409 && $resposta->dados === ['error' => 'Este pedido passou para outro motoboy.', 'errors' => ['Este pedido passou para outro motoboy.']], 'assign de outro motoboy num pedido não aberto atribuído a B: 409');
 confere(aceitar('flb_live_chave-do-apk', ['assign' => 'driver_b']) === 'passou', 'assign igual ao atribuído: passa');
 confere(aceitar('flb_live_chave-do-apk', ['assign' => '']) === 'passou', 'assign vazio: passa');
 
