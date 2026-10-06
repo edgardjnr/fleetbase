@@ -52,11 +52,13 @@ test('cobrança: reais, formas e troco', () => {
     assert.equal(reais(10000, true), 'R$ 100');
     assert.equal(reais(10050, true), 'R$ 100,50');
     assert.deepEqual(partesDaForma('CASH+CREDIT'), [{ chave: 'dinheiro' }, { chave: 'credito' }]);
+    assert.deepEqual(partesDaForma('GIFT_CARD+OTHER'), [{ chave: 'vale-presente' }, { chave: 'outra-forma' }]);
     assert.deepEqual(partesDaForma('BOLETO_X'), [{ texto: 'boleto_x' }]);
     assert.deepEqual(partesDaForma(null), []);
     assert.equal(mostraTroco(5890, 'CASH', 10000), true);
     assert.equal(mostraTroco(5890, 'CASH', 5000), false);
-    assert.equal(mostraTroco(5890, 'CREDIT', 10000), false);
+    assert.equal(mostraTroco(5890, 'MISTO', 10000), true, 'o troco aparece sempre que existe (o servidor só o grava vindo do dinheiro)');
+    assert.equal(mostraTroco(5890, 'CASH', 5890), false);
     assert.equal(mostraTroco(5890, 'CASH', null), false);
 });
 

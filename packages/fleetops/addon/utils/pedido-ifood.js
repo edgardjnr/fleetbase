@@ -16,6 +16,8 @@ export const FORMAS = {
     FOOD_VOUCHER: 'vale-alimentacao',
     PIX: 'pix',
     DIGITAL_WALLET: 'carteira-digital',
+    GIFT_CARD: 'vale-presente',
+    OTHER: 'outra-forma',
     MISTO: 'misto',
 };
 
@@ -92,7 +94,10 @@ export function partesDaForma(forma) {
         .map((parte) => (FORMAS[parte] ? { chave: FORMAS[parte] } : { texto: parte.toLowerCase() }));
 }
 
-/** O troco aparece só com dinheiro entre as formas e maior que o valor a cobrar (mesma regra do servidor). */
+/**
+ * O troco aparece sempre que existe e é maior que o valor a cobrar (mesma regra do servidor, CobrancaIfood::texto). A forma
+ * não entra na conta: o servidor só grava o troco que vem do dinheiro, e com "MISTO" as formas somem do texto.
+ */
 export function mostraTroco(centavos, forma, trocoPara) {
-    return trocoPara !== null && trocoPara !== undefined && Number(trocoPara) > Number(centavos) && partesDaForma(forma).some((parte) => parte.chave === 'dinheiro');
+    return trocoPara !== null && trocoPara !== undefined && Number(trocoPara) > Number(centavos);
 }

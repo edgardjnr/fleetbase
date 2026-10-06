@@ -276,6 +276,8 @@ fleet-ops:
                 vale-alimentacao: food voucher
                 pix: Pix
                 carteira-digital: digital wallet
+                vale-presente: gift card
+                outra-forma: other method
                 misto: mixed methods
         order-form:
             store-or-customer: Store or customer

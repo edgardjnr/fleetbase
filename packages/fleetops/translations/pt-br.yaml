@@ -276,6 +276,8 @@ fleet-ops:
         vale-alimentacao: vale-alimentação
         pix: Pix
         carteira-digital: carteira digital
+        vale-presente: vale-presente
+        outra-forma: outra forma
         misto: formas variadas
     order-form:
       store-or-customer: Loja ou cliente
