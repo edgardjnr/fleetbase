@@ -240,7 +240,17 @@ namespace Fleetbase\Support\SocketCluster {
 }
 
 namespace Illuminate\Bus {
-    trait Queueable {}
+    // como o do Laravel 10: as propriedades sem valor padrão (um job que redeclara uma delas com outro padrão quebra
+    // na composição da classe, erro fatal que só aparece ao carregar o job)
+    trait Queueable
+    {
+        public $connection;
+        public $queue;
+        public $delay;
+        public $afterCommit;
+        public $middleware = [];
+        public $chained = [];
+    }
 }
 
 namespace Illuminate\Queue {
