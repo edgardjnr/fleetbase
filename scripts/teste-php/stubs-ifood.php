@@ -45,6 +45,7 @@ namespace Illuminate\Support {
         public function subMinutes($n): static { $this->modify('-' . (int) $n . ' minutes'); return $this; }
         public function subMinute(): static { return $this->subMinutes(1); }
         public function addHour(): static { $this->modify('+1 hour'); return $this; }
+        public function subHours($n): static { $this->modify('-' . (int) $n . ' hours'); return $this; }
         public function subDays($n): static { $this->modify('-' . (int) $n . ' days'); return $this; }
         public function toDateTimeString(): string { return $this->format('Y-m-d H:i:s'); }
         public function toIso8601String(): string { return $this->format('Y-m-d\TH:i:sP'); }
@@ -822,6 +823,8 @@ namespace Teste {
     class FabricaDeResposta
     {
         public function json($dados = [], int $status = 200) { return new RespostaJson($dados, $status); }
+        // o macro apiError do Fleetbase: {"error": "..."} (400 por padrão)
+        public function apiError($mensagem, int $status = 400) { return new RespostaJson(['error' => $mensagem], $status); }
     }
 }
 
