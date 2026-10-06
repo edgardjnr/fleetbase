@@ -51,8 +51,6 @@ class EnviarAcaoIfood implements ShouldQueue
 
     public const PRAZO_MINUTOS = 30;
 
-    public $afterCommit = true;
-
     /** Abaixo do retry_after da conexão redis (90 s). */
     public int $timeout = 80;
 
@@ -60,7 +58,12 @@ class EnviarAcaoIfood implements ShouldQueue
 
     public array $backoff = [10, 30, 60, 120, 300];
 
-    public function __construct(public string $orderUuid, public ?string $alvoMinimo = null) {}
+    public function __construct(public string $orderUuid, public ?string $alvoMinimo = null)
+    {
+        // afterCommit fica no construtor: o trait Queueable do Laravel já declara a propriedade (sem valor) e
+        // redeclará-la com outro valor padrão é erro fatal na composição da classe
+        $this->afterCommit = true;
+    }
 
     /**
      * Enfileira, a não ser que este pedido já tenha um job esperando (devolve false). $alvoMinimo: a chegada pelo GPS
