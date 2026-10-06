@@ -5,6 +5,7 @@ namespace App\Jobs\Entregas;
 use App\Support\Entregas\Ifood\AcoesIfood;
 use App\Support\Entregas\Ifood\ClienteIfood;
 use App\Support\Entregas\Ifood\ErroIfood;
+use App\Support\Entregas\Ifood\FilaIfood;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -63,6 +64,8 @@ class EnviarAcaoIfood implements ShouldQueue
         // afterCommit fica no construtor: o trait Queueable do Laravel já declara a propriedade (sem valor) e
         // redeclará-la com outro valor padrão é erro fatal na composição da classe
         $this->afterCommit = true;
+        // a fila própria do iFood (FilaIfood): o worker queue-ifood atende só ela
+        $this->onQueue(FilaIfood::NOME);
     }
 
     /**

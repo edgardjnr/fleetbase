@@ -68,7 +68,10 @@ return [
             'queue' => env('REDIS_QUEUE', 'default'),
             'retry_after' => 90,
             'block_for' => null,
-            'after_commit' => false,
+            // Entregas: job ou broadcast disparado dentro de uma transação só entra na fila depois do commit (e some se
+            // ela desfizer). Com dois workers (queue e queue-ifood), o broadcast do pedido criado pelo
+            // CriadorDoPedidoIfood podia ser processado antes do commit e não achar o pedido
+            'after_commit' => true,
         ],
 
     ],

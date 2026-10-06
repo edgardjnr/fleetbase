@@ -261,7 +261,7 @@ Nesta ordem:
 
 1. Preencha o `stack.env` com `ENTREGAS_IFOOD=1`, `IFOOD_CLIENT_ID` e `IFOOD_CLIENT_SECRET`, as credenciais do app **distribuído** (Portal do Desenvolvedor → Meus Apps → Credenciais), e faça Stacks → entregas → Editor → Update the stack ("Re-pull image" desligado).
    - Os três são lidos em `config('services.ifood')`. O `ClienteIfood::ligada()` exige os três preenchidos.
-   - O Update the stack já recria a API, a fila e o scheduler, porque as variáveis mudaram. Reiniciar à mão é opcional: `docker service update --force entregas_queue && docker service update --force entregas_scheduler`.
+   - O Update the stack já recria a API, a fila e o scheduler, porque as variáveis mudaram. Reiniciar à mão é opcional: `docker service update --force entregas_queue && docker service update --force entregas_queue-ifood && docker service update --force entregas_scheduler`.
 2. Se houver código novo, rode `bash deploy/atualizar.sh api`: ele roda as migrations (as três tabelas) e o `config:cache`.
 - **Desligada:**
   - os três comandos nem sobem (`when(ClienteIfood::ligada())` no `Kernel`; cada comando confere de novo);
@@ -387,7 +387,7 @@ As migrations ficam em `api/database/migrations`.
 Todos com o prefixo `[entregas] ifood:` e só com ids, códigos e o número do pedido.
 
 - **Comandos** (polling, agendados, tokens): `docker service logs entregas_scheduler 2>&1 | grep '\[entregas\] ifood'`. Eles rodam em segundo plano e escrevem em `/proc/1/fd/1` (`Kernel::SAIDA_DO_CONTAINER`).
-- **Job** (criação, eventos, `coleta diverge`, `pagamento inconsistente`): `docker service logs entregas_queue`.
+- **Job** (criação, eventos, `coleta diverge`, `pagamento inconsistente`): `docker service logs entregas_queue-ifood` (a fila própria do iFood; o `entregas_queue` também pega jobs iFood quando está livre, então confira os dois).
 - **Vínculo pela tela** (`vínculo falhou`, `loja vinculada`): `docker service logs entregas_application`.
 
 ### Armadilhas
@@ -397,9 +397,9 @@ Todos com o prefixo `[entregas] ifood:` e só com ids, códigos e o número do p
   - Espere vencer, ou rode `php artisan schedule:clear-cache` no scheduler.
 - **`appendOutputTo('/proc/1/fd/1')` depende do go-crond como PID 1 rodando como root.** Sem isso, o redirecionamento falha, e o comando pode nem rodar.
 - **Redis sem persistência** (`--save "" --appendonly no`): um restart perde os jobs da fila. Os eventos continuam pendentes no MySQL, e a varredura enfileira de novo depois de 2 min.
-- **Um worker só** (`queue` com `replicas: 1`, um `queue:work`): o `Order::create` põe o broadcast na fila antes do commit da transação.
-  - Com mais workers, outro worker poderia pegar o broadcast antes do commit.
-  - Antes de aumentar, ver `afterCommit` no docblock do `CriadorDoPedidoIfood`.
+- **Fila própria do iFood** (2026-10-06, `App\Support\Entregas\Ifood\FilaIfood`): o `ProcessarPedidoIfood` e o `EnviarAcaoIfood` vão para a fila `ifood`, atendida pelo serviço `queue-ifood` (`queue:work --queue=ifood`). O `queue` atende `default,ifood`: push e notificações primeiro, iFood só quando está livre (e assim nada para se o `queue-ifood` não existir). Teste: `scripts/teste-php/fila-ifood.php`.
+  - **`after_commit` na conexão `redis`** (`api/config/queue.php`): job ou broadcast disparado dentro de uma transação só entra na fila depois do commit (e some se ela desfizer). Sem isso, com dois workers, o broadcast do pedido criado pelo `CriadorDoPedidoIfood` (o `Order::create` o põe na fila dentro da transação) podia ser lido antes do commit.
+  - O serviço novo só existe depois de colar o `deploy/docker-stack.yml` no Portainer (Stacks → entregas → Editor → Update the stack, "Re-pull image" desligado). O `atualizar.sh` avisa quando ele não existe.
 - **A conferir no primeiro vínculo real:** o nome do campo do refresh token (tratamos `refreshToken` e `refresh_token`). Sem ele, o log `resposta do token sem refresh token` lista os campos que vieram, e o vínculo cai quando o token vencer (6 h).
 - **A conferir no primeiro agendado:** o formato do `schedule`.
 
@@ -478,7 +478,7 @@ Desenho: spec, seções 3 e 4. Plano: `docs/superpowers/plans/2026-10-06-ifood-e
 ### Colunas novas e logs
 
 - `entregas_ifood_pedidos`: `ultima_acao`, `motoboy_no_ifood`, `recusa_acao`/`recusa_status`/`recusa_em`, `conclusao_liberada_em` e `conclusao_sem_codigo` (migration `2026_10_06_120000_add_ciclo_*`).
-- Fila (`docker service logs entregas_queue 2>&1 | grep '\[entregas\] ifood'`): `ação enviada`, `ação já aceita pelo iFood (409)`, `ação recusada`, `ação não enviada; tentativas esgotadas`, `pedido cancelado pelo iFood`, `pedido concluído sem o código do cliente`.
+- Fila (`docker service logs entregas_queue-ifood 2>&1 | grep '\[entregas\] ifood'`; o `entregas_queue` também pega jobs iFood quando está livre): `ação enviada`, `ação já aceita pelo iFood (409)`, `ação recusada`, `ação não enviada; tentativas esgotadas`, `pedido cancelado pelo iFood`, `pedido concluído sem o código do cliente`.
 - Scheduler (`entregas_scheduler`): `chegada pelo GPS`, `falha ao acompanhar o pedido`.
 - Aplicação (`entregas_application`): `código de entrega conferido`/`incorreto`/`não conferido pelo iFood`, `falha ao conferir o código de entrega`, `conclusão sem código liberada pela central`, `ação barrada no pedido do iFood` (API v1, console e portal da loja; só ids nossos), `cancelamento liberado no pedido do iFood`, `conclusão sem resposta do iFood`.
 
@@ -488,7 +488,7 @@ Desenho: spec, seções 3 e 4. Plano: `docs/superpowers/plans/2026-10-06-ifood-e
 - **O `internal_id` do pedido pode repetir entre pedidos** (é o número do iFood). O app e as rotas do motoboy usam o `public_id`; a busca do `RegrasDoPedidoIfood` aceita uuid, `public_id` e `internal_id`, sempre filtrada pela empresa da sessão.
 - **Ação recusada para a sequência:** uma ação recusada antes (ex.: `dispatch` com 400) impede o `arrivedAtDestination` de ir na ordem. O motoboy segue para o código, e a central usa "Liberar sem código" no painel iFood.
 - Ação sem corpo (ex.: `goingToOrigin`) vai com o `send('POST')` do Laravel e `Content-Type: application/json`: **a conferir na produção** (400 ou 415 → trocar por POST sem cabeçalho de corpo).
-- **Fila única (risco aceito até a primeira loja real):** os jobs iFood (`EnviarAcaoIfood`, `ProcessarPedidoIfood`) dividem o único worker (`entregas_queue`) com os push e as notificações. Uma rajada de um lado atrasa o outro. **Antes da primeira loja real**, entram `onQueue('ifood')` nos jobs iFood e um segundo worker no stack (`queue:work --queue=ifood`, serviço novo no Portainer).
+- **Fila própria do iFood** (resolvido em 2026-10-06): os jobs iFood têm o worker `queue-ifood`; ver "Armadilhas" da etapa 2.
 - **A conferir (Task 15 do plano):** troca de motoboy depois do `goingToOrigin`; raio de 100 m; origem do código de um pedido de teste; formato do `workerPhone`; `fleetbase.protected` com o `RegrasDoPedidoIfood` (cancelar pelo console deve dar 400).
 
 ### Ao atualizar o fleetops-api, confira
@@ -515,7 +515,7 @@ Desenho: spec, seções 3 e 4. Plano: `docs/superpowers/plans/2026-10-06-ifood-e
   - o `GET v1/entregas/motoboy/pedidos/{id}/ifood` tem limitador próprio, `entregas-motoboy-ifood` (120 por minuto por motoboy), para a lista de pedidos não gastar o limite do `concluir-ifood`.
 - **Console:** coluna "iFood" na tabela e selo no quadro, no mapa e no cabeçalho (`pedido-ifood/selo`); painel iFood no detalhe (`order/details/ifood`: última etapa informada, última recusa, cobrança, código, observações; "Liberar sem código"; recarrega quando o pedido, o status ou o `updated_at` mudam); Cancelar escondido (detalhe e linha da tabela) e barrado na tela (lote, mapa, arrastar para "cancelado" no quadro); aviso de ação recusada (serviço `ifood-acao-recusada`: som e notificação fixa que abre o pedido; texto próprio quando o status é 0, isto é, não chegou ao iFood; iniciado na rota raiz do engine, como o `pedido-sem-motoboy`); "Pagamento e cobrança" marca o cancelado pelo iFood (pago), também no CSV.
 - **Portal:** selo na lista, na tabela e no cabeçalho; Cancelar desabilitado com o aviso "o cancelamento é feito no Gestor de Pedidos do iFood"; o extrato mostra a marca "Cancelado pelo iFood (cobrado)" na linha e no CSV.
-- **Ordem de implantação:** API (`bash deploy/atualizar.sh api`: middleware das notas e limitador) e console (`bash deploy/atualizar.sh console`) → APK novo em todos os celulares → `ENTREGAS_IFOOD_EXIGE_APP_NOVO=1` → só então vincular loja real (e antes dela a fila separada; ver "Armadilhas da etapa 3").
+- **Ordem de implantação:** API (`bash deploy/atualizar.sh api`: middleware das notas e limitador) e console (`bash deploy/atualizar.sh console`) → APK novo em todos os celulares → `ENTREGAS_IFOOD_EXIGE_APP_NOVO=1` → só então vincular loja real (a fila própria do iFood já existe: atualize o stack no Portainer para criar o `queue-ifood`).
 - **A conferir no teste real (Task 12 do plano):** o texto do servidor no `err?.message` do SDK (422 do código, 400 "Atualize o app"); de onde vem o código de um pedido de teste; o 0800 no pedido de teste; o card do quadro voltando à coluna ao arrastar um pedido iFood para "cancelado"; o Kotlin do alarme compilando no Actions.
 - Testes: `scripts/teste-portal/pedido-ifood.test.mjs`, `scripts/teste-php/notas-na-lista.php` e, no app, `scripts/testes/pedido-ifood.teste.ts`.
 
@@ -645,7 +645,7 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 - Secrets do repo: `GOOGLE_SERVICES_JSON`, `FLEETBASE_KEY` (chave pública `flb_live_`), `GOOGLE_MAPS_API_KEY`. O projeto Google `entregas-restaurantepro` está no plano Blaze (conta de faturamento vinculada para o Maps).
 - Push: Firebase `entregas-restaurantepro`; o JSON da conta de serviço foi enviado em Admin → Notificações Push.
 - **Tempo real do app:** o socket vem do `.env` gerado no CI (`SOCKETCLUSTER_HOST/PORT/SECURE`). Sem essas variáveis o app conectava no `socket.fleetbase.io` e ficava sem tempo real: pedido novo, status e chat chegavam só por push ou pela atualização periódica da lista. O app também recarrega pedidos e a conversa aberta quando volta para a frente ou o socket reconecta (`src/hooks/use-ressincronizar.ts`).
-- **Mudou algo em Admin → Configurações (push, e-mail, socket)? Reinicie a fila:** `docker service update --force entregas_queue`. O worker só lê as configurações ao iniciar; o push e o tempo real só passaram a funcionar depois de um restart.
+- **Mudou algo em Admin → Configurações (push, e-mail, socket)? Reinicie as filas:** `docker service update --force entregas_queue && docker service update --force entregas_queue-ifood`. O worker só lê as configurações ao iniciar; o push e o tempo real só passaram a funcionar depois de um restart.
 
 ## Histórico (2026-10-01)
 
@@ -676,3 +676,4 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 18. Integração iFood, etapa 3 (2026-10-06, ramo `ifood-etapa-3`): ações de logística pelos eventos do Fleetbase e pelo GPS, CAN cancela (pago mesmo cancelado), cancelamento do nosso lado proibido, rotas do motoboy (dados, conclusão, código), "Liberar sem código" no console e a trava "Atualize o app" atrás do `ENTREGAS_IFOOD_EXIGE_APP_NOVO` (desligada) (ver "Integração iFood (etapa 3: ciclo da entrega)").
 19. Integração iFood, etapa 4 (2026-10-06, ramos `ifood-etapa-4` aqui e no `entregas-navigator`): APK com cobrança, 0800 e código de entrega; selo, painel iFood e aviso de recusa no console, com as notas nas listas pelo `IncluirNotasNaListaDePedidos`; portal com o selo e sem o Cancelar.
 20. App do motoboy: aba Pedidos enxuta (novos e em andamento, card com o número e a loja da coleta) e aba Mapa do líder dos motoboys no lugar de Relatórios, com a troca do motoboy de um pedido (2026-10-06, ramos `app-pedidos-e-mapa-do-lider` aqui e no `entregas-navigator`, sobre o `ifood-etapa-4`).
+21. Fila própria do iFood (2026-10-06, ramo `fila-ifood`): jobs iFood na fila `ifood` com o worker `queue-ifood`, o `queue` em `default,ifood` e `after_commit` na conexão `redis` (ver "Integração iFood" → "Armadilhas").

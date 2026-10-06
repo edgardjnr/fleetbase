@@ -258,6 +258,9 @@ namespace Illuminate\Bus {
         public $afterCommit;
         public $middleware = [];
         public $chained = [];
+
+        // como o Queueable do Laravel: a fila do job (FilaIfood)
+        public function onQueue($queue) { $this->queue = $queue; return $this; }
     }
 }
 

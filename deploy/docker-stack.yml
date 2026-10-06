@@ -133,9 +133,27 @@ services:
     networks: [internal, public]
     deploy: *default-deploy
 
+  # push, notificações e broadcasts; a fila "ifood" só quando estiver livre (assim nada para se o queue-ifood não
+  # existir). Com dois workers, a conexão redis tem after_commit (api/config/queue.php)
   queue:
     image: entregas-api:latest
-    command: ["php", "artisan", "queue:work"]
+    command: ["php", "artisan", "queue:work", "--queue=default,ifood"]
+    environment: *api-env
+    volumes:
+      - api_storage:/fleetbase/api/storage/app
+    healthcheck:
+      test: ["CMD", "php", "artisan", "queue:status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks: [internal]
+    deploy: *default-deploy
+
+  # Entregas: a fila própria do iFood (ProcessarPedidoIfood e EnviarAcaoIfood, App\Support\Entregas\Ifood\FilaIfood):
+  # uma rajada de push não atrasa a entrada dos pedidos nem as ações de logística
+  queue-ifood:
+    image: entregas-api:latest
+    command: ["php", "artisan", "queue:work", "--queue=ifood"]
     environment: *api-env
     volumes:
       - api_storage:/fleetbase/api/storage/app

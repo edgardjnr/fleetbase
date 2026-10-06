@@ -7,6 +7,7 @@ use App\Support\Entregas\Ifood\ClienteIfood;
 use App\Support\Entregas\Ifood\CriadorDoPedidoIfood;
 use App\Support\Entregas\Ifood\ErroIfood;
 use App\Support\Entregas\Ifood\EventosIfood;
+use App\Support\Entregas\Ifood\FilaIfood;
 use App\Support\Entregas\Ifood\VinculoPerdido;
 use App\Support\Entregas\Ifood\VinculosIfood;
 use Illuminate\Bus\Queueable;
@@ -93,6 +94,8 @@ class ProcessarPedidoIfood implements ShouldQueue
 
     public function __construct(public string $pedidoIfoodId)
     {
+        // a fila própria do iFood (FilaIfood): o worker queue-ifood atende só ela
+        $this->onQueue(FilaIfood::NOME);
     }
 
     /** Tentativas pelo prazo (e não por $tries): o release() da trava ocupada e do 429 conta como tentativa no Laravel. */

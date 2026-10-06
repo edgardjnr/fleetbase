@@ -44,11 +44,18 @@ if ! docker service inspect "${STACK}_application" >/dev/null 2>&1; then
 fi
 
 atualiza() { echo "==> service update ${STACK}_$1"; docker service update --force --quiet "${STACK}_$1" >/dev/null; }
+# serviço que pode ainda não existir no stack (ex.: queue-ifood antes do Update the stack no Portainer)
+tem_servico() { docker service inspect "${STACK}_$1" >/dev/null 2>&1; }
 tem socket  && atualiza socket
 tem console && atualiza console
 if tem api; then
   atualiza application
   atualiza queue
+  if tem_servico queue-ifood; then
+    atualiza queue-ifood
+  else
+    echo "==> ${STACK}_queue-ifood não existe: atualize o stack no Portainer com o deploy/docker-stack.yml (fila do iFood)"
+  fi
   atualiza scheduler
 
   echo "==> aguardando ${STACK}_application"
