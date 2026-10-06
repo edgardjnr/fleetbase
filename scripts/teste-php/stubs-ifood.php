@@ -120,6 +120,16 @@ namespace Illuminate\Support\Facades {
         }
 
         public static function dropIfExists(string $tabela): void { unset(self::$criadas[$tabela]); }
+
+        /** Schema::table (migration que acrescenta colunas): tabela => [Blueprint, ...], na ordem. */
+        public static array $alteradas = [];
+
+        public static function table(string $tabela, \Closure $definicao): void
+        {
+            $blueprint = new \Illuminate\Database\Schema\Blueprint();
+            $definicao($blueprint);
+            self::$alteradas[$tabela][] = $blueprint;
+        }
     }
 }
 
@@ -460,12 +470,25 @@ namespace Teste {
             if (self::$esquema !== null) {
                 return self::$esquema;
             }
-            $guardadas = \Illuminate\Support\Facades\Schema::$criadas;
+            $guardadas  = \Illuminate\Support\Facades\Schema::$criadas;
+            $alteradas  = \Illuminate\Support\Facades\Schema::$alteradas;
             self::$esquema = [];
-            foreach (glob(dirname(__DIR__, 2) . '/api/database/migrations/*_create_entregas_ifood_*_table.php') ?: [] as $arquivo) {
-                \Illuminate\Support\Facades\Schema::$criadas = [];
+            // as que criam e as que acrescentam colunas (Schema::table), na ordem dos arquivos (a data no nome)
+            foreach (glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_ifood_*_table.php') ?: [] as $arquivo) {
+                \Illuminate\Support\Facades\Schema::$criadas   = [];
+                \Illuminate\Support\Facades\Schema::$alteradas = [];
                 (require $arquivo)->up();
+                $blueprints = [];
                 foreach (\Illuminate\Support\Facades\Schema::$criadas as $tabela => $blueprint) {
+                    self::$esquema[$tabela] = ['colunas' => [], 'unicas' => []];
+                    $blueprints[]           = [$tabela, $blueprint];
+                }
+                foreach (\Illuminate\Support\Facades\Schema::$alteradas as $tabela => $lista) {
+                    foreach ($lista as $blueprint) {
+                        $blueprints[] = [$tabela, $blueprint];
+                    }
+                }
+                foreach ($blueprints as [$tabela, $blueprint]) {
                     $colunas = [];
                     $unicas  = [];
                     foreach ($blueprint->colunas as $coluna) {
@@ -482,10 +505,14 @@ namespace Teste {
                             }
                         }
                     }
-                    self::$esquema[$tabela] = ['colunas' => $colunas, 'unicas' => $unicas];
+                    self::$esquema[$tabela] = [
+                        'colunas' => array_merge(self::$esquema[$tabela]['colunas'] ?? [], $colunas),
+                        'unicas'  => array_merge(self::$esquema[$tabela]['unicas'] ?? [], $unicas),
+                    ];
                 }
             }
-            \Illuminate\Support\Facades\Schema::$criadas = $guardadas;
+            \Illuminate\Support\Facades\Schema::$criadas   = $guardadas;
+            \Illuminate\Support\Facades\Schema::$alteradas = $alteradas;
 
             return self::$esquema;
         }
@@ -561,7 +588,8 @@ namespace Teste {
                 throw self::erroDeRepetida($tabela, $repetida, $linha[$repetida]);
             }
             $id                             = self::$proximoId[$tabela] = (self::$proximoId[$tabela] ?? 0) + 1;
-            self::$tabelas[$tabela][$id] = ['id' => $id] + $linha;
+            // como o MySQL, a coluna que o insert não trouxe existe na linha (NULL; os defaults das migrations não são lidos)
+            self::$tabelas[$tabela][$id] = ['id' => $id] + $linha + array_fill_keys(self::esquema()[$tabela]['colunas'] ?? [], null);
 
             return true;
         }

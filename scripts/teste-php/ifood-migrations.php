@@ -66,6 +66,20 @@ foreach (['exige_codigo', 'pago_mesmo_cancelado', 'teste', 'agendado'] as $colun
     confere(($pedidos[$coluna]->modificadores['default'] ?? null) === [false], "{$coluna} começa falso");
 }
 
+echo '== entregas_ifood_pedidos: ciclo da entrega (etapa 3)' . PHP_EOL;
+Schema::$alteradas = [];
+(require '/repo/api/database/migrations/2026_10_06_120000_add_ciclo_to_entregas_ifood_pedidos_table.php')->up();
+$ciclo = [];
+foreach (Schema::$alteradas['entregas_ifood_pedidos'][0]->colunas ?? [] as $coluna) {
+    $ciclo[$coluna->argumentos[0]] = $coluna;
+}
+confere(tem($ciclo, 'motoboy_no_ifood', 'char', ['nullable']), 'motoboy_no_ifood (troca de motoboy)');
+confere(tem($ciclo, 'recusa_acao', 'string', ['nullable']) && tem($ciclo, 'recusa_status', 'unsignedSmallInteger', ['nullable']) && tem($ciclo, 'recusa_em', 'timestamp', ['nullable']), 'última recusa do iFood');
+confere(tem($ciclo, 'conclusao_liberada_em', 'timestamp', ['nullable']), 'conclusao_liberada_em (trava "Atualize o app")');
+confere(tem($ciclo, 'conclusao_sem_codigo', 'boolean') && ($ciclo['conclusao_sem_codigo']->modificadores['default'] ?? null) === [false], 'conclusao_sem_codigo começa falso');
+confere(excecao(fn () => \Teste\Banco::exigirColuna('entregas_ifood_pedidos', 'recusa_acao')) === null, 'o banco em memória dos testes conhece as colunas novas');
+confere(excecao(fn () => \Teste\Banco::exigirColuna('entregas_ifood_pedidos', 'coluna_que_nao_existe')) !== null, 'e continua recusando coluna inexistente');
+
 echo '== down' . PHP_EOL;
 foreach (['2026_10_05_120000_create_entregas_ifood_lojas_table.php' => 'entregas_ifood_lojas', '2026_10_05_120100_create_entregas_ifood_eventos_table.php' => 'entregas_ifood_eventos', '2026_10_05_120200_create_entregas_ifood_pedidos_table.php' => 'entregas_ifood_pedidos'] as $arquivo => $tabela) {
     (require '/repo/api/database/migrations/' . $arquivo)->down();
