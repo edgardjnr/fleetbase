@@ -34,12 +34,40 @@ namespace App\Http\Controllers {
     class Controller {}
 }
 
+namespace Illuminate\Routing {
+    // a rota que o roteador casou: só a ação (Controller@metodo) e os parâmetros
+    class Route
+    {
+        public function __construct(public string $acao, public array $parametros = []) {}
+        public function getActionName(): string { return $this->acao; }
+    }
+}
+
 namespace Illuminate\Http {
     class Request
     {
+        /** Bearer token (MotoboyDaSessao: token de usuário tem "|"). */
+        public ?string $token = null;
+        /** A rota casada (middlewares que olham a ação), ou null. */
+        public ?\Illuminate\Routing\Route $rota = null;
+
         public function __construct(public array $dados = []) {}
 
         public function all(): array { return $this->dados; }
+        public function bearerToken(): ?string { return $this->token; }
+        public function input($chave = null, $padrao = null) { return $chave === null ? $this->dados : ($this->dados[$chave] ?? $padrao); }
+        public function array($chave): array { return (array) ($this->dados[$chave] ?? []); }
+        public function ip(): string { return '127.0.0.1'; }
+
+        // como o do Laravel: sem parâmetro, a rota; com nome, o parâmetro da rota
+        public function route($parametro = null)
+        {
+            if ($parametro === null) {
+                return $this->rota;
+            }
+
+            return $this->rota?->parametros[$parametro] ?? null;
+        }
 
         // as regras do Laravel não rodam aqui: devolve só os campos que têm regra
         public function validate(array $regras): array
@@ -127,6 +155,13 @@ namespace Teste {
             return $this;
         }
 
+        public function whereIn($coluna, array $valores)
+        {
+            $this->grupos[array_key_last($this->grupos)][] = fn ($item) => in_array($item->$coluna ?? null, $valores, true);
+
+            return $this;
+        }
+
         public function orWhere($coluna, $valor = null)
         {
             $this->grupos[] = [];
@@ -144,6 +179,18 @@ namespace Teste {
 
             return null;
         }
+
+        // when($valor, fn): aplica o filtro só com valor (o when do query builder); with(): relações não importam aqui
+        public function when($valor, \Closure $filtro)
+        {
+            if ($valor) {
+                $filtro($this, $valor);
+            }
+
+            return $this;
+        }
+
+        public function with($relacoes) { return $this; }
 
         public function firstOrFail()
         {
@@ -251,6 +298,8 @@ namespace Fleetbase\FleetOps\Models {
         }
 
         public function setDropoff($place) { $this->dropoff = $place; return $this; }
+        public function getPickupOrFirstWaypoint() { return $this->pickup; }
+        public function getDropoffOrLastWaypoint() { return $this->dropoff; }
         public function setCurrentWaypoint($place) { $this->atual = $place; return $this; }
 
         public function save()
@@ -305,6 +354,12 @@ namespace Fleetbase\FleetOps\Models {
         /** Em cada firstDispatchWithActivity/insertDispatchActivity: se a trava do pedido (TravaDoPedido) estava tomada. */
         public array $travadoNoDespacho = [];
         public bool $temStatusDespachado = false;
+        /** Campos que mudaram no último save (o wasChanged do Eloquent). */
+        public array $alterados = [];
+        /** Com true, o cancel() lança (o OrderCanceled falhou); com uma exceção, lança ela. */
+        public static bool|\Throwable $falharCancelamento = false;
+        /** Em cada cancel(): se a trava do pedido (TravaDoPedido) e a das ações (AcoesIfood) estavam tomadas. */
+        public array $travadoNoCancelar = [];
         /** A empresa da sessão no momento do create (o TrackingNumberObserver depende dela). */
         public ?string $empresaNaSessao = null;
 
@@ -345,6 +400,26 @@ namespace Fleetbase\FleetOps\Models {
         private function anotarTrava(): void { $this->travadoNoDespacho[] = isset(\Teste\Trava::$ocupadas['entregas:pedido:' . $this->uuid]); }
         public function hasDispatchedStatus(): bool { return $this->temStatusDespachado; }
 
+        public function wasChanged($campos = null): bool
+        {
+            $campos = (array) $campos;
+
+            return $campos === [] ? (bool) $this->alterados : (bool) array_intersect($campos, $this->alterados);
+        }
+
+        // o Order::cancel do Fleet-Ops: atividade "canceled", status canceled e OrderCanceled na fila
+        public function cancel()
+        {
+            $this->chamadas[]          = 'cancel';
+            $this->travadoNoCancelar[] = [isset(\Teste\Trava::$ocupadas['entregas:pedido:' . $this->uuid]), isset(\Teste\Trava::$ocupadas['entregas:ifood-acao:' . $this->uuid])];
+            if (self::$falharCancelamento) {
+                throw self::$falharCancelamento instanceof \Throwable ? self::$falharCancelamento : new \RuntimeException('falha no cancelamento');
+            }
+            $this->status = 'canceled';
+
+            return true;
+        }
+
         public function firstDispatchWithActivity()
         {
             $this->chamadas[] = 'firstDispatchWithActivity';
@@ -370,6 +445,54 @@ namespace Fleetbase\FleetOps\Models {
     }
 }
 
+namespace Fleetbase\FleetOps\Models {
+    #[\AllowDynamicProperties]
+    class Driver
+    {
+        use \Teste\ModeloDeTeste;
+        public $uuid;
+        public $public_id;
+        public $company_uuid;
+        public $user_uuid;
+        public $name;
+        public $phone;
+        public $location;
+        public $online = false;
+    }
+}
+
+namespace Teste {
+    // o container do Laravel (app()): instância registrada pelo teste ou criada com as dependências do construtor
+    class Container
+    {
+        public static array $instancias = [];
+    }
+}
+
+namespace {
+    function app($classe = null)
+    {
+        if ($classe === null) {
+            return null;
+        }
+        if (isset(\Teste\Container::$instancias[$classe])) {
+            return \Teste\Container::$instancias[$classe];
+        }
+        $reflexao   = new \ReflectionClass($classe);
+        $argumentos = [];
+        foreach ($reflexao->getConstructor()?->getParameters() ?? [] as $parametro) {
+            $tipo = $parametro->getType();
+            if ($tipo instanceof \ReflectionNamedType && !$tipo->isBuiltin()) {
+                $argumentos[] = app($tipo->getName());
+            } else {
+                $argumentos[] = $parametro->isDefaultValueAvailable() ? $parametro->getDefaultValue() : null;
+            }
+        }
+
+        return $reflexao->newInstanceArgs($argumentos);
+    }
+}
+
 namespace {
     // o DB::transaction falso desfaz estas listas junto com as tabelas (rollback)
     \Teste\Banco::$modelos = [
@@ -377,6 +500,9 @@ namespace {
         \Fleetbase\FleetOps\Models\Place::class   => ['todos', 'criados'],
         \Fleetbase\FleetOps\Models\Payload::class => ['salvos'],
     ];
+
+    // a tabela orders do join do entregas:ifood-acompanhar: os Orders falsos
+    \Teste\Banco::$externas['orders'] = fn () => array_map(fn ($pedido) => get_object_vars($pedido), \Fleetbase\FleetOps\Models\Order::$todos);
 
     /** Zera os models e cria a loja de teste: Vendor com o Local de coleta e o tipo de pedido transport da empresa. */
     function reiniciarFleetbase(): void
@@ -389,6 +515,9 @@ namespace {
         \Fleetbase\FleetOps\Models\Order::$todos       = [];
         \Fleetbase\FleetOps\Models\Order::$criados     = [];
         \Fleetbase\FleetOps\Models\Order::$falharDespacho = false;
+        \Fleetbase\FleetOps\Models\Order::$falharCancelamento = false;
+        \Fleetbase\FleetOps\Models\Driver::$todos      = [];
+        \Teste\Container::$instancias                  = [];
         \Fleetbase\Support\Auth::$usuario              = null;
 
         \Fleetbase\FleetOps\Models\Place::$todos[]       = new \Fleetbase\FleetOps\Models\Place(['uuid' => 'place-loja', 'company_uuid' => 'empresa-1', 'name' => 'PIZZARIA FICTICIA', 'owner_uuid' => 'vendor-a', 'owner_type' => 'fleet-ops:vendor', 'location' => new \Fleetbase\LaravelMysqlSpatial\Types\Point(-21.1775, -47.8103)]);

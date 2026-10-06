@@ -251,11 +251,9 @@ Os pedidos iFood dos restaurantes entram pelo módulo **Logistics** da Merchant 
   - desenho e decisões: `docs/superpowers/specs/2026-10-05-integracao-ifood-logistics-design.md`;
   - referência da API: `docs/ifood/referencia-logistics.md` (a seção "Descobertas da sonda" vale mais que o resto);
   - planos `docs/superpowers/plans/2026-10-05-ifood-etapa-2a-servidor.md` e `-2b-tela-lojas.md`, executados com ajustes de revisão: **o código é a referência**.
-- **Situação:** etapa 2 em produção e testada com a loja de teste em 2026-10-06. As etapas 3 (ações de logística, GPS, cancelamento) e 4 (APK e console) ainda não existem.
-- **Não vincule loja real antes da etapa 3.**
-  - O CAN não cancela o pedido no Entregas: só grava `cancelado_pelo_ifood_em` e, se o pedido ainda não foi despachado (agendado ou despacho que falhou), o tira do agendamento e da fila. O pedido já despachado continua aberto aos motoboys, e a central precisa cancelar à mão no console.
-  - Até lá, vincule só a loja de teste.
-  - **O pedido de teste (`isTest`) vai aos motoboys como o real** (decisão de 2026-10-06): os motoboys online perto da loja de teste recebem o alarme, com o endereço falso "RUA TESTE" (entrega ~1 km ao norte). Avise-os antes de gerar um pedido de teste.
+- **Situação:** etapa 2 em produção e testada com a loja de teste em 2026-10-06; etapa 3 (ações de logística, GPS, cancelamento, rotas do motoboy) implementada em 2026-10-06, ramo `ifood-etapa-3` (plano `docs/superpowers/plans/2026-10-06-ifood-etapa-3-ciclo.md`), ainda sem push, deploy e teste real. A etapa 4 (APK, console e portal) é o plano `2026-10-06-ifood-etapa-4-app-console.md`.
+- **Não vincule loja real antes do APK da etapa 4 em todos os celulares** e da trava "Atualize o app" ligada (ver "Integração iFood (etapa 3: ciclo da entrega)"). Até lá, só a loja de teste.
+- **O pedido de teste (`isTest`) vai aos motoboys como o real** (decisão de 2026-10-06): os motoboys online perto da loja de teste recebem o alarme, com o endereço falso "RUA TESTE" (entrega ~1 km ao norte). Avise-os antes de gerar um pedido de teste. Desde a etapa 3 ele também pede o código de entrega quando o iFood exige (a central pode usar "Liberar sem código").
 
 ### Como ligar
 
@@ -335,7 +333,7 @@ Fora dessa pasta:
   - 30 min depois do `despachar_em` sem conseguir, desiste: tira da fila, grava o log `despacho desistiu` e toca no console o aviso sonoro "sem motoboy" (`entregas.pedido_sem_motoboy`, uma tentativa).
 - **Outros eventos:**
   - DDCR marca `exige_codigo`;
-  - CAN grava `cancelado_pelo_ifood_em`. No pedido ainda não despachado nem aceito (agendado ou despacho que falhou), tira o Order do agendamento (`CriadorDoPedidoIfood::tirarDoAgendamento`: `scheduled_at` nulo e adhoc desligado, com a `TravaDoPedido`; senão o `fleetops:dispatch-orders` o despacharia aos motoboys na hora marcada) e a linha da fila do agendador. O Order **não é cancelado** (etapa 3). Com a trava ocupada, o CAN fica pendente e o job tenta de novo; o `entregas:ifood-agendados` faz o mesmo como reserva;
+  - CAN cancela o pedido no Entregas (etapa 3, `CancelamentoPeloIfood`; ver "Integração iFood (etapa 3: ciclo da entrega)") e tira a linha da fila do agendador (`despachar_em` nulo);
   - os outros códigos conhecidos só ficam registrados;
   - código desconhecido fica como ignorado, com warning no HSD (exige resposta da loja no iFood) e info nos outros.
 - **Cobrança:**
@@ -407,13 +405,11 @@ Todos com o prefixo `[entregas] ifood:` e só com ids, códigos e o número do p
 
 ### Riscos que ficam
 
-- **CAN não cancela o pedido até a etapa 3** (ver acima): o já despachado continua aberto aos motoboys; o não despachado só sai do agendamento. Pela mesma razão, a central e a loja (no portal, antes do aceite) ainda conseguem cancelar o pedido iFood do nosso lado sem o iFood saber.
 - **Agendado com motoboy atribuído pela central antes do horário:** o `fleetops:dispatch-orders` roda no mesmo minuto e pode despachar antes, com o adhoc ainda ligado.
   - Aí todos os motoboys livres do raio recebem o aviso, e qualquer um pode tomar o pedido.
   - Ao atribuir um agendado, desligue o "pedido aberto".
 - **Pedido sem coordenadas ou agendado sem janela** fica `created`, sem aviso à central além das notas e do log.
 - **Pedido que entra já depois da coleta** (integração parada) não é criado; fica só o warning `pedido já passou da coleta`.
-- **Na etapa 3, o CAN precisa da `TravaDoPedido`:** a trava do job é por id do iFood, não pelo pedido do Fleetbase.
 
 ### Ao atualizar o Laravel, o core-api ou o fleetops-api, confira
 
@@ -432,6 +428,79 @@ Todos com o prefixo `[entregas] ifood:` e só com ids, códigos e o número do p
   - o banco em memória conhece as colunas das migrations e recusa coluna inexistente (`ifood-stub-banco.php`);
   - pedidos fictícios em `fixtures-ifood.php`.
 - Funções da tela Lojas: `scripts/teste-portal/vinculo-ifood.test.mjs`.
+
+## Integração iFood (etapa 3: ciclo da entrega)
+
+Desenho: spec, seções 3 e 4. Plano: `docs/superpowers/plans/2026-10-06-ifood-etapa-3-ciclo.md` (executado com ajustes de revisão: **o código é a referência**). Tudo em `api/app` (nada em `packages/*/server` chega à produção).
+
+### Ações de logística
+
+- O servidor informa ao iFood cada etapa: motoboy definido → `assignDriver` (nome e telefone do cadastro, só dígitos, sem o 55, `MOTORCYCLE`); `started` → `goingToOrigin`; a até 100 m da coleta pelo GPS → `arrivedAtOrigin`; `enroute` ("A caminho") → `dispatch`; a até 100 m da entrega pelo GPS (ou a conclusão) → `arrivedAtDestination`.
+- **Gancho:** `Order::updated` (Eloquent, só com mudança em `driver_assigned_uuid`, `started` ou `status`) e `OrderDriverAssigned` (atribuição em lote), registrados no `AppServiceProvider::acompanharPedidosIfood` → `ObservadorDosPedidosIfood` → job `EnviarAcaoIfood` (`afterCommit`). O observador nunca lança. O `scheduleOrder` do console (`saveQuietly`) e jobs perdidos ficam com a reconciliação.
+- **Um job por pedido de cada vez:** `EnviarAcaoIfood::enfileirar` põe a marca `entregas:ifood-acao-pendente:<uuid>` no cache (120 s; volta junto com o `release()` e some no `failed()`); o job apaga a marca antes de ler o pedido.
+- **`AcoesIfood::sincronizar`** (`SequenciaIfood`, funções puras; trava `entregas:ifood-acao:<uuid>`, 90 s): o job **não recebe a ação**. Relê o pedido, calcula o alvo pelo estado e envia, em ordem, o que falta depois da `ultima_acao` (a única fonte do estado: o iFood não devolve evento das nossas ações). Cada ação aceita grava a `ultima_acao` na hora.
+  - **Orçamento de 45 s** no laço do job (20 s nas rotas síncronas `concluir-ifood`/`codigo-ifood`, `ConclusaoIfood::ORCAMENTO_NA_ROTA`): o resto volta como `incompleto` (o job volta para a fila em 1 s; a rota responde "tente de novo").
+  - **409 numa ação da sequência = já aceita** (reenvio depois de resposta ou gravação perdida): avança a `ultima_acao` e registra `[entregas] ifood: ação já aceita pelo iFood (409)` (info), sem recusa nem aviso. Um 409 por ordem errada também avança.
+  - **Troca de motoboy** (`motoboy_no_ifood` diferente do atribuído): `assignDriver` de novo. A documentação não diz se o iFood aceita depois do `goingToOrigin`. O 409 da troca é recusa com aviso à central **uma vez só**: o motoboy novo fica como marca (o iFood continua com o anterior) e o `dispatch` e o `arrivedAtDestination` seguem. Outra recusa na troca (400, vínculo, cadastro) para a sequência.
+  - **Recusa** (4xx que não seja o 409 da sequência, vínculo perdido, motoboy sem nome ou telefone): grava `recusa_acao`/`recusa_status`/`recusa_em`, log `[entregas] ifood: ação recusada` (ação, status e só `errorType`/`code`/`description`, nunca o corpo cru; no `assignDriver`, nome, telefone e sequências de 6+ dígitos saem mascarados) e aviso no console (`entregas.ifood_acao_recusada`, `IfoodAcaoRecusada`). Uma recusa não se repete sozinha: a próxima mudança do pedido tenta de novo, e uma ação aceita limpa a recusa.
+  - **Falha temporária** (429, 408, 5xx, rede): 429 volta pelo `Retry-After`; o resto, até 5 tentativas (10 s a 5 min) em 30 min. Esgotadas, `failed()` registra `ação não enviada; tentativas esgotadas` e a próxima ação vira recusa com aviso (`AcoesIfood::desistir`, trava com 2 s de espera; sai sem gravar se já há recusa).
+  - O corpo do `assignDriver` leva `#[\SensitiveParameter]` (fora do stack trace); ação sem corpo vai sem corpo.
+- **`entregas:ifood-acompanhar`** (30 s, `withoutOverlapping(5)`, em segundo plano): chegada pelo GPS (`ChegadaPeloGps`, `drivers.location` × coleta/entrega, raio de 100 m) e reconciliação (estado além da `ultima_acao`, ou motoboy trocado).
+  - O filtro é no SQL, antes do limite de 300 por rodada: join com `orders`, sem cancelado pelo iFood, sem recusa, sem `arrivedAtDestination`, Order não encerrado (exceto o concluído) e não apagado.
+  - Janela de 24 h pelo `despachado_em` ou pelo `created_at` (o agendado criado há mais de 24 h entra pelo despacho). Migration `2026_10_06_130000_add_indice_acompanhar_*` (índice em `created_at`).
+  - **Posição do motoboy com mais de 5 min** (`drivers.updated_at`: app fechado, sem sinal) não vale como chegada.
+
+### Cancelamento
+
+- **CAN** (`CancelamentoPeloIfood`, chamado pelo `ProcessarPedidoIfood`, com a `TravaDoPedido` e a trava das ações): concluído → nada muda (log); nos outros, sai dos abertos e do agendamento (`saveQuietly`: `dispatched` e `adhoc` falsos, `scheduled_at` nulo) e `Order::cancel()` (atividade, `OrderCanceled` → push ao motoboy atribuído, "Pedido #4821 cancelado pelo iFood"). Sem Order: só grava e registra (info). Idempotente: o job repete enquanto o CAN estiver pendente (trava ocupada).
+- **`pago_mesmo_cancelado`** quando o `dispatch` já foi aceito (`ultima_acao`) **ou** o Order está `enroute` (o motoboy tocou "A caminho", mesmo que o `dispatch` não tenha chegado ao iFood). O push acrescenta "Você recebe por esta entrega. Combine com a loja a devolução." e o pedido entra no relatório, na cobrança da loja e nos ganhos do app **pela data do cancelamento** (`CalculoEntregas::pedidosConcluidos`, `cancelado_pago` na linha).
+  - O extrato do portal da loja ainda não repassa o `cancelado_pago` (plano da etapa 4).
+- Exceção no cancelamento sobe como `RuntimeException` só com a classe e o SQLSTATE (o `failed_jobs` guarda a exceção inteira, e a do banco traz o SQL); `LockTimeoutException` passa como veio.
+- **Cancelamento do nosso lado é proibido** no pedido iFood (400 "Pedido do iFood: o cancelamento é feito no iFood."): `RegrasPortalLoja` (portal) e `RegrasDoPedidoIfood` (API v1 e console):
+  - API v1: `cancelOrder`, a atividade "canceled" no `updateActivity` e o `PUT v1/orders/{id}` (`update`) com `status` de cancelamento;
+  - console: `cancel`, `bulkCancel`, a atividade "canceled" (inclusive o arrastar do quadro) e o `PUT/PATCH int/v1/orders/{id}` (`updateRecord`) com `order.status` de cancelamento.
+  - Com problema do motoboy, a central troca o motoboy.
+  - **Saída da central:** o cancelamento pelo console e pela API v1 passa quando a linha já tem `cancelado_pelo_ifood_em` (o iFood já cancelou: CAN que não cancelou o Order, ou cancelamento local que falhou) **ou** com a integração desligada (`ENTREGAS_IFOOD=` vazio, desligamento de emergência). Fica no log `cancelamento liberado no pedido do iFood`. O portal da loja continua barrado sempre.
+  - O `RegrasDoPedidoIfood` só consulta o pedido quando a ação pode ser barrada (cancelamento, ou conclusão com a trava ligada): a `update-activity` comum do app passa sem ir ao banco.
+
+### Conclusão e código de entrega
+
+- App (APK da etapa 4): `POST v1/entregas/motoboy/pedidos/{id}/concluir-ifood` (`ConclusaoIfood::concluir`) garante o `arrivedAtDestination` na hora. Recusa dessas ações não prende o motoboy (a central já foi avisada). Com `exige_codigo` (DDCR) responde `precisa_codigo`; senão libera. iFood fora do ar, trava ocupada ou ação por enviar: 503 "tente de novo".
+- `POST .../codigo-ifood` (3 a 10 dígitos) confere o código na hora (`verifyDeliveryCode`): 400/422 cuja `description`/`message`/`code` diz código inválido ("Confirmation code is invalid", "Invalid delivery code", "code does not match") ou `success: false` num 2xx = `codigo_incorreto` (HTTP 422, conta para o teto); outro 4xx (inclusive 409 e 412) = 409 `codigo_nao_conferido` ("Não foi possível conferir o código neste pedido. Peça à central para liberar.", não conta para o teto); 408, 429, 5xx e rede = 503 "tente de novo". O log leva só `errorType`/`code`/`description` (`AcoesIfood::resumoDoErro`), com o código digitado mascarado. Certo (ou sem código exigido) grava `conclusao_liberada_em` e o app conclui pelo `update-activity` de sempre.
+  - Com a trava das ações, a linha é relida antes do `verifyDeliveryCode`: já liberada (dois cliques, ou a central liberou) → `pode_concluir` sem chamar o iFood.
+  - **Teto de 10 códigos errados por pedido** (contador no cache `entregas:ifood-codigo-erros:<uuid>`, 3 dias; iFood fora do ar não conta): depois dele, 429 `{"resultado": "muitas_tentativas"}` ("Muitas tentativas: peça à central para liberar.") sem chamar o iFood. Vale além do limitador `entregas-ifood-codigo` (10 por minuto por motoboy).
+- **Pedido de teste também pede o código** (o Gestor de Pedidos pediu no teste): segue o `exige_codigo`. De onde tirar o código de um pedido de teste fica a conferir. Sem ele, a central usa **"Liberar sem código"** no painel iFood do console (`POST int/v1/entregas/pedidos/{id}/ifood/liberar-sem-codigo`, só admin): `conclusao_sem_codigo`, log `[entregas] ifood: conclusão sem código liberada pela central`; o iFood conclui sozinho 4 h depois. Já liberado, não grava nem registra de novo. Concluir pelo console um pedido que exigia código também marca `conclusao_sem_codigo` (warning no log).
+- **Trava "Atualize o app"** (`ENTREGAS_IFOOD_EXIGE_APP_NOVO=1` no `stack.env`, **desligada por padrão**): a conclusão comum de pedido iFood pela API v1 (`updateActivity` que conclui, `completeOrder`) sem `conclusao_liberada_em` responde 400 "Atualize o app para concluir pedidos do iFood.". A conclusão pelo console passa. **Ligue só depois do APK da etapa 4 em todos os celulares**; com ela desligada, o APK antigo conclui sem código (o iFood conclui sozinho 4 h depois).
+- **Não vincule loja real antes do APK da etapa 4 em todos os celulares.** Sem ele, o motoboy não vê o valor a cobrar na porta nem confere o código do cliente, e a trava não pode ser ligada. Até lá, só a loja de teste.
+- `GET v1/entregas/motoboy/pedidos/{id}/ifood` (`DadosIfoodDoMotoboy`): número, cobrança (texto da `CobrancaIfood`; o troco aparece sempre que existe, inclusive com "MISTO"; `GIFT_CARD` = "vale-presente", `OTHER` = "outra forma"), observações, complemento, referência, código exigido, conclusão liberada, cancelamento; 0800 e localizador só para o motoboy do pedido, em andamento e antes de expirar. O alarme leva `entregas_ifood` e `entregas_cobrar`.
+- Painel do console: `GET int/v1/entregas/pedidos/{id}/ifood` (só admin; `IfoodPedidosController`; ações pelo código, traduzidas no console).
+
+### Colunas novas e logs
+
+- `entregas_ifood_pedidos`: `ultima_acao`, `motoboy_no_ifood`, `recusa_acao`/`recusa_status`/`recusa_em`, `conclusao_liberada_em` e `conclusao_sem_codigo` (migration `2026_10_06_120000_add_ciclo_*`).
+- Fila (`docker service logs entregas_queue 2>&1 | grep '\[entregas\] ifood'`): `ação enviada`, `ação já aceita pelo iFood (409)`, `ação recusada`, `ação não enviada; tentativas esgotadas`, `pedido cancelado pelo iFood`, `pedido concluído sem o código do cliente`.
+- Scheduler (`entregas_scheduler`): `chegada pelo GPS`, `falha ao acompanhar o pedido`.
+- Aplicação (`entregas_application`): `código de entrega conferido`/`incorreto`/`não conferido pelo iFood`, `falha ao conferir o código de entrega`, `conclusão sem código liberada pela central`, `ação barrada no pedido do iFood` (API v1, console e portal da loja; só ids nossos), `cancelamento liberado no pedido do iFood`, `conclusão sem resposta do iFood`.
+
+### Armadilhas da etapa 3
+
+- **O `LogApiRequests` do core grava o corpo das chamadas da API v1**, inclusive o `POST v1/entregas/motoboy/pedidos/{id}/codigo-ifood` (o código de entrega) e o token, na tabela `api_request_logs` (Developers → Logs, só admin). O código vale uma vez, mas quem tem acesso aos logs o enxerga.
+- **O `internal_id` do pedido pode repetir entre pedidos** (é o número do iFood). O app e as rotas do motoboy usam o `public_id`; a busca do `RegrasDoPedidoIfood` aceita uuid, `public_id` e `internal_id`, sempre filtrada pela empresa da sessão.
+- **Ação recusada para a sequência:** uma ação recusada antes (ex.: `dispatch` com 400) impede o `arrivedAtDestination` de ir na ordem. O motoboy segue para o código, e a central usa "Liberar sem código" no painel iFood.
+- Ação sem corpo (ex.: `goingToOrigin`) vai com o `send('POST')` do Laravel e `Content-Type: application/json`: **a conferir na produção** (400 ou 415 → trocar por POST sem cabeçalho de corpo).
+- **Fila única (risco aceito até a primeira loja real):** os jobs iFood (`EnviarAcaoIfood`, `ProcessarPedidoIfood`) dividem o único worker (`entregas_queue`) com os push e as notificações. Uma rajada de um lado atrasa o outro. **Antes da primeira loja real**, entram `onQueue('ifood')` nos jobs iFood e um segundo worker no stack (`queue:work --queue=ifood`, serviço novo no Portainer).
+- **A conferir (Task 15 do plano):** troca de motoboy depois do `goingToOrigin`; raio de 100 m; origem do código de um pedido de teste; formato do `workerPhone`; `fleetbase.protected` com o `RegrasDoPedidoIfood` (cancelar pelo console deve dar 400).
+
+### Ao atualizar o fleetops-api, confira
+
+- que todo status ainda passa por `setStatus(…, true)` → `save()` e que o `startOrder` grava `started` com `save()` (gancho `Order::updated`);
+- o `OrderDriverAssigned` e o `NotifyBulkAssignedDriver`;
+- os nomes das ações barradas (`Api\v1\OrderController@cancelOrder|update|updateActivity|completeOrder`, `Internal\v1\OrderController@cancel|bulkCancel|updateActivity|updateRecord`) e o corpo (`order`, `ids`, `activity.code`, `status`, `order.status`);
+- que o `Order::cancel()` ainda não tira o motoboy e que o `HandleOrderCanceled` notifica o atribuído.
+
+### Testes da etapa 3
+
+`scripts/teste-php/ifood-sequencia.php`, `ifood-cliente-acoes.php`, `ifood-acoes.php`, `ifood-acompanhar.php`, `ifood-cancelamento.php`, `ifood-regras.php`, `ifood-conclusao.php` e `ifood-ligacoes.php` (php-wasm), além de `ganhos-motoboy.php` e `cartao-do-alarme.php`.
 
 ## Marca Entregas RestaurantePro (sem Fleetbase na tela)
 
@@ -574,3 +643,4 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 16. Raio crescente nos reenvios de pedido aberto e aviso "sem motoboy" à central no console (2026-10-05), etapa 1 da integração iFood (spec `docs/superpowers/specs/2026-10-05-integracao-ifood-logistics-design.md`).
 17. Servidor no horário de Brasília (2026-10-05, ramo `fuso-brasilia`): PHP e sessão do MySQL em -03:00, `Date::useCallable`, comandos agendados do Fleet-Ops sem `date_default_timezone_set('UTC')`, relatório, ganhos e iFood no fuso do app, e conversão das DATETIME (`deploy/fuso/`).
 17. Integração iFood, etapa 2 (2026-10-05, ramo `ifood-etapa-2`): três tabelas, vínculo das lojas na tela Lojas (app distribuído), polling a cada 30 s com ack depois da gravação, job por pedido que cria o pedido no PLC e despacha como o portal, agendados 40 min antes da janela, renovação dos tokens e varredura dos pendentes (ver "Integração iFood").
+18. Integração iFood, etapa 3 (2026-10-06, ramo `ifood-etapa-3`): ações de logística pelos eventos do Fleetbase e pelo GPS, CAN cancela (pago mesmo cancelado), cancelamento do nosso lado proibido, rotas do motoboy (dados, conclusão, código), "Liberar sem código" no console e a trava "Atualize o app" atrás do `ENTREGAS_IFOOD_EXIGE_APP_NOVO` (desligada) (ver "Integração iFood (etapa 3: ciclo da entrega)").

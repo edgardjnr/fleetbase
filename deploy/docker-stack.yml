@@ -65,6 +65,9 @@ x-api-env: &api-env
   ENTREGAS_IFOOD: ${ENTREGAS_IFOOD:-}
   IFOOD_CLIENT_ID: ${IFOOD_CLIENT_ID:-}
   IFOOD_CLIENT_SECRET: ${IFOOD_CLIENT_SECRET:-}
+  # trava "Atualize o app" dos pedidos iFood (RegrasDoPedidoIfood): vazio = desligada; 1 só com o APK novo em todos os
+  # celulares (CLAUDE.md, "Integração iFood (etapa 3)")
+  ENTREGAS_IFOOD_EXIGE_APP_NOVO: ${ENTREGAS_IFOOD_EXIGE_APP_NOVO:-}
 
 x-deploy: &default-deploy
   replicas: 1

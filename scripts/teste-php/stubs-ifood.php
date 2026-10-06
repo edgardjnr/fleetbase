@@ -45,6 +45,7 @@ namespace Illuminate\Support {
         public function subMinutes($n): static { $this->modify('-' . (int) $n . ' minutes'); return $this; }
         public function subMinute(): static { return $this->subMinutes(1); }
         public function addHour(): static { $this->modify('+1 hour'); return $this; }
+        public function subHours($n): static { $this->modify('-' . (int) $n . ' hours'); return $this; }
         public function subDays($n): static { $this->modify('-' . (int) $n . ' days'); return $this; }
         public function toDateTimeString(): string { return $this->format('Y-m-d H:i:s'); }
         public function toIso8601String(): string { return $this->format('Y-m-d\TH:i:sP'); }
@@ -120,6 +121,16 @@ namespace Illuminate\Support\Facades {
         }
 
         public static function dropIfExists(string $tabela): void { unset(self::$criadas[$tabela]); }
+
+        /** Schema::table (migration que acrescenta colunas): tabela => [Blueprint, ...], na ordem. */
+        public static array $alteradas = [];
+
+        public static function table(string $tabela, \Closure $definicao): void
+        {
+            $blueprint = new \Illuminate\Database\Schema\Blueprint();
+            $definicao($blueprint);
+            self::$alteradas[$tabela][] = $blueprint;
+        }
     }
 }
 
@@ -391,6 +402,8 @@ namespace Teste {
         public function timeout($segundos) { $this->opcoes['timeout'] = $segundos; return $this; }
         public function get($url, $query = []) { return $this->enviar('GET', $url, $query); }
         public function post($url, $dados = []) { return $this->enviar('POST', $url, $dados); }
+        // send('POST', $url) sem opções = POST sem corpo (as ações de logística do iFood); dados = null
+        public function send($metodo, $url, array $opcoes = []) { return $this->enviar(strtoupper($metodo), $url, $opcoes['json'] ?? null); }
 
         private function enviar(string $metodo, string $url, $dados)
         {
@@ -432,6 +445,8 @@ namespace Teste {
         public static array $proximoId = [];
         /** Classe => [nomes das listas estáticas]: models falsos que o DB::transaction desfaz junto (stubs-ifood-fleetbase.php). */
         public static array $modelos = [];
+        /** Tabela => função que devolve as linhas (arrays) de uma tabela fora do banco em memória, para o join (ex.: orders). */
+        public static array $externas = [];
         /**
          * Colunas e colunas únicas das tabelas entregas_ifood_*, lidas das migrations (carregadas uma vez, na primeira
          * consulta): tabela => ['colunas' => [nomes], 'unicas' => [nomes]]. Assim um nome de coluna errado falha aqui,
@@ -460,14 +475,28 @@ namespace Teste {
             if (self::$esquema !== null) {
                 return self::$esquema;
             }
-            $guardadas = \Illuminate\Support\Facades\Schema::$criadas;
+            $guardadas  = \Illuminate\Support\Facades\Schema::$criadas;
+            $alteradas  = \Illuminate\Support\Facades\Schema::$alteradas;
             self::$esquema = [];
-            foreach (glob(dirname(__DIR__, 2) . '/api/database/migrations/*_create_entregas_ifood_*_table.php') ?: [] as $arquivo) {
-                \Illuminate\Support\Facades\Schema::$criadas = [];
+            // as que criam e as que acrescentam colunas (Schema::table), na ordem dos arquivos (a data no nome)
+            foreach (glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_ifood_*_table.php') ?: [] as $arquivo) {
+                \Illuminate\Support\Facades\Schema::$criadas   = [];
+                \Illuminate\Support\Facades\Schema::$alteradas = [];
                 (require $arquivo)->up();
+                $blueprints = [];
                 foreach (\Illuminate\Support\Facades\Schema::$criadas as $tabela => $blueprint) {
+                    self::$esquema[$tabela] = ['colunas' => [], 'unicas' => [], 'padroes' => []];
+                    $blueprints[]           = [$tabela, $blueprint];
+                }
+                foreach (\Illuminate\Support\Facades\Schema::$alteradas as $tabela => $lista) {
+                    foreach ($lista as $blueprint) {
+                        $blueprints[] = [$tabela, $blueprint];
+                    }
+                }
+                foreach ($blueprints as [$tabela, $blueprint]) {
                     $colunas = [];
                     $unicas  = [];
+                    $padroes = [];
                     foreach ($blueprint->colunas as $coluna) {
                         $primeiro = $coluna->argumentos[0] ?? null;
                         if ($coluna->tipo === 'timestamps') {
@@ -480,12 +509,21 @@ namespace Teste {
                             if (array_key_exists('unique', $coluna->modificadores)) {
                                 $unicas[] = $primeiro;
                             }
+                            // ->default(x): o valor que o MySQL põe quando o insert não traz a coluna
+                            if (array_key_exists('default', $coluna->modificadores)) {
+                                $padroes[$primeiro] = $coluna->modificadores['default'][0] ?? null;
+                            }
                         }
                     }
-                    self::$esquema[$tabela] = ['colunas' => $colunas, 'unicas' => $unicas];
+                    self::$esquema[$tabela] = [
+                        'colunas' => array_merge(self::$esquema[$tabela]['colunas'] ?? [], $colunas),
+                        'unicas'  => array_merge(self::$esquema[$tabela]['unicas'] ?? [], $unicas),
+                        'padroes' => array_merge(self::$esquema[$tabela]['padroes'] ?? [], $padroes),
+                    ];
                 }
             }
-            \Illuminate\Support\Facades\Schema::$criadas = $guardadas;
+            \Illuminate\Support\Facades\Schema::$criadas   = $guardadas;
+            \Illuminate\Support\Facades\Schema::$alteradas = $alteradas;
 
             return self::$esquema;
         }
@@ -499,10 +537,20 @@ namespace Teste {
         /** Lança como o MySQL ("Unknown column") se a coluna não existe na tabela entregas_ifood_*; as outras tabelas passam. */
         public static function exigirColuna(string $tabela, $coluna): void
         {
+            // "tabela.coluna" (com join): confere na tabela do prefixo
+            if (is_string($coluna) && str_contains($coluna, '.')) {
+                [$tabela, $coluna] = explode('.', $coluna, 2);
+            }
             $colunas = self::esquema()[$tabela]['colunas'] ?? null;
             if ($colunas !== null && is_string($coluna) && $coluna !== '*' && !in_array($coluna, $colunas, true)) {
                 throw new \RuntimeException("coluna desconhecida {$coluna} em {$tabela}");
             }
+        }
+
+        /** As linhas (arrays) de uma tabela para o join: as do banco em memória ou as de Banco::$externas. */
+        public static function linhasDe(string $tabela): array
+        {
+            return isset(self::$externas[$tabela]) ? (self::$externas[$tabela])() : (self::$tabelas[$tabela] ?? []);
         }
 
         /** As linhas da tabela, como objetos (o que o DB::table()->get() devolve). */
@@ -561,13 +609,46 @@ namespace Teste {
                 throw self::erroDeRepetida($tabela, $repetida, $linha[$repetida]);
             }
             $id                             = self::$proximoId[$tabela] = (self::$proximoId[$tabela] ?? 0) + 1;
-            self::$tabelas[$tabela][$id] = ['id' => $id] + $linha;
+            // como o MySQL, a coluna que o insert não trouxe existe na linha: com o ->default() da migration, ou NULL
+            $esquema = self::esquema()[$tabela] ?? [];
+            self::$tabelas[$tabela][$id] = ['id' => $id] + $linha + ($esquema['padroes'] ?? []) + array_fill_keys($esquema['colunas'] ?? [], null);
 
             return true;
         }
     }
 
-    // o query builder do DB::table, só no que as classes do iFood usam (todos os where ligados por E)
+    // subgrupo de um where(function ($q) {...}): OU de grupos E, com where, orWhere, whereNull e orWhereNull
+    class GrupoDeFiltros
+    {
+        private array $grupos = [[]];
+        public function __construct(private string $tabela) {}
+        public function where($coluna, $operador = null, $valor = null)
+        {
+            if (func_num_args() === 2) {
+                $valor    = $operador;
+                $operador = '=';
+            }
+            Banco::exigirColuna($this->tabela, $coluna);
+            $this->grupos[array_key_last($this->grupos)][] = fn (array $linha) => Consulta::compara($linha[$coluna] ?? null, $operador, $valor);
+
+            return $this;
+        }
+        public function orWhere(...$argumentos) { $this->grupos[] = []; return $this->where(...$argumentos); }
+        public function whereNull($coluna) { Banco::exigirColuna($this->tabela, $coluna); $this->grupos[array_key_last($this->grupos)][] = fn (array $linha) => ($linha[$coluna] ?? null) === null; return $this; }
+        public function orWhereNull($coluna) { $this->grupos[] = []; return $this->whereNull($coluna); }
+        public function passa(array $linha): bool
+        {
+            foreach ($this->grupos as $grupo) {
+                if ($grupo && array_reduce($grupo, fn ($todos, $filtro) => $todos && $filtro($linha), true)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    // o query builder do DB::table, só no que as classes do iFood usam (where ligados por E; where com closure = subgrupo OU)
     class Consulta
     {
         private array $filtros = [];
@@ -575,6 +656,8 @@ namespace Teste {
         private ?int $limite   = null;
         private bool $distinta = false;
         private ?string $grupo = null;
+        /** [tabela, coluna, coluna] de cada join(). */
+        private array $juncoes = [];
         /** [coluna, direção] do orderByRaw('min(coluna) asc|desc'), ou null. */
         private ?array $ordemPeloMinimo = null;
 
@@ -582,6 +665,14 @@ namespace Teste {
 
         public function where($coluna, $operador = null, $valor = null)
         {
+            // where(function ($q) {...}): subgrupo com orWhere (OU de grupos E)
+            if ($coluna instanceof \Closure) {
+                $grupo = new GrupoDeFiltros($this->tabela);
+                $coluna($grupo);
+                $this->filtros[] = fn (array $linha) => $grupo->passa($linha);
+
+                return $this;
+            }
             if (func_num_args() === 2) {
                 $valor    = $operador;
                 $operador = '=';
@@ -593,6 +684,11 @@ namespace Teste {
         }
 
         public function whereIn($coluna, array $valores) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => in_array($linha[$coluna] ?? null, $valores, true); return $this; }
+        public function whereNotIn($coluna, array $valores) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => ($linha[$coluna] ?? null) !== null && !in_array($linha[$coluna], $valores, true); return $this; }
+        // join(tabela, 'tabela.coluna', '=', 'outra.coluna'): inner join; os filtros e a ordem usam "tabela.coluna"
+        public function join(string $tabela, string $primeira, string $operador, string $segunda) { $this->juncoes[] = [$tabela, $primeira, $segunda]; return $this; }
+        // select('tabela.*'): com join, o get() devolve só as colunas da tabela principal (o único select usado com join)
+        public function select(...$colunas) { return $this; }
         public function whereNull($coluna) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => ($linha[$coluna] ?? null) === null; return $this; }
         public function whereNotNull($coluna) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => ($linha[$coluna] ?? null) !== null; return $this; }
         public function orderBy($coluna, $direcao = 'asc') { Banco::exigirColuna($this->tabela, $coluna); $this->ordem[] = [$coluna, strtolower($direcao)]; return $this; }
@@ -635,9 +731,43 @@ namespace Teste {
             };
         }
 
+        /** Linhas da tabela principal com as colunas das tabelas do join (inner: sem par, a linha sai), por id. */
+        private function juntadas(array $base): array
+        {
+            $saida = [];
+            foreach ($base as $id => $linha) {
+                $junta = $linha;
+                foreach ($linha as $coluna => $valor) {
+                    $junta[$this->tabela . '.' . $coluna] = $valor;
+                }
+                foreach ($this->juncoes as [$tabela, $primeira, $segunda]) {
+                    [$daJuntada, $daOutra] = str_starts_with($primeira, $tabela . '.') ? [$primeira, $segunda] : [$segunda, $primeira];
+                    $chave = substr($daJuntada, strlen($tabela) + 1);
+                    $par   = null;
+                    foreach (Banco::linhasDe($tabela) as $outra) {
+                        if (($outra[$chave] ?? null) !== null && ($outra[$chave] ?? null) === ($junta[$daOutra] ?? null)) {
+                            $par = $outra;
+                            break;
+                        }
+                    }
+                    if ($par === null) {
+                        continue 2;
+                    }
+                    foreach ($par as $coluna => $valor) {
+                        $junta[$tabela . '.' . $coluna] = $valor;
+                    }
+                }
+                $saida[$id] = $junta;
+            }
+
+            return $saida;
+        }
+
         private function selecionadas(): array
         {
-            $linhas = array_filter(Banco::$tabelas[$this->tabela] ?? [], function (array $linha) {
+            $base   = Banco::$tabelas[$this->tabela] ?? [];
+            $linhas = $this->juncoes ? $this->juntadas($base) : $base;
+            $linhas = array_filter($linhas, function (array $linha) {
                 foreach ($this->filtros as $filtro) {
                     if (!$filtro($linha)) {
                         return false;
@@ -651,7 +781,19 @@ namespace Teste {
                 uasort($linhas, fn ($a, $b) => $direcao === 'desc' ? (($b[$coluna] ?? null) <=> ($a[$coluna] ?? null)) : (($a[$coluna] ?? null) <=> ($b[$coluna] ?? null)));
             }
 
-            return $this->limite === null ? $linhas : array_slice($linhas, 0, $this->limite, true);
+            $linhas = $this->limite === null ? $linhas : array_slice($linhas, 0, $this->limite, true);
+
+            // com join, devolve as linhas da tabela principal, na ordem já calculada
+            if ($this->juncoes) {
+                $principais = [];
+                foreach (array_keys($linhas) as $id) {
+                    $principais[$id] = $base[$id];
+                }
+
+                return $principais;
+            }
+
+            return $linhas;
         }
 
         public function get($colunas = ['*']) { return new \Illuminate\Support\Collection(array_values(array_map(fn ($linha) => (object) $linha, $this->selecionadas()))); }
@@ -792,6 +934,8 @@ namespace Teste {
     class FabricaDeResposta
     {
         public function json($dados = [], int $status = 200) { return new RespostaJson($dados, $status); }
+        // o macro apiError do Fleetbase: {"error": "..."} (400 por padrão)
+        public function apiError($mensagem, int $status = 400) { return new RespostaJson(['error' => $mensagem], $status); }
     }
 }
 

@@ -2,8 +2,11 @@
 
 namespace App\Support\Entregas;
 
+use App\Support\Entregas\Ifood\CobrancaIfood;
+use App\Support\Entregas\Ifood\PedidosIfood;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Entregas RestaurantePro: o que o cartão do alarme de pedido mostra no app (AlarmePedidoActivity), como o aviso da Uber:
@@ -17,6 +20,8 @@ use Fleetbase\FleetOps\Models\Vendor;
  * O mapa do cartão (coleta, entrega e a linha da rota) vai em entregas_coleta e entregas_entrega ("lat,lng") e
  * entregas_rota (o traçado do RotaDoPedido, o mesmo OSRM do mapa do pedido, reduzido a MAX_PONTOS_DA_ROTA e codificado
  * como polyline do Google): o push de dados do FCM tem limite de 4 KB.
+ *
+ * Pedido iFood (etapa 3): entregas_ifood (o número) e entregas_cobrar (o texto da cobrança na porta, CobrancaIfood).
  */
 class CartaoDoAlarme
 {
@@ -56,7 +61,35 @@ class CartaoDoAlarme
             static::polyline(static::reduzir($rota['linha'] ?? [], static::MAX_PONTOS_DA_ROTA)),
             $pedido->status,
             !empty($rota['aproximado'])
-        ));
+        ), static::ifoodDoPedido($pedido));
+    }
+
+    /**
+     * Pedido iFood: entregas_ifood (o número, "4821") e entregas_cobrar ("Cobrar R$ 58,90 · dinheiro · troco p/ R$ 100",
+     * só com valor a cobrar na porta). O cartão do APK da etapa 4 mostra os dois em destaque; o APK antigo ignora.
+     */
+    public static function ifood(?object $linha): array
+    {
+        if (!$linha) {
+            return [];
+        }
+
+        return array_filter([
+            'entregas_ifood'  => isset($linha->numero) && $linha->numero !== '' ? (string) $linha->numero : null,
+            'entregas_cobrar' => CobrancaIfood::texto((int) ($linha->cobrar_centavos ?? 0), $linha->forma_pagamento ?? null, isset($linha->troco_para_centavos) ? (int) $linha->troco_para_centavos : null),
+        ], fn ($valor) => $valor !== null);
+    }
+
+    /** Os dados do iFood do pedido; uma falha na consulta não tira o resto do cartão. */
+    protected static function ifoodDoPedido(Order $pedido): array
+    {
+        try {
+            return static::ifood(PedidosIfood::doPedido((string) $pedido->uuid));
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] alarme sem os dados do iFood', ['pedido' => $pedido->public_id, 'erro' => get_class($e)]);
+
+            return [];
+        }
     }
 
     /**

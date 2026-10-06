@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Http\Controllers\Entregas\ConversasDaLojaController;
 use App\Http\Controllers\Entregas\IfoodLojasController;
+use App\Http\Controllers\Entregas\IfoodPedidosController;
 use App\Http\Controllers\Entregas\LojasController;
 use App\Http\Controllers\Entregas\MapaController;
 use App\Http\Controllers\Entregas\MotoboyController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use App\Http\Controllers\Entregas\PortalLojaController;
 use App\Http\Middleware\AvisarOnlineDoMotoboy;
 use App\Http\Middleware\BarrarAceiteDePedidoEncerrado;
+use App\Http\Middleware\RegrasDoPedidoIfood;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
@@ -38,6 +40,12 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        // Entregas RestaurantePro: pedido iFood não se cancela do nosso lado (API v1, console) e, com a trava
+        // ENTREGAS_IFOOD_EXIGE_APP_NOVO, só se conclui pela rota concluir-ifood do APK novo (ver RegrasDoPedidoIfood). Antes
+        // do BarrarAceiteDePedidoEncerrado: o cancelamento recusado nem pega a trava do pedido
+        $this->app['router']->pushMiddlewareToGroup('fleetbase.api', RegrasDoPedidoIfood::class);
+        $this->app['router']->pushMiddlewareToGroup('fleetbase.protected', RegrasDoPedidoIfood::class);
+
         // Entregas RestaurantePro: aceite do motoboy (v1/orders/{id}/start) de pedido encerrado é barrado, e o
         // cancelamento da API v1 roda com a mesma trava do aceite. O core preenche o grupo fleetbase.api no boot()
         // dele, e os pacotes sobem antes dos providers do app: este entra no fim do grupo, depois da autenticação
@@ -63,6 +71,10 @@ class RouteServiceProvider extends ServiceProvider
         // Entregas RestaurantePro: traçado da rota no mapa do pedido do app (cada card de pedido da lista pede o seu), até 120
         // chamadas por minuto por motoboy, num balde separado do entregas-motoboy (ganhos e valor)
         RateLimiter::for('entregas-motoboy-rota', fn (Request $request) => Limit::perMinute(120)->by('entregas-motoboy-rota:' . (session('user') ?: $request->ip())));
+
+        // Entregas RestaurantePro: código de entrega do iFood digitado pelo motoboy, até 10 tentativas por minuto por motoboy
+        // (contra tentar todos os códigos), além do entregas-motoboy e do teto de erros por pedido (ConclusaoIfood)
+        RateLimiter::for('entregas-ifood-codigo', fn (Request $request) => Limit::perMinute(10)->by('entregas-ifood-codigo:' . (session('user') ?: $request->ip())));
 
         // Entregas RestaurantePro: vínculo da loja com o iFood na tela Lojas (código de vínculo e troca do código de
         // autorização), até 20 chamadas por minuto por usuário, para um clique repetido não martelar o iFood
@@ -100,6 +112,9 @@ class RouteServiceProvider extends ServiceProvider
                         Route::post('lojas/{id}/ifood/codigo', [IfoodLojasController::class, 'codigo'])->middleware('throttle:entregas-ifood-vinculo');
                         Route::post('lojas/{id}/ifood/vincular', [IfoodLojasController::class, 'vincular'])->middleware('throttle:entregas-ifood-vinculo');
                         Route::delete('lojas/{id}/ifood', [IfoodLojasController::class, 'desvincular']);
+                        // painel iFood no detalhe do pedido e a liberação da conclusão sem o código do cliente
+                        Route::get('pedidos/{id}/ifood', [IfoodPedidosController::class, 'painel']);
+                        Route::post('pedidos/{id}/ifood/liberar-sem-codigo', [IfoodPedidosController::class, 'liberarSemCodigo']);
 
                         // mapa ao vivo do console: só os locais de coleta (lojas) e a situação de cada motoboy (cor do capacete)
                         Route::get('mapa/locais-de-coleta', [MapaController::class, 'locaisDeColeta']);
@@ -131,6 +146,10 @@ class RouteServiceProvider extends ServiceProvider
                         Route::post('chat-central', [MotoboyController::class, 'chatComACentral']);
                         // conversa do motoboy com a loja do pedido (ou com a central, em pedido sem loja)
                         Route::post('pedidos/{id}/chat', [MotoboyController::class, 'chatDoPedido']);
+                        // pedido iFood: dados (card e detalhes), conclusão e código de entrega do cliente
+                        Route::get('pedidos/{id}/ifood', [MotoboyController::class, 'ifood']);
+                        Route::post('pedidos/{id}/concluir-ifood', [MotoboyController::class, 'concluirIfood']);
+                        Route::post('pedidos/{id}/codigo-ifood', [MotoboyController::class, 'codigoIfood'])->middleware('throttle:entregas-ifood-codigo');
                     });
 
                 // Entregas RestaurantePro: traçado loja → cliente e situação do motoboy no mapa do pedido do app (MotoboyController@rota)

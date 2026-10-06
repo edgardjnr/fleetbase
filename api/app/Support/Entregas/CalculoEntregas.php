@@ -35,7 +35,9 @@ use Illuminate\Support\Facades\Log;
  * *restante*, que vai a ~0 quando o pedido termina.
  *
  * O período é filtrado pela data em que o pedido foi concluído (tracking status COMPLETED),
- * no fuso da organização.
+ * no fuso da organização. O pedido iFood cancelado pelo iFood depois do dispatch (pago_mesmo_cancelado, na
+ * entregas_ifood_pedidos) também entra, pela data do cancelamento (CancelamentoPeloIfood): o motoboy recebe e a loja é
+ * cobrada pelo valor da faixa, e a linha sai com cancelado_pago = true.
  *
  * O valor de cada entrega é congelado (ValoresCongelados, tabela entregas_valores_pedido): na primeira vez que o pedido
  * tem km e há faixas cadastradas, a faixa e os dois valores ficam gravados, e uma tabela de faixas nova só vale para as
@@ -51,6 +53,12 @@ class CalculoEntregas
 
     /** Quantas rotas novas calcular por chamada, por padrão (a tela repete enquanto houver pendentes). */
     public const LIMITE_CALCULOS = 40;
+
+    /**
+     * Data da entrega no relatório, na cobrança e nos ganhos: a do COMPLETED (ou o updated_at) para o pedido concluído; a
+     * do cancelamento pelo iFood para o pago mesmo cancelado (o único não concluído que entra: ver pedidosConcluidos).
+     */
+    public const DATA_DA_ENTREGA = "CASE WHEN orders.status = 'completed' THEN COALESCE(conclusoes.concluido_em, orders.updated_at) ELSE entregas_ifood.cancelado_pelo_ifood_em END";
 
     /** Linha reta → rua, usado só quando o OSRM não responde. */
     public const FATOR_ESTIMATIVA = 1.3;
@@ -73,8 +81,9 @@ class CalculoEntregas
     }
 
     /**
-     * Pedidos concluídos no período, com a data de conclusão em `entregas_concluido_em`.
-     * $filtro recebe a query para restringir (por motoboy, por loja).
+     * Pedidos concluídos no período, com a data de conclusão em `entregas_concluido_em`, e os pedidos iFood pagos mesmo
+     * cancelados, pela data do cancelamento (`entregas_cancelado_pago` = 1).
+     * $filtro recebe a query para restringir (por motoboy, por loja); use colunas com a tabela (orders.…).
      */
     public function pedidosConcluidos(string $companyUuid, Carbon $inicio, Carbon $fim, ?\Closure $filtro = null): Collection
     {
@@ -87,15 +96,18 @@ class CalculoEntregas
 
         return Order::query()
             ->leftJoinSub($conclusoes, 'conclusoes', 'conclusoes.tracking_number_uuid', '=', 'orders.tracking_number_uuid')
+            // a linha do iFood (uma por pedido, order_uuid único): o pago mesmo cancelado
+            ->leftJoin('entregas_ifood_pedidos as entregas_ifood', 'entregas_ifood.order_uuid', '=', 'orders.uuid')
             ->where('orders.company_uuid', $companyUuid)
-            ->where('orders.status', 'completed')
+            ->where(fn ($situacao) => $situacao->where('orders.status', 'completed')
+                ->orWhere(fn ($pago) => $pago->where('entregas_ifood.pago_mesmo_cancelado', true)->whereNotNull('entregas_ifood.cancelado_pelo_ifood_em')))
             ->whereNull('orders.deleted_at')
             ->whereNotNull('orders.driver_assigned_uuid')
-            ->whereBetween(DB::raw('COALESCE(conclusoes.concluido_em, orders.updated_at)'), [$inicio, $fim])
+            ->whereBetween(DB::raw(static::DATA_DA_ENTREGA), [$inicio, $fim])
             // o filtro vai entre parênteses: um orWhere dele não escapa da empresa, do status e do período
             // (é o isolamento do extrato da loja). A condição é booleana porque o when() executaria a closure
             ->when($filtro !== null, fn ($query) => $query->where(fn ($grupo) => $filtro($grupo)))
-            ->select('orders.*', DB::raw('COALESCE(conclusoes.concluido_em, orders.updated_at) as entregas_concluido_em'))
+            ->select('orders.*', DB::raw(static::DATA_DA_ENTREGA . ' as entregas_concluido_em'), DB::raw("CASE WHEN orders.status = 'completed' THEN 0 ELSE 1 END as entregas_cancelado_pago"))
             // coleta, destino e nome do motoboy em lote, sem uma consulta por pedido
             ->with(['payload.pickup', 'payload.dropoff', 'payload.waypoints', 'driverAssigned.user'])
             ->orderBy('entregas_concluido_em')
@@ -148,6 +160,8 @@ class CalculoEntregas
                 'faixa'         => $valor['faixa'] ?? null,
                 'valor_motoboy' => $valor['motoboy'] ?? null,
                 'valor_loja'    => $valor['loja'] ?? null,
+                // pedido iFood cancelado pelo iFood depois do dispatch: conta pela data do cancelamento
+                'cancelado_pago' => (bool) ($pedido->entregas_cancelado_pago ?? false),
             ];
         }
 

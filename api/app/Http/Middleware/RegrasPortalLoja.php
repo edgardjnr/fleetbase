@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Entregas\Ifood\PedidosIfood;
 use App\Support\Entregas\LojaDoUsuario;
 use App\Support\Entregas\StatusDoPedido;
 use App\Support\Entregas\TravaDoPedido;
@@ -26,7 +27,8 @@ use Symfony\Component\HttpFoundation\ParameterBag;
  *   delas); criado o pedido, ele é despachado como pedido aberto (adhoc) aos motoboys próximos, como faz a central.
  * - Cancelamento: só antes de um motoboy aceitar, conferido e feito com a trava do pedido (TravaDoPedido), a
  *   mesma do aceite no app; depois do portal, que só grava o status, grava a atividade e o evento do
- *   cancelamento e tira o pedido dos pedidos abertos do app do motoboy.
+ *   cancelamento e tira o pedido dos pedidos abertos do app do motoboy. Pedido do iFood nunca: 400 (o cancelamento é
+ *   feito no iFood; RegrasDoPedidoIfood barra o mesmo na API v1 e no console).
  * - Endereços: gravados com as coordenadas marcadas no mapa (o servidor não geocodifica). Endereço
  *   salvo não muda pelo portal (nem por edição, nem sobrescrito por um cadastro com o mesmo nome e
  *   rua): pedidos já feitos usam esses endereços e o km da cobrança sai deles.
@@ -197,6 +199,14 @@ class RegrasPortalLoja
         // pedido de outra loja (ou inexistente): o próprio portal responde 404
         if (!$pedido) {
             return $next($request);
+        }
+
+        // pedido do iFood: para nós vale o cancelamento do iFood (CAN), que a loja faz no Gestor de Pedidos
+        // (sempre: a saída da central com o iFood já cancelado ou a integração desligada não vale para a loja)
+        if (PedidosIfood::ehDoIfood((string) $pedido->uuid)) {
+            Log::info('[entregas] ifood: ação barrada no pedido do iFood', ['motivo' => 'cancelamento pelo portal da loja', 'pedido' => $pedido->public_id, 'order_uuid' => $pedido->uuid, 'usuario' => $usuario->uuid ?? null]);
+
+            return $this->erro(400, RegrasDoPedidoIfood::MENSAGEM_CANCELAMENTO);
         }
 
         // a conferência e o cancelamento com a trava do pedido, a mesma do aceite no app: o motoboy não aceita no meio

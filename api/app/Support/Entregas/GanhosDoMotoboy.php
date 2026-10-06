@@ -40,6 +40,8 @@ class GanhosDoMotoboy
             'aproximado'   => ($entrega['fonte'] ?? null) === 'estimativa',
             'faixa'        => static::limitesDaFaixa($entrega['faixa'] ?? null),
             'valor'        => $entrega['valor_motoboy'],
+            // pedido iFood cancelado pelo iFood depois do dispatch: ele recebe (data = a do cancelamento)
+            'cancelado_pago' => (bool) ($entrega['cancelado_pago'] ?? false),
         ];
     }
 
