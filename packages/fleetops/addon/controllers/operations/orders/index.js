@@ -143,6 +143,13 @@ export default class OperationsOrdersIndexController extends Controller {
                 filterComponent: 'filter/string',
             },
             {
+                // Entregas: selo "iFood #4821" do pedido que veio do iFood (vazio nos outros)
+                label: this.intl.t('fleet-ops.ui.ifood.coluna'),
+                valuePath: 'internal_id',
+                cellComponent: 'cell/pedido-ifood',
+                resizable: true,
+            },
+            {
                 label: this.intl.t('column.route-type'),
                 valuePath: 'payload.waypoints.length',
                 cellComponent: 'cell/order-route-type',

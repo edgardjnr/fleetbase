@@ -136,6 +136,7 @@ fleet-ops:
             click-store: Click a store to see its deliveries.
             store: Store
             without-store: No pickup place
+            cancelado-pago: Canceled by iFood (paid)
             charge: To charge
             deliveries-from: 'Deliveries from {name}'
             deliveries-of-from: 'Deliveries by {name} from {store}'
@@ -230,6 +231,52 @@ fleet-ops:
                 close: Close
         pedido-sem-motoboy:
             aviso: 'Order {numero} has had no driver for {minutos} min. Click to open and assign.'
+        ifood:
+            coluna: iFood
+            selo: 'iFood #{numero}'
+            selo-titulo: iFood order
+            painel-titulo: 'iFood #{numero}'
+            erro: Could not load the iFood data (only administrators see this panel).
+            ultima-acao: Last step sent to iFood
+            nenhuma-acao: None yet
+            ultima-recusa: Last iFood refusal
+            recusa: '{acao} (error {status})'
+            cobranca: Collect at the door
+            pago-online: Paid online (nothing to collect)
+            troco: 'change for {valor}'
+            codigo: Delivery code
+            codigo-nao-exigido: Not required
+            codigo-pendente: Required, not checked yet
+            codigo-conferido: Checked by the courier
+            codigo-dispensado: Completed without the code (released by the dispatcher or completed in the console)
+            observacoes: Customer notes
+            complemento: Complement and reference
+            referencia: 'Ref.: {texto}'
+            cancelado: Canceled by iFood
+            cancelado-pago: Canceled by iFood after pickup (the courier is paid and the store is charged)
+            liberar: Release without code
+            liberar-titulo: 'Release iFood order #{numero} without the code?'
+            liberar-texto: The courier will be able to complete without the customer's code. iFood keeps the confirmation pending and completes it on its own after 4 hours. Use it only when the customer does not have the code.
+            liberado: Completion released without the code.
+            nao-cancela: 'iFood order: cancel it in iFood (order manager).'
+            cancelar-em-lote: There is an iFood order in the selection. Cancel it in iFood; remove it from the selection.
+            aviso-recusa: 'iFood refused "{acao}" for order {numero} (error {status}). Click to open and check the iFood order manager.'
+            acao:
+                assignDriver: Courier assigned
+                goingToOrigin: Going to the store
+                arrivedAtOrigin: Arrived at the store
+                dispatch: Out for delivery
+                arrivedAtDestination: Arrived at the customer
+                desconhecida: Unknown step
+            forma:
+                dinheiro: cash
+                credito: credit card
+                debito: debit card
+                vale-refeicao: meal voucher
+                vale-alimentacao: food voucher
+                pix: Pix
+                carteira-digital: digital wallet
+                misto: mixed methods
         order-form:
             store-or-customer: Store or customer
             store-or-customer-placeholder: Select store or customer

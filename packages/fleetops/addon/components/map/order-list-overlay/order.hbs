@@ -21,6 +21,7 @@
             <div class="order-listing-row-subheader">
                 <div class="order-listing-row-header-title truncate">{{@order.tracking}}</div>
                 <Badge @status={{@order.status}} />
+                <PedidoIfood::Selo @order={{@order}} />
             </div>
         </div>
         <div class="order-listing-row-details">

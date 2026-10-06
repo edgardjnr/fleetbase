@@ -136,6 +136,7 @@ fleet-ops:
       click-store: Clique numa loja para ver as entregas dela.
       store: Loja
       without-store: Sem local de coleta
+      cancelado-pago: Cancelado pelo iFood (pago)
       charge: A cobrar
       deliveries-from: 'Entregas da loja {name}'
       deliveries-of-from: 'Entregas de {name} na loja {store}'
@@ -230,6 +231,52 @@ fleet-ops:
         close: Fechar
     pedido-sem-motoboy:
       aviso: 'Pedido {numero} está há {minutos} min sem motoboy. Clique para abrir e atribuir.'
+    ifood:
+      coluna: iFood
+      selo: 'iFood #{numero}'
+      selo-titulo: Pedido do iFood
+      painel-titulo: 'iFood #{numero}'
+      erro: Não foi possível carregar os dados do iFood (só administradores veem este painel).
+      ultima-acao: Última etapa informada ao iFood
+      nenhuma-acao: Nenhuma ainda
+      ultima-recusa: Última recusa do iFood
+      recusa: '{acao} (erro {status})'
+      cobranca: Cobrança na porta
+      pago-online: Pago online (nada a cobrar)
+      troco: 'troco p/ {valor}'
+      codigo: Código de entrega
+      codigo-nao-exigido: Não exigido
+      codigo-pendente: Exigido, ainda não conferido
+      codigo-conferido: Conferido pelo motoboy
+      codigo-dispensado: Concluído sem o código (liberado pela central ou concluído no console)
+      observacoes: Observações do cliente
+      complemento: Complemento e referência
+      referencia: 'Ref.: {texto}'
+      cancelado: Cancelado pelo iFood
+      cancelado-pago: Cancelado pelo iFood depois da coleta (o motoboy recebe e a loja é cobrada)
+      liberar: Liberar sem código
+      liberar-titulo: 'Liberar o pedido iFood #{numero} sem o código?'
+      liberar-texto: O motoboy poderá concluir sem o código do cliente. O iFood fica com a confirmação pendente e conclui sozinho em 4 horas. Use só quando o cliente não tiver o código.
+      liberado: Conclusão liberada sem o código.
+      nao-cancela: 'Pedido do iFood: o cancelamento é feito no iFood (Gestor de Pedidos).'
+      cancelar-em-lote: Há pedido do iFood na seleção. O cancelamento dele é feito no iFood; tire-o da seleção.
+      aviso-recusa: 'O iFood recusou "{acao}" no pedido {numero} (erro {status}). Clique para abrir e conferir no Gestor de Pedidos.'
+      acao:
+        assignDriver: Motoboy informado
+        goingToOrigin: A caminho da loja
+        arrivedAtOrigin: Chegou na loja
+        dispatch: Saiu para entrega
+        arrivedAtDestination: Chegou no cliente
+        desconhecida: Etapa desconhecida
+      forma:
+        dinheiro: dinheiro
+        credito: cartão de crédito
+        debito: cartão de débito
+        vale-refeicao: vale-refeição
+        vale-alimentacao: vale-alimentação
+        pix: Pix
+        carteira-digital: carteira digital
+        misto: formas variadas
     order-form:
       store-or-customer: Loja ou cliente
       store-or-customer-placeholder: Selecionar loja ou cliente
