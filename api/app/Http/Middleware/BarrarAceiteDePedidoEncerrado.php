@@ -28,8 +28,10 @@ use Illuminate\Support\Facades\Log;
  * termina antes e o cancelamento vê o pedido iniciado. Dois motoboys aceitando juntos também entram em fila,
  * e o segundo leva o "Order has already started." do Fleet-Ops.
  *
- * Pedido passado para outro motoboy (o líder dos motoboys pela aba Mapa do app, ou a central pelo console): o pedido
- * deixa de ser aberto (adhoc falso) e fica atribuído ao novo. O motoboy anterior ainda pode ter o card do pedido aberto
+ * Pedido passado para outro motoboy (o líder dos motoboys pela aba Mapa do app, que desliga o adhoc; ou a central pelo
+ * console, mas só quando o pedido já não era aberto: o modal de troca do console não mexe no adhoc, e um pedido ainda
+ * aberto continua aceitável por qualquer motoboy, que o startOrder reatribui pelo `assign`): o pedido não é aberto e
+ * fica atribuído ao novo. O motoboy anterior ainda pode ter o card do pedido aberto
  * e tocar em Aceitar (POST v1/orders/{id}/start com assign = ele): como o startOrder do Fleet-Ops só usa o `assign`
  * em pedido aberto, ele iniciaria o pedido em nome do novo motoboy. Aqui o aceite é barrado (409) quando o pedido não
  * é aberto, tem motoboy atribuído e quem aceita é outro: o motoboy da sessão (token de motoboy, MotoboyDaSessao; chave
