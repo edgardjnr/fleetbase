@@ -1,6 +1,6 @@
 # Integração iFood Logistics: desenho
 
-Data: 2026-10-05. Situação: desenho aprovado pelo Edgard; etapa 1 implementada; ajustes da sonda da API (PLC, ações sem evento, DDCR na confirmação, pedido de teste sem código) aprovados em 2026-10-05; **etapa 2 implementada** em 2026-10-05 (ramo `ifood-etapa-2`, planos `2026-10-05-ifood-etapa-2a-servidor.md` e `2026-10-05-ifood-etapa-2b-tela-lojas.md`), ainda sem push, deploy e teste real. Onde a etapa 2 divergiu deste desenho, o texto abaixo já foi corrigido; o resumo operacional está no `CLAUDE.md`, seção "Integração iFood".
+Data: 2026-10-05. Situação: desenho aprovado pelo Edgard; etapa 1 implementada; ajustes da sonda da API (PLC, ações sem evento, DDCR na confirmação, pedido de teste sem código) aprovados em 2026-10-05; **etapa 2 implementada** em 2026-10-05 (ramo `ifood-etapa-2`, planos `2026-10-05-ifood-etapa-2a-servidor.md` e `2026-10-05-ifood-etapa-2b-tela-lojas.md`), em produção e testada com a loja de teste em 2026-10-06. Onde a etapa 2 divergiu deste desenho, o texto abaixo já foi corrigido; o resumo operacional está no `CLAUDE.md`, seção "Integração iFood".
 
 ## Objetivo
 
@@ -160,8 +160,9 @@ As credenciais do app (`IFOOD_CLIENT_ID`, `IFOOD_CLIENT_SECRET`) e o interruptor
   - **pedido real sem coordenadas válidas** (ausentes, 0, fora da faixa ou a mais de 50 km da coleta): entrega
     deslocada como a do teste, `[SEM LOCALIZAÇÃO]` nas notas, log e sem despacho (a central confere);
   - **pedido de teste (`isTest: true`, coordenadas 0,0):** marcado `[TESTE]` (`teste = true`), entrega na coordenada da loja
-    deslocada 1 km (para não calcular km absurdo) e **sem aviso aos motoboys próximos** (adhoc falso): só a central
-    atribui, a um motoboy de teste.
+    deslocada 1 km (para não calcular km absurdo). **Vai aos motoboys como o real** (decisão de 2026-10-06: adhoc ligado,
+    despacho na hora; o agendado com janela, 40 min antes): quem está online perto da loja recebe o alarme, com o
+    endereço falso.
 - **Alteração (ORDER_PATCHED):** busca o pedido de novo e atualiza entrega, observações e pagamento. Endereço
   mudado depois do aceite → push "Endereço alterado" ao motoboy. O km se recalcula pela regra existente
   (`CalculoEntregas`/`ValoresCongelados`).
