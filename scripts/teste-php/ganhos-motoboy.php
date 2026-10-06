@@ -137,7 +137,8 @@ confere($pendentes === 1 && $entregas[0]['km'] === null && $entregas[0]['valor_m
 
 reiniciar();
 [$entregas] = $calculo->entregas(new Collection([comKm(pedido('order_d'), 3210.4)]), 'America/Sao_Paulo');
-confere(array_keys($entregas[0]) === ['loja', 'loja_nome', 'pedido', 'id_interno', 'motoboy', 'motoboy_nome', 'concluido_em', 'origem', 'destino', 'km', 'fonte', 'faixa', 'valor_motoboy', 'valor_loja'], 'o formato do relatório e do extrato não muda');
+confere(array_keys($entregas[0]) === ['loja', 'loja_nome', 'pedido', 'id_interno', 'motoboy', 'motoboy_nome', 'concluido_em', 'origem', 'destino', 'km', 'fonte', 'faixa', 'valor_motoboy', 'valor_loja', 'cancelado_pago'], 'o formato do relatório e do extrato (cancelado_pago: etapa 3 do iFood)');
+confere($entregas[0]['cancelado_pago'] === false, 'pedido concluído: cancelado_pago falso');
 confere($entregas[0]['loja'] === 'loja:vendor_centro' && $entregas[0]['concluido_em'] === '2026-10-03T19:42:00-03:00', "loja dona do pedido e conclusão no fuso da organização ({$entregas[0]['concluido_em']})");
 
 echo '== Valor de um pedido (card de aceitar e detalhes)' . PHP_EOL;
@@ -176,7 +177,8 @@ $entrega = [
     'valor_loja'    => 11.37,
 ];
 $linha = GanhosDoMotoboy::linha($entrega);
-confere(array_keys($linha) === ['pedido', 'concluido_em', 'loja', 'destino', 'km', 'aproximado', 'faixa', 'valor'], 'só os campos do app');
+confere(array_keys($linha) === ['pedido', 'concluido_em', 'loja', 'destino', 'km', 'aproximado', 'faixa', 'valor', 'cancelado_pago'], 'só os campos do app');
+confere($linha['cancelado_pago'] === false && GanhosDoMotoboy::linha(['cancelado_pago' => true] + $entrega)['cancelado_pago'] === true, 'cancelado_pago repassado ao app');
 confere($linha['valor'] === 8.0 && $linha['loja'] === 'Loja Centro' && $linha['aproximado'] === true, 'valor do motoboy, nome da loja e km estimado marcado como aproximado');
 confere($linha['faixa'] === ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'a faixa vai só com os limites');
 $semKm  = ['km' => null, 'fonte' => null, 'faixa' => null, 'valor_motoboy' => null, 'valor_loja' => null] + $entrega;
