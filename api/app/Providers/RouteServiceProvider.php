@@ -73,6 +73,10 @@ class RouteServiceProvider extends ServiceProvider
 
         // Entregas RestaurantePro: vínculo da loja com o iFood na tela Lojas (código de vínculo e troca do código de
         // autorização), até 20 chamadas por minuto por usuário, para um clique repetido não martelar o iFood
+        // Entregas RestaurantePro: código de entrega do iFood digitado pelo motoboy, até 10 tentativas por minuto por motoboy
+        // (contra tentar todos os códigos), além do entregas-motoboy
+        RateLimiter::for('entregas-ifood-codigo', fn (Request $request) => Limit::perMinute(10)->by('entregas-ifood-codigo:' . (session('user') ?: $request->ip())));
+
         RateLimiter::for('entregas-ifood-vinculo', fn (Request $request) => Limit::perMinute(20)->by('entregas-ifood-vinculo:' . (session('user') ?: $request->ip())));
 
         $this->routes(
@@ -138,6 +142,10 @@ class RouteServiceProvider extends ServiceProvider
                         Route::post('chat-central', [MotoboyController::class, 'chatComACentral']);
                         // conversa do motoboy com a loja do pedido (ou com a central, em pedido sem loja)
                         Route::post('pedidos/{id}/chat', [MotoboyController::class, 'chatDoPedido']);
+                        // pedido iFood: dados (card e detalhes), conclusão e código de entrega do cliente
+                        Route::get('pedidos/{id}/ifood', [MotoboyController::class, 'ifood']);
+                        Route::post('pedidos/{id}/concluir-ifood', [MotoboyController::class, 'concluirIfood']);
+                        Route::post('pedidos/{id}/codigo-ifood', [MotoboyController::class, 'codigoIfood'])->middleware('throttle:entregas-ifood-codigo');
                     });
 
                 // Entregas RestaurantePro: traçado loja → cliente e situação do motoboy no mapa do pedido do app (MotoboyController@rota)

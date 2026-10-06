@@ -7,9 +7,13 @@ use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\ChatComACentral;
 use App\Support\Entregas\ConversasDaLoja;
 use App\Support\Entregas\GanhosDoMotoboy;
+use App\Support\Entregas\Ifood\ConclusaoIfood;
+use App\Support\Entregas\Ifood\DadosIfoodDoMotoboy;
+use App\Support\Entregas\Ifood\PedidosIfood;
 use App\Support\Entregas\MotoboyDaSessao;
 use App\Support\Entregas\RotaDoPedido;
 use App\Support\Entregas\SituacaoDoMotoboy;
+use App\Support\Entregas\StatusDoPedido;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
@@ -28,6 +32,8 @@ use Illuminate\Support\Carbon;
  *   do portal da loja, com a central dentro: ConversasDaLoja) ou, num pedido sem loja, com a central (ChatComACentral),
  *   no formato do chat do Fleetbase, para o app abrir a tela do canal;
  * - chatComACentral: a conversa dele com a central (APKs anteriores ao chatDoPedido).
+ * - ifood, concluirIfood e codigoIfood: o pedido iFood no app (DadosIfoodDoMotoboy) e a conclusão com o código do
+ *   cliente (ConclusaoIfood): o servidor avisa a chegada ao iFood, confere o código na hora e libera a conclusão comum.
  * O motoboy vem do token (MotoboyDaSessao); as respostas só trazem o valor pago a ele (GanhosDoMotoboy). Usuário de
  * loja nem chega aqui: o ProtegerPortalLoja nega a API v1 a ele.
  */
@@ -145,6 +151,90 @@ class MotoboyController extends Controller
         }
 
         return new ChatChannelResource($canal);
+    }
+
+    public function ifood(Request $request, string $id)
+    {
+        $motoboy = MotoboyDaSessao::motoboy($request);
+        if (!$motoboy) {
+            return $this->soParaMotoboy();
+        }
+
+        $pedido = $this->pedidoQuePodeVer($id, $motoboy);
+        if (!$pedido) {
+            return response()->json(['errors' => ['Pedido não encontrado.']], 404);
+        }
+
+        return response()->json(DadosIfoodDoMotoboy::resposta(PedidosIfood::doPedido((string) $pedido->uuid), $pedido, (string) $motoboy->uuid, now()->toDateTimeString()));
+    }
+
+    public function concluirIfood(Request $request, string $id, ConclusaoIfood $conclusao)
+    {
+        [$pedido, $linha, $erro] = $this->pedidoIfoodEmEntrega($request, $id);
+        if ($erro) {
+            return $erro;
+        }
+
+        return $this->respostaDaConclusao($conclusao->concluir($linha, $pedido));
+    }
+
+    public function codigoIfood(Request $request, string $id, ConclusaoIfood $conclusao)
+    {
+        [$pedido, $linha, $erro] = $this->pedidoIfoodEmEntrega($request, $id);
+        if ($erro) {
+            return $erro;
+        }
+
+        // o código que o cliente vê no app do iFood: só números (a documentação fala em 4 a 6 dígitos)
+        $codigo = trim((string) $request->input('codigo'));
+        if (!preg_match('/^\d{3,10}$/', $codigo)) {
+            return response()->json(['errors' => ['Digite só os números do código que o cliente recebeu.']], 422);
+        }
+
+        return $this->respostaDaConclusao($conclusao->conferirCodigo($linha, $pedido, $codigo));
+    }
+
+    /**
+     * O pedido iFood do motoboy em entrega (dele, iniciado, não encerrado nem cancelado pelo iFood): [Order, linha, null],
+     * ou [null, null, resposta de erro].
+     */
+    protected function pedidoIfoodEmEntrega(Request $request, string $id): array
+    {
+        $motoboy = MotoboyDaSessao::motoboy($request);
+        if (!$motoboy) {
+            return [null, null, $this->soParaMotoboy()];
+        }
+
+        // nenhum model registra o CompanyScope nesta versão: a empresa é filtrada aqui
+        $pedido = Order::where('company_uuid', session('company'))
+            ->where(fn ($query) => $query->where('public_id', $id)->orWhere('uuid', $id))
+            ->first();
+        if (!$pedido || (string) $pedido->driver_assigned_uuid !== (string) $motoboy->uuid) {
+            return [null, null, response()->json(['errors' => ['Pedido não encontrado.']], 404)];
+        }
+
+        $linha = PedidosIfood::doPedido((string) $pedido->uuid);
+        if (!$linha) {
+            return [null, null, response()->json(['errors' => ['Este pedido não é do iFood.']], 422)];
+        }
+        if ($linha->cancelado_pelo_ifood_em || in_array($pedido->status, StatusDoPedido::ENCERRADOS, true)) {
+            return [null, null, response()->json(['errors' => ['Este pedido já foi encerrado.']], 409)];
+        }
+        if (!$pedido->started) {
+            return [null, null, response()->json(['errors' => ['Inicie o pedido antes de concluir.']], 409)];
+        }
+
+        return [$pedido, $linha, null];
+    }
+
+    /** O resultado da ConclusaoIfood como resposta: 200 com o resultado, 422 código incorreto, 503 tente de novo. */
+    protected function respostaDaConclusao(string $resultado)
+    {
+        return match ($resultado) {
+            ConclusaoIfood::PODE_CONCLUIR, ConclusaoIfood::PRECISA_CODIGO => response()->json(['resultado' => $resultado]),
+            ConclusaoIfood::CODIGO_INCORRETO => response()->json(['resultado' => $resultado, 'errors' => ['Código incorreto. Peça o código de novo ao cliente.']], 422),
+            default => response()->json(['resultado' => ConclusaoIfood::TENTE_DE_NOVO, 'errors' => ['Não consegui falar com o iFood agora. Tente de novo em alguns segundos.']], 503),
+        };
     }
 
     /** Pedido da empresa da sessão (pelo public_id ou uuid) que o motoboy pode ver: dele ou aberto. */
