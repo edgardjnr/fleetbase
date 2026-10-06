@@ -68,8 +68,10 @@ class PedidosNoMapa
      */
     public static function doLider(string $companyUuid): array
     {
+        // sem applyDirectivesForPermissions: o papel do líder leva a política "Operações do motorista" (DriverOperations), cuja
+        // diretiva (orders.driver_assigned_uuid = session.driver) nunca acha o líder (ninguém grava session('driver')) e o
+        // limitaria aos pedidos sem motoboy. O acesso já é conferido pelo LiderDosMotoboys, e a empresa, pela consulta().
         $pedidos = static::consulta($companyUuid)
-            ->applyDirectivesForPermissions('fleet-ops list order')
             ->with(static::RELACOES_DO_LIDER)
             ->get();
         $lojas = static::nomesDasLojas($pedidos);

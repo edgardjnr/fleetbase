@@ -256,8 +256,10 @@ namespace {
     confere(($doLider['order_ifood']['atualizado_em'] ?? null) === '2026-10-05T08:30:00-03:00', 'atualizado_em em ISO 8601, no fuso do app (o "há X min" do cartão)');
     confere(($doLider['order_ifood']['loja'] ?? null) === 'Loja A' && ($doLider['order_sem_loja']['loja'] ?? null) === 'Pizzaria Sem Cadastro', 'loja como na central');
     $registro = \Teste\Consulta::$registro[Order::class] ?? [];
-    confere(in_array('where company_uuid =', $registro, true) && in_array('permissao fleet-ops list order', $registro, true) && in_array('limit 300', $registro, true),
-        'mesma consulta da central: empresa, permissão do Fleet-Ops e limite de 300');
+    confere(in_array('where company_uuid =', $registro, true) && in_array('limit 300', $registro, true),
+        'mesma consulta da central: empresa e limite de 300');
+    confere(array_filter($registro, fn ($chamada) => str_starts_with($chamada, 'permissao')) === [],
+        'sem diretivas de permissão (a da política "Operações do motorista" limitaria o líder aos pedidos sem motoboy)');
     confere(in_array('with ' . implode(',', PedidosNoMapa::RELACOES_DO_LIDER), $registro, true), 'carrega coleta, destino, motoboy e rastreio juntos');
     $um = PedidosNoMapa::umDoLider(end(Order::$todos));
     confere($um === ($doLider['order_ifood'] ?? false), 'umDoLider: o mesmo item do doLider');
