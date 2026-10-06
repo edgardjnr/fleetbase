@@ -88,8 +88,9 @@ final class EventosIfood
 
     /**
      * Segundos desde 1970, com microssegundos; INF para data ausente, inválida ou que não é texto. Só vale texto ISO 8601
-     * com data e hora ("2026-10-05T18:24:40.624Z" ou "2026-10-05 18:24:40"; sem fuso, UTC), com ano de 2000 a 2037:
-     * "tomorrow", "+1 day", só a data ou o ano fora da faixa (que não cabe no DATETIME de quem grava) vão para o fim.
+     * com data e hora ("2026-10-05T18:24:40.624Z" do iFood, ou "2026-10-05 15:24:40.624" sem fuso, o formato gravado no
+     * banco, lido no fuso do app: o mesmo da sessão do MySQL), com ano de 2000 a 2037 (em UTC): "tomorrow", "+1 day", só a
+     * data ou o ano fora da faixa (que não cabe no TIMESTAMP de quem grava) vão para o fim.
      */
     public static function instante($createdAt): float
     {
@@ -98,7 +99,7 @@ final class EventosIfood
         }
 
         try {
-            $data = new DateTimeImmutable(trim($createdAt), new DateTimeZone('UTC'));
+            $data = new DateTimeImmutable(trim($createdAt), new DateTimeZone(date_default_timezone_get()));
         } catch (\Exception) {
             return INF;
         }
@@ -131,6 +132,17 @@ final class EventosIfood
         return in_array($codigo, static::EXIGEM_ACAO_DA_LOJA, true) ? 'warning' : 'info';
     }
 
+    /**
+     * O instante (segundos desde 1970) em texto 'Y-m-d H:i:s.v' no fuso do app (date_default_timezone_get(), que o Laravel
+     * define pelo app.timezone), o mesmo da sessão do MySQL. Ver CLAUDE.md, "Fuso (horário de Brasília)".
+     */
+    public static function paraOBanco(float $instante): string
+    {
+        return DateTimeImmutable::createFromFormat('U.u', sprintf('%.6F', $instante))
+            ->setTimezone(new DateTimeZone(date_default_timezone_get()))
+            ->format('Y-m-d H:i:s.v');
+    }
+
     /** A linha da entregas_ifood_eventos para o evento, ou null se faltar id, orderId, merchantId ou code. */
     public static function paraGravar(array $evento, string $agora): ?array
     {
@@ -147,7 +159,7 @@ final class EventosIfood
             'merchant_id'     => substr($evento['merchantId'], 0, 64),
             'pedido_ifood_id' => substr($evento['orderId'], 0, 64),
             'codigo'          => substr($evento['code'], 0, 10),
-            'criado_no_ifood' => is_finite($instante) ? DateTimeImmutable::createFromFormat('U.u', sprintf('%.6F', $instante))->format('Y-m-d H:i:s.v') : null,
+            'criado_no_ifood' => is_finite($instante) ? static::paraOBanco($instante) : null,
             'payload'         => json_encode($evento, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             'processado_em'   => null,
             'ignorado'        => false,

@@ -139,7 +139,8 @@ class CalculoEntregas
                 'id_interno'    => $pedido->internal_id,
                 'motoboy'       => $motoboy?->public_id,
                 'motoboy_nome'  => $motoboy?->name,
-                'concluido_em'  => Carbon::parse($pedido->entregas_concluido_em, 'UTC')->setTimezone($fuso)->toIso8601String(),
+                // texto cru do COALESCE, na hora da sessão do MySQL, que é a do fuso do app
+                'concluido_em'  => Carbon::parse($pedido->entregas_concluido_em, date_default_timezone_get())->setTimezone($fuso)->toIso8601String(),
                 'origem'        => $this->enderecoCurto($coleta),
                 'destino'       => $this->enderecoCurto($pedido->payload?->getDropoffOrLastWaypoint()),
                 'km'            => $km,
