@@ -180,4 +180,76 @@ confere(AcoesIfood::telefone('+55 (16) 99999-0000') === '16999990000', 'E.164 co
 confere(AcoesIfood::telefone('1633334444') === '1633334444', 'fixo com DDD');
 confere(AcoesIfood::telefone('999990000') === null && AcoesIfood::telefone(null) === null, 'sem DDD ou vazio: null');
 
+echo '== Job EnviarAcaoIfood' . PHP_EOL;
+pedidoIfood();
+confere(EnviarAcaoIfood::enfileirar('order-1') === true && count(Fila::$jobs) === 1, 'enfileira o primeiro');
+confere(EnviarAcaoIfood::enfileirar('order-1') === false && count(Fila::$jobs) === 1, 'não enfileira outro enquanto o primeiro espera');
+Http::responder(202);
+Http::responder(202);
+$job = Fila::$jobs[0];
+$job->handle(acoes());
+confere(linha()->ultima_acao === 'goingToOrigin' && !isset(Cache::$dados['entregas:ifood-acao-pendente:order-1']), 'o job envia e apaga a marca de pendente');
+confere(EnviarAcaoIfood::enfileirar('order-1') === true, 'depois dele, uma mudança nova enfileira de novo');
+confere($job->afterCommit === true && $job->timeout < 90 && $job->maxExceptions === 5, 'afterCommit, timeout abaixo do retry_after (90 s) e 5 exceções');
+
+pedidoIfood();
+Http::responder(202);
+Http::responder(429, null, ['Retry-After' => '42']);
+$job = new EnviarAcaoIfood('order-1');
+$job->handle(acoes());
+confere($job->liberadoPor === 42 && linha()->ultima_acao === 'assignDriver', '429: volta para a fila pelo Retry-After');
+
+pedidoIfood();
+Trava::$ocupadas['entregas:ifood-acao:order-1'] = true;
+$job = new EnviarAcaoIfood('order-1');
+$job->handle(acoes());
+confere($job->liberadoPor === EnviarAcaoIfood::ESPERA_DA_TRAVA, 'trava ocupada: volta para a fila');
+
+pedidoIfood();
+Http::responder(500, 'erro com detalhes');
+$job  = new EnviarAcaoIfood('order-1');
+$erro = excecao(fn () => $job->handle(acoes()));
+confere($erro instanceof ErroIfood && $erro->status === 500 && $erro->corpo === '', '5xx: sobe sem o corpo (nova tentativa pelo $backoff)');
+
+pedidoIfood();
+Config::$valores['services.ifood.ativo'] = '';
+(new EnviarAcaoIfood('order-1'))->handle(acoes());
+confere(Http::$chamadas === [], 'integração desligada: nada');
+
+pedidoIfood();
+(new EnviarAcaoIfood('order-1'))->failed(new ErroIfood('goingToOrigin', 503));
+confere(logou('ação não enviada; tentativas esgotadas', 'error') && linha()->recusa_acao === 'assignDriver' && linha()->recusa_status === 503, 'tentativas esgotadas: log e a próxima ação vira recusa (aviso)');
+
+echo '== ObservadorDosPedidosIfood' . PHP_EOL;
+$pedido            = pedidoIfood();
+$pedido->alterados = ['status'];
+ObservadorDosPedidosIfood::aoAtualizar($pedido);
+confere(count(Fila::$jobs) === 1 && Fila::$jobs[0]->orderUuid === 'order-1', 'status mudou: enfileira');
+$pedido            = pedidoIfood();
+$pedido->alterados = ['notes', 'updated_at'];
+ObservadorDosPedidosIfood::aoAtualizar($pedido);
+confere(Fila::$jobs === [], 'outro campo: nada');
+$pedido            = pedidoIfood();
+$pedido->alterados = ['driver_assigned_uuid'];
+Banco::$tabelas['entregas_ifood_pedidos'] = [];
+ObservadorDosPedidosIfood::aoAtualizar($pedido);
+confere(Fila::$jobs === [], 'pedido que não é do iFood: nada');
+$pedido            = pedidoIfood();
+$pedido->alterados = ['started'];
+Config::$valores['services.ifood.ativo'] = '';
+ObservadorDosPedidosIfood::aoAtualizar($pedido);
+confere(Fila::$jobs === [], 'integração desligada: nada');
+$pedido            = pedidoIfood();
+$pedido->alterados = ['started'];
+Fila::$falhar      = new RuntimeException('redis fora');
+$erro              = excecao(fn () => ObservadorDosPedidosIfood::aoAtualizar($pedido));
+confere($erro === null && logou('falha ao enfileirar a ação do pedido', 'warning') && !isset(Cache::$dados['entregas:ifood-acao-pendente:order-1']), 'fila fora: não lança, registra e não deixa a marca de pendente');
+
+$pedido = pedidoIfood();
+$evento = new class ($pedido) {
+    public function __construct(private $pedido) {}
+    public function getModelRecord() { return $this->pedido; }
+};
+ObservadorDosPedidosIfood::aoAtribuirMotoboy($evento);
+confere(count(Fila::$jobs) === 1, 'OrderDriverAssigned (bulk-assign-driver): enfileira');
 resumo();

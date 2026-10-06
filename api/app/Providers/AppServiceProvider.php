@@ -7,6 +7,7 @@ use App\Console\Commands\Entregas\Fuso\DespacharPedidosAgendados;
 use App\Console\Commands\Entregas\Fuso\EnviarLembretesDeManutencao;
 use App\Console\Commands\Entregas\Fuso\ProcessarGatilhosDeManutencao;
 use App\Console\Commands\Entregas\ReenviarPedidosAbertos;
+use App\Listeners\Entregas\ObservadorDosPedidosIfood;
 use App\Notifications\Entregas\CanalFcmEntregas;
 use App\Notifications\Entregas\Email\CanalEmailEntregas;
 use App\Support\Entregas\FusoDoServidor;
@@ -15,6 +16,8 @@ use Fleetbase\FleetOps\Console\Commands\DispatchOrders;
 use Fleetbase\FleetOps\Console\Commands\ProcessMaintenanceTriggers;
 use Fleetbase\FleetOps\Console\Commands\SendMaintenanceReminders;
 use Fleetbase\FleetOps\Console\Commands\TrackOrderDistanceAndTime;
+use Fleetbase\FleetOps\Events\OrderDriverAssigned;
+use Fleetbase\FleetOps\Models\Order;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Events\TransactionBeginning;
@@ -91,6 +94,19 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureOutboundHttpLogging();
         $this->configureTransactionTripwire();
+        $this->acompanharPedidosIfood();
+    }
+
+    /**
+     * Entregas: mudança de pedido iFood (motoboy definido, iniciado, a caminho, concluído) → ação de logística no iFood,
+     * na fila (ver ObservadorDosPedidosIfood). O updated do Eloquent pega o que passa por save() (aceite, atribuição pela
+     * central, atividades); o OrderDriverAssigned do Fleet-Ops, a atribuição em lote. O resto, o
+     * entregas:ifood-acompanhar reconcilia em até 30 s.
+     */
+    protected function acompanharPedidosIfood(): void
+    {
+        Order::updated(fn ($pedido) => ObservadorDosPedidosIfood::aoAtualizar($pedido));
+        Event::listen(OrderDriverAssigned::class, fn ($evento) => ObservadorDosPedidosIfood::aoAtribuirMotoboy($evento));
     }
 
     /**
