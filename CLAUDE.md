@@ -60,7 +60,7 @@ Depois de cada deploy do console, abra o site com Ctrl+Shift+R. O console guarda
 
 ## Fuso (horário de Brasília)
 
-Decisão de 2026-10-05: o servidor inteiro roda no horário de Brasília (`America/Sao_Paulo`, sem horário de verão desde 2019), para acabar com os erros de 3 h (ex.: a lista "Hoje" do app, `GET v1/orders?on=...-03:00`, perdia os pedidos criados depois das 21h). Roteiro da troca em produção e scripts do banco: `deploy/fuso/LEIAME.md`.
+Decisão de 2026-10-05: o servidor inteiro roda no horário de Brasília (`America/Sao_Paulo`, sem horário de verão desde 2019), para acabar com os erros de 3 h (ex.: a lista "Hoje" do app, `GET v1/orders?on=...-03:00`, perdia os pedidos criados depois das 21h). Roteiro da troca em produção (com ensaio obrigatório num MySQL descartável) e scripts do banco: `deploy/fuso/LEIAME.md`.
 
 - **PHP:** `api/config/app.php` com `timezone` = `America/Sao_Paulo`.
 - **Sessão do MySQL:** `-03:00` (ou `DB_TIMEZONE`) nas conexões `mysql`, `sandbox` e `storefront`, pelo `AppServiceProvider::configurarFuso` (`App\Support\Entregas\FusoDoServidor`).
@@ -80,7 +80,12 @@ Decisão de 2026-10-05: o servidor inteiro roda no horário de Brasília (`Ameri
 - **Testes:**
   - `scripts/teste-php/fuso.php`: configuração, `Date::useCallable`, comandos e datas do iFood;
   - `fuso-relatorio.php`: período e conclusão do relatório e dos ganhos em Brasília;
-  - os stubs dos outros testes continuam em UTC.
+  - os stubs (`stubs.php`, `stubs-ganhos.php`, `stubs-ifood.php`) também rodam em Brasília: `date_default_timezone_set('America/Sao_Paulo')`, `now()` no fuso padrão, e os textos do banco nas expectativas em hora de Brasília.
+- **Efeitos colaterais aceitos:**
+  - as tarefas `daily()`, `twiceDaily(1, 13)` e `dailyAt()` do agendador (purges do core, `telemetry:ping`, manutenção do Fleet-Ops, `materialize-schedules`) passam a rodar na hora de Brasília, porque o agendador usa o `app.timezone`;
+  - os logs do Laravel saem em -03:00;
+  - cliente externo da API v1 que manda ISO com `Z` em **filtro** de data (`created_at`, `on`… vão ao query builder) erra 3 h; ao gravar, o `Date::useCallable` converte. Texto sem fuso passa a valer como hora de Brasília (antes, UTC). A integração iFood é interna e não é afetada;
+  - telas ocultas (agenda/escalas, manutenção, orquestrador) e o `sandbox:sync` não foram revisados: podem errar 3 h.
 - **Risco:** se o horário de verão voltar, o `-03:00` fixo da sessão diverge do PHP. Aí use o fuso nomeado (exige as tabelas `mysql.time_zone_name`, que o inventário confere) e trate a hora ambígua das DATETIME.
 
 ## Estrutura
