@@ -693,6 +693,8 @@ customer-portal:
       cancel-locked: O motoboy já aceitou. Para cancelar, fale com a central.
       cancel-ifood: "Pedido do iFood: o cancelamento é feito no Gestor de Pedidos do iFood."
       ifood-selo: "iFood #{numero}"
+      canceled-ifood-charged: "Cancelado pelo iFood (cobrado)"
+      statement-status: Situação
       members-managed-by-central: Para adicionar ou remover usuários da loja, fale com a central.
       login-managed-by-central: O e-mail e o telefone de acesso só podem ser alterados pela central.
       dashboard-name: Visão geral

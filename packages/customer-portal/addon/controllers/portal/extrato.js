@@ -280,6 +280,7 @@ export default class PortalExtratoController extends Controller {
             this.intl.t('customer-portal.ui.entregas.km'),
             this.intl.t('customer-portal.ui.entregas.band'),
             this.intl.t('customer-portal.ui.entregas.amount'),
+            this.intl.t('customer-portal.ui.entregas.canceled-ifood-charged'),
         ];
         const linhas = this.entregas.map((entrega) => [
             this.dataHora(entrega.concluido_em),
@@ -288,6 +289,8 @@ export default class PortalExtratoController extends Controller {
             entrega.km == null ? '' : decimalCsv(entrega.km),
             entrega.faixa ? this.textoFaixa(entrega.faixa) : '',
             entrega.valor == null ? '' : decimalCsv(entrega.valor),
+            // pedido do iFood cancelado pelo iFood depois da coleta, cobrado mesmo assim: vazio nas demais
+            entrega.cancelado_pago ? this.intl.t('customer-portal.ui.entregas.canceled-ifood-charged') : '',
         ]);
         const csv = BOM_UTF8 + [cabecalho, ...linhas].map((linha) => linha.map(celulaCsv).join(';')).join('\r\n');
 
