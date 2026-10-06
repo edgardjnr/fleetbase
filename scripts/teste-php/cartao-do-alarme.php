@@ -6,6 +6,7 @@
 // Uso: PHP_WASM_DIR=<pasta> node scripts/teste-php/rodar.mjs scripts/teste-php/cartao-do-alarme.php
 
 require __DIR__ . '/../../api/app/Support/Entregas/CartaoDoAlarme.php';
+require __DIR__ . '/../../api/app/Support/Entregas/Ifood/CobrancaIfood.php';
 
 use App\Support\Entregas\CartaoDoAlarme as C;
 
@@ -73,5 +74,10 @@ confere(C::mapa('-21.1,-47.8', '-21.2,-47.9', '_p~iF') === ['entregas_coleta' =>
 confere(C::mapa('-21.1,-47.8', null, '') === ['entregas_coleta' => '-21.1,-47.8'], 'só o que existe');
 confere(C::mapa('-21.1,-47.8', '-21.2,-47.9', '_p~iF', 'dispatched', true) === ['entregas_coleta' => '-21.1,-47.8', 'entregas_entrega' => '-21.2,-47.9', 'entregas_rota' => '_p~iF', 'entregas_status' => 'dispatched', 'entregas_rota_aproximada' => '1'], 'status e linha aproximada');
 confere(!isset(C::mapa('-21.1,-47.8', '-21.2,-47.9', '', 'created', true)['entregas_rota_aproximada']), 'sem linha, sem o aproximada');
+
+// pedido iFood (etapa 3): número e cobrança na porta
+confere(C::ifood(null) === [], 'pedido que não é do iFood: nada');
+confere(C::ifood((object) ['numero' => '4821', 'cobrar_centavos' => 5890, 'forma_pagamento' => 'CASH', 'troco_para_centavos' => 10000]) === ['entregas_ifood' => '4821', 'entregas_cobrar' => 'Cobrar R$ 58,90 · dinheiro · troco p/ R$ 100'], 'número e cobrança');
+confere(C::ifood((object) ['numero' => '4821', 'cobrar_centavos' => 0, 'forma_pagamento' => null, 'troco_para_centavos' => null]) === ['entregas_ifood' => '4821'], 'pago online: só o número');
 
 echo PHP_EOL . "FALHAS: {$falhas}" . PHP_EOL;
