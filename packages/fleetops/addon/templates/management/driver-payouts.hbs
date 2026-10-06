@@ -206,6 +206,9 @@
                                     <LinkTo @route="operations.orders.index.details" @model={{entrega.pedido}} class="text-blue-600 dark:text-blue-400 hover:underline">
                                         {{or entrega.id_interno entrega.pedido}}
                                     </LinkTo>
+                                    {{#if entrega.cancelado_pago}}
+                                        <Badge @status="warning" @hideStatusDot={{true}}>{{t "fleet-ops.ui.driver-payouts.cancelado-pago"}}</Badge>
+                                    {{/if}}
                                 </td>
                                 {{#unless this.lojaSelecionada}}
                                     <td class="py-2">{{or entrega.loja_nome (t "fleet-ops.ui.driver-payouts.without-store")}}</td>

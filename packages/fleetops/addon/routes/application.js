@@ -15,6 +15,7 @@ export default class ApplicationRoute extends Route {
     @service currentUser;
     @service mapSettings;
     @service pedidoSemMotoboy;
+    @service ifoodAcaoRecusada;
 
     constructor() {
         super(...arguments);
@@ -45,6 +46,8 @@ export default class ApplicationRoute extends Route {
 
         // Entregas: aviso de pedido aberto sem motoboy (serviço pedido-sem-motoboy); ativo daí em diante
         this.pedidoSemMotoboy.iniciar();
+        // Entregas: aviso de ação de logística recusada pelo iFood (serviço ifood-acao-recusada)
+        this.ifoodAcaoRecusada.iniciar();
 
         // primeira entrada no engine já direto numa tela oculta (o listener do constructor ainda não existia)
         if (isEntregasHiddenRoute(transition?.to?.name)) {
