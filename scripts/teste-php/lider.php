@@ -232,8 +232,13 @@ namespace {
     use Illuminate\Support\Facades\Cache;
     use Illuminate\Support\Facades\Log;
 
+    require '/repo/api/app/Support/Entregas/StatusDoPedido.php';
+    require '/repo/api/app/Support/Entregas/TravaDoPedido.php';
     require '/repo/api/app/Support/Entregas/MotoboyDaSessao.php';
     require '/repo/api/app/Support/Entregas/LiderDosMotoboys.php';
+    require '/repo/api/app/Support/Entregas/TrocaDoMotoboy.php';
+    require '/repo/api/app/Notifications/Entregas/PedidoPassadoParaOutro.php';
+    require '/repo/api/app/Http/Controllers/Entregas/LiderController.php';
 
     const EMPRESA = 'empresa-a';
     $sessao = ['company' => EMPRESA, 'user' => 'u-lider'];
@@ -318,6 +323,134 @@ namespace {
     confere(!LiderDosMotoboys::ehLider(usuario('u-desativado'), EMPRESA) && !LiderDosMotoboys::ehLider(usuario('u-admin-desativado', 'admin'), EMPRESA), 'vínculo desativado no IAM: não é líder (nem o admin)');
     confere(!LiderDosMotoboys::ehLider(usuario('u-outra-empresa'), EMPRESA), 'permissão só em outra empresa: não é líder na da sessão');
     confere(!LiderDosMotoboys::ehLider(usuario('u-sem-vinculo'), EMPRESA) && !LiderDosMotoboys::ehLider(null, EMPRESA) && !LiderDosMotoboys::ehLider(usuario('u-lider'), ''), 'sem vínculo, sem usuário ou sem empresa: não é líder');
+
+    echo '== LiderController@acesso e @mapa' . PHP_EOL;
+    User::$todos   = [usuario('u-lider'), usuario('u-comum'), usuario('u-admin', 'admin')];
+    Driver::$todos = [
+        motoboy('m-lider', 'u-lider', 'Líder'),
+        motoboy('m-comum', 'u-comum', 'Comum'),
+        motoboy('m-novo', 'u-novo', 'Novo'),
+        motoboy('m-outra', 'u-outra', 'Outra empresa', 'empresa-b'),
+    ];
+    $controller = new LiderController();
+
+    $acesso = $controller->acesso($token);
+    confere($acesso->status === 200 && $acesso->dados === ['lider' => true], 'líder: {"lider": true}');
+    $sessao = ['company' => EMPRESA, 'user' => 'u-comum'];
+    $acesso = $controller->acesso($token);
+    confere($acesso->status === 200 && $acesso->dados === ['lider' => false], 'motoboy comum: {"lider": false} com 200 (nunca 403)');
+    $sessao = ['company' => EMPRESA, 'user' => 'u-admin'];
+    confere($controller->acesso($token)->dados === ['lider' => false], 'admin sem cadastro de motoboy (não é o app): não é líder');
+    $sessao = ['company' => EMPRESA, 'user' => 'u-lider'];
+    confere($controller->acesso(new Request('flb_live_chave-do-apk'))->dados === ['lider' => false], 'chave de API (flb_live_ do APK, autentica como admin): não é líder');
+
+    $mapa = $controller->mapa($token);
+    confere($mapa->status === 200 && $mapa->dados === ['pedidos' => [['id' => 'order_1']], 'motoboys' => [['id' => 'driver_b']]] && \App\Support\Entregas\MapaDoLider::$chamadas === [EMPRESA],
+        'mapa do líder: MapaDoLider::mapa com a empresa da sessão');
+    $sessao = ['company' => EMPRESA, 'user' => 'u-comum'];
+    $negado = $controller->mapa($token);
+    confere($negado->status === 403 && $negado->dados === ['errors' => ['Disponível só para o líder dos motoboys.']], 'mapa de quem não é líder: 403');
+
+    echo '== LiderController@trocarMotoboy (TrocaDoMotoboy)' . PHP_EOL;
+    $troca = fn (string $pedido, ?string $motoboy) => $controller->trocarMotoboy(new Request('12|token-do-motoboy', $motoboy === null ? [] : ['motoboy' => $motoboy]), $pedido);
+    Order::$todos = [
+        pedido('o-ifood', 'started', 'm-comum', ['internal_id' => '4821', 'rastreio' => 'RP1']),
+        pedido('o-aberto', 'dispatched', null, ['adhoc' => true, 'rastreio' => 'RP2']),
+        pedido('o-rastreio', 'started', 'm-comum', ['rastreio' => 'RP3']),
+        pedido('o-concluido', 'completed', 'm-comum'),
+        pedido('o-cancelado', 'canceled', 'm-comum'),
+        pedido('o-outra', 'started', 'm-comum', ['company_uuid' => 'empresa-b']),
+    ];
+
+    confere($troca('order_ifood', 'driver_novo')->status === 403, 'quem não é líder não troca: 403');
+    confere(Order::$todos[0]->atribuicoes === [], 'nada muda sem ser líder');
+
+    $sessao = ['company' => EMPRESA, 'user' => 'u-lider'];
+    $resposta = $troca('order_inexistente', 'driver_novo');
+    confere($resposta->status === 404 && $resposta->dados === ['errors' => ['Pedido não encontrado.']], 'pedido que não existe: 404');
+    confere($troca('order_outra', 'driver_novo')->status === 404, 'pedido de outra empresa: 404');
+    $resposta = $troca('order_concluido', 'driver_novo');
+    confere($resposta->status === 409 && $resposta->dados === ['errors' => ['Este pedido já foi encerrado.']], 'pedido concluído: 409 "Este pedido já foi encerrado."');
+    confere($troca('order_cancelado', 'driver_novo')->status === 409, 'pedido cancelado: 409');
+    $resposta = $troca('order_ifood', 'driver_outra');
+    confere($resposta->status === 422 && $resposta->dados === ['errors' => ['Escolha um motoboy da lista.']], 'motoboy de outra empresa: 422');
+    confere($troca('order_ifood', 'driver_inexistente')->status === 422 && $troca('order_ifood', null)->status === 422 && $troca('order_ifood', '  ')->status === 422,
+        'motoboy que não existe, sem motoboy ou em branco: 422');
+    confere(Order::$todos[0]->atribuicoes === [], 'nenhuma recusa mexeu no pedido');
+
+    Cache::$travas = [];
+    Log::$linhas   = [];
+    $resposta      = $troca('order_ifood', 'driver_comum');
+    confere($resposta->status === 200 && $resposta->dados === ['pedido' => ['id' => 'order_ifood', 'motoboy_uuid' => 'm-comum']], 'o mesmo motoboy de agora: 200 sem mudança, com o pedido');
+    confere(Order::$todos[0]->atribuicoes === [] && Log::$linhas === [] && Driver::$todos[1]->avisos === [], 'mesmo motoboy: sem atribuição, sem aviso e sem log');
+
+    Cache::$travas = [];
+    $resposta      = $troca('o-ifood', 'driver_novo');
+    $pedido        = Order::$todos[0];
+    confere($resposta->status === 200 && $resposta->dados === ['pedido' => ['id' => 'order_ifood', 'motoboy_uuid' => 'm-novo']], 'troca: 200 com o pedido no formato do mapa (pelo uuid também)');
+    confere(Cache::$travas === ['entregas:pedido:o-ifood'], 'com a TravaDoPedido (a mesma do aceite e do cancelamento)');
+    confere($pedido->atribuicoes === [['motoboy' => 'm-novo', 'silencioso' => true, 'adhoc_no_save' => false]],
+        'assignDriver do Fleet-Ops em modo silencioso (o OrderObserver avisa o motoboy novo uma vez), já com o pedido aberto desligado');
+    confere($pedido->status === 'started', 'o pedido fica com o status que tinha');
+    $aviso = Driver::$todos[1]->avisos[0] ?? null;
+    confere($aviso instanceof PedidoPassadoParaOutro && $aviso->title === 'Pedido passado para outro motoboy' && $aviso->message === 'Pedido #4821 passou para outro motoboy.',
+        'o anterior recebe "Pedido #4821 passou para outro motoboy." (número do iFood)');
+    confere(($aviso->data ?? null) === ['type' => 'entregas_pedido_trocado', 'pedido' => 'order_ifood'], 'dados do push: o tipo e o pedido, sem "id" (o app não abre o pedido que não é mais dele)');
+    confere(Driver::$todos[2]->avisos === [], 'o novo não recebe este aviso (recebe o "Novo pedido para você" do Fleet-Ops)');
+    confere(Log::$linhas === [['info', '[entregas] líder trocou o motoboy', ['pedido' => 'order_ifood', 'anterior' => 'driver_comum', 'novo' => 'driver_novo', 'lider' => 'u-lider']]],
+        'log "[entregas] líder trocou o motoboy" só com ids');
+
+    Log::$linhas = [];
+    $resposta    = $troca('order_aberto', 'driver_comum');
+    $aberto      = Order::$todos[1];
+    confere($resposta->status === 200 && $aberto->adhoc === false && $aberto->driver_assigned_uuid === 'm-comum', 'pedido aberto sem motoboy: passa a ser do escolhido, com o adhoc desligado');
+    confere(($aberto->atribuicoes[0]['adhoc_no_save'] ?? null) === false, 'adhoc desligado antes do save (o HandleOrderDriverAssigned só avisa pedido não aberto)');
+    confere(array_key_exists('anterior', Log::$linhas[0][2] ?? []) && Log::$linhas[0][2]['anterior'] === null && count(Driver::$todos[1]->avisos) === 1, 'sem motoboy anterior: ninguém é avisado e o log fica com anterior nulo');
+
+    Driver::$todos[1]->avisos = [];
+    $troca('order_rastreio', 'driver_novo');
+    confere((Driver::$todos[1]->avisos[0]->message ?? null) === 'Pedido RP3 passou para outro motoboy.', 'sem o número do iFood: o de rastreio, sem "#"');
+
+    \Teste\Falhas::$aviso = true;
+    Log::$linhas          = [];
+    $resposta             = $troca('order_rastreio', 'driver_comum');
+    \Teste\Falhas::$aviso = false;
+    confere($resposta->status === 200 && Order::$todos[2]->driver_assigned_uuid === 'm-comum', 'aviso ao anterior falhou: a troca vale assim mesmo');
+    confere(array_column(Log::$linhas, 1) === ['[entregas] líder trocou o motoboy, mas o aviso ao anterior falhou', '[entregas] líder trocou o motoboy'], 'a falha do aviso fica no log');
+
+    Cache::$ocupada = true;
+    $resposta       = $troca('order_ifood', 'driver_comum');
+    Cache::$ocupada = false;
+    confere($resposta->status === 409 && $resposta->dados === ['errors' => ['Outra pessoa está mexendo neste pedido. Tente de novo.']] && Order::$todos[0]->driver_assigned_uuid === 'm-novo',
+        'trava ocupada (outro líder, aceite ou cancelamento): 409 e nada muda');
+
+    echo '== PedidoPassadoParaOutro' . PHP_EOL;
+    confere(PedidoPassadoParaOutro::rotulo('4821') === '#4821' && PedidoPassadoParaOutro::rotulo('RP-1') === 'RP-1', 'rótulo: "#" só no número do iFood');
+    confere((new PedidoPassadoParaOutro('1', 'order_x'))->via(null) === ['NotificationChannels\Fcm\FcmChannel'], 'só push (FcmChannel, trocado pelo CanalFcmEntregas)');
+    confere(in_array('Illuminate\Contracts\Queue\ShouldQueue', class_implements(PedidoPassadoParaOutro::class), true), 'vai para a fila');
+
+    echo '== Rotas (RouteServiceProvider)' . PHP_EOL;
+    $rotas = file_get_contents('/repo/api/app/Providers/RouteServiceProvider.php');
+    foreach ([
+        'use App\Http\Controllers\Entregas\LiderController;',
+        "RateLimiter::for('entregas-lider', fn (Request \$request) => Limit::perMinute(120)->by('entregas-lider:' . (session('user') ?: \$request->ip())));",
+        "Route::prefix('v1/entregas/lider')",
+        "->middleware(['fleetbase.api', 'throttle:entregas-lider'])",
+        "Route::get('acesso', [LiderController::class, 'acesso']);",
+        "Route::get('mapa', [LiderController::class, 'mapa']);",
+        "Route::post('pedidos/{id}/motoboy', [LiderController::class, 'trocarMotoboy']);",
+    ] as $trecho) {
+        confere(str_contains($rotas, $trecho), "rota/limitador: {$trecho}");
+    }
+
+    echo '== Fleet-Ops: o que a troca usa (cópia em packages/, a versão da produção)' . PHP_EOL;
+    $order    = file_get_contents('/repo/packages/fleetops/server/src/Models/Order.php');
+    $observer = file_get_contents('/repo/packages/fleetops/server/src/Observers/OrderObserver.php');
+    $ouvinte  = file_get_contents('/repo/packages/fleetops/server/src/Listeners/HandleOrderDriverAssigned.php');
+    confere(str_contains($order, 'public function assignDriver($driver, $silent = false)'), 'Order::assignDriver($driver, $silent) existe');
+    confere(str_contains($observer, "if (\$order->wasChanged('driver_assigned_uuid')) {") && str_contains($observer, '$order->notifyDriverAssigned();'),
+        'o OrderObserver dispara o OrderDriverAssigned quando o motoboy muda (por isso o assignDriver silencioso)');
+    confere(str_contains($ouvinte, '$order->adhoc === false'), 'o HandleOrderDriverAssigned só avisa pedido não aberto (por isso o adhoc falso)');
 
     echo PHP_EOL . "FALHAS: {$falhas}" . PHP_EOL;
 }

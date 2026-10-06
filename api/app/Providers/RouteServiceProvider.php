@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Http\Controllers\Entregas\ConversasDaLojaController;
 use App\Http\Controllers\Entregas\IfoodLojasController;
 use App\Http\Controllers\Entregas\IfoodPedidosController;
+use App\Http\Controllers\Entregas\LiderController;
 use App\Http\Controllers\Entregas\LojasController;
 use App\Http\Controllers\Entregas\MapaController;
 use App\Http\Controllers\Entregas\MotoboyController;
@@ -90,6 +91,10 @@ class RouteServiceProvider extends ServiceProvider
         // autorização), até 20 chamadas por minuto por usuário, para um clique repetido não martelar o iFood
         RateLimiter::for('entregas-ifood-vinculo', fn (Request $request) => Limit::perMinute(20)->by('entregas-ifood-vinculo:' . (session('user') ?: $request->ip())));
 
+        // Entregas RestaurantePro: aba Mapa do líder dos motoboys no app (o mapa relido a cada 10 s com a tela aberta, o acesso
+        // ao abrir o app e ao voltar para ele, e a troca do motoboy), até 120 chamadas por minuto por usuário, num balde só dele
+        RateLimiter::for('entregas-lider', fn (Request $request) => Limit::perMinute(120)->by('entregas-lider:' . (session('user') ?: $request->ip())));
+
         $this->routes(
             function () {
                 Route::get(
@@ -166,6 +171,15 @@ class RouteServiceProvider extends ServiceProvider
                     ->middleware(['fleetbase.api', 'throttle:entregas-motoboy-rota'])
                     ->group(function () {
                         Route::get('pedidos/{id}/rota', [MotoboyController::class, 'rota']);
+                    });
+
+                // Entregas RestaurantePro: aba Mapa do líder dos motoboys no app (LiderController; o líder é o LiderDosMotoboys)
+                Route::prefix('v1/entregas/lider')
+                    ->middleware(['fleetbase.api', 'throttle:entregas-lider'])
+                    ->group(function () {
+                        Route::get('acesso', [LiderController::class, 'acesso']);
+                        Route::get('mapa', [LiderController::class, 'mapa']);
+                        Route::post('pedidos/{id}/motoboy', [LiderController::class, 'trocarMotoboy']);
                     });
 
                 // Entregas RestaurantePro: dados do pedido iFood no app (card de aceitar e detalhes; MotoboyController@ifood)
