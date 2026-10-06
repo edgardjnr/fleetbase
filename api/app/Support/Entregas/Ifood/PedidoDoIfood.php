@@ -40,8 +40,9 @@ use Illuminate\Support\Facades\Log;
  *   pagamento inconsistente) e o troco, nulo, para o insert não estourar a coluna.
  * - 0800 e localizador do cliente (`customer.phone`) com a expiração do localizador.
  *
- * Datas em texto 'Y-m-d H:i:s', UTC (o fuso do banco). Data que não é ISO com hora, ou com ano fora de 2000 a 2037
- * (ANO_MINIMO, ANO_MAXIMO), vale como ausente.
+ * Datas em texto 'Y-m-d H:i:s' no fuso do app (o mesmo da sessão do MySQL: horário de Brasília; ver CLAUDE.md, "Fuso
+ * (horário de Brasília)"). As contas são feitas em UTC e só a saída é convertida (paraOBanco). Data que não é ISO com
+ * hora, ou com ano fora de 2000 a 2037 (ANO_MINIMO, ANO_MAXIMO), vale como ausente.
  */
 final class PedidoDoIfood
 {
@@ -122,7 +123,7 @@ final class PedidoDoIfood
             'sem_coordenadas' => $semCoordenadas,
             'sem_janela'      => $semJanela,
             'despachar_agora' => !$semDespacho && !$agendado,
-            'scheduled_at'    => !$semDespacho && $agendado ? $despacharEm->format('Y-m-d H:i:s') : null,
+            'scheduled_at'    => !$semDespacho && $agendado ? static::paraOBanco($despacharEm) : null,
             'notas'           => 'iFood #' . $numero . $marcas,
             'entrega'         => [
                 'nome'         => static::texto($cliente['name'] ?? null, 120) ?? 'Cliente iFood',
@@ -140,7 +141,7 @@ final class PedidoDoIfood
                 'numero'              => $numero,
                 'telefone_0800'       => static::texto($telefone['number'] ?? null, 30),
                 'localizador'         => static::texto($telefone['localizer'] ?? null, 20),
-                'telefone_expira_em'  => static::data($telefone['localizerExpiration'] ?? null)?->format('Y-m-d H:i:s'),
+                'telefone_expira_em'  => static::paraOBanco(static::data($telefone['localizerExpiration'] ?? null)),
                 'cobrar_centavos'     => $cobrar,
                 'forma_pagamento'     => $forma,
                 'troco_para_centavos' => $troco,
@@ -150,7 +151,7 @@ final class PedidoDoIfood
                 'exige_codigo'        => false,
                 'teste'               => $teste,
                 'agendado'            => $agendado,
-                'despachar_em'        => $semDespacho ? null : $despacharEm->format('Y-m-d H:i:s'),
+                'despachar_em'        => $semDespacho ? null : static::paraOBanco($despacharEm),
             ],
         ];
     }
@@ -310,6 +311,16 @@ final class PedidoDoIfood
         $texto = is_scalar($valor) && !is_bool($valor) ? trim((string) $valor) : '';
 
         return $texto === '' ? null : mb_substr($texto, 0, $maximo);
+    }
+
+    /**
+     * Texto 'Y-m-d H:i:s' no fuso do app (date_default_timezone_get(), que o Laravel define pelo app.timezone), o mesmo
+     * da sessão do MySQL: vai para o banco e para o scheduled_at do Order (texto sem fuso, que o Eloquent lê no fuso do
+     * app). Em UTC, o agendado era despachado 3 h depois e o despachar_em ficava 3 h depois do now() do agendador.
+     */
+    public static function paraOBanco(?DateTimeInterface $data): ?string
+    {
+        return $data ? DateTimeImmutable::createFromInterface($data)->setTimezone(new DateTimeZone(date_default_timezone_get()))->format('Y-m-d H:i:s') : null;
     }
 
     /** Data ISO (com hora) em UTC, ano de 2000 a 2037; null para o resto ("tomorrow", texto, lista, ano absurdo). */

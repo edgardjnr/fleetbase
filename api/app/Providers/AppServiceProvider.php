@@ -2,16 +2,26 @@
 
 namespace App\Providers;
 
+use App\Console\Commands\Entregas\Fuso\AtualizarEstimativasDosPedidos;
+use App\Console\Commands\Entregas\Fuso\DespacharPedidosAgendados;
+use App\Console\Commands\Entregas\Fuso\EnviarLembretesDeManutencao;
+use App\Console\Commands\Entregas\Fuso\ProcessarGatilhosDeManutencao;
 use App\Console\Commands\Entregas\ReenviarPedidosAbertos;
 use App\Notifications\Entregas\CanalFcmEntregas;
 use App\Notifications\Entregas\Email\CanalEmailEntregas;
+use App\Support\Entregas\FusoDoServidor;
 use Fleetbase\FleetOps\Console\Commands\DispatchAdhocOrders;
+use Fleetbase\FleetOps\Console\Commands\DispatchOrders;
+use Fleetbase\FleetOps\Console\Commands\ProcessMaintenanceTriggers;
+use Fleetbase\FleetOps\Console\Commands\SendMaintenanceReminders;
+use Fleetbase\FleetOps\Console\Commands\TrackOrderDistanceAndTime;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Events\TransactionBeginning;
 use Illuminate\Database\Events\TransactionCommitting;
 use Illuminate\Notifications\Channels\MailChannel;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -22,6 +32,17 @@ use Psr\Http\Message\RequestInterface;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /**
+     * Entregas: comandos agendados do Fleet-Ops (original => nosso) que chamam date_default_timezone_set('UTC') no
+     * handle(). Ao atualizar o fleetops-api, confira se algum outro passou a chamar (scripts/teste-php/fuso.php).
+     */
+    public const COMANDOS_SEM_UTC = [
+        DispatchOrders::class             => DespacharPedidosAgendados::class,
+        TrackOrderDistanceAndTime::class  => AtualizarEstimativasDosPedidos::class,
+        ProcessMaintenanceTriggers::class => ProcessarGatilhosDeManutencao::class,
+        SendMaintenanceReminders::class   => EnviarLembretesDeManutencao::class,
+    ];
+
     /**
      * Ring buffer of recent statements, kept only while the transaction tripwire is armed.
      *
@@ -41,9 +62,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
+        // Entregas: servidor no horário de Brasília (sessão do MySQL e datas do Eloquent); ver FusoDoServidor
+        $this->configurarFuso();
+
         // Entregas: o fleetops:dispatch-adhoc, que o Fleet-Ops agenda a cada minuto, roda a versão corrigida do
         // reenvio de pedidos abertos (ver ReenviarPedidosAbertos)
         $this->app->bind(DispatchAdhocOrders::class, ReenviarPedidosAbertos::class);
+
+        // Entregas: os comandos agendados do Fleet-Ops que fixavam o PHP em UTC rodam sem essa linha (ver as classes em
+        // App\Console\Commands\Entregas\Fuso). O agendador resolve o comando pelo container, como no reenvio acima
+        foreach (static::COMANDOS_SEM_UTC as $original => $nosso) {
+            $this->app->bind($original, $nosso);
+        }
 
         // Entregas: todo push (FCM) sai em pt-BR e no formato do app do motoboy (ver CanalFcmEntregas e AvisosDoMotoboy)
         $this->app->bind(FcmChannel::class, CanalFcmEntregas::class);
@@ -61,6 +91,22 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureOutboundHttpLogging();
         $this->configureTransactionTripwire();
+    }
+
+    /**
+     * Entregas: fuso da sessão do MySQL nas conexões do Fleetbase e conversão de toda data da fachada Date para o fuso do
+     * app (America/Sao_Paulo, config/app.php). No register(), antes de qualquer conexão abrir (o core só lê o banco no
+     * boot); com o config:cache, o valor também fica gravado no cache. Ver FusoDoServidor.
+     */
+    protected function configurarFuso(): void
+    {
+        $configuracoes = FusoDoServidor::configuracoesDoBanco((array) config('database.connections', []), FusoDoServidor::fusoDoBanco());
+        if ($configuracoes) {
+            config($configuracoes);
+        }
+
+        $fuso = (string) config('app.timezone');
+        Date::useCallable(fn ($data) => FusoDoServidor::paraOFusoDoApp($data, $fuso));
     }
 
     /**

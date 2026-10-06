@@ -46,7 +46,7 @@ try {
 }
 confere($ordem === ['ev-1', 'ev-l', 'ev-n'], 'createdAt que não é texto (número, lista): sem TypeError, vai para o fim');
 confere(EventosIfood::instante(1759688680624) === INF && EventosIfood::instante(null) === INF && EventosIfood::instante(['x']) === INF, 'instante() de não texto = INF');
-confere(EventosIfood::instante('2026-10-05 18:24:40.624') === EventosIfood::instante('2026-10-05T18:24:40.624Z'), 'o formato gravado no banco (UTC, sem fuso) dá o mesmo instante');
+confere(EventosIfood::instante('2026-10-05 15:24:40.624') === EventosIfood::instante('2026-10-05T18:24:40.624Z'), 'o formato gravado no banco (hora de Brasília, sem fuso) dá o mesmo instante');
 
 echo '== Ação por código' . PHP_EOL;
 confere(EventosIfood::acao('PLC') === EventosIfood::CRIA, 'PLC cria');
@@ -75,16 +75,16 @@ confere(!defined(\App\Jobs\Entregas\ProcessarPedidoIfood::class . '::POS_COLETA'
 
 echo '== Linha para gravar' . PHP_EOL;
 $comMetadata = evento('ev-4', 'CAN', '2026-10-05T18:26:35.864Z') + ['metadata' => ['CANCEL_ORIGIN' => 'RESTAURANT', 'CANCEL_CODE' => '523']];
-$linha       = EventosIfood::paraGravar($comMetadata, '2026-10-05 18:30:00');
+$linha       = EventosIfood::paraGravar($comMetadata, '2026-10-05 15:30:00');
 confere($linha['evento_id'] === 'ev-4' && $linha['merchant_id'] === 'merchant-1' && $linha['pedido_ifood_id'] === 'pedido-1' && $linha['codigo'] === 'CAN', 'ids e código');
-confere($linha['criado_no_ifood'] === '2026-10-05 18:26:35.864', 'createdAt em UTC, com milissegundos');
+confere($linha['criado_no_ifood'] === '2026-10-05 15:26:35.864', 'createdAt em hora de Brasília (18:26:35.864Z), com milissegundos');
 confere(json_decode($linha['payload'], true) === $comMetadata, 'payload = o evento inteiro');
-confere($linha['processado_em'] === null && $linha['ignorado'] === false && $linha['created_at'] === '2026-10-05 18:30:00', 'pendente, com as datas');
-confere(EventosIfood::paraGravar(['id' => 'ev-5', 'code' => 'PLC'], '2026-10-05 18:30:00') === null, 'sem orderId/merchantId: não grava');
-confere(EventosIfood::paraGravar(evento('ev-6', 'PLC', 'sem data'), '2026-10-05 18:30:00')['criado_no_ifood'] === null, 'data inválida grava nula');
+confere($linha['processado_em'] === null && $linha['ignorado'] === false && $linha['created_at'] === '2026-10-05 15:30:00', 'pendente, com as datas');
+confere(EventosIfood::paraGravar(['id' => 'ev-5', 'code' => 'PLC'], '2026-10-05 15:30:00') === null, 'sem orderId/merchantId: não grava');
+confere(EventosIfood::paraGravar(evento('ev-6', 'PLC', 'sem data'), '2026-10-05 15:30:00')['criado_no_ifood'] === null, 'data inválida grava nula');
 $gravada = null;
 try {
-    $gravada = EventosIfood::paraGravar(['createdAt' => 1759688680624] + evento('ev-7', 'PLC', ''), '2026-10-05 18:30:00');
+    $gravada = EventosIfood::paraGravar(['createdAt' => 1759688680624] + evento('ev-7', 'PLC', ''), '2026-10-05 15:30:00');
 } catch (\TypeError $e) {
 }
 confere($gravada !== null && $gravada['criado_no_ifood'] === null, 'createdAt número: grava com data nula, sem TypeError');
@@ -99,6 +99,6 @@ foreach (['tomorrow', 'now', '+1 day', 'next monday', '2026-10-05', '18:24:40', 
     confere(EventosIfood::instante($texto) === INF, '"' . $texto . '": não é ISO com data e hora, INF');
 }
 confere(array_column(EventosIfood::ordenar([evento('ev-t', 'CFM', 'tomorrow'), evento('ev-d', 'CFM', '2038-06-01T00:00:00Z'), $plc]), 'id') === ['ev-1', 'ev-d', 'ev-t'], 'texto livre e ano fora da faixa vão para o fim (empate pelo id)');
-confere(EventosIfood::paraGravar(evento('ev-8', 'PLC', '2099-01-01T00:00:00Z'), '2026-10-05 18:30:00')['criado_no_ifood'] === null && EventosIfood::paraGravar(evento('ev-8', 'PLC', 'tomorrow'), '2026-10-05 18:30:00')['criado_no_ifood'] === null, 'ano fora da faixa e texto livre: grava a data nula');
+confere(EventosIfood::paraGravar(evento('ev-8', 'PLC', '2099-01-01T00:00:00Z'), '2026-10-05 15:30:00')['criado_no_ifood'] === null && EventosIfood::paraGravar(evento('ev-8', 'PLC', 'tomorrow'), '2026-10-05 15:30:00')['criado_no_ifood'] === null, 'ano fora da faixa e texto livre: grava a data nula');
 
 resumo();

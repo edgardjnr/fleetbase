@@ -52,7 +52,7 @@ function logsCom(string $trecho): array
 echo '== entregas:ifood-tokens' . PHP_EOL;
 reiniciarIfood();
 reiniciarFleetbase();
-vinculoDaLojaA('2026-10-05 18:40:00');
+vinculoDaLojaA('2026-10-05 15:40:00');
 Config::$valores['services.ifood.ativo'] = '';
 (new RenovarTokensIfood())->handle(new VinculosIfood(new ClienteIfood()));
 confere(Http::$chamadas === [], 'desligada: não renova');
@@ -68,13 +68,13 @@ confere(Http::urls() === ['POST /authentication/v1.0/oauth/token'] && logou('[en
 echo '== entregas:ifood-agendados' . PHP_EOL;
 reiniciarIfood();
 reiniciarFleetbase();
-$vencido   = pedidoIfood('vencido', '2026-10-05 17:50:00');
-$futuro    = pedidoIfood('futuro', '2026-10-05 19:20:00');
-$agora     = pedidoIfood('agora', '2026-10-05 17:59:30');
+$vencido   = pedidoIfood('vencido', '2026-10-05 14:50:00');
+$futuro    = pedidoIfood('futuro', '2026-10-05 16:20:00');
+$agora     = pedidoIfood('agora', '2026-10-05 14:59:30');
 $teste     = pedidoIfood('teste', null, ['teste' => true]);
-$cancelado = pedidoIfood('cancelado', '2026-10-05 17:00:00', ['cancelado_pelo_ifood_em' => '2026-10-05 17:30:00']);
-$feito     = pedidoIfood('feito', '2026-10-05 17:00:00', ['despachado_em' => '2026-10-05 17:00:05']);
-$encerrado = pedidoIfood('encerrado', '2026-10-05 17:00:00', [], 'canceled');
+$cancelado = pedidoIfood('cancelado', '2026-10-05 14:00:00', ['cancelado_pelo_ifood_em' => '2026-10-05 14:30:00']);
+$feito     = pedidoIfood('feito', '2026-10-05 14:00:00', ['despachado_em' => '2026-10-05 14:00:05']);
+$encerrado = pedidoIfood('encerrado', '2026-10-05 14:00:00', [], 'canceled');
 Config::$valores['services.ifood.ativo'] = '';
 rodarAgendados();
 confere($vencido->chamadas === [], 'desligada: não despacha');
@@ -83,15 +83,15 @@ Config::$valores['services.ifood.client_id'] = '';
 rodarAgendados();
 confere($vencido->chamadas === [] && linhaDe('cancelado')->despachar_em !== null, 'ENTREGAS_IFOOD=1 sem IFOOD_CLIENT_ID: desligada, não despacha nem mexe na fila');
 Config::$valores['services.ifood.client_id'] = 'cliente-teste';
-$canceladoFuturo = pedidoIfood('cancelado-futuro', '2026-10-05 19:20:00', ['cancelado_pelo_ifood_em' => '2026-10-05 17:30:00']);
+$canceladoFuturo = pedidoIfood('cancelado-futuro', '2026-10-05 16:20:00', ['cancelado_pelo_ifood_em' => '2026-10-05 14:30:00']);
 rodarAgendados();
-confere($vencido->chamadas === ['saveQuietly', 'firstDispatchWithActivity'] && linhaDe('vencido')->despachado_em === '2026-10-05 18:00:00', 'despacha o vencido e marca despachado_em');
+confere($vencido->chamadas === ['saveQuietly', 'firstDispatchWithActivity'] && linhaDe('vencido')->despachado_em === '2026-10-05 15:00:00', 'despacha o vencido e marca despachado_em');
 confere($futuro->chamadas === [] && $agora->chamadas === [], 'o futuro espera; o recém-criado tem 1 min de folga (o job despacha)');
 confere($teste->chamadas === [] && $cancelado->chamadas === [] && $feito->chamadas === [], 'teste, cancelado pelo iFood e já despachado ficam de fora');
 confere($encerrado->chamadas === [] && linhaDe('encerrado')->despachar_em === null, 'encerrado pela central: sai da fila');
 confere(linhaDe('cancelado')->despachar_em === null && linhaDe('cancelado')->despachado_em === null, 'cancelado pelo iFood: sai da fila (despachar_em nulo), sem despachar');
 confere($canceladoFuturo->chamadas === [] && linhaDe('cancelado-futuro')->despachar_em === null, 'cancelado pelo iFood antes da hora do agendado: também sai da fila');
-confere(linhaDe('feito')->despachar_em === '2026-10-05 17:00:00', 'o já despachado não é mexido');
+confere(linhaDe('feito')->despachar_em === '2026-10-05 14:00:00', 'o já despachado não é mexido');
 confere(Socket::$transmitidos === [], 'sem aviso à central (nem pelo cancelado nem pelo encerrado)');
 confere(count(logsCom('[entregas] ifood: pedido despachado pelo agendador')) === 1 && logou('[entregas] ifood: pedido despachado pelo agendador', 'info'), 'log do despacho (só o despachado)');
 confere(!logou('despacho desistiu'), 'ninguém desistiu (o encerrado sai da fila sem o aviso)');
@@ -102,15 +102,15 @@ confere($vencido->chamadas === [], 'na rodada seguinte, não despacha de novo');
 echo '== agendados: reserva do cancelado tira o Order do agendamento' . PHP_EOL;
 reiniciarIfood();
 reiniciarFleetbase();
-$canceladoAgendado = pedidoIfood('cancelado-agendado', '2026-10-05 19:20:00', ['cancelado_pelo_ifood_em' => '2026-10-05 17:30:00'], 'created', ['scheduled_at' => '2026-10-05 19:20:00', 'adhoc' => true]);
-$canceladoAceito   = pedidoIfood('cancelado-aceito', '2026-10-05 19:20:00', ['cancelado_pelo_ifood_em' => '2026-10-05 17:30:00'], 'started', ['scheduled_at' => '2026-10-05 19:20:00', 'adhoc' => true, 'started' => true]);
-$canceladoTravado  = pedidoIfood('cancelado-travado', '2026-10-05 19:20:00', ['cancelado_pelo_ifood_em' => '2026-10-05 17:30:00'], 'created', ['scheduled_at' => '2026-10-05 19:20:00', 'adhoc' => true]);
+$canceladoAgendado = pedidoIfood('cancelado-agendado', '2026-10-05 16:20:00', ['cancelado_pelo_ifood_em' => '2026-10-05 14:30:00'], 'created', ['scheduled_at' => '2026-10-05 16:20:00', 'adhoc' => true]);
+$canceladoAceito   = pedidoIfood('cancelado-aceito', '2026-10-05 16:20:00', ['cancelado_pelo_ifood_em' => '2026-10-05 14:30:00'], 'started', ['scheduled_at' => '2026-10-05 16:20:00', 'adhoc' => true, 'started' => true]);
+$canceladoTravado  = pedidoIfood('cancelado-travado', '2026-10-05 16:20:00', ['cancelado_pelo_ifood_em' => '2026-10-05 14:30:00'], 'created', ['scheduled_at' => '2026-10-05 16:20:00', 'adhoc' => true]);
 Trava::$ocupadas['entregas:pedido:' . $canceladoTravado->uuid] = true;
 confere(excecao(fn () => rodarAgendados()) === null, 'roda sem erro, mesmo com a trava de um pedido ocupada');
 confere($canceladoAgendado->scheduled_at === null && $canceladoAgendado->adhoc === false && $canceladoAgendado->chamadas === ['saveQuietly'] && $canceladoAgendado->travadoNoSalvar === [true], 'cancelado ainda não despachado: scheduled_at nulo e adhoc desligado (saveQuietly, com a trava)');
 confere(linhaDe('cancelado-agendado')->despachar_em === null && !in_array('firstDispatchWithActivity', $canceladoAgendado->chamadas, true), 'e sai da fila, sem despachar');
-confere($canceladoAceito->chamadas === [] && $canceladoAceito->scheduled_at === '2026-10-05 19:20:00' && linhaDe('cancelado-aceito')->despachar_em === null, 'cancelado já aceito: o Order não é mexido; a linha sai da fila');
-confere($canceladoTravado->chamadas === [] && linhaDe('cancelado-travado')->despachar_em === '2026-10-05 19:20:00', 'trava ocupada: o Order e a linha ficam para a rodada seguinte');
+confere($canceladoAceito->chamadas === [] && $canceladoAceito->scheduled_at === '2026-10-05 16:20:00' && linhaDe('cancelado-aceito')->despachar_em === null, 'cancelado já aceito: o Order não é mexido; a linha sai da fila');
+confere($canceladoTravado->chamadas === [] && linhaDe('cancelado-travado')->despachar_em === '2026-10-05 16:20:00', 'trava ocupada: o Order e a linha ficam para a rodada seguinte');
 unset(Trava::$ocupadas['entregas:pedido:' . $canceladoTravado->uuid]);
 rodarAgendados();
 confere($canceladoTravado->scheduled_at === null && $canceladoTravado->adhoc === false && linhaDe('cancelado-travado')->despachar_em === null, 'trava solta: sai do agendamento e da fila na rodada seguinte');
@@ -119,7 +119,7 @@ confere(Socket::$transmitidos === [] && !logou('despacho desistiu'), 'sem aviso 
 echo '== agendados: motoboy atribuído pela central' . PHP_EOL;
 reiniciarIfood();
 reiniciarFleetbase();
-$atribuido = pedidoIfood('atribuido', '2026-10-05 17:50:00', [], 'created', ['driver_assigned_uuid' => 'motoboy-1']);
+$atribuido = pedidoIfood('atribuido', '2026-10-05 14:50:00', [], 'created', ['driver_assigned_uuid' => 'motoboy-1']);
 rodarAgendados();
 // a política do motoboy atribuído é do CriadorDoPedidoIfood::despachar (testada no ifood-criador.php) e mudou durante a
 // etapa: antes, nada a despachar (false, linha fora da fila); agora, despacho só ao atribuído, sem adhoc (true). Aqui
@@ -140,23 +140,23 @@ confere($atribuido->chamadas === [], 'atribuído: na rodada seguinte, nada');
 echo '== agendados: trava do pedido ocupada' . PHP_EOL;
 reiniciarIfood();
 reiniciarFleetbase();
-$travado = pedidoIfood('travado', '2026-10-05 17:50:00');
+$travado = pedidoIfood('travado', '2026-10-05 14:50:00');
 Trava::$ocupadas['entregas:pedido:' . $travado->uuid] = true;
 rodarAgendados();
-confere($travado->chamadas === [] && linhaDe('travado')->despachar_em === '2026-10-05 17:50:00' && linhaDe('travado')->despachado_em === null, 'trava ocupada: a linha continua na fila');
+confere($travado->chamadas === [] && linhaDe('travado')->despachar_em === '2026-10-05 14:50:00' && linhaDe('travado')->despachado_em === null, 'trava ocupada: a linha continua na fila');
 confere(!logou('pedido despachado pelo agendador') && !logou('despacho desistiu'), 'trava ocupada: sem log de despachado nem de desistência');
 unset(Trava::$ocupadas['entregas:pedido:' . $travado->uuid]);
 rodarAgendados();
-confere($travado->chamadas === ['saveQuietly', 'firstDispatchWithActivity'] && linhaDe('travado')->despachado_em === '2026-10-05 18:00:00', 'trava solta: despacha na rodada seguinte');
+confere($travado->chamadas === ['saveQuietly', 'firstDispatchWithActivity'] && linhaDe('travado')->despachado_em === '2026-10-05 15:00:00', 'trava solta: despacha na rodada seguinte');
 
 echo '== agendados: despacho que falha sempre' . PHP_EOL;
 reiniciarIfood();
 reiniciarFleetbase();
-$recente = pedidoIfood('recente', '2026-10-05 17:45:00');
-$velho   = pedidoIfood('velho', '2026-10-05 17:20:00');
+$recente = pedidoIfood('recente', '2026-10-05 14:45:00');
+$velho   = pedidoIfood('velho', '2026-10-05 14:20:00');
 Order::$falharDespacho = true;
 rodarAgendados();
-confere(linhaDe('recente')->despachar_em === '2026-10-05 17:45:00', 'falhou há 15 min: continua na fila');
+confere(linhaDe('recente')->despachar_em === '2026-10-05 14:45:00', 'falhou há 15 min: continua na fila');
 confere(linhaDe('velho')->despachar_em === null && linhaDe('velho')->despachado_em === null && $velho->chamadas === ['saveQuietly', 'firstDispatchWithActivity'], 'vencido há mais de 30 min: tenta uma vez e, falhando, sai da fila');
 $desistencias = logsCom('[entregas] ifood: despacho desistiu');
 confere(count($desistencias) === 1 && $desistencias[0][0] === 'warning', 'um warning de desistência');
@@ -170,14 +170,14 @@ Log::$registros  = [];
 rodarAgendados();
 confere($velho->chamadas === [] && !logou('despacho desistiu') && count(Socket::$transmitidos) === 1, 'na rodada seguinte, não tenta nem avisa de novo');
 Order::$falharDespacho = false;
-$antigoBom = pedidoIfood('antigo-bom', '2026-10-05 17:00:00');
+$antigoBom = pedidoIfood('antigo-bom', '2026-10-05 14:00:00');
 rodarAgendados();
-confere(linhaDe('antigo-bom')->despachado_em === '2026-10-05 18:00:00' && !logou('despacho desistiu'), 'vencido há 1 h mas o despacho sai (agendador parado): despacha, sem desistir');
+confere(linhaDe('antigo-bom')->despachado_em === '2026-10-05 15:00:00' && !logou('despacho desistiu'), 'vencido há 1 h mas o despacho sai (agendador parado): despacha, sem desistir');
 
 echo '== agendados: desistiu com o socket fora do ar' . PHP_EOL;
 reiniciarIfood();
 reiniciarFleetbase();
-$semSocket = pedidoIfood('sem-socket', '2026-10-05 17:25:00');
+$semSocket = pedidoIfood('sem-socket', '2026-10-05 14:25:00');
 Order::$falharDespacho = true;
 Socket::$falhar        = true;
 rodarAgendados();
@@ -193,15 +193,15 @@ Order::$falharDespacho = false;
 echo '== agendados: pedido apagado e linha sem order_uuid' . PHP_EOL;
 reiniciarIfood();
 reiniciarFleetbase();
-$apagado      = pedidoIfood('apagado', '2026-10-05 17:50:00');
+$apagado      = pedidoIfood('apagado', '2026-10-05 14:50:00');
 Order::$todos = array_values(array_filter(Order::$todos, fn ($pedido) => $pedido !== $apagado));
 Banco::inserir('entregas_ifood_pedidos', [
     'company_uuid' => 'empresa-1', 'order_uuid' => null, 'pedido_ifood_id' => 'sem-order', 'numero' => 'sem-order', 'merchant_id' => 'merchant-1',
-    'teste' => false, 'agendado' => true, 'despachar_em' => '2026-10-05 17:00:00', 'despachado_em' => null, 'cancelado_pelo_ifood_em' => null,
+    'teste' => false, 'agendado' => true, 'despachar_em' => '2026-10-05 14:00:00', 'despachado_em' => null, 'cancelado_pelo_ifood_em' => null,
 ], false);
 confere(excecao(fn () => rodarAgendados()) === null, 'roda sem erro');
 confere($apagado->chamadas === [] && linhaDe('apagado')->despachar_em === null && linhaDe('apagado')->despachado_em === null, 'pedido apagado: não despacha e sai da fila');
-confere(linhaDe('sem-order')->despachar_em === '2026-10-05 17:00:00' && linhaDe('sem-order')->despachado_em === null, 'linha sem order_uuid: fica de fora, intacta');
+confere(linhaDe('sem-order')->despachar_em === '2026-10-05 14:00:00' && linhaDe('sem-order')->despachado_em === null, 'linha sem order_uuid: fica de fora, intacta');
 confere(!logou('despachado pelo agendador') && !logou('despacho desistiu') && Socket::$transmitidos === [], 'sem log de despacho, desistência nem aviso');
 
 echo '== agendados: no máximo POR_RODADA por rodada, na ordem do despachar_em' . PHP_EOL;
@@ -210,7 +210,7 @@ reiniciarFleetbase();
 $total = AgendadosIfood::POR_RODADA + 1;
 // gravados fora de ordem: o mais antigo é o último gravado
 foreach (array_merge(range(2, $total), [1]) as $n) {
-    pedidoIfood(sprintf('lote-%02d', $n), sprintf('2026-10-05 17:%02d:00', $n - 1));
+    pedidoIfood(sprintf('lote-%02d', $n), sprintf('2026-10-05 14:%02d:00', $n - 1));
 }
 /** Os números dos pedidos despachados pelo agendador, na ordem dos logs. */
 function numerosDespachados(): array

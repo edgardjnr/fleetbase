@@ -11,7 +11,8 @@ use App\Support\Entregas\Ifood\PedidoDoIfood;
 // Local da loja (coleta) em Ribeirão Preto
 const LAT_COLETA = -21.1775;
 const LNG_COLETA = -47.8103;
-$agora = new DateTimeImmutable('2026-10-05 18:00:00', new DateTimeZone('UTC'));
+// o now() do app, em hora de Brasília (18:00 UTC); as datas do iFood vêm em UTC ("Z") e as gravadas saem em hora de Brasília
+$agora = new DateTimeImmutable('2026-10-05 15:00:00', new DateTimeZone('America/Sao_Paulo'));
 
 echo '== Pedido real, dinheiro com troco' . PHP_EOL;
 $dados = PedidoDoIfood::mapear(pedidoEmDinheiroComTroco(), LAT_COLETA, LNG_COLETA, $agora);
@@ -24,9 +25,9 @@ confere($entrega['neighborhood'] === 'Centro' && $entrega['city'] === 'Ribeirão
 confere($entrega['nome'] === 'Cliente Ficticio', 'nome do cliente no Local');
 $linha = $dados['linha'];
 confere($linha['cobrar_centavos'] === 5890 && $linha['forma_pagamento'] === 'CASH' && $linha['troco_para_centavos'] === 10000, 'cobrar R$ 58,90 em dinheiro, troco para R$ 100');
-confere($linha['telefone_0800'] === '0800 000 0002' && $linha['localizador'] === '33334444' && $linha['telefone_expira_em'] === '2026-10-05 21:58:00', '0800, localizador e expiração (UTC)');
+confere($linha['telefone_0800'] === '0800 000 0002' && $linha['localizador'] === '33334444' && $linha['telefone_expira_em'] === '2026-10-05 18:58:00', '0800, localizador e expiração (21:58Z em hora de Brasília)');
 confere($linha['observacoes'] === 'Interfone quebrado, ligar ao chegar.' && $linha['complemento'] === 'Apto 501' && $linha['referencia'] === 'Perto da praça', 'observações, complemento e referência');
-confere($linha['despachar_em'] === '2026-10-05 18:00:00' && $linha['agendado'] === false && $linha['teste'] === false && $linha['exige_codigo'] === false, 'despachar_em = agora');
+confere($linha['despachar_em'] === '2026-10-05 15:00:00' && $linha['agendado'] === false && $linha['teste'] === false && $linha['exige_codigo'] === false, 'despachar_em = agora');
 
 echo '== Pedido de teste pago online (como os da sonda)' . PHP_EOL;
 $dados = PedidoDoIfood::mapear(pedidoDeTestePagoOnline(), LAT_COLETA, LNG_COLETA, $agora);
@@ -47,9 +48,9 @@ confere($dados['notas'] === 'iFood #4821 [SEM LOCALIZAÇÃO]', '[SEM LOCALIZAÇ�
 echo '== Agendado' . PHP_EOL;
 $dados = PedidoDoIfood::mapear(pedidoAgendado(), LAT_COLETA, LNG_COLETA, $agora);
 confere($dados['agendado'] === true && $dados['despachar_agora'] === false, 'agendado: não despacha agora');
-confere($dados['scheduled_at'] === '2026-10-05 19:20:00' && $dados['linha']['despachar_em'] === '2026-10-05 19:20:00', 'vai aos motoboys 40 min antes da janela (20:00 → 19:20)');
+confere($dados['scheduled_at'] === '2026-10-05 16:20:00' && $dados['linha']['despachar_em'] === '2026-10-05 16:20:00', 'vai aos motoboys 40 min antes da janela (20:00Z → 19:20Z, 16:20 em Brasília)');
 $dados = PedidoDoIfood::mapear(pedidoAgendado('2026-10-05T18:30:00.000Z'), LAT_COLETA, LNG_COLETA, $agora);
-confere($dados['agendado'] === false && $dados['despachar_agora'] === true && $dados['linha']['despachar_em'] === '2026-10-05 18:00:00', 'menos de 40 min para a janela: despacha na hora');
+confere($dados['agendado'] === false && $dados['despachar_agora'] === true && $dados['linha']['despachar_em'] === '2026-10-05 15:00:00', 'menos de 40 min para a janela: despacha na hora');
 confere(PedidoDoIfood::mapear(pedidoAgendado(), LAT_COLETA, LNG_COLETA, $agora)['sem_janela'] === false, 'com janela: sem_janela = false');
 
 echo '== Agendado sem janela legível: não despacha e avisa no log' . PHP_EOL;
@@ -213,7 +214,7 @@ foreach (['scheduled', ' SCHEDULED ', "Scheduled\n"] as $valor) {
     $pedido                = pedidoAgendado();
     $pedido['orderTiming'] = $valor;
     $dados                 = PedidoDoIfood::mapear($pedido, LAT_COLETA, LNG_COLETA, $agora);
-    confere($dados['agendado'] === true && $dados['scheduled_at'] === '2026-10-05 19:20:00', 'orderTiming ' . json_encode($valor) . ' = agendado');
+    confere($dados['agendado'] === true && $dados['scheduled_at'] === '2026-10-05 16:20:00', 'orderTiming ' . json_encode($valor) . ' = agendado');
 }
 $pedido                = pedidoAgendado();
 $pedido['orderTiming'] = ['SCHEDULED'];
@@ -238,7 +239,7 @@ confere($dados['linha']['telefone_expira_em'] === null && $dados['linha']['telef
 $longe['customer']['phone']['localizerExpiration'] = '1850-01-01T00:00:00.000Z';
 confere(PedidoDoIfood::mapear($longe, LAT_COLETA, LNG_COLETA, $agora)['linha']['telefone_expira_em'] === null, 'localizerExpiration antes de 2000: nula');
 $longe['customer']['phone']['localizerExpiration'] = '2037-06-01T00:00:00.000Z';
-confere(PedidoDoIfood::mapear($longe, LAT_COLETA, LNG_COLETA, $agora)['linha']['telefone_expira_em'] === '2037-06-01 00:00:00', 'até 2037 vale');
+confere(PedidoDoIfood::mapear($longe, LAT_COLETA, LNG_COLETA, $agora)['linha']['telefone_expira_em'] === '2037-05-31 21:00:00', 'até 2037 vale (em hora de Brasília)');
 $dados = PedidoDoIfood::mapear(pedidoAgendado('2099-01-01T00:00:00.000Z'), LAT_COLETA, LNG_COLETA, $agora);
 confere($dados['sem_janela'] === true && $dados['scheduled_at'] === null && $dados['linha']['despachar_em'] === null, 'janela do agendado em 2099: sem janela (nenhuma data fora da faixa chega ao banco)');
 

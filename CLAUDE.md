@@ -58,6 +58,36 @@ Depois de cada deploy do console, abra o site com Ctrl+Shift+R. O console guarda
   - A moeda foi gravada via API, porque o `CurrencySelect` só dispara a mudança quando o valor muda. Se a tela mostrar BRL só como sugestão, nada é salvo.
 - **E-mail:** `MAIL_MAILER=log` até alguém configurar SMTP no `stack.env`.
 
+## Fuso (horário de Brasília)
+
+Decisão de 2026-10-05: o servidor inteiro roda no horário de Brasília (`America/Sao_Paulo`, sem horário de verão desde 2019), para acabar com os erros de 3 h (ex.: a lista "Hoje" do app, `GET v1/orders?on=...-03:00`, perdia os pedidos criados depois das 21h). Roteiro da troca em produção (com ensaio obrigatório num MySQL descartável) e scripts do banco: `deploy/fuso/LEIAME.md`.
+
+- **PHP:** `api/config/app.php` com `timezone` = `America/Sao_Paulo`.
+- **Sessão do MySQL:** `-03:00` (ou `DB_TIMEZONE`) nas conexões `mysql`, `sandbox` e `storefront`, pelo `AppServiceProvider::configurarFuso` (`App\Support\Entregas\FusoDoServidor`).
+  - Não dá para pôr no `config/database.php`: as conexões vêm do core-api por `mergeConfigFrom`, que é raso, e uma chave `mysql` ali substituiria a conexão inteira.
+- **TIMESTAMP** (`created_at`, `updated_at`, `deleted_at`, tabelas `entregas_*`): o MySQL guarda em UTC e converte para a sessão. Os dados antigos continuaram certos.
+- **DATETIME** (`orders.dispatched_at`, `started_at`, `scheduled_at`, `time_window_*` e mais algumas) e o `users.last_login` (VARCHAR): guardam a hora de Brasília, sem fuso. Os dados antigos foram deslocados 3 h (`deploy/fuso/2-converter.sql`, com trava contra rodar duas vezes).
+- **Datas da fachada `Date`** (Eloquent ao gravar e ler atributos de data, `now()`, `$request->date()`): o `Date::useCallable` converte para o fuso do app. O Eloquent formata no fuso do próprio objeto, e o ISO com `Z` do console (`scheduled_at`) era gravado com a hora UTC.
+- **Nunca formate em UTC para gravar nem para consultar.**
+  - O query builder (`where`, `whereBetween`, `whereDate`, `insert`/`update` do `DB::table`) formata o Carbon no fuso do objeto, e o `Date::useCallable` não cobre isso.
+  - Use datas no fuso do app (`date_default_timezone_get()`) e leia texto sem fuso do banco nesse fuso.
+  - A API continua respondendo em ISO UTC com `Z` (`serializeDate`): console e app não mudaram.
+- **Consulta manual no MySQL:** rode `SET time_zone='-03:00';` antes, a menos que o servidor esteja com `--default-time-zone=-03:00` (opcional; ver o LEIAME). Sem isso, o TIMESTAMP sai em UTC e o DATETIME em Brasília.
+- **Comandos agendados do Fleet-Ops que fixavam o PHP em UTC** (`date_default_timezone_set('UTC')`), com a sessão em -03:00, despachavam os agendados 3 h antes e gravavam o `updated_at` 3 h no futuro.
+  - Rodam por subclasses sem essa linha (`api/app/Console/Commands/Entregas/Fuso/`), trocadas com `bind` (`AppServiceProvider::COMANDOS_SEM_UTC`): `fleetops:dispatch-orders`, `update-estimations`, `process-maintenance-triggers` e `send-maintenance-reminders`.
+  - O `ReenviarPedidosAbertos` (`dispatch-adhoc`) também não fixa mais.
+- **Ao atualizar o fleetops-api ou o core-api:** confira se o `handle()` desses comandos mudou e se outro comando passou a chamar `date_default_timezone_set`. O `scripts/teste-php/fuso.php` compara o `handle()` das subclasses com o da cópia em `packages/fleetops` e procura a chamada no Fleet-Ops, no core e no `api/app`.
+- **Testes:**
+  - `scripts/teste-php/fuso.php`: configuração, `Date::useCallable`, comandos e datas do iFood;
+  - `fuso-relatorio.php`: período e conclusão do relatório e dos ganhos em Brasília;
+  - os stubs (`stubs.php`, `stubs-ganhos.php`, `stubs-ifood.php`) também rodam em Brasília: `date_default_timezone_set('America/Sao_Paulo')`, `now()` no fuso padrão, e os textos do banco nas expectativas em hora de Brasília.
+- **Efeitos colaterais aceitos:**
+  - as tarefas `daily()`, `twiceDaily(1, 13)` e `dailyAt()` do agendador (purges do core, `telemetry:ping`, manutenção do Fleet-Ops, `materialize-schedules`) passam a rodar na hora de Brasília, porque o agendador usa o `app.timezone`;
+  - os logs do Laravel saem em -03:00;
+  - cliente externo da API v1 que manda ISO com `Z` em **filtro** de data (`created_at`, `on`… vão ao query builder) erra 3 h; ao gravar, o `Date::useCallable` converte. Texto sem fuso passa a valer como hora de Brasília (antes, UTC). A integração iFood é interna e não é afetada;
+  - telas ocultas (agenda/escalas, manutenção, orquestrador) e o `sandbox:sync` não foram revisados: podem errar 3 h.
+- **Risco:** se o horário de verão voltar, o `-03:00` fixo da sessão diverge do PHP. Aí use o fuso nomeado (exige as tabelas `mysql.time_zone_name`, que o inventário confere) e trate a hora ambígua das DATETIME.
+
 ## Estrutura
 
 - `api/`: Laravel. Em produção, a API usa os pacotes **publicados** no Composer (fleetbase/core-api, fleetops-api…).
@@ -321,6 +351,7 @@ As migrations ficam em `api/database/migrations`.
 - `entregas_ifood_lojas`: o vínculo. Tokens cifrados (APP_KEY); `situacao` = `vinculada` | `vinculo_perdido` | `desvinculada`.
 - `entregas_ifood_eventos`: um registro por evento. Uma vez por dia, a limpeza apaga os processados há mais de 7 dias e os pendentes há mais de 30.
 - `entregas_ifood_pedidos`: dados do iFood de cada pedido (0800, cobrança, observações, `exige_codigo`, `cancelado_pelo_ifood_em`, `teste`, `agendado`, `despachar_em`, `despachado_em`). Fica fora do `meta` do Order de propósito.
+- Datas em TIMESTAMP, gravadas como texto no fuso do app (`PedidoDoIfood::paraOBanco`, `EventosIfood::paraOBanco`): as contas com o iFood (ISO com `Z`) são feitas em UTC e só a saída é convertida. Ver "Fuso (horário de Brasília)".
 
 ### Tokens e erros
 
@@ -390,7 +421,8 @@ Todos com o prefixo `[entregas] ifood:` e só com ids, códigos e o número do p
 - `OrderConfig::default()` e o `TrackingNumberObserver`, que leem a empresa da sessão;
 - `Payload::setPickup`/`setDropoff`/`setCurrentWaypoint` e `Utils::getMutationType`;
 - o `HandleOrderDispatched`: com adhoc, avisa todos os motoboys livres do raio; sem adhoc e com motoboy, só o atribuído;
-- a janela de ±1 min do `fleetops:dispatch-orders`.
+- a janela de ±1 min do `fleetops:dispatch-orders`;
+- o `handle()` dos comandos agendados trocados por causa do fuso (ver "Fuso (horário de Brasília)").
 
 ### Testes
 
@@ -539,4 +571,5 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 14. Atividades do pedido em pt-BR na tela (2026-10-04), detalhes do pedido no app com fechar e Chat com a central, e chat da loja com os motoboys no portal.
 15. Pedidos em andamento no mapa (2026-10-05): alfinete vermelho no endereço de entrega. O console mostra todos os pedidos; o portal, só os da loja.
 16. Raio crescente nos reenvios de pedido aberto e aviso "sem motoboy" à central no console (2026-10-05), etapa 1 da integração iFood (spec `docs/superpowers/specs/2026-10-05-integracao-ifood-logistics-design.md`).
+17. Servidor no horário de Brasília (2026-10-05, ramo `fuso-brasilia`): PHP e sessão do MySQL em -03:00, `Date::useCallable`, comandos agendados do Fleet-Ops sem `date_default_timezone_set('UTC')`, relatório, ganhos e iFood no fuso do app, e conversão das DATETIME (`deploy/fuso/`).
 17. Integração iFood, etapa 2 (2026-10-05, ramo `ifood-etapa-2`): três tabelas, vínculo das lojas na tela Lojas (app distribuído), polling a cada 30 s com ack depois da gravação, job por pedido que cria o pedido no PLC e despacha como o portal, agendados 40 min antes da janela, renovação dos tokens e varredura dos pendentes (ver "Integração iFood").

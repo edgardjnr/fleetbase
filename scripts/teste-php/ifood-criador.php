@@ -44,7 +44,7 @@ confere($linha->cobrar_centavos === 5890 && $linha->forma_pagamento === 'CASH' &
 confere($pedido->adhocAoCriar === true, 'nasce adhoc: vai aos motoboys agora');
 confere($pedido->adhoc === true && $pedido->chamadas === ['saveQuietly', 'firstDispatchWithActivity'], 'despacho como o do portal: adhoc + firstDispatchWithActivity');
 confere($pedido->travadoNoDespacho === [true] && Trava::$ocupadas === [], 'despacho com a trava do pedido (solta no fim)');
-confere($linha->despachado_em === '2026-10-05 18:00:00', 'despachado_em marcado');
+confere($linha->despachado_em === '2026-10-05 15:00:00', 'despachado_em marcado');
 confere(!logou('coleta diverge'), 'coleta a menos de 300 m do endereço do iFood: sem aviso');
 confere(logou('[entregas] ifood: pedido criado', 'info') && logsSem(['Cliente Ficticio', 'CLIENTE FICTICIO', '0800 000 0002', 'Rua Ficticia', '33334444']), 'log sem nome, telefone, endereço nem localizador');
 
@@ -62,8 +62,8 @@ echo '== Agendado: não despacha agora' . PHP_EOL;
 $vinculo = preparar();
 $linha   = (new CriadorDoPedidoIfood())->criar($vinculo, pedidoAgendado());
 $pedido  = Order::$criados[0];
-confere($pedido->scheduled_at === '2026-10-05 19:20:00' && $pedido->chamadas === [], 'scheduled_at 40 min antes da janela, sem despacho');
-confere($linha->agendado === true && $linha->despachar_em === '2026-10-05 19:20:00' && ($linha->despachado_em ?? null) === null, 'na fila do entregas:ifood-agendados');
+confere($pedido->scheduled_at === '2026-10-05 16:20:00' && $pedido->chamadas === [], 'scheduled_at 40 min antes da janela, sem despacho');
+confere($linha->agendado === true && $linha->despachar_em === '2026-10-05 16:20:00' && ($linha->despachado_em ?? null) === null, 'na fila do entregas:ifood-agendados');
 confere($pedido->adhocAoCriar === true, 'nasce adhoc: o fleetops:dispatch-orders despacha o agendado sem ligar o adhoc');
 
 echo '== Agendado sem janela: não nasce adhoc' . PHP_EOL;
@@ -128,7 +128,7 @@ $pedido = Order::create(['company_uuid' => 'empresa-1', 'dispatched' => true]);
 Banco::inserir('entregas_ifood_pedidos', ['pedido_ifood_id' => 'p-1', 'order_uuid' => $pedido->uuid, 'merchant_id' => 'merchant-1', 'company_uuid' => 'empresa-1'], false);
 Sessao::$dados = [];
 confere((new CriadorDoPedidoIfood())->despachar($pedido) && $pedido->chamadas === ['insertDispatchActivity'], 'já despachado pelo fleetops:dispatch-orders: só a atividade');
-confere(Sessao::$dados['company'] === 'empresa-1' && Banco::linhas('entregas_ifood_pedidos')[0]->despachado_em === '2026-10-05 18:00:00', 'com a empresa na sessão; marca despachado_em');
+confere(Sessao::$dados['company'] === 'empresa-1' && Banco::linhas('entregas_ifood_pedidos')[0]->despachado_em === '2026-10-05 15:00:00', 'com a empresa na sessão; marca despachado_em');
 $pedido->chamadas = [];
 (new CriadorDoPedidoIfood())->despachar($pedido);
 confere($pedido->chamadas === [], 'atividade já existe: nada a fazer');
@@ -141,7 +141,7 @@ confere(Trava::$ocupadas === [], 'a trava é solta mesmo com erro');
 function pedidoNaFila(array $atributos = []): Order
 {
     $pedido = Order::create($atributos + ['company_uuid' => 'empresa-1']);
-    Banco::inserir('entregas_ifood_pedidos', ['pedido_ifood_id' => 'p-' . $pedido->uuid, 'order_uuid' => $pedido->uuid, 'merchant_id' => 'merchant-1', 'company_uuid' => 'empresa-1', 'despachar_em' => '2026-10-05 17:50:00'], false);
+    Banco::inserir('entregas_ifood_pedidos', ['pedido_ifood_id' => 'p-' . $pedido->uuid, 'order_uuid' => $pedido->uuid, 'merchant_id' => 'merchant-1', 'company_uuid' => 'empresa-1', 'despachar_em' => '2026-10-05 14:50:00'], false);
 
     return $pedido;
 }
@@ -162,7 +162,7 @@ preparar();
 $pedido                                          = pedidoNaFila();
 Trava::$ocupadas['entregas:pedido:' . $pedido->uuid] = true;
 confere((new CriadorDoPedidoIfood())->despachar($pedido) === false && $pedido->chamadas === [], 'não despacha: false (falha temporária)');
-confere(linhaDoPedido($pedido)->despachar_em === '2026-10-05 17:50:00' && (linhaDoPedido($pedido)->despachado_em ?? null) === null, 'fica na fila: o agendador tenta no próximo minuto');
+confere(linhaDoPedido($pedido)->despachar_em === '2026-10-05 14:50:00' && (linhaDoPedido($pedido)->despachado_em ?? null) === null, 'fica na fila: o agendador tenta no próximo minuto');
 confere(logou('[entregas] ifood: trava do pedido ocupada', 'warning') && isset(Trava::$ocupadas['entregas:pedido:' . $pedido->uuid]), 'aviso no log; a trava do outro fica');
 
 echo '== Despacho: relê o pedido com a trava' . PHP_EOL;
@@ -170,7 +170,7 @@ $resolvidos = [
     'aceito (started)'                => ['started' => true, 'driver_assigned_uuid' => 'driver-1', 'status' => 'started'],
     'cancelado pela central'          => ['status' => 'canceled'],
     'concluído'                       => ['status' => 'completed'],
-    'apagado'                         => ['deleted_at' => '2026-10-05 17:55:00'],
+    'apagado'                         => ['deleted_at' => '2026-10-05 14:55:00'],
 ];
 foreach ($resolvidos as $caso => $agora) {
     preparar();
@@ -196,18 +196,18 @@ confere((new CriadorDoPedidoIfood())->despachar($pedido) && $pedido->chamadas ==
 preparar();
 $pedido = pedidoNaFila(['dispatched' => true, 'status' => 'enroute']);
 confere((new CriadorDoPedidoIfood())->despachar($pedido) && $pedido->chamadas === [], 'status já adiante: não insere a atividade');
-confere(linhaDoPedido($pedido)->despachado_em === '2026-10-05 18:00:00', 'e marca despachado_em (já estava com os motoboys)');
+confere(linhaDoPedido($pedido)->despachado_em === '2026-10-05 15:00:00', 'e marca despachado_em (já estava com os motoboys)');
 
 echo '== Despacho: agendado com motoboy já atribuído pela central' . PHP_EOL;
 preparar();
 // agendado com janela: nasce adhoc; a central atribui um motoboy antes do despacho
-$pedido                       = pedidoNaFila(['adhoc' => true, 'scheduled_at' => '2026-10-05 18:30:00']);
+$pedido                       = pedidoNaFila(['adhoc' => true, 'scheduled_at' => '2026-10-05 15:30:00']);
 $velho                        = copiaVelha($pedido, ['adhoc' => true]);
 $pedido->driver_assigned_uuid = 'driver-1';
 confere((new CriadorDoPedidoIfood())->despachar($velho) === true, 'despacha: true');
 confere($pedido->chamadas === ['saveQuietly', 'firstDispatchWithActivity'] && $pedido->adhocAoSalvar === [false] && $pedido->adhoc === false, 'adhoc falso antes do despacho: o HandleOrderDispatched avisa só o motoboy atribuído');
 confere($pedido->travadoNoDespacho === [true] && $velho->chamadas === [], 'com a trava, no pedido relido');
-confere(linhaDoPedido($pedido)->despachado_em === '2026-10-05 18:00:00', 'marca despachado_em (sai da fila do agendador)');
+confere(linhaDoPedido($pedido)->despachado_em === '2026-10-05 15:00:00', 'marca despachado_em (sai da fila do agendador)');
 confere(logou('[entregas] ifood: pedido despachado só ao motoboy atribuído', 'info') && logsSem(['driver-1']), 'log só com o id do pedido');
 preparar();
 $pedido = pedidoNaFila(['adhoc' => true, 'dispatched' => true, 'status' => 'dispatched', 'driver_assigned_uuid' => 'driver-1']);

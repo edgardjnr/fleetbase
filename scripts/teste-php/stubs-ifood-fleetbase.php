@@ -397,12 +397,12 @@ namespace {
     }
 
     /** O vínculo da loja de teste (vendor-a ↔ merchant-1), gravado na tabela; devolve a linha. */
-    function vinculoDaLojaA(string $expiraEm = '2026-10-05 23:00:00'): object
+    function vinculoDaLojaA(string $expiraEm = '2026-10-05 20:00:00'): object
     {
         \Teste\Banco::inserir('entregas_ifood_lojas', [
             'company_uuid' => 'empresa-1', 'vendor_uuid' => 'vendor-a', 'merchant_id' => 'merchant-1', 'nome_ifood' => 'Pizzaria Ficticia',
             'access_token' => encrypt('token-a'), 'refresh_token' => encrypt('refresh-a'), 'expira_em' => $expiraEm, 'situacao' => 'vinculada',
-            'vinculado_em' => '2026-10-05 12:00:00', 'renovado_em' => null, 'created_at' => '2026-10-05 12:00:00', 'updated_at' => '2026-10-05 12:00:00',
+            'vinculado_em' => '2026-10-05 09:00:00', 'renovado_em' => null, 'created_at' => '2026-10-05 09:00:00', 'updated_at' => '2026-10-05 09:00:00',
         ], false);
 
         return (new \Teste\Consulta('entregas_ifood_lojas'))->where('vendor_uuid', 'vendor-a')->first();

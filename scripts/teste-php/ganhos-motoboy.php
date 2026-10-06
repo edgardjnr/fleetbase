@@ -236,7 +236,7 @@ $calculoTeste = new CalculoDeTeste();
 $resposta     = $controller->ganhos(new Request(['inicio' => '2026-10-01', 'fim' => '2026-10-03'], '12|abc'), $calculoTeste);
 confere($resposta->status === 200 && array_column($resposta->dados['entregas'], 'pedido') === ['order_meu'], 'só as corridas do motoboy do token');
 confere($calculoTeste->wheres === [['orders.driver_assigned_uuid', 'uuid-driver_motoca']], 'o filtro vai ao banco pelo motoboy');
-confere($calculoTeste->periodo === ['2026-10-01 03:00:00', '2026-10-04 02:59:59'], 'do dia 1 ao dia 3 no fuso da organização (em UTC: ' . implode(' a ', $calculoTeste->periodo) . ')');
+confere($calculoTeste->periodo === ['2026-10-01 00:00:00', '2026-10-03 23:59:59'], 'do dia 1 ao dia 3 no fuso da organização (no fuso do app, o da sessão do MySQL: ' . implode(' a ', $calculoTeste->periodo) . ')');
 confere($resposta->dados['totais'] === ['entregas' => 1, 'km' => 3.21, 'valor' => 8.0], 'total a receber do período');
 confere(!str_contains(json_encode($resposta->dados), '11.37') && !str_contains(json_encode($resposta->dados), 'valor_loja'), 'nada do valor cobrado da loja');
 confere($controller->ganhos(new Request(['inicio' => '2026-07-01', 'fim' => '2026-10-02'], '12|abc'), $calculoTeste)->status === 422, 'mais de 3 meses: 422');

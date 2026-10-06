@@ -347,7 +347,7 @@ class VinculosIfood
     /** Segundos até o access token vencer (negativo = vencido; sem validade gravada = vencido). */
     protected static function segundosAteVencer(object $vinculo): int
     {
-        $expira = $vinculo->expira_em ? Carbon::parse($vinculo->expira_em, 'UTC')->getTimestamp() : 0;
+        $expira = $vinculo->expira_em ? Carbon::parse($vinculo->expira_em, date_default_timezone_get())->getTimestamp() : 0;
 
         return $expira - now()->getTimestamp();
     }

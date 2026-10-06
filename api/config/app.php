@@ -67,7 +67,9 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // Entregas RestaurantePro: o servidor inteiro roda no horário de Brasília (sem horário de verão desde 2019). A
+    // sessão do MySQL fica em -03:00 (AppServiceProvider::configurarFuso); ver CLAUDE.md, "Fuso (horário de Brasília)"
+    'timezone' => 'America/Sao_Paulo',
 
     /*
     |--------------------------------------------------------------------------
