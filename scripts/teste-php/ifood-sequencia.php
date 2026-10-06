@@ -37,7 +37,11 @@ confere(CobrancaIfood::texto(0, 'CASH', 10000) === null, 'nada a cobrar: null');
 confere(CobrancaIfood::texto(5890, 'CASH', 10000) === 'Cobrar R$ 58,90 · dinheiro · troco p/ R$ 100', 'dinheiro com troco (exemplo da spec)');
 confere(CobrancaIfood::texto(5890, 'CASH', 5000) === 'Cobrar R$ 58,90 · dinheiro', 'troco menor que o valor não aparece');
 confere(CobrancaIfood::texto(5890, 'CASH', 10050) === 'Cobrar R$ 58,90 · dinheiro · troco p/ R$ 100,50', 'troco com centavos');
-confere(CobrancaIfood::texto(5890, 'CREDIT', 10000) === 'Cobrar R$ 58,90 · cartão de crédito', 'troco só vale para dinheiro');
+// o troco só é gravado a partir do bloco de dinheiro (PedidoDoIfood::cobranca): existindo, aparece, mesmo com "MISTO",
+// que esconde as formas
+confere(CobrancaIfood::texto(5890, 'MISTO', 10000) === 'Cobrar R$ 58,90 · formas variadas · troco p/ R$ 100', 'MISTO com troco: o troco aparece');
+confere(CobrancaIfood::texto(5890, 'GIFT_CARD', null) === 'Cobrar R$ 58,90 · vale-presente', 'GIFT_CARD: vale-presente');
+confere(CobrancaIfood::texto(5890, 'OTHER', null) === 'Cobrar R$ 58,90 · outra forma', 'OTHER: outra forma');
 confere(CobrancaIfood::texto(123456, 'CASH+CREDIT', 200000) === 'Cobrar R$ 1.234,56 · dinheiro + cartão de crédito · troco p/ R$ 2.000', 'duas formas e milhar');
 confere(CobrancaIfood::texto(5890, null, null) === 'Cobrar R$ 58,90', 'sem forma');
 confere(CobrancaIfood::texto(5890, 'MISTO', null) === 'Cobrar R$ 58,90 · formas variadas', 'MISTO');

@@ -40,16 +40,16 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        // Entregas RestaurantePro: aceite do motoboy (v1/orders/{id}/start) de pedido encerrado é barrado, e o
-        // cancelamento da API v1 roda com a mesma trava do aceite. O core preenche o grupo fleetbase.api no boot()
-        // dele, e os pacotes sobem antes dos providers do app: este entra no fim do grupo, depois da autenticação
-        // (AuthenticateOnceWithBasicAuth) e com a sessão da empresa montada
         // Entregas RestaurantePro: pedido iFood não se cancela do nosso lado (API v1, console) e, com a trava
         // ENTREGAS_IFOOD_EXIGE_APP_NOVO, só se conclui pela rota concluir-ifood do APK novo (ver RegrasDoPedidoIfood). Antes
         // do BarrarAceiteDePedidoEncerrado: o cancelamento recusado nem pega a trava do pedido
         $this->app['router']->pushMiddlewareToGroup('fleetbase.api', RegrasDoPedidoIfood::class);
         $this->app['router']->pushMiddlewareToGroup('fleetbase.protected', RegrasDoPedidoIfood::class);
 
+        // Entregas RestaurantePro: aceite do motoboy (v1/orders/{id}/start) de pedido encerrado é barrado, e o
+        // cancelamento da API v1 roda com a mesma trava do aceite. O core preenche o grupo fleetbase.api no boot()
+        // dele, e os pacotes sobem antes dos providers do app: este entra no fim do grupo, depois da autenticação
+        // (AuthenticateOnceWithBasicAuth) e com a sessão da empresa montada
         $this->app['router']->pushMiddlewareToGroup('fleetbase.api', BarrarAceiteDePedidoEncerrado::class);
 
         // Entregas RestaurantePro: o motoboy ligou/desligou o online no app → aviso no socket da empresa, para o mapa
@@ -72,12 +72,12 @@ class RouteServiceProvider extends ServiceProvider
         // chamadas por minuto por motoboy, num balde separado do entregas-motoboy (ganhos e valor)
         RateLimiter::for('entregas-motoboy-rota', fn (Request $request) => Limit::perMinute(120)->by('entregas-motoboy-rota:' . (session('user') ?: $request->ip())));
 
-        // Entregas RestaurantePro: vínculo da loja com o iFood na tela Lojas (código de vínculo e troca do código de
-        // autorização), até 20 chamadas por minuto por usuário, para um clique repetido não martelar o iFood
         // Entregas RestaurantePro: código de entrega do iFood digitado pelo motoboy, até 10 tentativas por minuto por motoboy
-        // (contra tentar todos os códigos), além do entregas-motoboy
+        // (contra tentar todos os códigos), além do entregas-motoboy e do teto de erros por pedido (ConclusaoIfood)
         RateLimiter::for('entregas-ifood-codigo', fn (Request $request) => Limit::perMinute(10)->by('entregas-ifood-codigo:' . (session('user') ?: $request->ip())));
 
+        // Entregas RestaurantePro: vínculo da loja com o iFood na tela Lojas (código de vínculo e troca do código de
+        // autorização), até 20 chamadas por minuto por usuário, para um clique repetido não martelar o iFood
         RateLimiter::for('entregas-ifood-vinculo', fn (Request $request) => Limit::perMinute(20)->by('entregas-ifood-vinculo:' . (session('user') ?: $request->ip())));
 
         $this->routes(

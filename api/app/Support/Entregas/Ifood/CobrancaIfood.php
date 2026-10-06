@@ -10,8 +10,9 @@ namespace App\Support\Entregas\Ifood;
  * - Nada a cobrar (0, pago online) = null: o app não mostra a faixa.
  * - A forma vem como o iFood manda, em maiúsculas (CASH, CREDIT, DEBIT…), duas formas juntas com "+" ou "MISTO"
  *   (PedidoDoIfood::cobranca). Forma desconhecida sai em minúsculas, como veio.
- * - O troco só aparece com dinheiro entre as formas e quando é maior que o valor a cobrar (troco para R$ 50 num pedido
- *   de R$ 58,90 não faz sentido: o cliente pagaria a diferença de outro jeito).
+ * - O troco aparece sempre que existe e é maior que o valor a cobrar (troco para R$ 50 num pedido de R$ 58,90 não faz
+ *   sentido: o cliente pagaria a diferença de outro jeito). O PedidoDoIfood só grava o troco a partir do bloco de
+ *   dinheiro, então ele existir já diz que há dinheiro, inclusive com "MISTO", que esconde as formas.
  */
 final class CobrancaIfood
 {
@@ -24,6 +25,8 @@ final class CobrancaIfood
         'FOOD_VOUCHER'   => 'vale-alimentação',
         'PIX'            => 'Pix',
         'DIGITAL_WALLET' => 'carteira digital',
+        'GIFT_CARD'      => 'vale-presente',
+        'OTHER'          => 'outra forma',
         'MISTO'          => 'formas variadas',
     ];
 
@@ -41,7 +44,7 @@ final class CobrancaIfood
             $partes[] = $formaLegivel;
         }
 
-        if ($trocoParaCentavos !== null && $trocoParaCentavos > $centavos && static::temDinheiro($forma)) {
+        if ($trocoParaCentavos !== null && $trocoParaCentavos > $centavos) {
             $partes[] = 'troco p/ ' . static::reais($trocoParaCentavos, true);
         }
 
@@ -72,10 +75,5 @@ final class CobrancaIfood
         }
 
         return 'R$ ' . number_format($centavos / 100, 2, ',', '.');
-    }
-
-    protected static function temDinheiro(?string $forma): bool
-    {
-        return in_array('CASH', array_map('trim', explode('+', strtoupper((string) $forma))), true);
     }
 }

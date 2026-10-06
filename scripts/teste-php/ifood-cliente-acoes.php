@@ -21,6 +21,13 @@ Http::responder(202);
 (new ClienteIfood())->acaoLogistica('token-a', 'pedido/estranho', 'assignDriver', ['workerName' => 'Fulano', 'workerPhone' => '16999990000', 'workerVehicleType' => 'MOTORCYCLE']);
 confere(Http::urls() === ['POST /logistics/v1.0/orders/pedido%2Festranho/assignDriver'], 'id do pedido codificado na URL');
 confere(Http::$chamadas[0]['dados'] === ['workerName' => 'Fulano', 'workerPhone' => '16999990000', 'workerVehicleType' => 'MOTORCYCLE'], 'assignDriver com o corpo');
+$rastro = (new ReflectionMethod(ClienteIfood::class, 'acaoLogistica'))->getParameters()[3]->getAttributes(SensitiveParameter::class);
+confere(count($rastro) === 1, 'o corpo (nome e telefone do motoboy) fica fora do stack trace (#[\SensitiveParameter])');
+
+reiniciarIfood();
+Http::responder(202);
+(new ClienteIfood())->acaoLogistica('token-a', 'pedido-real-1', 'dispatch', []);
+confere(Http::$chamadas[0]['dados'] === null, 'corpo vazio ([]): vai sem corpo, como sem corpo nenhum');
 
 reiniciarIfood();
 $erro = excecao(fn () => (new ClienteIfood())->acaoLogistica('token-a', 'pedido-real-1', 'cancel'));

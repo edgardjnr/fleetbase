@@ -483,7 +483,7 @@ namespace Teste {
                 (require $arquivo)->up();
                 $blueprints = [];
                 foreach (\Illuminate\Support\Facades\Schema::$criadas as $tabela => $blueprint) {
-                    self::$esquema[$tabela] = ['colunas' => [], 'unicas' => []];
+                    self::$esquema[$tabela] = ['colunas' => [], 'unicas' => [], 'padroes' => []];
                     $blueprints[]           = [$tabela, $blueprint];
                 }
                 foreach (\Illuminate\Support\Facades\Schema::$alteradas as $tabela => $lista) {
@@ -494,6 +494,7 @@ namespace Teste {
                 foreach ($blueprints as [$tabela, $blueprint]) {
                     $colunas = [];
                     $unicas  = [];
+                    $padroes = [];
                     foreach ($blueprint->colunas as $coluna) {
                         $primeiro = $coluna->argumentos[0] ?? null;
                         if ($coluna->tipo === 'timestamps') {
@@ -506,11 +507,16 @@ namespace Teste {
                             if (array_key_exists('unique', $coluna->modificadores)) {
                                 $unicas[] = $primeiro;
                             }
+                            // ->default(x): o valor que o MySQL põe quando o insert não traz a coluna
+                            if (array_key_exists('default', $coluna->modificadores)) {
+                                $padroes[$primeiro] = $coluna->modificadores['default'][0] ?? null;
+                            }
                         }
                     }
                     self::$esquema[$tabela] = [
                         'colunas' => array_merge(self::$esquema[$tabela]['colunas'] ?? [], $colunas),
                         'unicas'  => array_merge(self::$esquema[$tabela]['unicas'] ?? [], $unicas),
+                        'padroes' => array_merge(self::$esquema[$tabela]['padroes'] ?? [], $padroes),
                     ];
                 }
             }
@@ -591,8 +597,9 @@ namespace Teste {
                 throw self::erroDeRepetida($tabela, $repetida, $linha[$repetida]);
             }
             $id                             = self::$proximoId[$tabela] = (self::$proximoId[$tabela] ?? 0) + 1;
-            // como o MySQL, a coluna que o insert não trouxe existe na linha (NULL; os defaults das migrations não são lidos)
-            self::$tabelas[$tabela][$id] = ['id' => $id] + $linha + array_fill_keys(self::esquema()[$tabela]['colunas'] ?? [], null);
+            // como o MySQL, a coluna que o insert não trouxe existe na linha: com o ->default() da migration, ou NULL
+            $esquema = self::esquema()[$tabela] ?? [];
+            self::$tabelas[$tabela][$id] = ['id' => $id] + $linha + ($esquema['padroes'] ?? []) + array_fill_keys($esquema['colunas'] ?? [], null);
 
             return true;
         }

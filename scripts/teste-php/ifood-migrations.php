@@ -79,6 +79,16 @@ confere(tem($ciclo, 'conclusao_liberada_em', 'timestamp', ['nullable']), 'conclu
 confere(tem($ciclo, 'conclusao_sem_codigo', 'boolean') && ($ciclo['conclusao_sem_codigo']->modificadores['default'] ?? null) === [false], 'conclusao_sem_codigo começa falso');
 confere(excecao(fn () => \Teste\Banco::exigirColuna('entregas_ifood_pedidos', 'recusa_acao')) === null, 'o banco em memória dos testes conhece as colunas novas');
 confere(excecao(fn () => \Teste\Banco::exigirColuna('entregas_ifood_pedidos', 'coluna_que_nao_existe')) !== null, 'e continua recusando coluna inexistente');
+\Teste\Banco::limpar();
+\Teste\Banco::inserir('entregas_ifood_pedidos', ['pedido_ifood_id' => 'p-1', 'order_uuid' => 'o-1'], false);
+$linha = \Teste\Banco::linhas('entregas_ifood_pedidos')[0];
+confere($linha->conclusao_sem_codigo === false && $linha->exige_codigo === false && $linha->recusa_acao === null, 'o banco em memória usa o ->default() da migration na coluna que o insert não trouxe (e NULL sem default)');
+
+echo '== entregas_ifood_pedidos: índice do entregas:ifood-acompanhar' . PHP_EOL;
+Schema::$alteradas = [];
+(require '/repo/api/database/migrations/2026_10_06_130000_add_indice_acompanhar_to_entregas_ifood_pedidos_table.php')->up();
+$indices = array_map(fn ($c) => [$c->tipo, $c->argumentos[0] ?? null], Schema::$alteradas['entregas_ifood_pedidos'][0]->colunas ?? []);
+confere($indices === [['index', ['created_at']]], 'índice em created_at (a janela usa despachado_em, já indexado, ou created_at)');
 
 echo '== down' . PHP_EOL;
 foreach (['2026_10_05_120000_create_entregas_ifood_lojas_table.php' => 'entregas_ifood_lojas', '2026_10_05_120100_create_entregas_ifood_eventos_table.php' => 'entregas_ifood_eventos', '2026_10_05_120200_create_entregas_ifood_pedidos_table.php' => 'entregas_ifood_pedidos'] as $arquivo => $tabela) {

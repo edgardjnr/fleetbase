@@ -7,9 +7,11 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Entregas RestaurantePro: colunas do ciclo da entrega iFood (etapa 3; App\Support\Entregas\Ifood\AcoesIfood e
  * ConclusaoIfood). Ficam na entregas_ifood_pedidos, fora do `meta` do Order, como as da etapa 2.
- * - `motoboy_no_ifood`: o Driver do último assignDriver aceito; outro motoboy no pedido = troca (assignDriver de novo);
- * - `recusa_acao`, `recusa_status`, `recusa_em`: a última ação que o iFood recusou (4xx), para o painel do console e para
- *   o entregas:ifood-acompanhar não repetir sozinho uma ação recusada (uma ação aceita depois limpa as três);
+ * - `motoboy_no_ifood`: o Driver do último assignDriver aceito; outro motoboy no pedido = troca (assignDriver de novo).
+ *   A troca recusada com 409 também grava aqui o motoboy novo: é a marca de que a central já foi avisada (não se repete);
+ * - `recusa_acao`, `recusa_status`, `recusa_em`: a última ação recusada (4xx do iFood, vínculo perdido, motoboy sem nome
+ *   ou telefone, ou tentativas esgotadas com o iFood fora do ar: 5xx, 408, 429 ou rede), para o painel do console e
+ *   para o entregas:ifood-acompanhar não repetir sozinho uma ação recusada (uma ação aceita depois limpa as três);
  * - `conclusao_liberada_em`: o iFood já sabe que o motoboy chegou e, quando exigido, conferiu o código: a conclusão
  *   comum do app passa pela trava "Atualize o app" (RegrasDoPedidoIfood);
  * - `conclusao_sem_codigo`: o pedido exigia o código e foi concluído sem ele (a central liberou no console, ou concluiu
