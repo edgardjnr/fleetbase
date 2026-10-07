@@ -9,6 +9,8 @@ import preparePlaceForSave from '../../../utils/prepare-place-for-save';
 // Entregas: aviso da coleta da loja vindo do details e regra única de "o cliente é loja"
 import { COLETA_DA_LOJA } from '../../../services/order-creation';
 import ehLoja from '../../../utils/entregas-loja';
+import { Point } from '@fleetbase/fleetops-data/utils/geojson';
+import { dadosDaSugestao, novaSessaoDeBusca } from '@fleetbase/ember-ui/utils/endereco-brasileiro';
 
 const ORDER_ROUTE_PREVIEW_PADDING_BOTTOM_RIGHT = [420, 0];
 const ORDER_ROUTE_PREVIEW_MAX_ZOOM_TWO_POINTS = 13;
@@ -25,8 +27,11 @@ export default class OrderFormRouteComponent extends Component {
     @service notifications;
     @service placeActions;
     @service orderCreation;
+    @service fetch;
     // Entregas: o upstream usa this.intl nos erros da otimização de rota sem injetar o serviço
     @service intl;
+    /** Entregas: token de sessão do Google na busca do campo de local (renovado a cada endereço escolhido). */
+    @tracked sessaoDaBusca = novaSessaoDeBusca();
     @tracked multipleWaypoints = false;
     @tracked routingControl;
     @tracked route;
@@ -248,6 +253,45 @@ export default class OrderFormRouteComponent extends Component {
         this.args.resource.payload.waypoints.clear();
         this.previewRoute();
         this.requestServiceQuoteRefresh('route.waypoints.cleared');
+    }
+
+    // Entregas: sugestão do Google escolhida no campo (EnderecosController@busca, marcada em meta.entregas_sugestao):
+    // busca os detalhes (rua e número, bairro, cidade, UF, CEP e o ponto) antes de pôr o local no pedido. Local salvo
+    // passa direto. Devolve false se os detalhes falharem: o pedido fica como estava.
+    async resolverSugestao(place) {
+        const sugestao = dadosDaSugestao(place);
+        if (!sugestao) {
+            return place;
+        }
+
+        try {
+            const endereco = await this.fetch.get(`entregas/enderecos/detalhes/${encodeURIComponent(sugestao.place_id)}`, {
+                sessao: sugestao.sessao,
+                texto: sugestao.texto,
+            });
+            place.setProperties({ ...endereco, street2: null, meta: null, location: new Point(endereco.location) });
+            this.sessaoDaBusca = novaSessaoDeBusca();
+
+            return place;
+        } catch (error) {
+            this.notifications.serverError(error, this.intl.t('fleet-ops.ui.order-form.endereco-do-google-falhou'));
+
+            return false;
+        }
+    }
+
+    @action async escolherLocal(prop, place) {
+        const local = await this.resolverSugestao(place);
+        if (local !== false) {
+            this.setPayloadPlace(prop, local);
+        }
+    }
+
+    @action async escolherLocalDaParada(index, place) {
+        const local = await this.resolverSugestao(place);
+        if (local !== false) {
+            this.setWaypointPlace(index, local);
+        }
     }
 
     @action setPayloadPlace(prop, place) {
