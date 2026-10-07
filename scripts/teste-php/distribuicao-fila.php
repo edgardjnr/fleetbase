@@ -47,4 +47,81 @@ reiniciar();
 $muitos = array_map(fn ($i) => [-21.17 + $i / 1000, -47.81], range(0, Distribuicao::MAX_PONTOS_DA_MATRIZ));
 confere((new EstimadorDeTempo())->matriz($muitos)['aproximado'] === true && Http::urls() === [], 'acima do máximo de pontos: nem chama o OSRM');
 
+echo '== FilaDeCandidatos' . PHP_EOL;
+use App\Support\Entregas\Distribuicao\Candidatos;
+use App\Support\Entregas\Distribuicao\FilaDeCandidatos;
+use Fleetbase\FleetOps\Models\Driver;
+use Fleetbase\FleetOps\Models\Order;
+
+/** Um Point como o do Fleet-Ops (getLat/getLng). */
+function ponto(array $p): object
+{
+    return new class($p) { public function __construct(private array $p) {} public function getLat() { return $this->p[0]; } public function getLng() { return $this->p[1]; } };
+}
+
+function motoboy(string $id, string $nome, array $posicao): Driver
+{
+    return new Driver(['uuid' => 'd-' . $id, 'public_id' => 'driver_' . $id, 'company_uuid' => 'empresa-1', 'name' => $nome, 'online' => true, 'location' => ponto($posicao)]);
+}
+
+/** Pedido com coleta e entrega, como o Order real (payload->pickup/dropoff com location). */
+function pedidoCom(array $coleta, array $entrega): Order
+{
+    $pedido          = new Order(['uuid' => 'order-1', 'public_id' => 'order_1', 'company_uuid' => 'empresa-1', 'adhoc' => true, 'status' => 'dispatched']);
+    $pedido->payload = (object) ['pickup' => (object) ['location' => ponto($coleta)], 'dropoff' => (object) ['location' => ponto($entrega)]];
+
+    return $pedido;
+}
+
+reiniciarFleetbase();
+reiniciarIfood();
+$coleta  = [-21.1700, -47.8100];
+$entrega = [-21.1800, -47.8100];
+$pedido  = pedidoCom($coleta, $entrega);
+// A livre a 1 km da loja; B livre a 200 m; C ocupado (uma entrega a 100 m da loja) a 300 m
+Candidatos::$buscarMotoboys = fn (Order $p, bool $gpsRecente) => [
+    ['motoboy' => motoboy('a', 'Ana', [-21.1610, -47.8100]), 'posicao' => [-21.1610, -47.8100], 'distancia' => 1000.0],
+    ['motoboy' => motoboy('b', 'Bia', [-21.1682, -47.8100]), 'posicao' => [-21.1682, -47.8100], 'distancia' => 200.0],
+    ['motoboy' => motoboy('c', 'Caio', [-21.1673, -47.8100]), 'posicao' => [-21.1673, -47.8100], 'distancia' => 300.0],
+];
+Candidatos::$buscarParadas = fn (string $empresa, array $uuids) => ['d-c' => [[-21.1709, -47.8100, 'entrega']]];
+
+// a matriz sai da linha reta (o teste não depende do OSRM) e o estimador anota os pontos recebidos
+$estimador = new class extends EstimadorDeTempo {
+    public array $pontosRecebidos = [];
+    public function matriz(array $pontos): array
+    {
+        $this->pontosRecebidos = $pontos;
+        $m = [];
+        foreach ($pontos as $i => $a) { foreach ($pontos as $j => $b) { $m[$i][$j] = (float) Pontos::segundos($a, $b); } }
+
+        return ['durations' => $m, 'aproximado' => false];
+    }
+};
+$fila = (new FilaDeCandidatos($estimador))->para($pedido, Candidatos::elegiveis($pedido, []));
+confere(count($estimador->pontosRecebidos) === 2 + 3 + 1, 'uma matriz só: coleta, entrega, 3 posições e 1 parada');
+confere(array_column($fila, 'public_id') === ['driver_b', 'driver_c', 'driver_a'], 'ordem pelo tempo até o cliente: B (perto, livre), C (ocupado mas perto, com encaixe), A (longe) (' . json_encode(array_column($fila, 'public_id')) . ')');
+confere($fila[0]['livre'] === true && $fila[1]['livre'] === false && $fila[1]['encaixe'] === true, 'livre e encaixe marcados');
+confere($fila[0]['tempo_s'] > 0 && $fila[0]['aproximado'] === false && $fila[0]['motoboy_uuid'] === 'd-b' && $fila[0]['nome'] === 'Bia' && $fila[0]['distancia_m'] === 200, 'campos da fila (' . json_encode($fila[0]) . ')');
+
+$fila = (new FilaDeCandidatos($estimador))->para($pedido, Candidatos::elegiveis($pedido, ['d-b']));
+confere(array_column($fila, 'public_id') === ['driver_c', 'driver_a'], 'excluído (já respondeu ou tem oferta pendente) não entra');
+
+Candidatos::$buscarMotoboys = fn () => [];
+confere((new FilaDeCandidatos($estimador))->para($pedido, Candidatos::elegiveis($pedido, [])) === [], 'sem candidato: fila vazia');
+
+// empate: dois livres no mesmo ponto → public_id
+Candidatos::$buscarMotoboys = fn () => [
+    ['motoboy' => motoboy('z', 'Zé', $coleta), 'posicao' => $coleta, 'distancia' => 0.0],
+    ['motoboy' => motoboy('m', 'Mia', $coleta), 'posicao' => $coleta, 'distancia' => 0.0],
+];
+Candidatos::$buscarParadas = fn () => [];
+confere(array_column((new FilaDeCandidatos($estimador))->para($pedido, Candidatos::elegiveis($pedido, [])), 'public_id') === ['driver_m', 'driver_z'], 'empate: pelo public_id');
+
+$pedidoSemEntrega = pedidoCom($coleta, [0.0, 0.0]);
+confere((new FilaDeCandidatos($estimador))->para($pedidoSemEntrega, Candidatos::elegiveis($pedidoSemEntrega, [])) === [], 'pedido sem entrega válida: fila vazia (vai abrir a todos)');
+
+Candidatos::$buscarMotoboys = null;
+Candidatos::$buscarParadas  = null;
+
 resumo();
