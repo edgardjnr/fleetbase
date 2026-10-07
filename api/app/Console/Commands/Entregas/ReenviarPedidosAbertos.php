@@ -114,14 +114,14 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
             $chave  = 'entregas:reenvio-pedido:' . $pedido->uuid . ':' . $pedido->dispatched_at->getTimestamp();
             $estado = Cache::get($chave, ['vezes' => 0, 'ultimo' => $pedido->dispatched_at->getTimestamp()]);
 
+            if ($estado['vezes'] >= self::MAX_REENVIOS || $agora->getTimestamp() - $estado['ultimo'] < self::intervaloEmSegundos()) {
+                continue;
+            }
+
             // distribuição de pedidos abertos: enquanto o pedido está sendo oferecido um a um, o reenvio espera
             // (o aviso à central já foi tratado acima)
             if ($this->emDistribuicao($pedido)) {
                 $this->line('Pedido ' . $pedido->public_id . ': em oferta um a um (distribuição); sem reenvio.');
-                continue;
-            }
-
-            if ($estado['vezes'] >= self::MAX_REENVIOS || $agora->getTimestamp() - $estado['ultimo'] < self::intervaloEmSegundos()) {
                 continue;
             }
 
