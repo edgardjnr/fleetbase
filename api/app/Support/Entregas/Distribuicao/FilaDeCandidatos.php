@@ -14,11 +14,12 @@ class FilaDeCandidatos
 
     /**
      * @param array<int, array{motoboy: object, posicao: array, distancia: float, paradas: array}> $candidatos
-     * @param bool $noFim distribuição em rodadas: "termina tudo e depois vai" (Encaixe::noFim), sem encaixe no meio
+     * @param int $atrasoMaximoS maior atraso aceito numa entrega que o motoboy já leva (Encaixe::calcular): 10 min no ciclo
+     *                           sem rodadas, Distribuicao::ATRASO_MAXIMO_EM_RODADAS_S (5 min) em rodadas
      *
      * @return array<int, array{motoboy_uuid: string, public_id: string, nome: string, tempo_s: int, encaixe: bool, aproximado: bool, livre: bool, distancia_m: int}>
      */
-    public function para(Order $pedido, array $candidatos, bool $noFim = false): array
+    public function para(Order $pedido, array $candidatos, int $atrasoMaximoS = Distribuicao::ATRASO_MAXIMO_S): array
     {
         $coleta  = Pontos::de($pedido->payload?->pickup?->location);
         $entrega = Pontos::de($pedido->payload?->dropoff?->location);
@@ -45,7 +46,7 @@ class FilaDeCandidatos
 
         $fila = [];
         foreach ($plano as [$candidato, $posicao, $base]) {
-            $resultado = $noFim ? Encaixe::noFim($posicao, $base, 0, 1, $dur) : Encaixe::calcular($posicao, $base, 0, 1, $dur);
+            $resultado = Encaixe::calcular($posicao, $base, 0, 1, $dur, $atrasoMaximoS);
             $fila[]    = [
                 'motoboy_uuid' => (string) $candidato['motoboy']->uuid,
                 'public_id'    => (string) $candidato['motoboy']->public_id,

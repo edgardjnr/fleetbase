@@ -24,8 +24,13 @@ class Distribuicao
      * parado e aí a janela pode cair.
      */
     public const GPS_MINUTOS = 30;
-    /** Atraso máximo aceito numa entrega já aceita ao encaixar o pedido novo. */
+    /** Atraso máximo aceito numa entrega já aceita ao encaixar o pedido novo (ciclo sem rodadas). */
     public const ATRASO_MAXIMO_S = 600;
+    /**
+     * Em rodadas: atraso máximo para quem já espera ao encaixar o pedido novo (coleta junto na mesma loja, loja no
+     * caminho). Nenhuma ordem cabe: "termina tudo e depois vai". Decisão do Edgard (2026-10-07).
+     */
+    public const ATRASO_MAXIMO_EM_RODADAS_S = 300;
     public const PARADA_LOJA_S    = 180;
     public const PARADA_CLIENTE_S = 120;
     /** Reserva em linha reta quando o OSRM falha: metros × fator, a 25 km/h. */

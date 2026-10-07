@@ -150,16 +150,29 @@ confere($paradas['d-a'] === [[-21.2, -47.2, 'entrega'], [-21.3, -47.3, 'coleta']
 confere($paradas['d-b'] === [[-21.5, -47.5, 'coleta'], [-21.6, -47.6, 'entrega'], [-21.7, -47.7, 'entrega']], 'dispatched coleta e entrega; ponto inválido descartado (' . json_encode($paradas['d-b']) . ')');
 confere(Candidatos::paradasDosPedidos([]) === [], 'sem pedidos: vazio');
 
-echo '== Rodadas: "termina tudo e depois vai" e o raio da rodada' . PHP_EOL;
+echo '== Rodadas: encaixe com até 5 min de atraso e o raio da rodada' . PHP_EOL;
 Candidatos::$buscarMotoboys = fn (Order $p, bool $gpsRecente) => [
     ['motoboy' => motoboy('a', 'Ana', [-21.1610, -47.8100]), 'posicao' => [-21.1610, -47.8100], 'distancia' => 1000.0],
     ['motoboy' => motoboy('b', 'Bia', [-21.1682, -47.8100]), 'posicao' => [-21.1682, -47.8100], 'distancia' => 200.0],
     ['motoboy' => motoboy('c', 'Caio', [-21.1673, -47.8100]), 'posicao' => [-21.1673, -47.8100], 'distancia' => 300.0],
 ];
 Candidatos::$buscarParadas = fn (string $empresa, array $uuids) => ['d-c' => [[-21.1709, -47.8100, 'entrega']]];
-$fila = (new FilaDeCandidatos($estimador))->para($pedido, Candidatos::elegiveis($pedido, []), true);
-confere(array_column($fila, 'public_id') === ['driver_b', 'driver_a', 'driver_c'] && array_column($fila, 'tempo_s') === [425, 575, 602], 'no fim: C (ocupado) termina a entrega dele e só depois vai à loja; fica atrás de A (' . json_encode(array_column($fila, 'tempo_s')) . ')');
-confere(array_filter(array_column($fila, 'encaixe')) === [] && $fila[2]['livre'] === false, 'no fim: encaixe sempre falso; C continua marcado como ocupado');
+$fila = (new FilaDeCandidatos($estimador))->para($pedido, Candidatos::elegiveis($pedido, []), Distribuicao::ATRASO_MAXIMO_EM_RODADAS_S);
+confere(array_column($fila, 'public_id') === ['driver_b', 'driver_c', 'driver_a'] && array_column($fila, 'tempo_s') === [425, 564, 575], 'rodadas: C (ocupado) passa na loja, que fica no caminho da entrega dele, e fica à frente de A (' . json_encode(array_column($fila, 'tempo_s')) . ')');
+confere($fila[1]['encaixe'] === true && $fila[1]['livre'] === false && $fila[0]['encaixe'] === false, 'rodadas: C com encaixe ("no caminho") e marcado como ocupado');
+
+// caso real (2026-10-07): Edgard a 2,07 km da loja com um pedido da MESMA loja aceito e ainda não coletado (cliente A a
+// ~110 m da entrega nova); Edmar livre a 5,3 km. "Termina tudo" dava 1450 s (24,2 min) a Edgard e 1381 s (23,0 min) a Edmar.
+Candidatos::$buscarMotoboys = fn (Order $p, bool $gpsRecente) => [
+    ['motoboy' => motoboy('edmar', 'Edmar', [-21.1700 + 0.009 * 5.3, -47.8100]), 'posicao' => [-21.1700 + 0.009 * 5.3, -47.8100], 'distancia' => 5304.0],
+    ['motoboy' => motoboy('edgard', 'Edgard', [-21.1700 + 0.009 * 2.07, -47.8100]), 'posicao' => [-21.1700 + 0.009 * 2.07, -47.8100], 'distancia' => 2072.0],
+];
+Candidatos::$buscarParadas = fn (string $empresa, array $uuids) => ['d-edgard' => [[-21.1700, -47.8100, 'coleta'], [-21.1790, -47.8100, 'entrega']]];
+$fila = (new FilaDeCandidatos($estimador))->para($pedido, Candidatos::elegiveis($pedido, []), Distribuicao::ATRASO_MAXIMO_EM_RODADAS_S);
+confere(array_column($fila, 'public_id') === ['driver_edgard', 'driver_edmar'] && array_column($fila, 'tempo_s') === [1076, 1381], 'caso real em rodadas: Edgard coleta junto na mesma loja (17,9 min) e fica à frente de Edmar livre (23,0 min) (' . json_encode(array_column($fila, 'tempo_s')) . ')');
+confere($fila[0]['encaixe'] === true && $fila[0]['livre'] === false, 'caso real: Edgard com encaixe');
+$fila = (new FilaDeCandidatos($estimador))->para($pedido, Candidatos::elegiveis($pedido, []));
+confere(array_column($fila, 'tempo_s') === [956, 1381], 'caso real no ciclo antigo (10 min): entrega o cliente novo antes de A (A atrasa 342 s, acima do limite das rodadas) (' . json_encode(array_column($fila, 'tempo_s')) . ')');
 $raioRecebido = 'nenhum';
 Candidatos::$buscarMotoboys = function (Order $p, bool $gpsRecente, ?int $raio = null) use (&$raioRecebido) {
     $raioRecebido = $raio;

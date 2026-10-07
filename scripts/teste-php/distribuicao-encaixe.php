@@ -67,11 +67,28 @@ confere($r['atraso_s'] === Distribuicao::ATRASO_MAXIMO_S && $r['encaixe'] === tr
 $r = Encaixe::calcular(0, $soEntrega, 3, 4, $limite(1021));
 confere($r['encaixe'] === false && $r['atraso_s'] === 0 && $r['tempo_s'] === 900 + $cliente + 600 + $loja + 900, 'atraso de 601 s não cabe: termina e vai (' . json_encode($r) . ')');
 
-echo '== Encaixe::noFim (distribuição em rodadas)' . PHP_EOL;
-confere(Encaixe::noFim(0, [], 3, 4, $dur) === ['tempo_s' => 300 + $loja + 900, 'encaixe' => false, 'atraso_s' => 0], 'livre: igual ao calcular');
-$r = Encaixe::noFim(0, $base, 3, 4, $dur);
-confere($r === ['tempo_s' => 300 + $loja + 600 + $cliente + 600 + $loja + 900, 'encaixe' => false, 'atraso_s' => 0], 'ocupado: termina A (coleta e entrega) e só depois vai, mesmo com a loja nova no caminho (' . json_encode($r) . ')');
-confere(Encaixe::noFim(0, $soEntrega, 3, 4, $dur)['tempo_s'] === $terminaEVai, 'só a entrega A: termina e vai');
+echo '== Encaixe com o limite das rodadas (5 min)' . PHP_EOL;
+$rodadas = Distribuicao::ATRASO_MAXIMO_EM_RODADAS_S;
+confere($rodadas === 300 && Distribuicao::ATRASO_MAXIMO_S === 600, 'limites: 300 s em rodadas, 600 s no ciclo antigo');
+confere(Encaixe::calcular(0, [], 3, 4, $dur, $rodadas) === $livre, 'livre: igual ao ciclo antigo');
+// mesmo pedido da mesma loja ainda não coletado: coleta junto (o cliente de A espera só a parada de 3 min na loja)
+$r = Encaixe::calcular(0, $base, 3, 4, $dur, $rodadas);
+confere($r === ['tempo_s' => 1680, 'encaixe' => true, 'atraso_s' => 180], 'mesma loja: coleta junto, atraso 180 s ≤ 300 (' . json_encode($r) . ')');
+// segunda loja no caminho da entrega A: passa, coleta e sai com os dois (A atrasa 300 + 180 + 600 − 900 = 180 s)
+$r = Encaixe::calcular(0, $soEntrega, 3, 4, $dur, $rodadas);
+confere($r === ['tempo_s' => $pegaAntes, 'encaixe' => true, 'atraso_s' => 180], 'loja no caminho: passa na loja antes de entregar A (' . json_encode($r) . ')');
+// atraso de A = rota 3→2 − 420: 720 → 300 (cabe nos dois); 721 → 301 (só no ciclo antigo); 1020 → 600 (só no antigo)
+$r = Encaixe::calcular(0, $soEntrega, 3, 4, $limite(720), $rodadas);
+confere($r === ['tempo_s' => 300 + $loja + 720 + $cliente + 300, 'encaixe' => true, 'atraso_s' => 300], 'atraso de exatamente 300 s cabe nas rodadas (' . json_encode($r) . ')');
+$r = Encaixe::calcular(0, $soEntrega, 3, 4, $limite(721), $rodadas);
+confere($r === ['tempo_s' => $terminaEVai, 'encaixe' => false, 'atraso_s' => 0], 'atraso de 301 s não cabe nas rodadas: termina tudo e depois vai (' . json_encode($r) . ')');
+$r = Encaixe::calcular(0, $soEntrega, 3, 4, $limite(721));
+confere($r === ['tempo_s' => 300 + $loja + 721 + $cliente + 300, 'encaixe' => true, 'atraso_s' => 301], 'o mesmo desvio cabe no ciclo antigo (10 min) (' . json_encode($r) . ')');
+$r = Encaixe::calcular(0, $soEntrega, 3, 4, $limite(1020), $rodadas);
+confere($r['encaixe'] === false && $r['tempo_s'] === $terminaEVai, 'atraso de 600 s: só o ciclo antigo encaixa');
+// nada cabe além do fim: o resultado é sempre "termina tudo e depois vai" (atraso 0), mesmo com limite 0
+$r = Encaixe::calcular(0, $base, 3, 4, $dur, 0);
+confere($r === ['tempo_s' => 300 + $loja + 600 + $cliente + 600 + $loja + 900, 'encaixe' => false, 'atraso_s' => 0], 'limite 0: termina tudo (coleta e entrega de A) e depois vai (' . json_encode($r) . ')');
 
 echo '== ligada()' . PHP_EOL;
 foreach (['1' => true, 'true' => true, 'on' => true, 'yes' => true, '0' => false, '' => false, 'no' => false, 'nao' => false, 'off' => false] as $v => $esperado) {

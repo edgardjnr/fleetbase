@@ -168,6 +168,18 @@ confere(ofertas()[5]->motoboy_uuid === 'd-bruno' && ofertas()[5]->volta === 2, '
 confere(distribuicao()->fase === 'ofertas' && alarmesGerais() === [] && count(avisos()) === 6, 'nunca abre a todos: só ofertas, uma por vez');
 confere(logsSem(['Ana', 'Bruno', '-21.1']), 'logs só com ids e números');
 
+echo '== Rodadas: encaixe com até 5 min de atraso (caso real de 2026-10-07)' . PHP_EOL;
+// Edgard a 2,07 km da loja, com um pedido da MESMA loja aceito e ainda não coletado; Edmar livre a 5,3 km. Com "termina
+// tudo e depois vai", Edgard levava 24,2 min e perdia para Edmar (23,0 min); com o encaixe, coleta junto e vai na frente.
+$dist = cenarioRodadas([motoboyA('edmar', 'Edmar', 5.3), motoboyA('edgard', 'Edgard', 2.07)]);
+Candidatos::$buscarParadas = fn (string $empresa, array $uuids) => ['d-edgard' => [[-21.1700, -47.8100, 'coleta'], [-21.1790, -47.8100, 'entrega']]];
+$dist->iniciar(pedidoDoCenario());
+$o = ofertas()[0];
+confere($o->motoboy_uuid === 'd-edgard' && $o->encaixe === true && $o->tempo_estimado_s === 1076, 'oferta a Edgard, com encaixe (coleta junto): 1076 s até o cliente novo (' . json_encode($o) . ')');
+$fila = json_decode(distribuicao()->fila, true);
+confere(array_column($fila, 'public_id') === ['driver_edgard', 'driver_edmar'] && array_column($fila, 'tempo_s') === [1076, 1381] && $fila[0]['encaixe'] === true && $fila[1]['encaixe'] === false, 'fila gravada: Edgard (17,9 min, no caminho) e Edmar livre (23,0 min) (' . json_encode($fila) . ')');
+Candidatos::$buscarParadas = fn () => [];
+
 echo '== Rodadas: um motoboy só (1 min entre voltas)' . PHP_EOL;
 $dist = cenarioRodadas([$ana]);
 $dist->iniciar(pedidoDoCenario());

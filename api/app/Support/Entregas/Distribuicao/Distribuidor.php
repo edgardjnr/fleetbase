@@ -487,13 +487,14 @@ class Distribuidor
 
     /**
      * A oferta da rodada: os disponíveis até o raio, fora quem tem qualquer linha nesta volta e quem tem oferta pendente
-     * de outro pedido, na ordem "termina tudo e depois vai". False se ninguém recebeu.
+     * de outro pedido, pelo tempo até o cliente novo com o encaixe de até 5 min de atraso para quem já espera
+     * (ATRASO_MAXIMO_EM_RODADAS_S; nenhuma ordem cabe: "termina tudo e depois vai"). False se ninguém recebeu.
      */
     protected function oferecerNaRodada(object $distribuicao, Order $pedido, int $volta, int $rodada, int $raio): bool
     {
         $id        = (int) $distribuicao->id;
         $excluidos = array_merge(Distribuicoes::motoboysDaVolta($id, $volta), Distribuicoes::motoboysComOfertaPendente());
-        $fila      = $this->fila->para($pedido, Candidatos::elegiveis($pedido, $excluidos, $raio), true);
+        $fila      = $this->fila->para($pedido, Candidatos::elegiveis($pedido, $excluidos, $raio), Distribuicao::ATRASO_MAXIMO_EM_RODADAS_S);
         if ($fila === []) {
             return false; // vazia não apaga a última fila gravada (o painel a mostra)
         }

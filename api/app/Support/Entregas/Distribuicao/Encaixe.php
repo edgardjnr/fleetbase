@@ -8,7 +8,8 @@ namespace App\Support\Entregas\Distribuicao;
  *
  * - Chegada numa parada = saída da anterior + rota; saída = chegada + parada fixa (PARADA_LOJA_S ou PARADA_CLIENTE_S).
  * - Testa todas as inserções com P antes de D (inclusive P e D no fim = "termina tudo e depois vai").
- * - Uma inserção cabe se nenhuma entrega já aceita chega mais de ATRASO_MAXIMO_S depois do que chegaria sem o pedido novo.
+ * - Uma inserção cabe se nenhuma entrega já aceita chega mais que o atraso máximo depois do que chegaria sem o pedido
+ *   novo: Distribuicao::ATRASO_MAXIMO_S (10 min) no ciclo sem rodadas, ATRASO_MAXIMO_EM_RODADAS_S (5 min) em rodadas.
  * - Vale a que cabe com a menor chegada em D. P e D no fim sempre cabem (atraso 0).
  */
 class Encaixe
@@ -17,10 +18,11 @@ class Encaixe
      * @param int                                           $posicao índice do ponto onde o motoboy está
      * @param array<int, array{indice: int, tipo: string}> $base    paradas que faltam, na ordem
      * @param callable(int, int): float                     $dur     segundos de rota entre dois índices; deve ser um número finito (o EstimadorDeTempo garante)
+     * @param int                                           $atrasoMaximoS maior atraso aceito numa entrega que ele já leva
      *
      * @return array{tempo_s: int, encaixe: bool, atraso_s: int} tempo até D; encaixe = P ou D entraram antes do fim; o maior atraso imposto
      */
-    public static function calcular(int $posicao, array $base, int $p, int $d, callable $dur): array
+    public static function calcular(int $posicao, array $base, int $p, int $d, callable $dur, int $atrasoMaximoS = Distribuicao::ATRASO_MAXIMO_S): array
     {
         $n              = count($base);
         $chegadasDaBase = static::chegadas($posicao, $base, $dur);
@@ -49,7 +51,7 @@ class Encaixe
                     }
                     $k++;
                 }
-                if ($atraso > Distribuicao::ATRASO_MAXIMO_S) {
+                if ($atraso > $atrasoMaximoS) {
                     continue;
                 }
 
@@ -61,22 +63,6 @@ class Encaixe
         }
 
         return $melhor;
-    }
-
-    /**
-     * "Termina tudo e depois vai" (distribuição em rodadas): as paradas que ele ainda tem, na ordem, e depois P e D. Sem
-     * encaixe no meio e sem o limite de atraso: o pedido novo nunca atrasa quem já espera.
-     *
-     * @param array<int, array{indice: int, tipo: string}> $base paradas que faltam, na ordem
-     *
-     * @return array{tempo_s: int, encaixe: bool, atraso_s: int}
-     */
-    public static function noFim(int $posicao, array $base, int $p, int $d, callable $dur): array
-    {
-        $sequencia = array_merge($base, [['indice' => $p, 'tipo' => 'coleta'], ['indice' => $d, 'tipo' => 'entrega']]);
-        $chegadas  = static::chegadas($posicao, $sequencia, $dur);
-
-        return ['tempo_s' => (int) end($chegadas), 'encaixe' => false, 'atraso_s' => 0];
     }
 
     /** Segundos de chegada em cada parada da sequência, a partir do ponto de partida. */
