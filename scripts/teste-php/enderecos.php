@@ -9,7 +9,9 @@ require '/repo/api/app/Support/Entregas/Enderecos/EnderecoBrasileiro.php';
 require '/repo/api/app/Support/Entregas/Enderecos/ErroGooglePlaces.php';
 require '/repo/api/app/Support/Entregas/Enderecos/ClienteGooglePlaces.php';
 require '/repo/api/app/Support/Entregas/Enderecos/BuscaDeEnderecos.php';
+require '/repo/api/app/Http/Middleware/ProtegerPortalLoja.php';
 
+use App\Http\Middleware\ProtegerPortalLoja;
 use App\Support\Entregas\Enderecos\BuscaDeEnderecos;
 use App\Support\Entregas\Enderecos\ClienteGooglePlaces;
 use App\Support\Entregas\Enderecos\EnderecoBrasileiro;
@@ -184,5 +186,29 @@ confere($locais === [[
     'street2' => 'Jardim Paulista, Ribeirão Preto - SP, Brasil',
     'meta'    => ['entregas_sugestao' => ['place_id' => 'ChIJolinda45', 'sessao' => 'sessao-1', 'texto' => 'rua olinda 45']],
 ]], 'sugestões como Place para o campo do pedido, marcadas em meta.entregas_sugestao');
+
+echo '== Portal da loja e rotas' . PHP_EOL;
+function liberadaNoPortal(string $metodoECaminho): bool
+{
+    foreach (ProtegerPortalLoja::PERMITIDAS_INTERNAS as $padrao) {
+        if (preg_match($padrao, $metodoECaminho)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+confere(liberadaNoPortal('GET entregas/enderecos/sugestoes'), 'portal: sugestões liberadas');
+confere(liberadaNoPortal('GET entregas/enderecos/detalhes/ChIJolinda45'), 'portal: detalhes liberados');
+confere(!liberadaNoPortal('GET entregas/enderecos/busca'), 'portal: a busca com os locais salvos da empresa é só da central');
+confere(!liberadaNoPortal('POST entregas/enderecos/sugestoes'), 'portal: só GET');
+confere(!liberadaNoPortal('GET entregas/enderecos/detalhes/a/b'), 'portal: detalhes com um id só');
+
+$rotas = file_get_contents('/repo/api/app/Providers/RouteServiceProvider.php');
+confere(str_contains($rotas, "RateLimiter::for('entregas-enderecos'"), 'limitador entregas-enderecos');
+foreach (["'enderecos/sugestoes'", "'enderecos/detalhes/{placeId}'", "'enderecos/busca'"] as $rota) {
+    confere(str_contains($rotas, $rota), "rota {$rota}");
+}
+confere(str_contains($rotas, "->middleware('throttle:entregas-enderecos')"), 'rotas com o limitador');
 
 resumo();

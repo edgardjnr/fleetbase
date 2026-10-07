@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Http\Controllers\Entregas\ConversasDaLojaController;
 use App\Http\Controllers\Entregas\DistribuicaoController;
+use App\Http\Controllers\Entregas\EnderecosController;
 use App\Http\Controllers\Entregas\IfoodLojasController;
 use App\Http\Controllers\Entregas\IfoodPedidosController;
 use App\Http\Controllers\Entregas\LiderController;
@@ -102,6 +103,10 @@ class RouteServiceProvider extends ServiceProvider
         // ao abrir o app e ao voltar para ele, e a troca do motoboy), até 120 chamadas por minuto por usuário, num balde só dele
         RateLimiter::for('entregas-lider', fn (Request $request) => Limit::perMinute(120)->by('entregas-lider:' . (session('user') ?: $request->ip())));
 
+        // busca de endereço pelo Google Places (console e portal): até 120 por minuto por usuário (a tela já espera 300 ms
+        // entre teclas; o teto segura um script)
+        RateLimiter::for('entregas-enderecos', fn (Request $request) => Limit::perMinute(120)->by('entregas-enderecos:' . (session('user') ?: $request->ip())));
+
         $this->routes(
             function () {
                 Route::get(
@@ -158,6 +163,12 @@ class RouteServiceProvider extends ServiceProvider
                             Route::get('loja/conversas/{id}/mensagens', [ConversasDaLojaController::class, 'mensagens']);
                             Route::post('loja/conversas/{id}/mensagens', [ConversasDaLojaController::class, 'enviar']);
                         });
+
+                        // busca de endereço pelo Google Places (EnderecosController): sugestões e detalhes valem para a central e
+                        // para a loja (ProtegerPortalLoja); a busca com os locais salvos é só da central
+                        Route::get('enderecos/sugestoes', [EnderecosController::class, 'sugestoes'])->middleware('throttle:entregas-enderecos');
+                        Route::get('enderecos/detalhes/{placeId}', [EnderecosController::class, 'detalhes'])->middleware('throttle:entregas-enderecos');
+                        Route::get('enderecos/busca', [EnderecosController::class, 'busca'])->middleware('throttle:entregas-enderecos');
                     });
 
                 // Entregas RestaurantePro: ganhos do motoboy no app (tela Início, card de aceitar e detalhes), na API v1 com o

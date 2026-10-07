@@ -61,6 +61,8 @@ class ProtegerPortalLoja
         '#^GET dashboards$#',
         '#^POST dashboards/(switch|reset-default)$#',
         '#^[A-Z]+ entregas/loja/.+$#',
+        // busca de endereço pelo Google (EnderecosController); a rota busca lista locais salvos da empresa toda e fica fora
+        '#^GET entregas/enderecos/(sugestoes|detalhes/[A-Za-z0-9_-]+)$#',
     ];
 
     /** customer-portal/int/v1: rotas do portal negadas ao usuário de loja. */
