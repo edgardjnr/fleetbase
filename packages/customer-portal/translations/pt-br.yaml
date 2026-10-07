@@ -651,6 +651,7 @@ customer-portal:
       mapa-pedido-criado: Criado
       mapa-pedido-entrega: Entrega
       mapa-pedido-ver: Ver pedido
+      mapa-sua-loja: Sua loja
       mapa-pedido-ha-agora: agora mesmo
       mapa-pedido-ha-min: "há {n} min"
       mapa-pedido-ha-h: "há {n} h"

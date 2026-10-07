@@ -8,6 +8,7 @@ import CamadaDeMotoboys from '../../../../utils/camada-de-motoboys';
 import { motoboyDoPedido, motoboysValidos } from '../../../../utils/motoboys-no-mapa';
 import { INTERVALO_MAPA_MS, espera } from '../../../../utils/entregas-pedido';
 import { ALFINETE, mesmaLista, nomeNoAlfinete, pedidosValidos, semOPedidoAberto, tempoDesde } from '../../../../utils/pedidos-no-mapa';
+import { PIN_DA_LOJA, lojaNoMapa, mostrarPinDaLoja } from '../../../../utils/loja-no-mapa';
 
 export default class PortalOrderWorkspaceMapComponent extends Component {
     @service customerPortalOrderRoutePreview;
@@ -24,17 +25,26 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
     _iconeDoAlfinete = null;
     nomeNoAlfinete = nomeNoAlfinete;
 
+    // Entregas: o pin da loja no Local dela (a coleta), lido uma vez de entregas/loja/minha-loja
+    @tracked loja = null;
+    _iconeDaLoja = null;
+
+    // Entregas: o mapa acompanha o tamanho do palco (que segue a altura da tela); o Leaflet só percebe a janela mudar
+    _observadorDoTamanho = null;
+
     willDestroy() {
         super.willDestroy(...arguments);
+        this._observadorDoTamanho?.disconnect();
+        this._observadorDoTamanho = null;
         this.camadaDeMotoboys?.destruir();
         this.camadaDeMotoboys = null;
         this.customerPortalOrderRoutePreview.unregisterMap();
     }
 
     get center() {
-        const firstMarker = this.markers[0];
+        const firstMarker = this.markers[0] ?? this.loja;
 
-        // Entregas: sem marcadores o mapa abre em Ribeirão Preto (e não em Singapura)
+        // Entregas: sem marcadores o mapa abre na loja e, sem ela, em Ribeirão Preto (e não em Singapura)
         return {
             latitude: Number(firstMarker?.latitude) || -21.1775,
             longitude: Number(firstMarker?.longitude) || -47.8103,
@@ -51,6 +61,27 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
     // Entregas: o pedido aberto no detalhe já mostra P e D pela rota: o alfinete dele sai
     get alfinetes() {
         return semOPedidoAberto(this.pedidosNoMapa, this.args.selectedOrder?.public_id ?? null);
+    }
+
+    // Entregas: o pin da loja, menos quando o mapa já mostra a coleta pelo P (pedido aberto ou novo pedido)
+    get pinDaLoja() {
+        return mostrarPinDaLoja(this.loja, this.markers) ? this.loja : null;
+    }
+
+    get iconeDaLoja() {
+        const L = globalThis.L;
+
+        if (!this._iconeDaLoja && L?.icon) {
+            this._iconeDaLoja = L.icon({
+                iconUrl: PIN_DA_LOJA.url,
+                iconSize: PIN_DA_LOJA.tamanho,
+                iconAnchor: PIN_DA_LOJA.ponta,
+                popupAnchor: PIN_DA_LOJA.popup,
+                tooltipAnchor: PIN_DA_LOJA.dica,
+            });
+        }
+
+        return this._iconeDaLoja ?? undefined;
     }
 
     // um ícone só para todos os alfinetes (criado quando o Leaflet já existe)
@@ -163,6 +194,8 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
     @action setupMap(event) {
         this.customerPortalOrderRoutePreview.registerMap(event);
         this.adicionarZoom(event?.target ?? event);
+        this.acompanharTamanho(event?.target ?? event);
+        this.carregarLoja.perform();
         // Entregas: os capacetes dos motoboys, relidos a cada 5 s enquanto o mapa existe
         this.camadaDeMotoboys?.destruir();
         this.camadaDeMotoboys = new CamadaDeMotoboys(event?.target ?? event);
@@ -186,6 +219,40 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
                 zoomOutTitle: this.intl.t('customer-portal.ui.entregas.zoom-out'),
             })
         );
+    }
+
+    // Entregas: o palco do mapa muda de altura com a tela (CSS) e com o cabeçalho; sem o invalidateSize, o Leaflet fica com
+    // o tamanho antigo (faixa cinza sem mapa ou marcadores fora do lugar)
+    acompanharTamanho(map) {
+        const container = map?.getContainer?.();
+
+        this._observadorDoTamanho?.disconnect();
+        this._observadorDoTamanho = null;
+
+        if (!container || typeof ResizeObserver === 'undefined') {
+            return;
+        }
+
+        this._observadorDoTamanho = new ResizeObserver(() => {
+            if (!this.isDestroying && !this.isDestroyed) {
+                map.invalidateSize({ pan: false });
+            }
+        });
+        this._observadorDoTamanho.observe(container);
+    }
+
+    // Entregas: a loja (nome, endereço e Local) para o pin; em falha, tenta mais duas vezes e desiste sem pin
+    @task({ drop: true }) *carregarLoja() {
+        for (let tentativa = 1; tentativa <= 3 && !this.loja; tentativa++) {
+            try {
+                this.loja = lojaNoMapa(yield this.fetch.get('entregas/loja/minha-loja'));
+                return;
+            } catch {
+                if (tentativa < 3) {
+                    yield timeout(espera(INTERVALO_MAPA_MS, tentativa));
+                }
+            }
+        }
     }
 
     @action syncRoutePreview() {

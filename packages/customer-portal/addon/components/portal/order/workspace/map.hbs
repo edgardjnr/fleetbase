@@ -19,6 +19,19 @@
                 </marker.popup>
             </layers.marker>
         {{/each}}
+        {{!-- Entregas: pin laranja da loja no Local dela (a coleta), o mesmo do console; some quando o P do pedido já está no mapa --}}
+        {{#if this.pinDaLoja}}
+            <layers.marker @lat={{this.pinDaLoja.latitude}} @lng={{this.pinDaLoja.longitude}} @icon={{this.iconeDaLoja}} @zIndexOffset={{-500}} @riseOnHover={{true}} as |marker|>
+                <marker.tooltip @direction="top">{{or this.pinDaLoja.nome (t "customer-portal.ui.entregas.mapa-sua-loja")}}</marker.tooltip>
+                <marker.popup>
+                    <div class="text-xs font-semibold uppercase">{{t "customer-portal.ui.entregas.mapa-sua-loja"}}</div>
+                    <div class="text-sm font-semibold">{{n-a this.pinDaLoja.nome}}</div>
+                    {{#if this.pinDaLoja.endereco}}
+                        <div class="text-xs">{{this.pinDaLoja.endereco}}</div>
+                    {{/if}}
+                </marker.popup>
+            </layers.marker>
+        {{/if}}
         {{!-- Entregas: alfinete vermelho no endereço de entrega de cada pedido em andamento da loja (PedidosNoMapa::daLoja), por baixo dos capacetes --}}
         {{#each this.alfinetes key="id" as |pedido|}}
             <layers.marker @lat={{pedido.latitude}} @lng={{pedido.longitude}} @icon={{this.iconeDoAlfinete}} @zIndexOffset={{-1000}} @riseOnHover={{true}} as |marker|>

@@ -2436,6 +2436,54 @@ body[data-theme='dark'].fleetbase-portal .portal-order-map {
     z-index: 20;
 }
 
+/* Entregas: o mapa de pedidos cabe na tela. Com os 42rem fixos, em tela baixa (notebook) o palco passava do fim da página,
+   e a roda do mouse sobre o mapa dava zoom em vez de rolar até o resto. No desktop, a área (cabeçalho + palco) ocupa a
+   altura da tela menos a barra superior (4rem + 1px de borda) e o respiro do .portal-main (1rem em cima e embaixo); o
+   palco fica com o que sobra do cabeçalho. Abaixo de 24rem a página rola. O map.js chama o invalidateSize do Leaflet
+   quando o palco muda de tamanho */
+@media (width > 1024px) {
+    .fleetbase-portal .portal-order-workspace:not(.is-table) {
+        display: flex;
+        flex-direction: column;
+        height: max(24rem, calc(100vh - 4rem - 1px - 2rem));
+        height: max(24rem, calc(100dvh - 4rem - 1px - 2rem));
+        min-height: 0;
+    }
+
+    .fleetbase-portal .portal-order-workspace:not(.is-table) > .portal-order-workspace-header {
+        flex: 0 0 auto;
+    }
+
+    .fleetbase-portal .portal-order-workspace:not(.is-table) > .portal-order-map-stage {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .fleetbase-portal .portal-order-workspace:not(.is-table) .portal-order-map {
+        position: absolute;
+        inset: 0;
+        min-height: 0;
+    }
+
+    .fleetbase-portal .portal-order-workspace:not(.is-table) .portal-order-leaflet {
+        height: 100%;
+    }
+}
+
+/* Entregas: tablet e celular (lista e painel do pedido empilhados embaixo do mapa): o mapa nunca passa da tela */
+@media (width <= 1024px) {
+    .fleetbase-portal .portal-order-workspace,
+    .fleetbase-portal .portal-order-map-stage,
+    .fleetbase-portal .portal-order-map {
+        min-height: 0;
+    }
+
+    .fleetbase-portal .portal-order-leaflet {
+        height: clamp(18rem, 60vh, 42rem);
+        height: clamp(18rem, 60dvh, 42rem);
+    }
+}
+
 /* Entregas: chat da loja com os motoboys (Portal::Conversas). Gaveta fixa à direita, por cima do painel do pedido e da
    barra superior do portal (.portal-topbar, z-index 1200: abaixo dela, o cabeçalho da gaveta com o fechar ficava escondido);
    abaixo só dos menus suspensos (1300 e 1500) */
@@ -2840,12 +2888,28 @@ body[data-theme='dark'].fleetbase-portal .portal-order-route-marker-tooltip {
     border-top-right-radius: 0 !important;
 }
 
+/* Entregas: o painel do pedido (novo pedido e detalhe) tem a altura do palco do mapa, não a da tela: cabeçalho fixo e o
+   corpo com o resto, rolando por dentro. O corpo em 100% da altura do painel (ember-ui, full-height) somava o cabeçalho e
+   passava do fim do palco, que corta (overflow hidden) */
+.fleetbase-portal .portal-order-route-panel .next-content-overlay-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.fleetbase-portal .portal-order-route-panel .next-content-overlay.full-height > .next-content-overlay-panel-container > .next-content-overlay-panel .next-content-overlay-panel-body,
+.fleetbase-portal .portal-order-route-panel .next-content-overlay-panel .next-content-overlay-panel-body {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+}
+
 .fleetbase-portal .portal-order-overlay-body {
-    height: calc(100vh - 4rem);
+    height: 100%;
     min-height: 0;
     overflow-y: auto;
     padding: 0 !important;
-    padding-bottom: 8rem !important;
+    padding-bottom: 2rem !important;
 }
 
 .fleetbase-portal .portal-order-panel-overlay,
