@@ -554,14 +554,14 @@ Fora dessa pasta:
   - Pedido aberto sem motoboy, com a distribuição ligada: a mesma atividade de despacho do original e o `Distribuidor::iniciar`.
   - O resto (não aberto, desligada, aberto que já tem motoboy): o original.
   - Falha ao iniciar: alarme geral do Fleet-Ops.
-- **Troca do listener:** o `AppServiceProvider::distribuirPedidosAbertos` chama o `TrocaDoListenerDoDespacho::aplicar` no `booted()`. Ele lê a lista crua do `OrderDispatched` (`getRawListeners`), esquece o evento, registra o nosso primeiro e depois **os outros, na ordem**: webhook, `NotifyOrderEvent` e o `HandleOrderDispatched` do **Storefront**, que segue no composer.
+- **Troca do listener:** o `AppServiceProvider::distribuirPedidosAbertos` chama o `TrocaDoListenerDoDespacho::aplicar` no `booted()`. Ele lê a lista crua do `OrderDispatched` (`getRawListeners`), esquece o evento, registra o nosso primeiro e depois **os outros, na ordem em que estavam** (o webhook, o `NotifyOrderEvent` e o `HandleOrderDispatched` do **Storefront**, que segue no composer).
 - **`ObservadorDaDistribuicao`** (`Order::updated`): ganhou motoboy → `atribuida`; status encerrado → `cancelada`. Nunca lança. No aceite, o `registrarAceite` do middleware sobrescreve com `aceita`.
 - **Job `App\Jobs\Entregas\AvancarOferta`** (fila `default`, atraso de 30 s, `afterCommit`): vence a oferta pendente. Com a trava ocupada, volta à fila em 2 s, até 3 tentativas.
 - **Comando `entregas:distribuicao-varrer`** (`VarrerDistribuicoes`, a cada minuto, `withoutOverlapping(5)`, em segundo plano): reserva do job para o Redis reiniciado.
   - Vence a pendente vencida há mais de 20 s.
   - Encerra a distribuição cujo pedido já tem motoboy, está encerrado ou sumiu.
   - Abre pelo prazo as que estão em `ofertas` há mais de 3 min.
-  - Só olha as despachadas nas últimas 24 h.
+  - O encerramento só olha as despachadas nas últimas 24 h (as mais antigas, o observador do Order encerra). Vencer e abrir pelo prazo não têm esse limite.
 
 ### A fila
 
@@ -595,7 +595,7 @@ Fora dessa pasta:
   - tira os pedidos em oferta a outro motoboy e põe `entregas_oferta: {vence_em, tempo_estimado_s}` na oferta dele;
   - o `vence_em` sai em ISO com `-03:00`;
   - nunca lança. Funciona com o APK atual, que só lista.
-- **Push** (`OfertaDePedido`, extensão do `OrderPing`; `order_ping` no push e no socket):
+- **Push** (`OfertaDePedido`, extensão do `OrderPing`; `order_ping` no push, `order.ping` no socket):
   - título "Oferta para você";
   - dados `entregas_oferta=1` e `entregas_oferta_vence_em`, também no push original de reserva;
   - `android.ttl` = o que falta até vencer (1 a 30 s), pelo `AvisosDoMotoboy`.

@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\Log;
  * - oferta pendente vencida há mais de FOLGA_DA_VARREDURA_S: vence (e o Distribuidor passa ao próximo);
  * - distribuição não encerrada cujo pedido já tem motoboy, está encerrado ou sumiu: encerra;
  * - distribuição em ofertas há mais de MINUTOS_ATE_ABRIR: abre a todos (prazo), mesmo com oferta pendente (o abrirATodos a cancela).
- * Só olha as distribuições despachadas nas últimas 24 h (as mais antigas, o observador do Order encerra).
+ * O encerramento só olha as distribuições despachadas nas últimas 24 h (as mais antigas, o observador do Order encerra).
+ * Vencer e abrir pelo prazo não têm esse limite.
  * Uma falha num item não para os outros (log só com ids).
  */
 class VarrerDistribuicoes extends Command
