@@ -4,18 +4,16 @@
             <InputGroup @name={{t "common.name"}} @wrapperClass="col-span-3">
                 <Input @value={{@resource.name}} @type="text" class="w-full form-input" placeholder={{t "common.name"}} disabled={{cannot-write @resource}} />
             </InputGroup>
-            <InputGroup @name={{t "place.fields.street-1"}} @value={{@resource.street1}} @wrapperClass="col-span-3">
-                <AutocompleteInput
+            <InputGroup @name={{t "place.fields.street-1"}} @wrapperClass="col-span-3">
+                {{! Entregas: sugestões do Google Places (perto de quem digita) e o endereço no formato brasileiro }}
+                <EnderecoGoogleInput
                     @value={{@resource.street1}}
-                    @fetchUrl="places/lookup"
+                    @latitude={{this.posicao.latitude}}
+                    @longitude={{this.posicao.longitude}}
                     @onSelect={{this.onAutocomplete}}
-                    disabled={{cannot-write @resource}}
-                    placeholder={{t "place.fields.street-1"}}
-                    class="w-full"
-                    as |result|
-                >
-                    {{result.address}}
-                </AutocompleteInput>
+                    @disabled={{cannot-write @resource}}
+                    @placeholder={{t "place.fields.street-1"}}
+                />
             </InputGroup>
             <InputGroup @name={{t "place.fields.street-2"}} @autocomplete="nope" @value={{@resource.street2}} @wrapperClass="col-span-3" @disabled={{cannot-write @resource}} />
             <InputGroup @name={{t "place.fields.neighborhood"}} @autocomplete="nope" @value={{@resource.neighborhood}} @disabled={{cannot-write @resource}} />

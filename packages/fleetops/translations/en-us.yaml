@@ -324,6 +324,7 @@ fleet-ops:
             store-or-customer-placeholder: Select store or customer
             store-or-customer-help: Choosing a store sets the pickup to its address.
             pickup-locked: "Fixed pickup: the store address."
+            endereco-do-google-falhou: Could not load the address from Google. Mark the point on the map or choose a saved place.
             store-without-address: This store has no address yet. Choose the pickup.
         settings-hub: Settings Hub
         hub:

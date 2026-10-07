@@ -324,6 +324,7 @@ fleet-ops:
       store-or-customer-placeholder: Selecionar loja ou cliente
       store-or-customer-help: Ao escolher uma loja, a coleta vira o endereço dela.
       pickup-locked: "Coleta fixa: endereço da loja."
+      endereco-do-google-falhou: Não foi possível carregar o endereço do Google. Marque o ponto no mapa ou escolha um local salvo.
       store-without-address: Esta loja não tem endereço cadastrado. Escolha a coleta.
     settings-hub: Central de Configurações
     hub:

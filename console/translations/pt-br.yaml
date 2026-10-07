@@ -1937,6 +1937,9 @@ ember-ui:
     click-to-copy: Clique para copiar
   click-to-reveal:
     click-to-reveal: Clique para revelar
+  endereco-google-input:
+    atribuicao: Sugestões do Google
+    erro: Não foi possível carregar o endereço. Marque o ponto no mapa.
   coordinates-input:
     latitude: Latitude
     longitude: Longitude

@@ -61,10 +61,10 @@
                                     @placeholder={{concat (t "order.fields.select-waypoint") " " (add index 1)}}
                                     @triggerClass="form-select form-input truncate max-w-300px"
                                     @infiniteScroll={{false}}
-                                    @customSearchEndpoint="places/search"
-                                    @query={{hash geo=true latitude=this.location.latitude longitude=this.location.longitude}}
+                                    @customSearchEndpoint="entregas/enderecos/busca"
+                                    @query={{hash latitude=this.location.latitude longitude=this.location.longitude sessao=this.sessaoDaBusca}}
                                     @renderInPlace={{true}}
-                                    @onChange={{fn this.setWaypointPlace index}}
+                                    @onChange={{fn this.escolherLocalDaParada index}}
                                     @permission={{cannot-write @resource}}
                                     as |place|
                                 >
@@ -191,10 +191,10 @@
                         @placeholder={{t "order.fields.select-pickup"}}
                         @triggerClass="form-select form-input"
                         @infiniteScroll={{false}}
-                        @customSearchEndpoint="places/search"
-                        @query={{hash geo=true latitude=this.location.latitude longitude=this.location.longitude}}
+                        @customSearchEndpoint="entregas/enderecos/busca"
+                        @query={{hash latitude=this.location.latitude longitude=this.location.longitude sessao=this.sessaoDaBusca}}
                         @renderInPlace={{true}}
-                        @onChange={{fn this.setPayloadPlace "pickup"}}
+                        @onChange={{fn this.escolherLocal "pickup"}}
                         @permission={{cannot-write @resource}}
                         as |place|
                     >
@@ -234,10 +234,10 @@
                     @placeholder={{t "order.fields.select-dropoff"}}
                     @triggerClass="form-select form-input"
                     @infiniteScroll={{false}}
-                    @customSearchEndpoint="places/search"
-                    @query={{hash geo=true latitude=this.location.latitude longitude=this.location.longitude}}
+                    @customSearchEndpoint="entregas/enderecos/busca"
+                    @query={{hash latitude=this.location.latitude longitude=this.location.longitude sessao=this.sessaoDaBusca}}
                     @renderInPlace={{true}}
-                    @onChange={{fn this.setPayloadPlace "dropoff"}}
+                    @onChange={{fn this.escolherLocal "dropoff"}}
                     @permission={{cannot-write @resource}}
                     as |place|
                 >
@@ -271,10 +271,10 @@
                     @placeholder={{t "order.fields.select-return"}}
                     @triggerClass="form-select form-input"
                     @infiniteScroll={{false}}
-                    @customSearchEndpoint="places/search"
-                    @query={{hash geo=true latitude=this.location.latitude longitude=this.location.longitude}}
+                    @customSearchEndpoint="entregas/enderecos/busca"
+                    @query={{hash latitude=this.location.latitude longitude=this.location.longitude sessao=this.sessaoDaBusca}}
                     @renderInPlace={{true}}
-                    @onChange={{fn this.setPayloadPlace "return"}}
+                    @onChange={{fn this.escolherLocal "return"}}
                     @permission={{cannot-write @resource}}
                     as |place|
                 >

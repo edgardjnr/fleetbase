@@ -5,32 +5,9 @@
                 <Input @value={{this.place.name}} @type="text" class="w-full form-input" placeholder={{t "customer-portal.ui.common.name"}} />
             </InputGroup>
 
-            <InputGroup @name={{t "customer-portal.ui.place.street1"}} @value={{this.place.street1}} @wrapperClass="col-span-3">
-                <div class="portal-place-lookup">
-                    <Input
-                        @value={{this.place.street1}}
-                        @type="text"
-                        class="w-full form-input"
-                        placeholder={{t "customer-portal.ui.place.street1"}}
-                        autocomplete="off"
-                        {{on "input" this.searchStreet}}
-                    />
-
-                    {{#if this.lookupPlaces.isRunning}}
-                        <div class="portal-place-lookup-menu">
-                            <div class="portal-place-lookup-empty">{{t "customer-portal.ui.place.searching"}}</div>
-                        </div>
-                    {{else if this.hasLookupResults}}
-                        <div class="portal-place-lookup-menu">
-                            {{#each this.lookupResults as |result|}}
-                                <button type="button" class="portal-place-lookup-option" {{on "click" (fn this.onAutocomplete result)}}>
-                                    <div class="font-semibold truncate">{{or result.name result.street1 result.address}}</div>
-                                    <div class="text-xs text-gray-400 truncate">{{or result.address result.street1}}</div>
-                                </button>
-                            {{/each}}
-                        </div>
-                    {{/if}}
-                </div>
+            <InputGroup @name={{t "customer-portal.ui.place.street1"}} @wrapperClass="col-span-3">
+                {{! Entregas: sugestões do Google Places perto da loja (o servidor usa o Local da loja como referência) }}
+                <EnderecoGoogleInput @value={{this.place.street1}} @onSelect={{this.onAutocomplete}} @placeholder={{t "customer-portal.ui.place.street1"}} />
             </InputGroup>
 
             <InputGroup @name={{t "customer-portal.ui.place.street2"}} @autocomplete="nope" @value={{this.place.street2}} @wrapperClass="col-span-3" />

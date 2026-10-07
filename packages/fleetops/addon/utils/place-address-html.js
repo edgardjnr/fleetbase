@@ -1,5 +1,5 @@
 import { htmlSafe } from '@ember/template';
-import { isBlank } from '@ember/utils';
+import { linhaDoBairroECidade } from '@fleetbase/ember-ui/utils/endereco-brasileiro';
 
 function escapeHtml(value) {
     return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -18,7 +18,8 @@ export default function placeAddressHtml(place, options = {}) {
 
     const { showTitle = true } = options;
     const name = place.name === place.street1 ? null : place.name;
-    const cityStatePostalCode = [place.city, place.province, place.postal_code].filter((value) => !isBlank(value)).join(', ');
+    // Entregas: "Jardim Paulista, Ribeirão Preto - SP, 14025-150" (bairro, cidade - UF, CEP)
+    const cityStatePostalCode = linhaDoBairroECidade(place);
     const lines = [];
 
     if (name) {
