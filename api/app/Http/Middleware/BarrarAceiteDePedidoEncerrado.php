@@ -253,10 +253,21 @@ class BarrarAceiteDePedidoEncerrado
     /**
      * Lista aberta (distribuição em rodadas): qualquer motoboy aceita (o primeiro leva; a trava garante um só). Com o 2xx
      * do startOrder, quem tem a oferta (a pendente, ou a vencida enquanto ninguém foi oferecido depois) grava `aceita`
-     * nela; os outros, `aceita_pela_lista`. Uma falha ao registrar nunca derruba o aceite (a varredura encerra).
+     * nela; os outros, `aceita_pela_lista`. Uma falha ao registrar nunca derruba o aceite (a varredura encerra). Motoboy
+     * da sessão com `assign` de outro: 409, como na fase de ofertas.
      */
     protected function aceitarPelaLista(Request $request, Closure $next, Order $pedido, object $distribuicao)
     {
+        // o startOrder atribuiria a outro motoboy (o `assign`), e o registro gravaria o da sessão: o mesmo 409 das ofertas
+        if ($this->assignDivergeDaSessao($request)) {
+            Log::info('[entregas] aceite do motoboy barrado: pedido oferecido a outro motoboy', [
+                'pedido'  => $pedido->public_id,
+                'motoboy' => $request->input('assign'),
+                'ip'      => $request->ip(),
+            ]);
+
+            return $this->recusar('Este pedido está sendo oferecido a outro motoboy.', 409);
+        }
         $quem     = $this->quemAceita($request);
         $oferta   = $quem ? Distribuicoes::ofertaParaAceite((string) $pedido->uuid, $quem) : null;
         $resposta = $next($request);

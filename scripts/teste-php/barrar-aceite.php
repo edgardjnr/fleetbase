@@ -213,6 +213,12 @@ Config::$valores['services.entregas.distribuicao_rodadas'] = '';
 session(['user' => 'u-b']);
 confere(aceitar('13|token-do-motoboy-b', ['assign' => 'driver_b'])->status === 409, 'rodadas desligadas: o lista_aberta_em não vale (só quem tem a oferta)');
 
+comRodadas([['d-a', 'pendente']], true);
+$resposta = aceitar(TOKEN_A, ['assign' => 'driver_b']);
+confere($resposta->status === 409 && $resposta->dados === ['error' => 'Este pedido está sendo oferecido a outro motoboy.', 'errors' => ['Este pedido está sendo oferecido a outro motoboy.']]
+    && DB::table('entregas_ofertas')->where('id', 1)->value('resposta') === 'pendente' && DB::table('entregas_ofertas')->count() === 1
+    && DB::table('entregas_distribuicoes')->where('id', 1)->value('fase') === 'ofertas', 'lista aberta, sessão A com assign de B: 409, nada gravado e a oferta continua pendente');
+
 cenario(['adhoc' => true, 'driver_assigned_uuid' => 'd-b', 'started' => true]);
 Config::$valores['services.entregas.distribuicao']         = '1';
 Config::$valores['services.entregas.distribuicao_rodadas'] = '1';
