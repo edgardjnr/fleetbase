@@ -75,6 +75,20 @@ foreach (['1' => true, 'true' => true, 'on' => true, 'yes' => true, '0' => false
 \Teste\Config::$valores['services.entregas.distribuicao'] = null;
 confere(Distribuicao::ligada() === false, 'ligada() com null = false');
 
+echo '== emRodadas(), segundosDaOferta() e raioDaRodada()' . PHP_EOL;
+\Teste\Config::$valores['services.entregas.distribuicao']         = '1';
+\Teste\Config::$valores['services.entregas.distribuicao_rodadas'] = '1';
+confere(Distribuicao::emRodadas() === true && Distribuicao::segundosDaOferta() === 20, 'rodadas ligadas: oferta de 20 s');
+\Teste\Config::$valores['services.entregas.distribuicao'] = '';
+confere(Distribuicao::emRodadas() === false && Distribuicao::segundosDaOferta() === 30, 'rodadas só valem com a distribuição ligada');
+\Teste\Config::$valores['services.entregas.distribuicao']         = '1';
+\Teste\Config::$valores['services.entregas.distribuicao_rodadas'] = '';
+confere(Distribuicao::emRodadas() === false && Distribuicao::segundosDaOferta() === 30, 'rodadas desligadas: 30 s, como hoje');
+confere([Distribuicao::raioDaRodada(6000, 1), Distribuicao::raioDaRodada(6000, 2), Distribuicao::raioDaRodada(6000, 3)] === [6000, 9000, 12000], 'raios das rodadas: R, 1,5R e 2R');
+confere(Distribuicao::raioDaRodada(6000, 0) === 6000 && Distribuicao::raioDaRodada(6000, 9) === 12000, 'rodada fora da faixa fica entre 1 e 3');
+\Teste\Config::$valores['services.entregas.distribuicao']         = null;
+\Teste\Config::$valores['services.entregas.distribuicao_rodadas'] = null;
+
 echo '== Pontos (texto e não finito)' . PHP_EOL;
 confere(Pontos::de(new class { public function getLat() { return '-21.17'; } public function getLng() { return '-47.81'; } }) === [-21.17, -47.81], 'texto numérico vale');
 confere(Pontos::de(new class { public function getLat() { return 'abc'; } public function getLng() { return '10'; } }) === null, 'texto não numérico: null');
