@@ -67,6 +67,12 @@ confere($r['atraso_s'] === Distribuicao::ATRASO_MAXIMO_S && $r['encaixe'] === tr
 $r = Encaixe::calcular(0, $soEntrega, 3, 4, $limite(1021));
 confere($r['encaixe'] === false && $r['atraso_s'] === 0 && $r['tempo_s'] === 900 + $cliente + 600 + $loja + 900, 'atraso de 601 s não cabe: termina e vai (' . json_encode($r) . ')');
 
+echo '== Encaixe::noFim (distribuição em rodadas)' . PHP_EOL;
+confere(Encaixe::noFim(0, [], 3, 4, $dur) === ['tempo_s' => 300 + $loja + 900, 'encaixe' => false, 'atraso_s' => 0], 'livre: igual ao calcular');
+$r = Encaixe::noFim(0, $base, 3, 4, $dur);
+confere($r === ['tempo_s' => 300 + $loja + 600 + $cliente + 600 + $loja + 900, 'encaixe' => false, 'atraso_s' => 0], 'ocupado: termina A (coleta e entrega) e só depois vai, mesmo com a loja nova no caminho (' . json_encode($r) . ')');
+confere(Encaixe::noFim(0, $soEntrega, 3, 4, $dur)['tempo_s'] === $terminaEVai, 'só a entrega A: termina e vai');
+
 echo '== ligada()' . PHP_EOL;
 foreach (['1' => true, 'true' => true, 'on' => true, 'yes' => true, '0' => false, '' => false, 'no' => false, 'nao' => false, 'off' => false] as $v => $esperado) {
     \Teste\Config::$valores['services.entregas.distribuicao'] = (string) $v;
