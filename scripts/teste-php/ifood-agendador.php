@@ -235,6 +235,9 @@ $porComando = [];
 foreach ($schedule->eventos as $evento) {
     $porComando[$evento->comando] = $evento->chamadas;
 }
+// a distribuição de pedidos abertos tem o próprio when (ENTREGAS_DISTRIBUICAO), conferido à parte no fim
+$varrer = $porComando['entregas:distribuicao-varrer'] ?? null;
+unset($porComando['entregas:distribuicao-varrer']);
 confere(array_keys($porComando) === ['entregas:ifood-polling', 'entregas:ifood-agendados', 'entregas:ifood-acompanhar', 'entregas:ifood-tokens'], 'os quatro comandos agendados');
 confere(isset($porComando['entregas:ifood-polling']['everyThirtySeconds']) && isset($porComando['entregas:ifood-agendados']['everyMinute']) && isset($porComando['entregas:ifood-acompanhar']['everyThirtySeconds']) && isset($porComando['entregas:ifood-tokens']['everyThirtyMinutes']), 'a cada 30 s, a cada minuto, a cada 30 s e a cada 30 min');
 foreach ($porComando as $comando => $chamadas) {
@@ -256,6 +259,18 @@ foreach ($porComando as $comando => $chamadas) {
         $semCredencial                               = $quando();
         confere($ligada === true && $desligada === false && $semCredencial === false, "{$comando}: o when() segue o ClienteIfood::ligada()");
     }
+}
+
+echo '== Kernel: distribuição' . PHP_EOL;
+confere($varrer !== null && isset($varrer['everyMinute']) && ($varrer['withoutOverlapping'][0] ?? null) === 5 && isset($varrer['runInBackground']) && ($varrer['appendOutputTo'] ?? null) === ['/proc/1/fd/1'], 'entregas:distribuicao-varrer: a cada minuto, withoutOverlapping(5), em segundo plano, saída no container');
+$quandoDist = $varrer['when'][0] ?? null;
+confere($quandoDist instanceof Closure, 'entregas:distribuicao-varrer: com when()');
+if ($quandoDist instanceof Closure) {
+    reiniciarIfood();
+    Config::$valores['services.entregas.distribuicao'] = '1';
+    $ligadaDist                                        = $quandoDist();
+    Config::$valores['services.entregas.distribuicao'] = '';
+    confere($ligadaDist === true && $quandoDist() === false, 'entregas:distribuicao-varrer: o when() segue o Distribuicao::ligada()');
 }
 
 resumo();

@@ -280,7 +280,16 @@ namespace Illuminate\Foundation\Bus {
     trait Dispatchable
     {
         // com Fila::$falhar, lança como o dispatch com o Redis fora do ar
-        public static function dispatch(...$argumentos) { if (\Teste\Fila::$falhar) { throw \Teste\Fila::$falhar; } \Teste\Fila::$jobs[] = new static(...$argumentos); return null; }
+        public static function dispatch(...$argumentos)
+        {
+            if (\Teste\Fila::$falhar) {
+                throw \Teste\Fila::$falhar;
+            }
+            $job                 = new static(...$argumentos);
+            \Teste\Fila::$jobs[] = $job;
+
+            return new \Teste\DespachoPendente($job);
+        }
     }
 }
 
@@ -342,6 +351,37 @@ namespace Teste {
         public static array $jobs = [];
         /** Erro que todo dispatch lança (fila fora do ar), ou null. */
         public static ?\Throwable $falhar = null;
+    }
+
+    /** O PendingDispatch do Laravel: delay() e onQueue() ficam anotados no job (DespachoPendente::$atrasos[<índice do job em Fila::$jobs>] = segundos). */
+    class DespachoPendente
+    {
+        public static array $atrasos = [];
+
+        public function __construct(private object $job) {}
+
+        public function delay($quando)
+        {
+            if ($quando instanceof \DateTimeInterface) {
+                $segundos = $quando->getTimestamp() - now()->getTimestamp();
+            } elseif ($quando instanceof \DateInterval) {
+                $segundos = (int) (new \DateTimeImmutable('@0'))->add($quando)->getTimestamp();
+            } else {
+                $segundos = (int) $quando;
+            }
+            self::$atrasos[count(Fila::$jobs) - 1] = $segundos;
+            $this->job->delay                      = $segundos;
+
+            return $this;
+        }
+
+        public function onQueue($fila)
+        {
+            $this->job->queue = $fila;
+
+            return $this;
+        }
+        public function afterCommit() { return $this; }
     }
 
     class Coluna
@@ -473,7 +513,7 @@ namespace Teste {
         /** Tabela => exceção que o DB::table lança (o banco fora do ar). */
         public static array $falharAoConsultar = [];
         /**
-         * Colunas e colunas únicas das tabelas entregas_ifood_*, lidas das migrations (carregadas uma vez, na primeira
+         * Colunas e colunas únicas das tabelas entregas_ifood_* e da distribuição (entregas_distribuicoes, entregas_ofertas), lidas das migrations (carregadas uma vez, na primeira
          * consulta): tabela => ['colunas' => [nomes], 'unicas' => [nomes]]. Assim um nome de coluna errado falha aqui,
          * como o "Unknown column" do MySQL, e a lista de únicas não se descola das migrations.
          */
@@ -496,7 +536,7 @@ namespace Teste {
             self::$falharAoConsultar = [];
         }
 
-        /** O esquema das migrations do iFood: lê os arquivos uma vez, sem mexer no Schema::$criadas dos testes. */
+        /** O esquema das migrations do iFood e da distribuição: lê os arquivos uma vez, sem mexer no Schema::$criadas dos testes. */
         private static function esquema(): array
         {
             if (self::$esquema !== null) {
@@ -506,7 +546,11 @@ namespace Teste {
             $alteradas  = \Illuminate\Support\Facades\Schema::$alteradas;
             self::$esquema = [];
             // as que criam e as que acrescentam colunas (Schema::table), na ordem dos arquivos (a data no nome)
-            foreach (glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_ifood_*_table.php') ?: [] as $arquivo) {
+            $arquivos = array_merge(
+                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_ifood_*_table.php') ?: [],
+                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_distribuicao_*.php') ?: []
+            );
+            foreach ($arquivos as $arquivo) {
                 \Illuminate\Support\Facades\Schema::$criadas   = [];
                 \Illuminate\Support\Facades\Schema::$alteradas = [];
                 (require $arquivo)->up();
@@ -555,13 +599,13 @@ namespace Teste {
             return self::$esquema;
         }
 
-        /** Colunas únicas da tabela (NULL não conta, como no MySQL); vazio para tabela fora do esquema do iFood. */
+        /** Colunas únicas da tabela (NULL não conta, como no MySQL); vazio para tabela fora do esquema do iFood e da distribuição. */
         public static function unicasDe(string $tabela): array
         {
             return self::esquema()[$tabela]['unicas'] ?? [];
         }
 
-        /** Lança como o MySQL ("Unknown column") se a coluna não existe na tabela entregas_ifood_*; as outras tabelas passam. */
+        /** Lança como o MySQL ("Unknown column") se a coluna não existe na tabela entregas_ifood_*, entregas_distribuicoes ou entregas_ofertas; as outras tabelas passam. */
         public static function exigirColuna(string $tabela, $coluna): void
         {
             // "tabela.coluna" (com join): confere na tabela do prefixo
@@ -899,6 +943,14 @@ namespace Teste {
             return true;
         }
 
+        /** Como o insertGetId do query builder: insere uma linha e devolve o id (o inserir() já atribui o sequencial por tabela). */
+        public function insertGetId(array $linha): int
+        {
+            Banco::inserir($this->tabela, $linha, false);
+
+            return (int) Banco::$proximoId[$this->tabela];
+        }
+
         public function insertOrIgnore(array $linhas): int
         {
             $inseridas = 0;
@@ -1030,6 +1082,7 @@ namespace {
         \Teste\Http::$chamadas                        = [];
         \Teste\Fila::$jobs                            = [];
         \Teste\Fila::$falhar                          = null;
+        \Teste\DespachoPendente::$atrasos             = [];
         \Teste\Socket::$transmitidos                  = [];
         \Teste\Socket::$falhar                        = false;
         \Teste\Socket::$tentativas                    = 0;

@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Support\Entregas\Distribuicao\Distribuicao;
 use App\Support\Entregas\Ifood\ClienteIfood;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -40,6 +41,8 @@ class Kernel extends ConsoleKernel
         // etapa 3: chegada pelo GPS e reconciliação das ações de logística (AcompanharIfood)
         $schedule->command('entregas:ifood-acompanhar')->everyThirtySeconds()->when($ligada)->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
         $schedule->command('entregas:ifood-tokens')->everyThirtyMinutes()->when($ligada)->withoutOverlapping(10)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
+        // distribuição de pedidos abertos: reserva do job AvancarOferta (ver VarrerDistribuicoes)
+        $schedule->command('entregas:distribuicao-varrer')->everyMinute()->when(fn () => Distribuicao::ligada())->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
     }
 
     /**

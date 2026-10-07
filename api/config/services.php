@@ -60,6 +60,10 @@ return [
     // solto, porque o deploy.sh roda config:cache.
     'entregas' => [
         'chave_app_motoboy' => env('ENTREGAS_CHAVE_APP_MOTOBOY'),
+        // distribuição de pedidos abertos (oferta um a um): 1 liga; vazio volta ao alarme geral do Fleet-Ops
+        'distribuicao' => env('ENTREGAS_DISTRIBUICAO'),
+        // 1 = matriz de tempos pelo OSRM_HOST; vazio = linha reta. Ligar só com um OSRM próprio
+        'distribuicao_osrm' => env('ENTREGAS_DISTRIBUICAO_OSRM'),
     ],
 
     // Entregas RestaurantePro: integração iFood Logistics, app distribuído (App\Support\Entregas\Ifood). ENTREGAS_IFOOD

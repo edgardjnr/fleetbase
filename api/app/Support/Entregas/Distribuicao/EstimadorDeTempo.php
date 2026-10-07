@@ -1,0 +1,89 @@
+<?php
+
+namespace App\Support\Entregas\Distribuicao;
+
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Matriz de durações (segundos) entre pontos [lat, lng]: uma chamada ao serviço `table` do OSRM (o mesmo OSRM_HOST do
+ * km do pagamento), só com ENTREGAS_DISTRIBUICAO_OSRM=1 (Distribuicao::osrmLigado). Desligada (o padrão: a produção usa
+ * o OSRM público, de demonstração, e ele só deve ser ligado com um OSRM próprio), a matriz sai sempre em linha reta
+ * (Pontos::segundos: × FATOR_LINHA_RETA a 25 km/h) e marcada `aproximado`, sem chamada nenhuma. Ligada: quando o OSRM
+ * falha, não responde em TIMEOUT_S, devolve algo sem `durations` ou há pontos demais (MAX_PONTOS_DA_MATRIZ), a matriz
+ * inteira também sai em linha reta e marcada `aproximado`. Uma célula null (sem rota entre dois pontos) sai em linha
+ * reta sem marcar.
+ */
+class EstimadorDeTempo
+{
+    public const TIMEOUT_S = 3;
+
+    /** @return array{durations: array<int, array<int, float>>, aproximado: bool} */
+    public function matriz(array $pontos): array
+    {
+        if (!Distribuicao::osrmLigado()) {
+            return ['durations' => $this->linhaReta($pontos), 'aproximado' => true];
+        }
+
+        $n = count($pontos);
+        if ($n > Distribuicao::MAX_PONTOS_DA_MATRIZ) {
+            Log::warning('[entregas] distribuição: pontos demais para a matriz do OSRM; estimativa em linha reta', ['pontos' => $n]);
+
+            return ['durations' => $this->linhaReta($pontos), 'aproximado' => true];
+        }
+
+        $durations = $this->peloOsrm($pontos);
+        if ($durations === null) {
+            return ['durations' => $this->linhaReta($pontos), 'aproximado' => true];
+        }
+
+        // matriz nova: célula ausente, null, não numérica ou não finita sai em linha reta (o Encaixe exige número finito)
+        $matriz = [];
+        foreach ($pontos as $i => $a) {
+            foreach ($pontos as $j => $b) {
+                $valor          = is_array($durations[$i] ?? null) ? ($durations[$i][$j] ?? null) : null;
+                $matriz[$i][$j] = (is_int($valor) || is_float($valor)) && is_finite($valor) && $valor >= 0 ? (float) $valor : ($i === $j ? 0.0 : (float) Pontos::segundos($a, $b));
+            }
+        }
+
+        return ['durations' => $matriz, 'aproximado' => false];
+    }
+
+    protected function peloOsrm(array $pontos): ?array
+    {
+        $coordenadas = implode(';', array_map(fn ($p) => $p[1] . ',' . $p[0], $pontos));
+        $url         = rtrim((string) config('fleetops.osrm.host', 'https://router.project-osrm.org'), '/') . "/table/v1/driving/{$coordenadas}";
+
+        $codigo = null;
+
+        try {
+            $resposta  = Http::timeout(static::TIMEOUT_S)->get($url, ['annotations' => 'duration']);
+            $durations = $resposta->json('durations');
+            $codigo    = $resposta->json('code');
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] distribuição: OSRM indisponível; estimativa em linha reta', ['erro' => get_class($e), 'pontos' => count($pontos)]);
+
+            return null;
+        }
+
+        if (!is_array($durations) || count($durations) !== count($pontos)) {
+            Log::warning('[entregas] distribuição: OSRM indisponível; estimativa em linha reta', ['motivo' => 'resposta sem durations', 'code' => is_scalar($codigo) ? $codigo : null, 'pontos' => count($pontos)]);
+
+            return null;
+        }
+
+        return $durations;
+    }
+
+    protected function linhaReta(array $pontos): array
+    {
+        $matriz = [];
+        foreach ($pontos as $i => $a) {
+            foreach ($pontos as $j => $b) {
+                $matriz[$i][$j] = $i === $j ? 0.0 : (float) Pontos::segundos($a, $b);
+            }
+        }
+
+        return $matriz;
+    }
+}

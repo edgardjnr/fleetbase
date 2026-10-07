@@ -526,6 +526,197 @@ Desenho: spec, seções 3 e 4. Plano: `docs/superpowers/plans/2026-10-06-ifood-e
 - **A conferir no teste real (Task 12 do plano):** o texto do servidor no `err?.message` do SDK (422 do código, 400 "Atualize o app"); de onde vem o código de um pedido de teste; o 0800 no pedido de teste; o card do quadro voltando à coluna ao arrastar um pedido iFood para "cancelado"; o Kotlin do alarme compilando no Actions.
 - Testes: `scripts/teste-portal/pedido-ifood.test.mjs`, `scripts/teste-php/notas-na-lista.php` e, no app, `scripts/testes/pedido-ifood.teste.ts`.
 
+## Distribuição de pedidos abertos (oferta um a um)
+
+Decisão de 2026-10-07. Desenho: `docs/superpowers/specs/2026-10-07-distribuicao-de-pedidos-design.md`; plano da API: `docs/superpowers/plans/2026-10-07-distribuicao-de-pedidos-api.md` (executado com ajustes de revisão: **o código é a referência**). O painel do console e o APK (cartão de 30 s, Recusar pelo servidor) vêm no plano `2026-10-07-distribuicao-de-pedidos-console-e-app.md`, também executado com ajustes: valem o código e as seções "Painel do console" e "APK" abaixo.
+
+- **O que muda:** o pedido aberto (adhoc) não vai mais por alarme a todos os motoboys do raio. Nasce uma **distribuição** (`entregas_distribuicoes`), e o servidor oferece o pedido a **um motoboy por vez, por 30 s** (`entregas_ofertas`), na ordem do **menor tempo estimado até o cliente**.
+- **Fase aberta:** a fila acaba (`fila_esgotada`), não há candidato no despacho (`sem_candidato`), passam **3 min do despacho** (`prazo`, mesmo com uma oferta pendente, que vira `cancelada`), a central abre (`aberta_pela_central`) ou o ciclo falha (`falha`). Na aberta, o `OrderPing` comum vai a todos no raio, e daí em diante valem os reenvios e o aviso "sem motoboy" de sempre.
+- **Encerrada:** `aceita`, `atribuida` (ganhou motoboy por outro caminho), `cancelada` (pedido encerrado ou apagado) ou `redespachada` (um despacho novo do mesmo pedido cria outra distribuição).
+  - Só o aceite **da oferta** (fase `ofertas`) grava `aceita`. O aceite na fase `aberta` é livre e encerra como `atribuida` (pelo `ObservadorDaDistribuicao`, quando o pedido ganha o motoboy).
+  - Pedido apagado: o ciclo (`avancar`, `vencer`, `recusar`) e o `abrirATodos` encerram como `cancelada`. Sem isso, a varredura tentaria abrir pelo prazo para sempre.
+
+### Como ligar
+
+- `ENTREGAS_DISTRIBUICAO=1` no `stack.env` (`config('services.entregas.distribuicao')`, `Distribuicao::ligada()`). Vazia, tudo volta ao alarme geral do Fleet-Ops, sem deploy.
+- `ENTREGAS_DISTRIBUICAO_OSRM` (`services.entregas.distribuicao_osrm`) fica **desligada por padrão**, e a fila usa linha reta × 1,3 a 25 km/h.
+  - A produção usa o OSRM público (`router.project-osrm.org`): servidor de demonstração, com limite de uso, que receberia as posições dos motoboys.
+  - **Ligue só com um OSRM próprio.**
+- As duas estão no `x-api-env` do `deploy/docker-stack.yml`. **Cole o `docker-stack.yml` novo no Portainer** (Stacks → entregas → Editor → Update the stack, "Re-pull image" desligado) junto com a variável. Sem isso, ela não chega aos containers.
+- **Desligar no meio:** as distribuições em curso param de avançar, o aceite volta a ser livre e os reenvios seguem.
+- **Religar depois de dias desligada:** a varredura abre a todos as distribuições que ficaram em `ofertas` (alarme geral no raio), se o pedido ainda estiver sem motoboy e não encerrado.
+
+### Código
+
+Em `api/app/Support/Entregas/Distribuicao/`:
+
+- `Distribuicao`: constantes (prazos, fases, motivos, respostas), `ligada()` e `osrmLigado()`;
+- `Distribuicoes`: leitura e gravação das duas tabelas com `DB::table` (sem models), datas no fuso do app;
+- `Pontos`: `[lat, lng]` de um `Point` e a linha reta (Haversine);
+- `Candidatos`, `EstimadorDeTempo`, `Encaixe` (funções puras) e `FilaDeCandidatos`: a fila;
+- `Distribuidor`: o ciclo. `iniciar`, `avancar`, `vencer`, `recusar` e `abrirATodos` rodam sob a `TravaDoPedido`; `encerrar`, `encerrarDistribuicao` e `registrarAceite`, sem a trava;
+- `TrocaDoListenerDoDespacho`: a troca do listener.
+
+Fora dessa pasta:
+
+- **Listener `App\Listeners\Entregas\DistribuirPedidoAberto`** (estende o `HandleOrderDispatched`, fila `default`).
+  - Pedido aberto sem motoboy, com a distribuição ligada: a mesma atividade de despacho do original e o `Distribuidor::iniciar`.
+  - O resto (não aberto, desligada, aberto que já tem motoboy): o original.
+  - Falha ao iniciar: alarme geral do Fleet-Ops.
+- **Troca do listener:** o `AppServiceProvider::distribuirPedidosAbertos` chama o `TrocaDoListenerDoDespacho::aplicar` no `booted()`. Ele lê a lista crua do `OrderDispatched` (`getRawListeners`), esquece o evento, registra o nosso primeiro e depois **os outros, na ordem em que estavam** (o webhook, o `NotifyOrderEvent` e o `HandleOrderDispatched` do **Storefront**, que segue no composer).
+- **`ObservadorDaDistribuicao`** (`Order::updated`): ganhou motoboy → `atribuida`; status encerrado → `cancelada`. Nunca lança. No aceite, o `registrarAceite` do middleware sobrescreve com `aceita`.
+- **Job `App\Jobs\Entregas\AvancarOferta`** (fila `default`, atraso de 30 s, `afterCommit`): vence a oferta pendente. Com a trava ocupada, volta à fila em 2 s, até 3 tentativas.
+- **Comando `entregas:distribuicao-varrer`** (`VarrerDistribuicoes`, a cada minuto, `withoutOverlapping(5)`, em segundo plano): reserva do job para o Redis reiniciado.
+  - Vence a pendente vencida há mais de 20 s.
+  - Encerra a distribuição cujo pedido já tem motoboy, está encerrado ou sumiu.
+  - Abre pelo prazo as que estão em `ofertas` há mais de 3 min.
+  - O encerramento só olha as despachadas nas últimas 24 h (as mais antigas, o observador do Order encerra). Vencer e abrir pelo prazo não têm esse limite.
+
+### A fila
+
+- **Candidatos** (`Candidatos::noRaio`): motoboys da empresa do pedido, online, `status=available`, com posição válida no raio de pedido aberto da coleta (`Order::getAdhocDistance`, a mesma consulta do Fleet-Ops, agora filtrada pela empresa) e com GPS (`drivers.updated_at`) de menos de **30 min**.
+  - A janela é de 30 min porque o APK anterior para de mandar posição quando o motoboy está parado.
+  - O APK novo manda a posição a cada 1 min parado (batimento; ver "APK"), e aí a janela pode cair, mas deve ficar **bem acima de 5 min**: o batimento reaproveita uma posição em cache de até 5 min.
+- **Carga:** os pedidos em andamento dele (a regra do capacete, `SituacaoDoMotoboy`), na ordem de aceite (`started_at`, depois `dispatched_at`): coleta, se ainda não pegou, e entrega.
+- **Tempo** (`EstimadorDeTempo`):
+  - com o OSRM ligado, uma chamada `table` com todos os pontos (3 s de timeout);
+  - com ele desligado, falhando ou com mais de 100 pontos (o `max-table-size` do OSRM), a matriz inteira sai em linha reta, marcada `aproximado`.
+- **Encaixe:** testa onde a coleta e a entrega novas entram na sequência dele. Vale a mais rápida que não atrase nenhuma entrega já aceita mais de 10 min. Paradas fixas: 3 min na loja, 2 min no cliente. Sem tempo de preparo.
+- **Ordem:** menor tempo até o cliente. Empate: o livre primeiro, depois o `public_id`.
+- **A fila é recalculada a cada passo.**
+  - Saem quem já recusou ou deixou vencer neste despacho e quem tem oferta pendente de outro pedido (uma oferta por vez por motoboy).
+  - Recusa e silêncio só passam ao próximo.
+  - A última fila não vazia fica no JSON `fila` da distribuição, para o painel.
+
+### Aceite, recusa, lista e push
+
+- **Aceite** (`BarrarAceiteDePedidoEncerrado`, dentro da trava). Na fase `ofertas`:
+  - só aceita quem tem a oferta pendente, ou a dele vencida enquanto ninguém foi oferecido depois (`Distribuicoes::ofertaParaAceite`);
+  - quem aceita é o motoboy da sessão ou, sem ele, o `assign`. Um `assign` diferente do motoboy da sessão é barrado;
+  - os outros levam 409 "Este pedido está sendo oferecido a outro motoboy." (log `[entregas] aceite do motoboy barrado: pedido oferecido a outro motoboy`);
+  - aceite 2xx → `registrarAceite`. Uma falha ali nunca derruba o aceite (a varredura encerra).
+  - Na fase `aberta`, o aceite é livre.
+- **Recusa:** `POST v1/entregas/motoboy/pedidos/{id}/recusar` (`MotoboyController@recusar`, token de motoboy, limitador `entregas-motoboy-recusa`, 30 por minuto).
+  - 200 `{"resultado": "recusada"}`;
+  - sem oferta pendente dele: 409 "Esta oferta não está mais com você.";
+  - trava ocupada: 503.
+- **Lista do app** (`FiltrarPedidosAbertosDoMotoboy`, grupo `fleetbase.api`, depois do `$next`, só no `Api\v1\OrderController@query` com `adhoc=1&unassigned=1`):
+  - tira os pedidos em oferta a outro motoboy e põe `entregas_oferta: {vence_em, tempo_estimado_s, segundos_restantes}` na oferta dele (`segundos_restantes` = `max(0, vence_em − agora)` calculado no servidor: o app conta a partir do recebimento e não depende do relógio do celular, que adiantado ~30 s via toda oferta já vencida);
+  - o `vence_em` sai em ISO com `-03:00`;
+  - nunca lança. Funciona com o APK atual, que só lista.
+- **Push** (`OfertaDePedido`, extensão do `OrderPing`; `order_ping` no push, `order.ping` no socket):
+  - título "Oferta para você";
+  - dados `entregas_oferta=1`, `entregas_oferta_vence_em` e `entregas_oferta_segundos` (segundos que faltam, calculados no envio, pelo mesmo motivo do relógio do celular), também no push original de reserva;
+  - `android.ttl` = o que falta até vencer (1 a 30 s), pelo `AvisosDoMotoboy`.
+- **Console** (só admin, `DistribuicaoController`):
+  - `GET int/v1/entregas/pedidos/{id}/distribuicao`: fase, motivo, oferta atual, fila e histórico; `{"distribuicao": false}` se nunca houve;
+  - `POST .../distribuicao/abrir` ("Abrir a todos agora"): 409 se não está em oferta, 503 com a trava ocupada.
+- **Reenvio:** o `ReenviarPedidosAbertos` não reenvia aos motoboys enquanto o pedido está na fase `ofertas`. O aviso "sem motoboy" à central não muda.
+
+### Painel do console
+
+- **Onde:** Fleet-Ops → detalhe do pedido, painel "Distribuição" ao lado do painel iFood (`packages/fleetops/addon/components/order/details/distribuicao.*`; funções puras em `utils/distribuicao.js`; textos em `fleet-ops.ui.distribuicao.*`).
+- **Só admin:** para os outros, o painel nem carrega (a rota do servidor é só de admin).
+- **Quando aparece:** sempre que o pedido teve distribuição (`distribuicao: true`), inclusive encerrada, pelo histórico. **Não depende do `adhoc`**: a atribuição da central e a troca pelo líder desligam o adhoc, e o histórico continua ali. No erro de leitura, aparece só em pedido aberto.
+- **Conteúdo:** fase e motivo, oferta atual com o cronômetro, a fila calculada (**só em ofertas**: tempo até o cliente, "no caminho", "já leva pedido", "≈" na linha reta) e o histórico das ofertas.
+- **Releitura:** em ofertas, a cada 5 s e uma vez quando a oferta vence (o cronômetro chega a 0). Não relê com a aba oculta nem com a distribuição desligada no servidor (`ligada: false` na resposta, `ENTREGAS_DISTRIBUICAO` vazia). Recarrega também quando o pedido, o status ou o `updated_at` mudam.
+- **"Abrir a todos agora"** (`POST .../distribuicao/abrir`, com confirmação): só em ofertas, com a distribuição ligada e o pedido não encerrado (`podeAbrir`). O 409 (a distribuição já saiu de ofertas) mostra a mensagem do servidor e relê o painel.
+- O cronômetro compara o relógio do PC com o `vence_em` do servidor: é só exibição (quem vence a oferta é o servidor).
+
+### APK
+
+Ramo `distribuicao-de-pedidos` do `entregas-navigator` (APK do push na `main` depois do merge). Funções puras em `src/utils/oferta.ts`.
+
+- **Card de aceitar** (`AdhocOrderCard`, aba Pedidos): a oferta vem no topo de "Novos pedidos" (`comOfertaPrimeiro`), com "Oferta para você · fecha em N s".
+  - O cronômetro conta pelos `segundos_restantes` da lista, a partir do recebimento: **não depende do relógio do celular**.
+  - Aceitar e Recusar vão direto, sem confirmação (o tempo corre). Recusar chama `POST .../recusar`. O 409 some sem aviso; rede e 503 avisam.
+  - A recusa tira o pedido só da lista local, **sem pôr em `dismissedOrders`**: quando o pedido abre a todos, ele volta à lista e quem recusou também pode aceitar.
+  - Vencida (inclusive a que já chega vencida): botões desabilitados e a lista recarrega.
+- **Tela do pedido** (`OrderScreen`, aberta pelo `OrderModal`): com oferta, o cronômetro, Aceitar direto e Recusar (avisa o servidor e fecha; erro de rede ou 503 fica na tela para tentar de novo).
+  - O prazo vem do `ofertaPrazo` dos params (push pelo `DriverLayout`, ou o card) ou da `entregas_oferta` do pedido, com teto de 180 s.
+  - No vencimento, o alarme da tela para e a lista recarrega. A tela volta ao pedido aberto comum (Aceitar com confirmação, Dispensar), e o servidor decide (409 se está com outro; aceita se abriu a todos).
+- **Cartão nativo do alarme** (`AlarmeDePedido.kt`, `AlarmePedidoActivity.kt`): título "Oferta para você" e o prazo pelos `entregas_oferta_segundos` do push (contados no servidor; de reserva, `entregas_oferta_vence_em`), gravado como fim em `elapsedRealtime` (`entregas_oferta_fim_elapsed`) para a contagem não reiniciar ao reabrir o cartão. A notificação some no vencimento (`setTimeoutAfter`).
+  - **Recusar** abre o app com `entregas_recusar=1` (com o celular bloqueado, pede o desbloqueio, como o Aceitar), e o `DriverLayout` chama a rota de recusa. O Kotlin não tem o token nem cliente HTTP. Sem desbloquear, a oferta vence sozinha em 30 s.
+  - Na oferta, Recusar **não** grava a recusa local de 2 h (a do pedido aberto comum): quando a fila esgota, o servidor abre o pedido a todos, e este celular tem de tocar.
+  - Os segundos que faltam são regravados nos dados entregues ao app (`MainActivity`, ao abrir pelo cartão, pela notificação ou pelo pendente), porque os do envio já estão velhos.
+- **Batimento do GPS** (`LocationContext`, `heartbeatInterval: 60`): com o plugin parado, a cada 1 min pega uma posição (`maximumAge` de 5 min, reaproveita a do cache) e a envia pelo `/track`. Com o app fechado roda em headless (`index.native.tsx`). Sem isso, o motoboy livre parado perto da loja saía da fila depois de 30 min.
+  - Custo: um POST por minuto parado e uma linha de posição por minuto no servidor.
+  - **A conferir no teste real:** a frequência do `/track` com o motoboy parado.
+- **APK anterior com a chave ligada:**
+  - o cartão conta 3 min e segue tocando depois que a oferta passou ao próximo, então **vários celulares podem tocar** ao mesmo tempo;
+  - o Aceitar atrasado leva 409 "Este pedido está sendo oferecido a outro motoboy." (aceita só se o pedido já abriu a todos);
+  - o Recusar do cartão só cala e grava a recusa local de 2 h: o servidor não fica sabendo (a oferta vence em 30 s), e o celular não toca quando o pedido abre a todos;
+  - por isso: **ligue primeiro num teste controlado** (loja de teste, motoboys avisados) e de vez só com o APK novo em todos os celulares.
+- Testes: `scripts/testes/oferta.teste.ts` e `lista-de-pedidos.teste.ts` (`node --experimental-strip-types --test ...`). O Kotlin só compila no GitHub Actions.
+
+### Logs
+
+Prefixo `[entregas] distribuição:`, só ids e números:
+
+- ciclo: `iniciada`, `oferta enviada`, `oferta recusada`, `oferta vencida`, `aberta a todos (<motivo>)`, `encerrada (<motivo>)`;
+- falhas: `falha ao iniciar a distribuição; alarme geral`, `falha no ciclo; aberta a todos`, `push da oferta falhou`, `job da oferta não entrou na fila`, `alarme geral falhou para um motoboy`, `falha ao registrar o aceite`, `falha ao encerrar a distribuição do pedido`, `varredura não conseguiu …`, `trava ocupada ao vencer a oferta; tentando de novo`, `filtro da lista: <classe>`;
+- OSRM: `OSRM indisponível; estimativa em linha reta` e `pontos demais para a matriz do OSRM; estimativa em linha reta`;
+- boot: `listener do Fleet-Ops não encontrado no OrderDispatched` (o fleetops-api mudou).
+
+Onde ver:
+
+- listener e job: `docker service logs entregas_queue 2>&1 | grep 'distribuição'`;
+- aceite, recusa, lista e painel: `entregas_application`;
+- varredura: `entregas_scheduler`.
+
+### Armadilhas
+
+- **A `TravaDoPedido` não é reentrante.** Nada que rode dentro do aceite (middleware) ou da `TrocaDoMotoboy` pode chamar `iniciar`, `avancar`, `vencer`, `recusar` ou `abrirATodos`. Por isso o `encerrar` e o `registrarAceite` não tomam a trava.
+- **Worker da fila `default`:** com a trava do pedido ocupada, o `AvancarOferta` espera até 10 s por tentativa no worker `queue`, o único da `default`, que também entrega os pushes das ofertas. Se isso atrasar as ofertas, crie um worker extra para a `default`.
+- **Trava presa da varredura** (`withoutOverlapping(5)`): `docker exec $(docker ps -q -f name=entregas_scheduler) php artisan schedule:clear-cache`.
+- **Lista "Novos pedidos" (`nearby`):** usa só o raio da empresa (`fleetops.adhoc_distance`). Com um `orders.adhoc_distance` maior (só pela API v1 ou pelo formulário da central), o motoboy recebe a oferta pelo alarme, mas ela não aparece na lista.
+- **Alarme duplo na abertura pelo prazo.**
+  - O intervalo do reenvio conta do `dispatched_at`. Assim, o primeiro `LembretePedidoAberto` (1,5R) sai ~30 a 90 s depois do alarme geral da abertura, e o motoboy dentro de R pode receber dois alarmes seguidos.
+  - Aceito por ora. Se incomodar, conte o reenvio a partir da abertura da distribuição.
+- Pedido sem coleta ou entrega com coordenadas: fila vazia, abre a todos na hora (`sem_candidato`).
+- O `OrderResource` da API v1 traz `id` = `public_id`. O filtro da lista converte para uuid pela tabela `orders`, filtrando a empresa.
+
+### Riscos aceitos
+
+- Dois pedidos de lojas diferentes distribuídos no mesmo instante podem ser oferecidos ao mesmo motoboy: a trava é por pedido, e a checagem de oferta pendente de outro pedido deixa uma janela pequena.
+- Motivo `falha`: quando o ciclo lança exceção, a distribuição abre a todos e sai o alarme geral (pelo listener, no despacho; pelo `Distribuidor`, depois de uma resposta).
+- O painel mostra a última fila não vazia calculada, que pode não ser a do momento.
+- A sequência das paradas do motoboy ocupado é suposta pela ordem de aceite. Se ele entrega em outra ordem, o encaixe erra.
+- Um motoboy mudo custa 30 s por pedido (sem pausa nem penalidade). Na fase aberta, o sobrecarregado ainda pode aceitar.
+
+### Ao atualizar o fleetops-api, confira
+
+- a lista de listeners do `OrderDispatched` no `EventServiceProvider` do Fleet-Ops (e do Storefront);
+- o `handle()` do `HandleOrderDispatched` (a parte repetida no `DistribuirPedidoAberto`) e os métodos protegidos `doesntHaveDispatchActivity`, `getDispatchActivity`, `nearbyAvailableDrivers` e `notifyAdhocDriver` (o `distribuicao-ciclo.php` confere na cópia de `packages/fleetops`);
+- o `Api\v1\OrderController@query` (filtros `adhoc`, `unassigned` e `nearby`) e o formato do `OrderResource`;
+- o `OrderPing` (construtor, `title`, `message` e `data`), estendido pelo `OfertaDePedido`.
+
+### Testes
+
+- php-wasm: `scripts/teste-php/distribuicao-encaixe.php`, `distribuicao-fila.php`, `distribuicao-ciclo.php`, `distribuicao-rotas.php`, `filtrar-pedidos-abertos.php`, `barrar-aceite.php`, `avisos-push.php` e `reenvio.php`.
+- `scripts/teste-php/imports-dos-providers.php` (estático): pega `use` faltando nos providers e nos arquivos novos. Um `use` faltando no `RouteServiceProvider` derruba a API v1 inteira, e o `php -l` não pega.
+- Console: `node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/distribuicao.test.mjs`.
+- App: ver "APK".
+
+### Implantação
+
+1. `bash deploy/atualizar.sh api`: migration `2026_10_07_100000_create_entregas_distribuicao_table`, listener, job, comando e rotas. Com a variável vazia, nada muda.
+   - Confira a troca do listener dentro do container da API: `php artisan event:list --event="Fleetbase\FleetOps\Events\OrderDispatched"` deve listar o `DistribuirPedidoAberto`, o webhook, o `NotifyOrderEvent` e o `HandleOrderDispatched` do Storefront, e **nenhum** `HandleOrderDispatched` do Fleet-Ops.
+   - E que o log `listener do Fleet-Ops não encontrado` não aparece (`docker service logs entregas_application`).
+2. `bash deploy/atualizar.sh console`: o painel já está neste ramo. Antes da API, o painel daria 404.
+3. `docker-stack.yml` novo colado no Portainer com as variáveis (`ENTREGAS_DISTRIBUICAO=1` no `stack.env`) → Update the stack ("Re-pull image" desligado).
+4. Teste controlado, ainda com o APK anterior nos celulares (ver "APK" → "APK anterior com a chave ligada"): loja de teste, motoboys avisados. Se não for seguir, `ENTREGAS_DISTRIBUICAO=` vazio e Update the stack.
+5. APK novo em todos os celulares.
+6. Ligar de vez.
+
+- **A conferir no primeiro teste real:**
+  - a sequência no log: `iniciada` → `oferta enviada` → recusa ou vencida → `oferta enviada` → `aberta a todos` ou `encerrada (aceita)`;
+  - o motoboy sem oferta não vê o pedido na lista e leva 409 ao aceitar pelo alarme velho;
+  - se o `@fleetbase/sdk` do app mantém o atributo extra `entregas_oferta` no recurso Order e no `serializeCollection`;
+  - se o push com TTL de 30 s chega em celular com economia de bateria;
+  - com OSRM próprio: se o `table` responde no `OSRM_HOST` e quanto a chamada demora no pico.
+- **Se algo der errado:** `ENTREGAS_DISTRIBUICAO=` vazio e Update the stack.
+
 ## Marca Entregas RestaurantePro (sem Fleetbase na tela)
 
 - Nome: `app.name` = "Entregas RestaurantePro" em todos os idiomas do console (título da aba e `{appName}`). Os textos de tradução não citam a Fleetbase (só os de licença `ember-ui.modals.legal-notice.*`, que não aparecem).
@@ -685,3 +876,4 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 20. App do motoboy: aba Pedidos enxuta (novos e em andamento, card com o número e a loja da coleta) e aba Mapa do líder dos motoboys no lugar de Relatórios, com a troca do motoboy de um pedido (2026-10-06, ramos `app-pedidos-e-mapa-do-lider` aqui e no `entregas-navigator`, sobre o `ifood-etapa-4`).
 21. Fila própria do iFood (2026-10-06, ramo `fila-ifood`): jobs iFood na fila `ifood` com o worker `queue-ifood`, o `queue` em `default,ifood` e `after_commit` na conexão `redis` (ver "Integração iFood" → "Armadilhas").
 22. Custo da Geocoding do Google (2026-10-07, ramo `track-sem-geocodificacao`): chave tirada de Admin → Serviços e `track()` do motoboy sem geocodificação (`DriverControllerSemGeocodificacao`) (ver "Produção" → "Sem chave do Google no servidor").
+23. Distribuição de pedidos abertos (2026-10-07, ramos `distribuicao-de-pedidos` aqui e no `entregas-navigator`): oferta um a um, por 30 s, pelo tempo até o cliente, abrindo a todos ao esgotar a fila ou aos 3 min; painel "Distribuição" no console; no APK, a oferta com cronômetro e Recusar pelo servidor (card, tela do pedido e cartão do alarme) e o batimento do GPS a cada 1 min parado (ver "Distribuição de pedidos abertos").

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Controllers\Entregas\ConversasDaLojaController;
+use App\Http\Controllers\Entregas\DistribuicaoController;
 use App\Http\Controllers\Entregas\IfoodLojasController;
 use App\Http\Controllers\Entregas\IfoodPedidosController;
 use App\Http\Controllers\Entregas\LiderController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use App\Http\Controllers\Entregas\PortalLojaController;
 use App\Http\Middleware\AvisarOnlineDoMotoboy;
 use App\Http\Middleware\BarrarAceiteDePedidoEncerrado;
+use App\Http\Middleware\FiltrarPedidosAbertosDoMotoboy;
 use App\Http\Middleware\IncluirNotasNaListaDePedidos;
 use App\Http\Middleware\RegrasDoPedidoIfood;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -62,6 +64,9 @@ class RouteServiceProvider extends ServiceProvider
         // ao vivo trocar o capacete na hora (o toggle-online do Fleet-Ops grava sem disparar evento)
         $this->app['router']->pushMiddlewareToGroup('fleetbase.api', AvisarOnlineDoMotoboy::class);
 
+        // distribuição de pedidos abertos: a lista "Novos pedidos" do app só com a oferta dele e os abertos a todos
+        $this->app['router']->pushMiddlewareToGroup('fleetbase.api', FiltrarPedidosAbertosDoMotoboy::class);
+
         // Entregas RestaurantePro: rotas do app do motoboy, até 60 chamadas por minuto por usuário. O throttle do grupo
         // fleetbase.api conta por IP (roda antes da autenticação); este roda depois dela, com o usuário na sessão
         RateLimiter::for('entregas-motoboy', fn (Request $request) => Limit::perMinute(60)->by('entregas-motoboy:' . (session('user') ?: $request->ip())));
@@ -77,6 +82,8 @@ class RouteServiceProvider extends ServiceProvider
         // Entregas RestaurantePro: traçado da rota no mapa do pedido do app (cada card de pedido da lista pede o seu), até 120
         // chamadas por minuto por motoboy, num balde separado do entregas-motoboy (ganhos e valor)
         RateLimiter::for('entregas-motoboy-rota', fn (Request $request) => Limit::perMinute(120)->by('entregas-motoboy-rota:' . (session('user') ?: $request->ip())));
+        // distribuição de pedidos abertos: a recusa da oferta pelo app (30 por minuto por motoboy)
+        RateLimiter::for('entregas-motoboy-recusa', fn (Request $request) => Limit::perMinute(30)->by('entregas-motoboy-recusa:' . (session('user') ?: $request->ip())));
 
         // Entregas RestaurantePro: dados do pedido iFood no app (cada card de pedido aberto e os detalhes, relidos a cada
         // mudança do pedido), até 120 chamadas por minuto por motoboy, num balde separado do entregas-motoboy: assim a lista
@@ -130,6 +137,9 @@ class RouteServiceProvider extends ServiceProvider
                         // painel iFood no detalhe do pedido e a liberação da conclusão sem o código do cliente
                         Route::get('pedidos/{id}/ifood', [IfoodPedidosController::class, 'painel']);
                         Route::post('pedidos/{id}/ifood/liberar-sem-codigo', [IfoodPedidosController::class, 'liberarSemCodigo']);
+                        // painel "Distribuição" no detalhe do pedido e o "Abrir a todos agora"
+                        Route::get('pedidos/{id}/distribuicao', [DistribuicaoController::class, 'painel']);
+                        Route::post('pedidos/{id}/distribuicao/abrir', [DistribuicaoController::class, 'abrir']);
 
                         // mapa ao vivo do console: só os locais de coleta (lojas) e a situação de cada motoboy (cor do capacete)
                         Route::get('mapa/locais-de-coleta', [MapaController::class, 'locaisDeColeta']);
@@ -164,6 +174,8 @@ class RouteServiceProvider extends ServiceProvider
                         // pedido iFood: conclusão e código de entrega do cliente (os dados ficam no grupo de baixo)
                         Route::post('pedidos/{id}/concluir-ifood', [MotoboyController::class, 'concluirIfood']);
                         Route::post('pedidos/{id}/codigo-ifood', [MotoboyController::class, 'codigoIfood'])->middleware('throttle:entregas-ifood-codigo');
+                        // distribuição de pedidos abertos: recusar a oferta
+                        Route::post('pedidos/{id}/recusar', [MotoboyController::class, 'recusar'])->middleware('throttle:entregas-motoboy-recusa');
                     });
 
                 // Entregas RestaurantePro: traçado loja → cliente e situação do motoboy no mapa do pedido do app (MotoboyController@rota)

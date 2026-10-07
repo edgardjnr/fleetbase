@@ -52,6 +52,8 @@
         <Order::Details::Detail @resource={{@resource}} @onChange={{@onDetailsChanged}} @isLoading={{@isLoading}} />
         {{!-- Entregas: painel iFood (só pedidos do iFood; só administradores recebem os dados) --}}
         <Order::Details::Ifood @resource={{@resource}} @isLoading={{@isLoading}} />
+        {{!-- Entregas: painel da distribuição (oferta um a um; só pedidos abertos e administradores) --}}
+        <Order::Details::Distribuicao @resource={{@resource}} @isLoading={{@isLoading}} />
         <RegistryYield @registry="fleet-ops:component:order:details:after-details" as |RegistryComponent|>
             <RegistryComponent @resource={{@resource}} @controller={{@controller}} @permission={{get-write-permission @resource}} @isLoading={{@isLoading}} />
         </RegistryYield>

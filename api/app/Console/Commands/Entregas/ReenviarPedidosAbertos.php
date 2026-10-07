@@ -4,6 +4,8 @@ namespace App\Console\Commands\Entregas;
 
 use App\Events\Entregas\PedidoSemMotoboy;
 use App\Notifications\Entregas\LembretePedidoAberto;
+use App\Support\Entregas\Distribuicao\Distribuicao;
+use App\Support\Entregas\Distribuicao\Distribuicoes;
 use App\Support\Entregas\StatusDoPedido;
 use App\Support\Entregas\TransmissaoNoSocket;
 use Carbon\CarbonImmutable;
@@ -42,6 +44,9 @@ use Illuminate\Support\Facades\Log;
  * Passada a janela dos reenvios (16 min), o pedido só recebe o aviso à central, não mais os motoboys. Os avisos saem
  * depois dos reenvios aos motoboys e, na primeira falha, os demais ficam para o minuto seguinte (socket pendurado não
  * atrasa os motoboys). A falha também é gravada na saída do container (registrarFalhaDoAviso).
+ *
+ * Distribuição de pedidos abertos: enquanto o pedido está na fase `ofertas` (oferecido a um motoboy por vez), o reenvio
+ * aos motoboys espera (emDistribuicao); o aviso à central não é afetado. Na fase `aberta` segue como acima.
  *
  * Ao atualizar o fleetops-api, confira se a classe pai ainda tem getNearbyDriversForOrder, newOrderQuery e
  * newDriverQuery.
@@ -113,6 +118,13 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
                 continue;
             }
 
+            // distribuição de pedidos abertos: enquanto o pedido está sendo oferecido um a um, o reenvio espera
+            // (o aviso à central já foi tratado acima)
+            if ($this->emDistribuicao($pedido)) {
+                $this->line('Pedido ' . $pedido->public_id . ': em oferta um a um (distribuição); sem reenvio.');
+                continue;
+            }
+
             $coleta = $pedido->getPickupLocation();
             if (!Utils::isPoint($coleta)) {
                 $this->warn('Pedido ' . $pedido->public_id . ': local de coleta inválido.');
@@ -137,6 +149,16 @@ class ReenviarPedidosAbertos extends DispatchAdhocOrders
         }
 
         $this->avisarCentral($paraAvisar, $agora);
+    }
+
+    /** O pedido está na fase ofertas da distribuição (ver App\Support\Entregas\Distribuicao). Em erro (banco), false. */
+    protected function emDistribuicao($pedido): bool
+    {
+        try {
+            return Distribuicao::ligada() && Distribuicoes::emOfertas((string) $pedido->uuid);
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     /**

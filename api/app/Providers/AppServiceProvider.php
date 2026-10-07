@@ -8,9 +8,11 @@ use App\Console\Commands\Entregas\Fuso\EnviarLembretesDeManutencao;
 use App\Console\Commands\Entregas\Fuso\ProcessarGatilhosDeManutencao;
 use App\Console\Commands\Entregas\ReenviarPedidosAbertos;
 use App\Http\Controllers\Entregas\DriverControllerSemGeocodificacao;
+use App\Listeners\Entregas\ObservadorDaDistribuicao;
 use App\Listeners\Entregas\ObservadorDosPedidosIfood;
 use App\Notifications\Entregas\CanalFcmEntregas;
 use App\Notifications\Entregas\Email\CanalEmailEntregas;
+use App\Support\Entregas\Distribuicao\TrocaDoListenerDoDespacho;
 use App\Support\Entregas\FusoDoServidor;
 use Fleetbase\FleetOps\Console\Commands\DispatchAdhocOrders;
 use Fleetbase\FleetOps\Console\Commands\DispatchOrders;
@@ -102,6 +104,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureOutboundHttpLogging();
         $this->configureTransactionTripwire();
         $this->acompanharPedidosIfood();
+        $this->distribuirPedidosAbertos();
     }
 
     /**
@@ -114,6 +117,26 @@ class AppServiceProvider extends ServiceProvider
     {
         Order::updated(fn ($pedido) => ObservadorDosPedidosIfood::aoAtualizar($pedido));
         Event::listen(OrderDriverAssigned::class, fn ($evento) => ObservadorDosPedidosIfood::aoAtribuirMotoboy($evento));
+    }
+
+    /**
+     * Entregas: distribuição de pedidos abertos (ver App\Support\Entregas\Distribuicao). O DistribuirPedidoAberto entra
+     * no lugar do HandleOrderDispatched do Fleet-Ops (pedido aberto: uma oferta por vez; o resto: o original), e os
+     * outros listeners do OrderDispatched ficam, na mesma ordem: o SendResourceLifecycleWebhook e o NotifyOrderEvent do
+     * Fleet-Ops e o HandleOrderDispatched do Storefront (ver TrocaDoListenerDoDespacho). Os EventServiceProvider
+     * registram os listeners no boot deles (callback booting); o booted() roda depois do boot de todos os providers,
+     * inclusive os do Composer. Vale também com o event:cache (o cache só troca a fonte do $listen; o registro continua
+     * no boot). O Order::updated encerra a distribuição quando o pedido ganha motoboy ou é encerrado
+     * (ObservadorDaDistribuicao).
+     *
+     * Ao atualizar o fleetops-api, confira a lista de listeners do OrderDispatched em
+     * packages/fleetops/server/src/Providers/EventServiceProvider.php (scripts/teste-php/distribuicao-ciclo.php).
+     */
+    protected function distribuirPedidosAbertos(): void
+    {
+        Order::updated(fn ($pedido) => ObservadorDaDistribuicao::aoAtualizar($pedido));
+
+        $this->app->booted(fn () => TrocaDoListenerDoDespacho::aplicar(Event::getFacadeRoot()));
     }
 
     /**

@@ -82,4 +82,11 @@ confere(encrypt('segredo') !== encrypt('segredo') && decrypt(encrypt('segredo'))
 confere(decrypt(encrypt(['a' => 1])) === ['a' => 1] && !str_contains(encrypt('segredo'), 'segredo'), 'serve para lista e não mostra o valor');
 confere(excecao(fn () => decrypt('lixo')) instanceof \Illuminate\Contracts\Encryption\DecryptException && excecao(fn () => decrypt('cifrado:sem-separador')) instanceof \Illuminate\Contracts\Encryption\DecryptException, 'texto corrompido: DecryptException');
 
+echo '== tabelas da distribuição' . PHP_EOL;
+DB::table('entregas_distribuicoes')->insert([['pedido_uuid' => 'o-1', 'company_uuid' => 'e-1', 'despachada_em' => '2026-10-07 10:00:00', 'fase' => 'ofertas']]);
+confere(DB::table('entregas_distribuicoes')->where('fase', 'ofertas')->count() === 1, 'entregas_distribuicoes conhecida');
+confere(excecao(fn () => DB::table('entregas_ofertas')->where('coluna_inexistente', 1)->get()) !== null, 'coluna inexistente em entregas_ofertas falha');
+$idNovo = DB::table('entregas_ofertas')->insertGetId(['distribuicao_id' => 1, 'pedido_uuid' => 'o-1', 'motoboy_uuid' => 'm-1', 'posicao' => 1, 'oferecida_em' => '2026-10-07 10:00:00', 'vence_em' => '2026-10-07 10:00:30', 'resposta' => 'pendente']);
+confere($idNovo === 1 && DB::table('entregas_ofertas')->insertGetId(['distribuicao_id' => 1, 'pedido_uuid' => 'o-1', 'motoboy_uuid' => 'm-2', 'posicao' => 2, 'oferecida_em' => '2026-10-07 10:00:00', 'vence_em' => '2026-10-07 10:00:30', 'resposta' => 'pendente']) === 2, 'insertGetId devolve o id sequencial');
+
 resumo();

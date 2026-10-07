@@ -280,6 +280,45 @@ fleet-ops:
                 vale-presente: gift card
                 outra-forma: other method
                 misto: mixed methods
+        distribuicao:
+            painel-titulo: Driver offers
+            erro: Could not load the dispatch.
+            situacao: Status
+            oferta-atual: Current offer
+            oferta-texto: '{motoboy} · closes in {segundos} s'
+            fila: Queue (time to customer)
+            historico: Offers made
+            minutos: '{minutos} min'
+            aproximado: Estimate based on straight-line distance
+            encaixe: on the way
+            ocupado: already carrying an order
+            abrir: Open to everyone now
+            abrir-titulo: Open the order to all drivers?
+            abrir-texto: The order stops being offered one at a time and the alarm goes to every online driver near the store. The first to accept takes it.
+            aberto: Order opened to all drivers.
+            fase:
+                ofertas: Offering one at a time
+                aberta: Open to everyone
+                encerrada: Closed
+                desconhecida: Unknown status
+            motivo:
+                aceita: accepted by the offered driver
+                atribuida: driver assigned
+                cancelada: order closed
+                aberta_pela_central: opened by dispatch
+                fila_esgotada: no driver accepted the offer
+                prazo: 3 min without acceptance
+                sem_candidato: no driver available in range
+                redespachada: order dispatched again
+                falha: dispatch error; opened to everyone
+                desconhecido: unknown reason
+            resposta:
+                pendente: waiting
+                aceita: accepted
+                recusada: declined
+                vencida: no answer
+                cancelada: canceled
+                desconhecida: unknown
         order-form:
             store-or-customer: Store or customer
             store-or-customer-placeholder: Select store or customer
