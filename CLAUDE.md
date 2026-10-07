@@ -755,8 +755,8 @@ Decisão de 2026-10-07, depois do primeiro teste real. Desenho: `docs/superpower
   - Só em rodadas, quem tenta aceitar um pedido aberto que outro já iniciou leva 409 "Este pedido passou para outro motoboy." (sem rodadas, segue o "Order has already started." do Fleet-Ops). O log tem `motivo` próprio para distinguir os 409.
 - **Recusar e Dispensar** (`POST v1/entregas/motoboy/pedidos/{id}/recusar`, `Distribuidor::recusarOuDispensar`):
   - oferta pendente dele: 200 `{"resultado": "recusada"}` e o próximo passo na hora;
-  - lista aberta sem oferta dele: 200 `{"resultado": "dispensada"}` (linha `dispensada`, uma por volta: some da lista dele e não recebe oferta até a volta seguinte);
-  - senão 409 "Esta oferta não está mais com você."; trava ocupada 503.
+  - sem oferta dele, com a distribuição em `ofertas` e o pedido aberto sem motoboy, **com a lista aberta ou fechada**: 200 `{"resultado": "dispensada"}` (linha `dispensada`, uma por volta: some da lista dele e não recebe oferta até a volta seguinte). Com a lista fechada (rodada 1 da volta 1), o 409 faria o APK guardar o pedido nos dispensados locais até reiniciar;
+  - senão (fora de `ofertas`, pedido com motoboy, encerrado ou que deixou de ser aberto) 409 "Esta oferta não está mais com você."; trava ocupada 503.
 - **Lista do app** (`FiltrarPedidosAbertosDoMotoboy`): lista fechada como antes; aberta para todos, menos quem recusou ou dispensou na volta atual; `entregas_distribuicao: true` em todo pedido em `ofertas`.
   - Acrescenta os pedidos com a lista aberta cuja coleta está até 2R da posição do motoboy (`drivers.location`) e que o `nearby` do Fleet-Ops (só até R) não trouxe, no formato `Http\Resources\v1\Order` (até 50 distribuições por consulta). Entra também o pedido em que **ele** tem a oferta pendente, mesmo fora de 2R.
   - O acréscimo tem try/catch próprio (log `filtro da lista: acréscimo: <classe>`) e não derruba o filtro principal. As relações do recurso (`RELACOES_DO_RECURSO`) só são carregadas, em lote, nos pedidos que entram; o filtro carrega só `RELACOES_DO_FILTRO`.

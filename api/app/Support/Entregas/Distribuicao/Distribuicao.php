@@ -55,7 +55,7 @@ class Distribuicao
     public const RECUSADA = 'recusada';
     public const VENCIDA  = 'vencida';
     // 'aceita' e 'cancelada' são as mesmas constantes acima
-    /** Em rodadas: o motoboy dispensou o pedido pela lista aberta, sem oferta (linha sem oferta, uma por volta). */
+    /** Em rodadas: o motoboy dispensou o pedido sem ter a oferta (lista aberta ou fechada; linha sem oferta, uma por volta). */
     public const DISPENSADA        = 'dispensada';
     /** Em rodadas: aceito pela lista aberta por quem não tinha a oferta. */
     public const ACEITA_PELA_LISTA = 'aceita_pela_lista';

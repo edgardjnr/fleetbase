@@ -94,9 +94,13 @@ Exemplo: Ana termina a entrega dela em 10 min e levaria mais 10 min para o pedid
 | Situação | Resposta | Efeito |
 |---|---|---|
 | Ele tem a oferta pendente | 200 `{"resultado": "recusada"}` | oferta `recusada`, próximo passo na hora |
-| Lista aberta, sem oferta dele | 200 `{"resultado": "dispensada"}` | linha `dispensada` na volta atual: some da lista dele e não recebe oferta até a volta seguinte |
-| Lista fechada e sem oferta dele, distribuição fora de `ofertas`, ou pedido com motoboy | 409 "Esta oferta não está mais com você." | nada |
+| Sem oferta dele, distribuição em `ofertas` e pedido aberto sem motoboy (lista aberta **ou fechada**) | 200 `{"resultado": "dispensada"}` | linha `dispensada` na volta atual: some da lista dele e não recebe oferta até a volta seguinte |
+| Distribuição fora de `ofertas`, pedido com motoboy, encerrado ou que deixou de ser aberto | 409 "Esta oferta não está mais com você." | nada |
 | Trava ocupada | 503 | nada |
+
+A dispensa vale também com a lista fechada (rodada 1 da volta 1: ex.: a oferta dele venceu e ele tocou Recusar, ou
+dispensou pelo alarme): com o 409, o APK guardaria o pedido nos dispensados locais e ele sumiria até reiniciar o app,
+em vez de voltar na volta seguinte.
 
 O app chama essa rota no Recusar e no Dispensar de todo pedido marcado como distribuído (seção 7). A recusa local de
 2 h do cartão nativo não vale para esses pedidos.

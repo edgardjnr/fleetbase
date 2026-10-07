@@ -117,8 +117,8 @@ class Distribuidor
 
     /**
      * Recusar e Dispensar (POST v1/entregas/motoboy/pedidos/{id}/recusar): com a oferta pendente dele, recusa (RECUSADA);
-     * senão, em rodadas e com a lista aberta, grava a linha `dispensada` na volta atual (DISPENSADA: some da lista dele e
-     * não recebe oferta até a volta seguinte; uma linha por volta). Null: nada com ele (a rota responde 409).
+     * senão, em rodadas (lista aberta ou fechada), grava a linha `dispensada` na volta atual (DISPENSADA: some da lista
+     * dele e não recebe oferta até a volta seguinte; uma linha por volta). Null: nada com ele (a rota responde 409).
      */
     public function recusarOuDispensar(string $pedidoUuid, Driver $motoboy): ?string
     {
@@ -190,8 +190,10 @@ class Distribuidor
     }
 
     /**
-     * Só de dentro da trava: em rodadas, com a distribuição em ofertas, a lista aberta e o pedido ainda sem motoboy, grava
-     * a linha `dispensada` na volta (se ainda não recusou nem dispensou nela). False se não cabe dispensa.
+     * Só de dentro da trava: em rodadas, com a distribuição em ofertas e o pedido ainda aberto e sem motoboy, grava a
+     * linha `dispensada` na volta (se ainda não recusou nem dispensou nela), com a lista aberta ou fechada: com ela
+     * fechada (rodada 1 da volta 1, ex.: a oferta dele venceu e ele tocou Recusar), o 409 faria o APK escondê-lo até
+     * reiniciar, e a spec quer que ele volte na volta seguinte. False se não cabe dispensa.
      */
     protected function dispensarSemTrava(string $pedidoUuid, Driver $motoboy): bool
     {
@@ -199,7 +201,7 @@ class Distribuidor
             return false;
         }
         $distribuicao = Distribuicoes::doPedido($pedidoUuid);
-        if (!$distribuicao || $distribuicao->fase !== Distribuicao::FASE_OFERTAS || !$distribuicao->lista_aberta_em) {
+        if (!$distribuicao || $distribuicao->fase !== Distribuicao::FASE_OFERTAS) {
             return false;
         }
         $pedido = Order::where('uuid', $pedidoUuid)->first();

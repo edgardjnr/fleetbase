@@ -270,7 +270,6 @@ confere(logou('pedido sem coordenada; aberta a todos', 'warning') && logsSem(['-
 echo '== Recusar × dispensar (Distribuidor)' . PHP_EOL;
 $dist = cenarioRodadas([$ana, $bruno, $caio, $davi]);
 $dist->iniciar(pedidoDoCenario());                                                // Ana
-confere($dist->recusarOuDispensar('order-1', $bruno['motoboy']) === null && count(ofertas()) === 1, 'lista fechada e sem oferta dele: null (a rota responde 409)');
 Relogio::$agora = '2026-10-07 10:00:10';
 confere($dist->recusarOuDispensar('order-1', $ana['motoboy']) === 'recusada' && ofertas()[0]->resposta === 'recusada' && ofertas()[1]->motoboy_uuid === 'd-bruno', 'com a oferta dele: recusada, e passa ao próximo na hora');
 Relogio::$agora = '2026-10-07 10:00:20';
@@ -296,6 +295,30 @@ $dist->iniciar(pedidoDoCenario());
 Distribuicoes::abrirLista(1);
 pedidoDoCenario()->driver_assigned_uuid = 'd-ana';
 confere($dist->recusarOuDispensar('order-1', $bruno['motoboy']) === null, 'pedido já com motoboy: null (409)');
+
+echo '== Dispensa com a lista fechada (rodada 1 da volta 1)' . PHP_EOL;
+$dist = cenarioRodadas([$ana, $bruno, $caio]);
+$dist->iniciar(pedidoDoCenario());                                                // Ana; lista fechada
+confere($dist->recusarOuDispensar('order-1', $bruno['motoboy']) === 'dispensada', 'lista fechada, sem oferta dele: dispensada (não 409: o APK não o esconde até reiniciar)');
+$linha = ofertas()[1] ?? null;
+confere($linha && $linha->motoboy_uuid === 'd-bruno' && $linha->resposta === 'dispensada' && $linha->volta === 1 && $linha->rodada === 1 && $linha->raio_m === 6000 && $linha->posicao === 0 && ofertas()[0]->resposta === 'pendente' && distribuicao()->lista_aberta_em === null, 'linha dispensada na volta 1, rodada 1; a oferta de Ana segue e a lista continua fechada');
+confere($dist->recusarOuDispensar('order-1', $bruno['motoboy']) === 'dispensada' && count(ofertas()) === 2, 'dispensar de novo na mesma volta: sem linha nova');
+Relogio::$agora = '2026-10-07 10:00:10';
+$dist->recusarOuDispensar('order-1', $ana['motoboy']);                           // Ana recusa
+confere(ofertas()[2]->motoboy_uuid === 'd-caio' && ofertas()[2]->rodada === 2, 'quem dispensou não recebe oferta nesta volta: Caio, na rodada 2 (Bruno, na rodada 1, fica de fora)');
+Relogio::$agora = '2026-10-07 10:00:30';
+(new AvancarOferta(3))->handle($dist);                                            // Caio vence; rodada 3 vazia
+$job = end(Fila::$jobs);
+Relogio::$agora = '2026-10-07 10:01:00';
+$job->handle($dist);                                                              // volta 2: Ana
+Relogio::$agora = '2026-10-07 10:01:20';
+(new AvancarOferta(4))->handle($dist);
+confere(ofertas()[3]->motoboy_uuid === 'd-ana' && ofertas()[3]->volta === 2 && ofertas()[4]->motoboy_uuid === 'd-bruno' && ofertas()[4]->volta === 2, 'volta seguinte: quem dispensou com a lista fechada recebe a oferta de novo');
+
+$dist = cenarioRodadas([$ana, $bruno]);
+$dist->iniciar(pedidoDoCenario());
+pedidoDoCenario()->adhoc = false;
+confere($dist->recusarOuDispensar('order-1', $bruno['motoboy']) === null && count(ofertas()) === 1, 'lista fechada, pedido que deixou de ser aberto: null (409)');
 
 echo '== Mostrar a todos agora e aceite pela lista (Distribuidor)' . PHP_EOL;
 $dist = cenarioRodadas([$ana, $bruno]);

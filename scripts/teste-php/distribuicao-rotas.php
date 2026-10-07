@@ -130,7 +130,7 @@ confere($d->fase === 'ofertas' && $d->lista_aberta_em !== null && $d->rodada ===
 $dist = cenarioRodadas();
 session(['user' => 'u-b']);
 $resposta = (new MotoboyController())->recusar(requisicao('13|token-do-motoboy-b'), 'order_1', $dist);
-confere($resposta->status === 409 && $resposta->dados === ['errors' => ['Esta oferta não está mais com você.']], 'lista fechada e sem oferta dele: 409');
+confere($resposta->status === 200 && $resposta->dados === ['resultado' => 'dispensada'] && Distribuicoes::doPedido('order-1')->lista_aberta_em === null, 'lista fechada e sem oferta dele: 200 dispensada (a lista continua fechada)');
 Distribuicoes::abrirLista(1);
 $resposta = (new MotoboyController())->recusar(requisicao('13|token-do-motoboy-b'), 'order_1', $dist);
 confere($resposta->status === 200 && $resposta->dados === ['resultado' => 'dispensada'], 'lista aberta, sem oferta dele: 200 dispensada');
