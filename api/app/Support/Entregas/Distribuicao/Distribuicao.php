@@ -43,6 +43,8 @@ class Distribuicao
     public const PRAZO               = 'prazo';
     public const SEM_CANDIDATO       = 'sem_candidato';
     public const REDESPACHADA        = 'redespachada';
+    /** O ciclo falhou no despacho (banco, bug): aberta na hora, e o listener manda o alarme geral. */
+    public const FALHA               = 'falha';
 
     public const PENDENTE = 'pendente';
     public const RECUSADA = 'recusada';

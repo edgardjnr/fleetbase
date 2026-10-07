@@ -152,6 +152,7 @@ confere(ofertas()[1]->resposta === 'vencida', 'job: a oferta pendente vence');
 confere(distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'fila_esgotada' && distribuicao()->aberta_em === '2026-10-07 10:00:45', 'fila esgotada: aberta a todos');
 confere(array_slice(avisos(), 2) === [['driver_a', OrderPing::class], ['driver_b', OrderPing::class]], 'OrderPing comum a todos no raio');
 confere(logou('aberta a todos', 'info'), 'log: aberta a todos');
+confere(array_column(json_decode(distribuicao()->fila, true), 'public_id') === ['driver_b'], 'fila vazia não apaga a última calculada (o painel a mostra)');
 
 // job velho (oferta já respondida): nada
 $antes = count(Driver::$avisos);
@@ -234,6 +235,16 @@ pedidoDoCenario()->status = 'canceled';
 confere($dist->abrirATodos('order-1', 'aberta_pela_central') === false && distribuicao()->motivo === 'cancelada' && count(Driver::$avisos) === 1, 'pedido cancelado: abrir a todos encerra (cancelada) sem alarme');
 
 echo '== Falhas' . PHP_EOL;
+$dist = cenario();
+$quebrado = new Distribuidor(new FilaDeCandidatos(new class extends EstimadorDeTempo {
+    public function matriz(array $pontos): array { throw new \RuntimeException('bug no estimador'); }
+}));
+$erro = excecao(fn () => $quebrado->iniciar(pedidoDoCenario()));
+confere($erro instanceof \RuntimeException && $erro->getMessage() === 'bug no estimador', 'falha no ciclo do iniciar: relança a exceção original (o listener manda o alarme geral)');
+confere(distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'falha' && Distribuicoes::ofertaPendente(1) === null && Driver::$avisos === [], 'falha no ciclo: aberta (falha), sem oferta pendente e sem alarme (fica com o listener)');
+confere(logou('falha no ciclo; aberta a todos', 'warning') && logsSem(['bug no estimador']), 'log da falha: warning só com ids e a classe');
+confere(!isset(Trava::$ocupadas['entregas:pedido:order-1']), 'falha no ciclo: a trava é solta');
+
 $dist = cenario();
 Fila::$falhar = new \RuntimeException('redis fora');
 $dist->iniciar(pedidoDoCenario());

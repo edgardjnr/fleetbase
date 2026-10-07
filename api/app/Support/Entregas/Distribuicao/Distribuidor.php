@@ -28,7 +28,8 @@ use Illuminate\Support\Facades\Log;
  * iniciar, avancar, vencer, recusar e abrirATodos rodam sob a TravaDoPedido (a mesma do aceite e do cancelamento) e
  * relêem a distribuição com ela. A trava não é reentrante: dentro dela só se chamam os métodos *SemTrava e o
  * proximoPasso, nunca os públicos que a tomam. Lançam LockTimeoutException se a trava não sair: o chamador decide (o
- * listener cai no alarme geral; o job volta à fila).
+ * listener cai no alarme geral; o job volta à fila). Uma falha no ciclo dentro do iniciar (banco, bug) abre a
+ * distribuição na hora (motivo `falha`, sem alarme) e relança: o listener manda o alarme geral e o aceite fica livre.
  *
  * Pedido que já tem motoboy ou está encerrado (o Order::updated não viu: saveQuietly) não recebe oferta nem alarme: a
  * distribuição é encerrada (atribuida/cancelada), como faz a varredura.
@@ -49,7 +50,14 @@ class Distribuidor
             }
             $distribuicao = Distribuicoes::criar($pedido);
             Log::info('[entregas] distribuição: iniciada', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id]);
-            $this->avancarSemTrava($distribuicao, $pedido);
+            try {
+                $this->avancarSemTrava($distribuicao, $pedido);
+            } catch (\Throwable $e) {
+                // sem isto a distribuição ficava em `ofertas` e o aceite, restrito, até a varredura abrir pelo prazo
+                $this->abrirPorFalha($distribuicao, $pedido, $e);
+
+                throw $e; // o listener manda o alarme geral
+            }
         });
     }
 
@@ -156,7 +164,9 @@ class Distribuidor
 
         $excluidos = array_merge(Distribuicoes::motoboysQueResponderam((int) $distribuicao->id), Distribuicoes::motoboysComOfertaPendente());
         $fila      = $this->fila->para($pedido, Candidatos::elegiveis($pedido, $excluidos));
-        Distribuicoes::gravarFila((int) $distribuicao->id, $fila);
+        if ($fila !== []) {
+            Distribuicoes::gravarFila((int) $distribuicao->id, $fila); // vazia não apaga a última (o painel a mostra)
+        }
 
         if ($fila === []) {
             $jaOfereceu = Distribuicoes::ofertas((int) $distribuicao->id) !== [];
@@ -212,6 +222,18 @@ class Distribuidor
         Distribuicoes::cancelarPendentes((int) $distribuicao->id);
         Distribuicoes::mudarFase((int) $distribuicao->id, Distribuicao::FASE_ENCERRADA, $motivo);
         Log::info('[entregas] distribuição: encerrada (' . $motivo . ')', ['pedido' => $distribuicao->pedido_uuid, 'distribuicao' => $distribuicao->id]);
+    }
+
+    /** O ciclo falhou no iniciar: aberta (falha) sem alarme, que fica com o listener. Falha aqui também só registra. */
+    protected function abrirPorFalha(object $distribuicao, Order $pedido, \Throwable $erro): void
+    {
+        try {
+            Distribuicoes::cancelarPendentes((int) $distribuicao->id);
+            Distribuicoes::mudarFase((int) $distribuicao->id, Distribuicao::FASE_ABERTA, Distribuicao::FALHA);
+            Log::warning('[entregas] distribuição: falha no ciclo; aberta a todos', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id, 'erro' => get_class($erro)]);
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] distribuição: falha no ciclo; não foi possível abrir a distribuição', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id, 'erro' => get_class($erro), 'erro_ao_abrir' => get_class($e)]);
+        }
     }
 
     /** Pedido já com motoboy ou encerrado: encerra a distribuição (atribuida/cancelada) e devolve true. */
