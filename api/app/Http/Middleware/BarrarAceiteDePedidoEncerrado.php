@@ -177,6 +177,7 @@ class BarrarAceiteDePedidoEncerrado
         if ($atual && $this->aceitoPorOutroNaDistribuicao($request, $atual)) {
             Log::info('[entregas] aceite do motoboy barrado: pedido passou para outro motoboy', [
                 'pedido'  => $pedido->public_id,
+                'motivo'  => 'aceito por outro na distribuição',
                 'motoboy' => $request->input('assign'),
                 'ip'      => $request->ip(),
             ]);
@@ -186,9 +187,11 @@ class BarrarAceiteDePedidoEncerrado
 
         // distribuição de pedidos abertos: na fase ofertas só quem tem a oferta aceita (Distribuicoes::ofertaParaAceite)
         if ($atual && Distribuicao::ligada() && Distribuicoes::emOfertas((string) $atual->uuid)) {
-            $distribuicao = Distribuicoes::doPedido((string) $atual->uuid);
-            if (Distribuicao::emRodadas() && $distribuicao && $distribuicao->lista_aberta_em) {
-                return $this->aceitarPelaLista($request, $next, $pedido, $distribuicao);
+            if (Distribuicao::emRodadas()) {
+                $distribuicao = Distribuicoes::doPedido((string) $atual->uuid);
+                if ($distribuicao && $distribuicao->lista_aberta_em) {
+                    return $this->aceitarPelaLista($request, $next, $pedido, $distribuicao);
+                }
             }
             $quem   = $this->quemAceita($request);
             $oferta = $quem && !$this->assignDivergeDaSessao($request)
