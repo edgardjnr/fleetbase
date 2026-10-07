@@ -41,6 +41,9 @@ class FiltrarPedidosAbertosDoMotoboy
      * (Api\v1\OrderController@query) e as que ele lê sempre (trackingNumber, purchaseRate, orderConfig, comments, files).
      * Só para os pedidos acrescentados além de R, em lote.
      */
+    /** O que o acréscimo carrega para filtrar: o payload (com a coleta) e a empresa (o getAdhocDistance lê as opções dela). */
+    public const RELACOES_DO_FILTRO = ['payload', 'company'];
+
     public const RELACOES_DO_RECURSO = ['trackingStatuses', 'driverAssigned', 'vehicleAssigned', 'customer', 'facilitator', 'trackingNumber', 'purchaseRate', 'orderConfig', 'comments', 'files'];
 
     public function handle(Request $request, Closure $next)
@@ -129,11 +132,18 @@ class FiltrarPedidosAbertosDoMotoboy
             }
         }
         if ($rodadas) {
-            foreach ($this->alemDeR($request, $motoboy, $empresa, array_values($uuidDe)) as [$item, $linha]) {
-                $paraEle = $this->paraOMotoboy($item, $linha, $motoboyUuid, true);
-                if ($paraEle) {
-                    $filtrados[] = $paraEle;
+            // o acréscimo à parte: uma falha nele só o descarta; a lista principal continua filtrada
+            try {
+                $acrescimo = [];
+                foreach ($this->alemDeR($request, $motoboy, $empresa, $motoboyUuid, array_values($uuidDe)) as [$item, $linha]) {
+                    $paraEle = $this->paraOMotoboy($item, $linha, $motoboyUuid, true);
+                    if ($paraEle) {
+                        $acrescimo[] = $paraEle;
+                    }
                 }
+                array_push($filtrados, ...$acrescimo);
+            } catch (\Throwable $e) {
+                Log::warning('[entregas] distribuição: filtro da lista: acréscimo: ' . get_class($e));
             }
         }
 
@@ -175,57 +185,72 @@ class FiltrarPedidosAbertosDoMotoboy
     }
 
     /**
-     * Em rodadas: os pedidos da empresa em ofertas com a lista aberta que não vieram na lista do Fleet-Ops, abertos, sem
-     * motoboy, não encerrados e com a coleta até MULTIPLICADOR_DA_LISTA × R da posição do motoboy, no formato do
-     * Http\Resources\v1\Order.
+     * Em rodadas: os pedidos da empresa em ofertas que não vieram na lista do Fleet-Ops, abertos, sem motoboy e não
+     * encerrados, no formato do Http\Resources\v1\Order: os com a lista aberta e a coleta até MULTIPLICADOR_DA_LISTA × R
+     * da posição do motoboy, e aquele em que ele tem a oferta pendente, com a lista aberta ou não e sem limite de raio (a
+     * oferta é dele: uma rodada além de R não pode tirar o card).
      *
-     * Custo: para filtrar, só o payload (a relação payload do Order já traz pickup, dropoff, return, waypoints e entities,
-     * em lote) e a empresa (uma consulta só: todos são da empresa da sessão; o getAdhocDistance lê as opções dela). As
-     * relações que o recurso lê (RELACOES_DO_RECURSO) só são carregadas, em lote, nos pedidos que entram.
+     * Custo: para filtrar, só RELACOES_DO_FILTRO (a relação payload do Order já traz pickup, dropoff, return, waypoints e
+     * entities, em lote; a empresa é uma consulta só, porque todos são da empresa da sessão). As relações que o recurso lê
+     * (RELACOES_DO_RECURSO) só são carregadas, em lote, nos pedidos que entram. Um pedido que falha ao serializar fica de
+     * fora sozinho (log `acréscimo: <classe>`).
      *
      * @return array<int, array{0: object, 1: object}> [item, distribuição]
      */
-    private function alemDeR(Request $request, $motoboy, string $empresa, array $jaVieram): array
+    private function alemDeR(Request $request, $motoboy, string $empresa, string $motoboyUuid, array $jaVieram): array
     {
         $posicao = Pontos::de($motoboy->location);
-        if (!$posicao) {
-            return [];
-        }
+        // uuid do pedido => [distribuição, sem limite de raio]
         $distribuicoes = [];
-        foreach (Distribuicoes::comListaAberta($empresa) as $linha) {
-            if (!in_array((string) $linha->pedido_uuid, $jaVieram, true)) {
-                $distribuicoes[(string) $linha->pedido_uuid] = $linha;
+        if ($posicao) {
+            foreach (Distribuicoes::comListaAberta($empresa) as $linha) {
+                $distribuicoes[(string) $linha->pedido_uuid] = [$linha, false];
             }
+        }
+        foreach (Distribuicoes::comOfertaPendenteDo($empresa, $motoboyUuid) as $linha) {
+            $distribuicoes[(string) $linha->pedido_uuid] = [$linha, true];
+        }
+        foreach ($jaVieram as $uuid) {
+            unset($distribuicoes[(string) $uuid]);
         }
         if ($distribuicoes === []) {
             return [];
         }
         $pedidos = Order::whereIn('uuid', array_keys($distribuicoes))
             ->where('company_uuid', $empresa)
-            ->with(['payload', 'company'])
+            ->with(static::RELACOES_DO_FILTRO)
             ->get();
 
         $entram = [];
         foreach ($pedidos as $pedido) {
-            if (!$pedido->adhoc || $pedido->driver_assigned_uuid || in_array(strtolower((string) $pedido->status), StatusDoPedido::ENCERRADOS, true)) {
+            [$linha, $semLimite] = $distribuicoes[(string) $pedido->uuid] ?? [null, false];
+            if (!$linha || !$pedido->adhoc || $pedido->driver_assigned_uuid || in_array(strtolower((string) $pedido->status), StatusDoPedido::ENCERRADOS, true)) {
                 continue;
             }
-            $coleta = $this->coletaDe($pedido);
-            if (!$coleta || Pontos::metros($posicao, $coleta) > Distribuicao::MULTIPLICADOR_DA_LISTA * max(1, (int) $pedido->getAdhocDistance())) {
-                continue;
+            if (!$semLimite) {
+                $coleta = $this->coletaDe($pedido);
+                if (!$coleta || Pontos::metros($posicao, $coleta) > Distribuicao::MULTIPLICADOR_DA_LISTA * max(1, (int) $pedido->getAdhocDistance())) {
+                    continue;
+                }
             }
-            $entram[] = $pedido;
+            $entram[] = [$pedido, $linha];
         }
         if ($entram === []) {
             return [];
         }
-        reset($entram)->newCollection($entram)->loadMissing(static::RELACOES_DO_RECURSO);
+        $modelos = array_column($entram, 0);
+        reset($modelos)->newCollection($modelos)->loadMissing(static::RELACOES_DO_RECURSO);
 
         $extras = [];
-        foreach ($entram as $pedido) {
-            $item = json_decode(json_encode((new OrderResource($pedido))->resolve($request)));
+        foreach ($entram as [$pedido, $linha]) {
+            try {
+                $item = json_decode(json_encode((new OrderResource($pedido))->resolve($request)));
+            } catch (\Throwable $e) {
+                Log::warning('[entregas] distribuição: filtro da lista: acréscimo: ' . get_class($e));
+                continue;
+            }
             if (is_object($item)) {
-                $extras[] = [$item, $distribuicoes[(string) $pedido->uuid]];
+                $extras[] = [$item, $linha];
             }
         }
 

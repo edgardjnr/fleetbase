@@ -206,6 +206,21 @@ class Distribuicoes
             ->whereNotNull('lista_aberta_em')->orderBy('id', 'desc')->limit($limite)->get()->all();
     }
 
+    /**
+     * Em rodadas: as distribuições em ofertas da empresa em que o motoboy tem a oferta pendente (a lista do app acrescenta
+     * a dele mesmo fora do raio da lista e com a lista fechada). Índice (motoboy_uuid, resposta).
+     */
+    public static function comOfertaPendenteDo(string $empresa, string $motoboyUuid): array
+    {
+        $ids = DB::table(static::OFERTAS)->where('motoboy_uuid', $motoboyUuid)->where('resposta', Distribuicao::PENDENTE)->pluck('distribuicao_id')->all();
+        if ($ids === []) {
+            return [];
+        }
+
+        return DB::table(static::TABELA)->where('company_uuid', $empresa)->where('fase', Distribuicao::FASE_OFERTAS)
+            ->whereIn('id', array_values(array_unique(array_map('intval', $ids))))->get()->all();
+    }
+
     public static function oferta(int $id): ?object
     {
         return DB::table(static::OFERTAS)->where('id', $id)->first();
