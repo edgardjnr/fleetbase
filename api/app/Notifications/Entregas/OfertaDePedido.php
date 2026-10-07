@@ -17,6 +17,7 @@ class OfertaDePedido extends OrderPing
     public function __construct(Order $order, $distance, public \DateTimeInterface $venceEm)
     {
         parent::__construct($order, $distance);
+        $this->data = array_merge($this->data ?? [], $this->dadosDaOferta()); // também no push original de reserva (CanalFcmEntregas)
 
         $this->title   = 'Oferta para você';
         $this->message = AvisosDoMotoboy::textoDaColeta($distance);

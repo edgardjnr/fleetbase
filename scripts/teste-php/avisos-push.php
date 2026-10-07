@@ -255,6 +255,19 @@ confere(($mensagem['data']['title'] ?? null) === 'Oferta para você' && str_cont
 confere(($mensagem['data']['entregas_oferta'] ?? null) === '1' && ($mensagem['data']['entregas_oferta_vence_em'] ?? null) === $venceEm->format(DATE_ATOM), 'dados da oferta');
 confere(($mensagem['android']['ttl'] ?? null) === '30s', 'vence em 30 s (android.ttl)');
 confere(($mensagem['data']['type'] ?? null) === 'order_ping' && ($mensagem['data']['id'] ?? null) === 'order_abc', 'continua um pedido aberto para o app (type order_ping)');
+// validade pelo vencimento: o que falta, de 1 s a 30 s
+$relogio = fn (string $agora) => \Carbon\CarbonImmutable::$agoraTeste = $agora;
+$relogio('2026-10-07 10:00:20');
+confere((enviado($oferta)['android']['ttl'] ?? null) === '10s', 'faltando 10 s para vencer: ttl 10s');
+$relogio('2026-10-07 10:01:00');
+confere((enviado($oferta)['android']['ttl'] ?? null) === '1s', 'oferta já vencida: ttl 1s (mínimo)');
+$relogio('2026-10-07 09:59:00');
+confere((enviado($oferta)['android']['ttl'] ?? null) === '30s', 'faltando mais de 30 s: ttl 30s (máximo)');
+$relogio('2026-10-07 10:00:00');
+confere((enviado($oferta)['android']['ttl'] ?? null) === '30s', 'faltando exatamente 30 s: ttl 30s');
+\Carbon\CarbonImmutable::$agoraTeste = null;
+confere(($oferta->toFcm(null)->data['entregas_oferta'] ?? null) === '1', 'o push original de reserva (toFcm) também leva os dados da oferta');
+
 putenv('ENTREGAS_ALARME_POR_DADOS=0');
 confere((enviado($oferta)['android']['ttl'] ?? null) === '30s', 'oferta como push comum também vence em 30 s');
 confere(!isset(enviado(new OrderPing(pedidoDoTeste(), 850))['data']['entregas_oferta']), 'pedido aberto comum não leva os dados da oferta');

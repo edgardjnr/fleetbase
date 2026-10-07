@@ -240,22 +240,29 @@ class AvisosDoMotoboy
         return str_starts_with($tituloOriginal, $prefixo) ? 'Mensagem de ' . substr($tituloOriginal, strlen($prefixo)) : 'Nova mensagem';
     }
 
-    /**
-     * Push de dados: sem bloco de notificação (o app monta a notificação), título e texto nos dados, todos os dados como
-     * texto (exigência do FCM), prioridade alta e validade curta.
-     */
     /** Dados extras do push além do cartão: hoje, só os da oferta (OfertaDePedido). */
     protected static function extras(Notification $notificacao): array
     {
         return $notificacao instanceof OfertaDePedido ? $notificacao->dadosDaOferta() : [];
     }
 
-    /** O android.ttl do alarme: a oferta vence em SEGUNDOS_DA_OFERTA; o resto em VALIDADE_ALARME. */
+    /** O android.ttl do alarme: a oferta vale o tempo que falta até vencer (1 s a SEGUNDOS_DA_OFERTA); o resto em VALIDADE_ALARME. */
     protected static function validade(Notification $notificacao): string
     {
-        return $notificacao instanceof OfertaDePedido ? Distribuicao::SEGUNDOS_DA_OFERTA . 's' : self::VALIDADE_ALARME;
+        if (!$notificacao instanceof OfertaDePedido) {
+            return self::VALIDADE_ALARME;
+        }
+
+        // o que falta até o vencimento: um push atrasado na fila não toca os 30 s cheios de uma oferta que já passou
+        $falta = $notificacao->venceEm->getTimestamp() - now()->getTimestamp();
+
+        return max(1, min(Distribuicao::SEGUNDOS_DA_OFERTA, $falta)) . 's';
     }
 
+    /**
+     * Push de dados: sem bloco de notificação (o app monta a notificação), título e texto nos dados, todos os dados como
+     * texto (exigência do FCM), prioridade alta e validade curta.
+     */
     protected static function comoDados(FcmMessage $mensagem, string $titulo, string $corpo, array $cartao = [], string $validade = self::VALIDADE_ALARME): FcmMessage
     {
         $dados = [];
