@@ -280,7 +280,16 @@ namespace Illuminate\Foundation\Bus {
     trait Dispatchable
     {
         // com Fila::$falhar, lança como o dispatch com o Redis fora do ar
-        public static function dispatch(...$argumentos) { if (\Teste\Fila::$falhar) { throw \Teste\Fila::$falhar; } \Teste\Fila::$jobs[] = new static(...$argumentos); return null; }
+        public static function dispatch(...$argumentos)
+        {
+            if (\Teste\Fila::$falhar) {
+                throw \Teste\Fila::$falhar;
+            }
+            $job                 = new static(...$argumentos);
+            \Teste\Fila::$jobs[] = $job;
+
+            return new \Teste\DespachoPendente($job);
+        }
     }
 }
 
@@ -342,6 +351,25 @@ namespace Teste {
         public static array $jobs = [];
         /** Erro que todo dispatch lança (fila fora do ar), ou null. */
         public static ?\Throwable $falhar = null;
+    }
+
+    /** O PendingDispatch do Laravel: delay() e onQueue() ficam anotados no job (DespachoPendente::$atrasos[<índice do job em Fila::$jobs>] = segundos). */
+    class DespachoPendente
+    {
+        public static array $atrasos = [];
+
+        public function __construct(private object $job) {}
+
+        public function delay($quando)
+        {
+            $segundos = $quando instanceof \DateTimeInterface ? $quando->getTimestamp() - now()->getTimestamp() : (int) $quando;
+            self::$atrasos[count(Fila::$jobs) - 1] = $segundos;
+
+            return $this;
+        }
+
+        public function onQueue($fila) { return $this; }
+        public function afterCommit() { return $this; }
     }
 
     class Coluna
@@ -506,7 +534,11 @@ namespace Teste {
             $alteradas  = \Illuminate\Support\Facades\Schema::$alteradas;
             self::$esquema = [];
             // as que criam e as que acrescentam colunas (Schema::table), na ordem dos arquivos (a data no nome)
-            foreach (glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_ifood_*_table.php') ?: [] as $arquivo) {
+            $arquivos = array_merge(
+                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_ifood_*_table.php') ?: [],
+                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_distribuicao_*.php') ?: []
+            );
+            foreach ($arquivos as $arquivo) {
                 \Illuminate\Support\Facades\Schema::$criadas   = [];
                 \Illuminate\Support\Facades\Schema::$alteradas = [];
                 (require $arquivo)->up();
@@ -899,6 +931,14 @@ namespace Teste {
             return true;
         }
 
+        /** Como o insertGetId do query builder: insere uma linha e devolve o id (o inserir() já atribui o sequencial por tabela). */
+        public function insertGetId(array $linha): int
+        {
+            Banco::inserir($this->tabela, $linha, false);
+
+            return (int) Banco::$proximoId[$this->tabela];
+        }
+
         public function insertOrIgnore(array $linhas): int
         {
             $inseridas = 0;
@@ -1030,6 +1070,7 @@ namespace {
         \Teste\Http::$chamadas                        = [];
         \Teste\Fila::$jobs                            = [];
         \Teste\Fila::$falhar                          = null;
+        \Teste\DespachoPendente::$atrasos             = [];
         \Teste\Socket::$transmitidos                  = [];
         \Teste\Socket::$falhar                        = false;
         \Teste\Socket::$tentativas                    = 0;

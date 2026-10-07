@@ -463,6 +463,12 @@ namespace Fleetbase\FleetOps\Models {
         public $phone;
         public $location;
         public $online = false;
+        public $status = 'available';
+        public $distance = null;
+        /** Avisos enviados (notify): [[motoboy public_id, notificação]] */
+        public static array $avisos = [];
+
+        public function notify($notificacao): void { self::$avisos[] = [$this->public_id, $notificacao]; }
     }
 }
 
@@ -522,6 +528,7 @@ namespace {
         \Fleetbase\FleetOps\Models\Order::$falharDespacho = false;
         \Fleetbase\FleetOps\Models\Order::$falharCancelamento = false;
         \Fleetbase\FleetOps\Models\Driver::$todos      = [];
+        \Fleetbase\FleetOps\Models\Driver::$avisos     = [];
         \Teste\Container::$instancias                  = [];
         \Fleetbase\Support\Auth::$usuario              = null;
 
