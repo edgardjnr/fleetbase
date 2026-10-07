@@ -119,7 +119,7 @@ class DistribuicaoController extends Controller
     {
         $usuario = Auth::getUserFromSession($request);
         if (!$usuario || $usuario->isNotAdmin()) {
-            return response()->json(['errors' => ['Somente administradores podem ver a distribuição do pedido.']], 403);
+            return response()->json(['errors' => ['Somente administradores podem ver ou abrir a distribuição do pedido.']], 403);
         }
 
         return null;

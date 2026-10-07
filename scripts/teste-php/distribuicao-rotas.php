@@ -86,4 +86,22 @@ confere((new DistribuicaoController())->painel(requisicao('sessao'), 'order_2')-
 confere((new DistribuicaoController())->painel(requisicao('sessao'), 'order_1')->status === 403, 'não admin: 403');
 confere((new DistribuicaoController())->abrir(requisicao('sessao'), 'order_1', $dist)->status === 403, 'não admin não abre: 403');
 
+echo '== Depois do aceite, outra empresa e trava ocupada' . PHP_EOL;
+$dist = cenario();
+\Fleetbase\Support\Auth::$usuario = $admin;
+$dist->registrarAceite(Distribuicoes::oferta(1));
+$resposta = (new DistribuicaoController())->painel(requisicao('sessao'), 'order_1');
+confere($resposta->status === 200 && $resposta->dados['fase'] === 'encerrada' && $resposta->dados['motivo'] === 'aceita' && $resposta->dados['oferta'] === null && $resposta->dados['historico'][0]['resposta'] === 'aceita', 'painel depois do aceite: encerrada, aceita, sem oferta atual, histórico (' . json_encode($resposta->dados) . ')');
+
+Order::$todos[] = new Order(['uuid' => 'order-x', 'public_id' => 'order_x', 'company_uuid' => 'empresa-2']);
+confere((new DistribuicaoController())->painel(requisicao('sessao'), 'order_x')->status === 404, 'painel: pedido de outra empresa: 404');
+confere((new MotoboyController())->recusar(requisicao('12|token-do-motoboy-a'), 'order_x', $dist)->status === 404, 'recusar: pedido de outra empresa: 404');
+
+$dist = cenario();
+\Fleetbase\Support\Auth::$usuario = $admin;
+\Teste\Trava::$ocupadas['entregas:pedido:order-1'] = true;
+confere((new MotoboyController())->recusar(requisicao('12|token-do-motoboy-a'), 'order_1', $dist)->status === 503, 'recusar com a trava ocupada: 503');
+confere((new DistribuicaoController())->abrir(requisicao('sessao'), 'order_1', $dist)->status === 503, 'abrir com a trava ocupada: 503');
+unset(\Teste\Trava::$ocupadas['entregas:pedido:order-1']);
+
 resumo();
