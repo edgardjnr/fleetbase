@@ -7,9 +7,12 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Matriz de durações (segundos) entre pontos [lat, lng]: uma chamada ao serviço `table` do OSRM (o mesmo OSRM_HOST do
- * km do pagamento). Quando o OSRM falha, não responde em TIMEOUT_S, devolve algo sem `durations` ou há pontos demais
- * (MAX_PONTOS_DA_MATRIZ), a matriz inteira sai em linha reta (Pontos::segundos) e marcada `aproximado`. Uma célula
- * null (sem rota entre dois pontos) sai em linha reta sem marcar.
+ * km do pagamento), só com ENTREGAS_DISTRIBUICAO_OSRM=1 (Distribuicao::osrmLigado). Desligada (o padrão: a produção usa
+ * o OSRM público, de demonstração, e ele só deve ser ligado com um OSRM próprio), a matriz sai sempre em linha reta
+ * (Pontos::segundos: × FATOR_LINHA_RETA a 25 km/h) e marcada `aproximado`, sem chamada nenhuma. Ligada: quando o OSRM
+ * falha, não responde em TIMEOUT_S, devolve algo sem `durations` ou há pontos demais (MAX_PONTOS_DA_MATRIZ), a matriz
+ * inteira também sai em linha reta e marcada `aproximado`. Uma célula null (sem rota entre dois pontos) sai em linha
+ * reta sem marcar.
  */
 class EstimadorDeTempo
 {

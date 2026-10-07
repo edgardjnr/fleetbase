@@ -37,7 +37,9 @@ Compatível com o APK atual: a lista é filtrada no servidor, então o app antig
 
 ### Candidatos
 
-Motoboys da empresa do pedido com `online = 1`, `status = available`, posição dentro do raio de pedido aberto da loja (`Order::getAdhocDistance()`, linha reta, a mesma consulta de hoje, agora filtrando `company_uuid`) e `drivers.updated_at` há menos de **5 min** (posição velha não serve para estimar). Tiram-se os excluídos da seção 3, item 4.
+Motoboys da empresa do pedido com `online = 1`, `status = available`, posição dentro do raio de pedido aberto da loja (`Order::getAdhocDistance()`, linha reta, a mesma consulta de hoje, agora filtrando `company_uuid`) e `drivers.updated_at` há menos de **30 min** (posição velha não serve para estimar). Tiram-se os excluídos da seção 3, item 4.
+
+*Revisto na implementação (decisão do Edgard):* a janela é de 30 min, e não 5, porque o app para de mandar posição quando o motoboy está parado; com 5 min, quem espera parado na loja sairia da fila. O corte só tira o celular que morreu com o online ligado. O APK novo vai mandar a posição a cada 1 min parado (batimento), e aí a janela pode cair.
 
 ### Carga de cada candidato
 
@@ -46,6 +48,8 @@ Os pedidos em andamento dele, pela mesma consulta do capacete do mapa (`Situacao
 ### Tempos
 
 Uma chamada `table` ao OSRM (`OSRM_HOST`, o mesmo do km) com todos os pontos: posições dos candidatos, todas as paradas em andamento e a coleta e a entrega novas. Devolve a matriz de durações. Se o OSRM falhar ou não responder em 3 s: linha reta × 1,3 a 25 km/h, e toda estimativa dessa rodada sai marcada `aproximado`.
+
+*Revisto na implementação (decisão do Edgard):* a chamada ao OSRM fica atrás de `ENTREGAS_DISTRIBUICAO_OSRM`, **desligada por padrão**. A produção usa o OSRM público (`router.project-osrm.org`), servidor de demonstração com limite de uso, que receberia as posições dos motoboys. Desligada, a matriz sai sempre em linha reta × 1,3 a 25 km/h, marcada `aproximado`. Ligar só com um OSRM próprio. Acima de 100 pontos (`max-table-size` do OSRM), a rodada também sai em linha reta.
 
 Paradas fixas: **3 min na loja** e **2 min no cliente**, em toda parada (sem tempo de preparo).
 
@@ -69,7 +73,7 @@ Menor tempo até D. Empate: o livre primeiro; depois, o `public_id` (determinism
 
 ### Tabelas (migrations em `api/database/migrations`, rodadas pelo `deploy.sh`)
 
-- `entregas_distribuicoes`: uma por despacho. `id`, `pedido_uuid`, `company_uuid`, `despachada_em`, `fase` (`ofertas` | `aberta` | `encerrada`), `motivo` (nulo | `aceita` | `atribuida` | `cancelada` | `aberta_pela_central` | `fila_esgotada` | `prazo` | `sem_candidato`), `fila` (JSON da última fila calculada: `[{motoboy_uuid, nome, tempo_s, encaixe, aproximado}]`, para a central ver), `aberta_em`, `encerrada_em`, `created_at`, `updated_at`. Índice em (`pedido_uuid`, `fase`).
+- `entregas_distribuicoes`: uma por despacho. `id`, `pedido_uuid`, `company_uuid`, `despachada_em`, `fase` (`ofertas` | `aberta` | `encerrada`), `motivo` (nulo | `aceita` | `atribuida` | `cancelada` | `aberta_pela_central` | `fila_esgotada` | `prazo` | `sem_candidato` | `redespachada` | `falha`; `redespachada` encerra a anterior quando o mesmo pedido é despachado de novo, e `falha` abre a todos quando o ciclo lança exceção, com o alarme geral), `fila` (JSON da última fila calculada: `[{motoboy_uuid, nome, tempo_s, encaixe, aproximado}]`, para a central ver), `aberta_em`, `encerrada_em`, `created_at`, `updated_at`. Índice em (`pedido_uuid`, `fase`).
 - `entregas_ofertas`: uma por oferta. `id`, `distribuicao_id`, `pedido_uuid`, `motoboy_uuid`, `posicao`, `tempo_estimado_s`, `encaixe`, `aproximado`, `oferecida_em`, `vence_em`, `resposta` (`pendente` | `aceita` | `recusada` | `vencida` | `cancelada`), `respondida_em`. Índices em (`pedido_uuid`, `resposta`) e (`motoboy_uuid`, `resposta`).
 
 Datas em TIMESTAMP gravadas no fuso do app, como as tabelas do iFood (ver "Fuso" no CLAUDE.md).
@@ -81,14 +85,18 @@ Datas em TIMESTAMP gravadas no fuso do app, como as tabelas do iFood (ver "Fuso"
 - `Encaixe`: funções puras da seção 4 (base, inserções, atraso, melhor tempo).
 - `FilaDeCandidatos`: junta os três e ordena. Devolve a fila que vai ao JSON e ao próximo passo.
 - `Distribuidor`: o ciclo. `iniciar(Order)`, `avancar(Distribuicao)`, `recusar(Oferta)`, `abrirATodos(Distribuicao, motivo)`, `encerrar(Distribuicao, motivo)`. Cada operação roda sob a `TravaDoPedido` do pedido (a mesma do aceite e do cancelamento) e relê a distribuição antes de agir. `avancar` com distribuição fora da fase `ofertas` não faz nada.
+  - *Revisto na implementação:* as assinaturas recebem ids (`avancar(pedidoUuid)`, `vencer(ofertaId)`, `recusar(pedidoUuid, Driver)`, `abrirATodos(pedidoUuid, motivo)`). `encerrar`, `encerrarDistribuicao` e `registrarAceite` **não** tomam a trava: rodam dentro de quem já a segura (o aceite no `BarrarAceiteDePedidoEncerrado`, a `TrocaDoMotoboy` do líder), e a `TravaDoPedido` não é reentrante.
 - `Distribuicao` e `Oferta`: models Eloquent das duas tabelas.
+  - *Revisto na implementação:* sem models. `Distribuicao` guarda as constantes e o liga/desliga, e `Distribuicoes` lê e grava as duas tabelas com `DB::table` (como `PedidosIfood`), que é o que o banco em memória dos testes simula.
 - Liga/desliga: `ENTREGAS_DISTRIBUICAO=1` no `stack.env` (`config('services.entregas.distribuicao')`). Desligada, o listener chama o original do Fleet-Ops e nada mais muda; distribuições em curso ficam onde estão e o aceite volta a ser livre.
 
 ### Gatilhos
 
 - **Listener `App\Listeners\Entregas\DistribuirPedidoAberto`** no lugar do `HandleOrderDispatched`. O `EventServiceProvider` do Fleet-Ops registra três listeners no `OrderDispatched` (`HandleOrderDispatched`, `SendResourceLifecycleWebhook`, `NotifyOrderEvent`). O `AppServiceProvider` faz `Event::forget(OrderDispatched::class)` e registra de novo o webhook, o `NotifyOrderEvent` e o nosso. O nosso: pedido não aberto, integração desligada ou pedido sem coleta com coordenadas → chama o `HandleOrderDispatched` original; pedido aberto → `Distribuidor::iniciar`. **Ao atualizar o fleetops-api, confira a lista de listeners desse evento.**
+  - *Revisto na implementação:* o `OrderDispatched` também tem o `HandleOrderDispatched` do Storefront, que segue no composer. A troca (`TrocaDoListenerDoDespacho`, no `booted()` do `AppServiceProvider`) lê a lista crua (`getRawListeners`), esquece o evento e registra o nosso primeiro e **todos os outros na ordem**, em vez de uma lista fixa. O nosso chama o original também no pedido aberto que já tem motoboy no despacho; falha ao iniciar → alarme geral do Fleet-Ops. Pedido aberto sem coleta ou entrega com coordenadas não volta ao original: a fila sai vazia e a distribuição abre a todos na hora (`sem_candidato`).
 - **Job `App\Jobs\Entregas\AvancarOferta`** (fila `default`, `delay` de 30 s, `afterCommit`, id da oferta no corpo): se a oferta ainda está `pendente`, marca `vencida` e chama `avancar`; senão sai. Jobs velhos são inofensivos.
 - **Comando `entregas:distribuicao-varrer`** a cada minuto, em segundo plano, `withoutOverlapping`: reserva para Redis reiniciado (ver "Redis sem persistência" no CLAUDE.md). Oferta `pendente` vencida há mais de 20 s → vence e avança. Distribuição em `ofertas` há mais de 3 min → abre a todos. Distribuição em `ofertas` ou `aberta` cujo pedido já tem motoboy ou está encerrado → encerra.
+  - *Revisto na implementação:* `withoutOverlapping(5)`; só olha as distribuições despachadas nas últimas 24 h; o prazo de 3 min abre a todos mesmo com oferta pendente (ela vira `cancelada`), também no `Distribuidor::avancar`.
 - **`Order::updated`** (gancho já usado pelo iFood, `AppServiceProvider`): `driver_assigned_uuid` preenchido ou status encerrado → `encerrar` com `atribuida` ou `cancelada`. Vale nas duas fases: na `aberta`, o aceite de qualquer motoboy também encerra por aqui (`atribuida`; o motivo `aceita` é só da oferta). Nunca lança.
 - **`ReenviarPedidosAbertos`** pula pedidos com distribuição em `ofertas`. Na fase `aberta` segue como hoje.
 
@@ -123,7 +131,10 @@ Só o necessário à oferta. As outras melhorias do APK são de outro escopo.
 
 ## 8. Erros e casos de borda
 
-- **OSRM fora:** estimativa em linha reta, marcada; a fila continua.
+- **OSRM fora (ou desligado, o padrão):** estimativa em linha reta, marcada; a fila continua.
+- **Falha no ciclo** (banco, bug): a distribuição abre a todos (`falha`) e sai o alarme geral (pelo listener, no despacho; pelo `Distribuidor`, depois de uma recusa ou vencimento já gravados). O pedido nunca fica em `ofertas` sem oferta pendente.
+- **Trava do pedido ocupada no job:** o `AvancarOferta` volta à fila em 2 s (até 3 tentativas), mas cada tentativa espera até 10 s pela trava no worker `queue`, o único da fila `default`, que também entrega os pushes das ofertas. Se isso atrasar as ofertas, um worker extra para a `default`.
+- **Distribuição religada depois de dias desligada:** a varredura abre a todos as que ficaram em `ofertas` (pedido ainda sem motoboy e não encerrado), com o alarme geral.
 - **Push não entregue** (celular sem rede): a oferta vence em 30 s e passa adiante. O silêncio não pune.
 - **Aceite depois do vencimento:** vale se ninguém foi oferecido depois; senão 409.
 - **Dois pedidos para o mesmo melhor candidato:** o segundo pula quem tem oferta pendente e vai ao próximo. Quando o primeiro responde, ele volta a ser candidato na próxima recalculada do segundo (a carga já inclui o que aceitou).
@@ -142,15 +153,21 @@ Só o necessário à oferta. As outras melhorias do APK são de outro escopo.
 ## 10. Implantação
 
 1. API: `bash deploy/atualizar.sh api` (migrations, listener, job, comando, rotas, middleware). Com `ENTREGAS_DISTRIBUICAO` vazio nada muda.
-2. `ENTREGAS_DISTRIBUICAO=1` no `stack.env` e Update the stack ("Re-pull image" desligado). Funciona com o APK atual.
+2. `ENTREGAS_DISTRIBUICAO=1` no `stack.env` e Update the stack ("Re-pull image" desligado), **com o `docker-stack.yml` novo colado no Portainer** (Stacks → entregas → Editor): a variável está no `x-api-env` dele, e sem isso não chega aos containers. Funciona com o APK atual.
+   - `ENTREGAS_DISTRIBUICAO_OSRM` (também no `x-api-env`) fica vazia: tempos em linha reta. Ligar (`1`) só com um OSRM próprio (seção 4).
 3. Console: `bash deploy/atualizar.sh console` (painel).
 4. APK novo (cartão com 30 s e Recusar pelo servidor).
 
-A conferir no primeiro teste real: o serviço `table` responde no `OSRM_HOST` (osrm-routed serve `route` e `table` juntos, mas o deploy pode limitar); o push com TTL de 30 s chega a tempo em celular com economia de bateria; o tempo da chamada `table` com todos os motoboys online no pico.
+A conferir no primeiro teste real (o OSRM só com um OSRM próprio e a `ENTREGAS_DISTRIBUICAO_OSRM` ligada): o serviço `table` responde no `OSRM_HOST` (osrm-routed serve `route` e `table` juntos, mas o deploy pode limitar); o push com TTL de 30 s chega a tempo em celular com economia de bateria; o tempo da chamada `table` com todos os motoboys online no pico.
 
 ## 11. Riscos aceitos
 
 - A sequência das paradas do motoboy ocupado é suposta pela ordem de aceite. Se ele entrega em outra ordem, o encaixe erra.
-- Motoboy com GPS parado há mais de 5 min não recebe oferta; recebe só na fase aberta.
+- Motoboy com GPS parado há mais de 30 min não recebe oferta; recebe só na fase aberta. (Era 5 min; ver seção 4. Com o batimento de 1 min do APK novo, a janela pode cair.)
+- Com o OSRM desligado (padrão), a fila é pela linha reta: rio, viaduto ou contramão podem pôr à frente quem está mais longe pela rua.
 - Um motoboy mudo custa 30 s por pedido. Decisão: sem pausa.
 - A fase aberta repete o comportamento de hoje: o sobrecarregado pode aceitar. O prazo de 3 min limita a espera, não o aceite.
+- Dois pedidos de lojas diferentes distribuídos no mesmo instante podem ser oferecidos ao mesmo motoboy: a trava é por pedido, e a checagem de oferta pendente de outro pedido deixa uma janela pequena.
+- O painel mostra a última fila não vazia calculada, que pode não ser a do momento.
+- Na abertura pelo prazo, o primeiro reenvio (`LembretePedidoAberto`, 1,5R) sai ~30 a 90 s depois do alarme geral, porque o intervalo do reenvio conta do `dispatched_at`: o motoboy dentro de R pode receber dois alarmes seguidos. Se incomodar, contar o reenvio a partir da abertura.
+- A lista "Novos pedidos" do app (`nearby`) usa só o raio da empresa: com um `orders.adhoc_distance` maior, a oferta chega pelo alarme, mas não aparece na lista.
