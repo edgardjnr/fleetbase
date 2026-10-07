@@ -592,12 +592,12 @@ Fora dessa pasta:
   - sem oferta pendente dele: 409 "Esta oferta não está mais com você.";
   - trava ocupada: 503.
 - **Lista do app** (`FiltrarPedidosAbertosDoMotoboy`, grupo `fleetbase.api`, depois do `$next`, só no `Api\v1\OrderController@query` com `adhoc=1&unassigned=1`):
-  - tira os pedidos em oferta a outro motoboy e põe `entregas_oferta: {vence_em, tempo_estimado_s}` na oferta dele;
+  - tira os pedidos em oferta a outro motoboy e põe `entregas_oferta: {vence_em, tempo_estimado_s, segundos_restantes}` na oferta dele (`segundos_restantes` = `max(0, vence_em − agora)` calculado no servidor: o app conta a partir do recebimento e não depende do relógio do celular, que adiantado ~30 s via toda oferta já vencida);
   - o `vence_em` sai em ISO com `-03:00`;
   - nunca lança. Funciona com o APK atual, que só lista.
 - **Push** (`OfertaDePedido`, extensão do `OrderPing`; `order_ping` no push, `order.ping` no socket):
   - título "Oferta para você";
-  - dados `entregas_oferta=1` e `entregas_oferta_vence_em`, também no push original de reserva;
+  - dados `entregas_oferta=1`, `entregas_oferta_vence_em` e `entregas_oferta_segundos` (segundos que faltam, calculados no envio, pelo mesmo motivo do relógio do celular), também no push original de reserva;
   - `android.ttl` = o que falta até vencer (1 a 30 s), pelo `AvisosDoMotoboy`.
 - **Console** (só admin, `DistribuicaoController`):
   - `GET int/v1/entregas/pedidos/{id}/distribuicao`: fase, motivo, oferta atual, fila e histórico; `{"distribuicao": false}` se nunca houve;

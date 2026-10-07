@@ -265,6 +265,10 @@ $relogio('2026-10-07 09:59:00');
 confere((enviado($oferta)['android']['ttl'] ?? null) === '30s', 'faltando mais de 30 s: ttl 30s (máximo)');
 $relogio('2026-10-07 10:00:00');
 confere((enviado($oferta)['android']['ttl'] ?? null) === '30s', 'faltando exatamente 30 s: ttl 30s');
+$relogio('2026-10-07 10:00:20');
+confere((enviado($oferta)['data']['entregas_oferta_segundos'] ?? null) === '10', 'faltando 10 s: entregas_oferta_segundos = "10" (calculado no envio)');
+$relogio('2026-10-07 10:01:00');
+confere((enviado($oferta)['data']['entregas_oferta_segundos'] ?? null) === '0', 'oferta vencida: entregas_oferta_segundos = "0"');
 \Carbon\CarbonImmutable::$agoraTeste = null;
 confere(($oferta->toFcm(null)->data['entregas_oferta'] ?? null) === '1', 'o push original de reserva (toFcm) também leva os dados da oferta');
 

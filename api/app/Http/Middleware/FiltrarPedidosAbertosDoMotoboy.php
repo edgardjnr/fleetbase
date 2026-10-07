@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Entregas RestaurantePro: a lista "Novos pedidos" do app (GET v1/orders?adhoc=1&unassigned=1, Api\v1\OrderController@query)
  * com a distribuição de pedidos abertos ligada: o pedido em fase `ofertas` só aparece para o motoboy que tem a oferta
- * pendente dele, com `entregas_oferta: {vence_em, tempo_estimado_s}`; os abertos a todos e os sem distribuição
+ * pendente dele, com `entregas_oferta: {vence_em, tempo_estimado_s, segundos_restantes}` (os segundos que faltam, calculados aqui: o app conta a partir do recebimento e não depende do relógio do celular); os abertos a todos e os sem distribuição
  * continuam. Grupo fleetbase.api, depois do $next. Nunca lança: em erro devolve a resposta original e registra.
  * Formato da resposta: na produção a lista é um array JSON simples `[...]` (o core aplica JsonResource::withoutWrapping());
  * o `{data: [...]}` do recurso com envelope também é tratado. Cada item tem `id` = public_id.
@@ -112,9 +112,11 @@ class FiltrarPedidosAbertosDoMotoboy
             if (!$oferta || (string) $oferta->motoboy_uuid !== $motoboyUuid) {
                 continue; // oferecido a outro: o motoboy não vê
             }
+            $venceEm = Distribuicoes::data($oferta->vence_em);
             $item->entregas_oferta = [
-                'vence_em'         => Distribuicoes::data($oferta->vence_em)?->toIso8601String(),
-                'tempo_estimado_s' => (int) $oferta->tempo_estimado_s,
+                'vence_em'           => $venceEm?->toIso8601String(),
+                'tempo_estimado_s'   => (int) $oferta->tempo_estimado_s,
+                'segundos_restantes' => $venceEm ? max(0, $venceEm->getTimestamp() - now()->getTimestamp()) : 0,
             ];
             $filtrados[] = $item;
         }

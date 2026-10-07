@@ -64,6 +64,12 @@ $resposta = listar('12|token-do-motoboy-a');
 confere(ids($resposta) === ['order_1', 'order_3', 'order_4'], 'A vê a oferta dele, o aberto a todos e o sem distribuição; não vê a oferta de B (' . json_encode(ids($resposta)) . ')');
 $item = itens($resposta)[0];
 confere($item['entregas_oferta']['vence_em'] === Distribuicoes::data('2026-10-07 10:00:30')->toIso8601String() && $item['entregas_oferta']['tempo_estimado_s'] === 400, 'a oferta dele traz entregas_oferta (vence_em ISO e tempo) (' . json_encode($item['entregas_oferta'] ?? null) . ')');
+confere(($item['entregas_oferta']['segundos_restantes'] ?? null) === 30, 'segundos_restantes = 30 faltando 30 s (' . json_encode($item['entregas_oferta']['segundos_restantes'] ?? null) . ')');
+\Teste\Relogio::$agora = '2026-10-07 10:00:20';
+confere((itens(listar('12|token-do-motoboy-a'))[0]['entregas_oferta']['segundos_restantes'] ?? null) === 10, 'com o relógio 10 s antes do vencimento: segundos_restantes = 10');
+\Teste\Relogio::$agora = '2026-10-07 10:01:00';
+confere((itens(listar('12|token-do-motoboy-a'))[0]['entregas_oferta']['segundos_restantes'] ?? null) === 0, 'oferta já vencida: segundos_restantes = 0');
+\Teste\Relogio::$agora = '2026-10-07 10:00:00';
 confere(!isset(itens($resposta)[1]['entregas_oferta']), 'os outros não trazem entregas_oferta');
 
 cenario();
