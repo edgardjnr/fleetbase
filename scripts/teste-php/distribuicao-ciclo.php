@@ -70,4 +70,10 @@ confere(array_map(fn ($d) => $d->id, Distribuicoes::emOfertasHaMais(3)) === [2],
 confere(array_map(fn ($d) => $d->id, Distribuicoes::naoEncerradas()) === [2], 'naoEncerradas');
 confere(Distribuicoes::data('2026-10-07 10:06:00')->toIso8601String() === \Illuminate\Support\Carbon::parse('2026-10-07 10:06:00', date_default_timezone_get())->toIso8601String() && Distribuicoes::data(null) === null, 'data: texto do banco no fuso do app');
 
+confere(Distribuicoes::ofertaParaAceite('order-1', 'd-a')?->id === 4, 'ofertaParaAceite: em ofertas, a pendente vale');
+Distribuicoes::mudarFase(2, 'aberta', 'prazo');
+confere(Distribuicoes::ofertaParaAceite('order-1', 'd-a') === null, 'ofertaParaAceite: null com a distribuição aberta');
+$x = Distribuicoes::data('2026-10-07 10:06:00');
+$x->addMinutes(3);
+confere(Distribuicoes::data('2026-10-07 10:06:00')->format('H:i:s') === '10:06:00', 'data: objeto novo a cada chamada');
 resumo();

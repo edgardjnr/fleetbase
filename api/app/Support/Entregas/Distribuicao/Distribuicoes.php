@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * As tabelas entregas_distribuicoes e entregas_ofertas (query builder, como PedidosIfood). Datas em TIMESTAMP gravadas
  * como texto no fuso do app e lidas nesse fuso (ver "Fuso" no CLAUDE.md). Sem regra de negócio: isso é o Distribuidor.
+ * motoboysComOfertaPendente, pendentesVencidasHa, emOfertasHaMais e naoEncerradas são globais de propósito (uma organização só,
+ * modelo A; o CompanyScope não está ativo). No MySQL real, encaixe e aproximado voltam como 0/1: quem consome faz (bool).
  */
 class Distribuicoes
 {
@@ -77,7 +79,8 @@ class Distribuicoes
     /** @param array{motoboy_uuid: string, tempo_s: int, encaixe: bool, aproximado: bool} $candidato */
     public static function criarOferta(object $distribuicao, array $candidato, int $posicao): object
     {
-        $agora = now();
+        $agora = now()->format('Y-m-d H:i:s');
+        $vence = static::data($agora)->addSeconds(Distribuicao::SEGUNDOS_DA_OFERTA)->format('Y-m-d H:i:s');
         $id    = DB::table(static::OFERTAS)->insertGetId([
             'distribuicao_id'  => (int) $distribuicao->id,
             'pedido_uuid'      => (string) $distribuicao->pedido_uuid,
@@ -86,11 +89,11 @@ class Distribuicoes
             'tempo_estimado_s' => (int) $candidato['tempo_s'],
             'encaixe'          => (bool) $candidato['encaixe'],
             'aproximado'       => (bool) $candidato['aproximado'],
-            'oferecida_em'     => $agora->format('Y-m-d H:i:s'),
-            'vence_em'         => now()->addSeconds(Distribuicao::SEGUNDOS_DA_OFERTA)->format('Y-m-d H:i:s'),
+            'oferecida_em'     => $agora,
+            'vence_em'         => $vence,
             'resposta'         => Distribuicao::PENDENTE,
-            'created_at'       => $agora->format('Y-m-d H:i:s'),
-            'updated_at'       => $agora->format('Y-m-d H:i:s'),
+            'created_at'       => $agora,
+            'updated_at'       => $agora,
         ]);
 
         return static::oferta($id);
