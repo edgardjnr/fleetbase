@@ -267,4 +267,48 @@ confere(distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'sem_can
 confere(alarmesGerais() === [['driver_ana', OrderPing::class], ['driver_bruno', OrderPing::class]], 'alarme geral para os dois no raio (' . json_encode(avisos()) . ')');
 confere(logou('pedido sem coordenada; aberta a todos', 'warning') && logsSem(['-21.1', 'Ana']), 'log de aviso só com ids');
 
+echo '== Recusar × dispensar (Distribuidor)' . PHP_EOL;
+$dist = cenarioRodadas([$ana, $bruno, $caio, $davi]);
+$dist->iniciar(pedidoDoCenario());                                                // Ana
+confere($dist->recusarOuDispensar('order-1', $bruno['motoboy']) === null && count(ofertas()) === 1, 'lista fechada e sem oferta dele: null (a rota responde 409)');
+Relogio::$agora = '2026-10-07 10:00:10';
+confere($dist->recusarOuDispensar('order-1', $ana['motoboy']) === 'recusada' && ofertas()[0]->resposta === 'recusada' && ofertas()[1]->motoboy_uuid === 'd-bruno', 'com a oferta dele: recusada, e passa ao próximo na hora');
+Relogio::$agora = '2026-10-07 10:00:20';
+$dist->recusarOuDispensar('order-1', $bruno['motoboy']);                         // rodada 2: Caio; lista aberta
+Relogio::$agora = '2026-10-07 10:00:25';
+confere($dist->recusarOuDispensar('order-1', $davi['motoboy']) === 'dispensada', 'lista aberta, sem oferta dele: dispensada');
+$linha = ofertas()[3];
+confere($linha->motoboy_uuid === 'd-davi' && $linha->resposta === 'dispensada' && $linha->volta === 1 && $linha->rodada === 2 && $linha->raio_m === 9000 && ofertas()[2]->resposta === 'pendente', 'linha dispensada na volta e na rodada atuais; a oferta de Caio continua');
+confere($dist->recusarOuDispensar('order-1', $davi['motoboy']) === 'dispensada' && count(ofertas()) === 4, 'dispensar de novo na mesma volta: sem linha nova');
+confere(logou('oferta dispensada', 'info'), 'log: oferta dispensada');
+Relogio::$agora = '2026-10-07 10:00:40';
+(new AvancarOferta(3))->handle($dist);                                            // Caio vence; Davi dispensou
+$job = end(Fila::$jobs);
+confere(count(ofertas()) === 4 && distribuicao()->rodada === 3 && $job instanceof AvancarDistribuicao && $job->delay === 20, 'quem dispensou não recebe oferta nesta volta: rodada 3 vazia, próximo passo quando completar 1 min');
+Relogio::$agora = '2026-10-07 10:01:00';
+$job->handle($dist);
+confere(ofertas()[4]->motoboy_uuid === 'd-ana' && ofertas()[4]->volta === 2, 'volta 2: todos de novo, inclusive quem recusou');
+Config::$valores['services.entregas.distribuicao_rodadas'] = '';
+confere($dist->recusarOuDispensar('order-1', $davi['motoboy']) === null, 'rodadas desligadas: sem dispensa');
+
+$dist = cenarioRodadas([$ana, $bruno]);
+$dist->iniciar(pedidoDoCenario());
+Distribuicoes::abrirLista(1);
+pedidoDoCenario()->driver_assigned_uuid = 'd-ana';
+confere($dist->recusarOuDispensar('order-1', $bruno['motoboy']) === null, 'pedido já com motoboy: null (409)');
+
+echo '== Mostrar a todos agora e aceite pela lista (Distribuidor)' . PHP_EOL;
+$dist = cenarioRodadas([$ana, $bruno]);
+$dist->iniciar(pedidoDoCenario());
+confere($dist->mostrarATodos('order-1') === 'aberta' && distribuicao()->lista_aberta_em === '2026-10-07 10:00:00' && distribuicao()->fase === 'ofertas' && ofertas()[0]->resposta === 'pendente' && count(avisos()) === 1, 'abre a lista na hora; a oferta de Ana continua, sem alarme geral');
+confere($dist->mostrarATodos('order-1') === 'ja_aberta', 'já aberta: ja_aberta');
+$dist->registrarAceitePelaLista(distribuicao(), 'd-bruno');
+confere(ofertas()[0]->resposta === 'cancelada' && ofertas()[1]->resposta === 'aceita_pela_lista' && ofertas()[1]->motoboy_uuid === 'd-bruno' && distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'aceita' && logou('aceita pela lista', 'info'), 'aceite pela lista: a pendente de Ana vira cancelada, Bruno ganha a linha aceita_pela_lista, encerrada (aceita)');
+confere($dist->mostrarATodos('order-1') === 'fora_de_ofertas', 'encerrada: fora_de_ofertas');
+$dist = cenarioRodadas([$ana]);
+$dist->iniciar(pedidoDoCenario());
+pedidoDoCenario()->driver_assigned_uuid = 'd-x';
+confere($dist->mostrarATodos('order-1') === 'fora_de_ofertas' && distribuicao()->motivo === 'atribuida', 'pedido já com motoboy: encerra (atribuida)');
+confere(!isset(Trava::$ocupadas['entregas:pedido:order-1']), 'a trava é solta');
+
 resumo();

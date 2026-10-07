@@ -111,18 +111,103 @@ class Distribuidor
     /** O motoboy recusou. False se ele não tem oferta pendente neste pedido. */
     public function recusar(string $pedidoUuid, Driver $motoboy): bool
     {
-        return TravaDoPedido::executar($pedidoUuid, function () use ($pedidoUuid, $motoboy) {
-            $distribuicao = Distribuicoes::doPedido($pedidoUuid);
-            $oferta       = $distribuicao ? Distribuicoes::ofertaPendente((int) $distribuicao->id) : null;
-            if (!$oferta || (string) $oferta->motoboy_uuid !== (string) $motoboy->uuid) {
-                return false;
-            }
-            Distribuicoes::responder((int) $oferta->id, Distribuicao::RECUSADA);
-            Log::info('[entregas] distribuição: oferta recusada', ['oferta' => $oferta->id, 'motoboy' => $motoboy->public_id]);
-            $this->proximoPassoOuAbrir($pedidoUuid);
+        return TravaDoPedido::executar($pedidoUuid, fn () => $this->recusarSemTrava($pedidoUuid, $motoboy));
+    }
 
-            return true; // a recusa foi gravada, mesmo que o passo seguinte tenha falhado
+    /**
+     * Recusar e Dispensar (POST v1/entregas/motoboy/pedidos/{id}/recusar): com a oferta pendente dele, recusa (RECUSADA);
+     * senão, em rodadas e com a lista aberta, grava a linha `dispensada` na volta atual (DISPENSADA: some da lista dele e
+     * não recebe oferta até a volta seguinte; uma linha por volta). Null: nada com ele (a rota responde 409).
+     */
+    public function recusarOuDispensar(string $pedidoUuid, Driver $motoboy): ?string
+    {
+        return TravaDoPedido::executar($pedidoUuid, function () use ($pedidoUuid, $motoboy) {
+            if ($this->recusarSemTrava($pedidoUuid, $motoboy)) {
+                return Distribuicao::RECUSADA;
+            }
+
+            return $this->dispensarSemTrava($pedidoUuid, $motoboy) ? Distribuicao::DISPENSADA : null;
         });
+    }
+
+    /**
+     * "Mostrar a todos agora" (console, em rodadas): abre a lista na hora, sem alarme geral; o ciclo segue.
+     * LISTA_ABERTA_AGORA, LISTA_JA_ABERTA ou FORA_DE_OFERTAS (fora de ofertas, pedido com motoboy, encerrado ou apagado).
+     */
+    public function mostrarATodos(string $pedidoUuid): string
+    {
+        return TravaDoPedido::executar($pedidoUuid, function () use ($pedidoUuid) {
+            $distribuicao = Distribuicoes::doPedido($pedidoUuid);
+            $pedido       = $distribuicao ? Order::where('uuid', $pedidoUuid)->first() : null;
+            if ($distribuicao && !$pedido) {
+                $this->encerrarSemTrava($distribuicao, Distribuicao::CANCELADA);
+
+                return Distribuicao::FORA_DE_OFERTAS;
+            }
+            if (!$distribuicao || $distribuicao->fase !== Distribuicao::FASE_OFERTAS || $this->encerrouPeloPedido($distribuicao, $pedido)) {
+                return Distribuicao::FORA_DE_OFERTAS;
+            }
+            if (!Distribuicoes::abrirLista((int) $distribuicao->id)) {
+                return Distribuicao::LISTA_JA_ABERTA;
+            }
+            Log::info('[entregas] distribuição: lista aberta', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id, 'pela_central' => true]);
+
+            return Distribuicao::LISTA_ABERTA_AGORA;
+        });
+    }
+
+    /** Sem a trava (o middleware do aceite já a segura): aceite pela lista aberta de quem não tinha a oferta. */
+    public function registrarAceitePelaLista(object $distribuicao, ?string $motoboyUuid): void
+    {
+        $id = (int) $distribuicao->id;
+        Distribuicoes::cancelarPendentes($id);
+        if ($motoboyUuid) {
+            Distribuicoes::registrarResposta($distribuicao, $motoboyUuid, Distribuicao::ACEITA_PELA_LISTA);
+        }
+        Distribuicoes::mudarFase($id, Distribuicao::FASE_ENCERRADA, Distribuicao::ACEITA);
+        Log::info('[entregas] distribuição: aceita pela lista', ['distribuicao' => $id] + ($motoboyUuid ? $this->motoboyNoLog($motoboyUuid) : []));
+    }
+
+    /** Só de dentro da trava: a recusa da oferta pendente dele e o próximo passo. False se ele não tem oferta pendente. */
+    protected function recusarSemTrava(string $pedidoUuid, Driver $motoboy): bool
+    {
+        $distribuicao = Distribuicoes::doPedido($pedidoUuid);
+        $oferta       = $distribuicao ? Distribuicoes::ofertaPendente((int) $distribuicao->id) : null;
+        if (!$oferta || (string) $oferta->motoboy_uuid !== (string) $motoboy->uuid) {
+            return false;
+        }
+        Distribuicoes::responder((int) $oferta->id, Distribuicao::RECUSADA);
+        Log::info('[entregas] distribuição: oferta recusada', ['oferta' => $oferta->id, 'motoboy' => $motoboy->public_id]);
+        $this->proximoPassoOuAbrir($pedidoUuid);
+
+        return true; // a recusa foi gravada, mesmo que o passo seguinte tenha falhado
+    }
+
+    /**
+     * Só de dentro da trava: em rodadas, com a distribuição em ofertas, a lista aberta e o pedido ainda sem motoboy, grava
+     * a linha `dispensada` na volta (se ainda não recusou nem dispensou nela). False se não cabe dispensa.
+     */
+    protected function dispensarSemTrava(string $pedidoUuid, Driver $motoboy): bool
+    {
+        if (!Distribuicao::emRodadas()) {
+            return false;
+        }
+        $distribuicao = Distribuicoes::doPedido($pedidoUuid);
+        if (!$distribuicao || $distribuicao->fase !== Distribuicao::FASE_OFERTAS || !$distribuicao->lista_aberta_em) {
+            return false;
+        }
+        $pedido = Order::where('uuid', $pedidoUuid)->first();
+        if (!$pedido || $this->motivoParaEncerrar($pedido)) {
+            return false;
+        }
+        $volta = (int) ($distribuicao->volta ?? 1);
+        if (!in_array((string) $motoboy->uuid, Distribuicoes::motoboysQueDispensaramNaVolta((int) $distribuicao->id, $volta), true)) {
+            $raio = Distribuicao::raioDaRodada(max(1, (int) $pedido->getAdhocDistance()), (int) ($distribuicao->rodada ?? 1));
+            Distribuicoes::registrarResposta($distribuicao, (string) $motoboy->uuid, Distribuicao::DISPENSADA, $raio);
+            Log::info('[entregas] distribuição: oferta dispensada', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id, 'motoboy' => $motoboy->public_id, 'volta' => $volta]);
+        }
+
+        return true;
     }
 
     /** Abre a todos (central ou varredura). False se a distribuição não está em ofertas (ou o pedido já tem motoboy). */
