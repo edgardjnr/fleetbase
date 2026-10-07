@@ -539,4 +539,44 @@ foreach ([
     confere(str_contains($original, $trecho), 'o handle() original ainda faz o que o nosso repete: ' . strtok($trecho, "\n"));
 }
 
+echo '== entregas:distribuicao-varrer' . PHP_EOL;
+use App\Console\Commands\Entregas\VarrerDistribuicoes;
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+Relogio::$agora = '2026-10-07 10:00:55';          // a oferta venceu às 10:00:30 e o job não veio (25 s > 20 s de folga)
+(new VarrerDistribuicoes())->handle($dist);
+confere(ofertas()[0]->resposta === 'vencida' && ofertas()[1]->motoboy_uuid === 'd-b', 'oferta pendente vencida há mais de 20 s: vence e passa ao próximo');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+Relogio::$agora = '2026-10-07 10:00:40';          // venceu há 10 s: o job ainda pode vir
+(new VarrerDistribuicoes())->handle($dist);
+confere(ofertas()[0]->resposta === 'pendente', 'vencida há menos de 20 s: espera o job');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+Distribuicoes::responder(1, 'recusada');          // sem pendente e sem job: a distribuição ficaria presa
+Relogio::$agora = '2026-10-07 10:03:10';
+(new VarrerDistribuicoes())->handle($dist);
+confere(distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'prazo', 'em ofertas há mais de 3 min: abre a todos (prazo)');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+pedidoDoCenario()->driver_assigned_uuid = 'd-b';  // a central atribuiu e o observador não rodou
+(new VarrerDistribuicoes())->handle($dist);
+confere(distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'atribuida', 'pedido já com motoboy: encerra');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+pedidoDoCenario()->status = 'canceled';
+(new VarrerDistribuicoes())->handle($dist);
+confere(distribuicao()->motivo === 'cancelada', 'pedido encerrado: encerra (cancelada)');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+Config::$valores['services.entregas.distribuicao'] = '';
+Relogio::$agora = '2026-10-07 10:05:00';
+confere((new VarrerDistribuicoes())->handle($dist) === 0 && ofertas()[0]->resposta === 'pendente' && distribuicao()->fase === 'ofertas', 'desligada: sai sem agir');
+
 resumo();
