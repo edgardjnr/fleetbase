@@ -101,7 +101,8 @@ function faltando(string $arquivo, string $app, array $reservadas): array
             || $prox === T_VARIABLE || $prox === T_ELLIPSIS                                  // type hint de parâmetro, propriedade, catch
             || ($textoProx === '&' && $tipo($i + 2) === T_VARIABLE)
             || ($textoAnt === ':' && $texto($i - 2) === ')' && in_array($textoProx, ['{', ';'], true)) // tipo de retorno
-            || (in_array($textoAnt, ['|', '?'], true) && in_array($textoProx, ['|', '{', ';'], true));
+            || (in_array($textoAnt, ['|', '?'], true) && in_array($textoProx, ['|', '{', ';'], true))
+            || ($textoProx === '|' && in_array($textoAnt, ['(', ',', ':', '?'], true));      // primeiro tipo de uma união
         if (!$comoClasse) {
             continue;
         }
