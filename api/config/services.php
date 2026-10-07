@@ -64,6 +64,9 @@ return [
         'distribuicao' => env('ENTREGAS_DISTRIBUICAO'),
         // 1 = matriz de tempos pelo OSRM_HOST; vazio = linha reta. Ligar só com um OSRM próprio
         'distribuicao_osrm' => env('ENTREGAS_DISTRIBUICAO_OSRM'),
+        // 1 = distribuição em rodadas (20 s, raio crescente, voltas até aceitar, sem alarme a todos); só vale com a
+        // distribuição ligada. Vazio = o ciclo de 30 s que abre a todos. Ligar só com o APK 30 em todos os celulares
+        'distribuicao_rodadas' => env('ENTREGAS_DISTRIBUICAO_RODADAS'),
     ],
 
     // Entregas RestaurantePro: integração iFood Logistics, app distribuído (App\Support\Entregas\Ifood). ENTREGAS_IFOOD

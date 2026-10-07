@@ -296,6 +296,18 @@ fleet-ops:
             abrir-titulo: Open the order to all drivers?
             abrir-texto: The order stops being offered one at a time and the alarm goes to every online driver near the store. The first to accept takes it.
             aberto: Order opened to all drivers.
+            mostrar: Show to everyone now
+            mostrar-titulo: Show the order to all drivers?
+            mostrar-texto: The order appears in the "New orders" list of every available driver in range, with no alarm. The one-at-a-time offers continue, and the first to accept takes it.
+            mostrada: Order shown to all drivers.
+            rodada: Current round
+            rodada-com-raio: 'Pass {volta} · round {rodada} · up to {km} km'
+            rodada-sem-raio: 'Pass {volta} · round {rodada}'
+            lista-aberta: 'List open since {hora}'
+            lista-fechada: List only for the offered driver
+            volta: 'Pass {volta}'
+            historico-rodada-com-raio: 'round {rodada} · up to {km} km'
+            historico-rodada-sem-raio: 'round {rodada}'
             fase:
                 ofertas: Offering one at a time
                 aberta: Open to everyone
@@ -318,6 +330,8 @@ fleet-ops:
                 recusada: declined
                 vencida: no answer
                 cancelada: canceled
+                dispensada: dismissed from the list
+                aceita_pela_lista: accepted from the list
                 desconhecida: unknown
         order-form:
             store-or-customer: Store or customer

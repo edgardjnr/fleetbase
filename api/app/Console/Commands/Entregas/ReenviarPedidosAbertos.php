@@ -46,7 +46,9 @@ use Illuminate\Support\Facades\Log;
  * atrasa os motoboys). A falha também é gravada na saída do container (registrarFalhaDoAviso).
  *
  * Distribuição de pedidos abertos: enquanto o pedido está na fase `ofertas` (oferecido a um motoboy por vez), o reenvio
- * aos motoboys espera (emDistribuicao); o aviso à central não é afetado. Na fase `aberta` segue como acima.
+ * aos motoboys espera (emDistribuicao); o aviso à central não é afetado. Na fase `aberta` segue como acima. Em rodadas
+ * (ENTREGAS_DISTRIBUICAO_RODADAS) a fase `ofertas` dura até o aceite ou o encerramento: esses pedidos nunca recebem
+ * reenvio, e o aviso "sem motoboy" aos 12 min continua.
  *
  * Ao atualizar o fleetops-api, confira se a classe pai ainda tem getNearbyDriversForOrder, newOrderQuery e
  * newDriverQuery.

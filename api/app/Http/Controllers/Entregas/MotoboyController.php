@@ -266,7 +266,8 @@ class MotoboyController extends Controller
 
     /**
      * Distribuição de pedidos abertos: o motoboy recusa a oferta que está com ele (o Distribuidor passa ao próximo na hora).
-     * 409 se não há oferta pendente dele neste pedido (já venceu, outro foi oferecido, pedido aberto a todos).
+     * Em rodadas, sem a oferta dele e com o pedido ainda em ofertas, dispensa (200 dispensada, lista aberta ou fechada).
+     * 409 se não há oferta pendente dele neste pedido (já venceu, outro foi oferecido, pedido aberto a todos) nem dispensa.
      */
     public function recusar(Request $request, string $id, Distribuidor $distribuidor)
     {
@@ -283,13 +284,14 @@ class MotoboyController extends Controller
         }
 
         try {
-            $recusou = $distribuidor->recusar((string) $pedido->uuid, $motoboy);
+            // 'recusada' (a oferta dele) ou, em rodadas (lista aberta ou fechada), 'dispensada'; null = nada com ele
+            $resultado = $distribuidor->recusarOuDispensar((string) $pedido->uuid, $motoboy);
         } catch (LockTimeoutException $e) {
             return response()->json(['errors' => ['Este pedido está sendo atualizado. Tente de novo.']], 503);
         }
 
-        return $recusou
-            ? response()->json(['resultado' => 'recusada'])
+        return $resultado
+            ? response()->json(['resultado' => $resultado])
             : response()->json(['errors' => ['Esta oferta não está mais com você.']], 409);
     }
 

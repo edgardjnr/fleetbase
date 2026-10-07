@@ -15,13 +15,21 @@ use Illuminate\Support\Facades\Log;
  * - oferta pendente vencida há mais de FOLGA_DA_VARREDURA_S: vence (e o Distribuidor passa ao próximo);
  * - distribuição não encerrada cujo pedido já tem motoboy, está encerrado ou sumiu: encerra;
  * - distribuição em ofertas há mais de MINUTOS_ATE_ABRIR: abre a todos (prazo), mesmo com oferta pendente (o abrirATodos a cancela).
- * O encerramento só olha as distribuições despachadas nas últimas 24 h (as mais antigas, o observador do Order encerra).
- * Vencer e abrir pelo prazo não têm esse limite.
+ * Em rodadas (Distribuicao::emRodadas) não há prazo: no lugar dele, avança as distribuições em ofertas sem oferta pendente
+ * paradas há mais de SEGUNDOS_PARADA - FOLGA_DO_RELOGIO_S (volta que esperava o intervalo, ninguém disponível, job perdido);
+ * cada tentativa sem candidato toca o updated_at. A varredura roda nos minutos cheios e o updated_at é gravado no mesmo
+ * instante da rodada anterior: com o limite de 60 s exato, uma distribuição tocada às 10:00:00 não estaria "parada há mais
+ * de 60 s" às 10:01:00 e a nova tentativa sairia a cada 2 min. A folga de 10 s mantém a cadência de 1 min.
+ * O encerramento e o avanço em rodadas só olham as distribuições despachadas nas últimas 24 h (as mais antigas, o
+ * observador do Order encerra). Vencer e abrir pelo prazo não têm esse limite.
  * Uma falha num item não para os outros (log só com ids).
  */
 class VarrerDistribuicoes extends Command
 {
-    protected $signature   = 'entregas:distribuicao-varrer';
+    /** Folga sobre SEGUNDOS_PARADA (ver o docblock): a cadência de 1 min não pode virar 2. */
+    protected const FOLGA_DO_RELOGIO_S = 10;
+
+    protected $signature  = 'entregas:distribuicao-varrer';
     protected $description = 'Entregas: vence ofertas presas e abre ou encerra distribuições de pedidos abertos';
 
     public function handle(Distribuidor $distribuidor): int
@@ -46,6 +54,14 @@ class VarrerDistribuicoes extends Command
             if ($motivo) {
                 $this->tentar('encerrar a distribuição', ['distribuicao' => $distribuicao->id], fn () => $distribuidor->encerrarDistribuicao((int) $distribuicao->id, $motivo));
             }
+        }
+
+        if (Distribuicao::emRodadas()) {
+            foreach (Distribuicoes::emOfertasParadasHa(Distribuicao::SEGUNDOS_PARADA - static::FOLGA_DO_RELOGIO_S) as $distribuicao) {
+                $this->tentar('avançar a distribuição', ['distribuicao' => $distribuicao->id], fn () => $distribuidor->avancarOuAbrir((string) $distribuicao->pedido_uuid));
+            }
+
+            return self::SUCCESS;
         }
 
         foreach (Distribuicoes::emOfertasHaMais(Distribuicao::MINUTOS_ATE_ABRIR) as $distribuicao) {

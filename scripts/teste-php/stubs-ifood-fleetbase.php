@@ -423,6 +423,19 @@ namespace Fleetbase\FleetOps\Models {
         public function getPickupLocation() { return $this->payload->pickup->location ?? null; }
         public function getAdhocDistance() { return $this->adhoc_distance ?? 6000; }
 
+        /** uuids dos pedidos que passaram por um newCollection(...)->loadMissing(...) (o carregamento em lote do Eloquent). */
+        public static array $carregados = [];
+        /** Com uma exceção, o loadMissing lança. */
+        public static ?\Throwable $falharLoadMissing = null;
+
+        public function newCollection(array $modelos = [])
+        {
+            return new class($modelos) {
+                public function __construct(private array $modelos) {}
+                public function loadMissing($relacoes) { if (Order::$falharLoadMissing) { throw Order::$falharLoadMissing; } foreach ($this->modelos as $m) { Order::$carregados[] = $m->uuid; } return $this; }
+            };
+        }
+
         public function wasChanged($campos = null): bool
         {
             $campos = (array) $campos;
@@ -595,6 +608,8 @@ namespace {
         \Fleetbase\FleetOps\Models\OrderConfig::$todos = [];
         \Fleetbase\FleetOps\Models\Order::$todos       = [];
         \Fleetbase\FleetOps\Models\Order::$criados     = [];
+        \Fleetbase\FleetOps\Models\Order::$carregados  = [];
+        \Fleetbase\FleetOps\Models\Order::$falharLoadMissing = null;
         \Fleetbase\FleetOps\Models\Order::$falharDespacho = false;
         \Fleetbase\FleetOps\Models\Order::$falharCancelamento = false;
         \Fleetbase\FleetOps\Models\Driver::$todos      = [];

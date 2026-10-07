@@ -3,7 +3,20 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task, timeout } from 'ember-concurrency';
-import { chaveDaFase, chaveDaResposta, chaveDoMotivo, minutos, podeAbrir, segundosRestantes } from '../../../utils/distribuicao';
+import {
+    agruparPorVolta,
+    chaveDaFase,
+    chaveDaResposta,
+    chaveDoMotivo,
+    emRodadas,
+    horaCurta,
+    inteiroPositivo,
+    kmTexto,
+    minutos,
+    podeAbrir,
+    segundosRestantes,
+    textosDoBotao,
+} from '../../../utils/distribuicao';
 
 /**
  * Entregas: painel "Distribuição" no detalhe do pedido (oferta um a um aos motoboys; rota GET
@@ -11,13 +24,17 @@ import { chaveDaFase, chaveDaResposta, chaveDoMotivo, minutos, podeAbrir, segund
  * Não depende do `adhoc`: a atribuição da central e a troca pelo líder o desligam, e o histórico precisa continuar ali.
  * Carrega para todo pedido e só aparece quando houve distribuição (`distribuicao: true`) ou, no erro, em pedido aberto.
  * Mostra a fase, a oferta atual com o cronômetro, a fila calculada (só em ofertas: tempo até o cliente, encaixe, ≈ quando
- * a estimativa é em linha reta) e o histórico das ofertas. "Abrir a todos agora" (POST .../distribuicao/abrir) pula a
- * fila; o 409 (a distribuição já saiu de ofertas) mostra a mensagem do servidor e relê o painel.
+ * a estimativa é em linha reta) e o histórico das ofertas.
+ * Com rodadas (`rodadas: true`, ENTREGAS_DISTRIBUICAO_RODADAS): em ofertas, "Volta N · rodada M · até X km" e a lista
+ * aberta ("Lista aberta desde HH:MM") ou fechada; a fila sem o "no caminho" (não há mais encaixe); o histórico agrupado
+ * por volta, com a rodada e o raio em cada linha; e o botão vira "Mostrar a todos agora" (grava a lista_aberta_em, sem
+ * alarme; só com a lista ainda fechada). Sem rodadas, "Abrir a todos agora" pula a fila e manda o alarme a todos.
+ * Nos dois, POST .../distribuicao/abrir; o 409 mostra a mensagem do servidor e relê o painel.
  * Em fase ofertas, o cronômetro conta de segundo em segundo e o painel é relido a cada 5 s e quando a oferta vence (uma
  * vez por vencimento), menos com a aba oculta: a fila anda sem mudar o pedido. Com a distribuição desligada no servidor
- * (`ligada: false`), não relê nem oferece o "Abrir a todos agora": a fase fica parada em ofertas. O cronômetro compara o relógio do PC com
- * o `vence_em` do servidor: é só exibição (quem vence a oferta é o servidor). O laço vive na task `carregar`
- * (restartable), cancelada quando o pedido muda ou o componente sai da tela.
+ * (`ligada: false`), não relê nem oferece o botão: a fase fica parada em ofertas. O cronômetro compara o relógio do PC com
+ * o `vence_em` do servidor (30 s, ou 20 s com rodadas): é só exibição (quem vence a oferta é o servidor). O laço vive na
+ * task `carregar` (restartable), cancelada quando o pedido muda ou o componente sai da tela.
  */
 export default class OrderDetailsDistribuicaoComponent extends Component {
     @service fetch;
@@ -45,6 +62,14 @@ export default class OrderDetailsDistribuicaoComponent extends Component {
         return this.painel?.fase === 'ofertas';
     }
 
+    get emRodadas() {
+        return emRodadas(this.painel);
+    }
+
+    get locale() {
+        return this.intl.primaryLocale ?? 'pt-BR';
+    }
+
     get id() {
         return encodeURIComponent(this.args.resource?.public_id ?? this.args.resource?.id ?? '');
     }
@@ -60,6 +85,31 @@ export default class OrderDetailsDistribuicaoComponent extends Component {
         return motivo ? `${fase} · ${this.intl.t(`fleet-ops.ui.distribuicao.motivo.${motivo}`)}` : fase;
     }
 
+    // rodadas, em ofertas: "Volta 2 · rodada 1 · até 6 km" (sem o raio, só a volta e a rodada)
+    get rodadaTexto() {
+        if (!this.emRodadas || !this.emOfertas) {
+            return null;
+        }
+        const dados = { volta: inteiroPositivo(this.painel?.volta), rodada: inteiroPositivo(this.painel?.rodada) };
+        const km = kmTexto(this.painel?.raio_m, this.locale);
+
+        return km
+            ? this.intl.t('fleet-ops.ui.distribuicao.rodada-com-raio', { ...dados, km })
+            : this.intl.t('fleet-ops.ui.distribuicao.rodada-sem-raio', dados);
+    }
+
+    // rodadas, em ofertas: a lista "Novos pedidos" aberta a todos (desde quando) ou só para quem recebe a oferta
+    get listaTexto() {
+        if (!this.emRodadas || !this.emOfertas) {
+            return null;
+        }
+        if (!this.painel?.lista_aberta_em) {
+            return this.intl.t('fleet-ops.ui.distribuicao.lista-fechada');
+        }
+
+        return this.intl.t('fleet-ops.ui.distribuicao.lista-aberta', { hora: horaCurta(this.painel.lista_aberta_em, this.locale) ?? '—' });
+    }
+
     get segundos() {
         return segundosRestantes(this.painel?.oferta?.vence_em, this.agora);
     }
@@ -69,24 +119,36 @@ export default class OrderDetailsDistribuicaoComponent extends Component {
             posicao: index + 1,
             nome: item.nome || '—',
             tempo: this.tempoTexto(item.tempo_s),
-            encaixe: item.encaixe === true,
+            // com rodadas não há encaixe ("termina tudo e depois vai"): o "no caminho" some
+            encaixe: !this.emRodadas && item.encaixe === true,
             aproximado: item.aproximado === true,
             livre: item.livre === true,
         }));
     }
 
+    // sem rodadas: a lista corrida de antes
     get historico() {
-        return (this.painel?.historico ?? []).map((oferta) => ({
-            posicao: oferta.posicao,
-            motoboy: oferta.motoboy || '—',
-            tempo: this.tempoTexto(oferta.tempo_estimado_s),
-            aproximado: oferta.aproximado === true,
-            resposta: this.intl.t(`fleet-ops.ui.distribuicao.resposta.${chaveDaResposta(oferta.resposta)}`),
+        return (this.painel?.historico ?? []).map((oferta) => this.linhaDoHistorico(oferta));
+    }
+
+    // com rodadas: "Volta N" e as ofertas dela, cada uma com a rodada e o raio
+    get historicoPorVolta() {
+        return agruparPorVolta(this.painel?.historico).map((grupo) => ({
+            titulo: this.intl.t('fleet-ops.ui.distribuicao.volta', { volta: grupo.volta }),
+            ofertas: grupo.ofertas.map((oferta) => this.linhaDoHistorico(oferta)),
         }));
     }
 
     get podeAbrir() {
         return podeAbrir(this.painel, this.args.resource?.status);
+    }
+
+    get textosDoBotao() {
+        return textosDoBotao(this.painel);
+    }
+
+    get botaoTexto() {
+        return this.intl.t(`fleet-ops.ui.distribuicao.${this.textosDoBotao.botao}`);
     }
 
     abaOculta() {
@@ -97,6 +159,31 @@ export default class OrderDetailsDistribuicaoComponent extends Component {
         const valor = minutos(segundos);
 
         return valor === null ? '—' : this.intl.t('fleet-ops.ui.distribuicao.minutos', { minutos: valor });
+    }
+
+    linhaDoHistorico(oferta) {
+        return {
+            // as linhas `dispensada`/`aceita_pela_lista` (rodadas) vêm com posicao 0: sem posição na tela
+            posicao: Number(oferta.posicao) > 0 ? oferta.posicao : null,
+            motoboy: oferta.motoboy || '—',
+            tempo: this.tempoTexto(oferta.tempo_estimado_s),
+            aproximado: oferta.aproximado === true,
+            resposta: this.intl.t(`fleet-ops.ui.distribuicao.resposta.${chaveDaResposta(oferta.resposta)}`),
+            rodada: this.rodadaDaLinha(oferta),
+        };
+    }
+
+    // rodadas: "rodada 2 · até 9 km" em cada linha do histórico (null sem rodadas)
+    rodadaDaLinha(oferta) {
+        if (!this.emRodadas) {
+            return null;
+        }
+        const rodada = inteiroPositivo(oferta?.rodada);
+        const km = kmTexto(oferta?.raio_m, this.locale);
+
+        return km
+            ? this.intl.t('fleet-ops.ui.distribuicao.historico-rodada-com-raio', { rodada, km })
+            : this.intl.t('fleet-ops.ui.distribuicao.historico-rodada-sem-raio', { rodada });
     }
 
     /**
@@ -149,12 +236,14 @@ export default class OrderDetailsDistribuicaoComponent extends Component {
         }
     }
 
+    // "Abrir a todos agora" (sem rodadas) ou "Mostrar a todos agora" (rodadas): os textos são lidos no clique
     @action abrirATodos() {
+        const textos = textosDoBotao(this.painel);
         this.modalsManager.confirm({
-            title: this.intl.t('fleet-ops.ui.distribuicao.abrir-titulo'),
-            body: this.intl.t('fleet-ops.ui.distribuicao.abrir-texto'),
-            acceptButtonText: this.intl.t('fleet-ops.ui.distribuicao.abrir'),
-            acceptButtonIcon: 'bullhorn',
+            title: this.intl.t(`fleet-ops.ui.distribuicao.${textos.titulo}`),
+            body: this.intl.t(`fleet-ops.ui.distribuicao.${textos.texto}`),
+            acceptButtonText: this.intl.t(`fleet-ops.ui.distribuicao.${textos.botao}`),
+            acceptButtonIcon: textos.icone,
             confirm: async (modal) => {
                 modal.startLoading();
                 try {
@@ -162,10 +251,14 @@ export default class OrderDetailsDistribuicaoComponent extends Component {
                     // a releitura em curso (fase ofertas) não pode sobrescrever o painel novo com o antigo
                     this.carregar.cancelAll();
                     this.painel = painel;
-                    this.notifications.success(this.intl.t('fleet-ops.ui.distribuicao.aberto'));
+                    this.notifications.success(this.intl.t(`fleet-ops.ui.distribuicao.${textos.feito}`));
                     modal.done();
+                    // com rodadas a fase continua em ofertas: o laço de releitura volta a correr
+                    if (painel?.fase === 'ofertas') {
+                        this.carregar.perform();
+                    }
                 } catch (error) {
-                    // 409: a distribuição já saiu de ofertas (aceite, motoboy definido); mostra o motivo e relê o painel
+                    // 409: a lista já está aberta ou a distribuição saiu de ofertas; mostra o motivo e relê o painel
                     this.notifications.serverError(error);
                     modal.stopLoading();
                     this.carregar.perform();

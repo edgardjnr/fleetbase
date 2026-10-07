@@ -63,6 +63,22 @@ class Encaixe
         return $melhor;
     }
 
+    /**
+     * "Termina tudo e depois vai" (distribuição em rodadas): as paradas que ele ainda tem, na ordem, e depois P e D. Sem
+     * encaixe no meio e sem o limite de atraso: o pedido novo nunca atrasa quem já espera.
+     *
+     * @param array<int, array{indice: int, tipo: string}> $base paradas que faltam, na ordem
+     *
+     * @return array{tempo_s: int, encaixe: bool, atraso_s: int}
+     */
+    public static function noFim(int $posicao, array $base, int $p, int $d, callable $dur): array
+    {
+        $sequencia = array_merge($base, [['indice' => $p, 'tipo' => 'coleta'], ['indice' => $d, 'tipo' => 'entrega']]);
+        $chegadas  = static::chegadas($posicao, $sequencia, $dur);
+
+        return ['tempo_s' => (int) end($chegadas), 'encaixe' => false, 'atraso_s' => 0];
+    }
+
     /** Segundos de chegada em cada parada da sequência, a partir do ponto de partida. */
     public static function chegadas(int $partida, array $sequencia, callable $dur): array
     {

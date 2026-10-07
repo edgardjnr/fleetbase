@@ -67,6 +67,12 @@ confere($r['atraso_s'] === Distribuicao::ATRASO_MAXIMO_S && $r['encaixe'] === tr
 $r = Encaixe::calcular(0, $soEntrega, 3, 4, $limite(1021));
 confere($r['encaixe'] === false && $r['atraso_s'] === 0 && $r['tempo_s'] === 900 + $cliente + 600 + $loja + 900, 'atraso de 601 s não cabe: termina e vai (' . json_encode($r) . ')');
 
+echo '== Encaixe::noFim (distribuição em rodadas)' . PHP_EOL;
+confere(Encaixe::noFim(0, [], 3, 4, $dur) === ['tempo_s' => 300 + $loja + 900, 'encaixe' => false, 'atraso_s' => 0], 'livre: igual ao calcular');
+$r = Encaixe::noFim(0, $base, 3, 4, $dur);
+confere($r === ['tempo_s' => 300 + $loja + 600 + $cliente + 600 + $loja + 900, 'encaixe' => false, 'atraso_s' => 0], 'ocupado: termina A (coleta e entrega) e só depois vai, mesmo com a loja nova no caminho (' . json_encode($r) . ')');
+confere(Encaixe::noFim(0, $soEntrega, 3, 4, $dur)['tempo_s'] === $terminaEVai, 'só a entrega A: termina e vai');
+
 echo '== ligada()' . PHP_EOL;
 foreach (['1' => true, 'true' => true, 'on' => true, 'yes' => true, '0' => false, '' => false, 'no' => false, 'nao' => false, 'off' => false] as $v => $esperado) {
     \Teste\Config::$valores['services.entregas.distribuicao'] = (string) $v;
@@ -74,6 +80,20 @@ foreach (['1' => true, 'true' => true, 'on' => true, 'yes' => true, '0' => false
 }
 \Teste\Config::$valores['services.entregas.distribuicao'] = null;
 confere(Distribuicao::ligada() === false, 'ligada() com null = false');
+
+echo '== emRodadas(), segundosDaOferta() e raioDaRodada()' . PHP_EOL;
+\Teste\Config::$valores['services.entregas.distribuicao']         = '1';
+\Teste\Config::$valores['services.entregas.distribuicao_rodadas'] = '1';
+confere(Distribuicao::emRodadas() === true && Distribuicao::segundosDaOferta() === 20, 'rodadas ligadas: oferta de 20 s');
+\Teste\Config::$valores['services.entregas.distribuicao'] = '';
+confere(Distribuicao::emRodadas() === false && Distribuicao::segundosDaOferta() === 30, 'rodadas só valem com a distribuição ligada');
+\Teste\Config::$valores['services.entregas.distribuicao']         = '1';
+\Teste\Config::$valores['services.entregas.distribuicao_rodadas'] = '';
+confere(Distribuicao::emRodadas() === false && Distribuicao::segundosDaOferta() === 30, 'rodadas desligadas: 30 s, como hoje');
+confere([Distribuicao::raioDaRodada(6000, 1), Distribuicao::raioDaRodada(6000, 2), Distribuicao::raioDaRodada(6000, 3)] === [6000, 9000, 12000], 'raios das rodadas: R, 1,5R e 2R');
+confere(Distribuicao::raioDaRodada(6000, 0) === 6000 && Distribuicao::raioDaRodada(6000, 9) === 12000, 'rodada fora da faixa fica entre 1 e 3');
+\Teste\Config::$valores['services.entregas.distribuicao']         = null;
+\Teste\Config::$valores['services.entregas.distribuicao_rodadas'] = null;
 
 echo '== Pontos (texto e não finito)' . PHP_EOL;
 confere(Pontos::de(new class { public function getLat() { return '-21.17'; } public function getLng() { return '-47.81'; } }) === [-21.17, -47.81], 'texto numérico vale');

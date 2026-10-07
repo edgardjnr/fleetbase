@@ -277,6 +277,15 @@ confere((enviado($oferta)['android']['ttl'] ?? null) === '30s', 'oferta como pus
 confere(!isset(enviado(new OrderPing(pedidoDoTeste(), 850))['data']['entregas_oferta']), 'pedido aberto comum não leva os dados da oferta');
 putenv('ENTREGAS_ALARME_POR_DADOS=1');
 
+echo '== Oferta de 20 s (distribuição em rodadas)' . PHP_EOL;
+$oferta20 = new App\Notifications\Entregas\OfertaDePedido(pedidoDoTeste(), 850, $venceEm, 20);
+$relogio('2026-10-07 09:59:00');
+confere((enviado($oferta20)['android']['ttl'] ?? null) === '20s', 'oferta de 20 s: ttl no máximo 20s');
+$relogio('2026-10-07 10:00:20');
+confere((enviado($oferta20)['android']['ttl'] ?? null) === '10s', 'oferta de 20 s faltando 10 s: ttl 10s');
+\Carbon\CarbonImmutable::$agoraTeste = null;
+confere($oferta->segundosDaOferta === 30 && $oferta20->segundosDaOferta === 20, 'sem o 4º argumento: 30 s, como hoje');
+
 echo '== Aviso sem tradução' . PHP_EOL;
 
 class AvisoNovoDoFleetOps extends Illuminate\Notifications\Notification

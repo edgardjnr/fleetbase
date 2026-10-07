@@ -21,20 +21,20 @@ use Fleetbase\FleetOps\Support\Utils;
  */
 class Candidatos
 {
-    /** @var null|\Closure(Order, bool): array<int, array{motoboy: Driver, posicao: array, distancia: float}> */
+    /** @var null|\Closure(Order, bool, ?int): array<int, array{motoboy: Driver, posicao: array, distancia: float}> */
     public static ?\Closure $buscarMotoboys = null;
     /** @var null|\Closure(string, array<string>): array<string, array<int, array{0: float, 1: float, 2: string}>> */
     public static ?\Closure $buscarParadas = null;
 
     /**
-     * Os candidatos elegíveis à oferta, com as paradas: fora os uuids excluídos (quem já respondeu neste despacho,
-     * quem tem oferta pendente de outro pedido).
+     * Os candidatos elegíveis à oferta, com as paradas: fora os uuids excluídos (quem já respondeu neste despacho ou
+     * nesta volta, quem tem oferta pendente de outro pedido). $raio: o da rodada (em rodadas); null = raio de pedido aberto.
      *
      * @return array<int, array{motoboy: Driver, posicao: array, distancia: float, paradas: array}>
      */
-    public static function elegiveis(Order $pedido, array $excluidos): array
+    public static function elegiveis(Order $pedido, array $excluidos, ?int $raio = null): array
     {
-        $motoboys = array_values(array_filter(static::noRaio($pedido, true), fn ($c) => !in_array((string) $c['motoboy']->uuid, $excluidos, true)));
+        $motoboys = array_values(array_filter(static::noRaio($pedido, true, $raio), fn ($c) => !in_array((string) $c['motoboy']->uuid, $excluidos, true)));
         if ($motoboys === []) {
             return [];
         }
@@ -46,11 +46,15 @@ class Candidatos
         return $motoboys;
     }
 
-    /** @return array<int, array{motoboy: Driver, posicao: array, distancia: float}> */
-    public static function noRaio(Order $pedido, bool $gpsRecente): array
+    /**
+     * $raio em metros (o da rodada); null = o raio de pedido aberto (Order::getAdhocDistance).
+     *
+     * @return array<int, array{motoboy: Driver, posicao: array, distancia: float}>
+     */
+    public static function noRaio(Order $pedido, bool $gpsRecente, ?int $raio = null): array
     {
         if (static::$buscarMotoboys) {
-            return (static::$buscarMotoboys)($pedido, $gpsRecente);
+            return (static::$buscarMotoboys)($pedido, $gpsRecente, $raio);
         }
 
         $coleta = $pedido->getPickupLocation();
@@ -64,7 +68,7 @@ class Candidatos
             ->whereNotNull('location')
             ->whereRaw('ST_Y(location) BETWEEN -90 AND 90 AND ST_X(location) BETWEEN -180 AND 180 AND NOT (ST_X(location) = 0 AND ST_Y(location) = 0)')
             ->when($gpsRecente, fn ($q) => $q->where('updated_at', '>=', now()->subMinutes(Distribuicao::GPS_MINUTOS)))
-            ->distanceSphere('location', $coleta, $pedido->getAdhocDistance())
+            ->distanceSphere('location', $coleta, $raio ?? $pedido->getAdhocDistance())
             ->distanceSphereValue('location', $coleta)
             ->withoutGlobalScopes()
             ->get();

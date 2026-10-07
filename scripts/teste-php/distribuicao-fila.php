@@ -150,6 +150,26 @@ confere($paradas['d-a'] === [[-21.2, -47.2, 'entrega'], [-21.3, -47.3, 'coleta']
 confere($paradas['d-b'] === [[-21.5, -47.5, 'coleta'], [-21.6, -47.6, 'entrega'], [-21.7, -47.7, 'entrega']], 'dispatched coleta e entrega; ponto inválido descartado (' . json_encode($paradas['d-b']) . ')');
 confere(Candidatos::paradasDosPedidos([]) === [], 'sem pedidos: vazio');
 
+echo '== Rodadas: "termina tudo e depois vai" e o raio da rodada' . PHP_EOL;
+Candidatos::$buscarMotoboys = fn (Order $p, bool $gpsRecente) => [
+    ['motoboy' => motoboy('a', 'Ana', [-21.1610, -47.8100]), 'posicao' => [-21.1610, -47.8100], 'distancia' => 1000.0],
+    ['motoboy' => motoboy('b', 'Bia', [-21.1682, -47.8100]), 'posicao' => [-21.1682, -47.8100], 'distancia' => 200.0],
+    ['motoboy' => motoboy('c', 'Caio', [-21.1673, -47.8100]), 'posicao' => [-21.1673, -47.8100], 'distancia' => 300.0],
+];
+Candidatos::$buscarParadas = fn (string $empresa, array $uuids) => ['d-c' => [[-21.1709, -47.8100, 'entrega']]];
+$fila = (new FilaDeCandidatos($estimador))->para($pedido, Candidatos::elegiveis($pedido, []), true);
+confere(array_column($fila, 'public_id') === ['driver_b', 'driver_a', 'driver_c'] && array_column($fila, 'tempo_s') === [425, 575, 602], 'no fim: C (ocupado) termina a entrega dele e só depois vai à loja; fica atrás de A (' . json_encode(array_column($fila, 'tempo_s')) . ')');
+confere(array_filter(array_column($fila, 'encaixe')) === [] && $fila[2]['livre'] === false, 'no fim: encaixe sempre falso; C continua marcado como ocupado');
+$raioRecebido = 'nenhum';
+Candidatos::$buscarMotoboys = function (Order $p, bool $gpsRecente, ?int $raio = null) use (&$raioRecebido) {
+    $raioRecebido = $raio;
+
+    return [];
+};
+Candidatos::elegiveis($pedido, [], 9000);
+confere($raioRecebido === 9000, 'elegiveis repassa o raio da rodada à busca');
+Candidatos::elegiveis($pedido, []);
+confere($raioRecebido === null, 'sem raio: null (a busca usa o raio de pedido aberto)');
 Candidatos::$buscarMotoboys = null;
 Candidatos::$buscarParadas  = null;
 

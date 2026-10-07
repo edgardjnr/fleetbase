@@ -568,6 +568,7 @@ namespace Teste {
                     $colunas = [];
                     $unicas  = [];
                     $padroes = [];
+                    $tamanhos = [];
                     foreach ($blueprint->colunas as $coluna) {
                         $primeiro = $coluna->argumentos[0] ?? null;
                         if ($coluna->tipo === 'timestamps') {
@@ -577,6 +578,10 @@ namespace Teste {
                         } elseif (is_string($primeiro)) {
                             // index([...]) e afins não são colunas (o primeiro argumento é uma lista)
                             $colunas[] = $primeiro;
+                            // string('col', N): o tamanho declarado (o MySQL estrito recusa o que passa dele); a migration seguinte com ->change() vale
+                            if ($coluna->tipo === 'string') {
+                                $tamanhos[$primeiro] = $coluna->argumentos[1] ?? 255;
+                            }
                             if (array_key_exists('unique', $coluna->modificadores)) {
                                 $unicas[] = $primeiro;
                             }
@@ -590,6 +595,7 @@ namespace Teste {
                         'colunas' => array_merge(self::$esquema[$tabela]['colunas'] ?? [], $colunas),
                         'unicas'  => array_merge(self::$esquema[$tabela]['unicas'] ?? [], $unicas),
                         'padroes' => array_merge(self::$esquema[$tabela]['padroes'] ?? [], $padroes),
+                        'tamanhos' => array_merge(self::$esquema[$tabela]['tamanhos'] ?? [], $tamanhos),
                     ];
                 }
             }
@@ -597,6 +603,12 @@ namespace Teste {
             \Illuminate\Support\Facades\Schema::$alteradas = $alteradas;
 
             return self::$esquema;
+        }
+
+        /** Tamanho declarado de uma coluna string() das migrations (depois dos ->change()); null se não é string ou não existe. */
+        public static function tamanhoDe(string $tabela, string $coluna): ?int
+        {
+            return self::esquema()[$tabela]['tamanhos'][$coluna] ?? null;
         }
 
         /** Colunas únicas da tabela (NULL não conta, como no MySQL); vazio para tabela fora do esquema do iFood e da distribuição. */

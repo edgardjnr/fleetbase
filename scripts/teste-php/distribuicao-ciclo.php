@@ -261,6 +261,24 @@ $dist->iniciar(pedidoDoCenario());
 pedidoDoCenario()->status = 'canceled';
 confere($dist->abrirATodos('order-1', 'aberta_pela_central') === false && distribuicao()->motivo === 'cancelada' && count(Driver::$avisos) === 1, 'pedido cancelado: abrir a todos encerra (cancelada) sem alarme');
 
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+pedidoDoCenario()->adhoc = false; // a central desligou o pedido aberto sem atribuir motoboy (o observador não viu)
+Relogio::$agora = '2026-10-07 10:00:30';
+$dist->vencer(1);
+confere(distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'cancelada' && count(ofertas()) === 1 && count(Driver::$avisos) === 1, 'pedido que deixou de ser aberto: encerra (cancelada) sem oferecer a Bia nem alarme geral');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+pedidoDoCenario()->adhoc = false;
+confere($dist->abrirATodos('order-1', 'aberta_pela_central') === false && distribuicao()->motivo === 'cancelada' && count(Driver::$avisos) === 1, 'pedido que deixou de ser aberto: abrir a todos encerra (cancelada) sem alarme');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+pedidoDoCenario()->adhoc = false;
+(new \App\Console\Commands\Entregas\VarrerDistribuicoes())->handle($dist);
+confere(distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'cancelada', 'varredura: pedido que deixou de ser aberto encerra (cancelada)');
+
 echo '== Pedido apagado' . PHP_EOL;
 $dist = cenario();
 $dist->iniciar(pedidoDoCenario());
@@ -372,6 +390,28 @@ $pedido->status    = 'canceled';
 $pedido->alterados = ['status'];
 ObservadorDaDistribuicao::aoAtualizar($pedido);
 confere(distribuicao()->motivo === 'cancelada', 'cancelado: encerra (cancelada)');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+\Teste\Container::$instancias[Distribuidor::class] = $dist;
+$pedido            = pedidoDoCenario();
+$pedido->adhoc     = false;
+$pedido->alterados = ['adhoc'];
+ObservadorDaDistribuicao::aoAtualizar($pedido);
+confere(distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'cancelada' && ofertas()[0]->resposta === 'cancelada' && count(Driver::$avisos) === 1, 'deixou de ser aberto sem motoboy: encerra (cancelada) e cancela a oferta pendente');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+\Teste\Container::$instancias[Distribuidor::class] = $dist;
+$pedido            = pedidoDoCenario();
+$pedido->alterados = ['adhoc'];                     // adhoc mudou para true (ligado de novo)
+ObservadorDaDistribuicao::aoAtualizar($pedido);
+confere(distribuicao()->fase === 'ofertas', 'adhoc ligado: nada');
+$pedido->adhoc                = false;
+$pedido->driver_assigned_uuid = 'd-b';
+$pedido->alterados            = ['adhoc'];          // o motoboy já estava (só o adhoc mudou)
+ObservadorDaDistribuicao::aoAtualizar($pedido);
+confere(distribuicao()->fase === 'ofertas', 'adhoc desligado com motoboy, sem mudança de motoboy: nada (a atribuição é que encerra)');
 
 $dist = cenario();
 $dist->iniciar(pedidoDoCenario());

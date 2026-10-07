@@ -2,6 +2,7 @@
 
 namespace App\Notifications\Entregas;
 
+use App\Support\Entregas\Distribuicao\Distribuicao;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Notifications\OrderPing;
 
@@ -11,11 +12,11 @@ use Fleetbase\FleetOps\Notifications\OrderPing;
  * É o OrderPing do Fleet-Ops (`order_ping` no push, `order.ping` no socket: o app trata como pedido novo e o cartão do
  * alarme mostra Aceitar e Recusar), com o título da oferta, os dados `entregas_oferta`/`entregas_oferta_vence_em`/`entregas_oferta_segundos` (segundos que faltam, calculados na hora
  * do envio: o app não depende do relógio do celular) e o
- * TTL de SEGUNDOS_DA_OFERTA (AvisosDoMotoboy).
+ * TTL do que falta até vencer, no máximo $segundosDaOferta (30 s; 20 s na distribuição em rodadas) (AvisosDoMotoboy).
  */
 class OfertaDePedido extends OrderPing
 {
-    public function __construct(Order $order, $distance, public \DateTimeInterface $venceEm)
+    public function __construct(Order $order, $distance, public \DateTimeInterface $venceEm, public int $segundosDaOferta = Distribuicao::SEGUNDOS_DA_OFERTA)
     {
         parent::__construct($order, $distance);
         $this->data = array_merge($this->data ?? [], $this->dadosDaOferta()); // também no push original de reserva (CanalFcmEntregas)

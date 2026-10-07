@@ -2,6 +2,7 @@
 
 namespace App\Support\Entregas\Distribuicao;
 
+use App\Jobs\Entregas\AvancarDistribuicao;
 use App\Jobs\Entregas\AvancarOferta;
 use App\Notifications\Entregas\OfertaDePedido;
 use App\Support\Entregas\StatusDoPedido;
@@ -9,6 +10,7 @@ use App\Support\Entregas\TravaDoPedido;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Notifications\OrderPing;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -26,9 +28,9 @@ use Illuminate\Support\Facades\Log;
  * - encerrar e registrarAceite: só gravação, sem a trava (rodam dentro de quem já a segura: o aceite no middleware, a
  *   TrocaDoMotoboy).
  *
- * iniciar, avancar, vencer, recusar e abrirATodos rodam sob a TravaDoPedido (a mesma do aceite e do cancelamento) e
- * relêem a distribuição com ela. A trava não é reentrante: dentro dela só se chamam os métodos *SemTrava e o
- * proximoPasso, nunca os públicos que a tomam. Lançam LockTimeoutException se a trava não sair: o chamador decide (o
+ * iniciar, avancar, avancarOuAbrir, vencer, recusar, recusarOuDispensar, abrirATodos e mostrarATodos rodam sob a
+ * TravaDoPedido (a mesma do aceite e do cancelamento) e relêem a distribuição com ela. A trava não é reentrante: dentro
+ * dela só se chamam os métodos *SemTrava e o proximoPasso/proximoPassoOuAbrir, nunca os públicos que a tomam. Lançam LockTimeoutException se a trava não sair: o chamador decide (o
  * listener cai no alarme geral; o job volta à fila). Uma falha no ciclo dentro do iniciar (banco, bug) abre a
  * distribuição na hora (motivo `falha`, sem alarme) e relança: o listener manda o alarme geral e o aceite fica livre.
  * No vencer e no recusar (resposta já gravada), a falha abre a todos (falha) com o alarme geral e não relança.
@@ -36,8 +38,15 @@ use Illuminate\Support\Facades\Log;
  * Oferta: ao primeiro da fila que ainda existe e que não ganhou a oferta de outro pedido enquanto a fila era calculada
  * (as travas são por pedido); nenhum: abre a todos (fila_esgotada).
  *
- * Pedido que já tem motoboy ou está encerrado (o Order::updated não viu: saveQuietly) não recebe oferta nem alarme: a
- * distribuição é encerrada (atribuida/cancelada), como faz a varredura.
+ * Em rodadas (Distribuicao::emRodadas), o avancarSemTrava segue o avancarEmRodadas: oferta de 20 s, rodadas R, 1,5R e
+ * 2R, voltas até alguém aceitar e nunca o alarme a todos (sem prazo de 3 min; só a falha e o pedido sem coordenada
+ * válida ainda abrem com o alarme geral). Passada 1 h do despacho (MINUTOS_ATE_PARAR_DE_TOCAR), não oferece mais: o
+ * pedido fica só na lista aberta (soNaLista).
+ * recusarOuDispensar, mostrarATodos e registrarAceitePelaLista são do ciclo em rodadas (com as rodadas desligadas, o
+ * mostrarATodos devolve fora_de_ofertas sem tocar em nada e o recusarOuDispensar só recusa).
+ *
+ * Pedido que já tem motoboy, está encerrado ou deixou de ser aberto sem motoboy (o Order::updated não viu: saveQuietly)
+ * não recebe oferta nem alarme: a distribuição é encerrada (atribuida/cancelada), como faz a varredura.
  */
 class Distribuidor
 {
@@ -73,6 +82,17 @@ class Distribuidor
         });
     }
 
+    /**
+     * Como o avancar, mas uma falha no passo abre a todos (falha) com o alarme geral, como depois de uma resposta. Usado
+     * pelo job AvancarDistribuicao e pela varredura em rodadas. Lança LockTimeoutException se a trava não sair.
+     */
+    public function avancarOuAbrir(string $pedidoUuid): void
+    {
+        TravaDoPedido::executar($pedidoUuid, function () use ($pedidoUuid) {
+            $this->proximoPassoOuAbrir($pedidoUuid);
+        });
+    }
+
     /** O job (ou a varredura): a oferta pendente venceu. Oferta já respondida: nada. */
     public function vencer(int $ofertaId): void
     {
@@ -94,18 +114,110 @@ class Distribuidor
     /** O motoboy recusou. False se ele não tem oferta pendente neste pedido. */
     public function recusar(string $pedidoUuid, Driver $motoboy): bool
     {
-        return TravaDoPedido::executar($pedidoUuid, function () use ($pedidoUuid, $motoboy) {
-            $distribuicao = Distribuicoes::doPedido($pedidoUuid);
-            $oferta       = $distribuicao ? Distribuicoes::ofertaPendente((int) $distribuicao->id) : null;
-            if (!$oferta || (string) $oferta->motoboy_uuid !== (string) $motoboy->uuid) {
-                return false;
-            }
-            Distribuicoes::responder((int) $oferta->id, Distribuicao::RECUSADA);
-            Log::info('[entregas] distribuição: oferta recusada', ['oferta' => $oferta->id, 'motoboy' => $motoboy->public_id]);
-            $this->proximoPassoOuAbrir($pedidoUuid);
+        return TravaDoPedido::executar($pedidoUuid, fn () => $this->recusarSemTrava($pedidoUuid, $motoboy));
+    }
 
-            return true; // a recusa foi gravada, mesmo que o passo seguinte tenha falhado
+    /**
+     * Recusar e Dispensar (POST v1/entregas/motoboy/pedidos/{id}/recusar): com a oferta pendente dele, recusa (RECUSADA);
+     * senão, em rodadas (lista aberta ou fechada), grava a linha `dispensada` na volta atual (DISPENSADA: some da lista
+     * dele e não recebe oferta até a volta seguinte; uma linha por volta). Null: nada com ele (a rota responde 409).
+     */
+    public function recusarOuDispensar(string $pedidoUuid, Driver $motoboy): ?string
+    {
+        return TravaDoPedido::executar($pedidoUuid, function () use ($pedidoUuid, $motoboy) {
+            if ($this->recusarSemTrava($pedidoUuid, $motoboy)) {
+                return Distribuicao::RECUSADA;
+            }
+
+            return $this->dispensarSemTrava($pedidoUuid, $motoboy) ? Distribuicao::DISPENSADA : null;
         });
+    }
+
+    /**
+     * "Mostrar a todos agora" (console, em rodadas): abre a lista na hora, sem alarme geral; o ciclo segue.
+     * LISTA_ABERTA_AGORA, LISTA_JA_ABERTA ou FORA_DE_OFERTAS (fora de ofertas, pedido com motoboy, encerrado ou apagado).
+     * Rodadas desligadas: FORA_DE_OFERTAS sem tocar em nada (a lista aberta só existe em rodadas).
+     */
+    public function mostrarATodos(string $pedidoUuid): string
+    {
+        if (!Distribuicao::emRodadas()) {
+            return Distribuicao::FORA_DE_OFERTAS;
+        }
+
+        return TravaDoPedido::executar($pedidoUuid, function () use ($pedidoUuid) {
+            $distribuicao = Distribuicoes::doPedido($pedidoUuid);
+            $pedido       = $distribuicao ? Order::where('uuid', $pedidoUuid)->first() : null;
+            if ($distribuicao && !$pedido) {
+                $this->encerrarSemTrava($distribuicao, Distribuicao::CANCELADA);
+
+                return Distribuicao::FORA_DE_OFERTAS;
+            }
+            if (!$distribuicao || $distribuicao->fase !== Distribuicao::FASE_OFERTAS || $this->encerrouPeloPedido($distribuicao, $pedido)) {
+                return Distribuicao::FORA_DE_OFERTAS;
+            }
+            if (!Distribuicoes::abrirLista((int) $distribuicao->id)) {
+                return Distribuicao::LISTA_JA_ABERTA;
+            }
+            Log::info('[entregas] distribuição: lista aberta', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id, 'pela_central' => true]);
+
+            return Distribuicao::LISTA_ABERTA_AGORA;
+        });
+    }
+
+    /** Sem a trava (o middleware do aceite já a segura): aceite pela lista aberta de quem não tinha a oferta. */
+    public function registrarAceitePelaLista(object $distribuicao, ?string $motoboyUuid): void
+    {
+        $id = (int) $distribuicao->id;
+        Distribuicoes::cancelarPendentes($id);
+        if ($motoboyUuid) {
+            Distribuicoes::registrarResposta($distribuicao, $motoboyUuid, Distribuicao::ACEITA_PELA_LISTA);
+        }
+        Distribuicoes::mudarFase($id, Distribuicao::FASE_ENCERRADA, Distribuicao::ACEITA);
+        Log::info('[entregas] distribuição: aceita pela lista', ['distribuicao' => $id] + ($motoboyUuid ? $this->motoboyNoLog($motoboyUuid) : []));
+    }
+
+    /** Só de dentro da trava: a recusa da oferta pendente dele e o próximo passo. False se ele não tem oferta pendente. */
+    protected function recusarSemTrava(string $pedidoUuid, Driver $motoboy): bool
+    {
+        $distribuicao = Distribuicoes::doPedido($pedidoUuid);
+        $oferta       = $distribuicao ? Distribuicoes::ofertaPendente((int) $distribuicao->id) : null;
+        if (!$oferta || (string) $oferta->motoboy_uuid !== (string) $motoboy->uuid) {
+            return false;
+        }
+        Distribuicoes::responder((int) $oferta->id, Distribuicao::RECUSADA);
+        Log::info('[entregas] distribuição: oferta recusada', ['oferta' => $oferta->id, 'motoboy' => $motoboy->public_id]);
+        $this->proximoPassoOuAbrir($pedidoUuid);
+
+        return true; // a recusa foi gravada, mesmo que o passo seguinte tenha falhado
+    }
+
+    /**
+     * Só de dentro da trava: em rodadas, com a distribuição em ofertas e o pedido ainda aberto e sem motoboy, grava a
+     * linha `dispensada` na volta (se ainda não recusou nem dispensou nela), com a lista aberta ou fechada: com ela
+     * fechada (rodada 1 da volta 1, ex.: a oferta dele venceu e ele tocou Recusar), o 409 faria o APK escondê-lo até
+     * reiniciar, e a spec quer que ele volte na volta seguinte. False se não cabe dispensa.
+     */
+    protected function dispensarSemTrava(string $pedidoUuid, Driver $motoboy): bool
+    {
+        if (!Distribuicao::emRodadas()) {
+            return false;
+        }
+        $distribuicao = Distribuicoes::doPedido($pedidoUuid);
+        if (!$distribuicao || $distribuicao->fase !== Distribuicao::FASE_OFERTAS) {
+            return false;
+        }
+        $pedido = Order::where('uuid', $pedidoUuid)->first();
+        if (!$pedido || $this->motivoParaEncerrar($pedido)) {
+            return false;
+        }
+        $volta = (int) ($distribuicao->volta ?? 1);
+        if (!in_array((string) $motoboy->uuid, Distribuicoes::motoboysQueDispensaramNaVolta((int) $distribuicao->id, $volta), true)) {
+            $raio = Distribuicao::raioDaRodada(max(1, (int) $pedido->getAdhocDistance()), (int) ($distribuicao->rodada ?? 1));
+            Distribuicoes::registrarResposta($distribuicao, (string) $motoboy->uuid, Distribuicao::DISPENSADA, $raio);
+            Log::info('[entregas] distribuição: oferta dispensada', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id, 'motoboy' => $motoboy->public_id, 'volta' => $volta]);
+        }
+
+        return true;
     }
 
     /** Abre a todos (central ou varredura). False se a distribuição não está em ofertas (ou o pedido já tem motoboy). */
@@ -147,13 +259,18 @@ class Distribuidor
         }
     }
 
-    /** A regra única do pedido que não precisa mais de distribuição: sumido ou encerrado = cancelada; com motoboy = atribuida. */
+    /**
+     * A regra única do pedido que não precisa mais de distribuição: sumido ou encerrado = cancelada; com motoboy =
+     * atribuida; sem motoboy e que deixou de ser aberto (a central desligou o adhoc sem atribuir) = cancelada. Sem a
+     * última, o pedido seguiria recebendo ofertas (em rodadas, sem fim) e o Aceitar levaria o 400 do Fleet-Ops.
+     */
     public function motivoParaEncerrar(?object $pedido): ?string
     {
         return match (true) {
             !$pedido                                                                         => Distribuicao::CANCELADA,
             in_array(strtolower((string) $pedido->status), StatusDoPedido::ENCERRADOS, true) => Distribuicao::CANCELADA,
             (bool) $pedido->driver_assigned_uuid                                             => Distribuicao::ATRIBUIDA,
+            !$pedido->adhoc                                                                  => Distribuicao::CANCELADA,
             default                                                                          => null,
         };
     }
@@ -236,6 +353,11 @@ class Distribuidor
         if ($distribuicao->fase !== Distribuicao::FASE_OFERTAS || $this->encerrouPeloPedido($distribuicao, $pedido)) {
             return;
         }
+        if (Distribuicao::emRodadas()) {
+            $this->avancarEmRodadas($distribuicao, $pedido);
+
+            return;
+        }
         // o prazo vale antes da pendente: aos MINUTOS_ATE_ABRIR abre a todos, cancelando a oferta que ainda corre
         $despachada = Distribuicoes::data($distribuicao->despachada_em);
         if ($despachada && now() >= $despachada->addMinutes(Distribuicao::MINUTOS_ATE_ABRIR)) {
@@ -257,8 +379,135 @@ class Distribuidor
             return;
         }
         Distribuicoes::gravarFila((int) $distribuicao->id, $fila);
+        if (!$this->oferecerAoPrimeiro($distribuicao, $pedido, $fila, 1, 1, null)) {
+            $this->abrirSemTrava($distribuicao, $pedido, Distribuicao::FILA_ESGOTADA);
+        }
+    }
 
-        // o primeiro da fila que ainda existe e que não ganhou, nesse meio-tempo, a oferta de outro pedido (outra trava)
+    /**
+     * Um passo do ciclo em rodadas, já sob a trava e com a distribuição em `ofertas`: com uma oferta pendente, espera;
+     * senão oferece ao primeiro da rodada atual. Rodada vazia passa à seguinte (sair da rodada 1 da volta 1 abre a
+     * lista). Depois da rodada 3: volta nova (rodada 1, todos de novo) se já passou SEGUNDOS_ENTRE_VOLTAS do início da
+     * volta; senão agenda o próximo passo (AvancarDistribuicao) e para. No máximo uma volta nova por passo: uma volta
+     * inteira sem ninguém para e espera a varredura. Nunca abre a todos, exceto o pedido sem coordenada válida de coleta
+     * ou de entrega: a fila dele sai sempre vazia e ele ficaria mudo, então abre a todos (sem_candidato), como hoje.
+     */
+    protected function avancarEmRodadas(object $distribuicao, Order $pedido): void
+    {
+        $id = (int) $distribuicao->id;
+        if (!Pontos::de($pedido->payload?->pickup?->location) || !Pontos::de($pedido->payload?->dropoff?->location)) {
+            Log::warning('[entregas] distribuição: pedido sem coordenada; aberta a todos', ['pedido' => $pedido->public_id, 'distribuicao' => $id]);
+            $this->abrirSemTrava($distribuicao, $pedido, Distribuicao::SEM_CANDIDATO);
+
+            return;
+        }
+        if (Distribuicoes::ofertaPendente($id)) {
+            return; // alguém ainda está decidindo
+        }
+        if ($this->passouDoLimiteDeTocar($distribuicao)) {
+            $this->soNaLista($distribuicao, $pedido);
+
+            return;
+        }
+        $raioBase  = max(1, (int) $pedido->getAdhocDistance());
+        $volta     = max(1, (int) ($distribuicao->volta ?? 1));
+        $rodada    = max(1, min(Distribuicao::ULTIMA_RODADA, (int) ($distribuicao->rodada ?? 1)));
+        $voltaNova = false;
+
+        while (true) {
+            if ($this->oferecerNaRodada($distribuicao, $pedido, $volta, $rodada, Distribuicao::raioDaRodada($raioBase, $rodada))) {
+                return;
+            }
+            if ($rodada < Distribuicao::ULTIMA_RODADA) {
+                if ($volta === 1 && $rodada === 1 && Distribuicoes::abrirLista($id)) {
+                    Log::info('[entregas] distribuição: lista aberta', ['pedido' => $pedido->public_id, 'distribuicao' => $id]);
+                }
+                $rodada++;
+                Distribuicoes::irParaRodada($id, $rodada);
+                Log::info('[entregas] distribuição: rodada ' . $rodada . ' (raio ' . Distribuicao::raioDaRodada($raioBase, $rodada) . ' m)', ['pedido' => $pedido->public_id, 'distribuicao' => $id, 'volta' => $volta]);
+
+                continue;
+            }
+            if ($voltaNova) {
+                // a volta inteira sem ninguém: para (a varredura tenta de novo a cada minuto)
+                Distribuicoes::tocar($id);
+                Log::info('[entregas] distribuição: aguardando motoboy', ['pedido' => $pedido->public_id, 'distribuicao' => $id, 'volta' => $volta]);
+
+                return;
+            }
+            $inicio = Distribuicoes::data($distribuicao->volta_iniciada_em ?? null) ?? Distribuicoes::data($distribuicao->despachada_em);
+            $falta  = $inicio ? $inicio->getTimestamp() + Distribuicao::SEGUNDOS_ENTRE_VOLTAS - now()->getTimestamp() : 0;
+            if ($falta > 0) {
+                Distribuicoes::tocar($id);
+                try {
+                    AvancarDistribuicao::agendar((string) $pedido->uuid, $falta);
+                } catch (\Throwable $e) {
+                    // a fila fora do ar: a varredura avança (SEGUNDOS_PARADA depois do updated_at)
+                    Log::warning('[entregas] distribuição: job da próxima volta não entrou na fila', ['distribuicao' => $id, 'erro' => get_class($e)]);
+                }
+
+                return;
+            }
+            $volta++;
+            $rodada    = 1;
+            $voltaNova = true;
+            Distribuicoes::novaVolta($id, $volta);
+            Log::info('[entregas] distribuição: volta ' . $volta, ['pedido' => $pedido->public_id, 'distribuicao' => $id]);
+        }
+    }
+
+    /** Em rodadas: passou MINUTOS_ATE_PARAR_DE_TOCAR do despacho (sem despachada_em, sem limite). */
+    protected function passouDoLimiteDeTocar(object $distribuicao): bool
+    {
+        $despachada = Distribuicoes::data($distribuicao->despachada_em ?? null);
+
+        return $despachada && now() >= $despachada->addMinutes(Distribuicao::MINUTOS_ATE_PARAR_DE_TOCAR);
+    }
+
+    /**
+     * Passado o limite de 1 h: ninguém mais recebe oferta (nem agenda o próximo passo); a distribuição segue em
+     * `ofertas` com a lista aberta (abre agora, se ainda estava fechada) e o aceite pela lista vale. O log sai uma vez
+     * por distribuição (marca no cache; se o cache falhar, loga de novo, nunca derruba o passo).
+     */
+    protected function soNaLista(object $distribuicao, Order $pedido): void
+    {
+        $id = (int) $distribuicao->id;
+        Distribuicoes::abrirLista($id);
+        $chave = 'entregas:distribuicao-parou-de-tocar:' . $id;
+        try {
+            if (Cache::get($chave)) {
+                return;
+            }
+            Cache::put($chave, true, 86400);
+        } catch (\Throwable $e) {
+            // sem o cache: o log pode repetir
+        }
+        Log::info('[entregas] distribuição: limite de 1 h; só na lista', ['pedido' => $pedido->public_id, 'distribuicao' => $id]);
+    }
+
+    /**
+     * A oferta da rodada: os disponíveis até o raio, fora quem tem qualquer linha nesta volta e quem tem oferta pendente
+     * de outro pedido, na ordem "termina tudo e depois vai". False se ninguém recebeu.
+     */
+    protected function oferecerNaRodada(object $distribuicao, Order $pedido, int $volta, int $rodada, int $raio): bool
+    {
+        $id        = (int) $distribuicao->id;
+        $excluidos = array_merge(Distribuicoes::motoboysDaVolta($id, $volta), Distribuicoes::motoboysComOfertaPendente());
+        $fila      = $this->fila->para($pedido, Candidatos::elegiveis($pedido, $excluidos, $raio), true);
+        if ($fila === []) {
+            return false; // vazia não apaga a última fila gravada (o painel a mostra)
+        }
+        Distribuicoes::gravarFila($id, $fila);
+
+        return $this->oferecerAoPrimeiro($distribuicao, $pedido, $fila, $volta, $rodada, $raio);
+    }
+
+    /**
+     * Oferece ao primeiro da fila que ainda existe e que não ganhou, nesse meio-tempo, a oferta de outro pedido (outra
+     * trava): grava a oferta, agenda o AvancarOferta e manda o push. False se ninguém da fila serviu.
+     */
+    protected function oferecerAoPrimeiro(object $distribuicao, Order $pedido, array $fila, int $volta, int $rodada, ?int $raio): bool
+    {
         $ocupados = Distribuicoes::motoboysComOfertaPendente();
         $primeiro = null;
         $motoboy  = null;
@@ -273,12 +522,10 @@ class Distribuidor
             }
         }
         if (!$primeiro) {
-            $this->abrirSemTrava($distribuicao, $pedido, Distribuicao::FILA_ESGOTADA);
-
-            return;
+            return false;
         }
-        $posicao = count(Distribuicoes::ofertas((int) $distribuicao->id)) + 1;
-        $oferta  = Distribuicoes::criarOferta($distribuicao, $primeiro, $posicao);
+        $posicao = Distribuicoes::proximaPosicao((int) $distribuicao->id);
+        $oferta  = Distribuicoes::criarOferta($distribuicao, $primeiro, $posicao, $volta, $rodada, $raio);
         try {
             AvancarOferta::agendar((int) $oferta->id);
         } catch (\Throwable $e) {
@@ -286,12 +533,14 @@ class Distribuidor
             Log::warning('[entregas] distribuição: job da oferta não entrou na fila', ['oferta' => $oferta->id, 'erro' => get_class($e)]);
         }
         try {
-            $motoboy->notify(new OfertaDePedido($pedido, $primeiro['distancia_m'], Distribuicoes::data($oferta->vence_em)));
+            $motoboy->notify(new OfertaDePedido($pedido, $primeiro['distancia_m'], Distribuicoes::data($oferta->vence_em), Distribuicao::segundosDaOferta()));
         } catch (\Throwable $e) {
             // o envio para a fila falhou (Redis); a oferta vence sozinha (o FCM roda no worker)
             Log::warning('[entregas] distribuição: push da oferta falhou', ['oferta' => $oferta->id, 'erro' => get_class($e)]);
         }
-        Log::info('[entregas] distribuição: oferta enviada', ['pedido' => $pedido->public_id, 'oferta' => $oferta->id, 'motoboy' => $motoboy->public_id, 'posicao' => $posicao, 'tempo_s' => $primeiro['tempo_s'], 'encaixe' => $primeiro['encaixe']]);
+        Log::info('[entregas] distribuição: oferta enviada', ['pedido' => $pedido->public_id, 'oferta' => $oferta->id, 'motoboy' => $motoboy->public_id, 'posicao' => $posicao, 'tempo_s' => $primeiro['tempo_s'], 'encaixe' => $primeiro['encaixe'], 'volta' => $volta, 'rodada' => $rodada]);
+
+        return true;
     }
 
     protected function abrirSemTrava(object $distribuicao, Order $pedido, string $motivo): void

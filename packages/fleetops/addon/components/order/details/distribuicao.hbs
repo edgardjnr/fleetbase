@@ -9,6 +9,13 @@
                         <div class="field-name">{{t "fleet-ops.ui.distribuicao.situacao"}}</div>
                         <div class="field-value">{{this.faseTexto}}</div>
                     </div>
+                    {{#if this.rodadaTexto}}
+                        <div class="field-info-container field-vertical-container dashed-bottom">
+                            <div class="field-name">{{t "fleet-ops.ui.distribuicao.rodada"}}</div>
+                            <div class="field-value">{{this.rodadaTexto}}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">{{this.listaTexto}}</div>
+                        </div>
+                    {{/if}}
                     {{#if this.painel.oferta}}
                         <div class="field-info-container field-vertical-container dashed-bottom">
                             <div class="field-name">{{t "fleet-ops.ui.distribuicao.oferta-atual"}}</div>
@@ -34,19 +41,32 @@
                         <div class="field-info-container field-vertical-container dashed-bottom">
                             <div class="field-name">{{t "fleet-ops.ui.distribuicao.historico"}}</div>
                             <div class="field-value">
-                                {{#each this.historico as |oferta|}}
-                                    <div class="text-xs">
-                                        {{oferta.posicao}}. {{oferta.motoboy}} ·
-                                        {{#if oferta.aproximado}}<span class="text-gray-400 dark:text-gray-500" title={{t "fleet-ops.ui.distribuicao.aproximado"}}>≈</span>{{/if}}{{oferta.tempo}}
-                                        · {{oferta.resposta}}
-                                    </div>
-                                {{/each}}
+                                {{#if this.emRodadas}}
+                                    {{#each this.historicoPorVolta as |grupo|}}
+                                        <div class="text-xs font-semibold mt-1">{{grupo.titulo}}</div>
+                                        {{#each grupo.ofertas as |oferta|}}
+                                            <div class="text-xs">
+                                                {{#if oferta.posicao}}{{oferta.posicao}}. {{/if}}{{oferta.motoboy}} ·
+                                                {{#if oferta.aproximado}}<span class="text-gray-400 dark:text-gray-500" title={{t "fleet-ops.ui.distribuicao.aproximado"}}>≈</span>{{/if}}{{oferta.tempo}}
+                                                · {{oferta.resposta}} · {{oferta.rodada}}
+                                            </div>
+                                        {{/each}}
+                                    {{/each}}
+                                {{else}}
+                                    {{#each this.historico as |oferta|}}
+                                        <div class="text-xs">
+                                            {{#if oferta.posicao}}{{oferta.posicao}}. {{/if}}{{oferta.motoboy}} ·
+                                            {{#if oferta.aproximado}}<span class="text-gray-400 dark:text-gray-500" title={{t "fleet-ops.ui.distribuicao.aproximado"}}>≈</span>{{/if}}{{oferta.tempo}}
+                                            · {{oferta.resposta}}
+                                        </div>
+                                    {{/each}}
+                                {{/if}}
                             </div>
                         </div>
                     {{/if}}
                     {{#if this.podeAbrir}}
                         <div class="mt-2">
-                            <Button @type="warning" @size="xs" @icon="bullhorn" @text={{t "fleet-ops.ui.distribuicao.abrir"}} @onClick={{this.abrirATodos}} @permission="fleet-ops update order" />
+                            <Button @type="warning" @size="xs" @icon={{this.textosDoBotao.icone}} @text={{this.botaoTexto}} @onClick={{this.abrirATodos}} @permission="fleet-ops update order" />
                         </div>
                     {{/if}}
                 {{/if}}
