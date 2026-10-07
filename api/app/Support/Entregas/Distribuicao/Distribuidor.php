@@ -38,7 +38,8 @@ use Illuminate\Support\Facades\Log;
  * (as travas são por pedido); nenhum: abre a todos (fila_esgotada).
  *
  * Em rodadas (Distribuicao::emRodadas), o avancarSemTrava segue o avancarEmRodadas: oferta de 20 s, rodadas R, 1,5R e
- * 2R, voltas até alguém aceitar e nunca o alarme a todos (sem prazo de 3 min; só a falha ainda abre com o alarme geral).
+ * 2R, voltas até alguém aceitar e nunca o alarme a todos (sem prazo de 3 min; só a falha e o pedido sem coordenada
+ * válida ainda abrem com o alarme geral).
  * recusarOuDispensar, mostrarATodos e registrarAceitePelaLista são do ciclo em rodadas.
  *
  * Pedido que já tem motoboy ou está encerrado (o Order::updated não viu: saveQuietly) não recebe oferta nem alarme: a
@@ -288,11 +289,18 @@ class Distribuidor
      * senão oferece ao primeiro da rodada atual. Rodada vazia passa à seguinte (sair da rodada 1 da volta 1 abre a
      * lista). Depois da rodada 3: volta nova (rodada 1, todos de novo) se já passou SEGUNDOS_ENTRE_VOLTAS do início da
      * volta; senão agenda o próximo passo (AvancarDistribuicao) e para. No máximo uma volta nova por passo: uma volta
-     * inteira sem ninguém para e espera a varredura. Nunca abre a todos.
+     * inteira sem ninguém para e espera a varredura. Nunca abre a todos, exceto o pedido sem coordenada válida de coleta
+     * ou de entrega: a fila dele sai sempre vazia e ele ficaria mudo, então abre a todos (sem_candidato), como hoje.
      */
     protected function avancarEmRodadas(object $distribuicao, Order $pedido): void
     {
         $id = (int) $distribuicao->id;
+        if (!Pontos::de($pedido->payload?->pickup?->location) || !Pontos::de($pedido->payload?->dropoff?->location)) {
+            Log::warning('[entregas] distribuição: pedido sem coordenada; aberta a todos', ['pedido' => $pedido->public_id, 'distribuicao' => $id]);
+            $this->abrirSemTrava($distribuicao, $pedido, Distribuicao::SEM_CANDIDATO);
+
+            return;
+        }
         if (Distribuicoes::ofertaPendente($id)) {
             return; // alguém ainda está decidindo
         }

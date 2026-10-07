@@ -49,7 +49,7 @@ class AvancarDistribuicao implements ShouldQueue
         try {
             $distribuidor->avancarOuAbrir($this->pedidoUuid);
         } catch (LockTimeoutException $e) {
-            Log::info('[entregas] distribuição: trava ocupada ao avançar a distribuição; tentando de novo');
+            Log::info('[entregas] distribuição: trava ocupada ao avançar a distribuição; tentando de novo', ['pedido' => $this->pedidoUuid]);
             $this->release(static::ESPERA_DA_TRAVA);
         }
     }

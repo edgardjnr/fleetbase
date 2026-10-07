@@ -236,4 +236,35 @@ Relogio::$agora = '2026-10-07 10:00:20';
 $quebrado->vencer(1);
 confere(distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'falha' && count(alarmesGerais()) === 2, 'falha depois do vencimento: aberta (falha) com o alarme geral, a rede de segurança de hoje');
 
+echo '== Rodadas: quem fica livre durante a rodada 2' . PHP_EOL;
+$dist = cenarioRodadas([$ana, $caio, $davi]);
+$dist->iniciar(pedidoDoCenario());
+Relogio::$agora = '2026-10-07 10:00:20';
+(new AvancarOferta(1))->handle($dist);
+confere(ofertas()[1]->motoboy_uuid === 'd-caio' && ofertas()[1]->rodada === 2, 'rodada 1 sem ninguém novo: rodada 2, Caio');
+definirMotoboys([$ana, $caio, $davi, motoboyA('eva', 'Eva', 1)]); // Eva ficou livre perto da loja durante a oferta de Caio
+Relogio::$agora = '2026-10-07 10:00:40';
+(new AvancarOferta(2))->handle($dist);
+confere(ofertas()[2]->motoboy_uuid === 'd-eva' && ofertas()[2]->volta === 1 && ofertas()[2]->rodada === 2 && ofertas()[2]->raio_m === 9000 && distribuicao()->rodada === 2, 'Eva (1 km) entra no passo seguinte, ainda na rodada 2 (antes de Davi, na rodada 3)');
+
+echo '== Rodadas: volta_iniciada_em nulo vale o despachada_em' . PHP_EOL;
+$dist = cenarioRodadas([$ana]);
+$dist->iniciar(pedidoDoCenario());
+DB::table('entregas_distribuicoes')->where('id', 1)->update(['volta_iniciada_em' => null, 'despachada_em' => '2026-10-07 09:59:30']);
+Relogio::$agora = '2026-10-07 10:00:20';
+(new AvancarOferta(1))->handle($dist);
+$job = end(Fila::$jobs);
+confere($job instanceof AvancarDistribuicao && $job->delay === 10 && distribuicao()->volta === 1, 'sem volta_iniciada_em: o 1 min conta do despacho (09:59:30), faltam 10 s');
+Relogio::$agora = '2026-10-07 10:00:30';
+$job->handle($dist);
+confere(count(ofertas()) === 2 && ofertas()[1]->motoboy_uuid === 'd-ana' && ofertas()[1]->volta === 2 && distribuicao()->volta_iniciada_em === '2026-10-07 10:00:30', 'com 1 min do despacho: volta 2, iniciada agora');
+
+echo '== Rodadas: pedido sem coordenada abre a todos, como hoje' . PHP_EOL;
+$dist = cenarioRodadas([$ana, $bruno]);
+pedidoDoCenario()->payload->dropoff = (object) ['location' => ponto([0.0, 0.0])];
+$dist->iniciar(pedidoDoCenario());
+confere(distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'sem_candidato' && ofertas() === [], 'entrega em (0,0): aberta (sem_candidato), sem oferta');
+confere(alarmesGerais() === [['driver_ana', OrderPing::class], ['driver_bruno', OrderPing::class]], 'alarme geral para os dois no raio (' . json_encode(avisos()) . ')');
+confere(logou('pedido sem coordenada; aberta a todos', 'warning') && logsSem(['-21.1', 'Ana']), 'log de aviso só com ids');
+
 resumo();
