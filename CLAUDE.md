@@ -590,7 +590,7 @@ Fora dessa pasta:
 - **Tempo** (`EstimadorDeTempo`):
   - com o OSRM ligado, uma chamada `table` com todos os pontos (3 s de timeout);
   - com ele desligado, falhando ou com mais de 100 pontos (o `max-table-size` do OSRM), a matriz inteira sai em linha reta, marcada `aproximado`.
-- **Encaixe:** testa onde a coleta e a entrega novas entram na sequência dele. Vale a mais rápida que não atrase nenhuma entrega já aceita mais de 10 min. Paradas fixas: 3 min na loja, 2 min no cliente. Sem tempo de preparo.
+- **Encaixe:** testa onde a coleta e a entrega novas entram na sequência dele. Vale a mais rápida que não atrase nenhuma entrega já aceita mais de 10 min (`ATRASO_MAXIMO_S`; 5 min em rodadas, ver "Rodadas"). Paradas fixas: 3 min na loja, 2 min no cliente. Sem tempo de preparo.
 - **Ordem:** menor tempo até o cliente. Empate: o livre primeiro, depois o `public_id`.
 - **A fila é recalculada a cada passo.**
   - Saem quem já recusou ou deixou vencer neste despacho e quem tem oferta pendente de outro pedido (uma oferta por vez por motoboy).
@@ -627,11 +627,11 @@ Fora dessa pasta:
 - **Onde:** Fleet-Ops → detalhe do pedido, painel "Distribuição" ao lado do painel iFood (`packages/fleetops/addon/components/order/details/distribuicao.*`; funções puras em `utils/distribuicao.js`; textos em `fleet-ops.ui.distribuicao.*`).
 - **Só admin:** para os outros, o painel nem carrega (a rota do servidor é só de admin).
 - **Quando aparece:** sempre que o pedido teve distribuição (`distribuicao: true`), inclusive encerrada, pelo histórico. **Não depende do `adhoc`**: a atribuição da central e a troca pelo líder desligam o adhoc, e o histórico continua ali. No erro de leitura, aparece só em pedido aberto.
-- **Conteúdo:** fase e motivo, oferta atual com o cronômetro, a fila calculada (**só em ofertas**: tempo até o cliente, "no caminho" (só sem rodadas), "já leva pedido", "≈" na linha reta) e o histórico das ofertas.
+- **Conteúdo:** fase e motivo, oferta atual com o cronômetro, a fila calculada (**só em ofertas**: tempo até o cliente, "no caminho" (encaixe), "já leva pedido", "≈" na linha reta) e o histórico das ofertas.
 - **Com rodadas** (`rodadas: true` na resposta, `ENTREGAS_DISTRIBUICAO_RODADAS=1`):
   - em ofertas, a linha "Volta N · rodada M · até X km" e, embaixo, "Lista aberta desde HH:MM" (hora do navegador, 24 h) ou "Lista só para quem recebe a oferta";
   - a oferta conta os 20 s pelo `vence_em`;
-  - a fila sai sem "no caminho";
+  - a fila mostra o "no caminho" como sem rodadas (encaixe com até 5 min de atraso para quem já espera);
   - o histórico vem agrupado por volta ("Volta N"), com "rodada M · até X km" em cada linha e as respostas novas "dispensou pela lista" e "aceitou pela lista". As linhas sem oferta (dispensa, aceite pela lista) não mostram número;
   - funções puras: `emRodadas`, `inteiroPositivo`, `kmTexto`, `horaCurta`, `agruparPorVolta` e `textosDoBotao`;
   - sem `rodadas` (chave desligada ou API antiga), o painel é o de antes.
@@ -750,13 +750,15 @@ Onde ver:
 
 Decisão de 2026-10-07, depois do primeiro teste real. Desenho: `docs/superpowers/specs/2026-10-07-distribuicao-em-rodadas-design.md`; planos: `docs/superpowers/plans/2026-10-07-distribuicao-em-rodadas-api.md` e `-console-e-app.md` (**o código é a referência**). O painel e o APK 30 estão nas subseções "Painel do console" e "APK".
 
-- **Chave:** `ENTREGAS_DISTRIBUICAO_RODADAS=1` (`services.entregas.distribuicao_rodadas`, `Distribuicao::emRodadas()`), só vale com `ENTREGAS_DISTRIBUICAO=1`. Vazia: o ciclo das seções acima (30 s, encaixe, 3 min, abre a todos), sem mudança. **Ligue só com o APK 30 em todos os celulares.** Está no `x-api-env`: cole o `docker-stack.yml` novo no Portainer.
+- **Chave:** `ENTREGAS_DISTRIBUICAO_RODADAS=1` (`services.entregas.distribuicao_rodadas`, `Distribuicao::emRodadas()`), só vale com `ENTREGAS_DISTRIBUICAO=1`. Vazia: o ciclo das seções acima (30 s, encaixe de até 10 min, 3 min, abre a todos), sem mudança. **Ligue só com o APK 30 em todos os celulares.** Está no `x-api-env`: cole o `docker-stack.yml` novo no Portainer.
 - **O ciclo** (`Distribuidor::avancarEmRodadas`, sob a `TravaDoPedido`): oferta de **20 s**, um motoboy por vez, e **nunca abre a todos** (sem prazo de 3 min e sem `OrderPing` geral). Só a `falha` ainda abre com o alarme geral, como rede de segurança.
   - Rodadas: 1 = até R, 2 = até 1,5R, 3 = até 2R (R = `Order::getAdhocDistance()`, `Distribuicao::raioDaRodada`).
   - Candidatos da rodada: disponíveis até o raio, GPS de menos de 30 min, **fora** quem tem qualquer linha nesta volta (oferta de qualquer resposta ou dispensa) e quem tem oferta pendente de outro pedido. Recalculados a cada oferta.
   - Rodada vazia passa à seguinte. Sair da rodada 1 da volta 1 grava `lista_aberta_em`.
   - Depois da rodada 3: volta nova (rodada 1, todos de novo, inclusive quem recusou) só 1 min depois do início da volta (`volta_iniciada_em`; nulo nas distribuições antigas = `despachada_em`). Antes disso, o job `AvancarDistribuicao` (fila `default`) volta na hora certa, e a varredura é a reserva. No máximo uma volta nova por passo: volta inteira sem ninguém = "aguardando motoboy", e a varredura tenta a cada minuto.
-  - A fila é "termina tudo e depois vai" (`Encaixe::noFim`): sem encaixe no meio nem o limite de 10 min; o `encaixe` fica sempre falso.
+  - **A fila usa o encaixe com até 5 min de atraso** para quem já espera (`Encaixe::calcular` com `Distribuicao::ATRASO_MAXIMO_EM_RODADAS_S` = 300, no `FilaDeCandidatos::para`; decisão do Edgard de 2026-10-07, depois do primeiro teste real). Testa todas as posições da coleta e da entrega novas na sequência do motoboy (coleta antes da entrega) e vale a que entrega o cliente novo mais cedo dentro do limite; se nenhuma couber, "termina tudo e depois vai" (sempre cabe). Na prática: **coleta junto** o pedido da mesma loja que ele ainda não coletou (o cliente antigo espera só a parada de 3 min) e passa numa **loja no caminho** da entrega que ele leva. O `encaixe` marca quando o pedido novo entrou antes do fim.
+    - Antes era "termina tudo e depois vai" sempre (`Encaixe::noFim`, removido): no teste real, Edgard a 2,07 km, com um pedido da mesma loja aceito e ainda não coletado, teve 23,8 min e perdeu para um motoboy livre a ~5,3 km (22,8 min). O caso reproduzido em `distribuicao-fila.php` e `distribuicao-rodadas.php` dá 24,2 min "termina tudo", 17,9 min com o encaixe e 23,0 min ao livre.
+    - Sem rodadas, o limite continua 10 min (`ATRASO_MAXIMO_S`).
   - **Pedido sem coordenada válida de coleta ou entrega** abre a todos na hora (`sem_candidato`, alarme geral), com o warning `pedido sem coordenada; aberta a todos`: não há como medir raio.
   - **Limite de 1 h** (decisão do Edgard, 2026-10-07; `Distribuicao::MINUTOS_ATE_PARAR_DE_TOCAR` = 60): passada 1 h do `despachada_em`, o `avancarEmRodadas` não oferece mais a ninguém nem agenda o próximo passo (`Distribuidor::soNaLista`). A distribuição segue em `ofertas`, a lista fica aberta a todos (grava `lista_aberta_em` nesse momento, se ainda estava fechada) e o aceite pela lista vale. A oferta que já corria termina normalmente (vence ou recusa); o passo seguinte é que não oferece. Log info `limite de 1 h; só na lista` uma vez por distribuição (marca no cache `entregas:distribuicao-parou-de-tocar:<id>`). O encerramento (aceite, atribuição, cancelamento, `adhoc` desligado) não muda. Sem isso, o pedido de teste esquecido tocaria o dia inteiro e a `posicao` (`unsignedSmallInteger`) estouraria em ~15 dias.
 - **Aceite** (`BarrarAceiteDePedidoEncerrado`): com a lista fechada, só quem tem a oferta (como antes). Com a lista aberta, qualquer motoboy: o primeiro leva e a pendente vira `cancelada`.

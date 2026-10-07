@@ -17,8 +17,8 @@ crescendo, e recomeça até alguém aceitar. Sem alarme para todos de uma vez.
 
 | Pergunta | Decisão |
 |---|---|
-| Critério da fila | **Quem entrega o cliente novo mais cedo.** O motoboy ocupado termina tudo o que já leva e só depois vai à loja nova (o pedido novo vai para o fim da fila dele). Empate: o livre primeiro, depois o `public_id`. |
-| Encaixe no meio do caminho | **Sai**, com o limite de 10 min de atraso. O pedido novo nunca atrasa quem já espera. |
+| Critério da fila | **Quem entrega o cliente novo mais cedo.** Para o motoboy ocupado, vale o encaixe da linha abaixo; se nenhum couber, ele termina tudo o que já leva e só depois vai à loja nova. Empate: o livre primeiro, depois o `public_id`. |
+| Encaixe no meio do caminho | **Fica, com até 5 min de atraso** para qualquer entrega que ele já leva (o ciclo sem rodadas segue com 10 min). Coleta junto o pedido da mesma loja que ele ainda não coletou; passa numa loja no caminho da entrega que ele leva. Se nenhuma ordem couber, "termina tudo e depois vai". Revisão do Edgard (2026-10-07, depois do primeiro teste real das rodadas): o desenho original tirava o encaixe ("termina tudo e depois vai" sempre), e um motoboy a 2 km com um pedido da mesma loja ainda não coletado perdeu para um livre a 5,3 km. |
 | Tempo de cada oferta | **20 s** (era 30 s). |
 | Rodadas | 1 = até **R**; 2 = até **1,5R**; 3 = até **2R** (R = raio de pedido aberto da empresa, hoje 6 km → 6, 9 e 12 km). |
 | Quem entra em cada rodada | Os disponíveis até o raio da rodada **que ainda não receberam oferta nem dispensaram nesta volta**. |
@@ -71,14 +71,32 @@ Exemplo com R = 6 km e quatro motoboys livres que não aceitam: Ana (2 km), Brun
 O motoboy que tem oferta pendente de outro pedido conta como "ainda não perguntado": entra num passo seguinte da mesma
 rodada, se ficar livre a tempo, ou na volta seguinte.
 
-### A fila (sem encaixe)
+### A fila (encaixe com até 5 min de atraso)
 
-`Encaixe::calcular` passa a testar só "termina tudo e depois vai": as paradas que ele ainda tem, na ordem de aceite
-(como hoje), e depois a coleta e a entrega novas. Tempo = chegada no cliente novo. Paradas fixas de 3 min na loja e
-2 min no cliente, linha reta × 1,3 a 25 km/h (OSRM desligado), como hoje. O campo `encaixe` some da fila e do painel.
+`Encaixe::calcular`, como no ciclo sem rodadas, com o atraso máximo de **5 min**
+(`Distribuicao::ATRASO_MAXIMO_EM_RODADAS_S` = 300, passado pelo `FilaDeCandidatos::para`): testa todas as posições da
+coleta (P) e da entrega (D) novas na sequência de paradas que ele ainda tem (na ordem de aceite, como hoje), com P antes
+de D. Uma ordem cabe se nenhuma entrega que ele já leva chega mais de 5 min depois do que chegaria sem o pedido novo.
+Vale a que cabe e entrega o cliente novo mais cedo; "termina tudo e depois vai" (P e D no fim) sempre cabe. Tempo =
+chegada no cliente novo. Paradas fixas de 3 min na loja e 2 min no cliente, linha reta × 1,3 a 25 km/h (OSRM
+desligado), como hoje. O campo `encaixe` (P ou D antes do fim) fica na fila e no painel ("no caminho").
 
-Exemplo: Ana termina a entrega dela em 10 min e levaria mais 10 min para o pedido novo (20 min); Bruno, livre, leva
-19 min. Bruno recebe primeiro; se recusar, Ana é a próxima da rodada.
+Casos que motivaram (decisão de 2026-10-07, depois do primeiro teste real):
+
+- **Mesmo pedido da mesma loja que ele ainda não coletou:** coleta junto (P novo ao lado da coleta antiga, no mesmo
+  ponto). O cliente antigo atrasa só a parada de 3 min.
+- **Loja no caminho da entrega que ele leva:** passa, coleta e sai com os dois, se o cliente que já espera atrasar no
+  máximo 5 min.
+- Desvio que atrasaria o cliente antigo mais de 5 min: "termina tudo e depois vai" (no ciclo sem rodadas, até 10 min
+  ainda encaixa).
+
+Teste real: Edgard a 2,07 km da loja, com um pedido da mesma loja aceito 49 s antes (ainda não coletado), teve 23,8 min
+com "termina tudo" e perdeu para Edmar livre a ~5,3 km (22,8 min). No caso reproduzido nos testes, Edgard passa de
+24,2 min a 17,9 min com o encaixe, à frente de Edmar (23,0 min).
+
+Exemplo sem encaixe: Ana termina a entrega dela em 10 min e levaria mais 10 min para o pedido novo (20 min), e nenhuma
+ordem com o pedido novo antes cabe nos 5 min; Bruno, livre, leva 19 min. Bruno recebe primeiro; se recusar, Ana é a
+próxima da rodada.
 
 ## 4. Aceite
 
@@ -141,7 +159,7 @@ registra (`filtro da lista: <classe>`), como hoje.
 ## 8. Console (painel "Distribuição")
 
 - Cabeçalho: "Volta 2 · rodada 1 · até 6 km" e "Lista aberta desde 05:31" (ou "Lista só para quem recebe a oferta").
-- Oferta atual com o cronômetro de 20 s; fila da rodada (sem "no caminho"; mantém "já leva pedido" e "≈").
+- Oferta atual com o cronômetro de 20 s; fila da rodada ("no caminho" quando encaixa, "já leva pedido" e "≈").
 - Histórico agrupado por volta, com a rodada e o raio em cada linha e as respostas novas: "dispensou pela lista",
   "aceitou pela lista".
 - Botão **"Mostrar a todos agora"** (`POST .../distribuicao/abrir`, só admin, com confirmação): grava `lista_aberta_em`
@@ -163,7 +181,7 @@ registra (`filtro da lista: <classe>`), como hoje.
 
 - `ENTREGAS_DISTRIBUICAO_RODADAS` (`services.entregas.distribuicao_rodadas`, `Distribuicao::emRodadas()`), no
   `x-api-env` do `deploy/docker-stack.yml`. Só vale com `ENTREGAS_DISTRIBUICAO=1`.
-- Desligada: o ciclo de hoje (30 s, encaixe, 3 min, abre a todos), sem mudança.
+- Desligada: o ciclo de hoje (30 s, encaixe de até 10 min, 3 min, abre a todos), sem mudança.
 - Ligada: as distribuições que já estavam em `ofertas` seguem no ciclo novo a partir do próximo passo (volta 1, rodada
   1 pelas colunas padrão). As que já estavam `aberta` seguem como abertas.
 - Desligar no meio: as distribuições em `ofertas` voltam ao ciclo antigo no próximo passo (o prazo de 3 min do
@@ -191,7 +209,8 @@ Com as rodadas ligadas:
 
 ## 13. Testes
 
-- php-wasm: `distribuicao-encaixe.php` (só "termina tudo e depois vai"), `distribuicao-fila.php`,
+- php-wasm: `distribuicao-encaixe.php` (encaixe com 5 min × 10 min: coleta junto, loja no caminho, desvio acima de
+  5 min), `distribuicao-fila.php` (o caso real),
   `distribuicao-ciclo.php` (rodadas, raios, volta nova com e sem o intervalo de 1 min, rodada vazia, ninguém em 2R,
   novato entrando na rodada 2, oferta pendente de outro pedido), `distribuicao-rotas.php` (recusar × dispensar × 409,
   "Mostrar a todos agora"), `filtrar-pedidos-abertos.php` (lista fechada × aberta, dispensados, acréscimo até 2R,
