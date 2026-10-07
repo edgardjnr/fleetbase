@@ -337,4 +337,42 @@ $dist->iniciar(pedidoDoCenario());
 Order::$todos = [];                                                               // apagado
 confere($dist->mostrarATodos('order-1') === 'fora_de_ofertas' && distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'cancelada' && ofertas()[0]->resposta === 'cancelada', 'pedido apagado: mostrarATodos encerra (cancelada)');
 
+echo '== Varredura em rodadas' . PHP_EOL;
+$dist = cenarioRodadas([$ana]);
+$dist->iniciar(pedidoDoCenario());
+Relogio::$agora = '2026-10-07 10:03:05';
+(new VarrerDistribuicoes())->handle($dist);
+confere(distribuicao()->fase === 'ofertas' && distribuicao()->motivo === null && alarmesGerais() === [], 'passados 3 min do despacho: não abre a todos (sem prazo em rodadas)');
+confere(ofertas()[0]->resposta === 'vencida' && ofertas()[1]->motoboy_uuid === 'd-ana' && ofertas()[1]->volta === 2, 'a pendente vencida há mais de 20 s vence e o ciclo segue (volta 2)');
+
+$dist = cenarioRodadas([]);
+$dist->iniciar(pedidoDoCenario());                       // rodada 3; o job de 60 s "se perdeu"
+Relogio::$agora = '2026-10-07 10:00:40';
+(new VarrerDistribuicoes())->handle($dist);
+confere(distribuicao()->volta === 1, 'parada há menos de 50 s: espera');
+Relogio::$agora = '2026-10-07 10:01:00';
+(new VarrerDistribuicoes())->handle($dist);
+confere(distribuicao()->volta === 2 && distribuicao()->updated_at === '2026-10-07 10:01:00' && logou('aguardando motoboy', 'info'), 'tocada às 10:00:00, varredura das 10:01:00 (cadência de 1 min): avança (volta 2) e toca o updated_at');
+definirMotoboys([$ana]);
+Relogio::$agora = '2026-10-07 10:01:30';
+(new VarrerDistribuicoes())->handle($dist);
+confere(count(ofertas()) === 0, 'tocada há 30 s: a varredura espera');
+Relogio::$agora = '2026-10-07 10:02:00';
+(new VarrerDistribuicoes())->handle($dist);
+confere(count(ofertas()) === 1 && ofertas()[0]->motoboy_uuid === 'd-ana' && ofertas()[0]->volta === 2, 'quem fica disponível recebe no passo seguinte da varredura (1 min depois)');
+
+$dist = cenarioRodadas([]);
+$dist->iniciar(pedidoDoCenario());
+definirMotoboys([$ana]);
+Relogio::$agora = '2026-10-09 10:00:00';
+(new VarrerDistribuicoes())->handle($dist);
+confere(ofertas() === [] && distribuicao()->volta === 1, 'despachada há mais de 24 h: a varredura não avança');
+
+$dist = cenarioRodadas([$ana]);
+$dist->iniciar(pedidoDoCenario());
+Config::$valores['services.entregas.distribuicao_rodadas'] = '';
+Relogio::$agora = '2026-10-07 10:03:05';
+(new VarrerDistribuicoes())->handle($dist);
+confere(distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'prazo', 'rodadas desligadas no meio: volta o ciclo de hoje (o prazo de 3 min abre a todos)');
+
 resumo();
