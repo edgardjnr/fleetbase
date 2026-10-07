@@ -15,6 +15,8 @@ $arquivos = array_merge(
     glob($app . '/Listeners/Entregas/*.php'),
     [
         $app . '/Jobs/Entregas/AvancarOferta.php',
+        $app . '/Jobs/Entregas/AvancarDistribuicao.php',
+        $app . '/Http/Middleware/BarrarAceiteDePedidoEncerrado.php',
         $app . '/Http/Middleware/FiltrarPedidosAbertosDoMotoboy.php',
         $app . '/Http/Controllers/Entregas/DistribuicaoController.php',
         $app . '/Console/Commands/Entregas/VarrerDistribuicoes.php',
