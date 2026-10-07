@@ -36,14 +36,14 @@ class FiltrarPedidosAbertosDoMotoboy
 {
     public const LISTA = OrderController::class . '@query';
 
+    /** O que o acréscimo carrega para filtrar: o payload (com a coleta) e a empresa (o getAdhocDistance lê as opções dela). */
+    public const RELACOES_DO_FILTRO = ['payload', 'company'];
+
     /**
      * As relações que o Http\Resources\v1\Order lê: as que a própria lista do Fleet-Ops carrega
      * (Api\v1\OrderController@query) e as que ele lê sempre (trackingNumber, purchaseRate, orderConfig, comments, files).
      * Só para os pedidos acrescentados além de R, em lote.
      */
-    /** O que o acréscimo carrega para filtrar: o payload (com a coleta) e a empresa (o getAdhocDistance lê as opções dela). */
-    public const RELACOES_DO_FILTRO = ['payload', 'company'];
-
     public const RELACOES_DO_RECURSO = ['trackingStatuses', 'driverAssigned', 'vehicleAssigned', 'customer', 'facilitator', 'trackingNumber', 'purchaseRate', 'orderConfig', 'comments', 'files'];
 
     public function handle(Request $request, Closure $next)
