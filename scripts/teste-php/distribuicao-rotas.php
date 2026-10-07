@@ -108,4 +108,74 @@ confere((new MotoboyController())->recusar(requisicao('12|token-do-motoboy-a'), 
 confere((new DistribuicaoController())->abrir(requisicao('sessao'), 'order_1', $dist)->status === 503, 'abrir com a trava ocupada: 503');
 unset(\Teste\Trava::$ocupadas['entregas:pedido:order-1']);
 
+echo '== Rodadas: recusar × dispensar' . PHP_EOL;
+function cenarioRodadas(): Distribuidor
+{
+    $dist = cenario();
+    Config::$valores['services.entregas.distribuicao_rodadas'] = '1';
+    // com coleta e entrega (sem elas o pedido abre a todos na hora, `sem_candidato`)
+    $ponto = fn (float $lat, float $lng) => new class($lat, $lng) { public function __construct(private float $lat, private float $lng) {} public function getLat() { return $this->lat; } public function getLng() { return $this->lng; } };
+    Order::$todos[0]->payload = (object) ['pickup' => (object) ['location' => $ponto(-21.1700, -47.8100)], 'dropoff' => (object) ['location' => $ponto(-21.1800, -47.8100)]];
+    Candidatos::$buscarParadas = fn () => [];
+
+    return $dist;
+}
+
+$dist     = cenarioRodadas();
+$resposta = (new MotoboyController())->recusar(requisicao('12|token-do-motoboy-a'), 'order_1', $dist);
+confere($resposta->status === 200 && $resposta->dados === ['resultado' => 'recusada'], 'A recusa a oferta dele: 200 recusada');
+$d = Distribuicoes::doPedido('order-1');
+confere($d->fase === 'ofertas' && $d->lista_aberta_em !== null && $d->rodada === 3, 'sem outro candidato até 2R: segue em ofertas (não abre a todos), lista aberta, esperando a volta seguinte');
+
+$dist = cenarioRodadas();
+session(['user' => 'u-b']);
+$resposta = (new MotoboyController())->recusar(requisicao('13|token-do-motoboy-b'), 'order_1', $dist);
+confere($resposta->status === 409 && $resposta->dados === ['errors' => ['Esta oferta não está mais com você.']], 'lista fechada e sem oferta dele: 409');
+Distribuicoes::abrirLista(1);
+$resposta = (new MotoboyController())->recusar(requisicao('13|token-do-motoboy-b'), 'order_1', $dist);
+confere($resposta->status === 200 && $resposta->dados === ['resultado' => 'dispensada'], 'lista aberta, sem oferta dele: 200 dispensada');
+$linhas = Distribuicoes::ofertas(1);
+confere(count($linhas) === 2 && $linhas[1]->resposta === 'dispensada' && $linhas[1]->motoboy_uuid === 'd-b' && $linhas[1]->volta === 1 && $linhas[0]->resposta === 'pendente', 'linha dispensada na volta; a oferta de A segue pendente');
+confere((new MotoboyController())->recusar(requisicao('13|token-do-motoboy-b'), 'order_1', $dist)->dados === ['resultado' => 'dispensada'] && count(Distribuicoes::ofertas(1)) === 2, 'dispensar de novo na mesma volta: 200 sem linha nova');
+
+$dist = cenarioRodadas();
+Distribuicoes::abrirLista(1);
+Order::$todos[0]->driver_assigned_uuid = 'd-a';
+session(['user' => 'u-b']);
+confere((new MotoboyController())->recusar(requisicao('13|token-do-motoboy-b'), 'order_1', $dist)->status === 409, 'pedido com motoboy: 409');
+
+$dist = cenario(); // rodadas desligadas
+Distribuicoes::abrirLista(1);
+session(['user' => 'u-b']);
+confere((new MotoboyController())->recusar(requisicao('13|token-do-motoboy-b'), 'order_1', $dist)->status === 409, 'rodadas desligadas: sem dispensa (409, como hoje)');
+
+$dist = cenarioRodadas();
+\Teste\Trava::$ocupadas['entregas:pedido:order-1'] = true;
+confere((new MotoboyController())->recusar(requisicao('12|token-do-motoboy-a'), 'order_1', $dist)->status === 503, 'trava ocupada: 503');
+unset(\Teste\Trava::$ocupadas['entregas:pedido:order-1']);
+
+echo '== Rodadas: painel e "Mostrar a todos agora"' . PHP_EOL;
+$dist = cenarioRodadas();
+\Fleetbase\Support\Auth::$usuario = $admin;
+$dados = (new DistribuicaoController())->painel(requisicao('sessao'), 'order_1')->dados;
+confere($dados['rodadas'] === true && $dados['volta'] === 1 && $dados['rodada'] === 1 && $dados['raio_m'] === 6000 && $dados['lista_aberta_em'] === null, 'painel: rodadas, volta, rodada, raio da rodada e lista fechada (' . json_encode($dados) . ')');
+confere($dados['historico'][0]['volta'] === 1 && $dados['historico'][0]['rodada'] === 1 && $dados['historico'][0]['raio_m'] === null, 'histórico com volta, rodada e raio');
+$resposta = (new DistribuicaoController())->abrir(requisicao('sessao'), 'order_1', $dist);
+confere($resposta->status === 200 && $resposta->dados['fase'] === 'ofertas' && $resposta->dados['lista_aberta_em'] === Distribuicoes::data('2026-10-07 10:00:00')->toIso8601String() && $resposta->dados['oferta']['motoboy'] === 'Ana', 'Mostrar a todos agora: lista aberta, segue em ofertas com a oferta de A (' . json_encode($resposta->dados) . ')');
+confere(Driver::$avisos === [], 'sem alarme geral');
+$resposta = (new DistribuicaoController())->abrir(requisicao('sessao'), 'order_1', $dist);
+confere($resposta->status === 409 && $resposta->dados === ['errors' => ['A lista deste pedido já está aberta a todos.']], 'já aberta: 409');
+$dist->registrarAceite(Distribuicoes::oferta(1));
+$resposta = (new DistribuicaoController())->abrir(requisicao('sessao'), 'order_1', $dist);
+confere($resposta->status === 409 && $resposta->dados === ['errors' => ['Este pedido não está em oferta.']], 'encerrada: 409');
+
+$dist = cenarioRodadas();
+\Fleetbase\Support\Auth::$usuario = $admin;
+\Teste\Trava::$ocupadas['entregas:pedido:order-1'] = true;
+confere((new DistribuicaoController())->abrir(requisicao('sessao'), 'order_1', $dist)->status === 503, 'Mostrar com a trava ocupada: 503');
+unset(\Teste\Trava::$ocupadas['entregas:pedido:order-1']);
+Config::$valores['services.entregas.distribuicao_rodadas'] = '';
+confere((new DistribuicaoController())->painel(requisicao('sessao'), 'order_1')->dados['rodadas'] === false, 'painel: rodadas = false com a chave desligada');
+
+
 resumo();

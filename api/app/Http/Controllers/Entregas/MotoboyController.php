@@ -283,13 +283,14 @@ class MotoboyController extends Controller
         }
 
         try {
-            $recusou = $distribuidor->recusar((string) $pedido->uuid, $motoboy);
+            // 'recusada' (a oferta dele) ou, em rodadas com a lista aberta, 'dispensada'; null = nada com ele
+            $resultado = $distribuidor->recusarOuDispensar((string) $pedido->uuid, $motoboy);
         } catch (LockTimeoutException $e) {
             return response()->json(['errors' => ['Este pedido está sendo atualizado. Tente de novo.']], 503);
         }
 
-        return $recusou
-            ? response()->json(['resultado' => 'recusada'])
+        return $resultado
+            ? response()->json(['resultado' => $resultado])
             : response()->json(['errors' => ['Esta oferta não está mais com você.']], 409);
     }
 
