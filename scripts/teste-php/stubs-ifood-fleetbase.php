@@ -18,6 +18,8 @@ namespace Fleetbase\FleetOps\Support {
     class Utils
     {
         public static function getMutationType($modelo): string { return 'fleet-ops:' . strtolower((new \ReflectionClass($modelo))->getShortName()); }
+        // o real confere instanceof Point; aqui também os pontos falsos dos testes (getLat/getLng)
+        public static function isPoint($p): bool { return is_object($p) && method_exists($p, 'getLat') && method_exists($p, 'getLng'); }
     }
 }
 
@@ -405,6 +407,16 @@ namespace Fleetbase\FleetOps\Models {
         private function anotarTrava(): void { $this->travadoNoDespacho[] = isset(\Teste\Trava::$ocupadas['entregas:pedido:' . $this->uuid]); }
         public function hasDispatchedStatus(): bool { return $this->temStatusDespachado; }
 
+        // o que o HandleOrderDispatched (e o DistribuirPedidoAberto) usa no despacho
+        public function save() { $this->chamadas[] = 'save'; return true; }
+        public function flushAttributesCache() { return $this; }
+        public function load($relacoes) { $this->chamadas[] = 'load'; return $this; }
+        public function setStatus($codigo) { $this->chamadas[] = 'setStatus'; $this->status = $codigo; return true; }
+        public function createActivity($atividade, $local = null) { $this->chamadas[] = 'createActivity'; return $atividade; }
+        public function getLastLocation() { return null; }
+        public function getPickupLocation() { return $this->payload->pickup->location ?? null; }
+        public function getAdhocDistance() { return $this->adhoc_distance ?? 6000; }
+
         public function wasChanged($campos = null): bool
         {
             $campos = (array) $campos;
@@ -494,6 +506,36 @@ namespace Fleetbase\FleetOps\Notifications {
     }
 }
 
+namespace Fleetbase\FleetOps\Events {
+    // o OrderDispatched do Fleet-Ops: o real relê o pedido no banco (getModelRecord); aqui guarda o objeto
+    class OrderDispatched
+    {
+        public function __construct(public $pedido) {}
+        public function getModelRecord() { return $this->pedido; }
+    }
+}
+
+namespace Fleetbase\FleetOps\Listeners {
+    // o HandleOrderDispatched do Fleet-Ops (o DistribuirPedidoAberto o estende): o handle só anota a chamada; os
+    // motoboys do raio vêm de $proximos e o aviso é o OrderPing, como no real
+    class HandleOrderDispatched
+    {
+        /** Eventos que chegaram ao handle original. */
+        public static array $originais = [];
+        /** Motoboys "no raio" do nearbyAvailableDrivers. */
+        public static array $proximos = [];
+        /** O doesntHaveDispatchActivity e o getDispatchActivity. */
+        public static bool $semAtividade = false;
+        public static $atividade = null;
+
+        public function handle(\Fleetbase\FleetOps\Events\OrderDispatched $event) { self::$originais[] = $event; }
+        protected function doesntHaveDispatchActivity($order): bool { return self::$semAtividade; }
+        protected function getDispatchActivity($order): mixed { return self::$atividade; }
+        protected function nearbyAvailableDrivers($pickup, int|float $distance) { return new \Illuminate\Support\Collection(self::$proximos); }
+        protected function notifyAdhocDriver(\Fleetbase\FleetOps\Models\Driver $driver, $order): void { $driver->notify(new \Fleetbase\FleetOps\Notifications\OrderPing($order, $driver->distance)); }
+    }
+}
+
 namespace Teste {
     // o container do Laravel (app()): instância registrada pelo teste ou criada com as dependências do construtor
     class Container
@@ -551,6 +593,10 @@ namespace {
         \Fleetbase\FleetOps\Models\Order::$falharCancelamento = false;
         \Fleetbase\FleetOps\Models\Driver::$todos      = [];
         \Fleetbase\FleetOps\Models\Driver::$avisos     = [];
+        \Fleetbase\FleetOps\Listeners\HandleOrderDispatched::$originais    = [];
+        \Fleetbase\FleetOps\Listeners\HandleOrderDispatched::$proximos     = [];
+        \Fleetbase\FleetOps\Listeners\HandleOrderDispatched::$semAtividade = false;
+        \Fleetbase\FleetOps\Listeners\HandleOrderDispatched::$atividade    = null;
         \Teste\Container::$instancias                  = [];
         \Fleetbase\Support\Auth::$usuario              = null;
 
