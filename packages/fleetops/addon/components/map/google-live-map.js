@@ -7,6 +7,7 @@ import { isArray } from '@ember/array';
 import { debug } from '@ember/debug';
 import { guidFor } from '@ember/object/internals';
 import capaceteDoMotoboy from '../../utils/entregas-capacete';
+import iconeDoLocal from '../../utils/entregas-icone-da-loja';
 import { buildDriverLiveMapContent, buildPlaceInfoWindowContent, buildPlaceTooltipContent, buildVehicleLiveMapContent } from '../../utils/live-map-card-content';
 
 export default class MapGoogleLiveMapComponent extends Component {
@@ -121,9 +122,12 @@ export default class MapGoogleLiveMapComponent extends Component {
 
             const marker = this.mapManager.getMarker(place.id);
             if (!marker) {
+                // Entregas: pin laranja da loja no lugar do predinho preto (avatar próprio do local continua valendo);
+                // o AdvancedMarker já ancora pela base, onde fica a ponta do pin
+                const icone = iconeDoLocal(place, 16);
                 const createdMarker = await this.mapManager.addMarker(place.id, coords.lat, coords.lng, {
-                    iconUrl: place.avatar_url ?? '/engines-dist/images/building-marker.png',
-                    iconSize: [16, 16],
+                    iconUrl: icone.url,
+                    iconSize: icone.tamanho,
                     title: place.address,
                     tooltip: buildPlaceTooltipContent(place),
                     tooltipOptions: { html: true },

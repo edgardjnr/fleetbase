@@ -303,11 +303,13 @@
                 {{/each}}
 
                 {{#each this.places as |place|}}
+                    {{! Entregas: pin da loja (utils/entregas-icone-da-loja.js) }}
+                    {{#let (this.iconeDoLocal place) as |icone|}}
                     <layers.marker
                         @id={{place.id}}
                         @publicId={{place.public_id}}
                         @location={{point-to-coordinates place.location}}
-                        @icon={{icon iconUrl=(or place.avatar_url "/engines-dist/images/building-marker.png") iconSize=(array 16 16)}}
+                        @icon={{icon iconUrl=icone.url iconSize=icone.tamanho iconAnchor=icone.ponta popupAnchor=icone.popup}}
                         @riseOnHover={{true}}
                         @title={{place.address}}
                         @alt={{place.address}}
@@ -322,6 +324,7 @@
                         </marker.popup>
                         <marker.tooltip @permanent={{false}} @sticky={{true}} @direction="bottom">{{or place.name place.address}}</marker.tooltip>
                     </layers.marker>
+                    {{/let}}
                 {{/each}}
 
                 {{! Entregas: um alfinete vermelho no endereço de entrega de cada pedido em andamento (PedidosNoMapa), por baixo dos capacetes }}

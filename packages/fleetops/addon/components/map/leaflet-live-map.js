@@ -13,6 +13,7 @@ import { next, debounce, cancel } from '@ember/runloop';
 import getModelName from '@fleetbase/ember-core/utils/get-model-name';
 import ensureLeafletPluginsReady, { hasLeafletPluginsReady } from '../../utils/leaflet-plugin-loader';
 import capaceteDoMotoboy, { indexarSituacoes } from '../../utils/entregas-capacete';
+import iconeDoLocal from '../../utils/entregas-icone-da-loja';
 import aplicarOnlineDoMotoboy from '../../utils/entregas-online-do-motoboy';
 import { ALFINETE, mesmaLista, nomeNoAlfinete, pedidosValidos, tempoDesde } from '../../utils/entregas-pedidos-no-mapa';
 
@@ -417,6 +418,9 @@ export default class MapLeafletLiveMapComponent extends Component {
 
     /** Entregas: capacete do motoboy na cor da situação (usado como helper no template). */
     capaceteDoMotoboy = (driver) => capaceteDoMotoboy(driver, this.situacoesDosMotoboys);
+
+    /** Entregas: pin laranja da loja no lugar do predinho preto (avatar próprio do local continua valendo). */
+    iconeDoLocal = (place) => iconeDoLocal(place, 16);
 
     /** Entregas: "há X min" do alfinete; o relogio (atualizado a cada releitura) faz o texto andar. */
     tempoDoPedido = (pedido, relogio) => {

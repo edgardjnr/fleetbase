@@ -1,5 +1,6 @@
 import ResourceActionService from '@fleetbase/ember-core/services/resource-action';
 import leafletIcon from '@fleetbase/ember-core/utils/leaflet-icon';
+import iconeDoLocal from '../utils/entregas-icone-da-loja';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 
@@ -104,6 +105,8 @@ export default class PlaceActionsService extends ResourceActionService {
 
     @action locate(place, options = {}) {
         const { latitude, longitude, location } = place;
+        // Entregas: pin laranja da loja no lugar do predinho preto (avatar próprio do local continua valendo)
+        const icone = iconeDoLocal(place, 40);
 
         return this.modalsManager.show('modals/point-map', {
             title: this.intl.t('common.resource-location', { resource: place.address }),
@@ -111,8 +114,10 @@ export default class PlaceActionsService extends ResourceActionService {
             hideDeclineButton: true,
             resource: place,
             icon: leafletIcon({
-                iconUrl: place.avatar_url ?? '/engines-dist/images/building-marker.png',
-                iconSize: [40, 40],
+                iconUrl: icone.url,
+                iconSize: icone.tamanho,
+                iconAnchor: icone.ponta,
+                popupAnchor: icone.popup,
             }),
             popupText: place.address,
             tooltip: place.address,

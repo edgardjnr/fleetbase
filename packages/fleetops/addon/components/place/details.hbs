@@ -78,7 +78,7 @@
             <layers.tile @url={{leaflet-tile-url}} />
             <layers.marker
                 @id={{@resource.id}}
-                @icon={{icon iconUrl=(or @resource.avatar_url "/engines-dist/images/building-marker.png") iconSize=(array 40 40)}}
+                @icon={{icon iconUrl=this.icone.url iconSize=this.icone.tamanho iconAnchor=this.icone.ponta popupAnchor=this.icone.popup}}
                 @location={{point-to-coordinates @resource.location}}
                 @riseOnHover={{true}}
                 @title={{@resource.address}}
