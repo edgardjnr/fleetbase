@@ -135,6 +135,7 @@ confere(count(Fila::$jobs) === 1 && Fila::$jobs[0] instanceof AvancarOferta && F
 confere(json_decode(distribuicao()->fila, true)[0]['public_id'] === 'driver_a' && count(json_decode(distribuicao()->fila, true)) === 2, 'a fila calculada fica gravada');
 confere(!isset(Trava::$ocupadas['entregas:pedido:order-1']), 'a trava do pedido é solta');
 confere(logou('oferta enviada', 'info'), 'log: oferta enviada');
+$motoboysNosLogs = fn () => array_values(array_filter(array_map(fn ($r) => $r[2]['motoboy'] ?? null, \Illuminate\Support\Facades\Log::$registros)));
 confere(logsSem(['Ana', 'Bia', '-21.1']), 'logs só com ids e números (sem nome nem coordenada)');
 
 // recusa de A: passa a B na hora
@@ -152,6 +153,7 @@ confere(ofertas()[1]->resposta === 'vencida', 'job: a oferta pendente vence');
 confere(distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'fila_esgotada' && distribuicao()->aberta_em === '2026-10-07 10:00:45', 'fila esgotada: aberta a todos');
 confere(array_slice(avisos(), 2) === [['driver_a', OrderPing::class], ['driver_b', OrderPing::class]], 'OrderPing comum a todos no raio');
 confere(logou('aberta a todos', 'info'), 'log: aberta a todos');
+confere($motoboysNosLogs() !== [] && array_filter($motoboysNosLogs(), fn ($m) => !str_starts_with($m, 'driver_')) === [] && logou('oferta vencida', 'info'), 'logs com o public_id do motoboy (inclusive oferta vencida)');
 confere(array_column(json_decode(distribuicao()->fila, true), 'public_id') === ['driver_b'], 'fila vazia não apaga a última calculada (o painel a mostra)');
 
 // job velho (oferta já respondida): nada
@@ -221,6 +223,31 @@ confere(Distribuicao::ligada() === false, 'desligada');
 $dist->iniciar(pedidoDoCenario());
 confere(distribuicao() === null && Driver::$avisos === [], 'desligada: iniciar não faz nada (o listener chama o Fleet-Ops)');
 
+echo '== Corrida com outro pedido e motoboy que sumiu' . PHP_EOL;
+$dist   = cenario();
+$buscar = Candidatos::$buscarMotoboys;
+Candidatos::$buscarMotoboys = function ($pedido, $gpsRecente) use ($buscar) {
+    if ($gpsRecente) {
+        // outro pedido (outra trava) oferece a A enquanto esta fila é calculada
+        Distribuicoes::criarOferta((object) ['id' => 99, 'pedido_uuid' => 'order-9'], ['motoboy_uuid' => 'd-a', 'tempo_s' => 1, 'encaixe' => false, 'aproximado' => false], 1);
+    }
+
+    return $buscar($pedido, $gpsRecente);
+};
+$dist->iniciar(pedidoDoCenario());
+$doPedido = array_values(array_filter(ofertas(), fn ($o) => $o->pedido_uuid === 'order-1'));
+confere(count($doPedido) === 1 && $doPedido[0]->motoboy_uuid === 'd-b' && avisos() === [['driver_b', OfertaDePedido::class]], 'A ganhou a oferta de outro pedido no meio-tempo: a oferta vai a B');
+
+$dist = cenario();
+Driver::$todos = [Driver::$todos[1]]; // A sumiu (apagado) depois da consulta
+$dist->iniciar(pedidoDoCenario());
+confere(count(ofertas()) === 1 && ofertas()[0]->motoboy_uuid === 'd-b' && distribuicao()->fase === 'ofertas', 'motoboy da fila que sumiu: tenta o próximo');
+
+$dist = cenario();
+Driver::$todos = [];
+$dist->iniciar(pedidoDoCenario());
+confere(ofertas() === [] && distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'fila_esgotada', 'nenhum da fila existe: abre a todos (fila_esgotada)');
+
 echo '== Pedido que já tem motoboy ou foi encerrado' . PHP_EOL;
 $dist = cenario();
 $dist->iniciar(pedidoDoCenario());
@@ -244,6 +271,24 @@ confere($erro instanceof \RuntimeException && $erro->getMessage() === 'bug no es
 confere(distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'falha' && Distribuicoes::ofertaPendente(1) === null && Driver::$avisos === [], 'falha no ciclo: aberta (falha), sem oferta pendente e sem alarme (fica com o listener)');
 confere(logou('falha no ciclo; aberta a todos', 'warning') && logsSem(['bug no estimador']), 'log da falha: warning só com ids e a classe');
 confere(!isset(Trava::$ocupadas['entregas:pedido:order-1']), 'falha no ciclo: a trava é solta');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+$quebrado = new Distribuidor(new FilaDeCandidatos(new class extends EstimadorDeTempo {
+    public function matriz(array $pontos): array { throw new \RuntimeException('bug no estimador'); }
+}));
+Relogio::$agora = '2026-10-07 10:00:10';
+confere($quebrado->recusar('order-1', Driver::$todos[0]) === true, 'falha depois da recusa: devolve true (a recusa foi gravada)');
+confere(ofertas()[0]->resposta === 'recusada' && distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'falha' && Distribuicoes::ofertaPendente(1) === null, 'falha depois da recusa: aberta (falha), sem pendente');
+confere(array_slice(avisos(), 1) === [['driver_a', OrderPing::class], ['driver_b', OrderPing::class]] && logou('falha no ciclo; aberta a todos', 'warning'), 'falha depois da recusa: alarme geral e warning');
+confere(!isset(Trava::$ocupadas['entregas:pedido:order-1']), 'falha depois da recusa: a trava é solta');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+Relogio::$agora = '2026-10-07 10:00:31';
+$job = new AvancarOferta(1);
+confere(excecao(fn () => $job->handle($quebrado)) === null && $job->liberadoPor === null, 'falha depois do vencimento: o job não lança nem volta à fila');
+confere(ofertas()[0]->resposta === 'vencida' && distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'falha' && count(Driver::$avisos) === 3, 'falha depois do vencimento: aberta (falha) com o alarme geral');
 
 $dist = cenario();
 Fila::$falhar = new \RuntimeException('redis fora');

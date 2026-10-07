@@ -30,6 +30,10 @@ use Illuminate\Support\Facades\Log;
  * proximoPasso, nunca os públicos que a tomam. Lançam LockTimeoutException se a trava não sair: o chamador decide (o
  * listener cai no alarme geral; o job volta à fila). Uma falha no ciclo dentro do iniciar (banco, bug) abre a
  * distribuição na hora (motivo `falha`, sem alarme) e relança: o listener manda o alarme geral e o aceite fica livre.
+ * No vencer e no recusar (resposta já gravada), a falha abre a todos (falha) com o alarme geral e não relança.
+ *
+ * Oferta: ao primeiro da fila que ainda existe e que não ganhou a oferta de outro pedido enquanto a fila era calculada
+ * (as travas são por pedido); nenhum: abre a todos (fila_esgotada).
  *
  * Pedido que já tem motoboy ou está encerrado (o Order::updated não viu: saveQuietly) não recebe oferta nem alarme: a
  * distribuição é encerrada (atribuida/cancelada), como faz a varredura.
@@ -54,7 +58,7 @@ class Distribuidor
                 $this->avancarSemTrava($distribuicao, $pedido);
             } catch (\Throwable $e) {
                 // sem isto a distribuição ficava em `ofertas` e o aceite, restrito, até a varredura abrir pelo prazo
-                $this->abrirPorFalha($distribuicao, $pedido, $e);
+                $this->abrirPorFalha($distribuicao, $pedido->public_id, $e);
 
                 throw $e; // o listener manda o alarme geral
             }
@@ -81,8 +85,8 @@ class Distribuidor
                 return;
             }
             Distribuicoes::responder($ofertaId, Distribuicao::VENCIDA);
-            Log::info('[entregas] distribuição: oferta vencida', ['oferta' => $ofertaId, 'motoboy' => $oferta->motoboy_uuid]);
-            $this->proximoPasso((string) $oferta->pedido_uuid);
+            Log::info('[entregas] distribuição: oferta vencida', ['oferta' => $ofertaId] + $this->motoboyNoLog((string) $oferta->motoboy_uuid));
+            $this->proximoPassoOuAbrir((string) $oferta->pedido_uuid); // não relança: o job não deve repetir
         });
     }
 
@@ -97,9 +101,9 @@ class Distribuidor
             }
             Distribuicoes::responder((int) $oferta->id, Distribuicao::RECUSADA);
             Log::info('[entregas] distribuição: oferta recusada', ['oferta' => $oferta->id, 'motoboy' => $motoboy->public_id]);
-            $this->proximoPasso($pedidoUuid);
+            $this->proximoPassoOuAbrir($pedidoUuid);
 
-            return true;
+            return true; // a recusa foi gravada, mesmo que o passo seguinte tenha falhado
         });
     }
 
@@ -133,7 +137,7 @@ class Distribuidor
         Distribuicoes::responder((int) $oferta->id, Distribuicao::ACEITA);
         Distribuicoes::cancelarPendentes((int) $oferta->distribuicao_id);
         Distribuicoes::mudarFase((int) $oferta->distribuicao_id, Distribuicao::FASE_ENCERRADA, Distribuicao::ACEITA);
-        Log::info('[entregas] distribuição: encerrada (aceita)', ['oferta' => $oferta->id, 'motoboy' => $oferta->motoboy_uuid]);
+        Log::info('[entregas] distribuição: encerrada (aceita)', ['oferta' => $oferta->id] + $this->motoboyNoLog((string) $oferta->motoboy_uuid));
     }
 
     /** Relê a distribuição e o pedido e avança. Só de dentro da trava. */
@@ -144,6 +148,54 @@ class Distribuidor
         if ($distribuicao && $pedido) {
             $this->avancarSemTrava($distribuicao, $pedido);
         }
+    }
+
+    /**
+     * O próximo passo depois de uma resposta já gravada (recusa, vencimento). Uma falha (banco, bug) não pode deixar a
+     * distribuição em `ofertas` sem pendente (ninguém aceitaria até a varredura): abre a todos (falha) com o alarme
+     * geral e não relança.
+     */
+    protected function proximoPassoOuAbrir(string $pedidoUuid): void
+    {
+        try {
+            $this->proximoPasso($pedidoUuid);
+        } catch (\Throwable $erro) {
+            $this->abrirAposFalha($pedidoUuid, $erro);
+        }
+    }
+
+    protected function abrirAposFalha(string $pedidoUuid, \Throwable $erro): void
+    {
+        $distribuicao = null;
+        $pedido       = null;
+        try {
+            $distribuicao = Distribuicoes::doPedido($pedidoUuid);
+            $pedido       = $distribuicao ? Order::where('uuid', $pedidoUuid)->first() : null;
+        } catch (\Throwable $e) {
+            // segue com o que deu para ler
+        }
+        if (!$distribuicao) {
+            Log::warning('[entregas] distribuição: falha no ciclo; não foi possível abrir a distribuição', ['erro' => get_class($erro)]);
+
+            return;
+        }
+        if ($distribuicao->fase !== Distribuicao::FASE_OFERTAS) {
+            // já saiu de ofertas antes da falha (ex.: abriu e o alarme geral falhou): o aceite já é livre
+            Log::warning('[entregas] distribuição: falha no ciclo', ['distribuicao' => $distribuicao->id, 'fase' => $distribuicao->fase, 'erro' => get_class($erro)]);
+
+            return;
+        }
+        if ($pedido) {
+            try {
+                $this->abrirSemTrava($distribuicao, $pedido, Distribuicao::FALHA);
+                Log::warning('[entregas] distribuição: falha no ciclo; aberta a todos', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id, 'erro' => get_class($erro)]);
+
+                return;
+            } catch (\Throwable $e) {
+                // o alarme também falhou: ao menos abre (abaixo)
+            }
+        }
+        $this->abrirPorFalha($distribuicao, $pedido?->public_id, $erro);
     }
 
     protected function avancarSemTrava(object $distribuicao, Order $pedido): void
@@ -164,20 +216,30 @@ class Distribuidor
 
         $excluidos = array_merge(Distribuicoes::motoboysQueResponderam((int) $distribuicao->id), Distribuicoes::motoboysComOfertaPendente());
         $fila      = $this->fila->para($pedido, Candidatos::elegiveis($pedido, $excluidos));
-        if ($fila !== []) {
-            Distribuicoes::gravarFila((int) $distribuicao->id, $fila); // vazia não apaga a última (o painel a mostra)
-        }
-
         if ($fila === []) {
+            // vazia não apaga a última fila gravada (o painel a mostra)
             $jaOfereceu = Distribuicoes::ofertas((int) $distribuicao->id) !== [];
             $this->abrirSemTrava($distribuicao, $pedido, $jaOfereceu ? Distribuicao::FILA_ESGOTADA : Distribuicao::SEM_CANDIDATO);
 
             return;
         }
+        Distribuicoes::gravarFila((int) $distribuicao->id, $fila);
 
-        $primeiro = $fila[0];
-        $motoboy  = Driver::where('uuid', $primeiro['motoboy_uuid'])->first();
-        if (!$motoboy) {
+        // o primeiro da fila que ainda existe e que não ganhou, nesse meio-tempo, a oferta de outro pedido (outra trava)
+        $ocupados = Distribuicoes::motoboysComOfertaPendente();
+        $primeiro = null;
+        $motoboy  = null;
+        foreach ($fila as $candidato) {
+            if (in_array($candidato['motoboy_uuid'], $ocupados, true)) {
+                continue;
+            }
+            $motoboy = Driver::where('uuid', $candidato['motoboy_uuid'])->first();
+            if ($motoboy) {
+                $primeiro = $candidato;
+                break;
+            }
+        }
+        if (!$primeiro) {
             $this->abrirSemTrava($distribuicao, $pedido, Distribuicao::FILA_ESGOTADA);
 
             return;
@@ -193,7 +255,7 @@ class Distribuidor
         try {
             $motoboy->notify(new OfertaDePedido($pedido, $primeiro['distancia_m'], Distribuicoes::data($oferta->vence_em)));
         } catch (\Throwable $e) {
-            // o push falhou (FCM fora): a oferta vence sozinha e passa ao próximo
+            // o envio para a fila falhou (Redis); a oferta vence sozinha (o FCM roda no worker)
             Log::warning('[entregas] distribuição: push da oferta falhou', ['oferta' => $oferta->id, 'erro' => get_class($e)]);
         }
         Log::info('[entregas] distribuição: oferta enviada', ['pedido' => $pedido->public_id, 'oferta' => $oferta->id, 'motoboy' => $motoboy->public_id, 'posicao' => $posicao, 'tempo_s' => $primeiro['tempo_s'], 'encaixe' => $primeiro['encaixe']]);
@@ -225,15 +287,27 @@ class Distribuidor
     }
 
     /** O ciclo falhou no iniciar: aberta (falha) sem alarme, que fica com o listener. Falha aqui também só registra. */
-    protected function abrirPorFalha(object $distribuicao, Order $pedido, \Throwable $erro): void
+    protected function abrirPorFalha(object $distribuicao, ?string $pedidoPublicId, \Throwable $erro): void
     {
         try {
             Distribuicoes::cancelarPendentes((int) $distribuicao->id);
             Distribuicoes::mudarFase((int) $distribuicao->id, Distribuicao::FASE_ABERTA, Distribuicao::FALHA);
-            Log::warning('[entregas] distribuição: falha no ciclo; aberta a todos', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id, 'erro' => get_class($erro)]);
+            Log::warning('[entregas] distribuição: falha no ciclo; aberta a todos', ['pedido' => $pedidoPublicId, 'distribuicao' => $distribuicao->id, 'erro' => get_class($erro)]);
         } catch (\Throwable $e) {
-            Log::warning('[entregas] distribuição: falha no ciclo; não foi possível abrir a distribuição', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id, 'erro' => get_class($erro), 'erro_ao_abrir' => get_class($e)]);
+            Log::warning('[entregas] distribuição: falha no ciclo; não foi possível abrir a distribuição', ['pedido' => $pedidoPublicId, 'distribuicao' => $distribuicao->id, 'erro' => get_class($erro), 'erro_ao_abrir' => get_class($e)]);
         }
+    }
+
+    /** O motoboy no log: o public_id (como nos outros logs) ou, se não der para ler, o uuid com a chave explícita. */
+    protected function motoboyNoLog(string $uuid): array
+    {
+        try {
+            $publicId = Driver::where('uuid', $uuid)->first()?->public_id;
+        } catch (\Throwable $e) {
+            $publicId = null;
+        }
+
+        return $publicId ? ['motoboy' => $publicId] : ['motoboy_uuid' => $uuid];
     }
 
     /** Pedido já com motoboy ou encerrado: encerra a distribuição (atribuida/cancelada) e devolve true. */
