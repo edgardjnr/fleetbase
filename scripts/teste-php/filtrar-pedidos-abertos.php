@@ -49,20 +49,22 @@ function listar(string $token, array $query = ['adhoc' => 1, 'unassigned' => 1, 
     $request->token  = $token;
     $request->rota   = new Route($acao, []);
     $request->metodo = 'GET';
-    $resposta      ??= new JsonResponse(['data' => array_map(fn ($n) => ['id' => "order_$n", 'status' => 'dispatched', 'adhoc' => true], [1, 2, 3, 4])]);
+    $resposta      ??= new JsonResponse(array_map(fn ($n) => ['id' => "order_$n", 'status' => 'dispatched', 'adhoc' => true], [1, 2, 3, 4]));
 
     return (new FiltrarPedidosAbertosDoMotoboy())->handle($request, fn () => $resposta);
 }
 
-function ids($resposta): array { return array_column($resposta->getData(true)['data'], 'id'); }
+// a produção devolve array simples (JsonResource::withoutWrapping()); o `{data: [...]}` é o caso secundário
+function itens($resposta): array { $c = $resposta->getData(true); return isset($c['data']) ? $c['data'] : $c; }
+function ids($resposta): array { return array_column(itens($resposta), 'id'); }
 
 echo '== A lista do motoboy A' . PHP_EOL;
 cenario();
 $resposta = listar('12|token-do-motoboy-a');
 confere(ids($resposta) === ['order_1', 'order_3', 'order_4'], 'A vê a oferta dele, o aberto a todos e o sem distribuição; não vê a oferta de B (' . json_encode(ids($resposta)) . ')');
-$item = $resposta->getData(true)['data'][0];
+$item = itens($resposta)[0];
 confere($item['entregas_oferta']['vence_em'] === Distribuicoes::data('2026-10-07 10:00:30')->toIso8601String() && $item['entregas_oferta']['tempo_estimado_s'] === 400, 'a oferta dele traz entregas_oferta (vence_em ISO e tempo) (' . json_encode($item['entregas_oferta'] ?? null) . ')');
-confere(!isset($resposta->getData(true)['data'][1]['entregas_oferta']), 'os outros não trazem entregas_oferta');
+confere(!isset(itens($resposta)[1]['entregas_oferta']), 'os outros não trazem entregas_oferta');
 
 cenario();
 session(['user' => 'u-b']);
@@ -78,8 +80,14 @@ confere(ids(listar('12|token-do-motoboy-a')) === ['order_1', 'order_2', 'order_3
 Config::$valores['services.entregas.distribuicao'] = '1';
 
 cenario();
-$lista = new JsonResponse([['id' => 'order_2'], ['id' => 'order_3']]);
-confere(array_column(listar('12|token-do-motoboy-a', ['adhoc' => 1, 'unassigned' => 1], $lista)->getData(true), 'id') === ['order_3'], 'corpo como array simples também é filtrado');
+$lista = new JsonResponse(['data' => [['id' => 'order_2'], ['id' => 'order_3']]]);
+confere(ids(listar('12|token-do-motoboy-a', ['adhoc' => 1, 'unassigned' => 1], $lista)) === ['order_3'] && isset($lista->getData(true)['data']), 'corpo {data: [...]} também é filtrado e continua com o envelope');
+
+cenario();
+Banco::$consultadas = [];
+listar('12|token-do-motoboy-a', ['adhoc' => 1, 'unassigned' => 1], new JsonResponse([]));
+listar('12|token-do-motoboy-a', ['adhoc' => 1, 'unassigned' => 1], new JsonResponse([['status' => 'x']]));
+confere(Banco::$consultadas === [] && !isset(Banco::$consultadas['drivers']), 'lista vazia ou sem id: sai antes de buscar o motoboy e o banco');
 $texto = 'não é json';
 confere(listar('12|token-do-motoboy-a', ['adhoc' => 1, 'unassigned' => 1], $texto) === $texto, 'resposta que não é JsonResponse: devolvida como veio');
 

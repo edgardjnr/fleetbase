@@ -14,6 +14,7 @@ use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use App\Http\Controllers\Entregas\PortalLojaController;
 use App\Http\Middleware\AvisarOnlineDoMotoboy;
 use App\Http\Middleware\BarrarAceiteDePedidoEncerrado;
+use App\Http\Middleware\FiltrarPedidosAbertosDoMotoboy;
 use App\Http\Middleware\IncluirNotasNaListaDePedidos;
 use App\Http\Middleware\RegrasDoPedidoIfood;
 use Illuminate\Cache\RateLimiting\Limit;

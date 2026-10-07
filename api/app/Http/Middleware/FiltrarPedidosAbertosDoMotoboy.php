@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Log;
  * com a distribuição de pedidos abertos ligada: o pedido em fase `ofertas` só aparece para o motoboy que tem a oferta
  * pendente dele, com `entregas_oferta: {vence_em, tempo_estimado_s}`; os abertos a todos e os sem distribuição
  * continuam. Grupo fleetbase.api, depois do $next. Nunca lança: em erro devolve a resposta original e registra.
+ * Formato da resposta: na produção a lista é um array JSON simples `[...]` (o core aplica JsonResource::withoutWrapping());
+ * o `{data: [...]}` do recurso com envelope também é tratado. Cada item tem `id` = public_id.
  * Funciona com o APK atual (que só lista): o APK novo lê o entregas_oferta para o cronômetro.
  */
 class FiltrarPedidosAbertosDoMotoboy
@@ -30,10 +32,7 @@ class FiltrarPedidosAbertosDoMotoboy
 
         try {
             if ($this->ehListaDeAbertos($request) && Distribuicao::ligada()) {
-                $motoboy = MotoboyDaSessao::motoboy($request);
-                if ($motoboy) {
-                    return $this->filtrar($resposta, (string) $motoboy->uuid, (string) session('company'));
-                }
+                return $this->filtrar($request, $resposta);
             }
         } catch (\Throwable $e) {
             Log::warning('[entregas] distribuição: filtro da lista: ' . get_class($e));
@@ -53,7 +52,7 @@ class FiltrarPedidosAbertosDoMotoboy
         return $acao === static::LISTA;
     }
 
-    private function filtrar($resposta, string $motoboyUuid, string $empresa)
+    private function filtrar(Request $request, $resposta)
     {
         if (!$resposta instanceof JsonResponse || $resposta->getStatusCode() !== 200) {
             return $resposta;
@@ -64,7 +63,7 @@ class FiltrarPedidosAbertosDoMotoboy
             return $resposta;
         }
 
-        // o item da lista traz `id` = public_id (Resources1Order, requisição pública). Sem join (a empresa é filtrada
+        // o item da lista traz `id` = public_id (Resources/v1/Order, requisição pública). Sem join (a empresa é filtrada
         // nas duas tabelas): os uuids dos pedidos da lista e, entre eles, os que estão em fase ofertas
         $ids = [];
         foreach ($itens as $item) {
@@ -75,6 +74,13 @@ class FiltrarPedidosAbertosDoMotoboy
         if ($ids === []) {
             return $resposta;
         }
+        // só agora o motoboy da sessão: lista vazia ou sem id nem chega aqui
+        $motoboy = MotoboyDaSessao::motoboy($request);
+        if (!$motoboy) {
+            return $resposta;
+        }
+        $motoboyUuid = (string) $motoboy->uuid;
+        $empresa     = (string) session('company');
         $uuidDe = DB::table('orders')->where('company_uuid', $empresa)->whereIn('public_id', array_values(array_unique($ids)))->pluck('uuid', 'public_id')->all();
         if ($uuidDe === []) {
             return $resposta;
@@ -87,11 +93,11 @@ class FiltrarPedidosAbertosDoMotoboy
         if ($emOfertas->isEmpty()) {
             return $resposta;
         }
+        $publicIdDe  = array_flip($uuidDe); // uuid => public_id
         $porPublicId = [];
         foreach ($emOfertas as $linha) {
-            $publicId = array_search($linha->pedido_uuid, $uuidDe, true);
-            if ($publicId !== false) {
-                $porPublicId[$publicId] = $linha;
+            if (isset($publicIdDe[$linha->pedido_uuid])) {
+                $porPublicId[$publicIdDe[$linha->pedido_uuid]] = $linha;
             }
         }
 
