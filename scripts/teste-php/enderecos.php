@@ -6,8 +6,14 @@
 
 require __DIR__ . '/stubs-ifood.php';
 require '/repo/api/app/Support/Entregas/Enderecos/EnderecoBrasileiro.php';
+require '/repo/api/app/Support/Entregas/Enderecos/ErroGooglePlaces.php';
+require '/repo/api/app/Support/Entregas/Enderecos/ClienteGooglePlaces.php';
 
+use App\Support\Entregas\Enderecos\ClienteGooglePlaces;
 use App\Support\Entregas\Enderecos\EnderecoBrasileiro;
+use App\Support\Entregas\Enderecos\ErroGooglePlaces;
+use Teste\Config;
+use Teste\Http;
 
 function componente(string $longo, array $tipos, ?string $curto = null): array
 {
@@ -71,5 +77,60 @@ confere(EnderecoBrasileiro::numeroDigitado('rua olinda 45 apto 12', 'Rua Olinda'
 confere(EnderecoBrasileiro::numeroDigitado('rua olinda, 45, 14025-150', 'Rua Olinda') === '45', 'número digitado: ignora o CEP');
 confere(EnderecoBrasileiro::numeroDigitado('av brasil 1200a', 'Avenida Brasil') === '1200A', 'número digitado com letra');
 confere(EnderecoBrasileiro::numeroDigitado('rua olinda', 'Rua Olinda') === null, 'sem número digitado');
+
+/** Estado limpo, com a chave do Google em Admin → Serviços ($chave vazia = sem chave). */
+function reiniciarEnderecos(string $chave = 'chave-teste'): void
+{
+    reiniciarIfood();
+    Config::$valores['services.google_maps.api_key'] = $chave;
+}
+
+function previsao(string $id, string $principal, string $secundario): array
+{
+    return ['placePrediction' => [
+        'placeId'          => $id,
+        'text'             => ['text' => "{$principal} - {$secundario}"],
+        'structuredFormat' => ['mainText' => ['text' => $principal], 'secondaryText' => ['text' => $secundario]],
+    ]];
+}
+
+echo '== ClienteGooglePlaces' . PHP_EOL;
+reiniciarEnderecos('');
+confere(!ClienteGooglePlaces::configurado(), 'sem chave em Admin → Serviços: não configurado');
+$erro = excecao(fn () => (new ClienteGooglePlaces())->sugestoes('rua olinda', -21.19, -47.79, 'sessao-1'));
+confere($erro instanceof ErroGooglePlaces && $erro->status === 0 && Http::$chamadas === [], 'sem chave: erro com status 0, sem chamar o Google');
+
+reiniciarEnderecos();
+confere(ClienteGooglePlaces::configurado(), 'com chave: configurado');
+Http::responder(200, ['suggestions' => [
+    previsao('ChIJolinda45', 'Rua Olinda, 45', 'Jardim Paulista, Ribeirão Preto - SP, Brasil'),
+    ['queryPrediction' => ['text' => ['text' => 'rua olinda']]],
+]]);
+$sugestoes = (new ClienteGooglePlaces())->sugestoes('rua olinda 45', -21.19, -47.79, 'sessao-1');
+confere($sugestoes === [['place_id' => 'ChIJolinda45', 'principal' => 'Rua Olinda, 45', 'secundario' => 'Jardim Paulista, Ribeirão Preto - SP, Brasil']], 'sugestões: só as previsões de lugar, com id, linha principal e secundária');
+$chamada = Http::$chamadas[0];
+confere($chamada['metodo'] === 'POST' && $chamada['url'] === 'https://places.googleapis.com/v1/places:autocomplete', 'sugestões: POST places:autocomplete');
+confere(($chamada['headers']['X-Goog-Api-Key'] ?? null) === 'chave-teste', 'sugestões: chave no cabeçalho X-Goog-Api-Key');
+confere($chamada['dados']['input'] === 'rua olinda 45' && $chamada['dados']['includedRegionCodes'] === ['br'] && $chamada['dados']['languageCode'] === 'pt-BR', 'sugestões: texto, só Brasil e pt-BR');
+confere($chamada['dados']['locationBias'] === ['circle' => ['center' => ['latitude' => -21.19, 'longitude' => -47.79], 'radius' => 30000.0]], 'sugestões: preferência num raio de 30 km da referência');
+confere($chamada['dados']['sessionToken'] === 'sessao-1' && $chamada['timeout'] === ClienteGooglePlaces::TEMPO_LIMITE, 'sugestões: token de sessão e tempo limite');
+
+reiniciarEnderecos();
+Http::responder(200, detalhesOlinda());
+$detalhes = (new ClienteGooglePlaces())->detalhes('ChIJolinda45', 'sessao-1');
+confere(($detalhes['id'] ?? null) === 'ChIJolinda45', 'detalhes: devolve o corpo da resposta');
+$chamada = Http::$chamadas[0];
+confere($chamada['metodo'] === 'GET' && $chamada['url'] === 'https://places.googleapis.com/v1/places/ChIJolinda45', 'detalhes: GET places/{id}');
+confere(($chamada['headers']['X-Goog-FieldMask'] ?? null) === 'id,formattedAddress,addressComponents,location', 'detalhes: só os campos usados (FieldMask)');
+confere($chamada['dados'] === ['languageCode' => 'pt-BR', 'regionCode' => 'br', 'sessionToken' => 'sessao-1'], 'detalhes: pt-BR, Brasil e o token da sessão');
+
+reiniciarEnderecos();
+Http::responder(403, ['error' => ['status' => 'PERMISSION_DENIED']]);
+$erro = excecao(fn () => (new ClienteGooglePlaces())->detalhes('ChIJolinda45', 'sessao-1'));
+confere($erro instanceof ErroGooglePlaces && $erro->status === 403, 'resposta fora de 2xx: erro com o status');
+reiniciarEnderecos();
+Http::falharConexao();
+$erro = excecao(fn () => (new ClienteGooglePlaces())->sugestoes('rua olinda', -21.19, -47.79, 'sessao-1'));
+confere($erro instanceof ErroGooglePlaces && $erro->status === 0, 'falha de rede: erro com status 0');
 
 resumo();
