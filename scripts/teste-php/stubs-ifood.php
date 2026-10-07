@@ -362,13 +362,25 @@ namespace Teste {
 
         public function delay($quando)
         {
-            $segundos = $quando instanceof \DateTimeInterface ? $quando->getTimestamp() - now()->getTimestamp() : (int) $quando;
+            if ($quando instanceof \DateTimeInterface) {
+                $segundos = $quando->getTimestamp() - now()->getTimestamp();
+            } elseif ($quando instanceof \DateInterval) {
+                $segundos = (int) (new \DateTimeImmutable('@0'))->add($quando)->getTimestamp();
+            } else {
+                $segundos = (int) $quando;
+            }
             self::$atrasos[count(Fila::$jobs) - 1] = $segundos;
+            $this->job->delay                      = $segundos;
 
             return $this;
         }
 
-        public function onQueue($fila) { return $this; }
+        public function onQueue($fila)
+        {
+            $this->job->queue = $fila;
+
+            return $this;
+        }
         public function afterCommit() { return $this; }
     }
 
@@ -501,7 +513,7 @@ namespace Teste {
         /** Tabela => exceção que o DB::table lança (o banco fora do ar). */
         public static array $falharAoConsultar = [];
         /**
-         * Colunas e colunas únicas das tabelas entregas_ifood_*, lidas das migrations (carregadas uma vez, na primeira
+         * Colunas e colunas únicas das tabelas entregas_ifood_* e da distribuição (entregas_distribuicoes, entregas_ofertas), lidas das migrations (carregadas uma vez, na primeira
          * consulta): tabela => ['colunas' => [nomes], 'unicas' => [nomes]]. Assim um nome de coluna errado falha aqui,
          * como o "Unknown column" do MySQL, e a lista de únicas não se descola das migrations.
          */
@@ -524,7 +536,7 @@ namespace Teste {
             self::$falharAoConsultar = [];
         }
 
-        /** O esquema das migrations do iFood: lê os arquivos uma vez, sem mexer no Schema::$criadas dos testes. */
+        /** O esquema das migrations do iFood e da distribuição: lê os arquivos uma vez, sem mexer no Schema::$criadas dos testes. */
         private static function esquema(): array
         {
             if (self::$esquema !== null) {
@@ -587,13 +599,13 @@ namespace Teste {
             return self::$esquema;
         }
 
-        /** Colunas únicas da tabela (NULL não conta, como no MySQL); vazio para tabela fora do esquema do iFood. */
+        /** Colunas únicas da tabela (NULL não conta, como no MySQL); vazio para tabela fora do esquema do iFood e da distribuição. */
         public static function unicasDe(string $tabela): array
         {
             return self::esquema()[$tabela]['unicas'] ?? [];
         }
 
-        /** Lança como o MySQL ("Unknown column") se a coluna não existe na tabela entregas_ifood_*; as outras tabelas passam. */
+        /** Lança como o MySQL ("Unknown column") se a coluna não existe na tabela entregas_ifood_*, entregas_distribuicoes ou entregas_ofertas; as outras tabelas passam. */
         public static function exigirColuna(string $tabela, $coluna): void
         {
             // "tabela.coluna" (com join): confere na tabela do prefixo

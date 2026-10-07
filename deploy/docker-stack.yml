@@ -68,6 +68,8 @@ x-api-env: &api-env
   # trava "Atualize o app" dos pedidos iFood (RegrasDoPedidoIfood): vazio = desligada; 1 só com o APK novo em todos os
   # celulares (CLAUDE.md, "Integração iFood (etapa 3)")
   ENTREGAS_IFOOD_EXIGE_APP_NOVO: ${ENTREGAS_IFOOD_EXIGE_APP_NOVO:-}
+  # distribuição de pedidos abertos (oferta um a um): 1 liga; vazio = alarme geral do Fleet-Ops
+  ENTREGAS_DISTRIBUICAO: ${ENTREGAS_DISTRIBUICAO:-}
 
 x-deploy: &default-deploy
   replicas: 1

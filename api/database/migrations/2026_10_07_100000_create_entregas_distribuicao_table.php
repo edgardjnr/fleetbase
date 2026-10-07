@@ -48,6 +48,7 @@ return new class extends Migration
             $table->timestamps();
             $table->index(['pedido_uuid', 'resposta']);
             $table->index(['motoboy_uuid', 'resposta']);
+            $table->index(['resposta', 'vence_em']);
         });
     }
 
