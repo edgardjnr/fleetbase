@@ -12,7 +12,6 @@ use Fleetbase\FleetOps\Notifications\WaypointCompleted;
 use Fleetbase\Notifications\ChatMessageReceived;
 use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\CartaoDoAlarme;
-use App\Support\Entregas\Distribuicao\Distribuicao;
 use App\Support\Entregas\Ifood\CancelamentoPeloIfood;
 use App\Support\Entregas\Ifood\PedidosIfood;
 use Fleetbase\Notifications\TestPushNotification;
@@ -246,7 +245,7 @@ class AvisosDoMotoboy
         return $notificacao instanceof OfertaDePedido ? $notificacao->dadosDaOferta() : [];
     }
 
-    /** O android.ttl do alarme: a oferta vale o tempo que falta até vencer (1 s a SEGUNDOS_DA_OFERTA); o resto em VALIDADE_ALARME. */
+    /** O android.ttl do alarme: a oferta vale o tempo que falta até vencer (1 s ao segundosDaOferta dela: 30 s, ou 20 s em rodadas); o resto em VALIDADE_ALARME. */
     protected static function validade(Notification $notificacao): string
     {
         if (!$notificacao instanceof OfertaDePedido) {
@@ -256,7 +255,7 @@ class AvisosDoMotoboy
         // o que falta até o vencimento: um push atrasado na fila não toca os 30 s cheios de uma oferta que já passou
         $falta = $notificacao->venceEm->getTimestamp() - now()->getTimestamp();
 
-        return max(1, min(Distribuicao::SEGUNDOS_DA_OFERTA, $falta)) . 's';
+        return max(1, min($notificacao->segundosDaOferta, $falta)) . 's';
     }
 
     /**
