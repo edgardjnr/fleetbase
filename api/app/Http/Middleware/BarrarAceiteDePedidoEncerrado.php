@@ -44,6 +44,10 @@ use Illuminate\Support\Facades\Log;
  * vencida, enquanto ninguém foi oferecido depois), `Distribuicoes::ofertaParaAceite`; quem aceita é o motoboy da sessão
  * ou, sem ele, o `assign`. Os outros levam 409. O aceite válido (resposta 2xx do startOrder) registra a oferta como
  * aceita (`Distribuidor::registrarAceite`, sem trava própria: já roda dentro desta). Na fase `aberta` o aceite é livre.
+ * Em rodadas (ENTREGAS_DISTRIBUICAO_RODADAS), com a lista aberta (`lista_aberta_em`) qualquer motoboy aceita: quem tem
+ * a oferta grava `aceita` nela; os outros, a linha `aceita_pela_lista` (`Distribuidor::registrarAceitePelaLista`, que
+ * cancela a pendente). E quem tenta aceitar um pedido aberto que outro já iniciou leva 409 "Este pedido passou para
+ * outro motoboy." (sem rodadas, segue o "Order has already started." do Fleet-Ops).
  *
  * O cancelamento da API v1 (DELETE v1/orders/{id}/cancel, OrderController@cancelOrder, o caminho provável da
  * integração iFood) também roda com a trava, sem conferência nenhuma: ele cancela até pedido iniciado, que é
@@ -170,8 +174,22 @@ class BarrarAceiteDePedidoEncerrado
             return $this->recusar('Este pedido passou para outro motoboy.', 409);
         }
 
+        if ($atual && $this->aceitoPorOutroNaDistribuicao($request, $atual)) {
+            Log::info('[entregas] aceite do motoboy barrado: pedido passou para outro motoboy', [
+                'pedido'  => $pedido->public_id,
+                'motoboy' => $request->input('assign'),
+                'ip'      => $request->ip(),
+            ]);
+
+            return $this->recusar('Este pedido passou para outro motoboy.', 409);
+        }
+
         // distribuição de pedidos abertos: na fase ofertas só quem tem a oferta aceita (Distribuicoes::ofertaParaAceite)
         if ($atual && Distribuicao::ligada() && Distribuicoes::emOfertas((string) $atual->uuid)) {
+            $distribuicao = Distribuicoes::doPedido((string) $atual->uuid);
+            if (Distribuicao::emRodadas() && $distribuicao && $distribuicao->lista_aberta_em) {
+                return $this->aceitarPelaLista($request, $next, $pedido, $distribuicao);
+            }
             $quem   = $this->quemAceita($request);
             $oferta = $quem && !$this->assignDivergeDaSessao($request)
                 ? Distribuicoes::ofertaParaAceite((string) $atual->uuid, $quem)
@@ -230,6 +248,46 @@ class BarrarAceiteDePedidoEncerrado
         }
 
         return false;
+    }
+
+    /**
+     * Lista aberta (distribuição em rodadas): qualquer motoboy aceita (o primeiro leva; a trava garante um só). Com o 2xx
+     * do startOrder, quem tem a oferta (a pendente, ou a vencida enquanto ninguém foi oferecido depois) grava `aceita`
+     * nela; os outros, `aceita_pela_lista`. Uma falha ao registrar nunca derruba o aceite (a varredura encerra).
+     */
+    protected function aceitarPelaLista(Request $request, Closure $next, Order $pedido, object $distribuicao)
+    {
+        $quem     = $this->quemAceita($request);
+        $oferta   = $quem ? Distribuicoes::ofertaParaAceite((string) $pedido->uuid, $quem) : null;
+        $resposta = $next($request);
+        if ($this->deuCerto($resposta)) {
+            try {
+                $oferta
+                    ? app(Distribuidor::class)->registrarAceite($oferta)
+                    : app(Distribuidor::class)->registrarAceitePelaLista($distribuicao, $quem);
+            } catch (\Throwable $e) {
+                Log::warning('[entregas] distribuição: falha ao registrar o aceite', [
+                    'pedido' => $pedido->public_id,
+                    'erro'   => get_class($e),
+                ]);
+            }
+        }
+
+        return $resposta;
+    }
+
+    /**
+     * Em rodadas: o pedido aberto já foi aceito (iniciado, com motoboy) e quem tenta aceitar é outro (motoboy da sessão
+     * ou `assign`). Sem rodadas: false (o Fleet-Ops responde "Order has already started.").
+     */
+    protected function aceitoPorOutroNaDistribuicao(Request $request, $pedido): bool
+    {
+        if (!Distribuicao::emRodadas() || !$pedido->adhoc || !$pedido->driver_assigned_uuid || !$pedido->started) {
+            return false;
+        }
+        $quem = $this->quemAceita($request);
+
+        return $quem !== null && $quem !== (string) $pedido->driver_assigned_uuid;
     }
 
     /** O uuid de quem está aceitando: o motoboy da sessão ou, sem ele, o `assign` (public_id). */

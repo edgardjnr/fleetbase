@@ -178,4 +178,50 @@ confere(aceitar(TOKEN_A, ['assign' => 'driver_a'], API . 'startOrder', $ok) === 
     && count(array_filter(Log::$registros, fn ($l) => str_contains(json_encode($l), 'falha ao registrar o aceite'))) === 1, 'registrarAceite lança: a resposta 2xx volta intacta e o warning é registrado');
 unset(\Teste\Container::$instancias[\App\Support\Entregas\Distribuicao\Distribuidor::class]);
 
+echo '== Distribuição em rodadas: lista aberta e quem chega depois' . PHP_EOL;
+
+function comRodadas(array $ofertas, bool $listaAberta): void
+{
+    comDistribuicao($ofertas);
+    Config::$valores['services.entregas.distribuicao_rodadas'] = '1';
+    if ($listaAberta) {
+        Distribuicoes::abrirLista(1);
+    }
+}
+
+comRodadas([['d-a', 'pendente']], false);
+session(['user' => 'u-b']);
+confere(aceitar('13|token-do-motoboy-b', ['assign' => 'driver_b'])->status === 409, 'lista fechada (rodada 1 da volta 1): só quem tem a oferta, como hoje');
+
+comRodadas([['d-a', 'pendente']], true);
+session(['user' => 'u-b']);
+confere(aceitar('13|token-do-motoboy-b', ['assign' => 'driver_b']) === 'passou', 'lista aberta: B aceita com a oferta de A pendente');
+$linhas = DB::table('entregas_ofertas')->orderBy('id')->get()->all();
+confere(count($linhas) === 2 && $linhas[0]->resposta === 'cancelada' && $linhas[1]->resposta === 'aceita_pela_lista' && $linhas[1]->motoboy_uuid === 'd-b', 'a oferta de A vira cancelada; B ganha a linha aceita_pela_lista');
+confere(DB::table('entregas_distribuicoes')->where('id', 1)->value('fase') === 'encerrada' && DB::table('entregas_distribuicoes')->where('id', 1)->value('motivo') === 'aceita', 'distribuição encerrada (aceita)');
+
+comRodadas([['d-a', 'pendente']], true);
+confere(aceitar(TOKEN_A, ['assign' => 'driver_a']) === 'passou' && DB::table('entregas_ofertas')->where('id', 1)->value('resposta') === 'aceita' && DB::table('entregas_ofertas')->count() === 1, 'lista aberta, quem tem a oferta aceita: aceita na própria oferta, sem linha nova');
+
+comRodadas([['d-a', 'pendente']], true);
+session(['user' => 'u-b']);
+$falha = response()->json(['error' => 'Order has already started.'], 400);
+confere(aceitar('13|token-do-motoboy-b', ['assign' => 'driver_b'], API . 'startOrder', $falha) === $falha && DB::table('entregas_ofertas')->where('id', 1)->value('resposta') === 'pendente' && DB::table('entregas_ofertas')->count() === 1, 'o Fleet-Ops recusou o aceite: nada gravado');
+
+comRodadas([['d-a', 'pendente']], true);
+Config::$valores['services.entregas.distribuicao_rodadas'] = '';
+session(['user' => 'u-b']);
+confere(aceitar('13|token-do-motoboy-b', ['assign' => 'driver_b'])->status === 409, 'rodadas desligadas: o lista_aberta_em não vale (só quem tem a oferta)');
+
+cenario(['adhoc' => true, 'driver_assigned_uuid' => 'd-b', 'started' => true]);
+Config::$valores['services.entregas.distribuicao']         = '1';
+Config::$valores['services.entregas.distribuicao_rodadas'] = '1';
+$resposta = aceitar(TOKEN_A, ['assign' => 'driver_a']);
+confere($resposta->status === 409 && $resposta->dados === ['error' => 'Este pedido passou para outro motoboy.', 'errors' => ['Este pedido passou para outro motoboy.']], 'em rodadas: pedido aberto já aceito por B, A chega depois: 409');
+session(['user' => 'u-b']);
+confere(aceitar('13|token-do-motoboy-b', ['assign' => 'driver_b']) === 'passou', 'o próprio B: passa (o Fleet-Ops responde)');
+Config::$valores['services.entregas.distribuicao_rodadas'] = '';
+session(['user' => 'u-a']);
+confere(aceitar(TOKEN_A, ['assign' => 'driver_a']) === 'passou', 'rodadas desligadas: como hoje (o Fleet-Ops responde "already started")');
+
 resumo();
