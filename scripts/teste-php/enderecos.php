@@ -8,7 +8,9 @@ require __DIR__ . '/stubs-ifood.php';
 require '/repo/api/app/Support/Entregas/Enderecos/EnderecoBrasileiro.php';
 require '/repo/api/app/Support/Entregas/Enderecos/ErroGooglePlaces.php';
 require '/repo/api/app/Support/Entregas/Enderecos/ClienteGooglePlaces.php';
+require '/repo/api/app/Support/Entregas/Enderecos/BuscaDeEnderecos.php';
 
+use App\Support\Entregas\Enderecos\BuscaDeEnderecos;
 use App\Support\Entregas\Enderecos\ClienteGooglePlaces;
 use App\Support\Entregas\Enderecos\EnderecoBrasileiro;
 use App\Support\Entregas\Enderecos\ErroGooglePlaces;
@@ -132,5 +134,55 @@ reiniciarEnderecos();
 Http::falharConexao();
 $erro = excecao(fn () => (new ClienteGooglePlaces())->sugestoes('rua olinda', -21.19, -47.79, 'sessao-1'));
 confere($erro instanceof ErroGooglePlaces && $erro->status === 0, 'falha de rede: erro com status 0');
+
+echo '== BuscaDeEnderecos' . PHP_EOL;
+confere(BuscaDeEnderecos::referencia('-21.2', '-47.8') === [-21.2, -47.8], 'referência: a posição de quem digita');
+confere(BuscaDeEnderecos::referencia(null, null, [-21.17, -47.81]) === [-21.17, -47.81], 'referência: sem posição, a loja');
+confere(BuscaDeEnderecos::referencia(null, null) === BuscaDeEnderecos::CENTRO_PADRAO, 'referência: sem nada, o centro padrão (Ribeirão Preto)');
+confere(BuscaDeEnderecos::referencia('0', '0') === BuscaDeEnderecos::CENTRO_PADRAO, 'referência: 0,0 não vale');
+confere(BuscaDeEnderecos::referencia('abc', '1') === BuscaDeEnderecos::CENTRO_PADRAO, 'referência: texto não vale');
+confere(BuscaDeEnderecos::referencia('95', '10') === BuscaDeEnderecos::CENTRO_PADRAO, 'referência: latitude fora da faixa não vale');
+
+reiniciarEnderecos();
+$busca = new BuscaDeEnderecos(new ClienteGooglePlaces());
+confere($busca->sugestoes('ru', [-21.19, -47.79], 'sessao-1') === [] && Http::$chamadas === [], 'menos de 3 caracteres: sem chamar o Google');
+reiniciarEnderecos('');
+confere((new BuscaDeEnderecos(new ClienteGooglePlaces()))->sugestoes('rua olinda', [-21.19, -47.79], 'sessao-1') === [] && Http::$chamadas === [], 'sem chave: lista vazia, sem chamar o Google');
+
+reiniciarEnderecos();
+Http::responder(200, ['suggestions' => array_map(fn ($i) => previsao("ChIJ{$i}", "Rua {$i}", 'Ribeirão Preto - SP'), range(1, 7))]);
+$lista = (new BuscaDeEnderecos(new ClienteGooglePlaces()))->sugestoes('  rua olinda 45  ', [-21.19, -47.79], 'sessao-1');
+confere(count($lista) === BuscaDeEnderecos::LIMITE_DE_SUGESTOES, 'no máximo 5 sugestões');
+confere(Http::$chamadas[0]['dados']['input'] === 'rua olinda 45', 'o texto vai sem os espaços das pontas');
+
+reiniciarEnderecos();
+Http::responder(500, 'erro');
+confere((new BuscaDeEnderecos(new ClienteGooglePlaces()))->sugestoes('rua olinda 45', [-21.19, -47.79], 'sessao-1') === [], 'Google fora: lista vazia');
+confere(logou('[entregas] endereços: sugestões falharam (500)', 'warning'), 'Google fora: log com o status');
+confere(logsSem(['rua olinda', 'chave-teste']), 'o log não leva o texto digitado nem a chave');
+
+reiniciarEnderecos();
+Http::responder(200, detalhesOlinda(['numero']));
+$detalhes = (new BuscaDeEnderecos(new ClienteGooglePlaces()))->detalhes('ChIJolinda45', 'sessao-1', 'rua olinda 45');
+confere(($detalhes['street1'] ?? null) === 'Rua Olinda, 45' && ($detalhes['city'] ?? null) === 'Ribeirão Preto', 'detalhes: endereço brasileiro, com o número digitado');
+
+reiniciarEnderecos();
+$semLocal = detalhesOlinda();
+unset($semLocal['location']);
+Http::responder(200, $semLocal);
+confere((new BuscaDeEnderecos(new ClienteGooglePlaces()))->detalhes('ChIJolinda45', 'sessao-1', null) === null, 'detalhes sem coordenadas: falha (null)');
+confere(logou('[entregas] endereços: detalhes sem coordenadas', 'warning'), 'detalhes sem coordenadas: log');
+
+reiniciarEnderecos();
+Http::responder(404, ['error' => ['status' => 'NOT_FOUND']]);
+confere((new BuscaDeEnderecos(new ClienteGooglePlaces()))->detalhes('ChIJolinda45', 'sessao-1', null) === null, 'detalhes com erro do Google: null');
+confere(logou('[entregas] endereços: detalhes falharam (404)', 'warning'), 'detalhes com erro do Google: log com o status');
+
+$locais = BuscaDeEnderecos::comoLocais([['place_id' => 'ChIJolinda45', 'principal' => 'Rua Olinda, 45', 'secundario' => 'Jardim Paulista, Ribeirão Preto - SP, Brasil']], 'sessao-1', 'rua olinda 45');
+confere($locais === [[
+    'street1' => 'Rua Olinda, 45',
+    'street2' => 'Jardim Paulista, Ribeirão Preto - SP, Brasil',
+    'meta'    => ['entregas_sugestao' => ['place_id' => 'ChIJolinda45', 'sessao' => 'sessao-1', 'texto' => 'rua olinda 45']],
+]], 'sugestões como Place para o campo do pedido, marcadas em meta.entregas_sugestao');
 
 resumo();
