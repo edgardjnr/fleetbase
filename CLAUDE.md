@@ -689,7 +689,8 @@ Onde ver:
 - a lista de listeners do `OrderDispatched` no `EventServiceProvider` do Fleet-Ops (e do Storefront);
 - o `handle()` do `HandleOrderDispatched` (a parte repetida no `DistribuirPedidoAberto`) e os métodos protegidos `doesntHaveDispatchActivity`, `getDispatchActivity`, `nearbyAvailableDrivers` e `notifyAdhocDriver` (o `distribuicao-ciclo.php` confere na cópia de `packages/fleetops`);
 - o `Api\v1\OrderController@query` (filtros `adhoc`, `unassigned` e `nearby`) e o formato do `OrderResource`;
-- o `OrderPing` (construtor, `title`, `message` e `data`), estendido pelo `OfertaDePedido`.
+- o `OrderPing` (construtor, `title`, `message` e `data`), estendido pelo `OfertaDePedido`;
+- as relações que o `FiltrarPedidosAbertosDoMotoboy` carrega (`RELACOES_DO_FILTRO` e `RELACOES_DO_RECURSO`): os nomes precisam existir no `Order` (o `filtrar-pedidos-abertos.php` os confere, de forma estática, na cópia de `packages/fleetops`).
 
 ### Testes
 
@@ -716,6 +717,42 @@ Onde ver:
   - se o push com TTL de 30 s chega em celular com economia de bateria;
   - com OSRM próprio: se o `table` responde no `OSRM_HOST` e quanto a chamada demora no pico.
 - **Se algo der errado:** `ENTREGAS_DISTRIBUICAO=` vazio e Update the stack.
+
+### Rodadas (`ENTREGAS_DISTRIBUICAO_RODADAS`)
+
+Decisão de 2026-10-07, depois do primeiro teste real. Desenho: `docs/superpowers/specs/2026-10-07-distribuicao-em-rodadas-design.md`; planos: `docs/superpowers/plans/2026-10-07-distribuicao-em-rodadas-api.md` e `-console-e-app.md` (**o código é a referência**). O painel e o APK 30 estão nas subseções "Painel do console" e "APK".
+
+- **Chave:** `ENTREGAS_DISTRIBUICAO_RODADAS=1` (`services.entregas.distribuicao_rodadas`, `Distribuicao::emRodadas()`), só vale com `ENTREGAS_DISTRIBUICAO=1`. Vazia: o ciclo das seções acima (30 s, encaixe, 3 min, abre a todos), sem mudança. **Ligue só com o APK 30 em todos os celulares.** Está no `x-api-env`: cole o `docker-stack.yml` novo no Portainer.
+- **O ciclo** (`Distribuidor::avancarEmRodadas`, sob a `TravaDoPedido`): oferta de **20 s**, um motoboy por vez, e **nunca abre a todos** (sem prazo de 3 min e sem `OrderPing` geral). Só a `falha` ainda abre com o alarme geral, como rede de segurança.
+  - Rodadas: 1 = até R, 2 = até 1,5R, 3 = até 2R (R = `Order::getAdhocDistance()`, `Distribuicao::raioDaRodada`).
+  - Candidatos da rodada: disponíveis até o raio, GPS de menos de 30 min, **fora** quem tem qualquer linha nesta volta (oferta de qualquer resposta ou dispensa) e quem tem oferta pendente de outro pedido. Recalculados a cada oferta.
+  - Rodada vazia passa à seguinte. Sair da rodada 1 da volta 1 grava `lista_aberta_em`.
+  - Depois da rodada 3: volta nova (rodada 1, todos de novo, inclusive quem recusou) só 1 min depois do início da volta (`volta_iniciada_em`; nulo nas distribuições antigas = `despachada_em`). Antes disso, o job `AvancarDistribuicao` (fila `default`) volta na hora certa, e a varredura é a reserva. No máximo uma volta nova por passo: volta inteira sem ninguém = "aguardando motoboy", e a varredura tenta a cada minuto.
+  - A fila é "termina tudo e depois vai" (`Encaixe::noFim`): sem encaixe no meio nem o limite de 10 min; o `encaixe` fica sempre falso.
+  - **Pedido sem coordenada válida de coleta ou entrega** abre a todos na hora (`sem_candidato`, alarme geral), com o warning `pedido sem coordenada; aberta a todos`: não há como medir raio.
+- **Aceite** (`BarrarAceiteDePedidoEncerrado`): com a lista fechada, só quem tem a oferta (como antes). Com a lista aberta, qualquer motoboy: o primeiro leva e a pendente vira `cancelada`.
+  - Quem tinha a oferta grava `aceita` nela; os outros ganham a linha `aceita_pela_lista` (`Distribuidor::registrarAceitePelaLista`). Motivo `aceita` nos dois.
+  - Com a lista aberta, um `assign` de outro motoboy leva 409, como na fase de ofertas.
+  - Só em rodadas, quem tenta aceitar um pedido aberto que outro já iniciou leva 409 "Este pedido passou para outro motoboy." (sem rodadas, segue o "Order has already started." do Fleet-Ops). O log tem `motivo` próprio para distinguir os 409.
+- **Recusar e Dispensar** (`POST v1/entregas/motoboy/pedidos/{id}/recusar`, `Distribuidor::recusarOuDispensar`):
+  - oferta pendente dele: 200 `{"resultado": "recusada"}` e o próximo passo na hora;
+  - lista aberta sem oferta dele: 200 `{"resultado": "dispensada"}` (linha `dispensada`, uma por volta: some da lista dele e não recebe oferta até a volta seguinte);
+  - senão 409 "Esta oferta não está mais com você."; trava ocupada 503.
+- **Lista do app** (`FiltrarPedidosAbertosDoMotoboy`): lista fechada como antes; aberta para todos, menos quem recusou ou dispensou na volta atual; `entregas_distribuicao: true` em todo pedido em `ofertas`.
+  - Acrescenta os pedidos com a lista aberta cuja coleta está até 2R da posição do motoboy (`drivers.location`) e que o `nearby` do Fleet-Ops (só até R) não trouxe, no formato `Http\Resources\v1\Order` (até 50 distribuições por consulta). Entra também o pedido em que **ele** tem a oferta pendente, mesmo fora de 2R.
+  - O acréscimo tem try/catch próprio (log `filtro da lista: acréscimo: <classe>`) e não derruba o filtro principal. As relações do recurso (`RELACOES_DO_RECURSO`) só são carregadas, em lote, nos pedidos que entram; o filtro carrega só `RELACOES_DO_FILTRO`.
+- **Console:** `POST .../distribuicao/abrir` vira "Mostrar a todos agora" (`Distribuidor::mostrarATodos`): grava `lista_aberta_em`, sem alarme, e o ciclo segue. 409 "A lista deste pedido já está aberta a todos." ou "Este pedido não está em oferta."; com as rodadas desligadas, `mostrarATodos` devolve `fora_de_ofertas`. O `GET .../distribuicao` traz `rodadas`, `volta`, `rodada`, `raio_m` (da rodada atual) e `lista_aberta_em`; cada linha do histórico traz `volta`, `rodada` e `raio_m`.
+- **Varredura:** vence as pendentes vencidas e encerra (como antes) e **avança** as distribuições em `ofertas` sem pendente e paradas (`updated_at`) há mais de 50 s (`SEGUNDOS_PARADA - FOLGA_DO_RELOGIO_S`, despachadas nas últimas 24 h; a folga de 10 s mantém a cadência de 1 min). Não abre pelo prazo.
+- **Reenvio:** em rodadas a fase `ofertas` dura até o fim, então o `ReenviarPedidosAbertos` nunca reenvia esses pedidos; o aviso "sem motoboy" aos 12 min continua.
+- **Push:** `OfertaDePedido` leva `$segundosDaOferta` (20 em rodadas), o teto do `android.ttl` (TTL de até 20 s).
+- **Dados:** migration `2026_10_07_120000_add_rodadas_entregas_distribuicao_table`: `volta`, `rodada`, `volta_iniciada_em` e `lista_aberta_em` na distribuição; `volta`, `rodada` e `raio_m` nas ofertas, mais o índice `(distribuicao_id, volta)`.
+  - `entregas_ofertas.resposta` passa a 32 caracteres (`aceita_pela_lista` tem 17). O `down()` converte `aceita_pela_lista` em `aceita` e apaga as `dispensada`.
+  - Respostas novas: `dispensada` e `aceita_pela_lista`. São linhas sem oferta (`oferecida_em` = `vence_em` = `respondida_em`), com `posicao` 0: **não contam na numeração das ofertas**, e o painel não mostra número nelas.
+- **Logs** (`[entregas] distribuição:`): `rodada <n> (raio <m> m)`, `volta <n>`, `lista aberta`, `oferta dispensada`, `aceita pela lista`, `aguardando motoboy`, `pedido sem coordenada; aberta a todos`, `job da próxima volta não entrou na fila`, `trava ocupada ao avançar a distribuição`.
+- **Ligar e desligar no meio:** ligada, as distribuições em `ofertas` seguem no ciclo novo no próximo passo (volta 1, rodada 1 pelas colunas padrão); desligada, voltam ao ciclo antigo (o prazo de 3 min pode abrir a todos na hora). O job `AvancarDistribuicao` com a chave desligada não faz nada.
+- **Riscos aceitos:** com um motoboy só, ele recebe a oferta a cada 1 min até aceitar (20 s tocando, 40 s parado); o motoboy até 2R vê na lista pedidos de lojas a 12 km; o tempo é em linha reta (OSRM próprio continua sendo a melhoria); job `AvancarDistribuicao` repetido não faz mal (com pendente, espera).
+- **Testes:** `scripts/teste-php/distribuicao-rodadas.php` (novo) e os casos "Rodadas" no fim de `distribuicao-encaixe.php`, `distribuicao-fila.php`, `distribuicao-rotas.php`, `filtrar-pedidos-abertos.php`, `barrar-aceite.php` e `avisos-push.php`. Os testes de antes continuam valendo com a chave desligada.
+- **Implantação:** `bash deploy/atualizar.sh api` (migration nova) → `bash deploy/atualizar.sh console` → `docker-stack.yml` novo colado no Portainer (variável `ENTREGAS_DISTRIBUICAO_RODADAS`, ainda vazia; Update the stack, "Re-pull image" desligado) → APK 30 em todos os celulares → `ENTREGAS_DISTRIBUICAO_RODADAS=1` no `stack.env` e Update the stack → teste controlado na loja de teste, com os motoboys avisados. Se algo der errado: `ENTREGAS_DISTRIBUICAO_RODADAS=` vazio e Update the stack (volta ao ciclo atual).
 
 ## Marca Entregas RestaurantePro (sem Fleetbase na tela)
 
@@ -877,3 +914,4 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 21. Fila própria do iFood (2026-10-06, ramo `fila-ifood`): jobs iFood na fila `ifood` com o worker `queue-ifood`, o `queue` em `default,ifood` e `after_commit` na conexão `redis` (ver "Integração iFood" → "Armadilhas").
 22. Custo da Geocoding do Google (2026-10-07, ramo `track-sem-geocodificacao`): chave tirada de Admin → Serviços e `track()` do motoboy sem geocodificação (`DriverControllerSemGeocodificacao`) (ver "Produção" → "Sem chave do Google no servidor").
 23. Distribuição de pedidos abertos (2026-10-07, ramos `distribuicao-de-pedidos` aqui e no `entregas-navigator`): oferta um a um, por 30 s, pelo tempo até o cliente, abrindo a todos ao esgotar a fila ou aos 3 min; painel "Distribuição" no console; no APK, a oferta com cronômetro e Recusar pelo servidor (card, tela do pedido e cartão do alarme) e o batimento do GPS a cada 1 min parado (ver "Distribuição de pedidos abertos").
+24. Distribuição em rodadas (2026-10-07, ramo `distribuicao-rodadas`): oferta de 20 s em rodadas R, 1,5R e 2R e voltas até alguém aceitar, sem alarme a todos; lista "Novos pedidos" aberta a partir da rodada 2 (até 2R), Recusar/Dispensar pelo servidor e "Mostrar a todos agora" no console, atrás de `ENTREGAS_DISTRIBUICAO_RODADAS` (ver "Distribuição de pedidos abertos" → "Rodadas").
