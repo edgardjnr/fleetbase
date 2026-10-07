@@ -38,6 +38,10 @@ $idOferta = DB::table('entregas_ofertas')->insertGetId(['distribuicao_id' => $id
 $o        = DB::table('entregas_ofertas')->where('id', $idOferta)->first();
 confere(($o->volta ?? null) === 1 && ($o->rodada ?? null) === 1 && property_exists($o, 'raio_m') && $o->raio_m === null, 'oferta de antes: volta 1, rodada 1, sem raio (' . json_encode($o) . ')');
 DB::table('entregas_ofertas')->where('id', $idOferta)->update(['resposta' => 'aceita_pela_lista']);
-confere(DB::table('entregas_ofertas')->where('distribuicao_id', $id)->where('volta', 1)->value('resposta') === 'aceita_pela_lista', 'a resposta nova cabe na coluna (texto) e a volta filtra');
+confere(DB::table('entregas_ofertas')->where('distribuicao_id', $id)->where('volta', 1)->value('resposta') === 'aceita_pela_lista', 'a volta filtra e a resposta nova é gravada');
+// o banco em memória não aplica o tamanho: confere o tamanho declarado nas migrations (depois do ->change())
+$tamanhoResposta = \Teste\Banco::tamanhoDe('entregas_ofertas', 'resposta');
+$maiorResposta   = max(array_map('strlen', [Distribuicao::PENDENTE, Distribuicao::ACEITA, Distribuicao::RECUSADA, Distribuicao::VENCIDA, Distribuicao::CANCELADA, Distribuicao::DISPENSADA, Distribuicao::ACEITA_PELA_LISTA]));
+confere($tamanhoResposta !== null && $tamanhoResposta >= $maiorResposta, "toda resposta cabe em entregas_ofertas.resposta (string($tamanhoResposta); a maior tem $maiorResposta caracteres)");
 
 resumo();
