@@ -7,22 +7,19 @@ use App\Console\Commands\Entregas\Fuso\DespacharPedidosAgendados;
 use App\Console\Commands\Entregas\Fuso\EnviarLembretesDeManutencao;
 use App\Console\Commands\Entregas\Fuso\ProcessarGatilhosDeManutencao;
 use App\Console\Commands\Entregas\ReenviarPedidosAbertos;
-use App\Listeners\Entregas\DistribuirPedidoAberto;
 use App\Listeners\Entregas\ObservadorDaDistribuicao;
 use App\Listeners\Entregas\ObservadorDosPedidosIfood;
 use App\Notifications\Entregas\CanalFcmEntregas;
 use App\Notifications\Entregas\Email\CanalEmailEntregas;
+use App\Support\Entregas\Distribuicao\TrocaDoListenerDoDespacho;
 use App\Support\Entregas\FusoDoServidor;
 use Fleetbase\FleetOps\Console\Commands\DispatchAdhocOrders;
 use Fleetbase\FleetOps\Console\Commands\DispatchOrders;
 use Fleetbase\FleetOps\Console\Commands\ProcessMaintenanceTriggers;
 use Fleetbase\FleetOps\Console\Commands\SendMaintenanceReminders;
 use Fleetbase\FleetOps\Console\Commands\TrackOrderDistanceAndTime;
-use Fleetbase\FleetOps\Events\OrderDispatched;
 use Fleetbase\FleetOps\Events\OrderDriverAssigned;
-use Fleetbase\FleetOps\Listeners\NotifyOrderEvent;
 use Fleetbase\FleetOps\Models\Order;
-use Fleetbase\Listeners\SendResourceLifecycleWebhook;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Events\TransactionBeginning;
@@ -117,12 +114,13 @@ class AppServiceProvider extends ServiceProvider
 
     /**
      * Entregas: distribuição de pedidos abertos (ver App\Support\Entregas\Distribuicao). O DistribuirPedidoAberto entra
-     * no lugar do HandleOrderDispatched do Fleet-Ops (pedido aberto: uma oferta por vez; o resto: o original). O
-     * Laravel não tira um listener só, então o evento é esquecido e os outros dois do EventServiceProvider do Fleet-Ops
-     * são registrados de novo, na mesma ordem (os três vão para a fila). O EventServiceProvider registra os listeners
-     * no boot dele (callback booting); o booted() roda depois do boot de todos os providers, inclusive os do Composer.
-     * Vale também com o event:cache (o cache só troca a fonte do $listen; o registro continua no boot). O
-     * Order::updated encerra a distribuição quando o pedido ganha motoboy ou é encerrado (ObservadorDaDistribuicao).
+     * no lugar do HandleOrderDispatched do Fleet-Ops (pedido aberto: uma oferta por vez; o resto: o original), e os
+     * outros listeners do OrderDispatched ficam, na mesma ordem: o SendResourceLifecycleWebhook e o NotifyOrderEvent do
+     * Fleet-Ops e o HandleOrderDispatched do Storefront (ver TrocaDoListenerDoDespacho). Os EventServiceProvider
+     * registram os listeners no boot deles (callback booting); o booted() roda depois do boot de todos os providers,
+     * inclusive os do Composer. Vale também com o event:cache (o cache só troca a fonte do $listen; o registro continua
+     * no boot). O Order::updated encerra a distribuição quando o pedido ganha motoboy ou é encerrado
+     * (ObservadorDaDistribuicao).
      *
      * Ao atualizar o fleetops-api, confira a lista de listeners do OrderDispatched em
      * packages/fleetops/server/src/Providers/EventServiceProvider.php (scripts/teste-php/distribuicao-ciclo.php).
@@ -131,12 +129,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Order::updated(fn ($pedido) => ObservadorDaDistribuicao::aoAtualizar($pedido));
 
-        $this->app->booted(function () {
-            Event::forget(OrderDispatched::class);
-            Event::listen(OrderDispatched::class, DistribuirPedidoAberto::class);
-            Event::listen(OrderDispatched::class, SendResourceLifecycleWebhook::class);
-            Event::listen(OrderDispatched::class, NotifyOrderEvent::class);
-        });
+        $this->app->booted(fn () => TrocaDoListenerDoDespacho::aplicar(Event::getFacadeRoot()));
     }
 
     /**

@@ -447,27 +447,72 @@ Config::$valores['services.entregas.distribuicao'] = '';
 confere(count(HandleOrderDispatched::$originais) === 1 && distribuicao() === null, 'distribuição desligada: o original');
 
 $dist = cenario();
-confere(excecao(fn () => (new DistribuirPedidoAberto())->handle(new OrderDispatched(null))) === null && HandleOrderDispatched::$originais === [], 'pedido que sumiu antes do worker: nada');
+confere(excecao(fn () => (new DistribuirPedidoAberto())->handle(new OrderDispatched(null))) === null && HandleOrderDispatched::$originais === [] && logou('pedido do despacho não encontrado', 'info'), 'pedido que sumiu antes do worker: só o log');
 unset(\Teste\Container::$instancias[Distribuidor::class]);
 
 echo '== Troca do listener (AppServiceProvider) e o original do Fleet-Ops' . PHP_EOL;
-$provedor = file_get_contents('/repo/api/app/Providers/AppServiceProvider.php');
-$eventos  = file_get_contents('/repo/packages/fleetops/server/src/Providers/EventServiceProvider.php');
-preg_match('/\\\\Fleetbase\\\\FleetOps\\\\Events\\\\OrderDispatched::class\s*=>\s*\[([^\]]*)\]/', $eventos, $lista);
+use App\Support\Entregas\Distribuicao\TrocaDoListenerDoDespacho;
+
+// o Dispatcher do Laravel 10 no que a troca usa: listen guarda o listener cru, forget apaga o evento
+function despachante(array $listeners): object
+{
+    return new class($listeners) {
+        public function __construct(public array $listeners) {}
+        public function getRawListeners(): array { return $this->listeners; }
+        public function forget($evento): void { unset($this->listeners[$evento]); }
+        public function listen($evento, $listener): void { $this->listeners[$evento][] = $listener; }
+    };
+}
+
+$original   = 'Fleetbase\FleetOps\Listeners\HandleOrderDispatched';
+$webhook    = 'Fleetbase\Listeners\SendResourceLifecycleWebhook';
+$notificar  = 'Fleetbase\FleetOps\Listeners\NotifyOrderEvent';
+$storefront = 'Fleetbase\Storefront\Listeners\HandleOrderDispatched';
+$nosso      = DistribuirPedidoAberto::class;
+$outro      = 'Fleetbase\FleetOps\Events\OrderCompleted';
+
+reiniciarIfood();
+$eventos = despachante([OrderDispatched::class => [$original, $webhook, $notificar, $storefront], $outro => [$storefront]]);
+TrocaDoListenerDoDespacho::aplicar($eventos);
+confere($eventos->listeners[OrderDispatched::class] === [$nosso, $webhook, $notificar, $storefront], 'troca: o nosso no lugar do original e os outros (inclusive o do Storefront) na ordem em que estavam');
+confere($eventos->listeners[$outro] === [$storefront] && !logou('listener do Fleet-Ops não encontrado'), 'outros eventos ficam como estavam; sem aviso');
+
+$fechamento = fn () => null;
+$eventos    = despachante([OrderDispatched::class => ['\\' . $original . '@handle', $fechamento, $storefront]]);
+TrocaDoListenerDoDespacho::aplicar($eventos);
+confere($eventos->listeners[OrderDispatched::class] === [$nosso, $fechamento, $storefront], 'o original com barra inicial e @handle também sai; closure fica');
+$eventos = despachante([OrderDispatched::class => [[$original, 'handle'], $webhook]]);
+TrocaDoListenerDoDespacho::aplicar($eventos);
+confere($eventos->listeners[OrderDispatched::class] === [$nosso, $webhook], 'o original como [classe, método] também sai');
+confere(TrocaDoListenerDoDespacho::ehOOriginal($storefront) === false && TrocaDoListenerDoDespacho::ehOOriginal($original . 'X') === false, 'o HandleOrderDispatched do Storefront (e um nome parecido) não é o original');
+
+reiniciarIfood();
+$eventos = despachante([OrderDispatched::class => [$webhook, $storefront]]);
+TrocaDoListenerDoDespacho::aplicar($eventos);
+confere($eventos->listeners[OrderDispatched::class] === [$nosso, $webhook, $storefront] && logou('listener do Fleet-Ops não encontrado no OrderDispatched', 'warning'), 'sem o original: aviso e o nosso registrado mesmo assim');
+reiniciarIfood();
+$eventos = despachante([]);
+TrocaDoListenerDoDespacho::aplicar($eventos);
+confere($eventos->listeners[OrderDispatched::class] === [$nosso] && logou('listener do Fleet-Ops não encontrado', 'warning'), 'evento sem listeners: aviso e só o nosso');
+
+$semCrus = new class {
+    public array $listeners = [OrderDispatched::class => ['x']];
+    public function forget($evento): void { unset($this->listeners[$evento]); }
+    public function listen($evento, $listener): void { $this->listeners[$evento][] = $listener; }
+};
+TrocaDoListenerDoDespacho::aplicar($semCrus);
+confere($semCrus->listeners[OrderDispatched::class] === [$nosso, $webhook, $notificar], 'dispatcher sem getRawListeners: a lista fixa do Fleet-Ops');
+
+$eventosFleetOps = file_get_contents('/repo/packages/fleetops/server/src/Providers/EventServiceProvider.php');
+preg_match('/\\\\Fleetbase\\\\FleetOps\\\\Events\\\\OrderDispatched::class\s*=>\s*\[([^\]]*)\]/', $eventosFleetOps, $lista);
 $listeners = array_map(fn ($l) => trim(str_replace('::class', '', $l), " \\"), explode(',', $lista[1] ?? ''));
-confere($listeners === ['Fleetbase\FleetOps\Listeners\HandleOrderDispatched', 'Fleetbase\Listeners\SendResourceLifecycleWebhook', 'Fleetbase\FleetOps\Listeners\NotifyOrderEvent'], 'o Fleet-Ops registra os três listeners do OrderDispatched que o provider repõe (' . implode(', ', $listeners) . ')');
+confere($listeners === [$original, $webhook, $notificar] && TrocaDoListenerDoDespacho::LISTA_FIXA === [$webhook, $notificar], 'o Fleet-Ops registra o original e os dois da lista fixa (' . implode(', ', $listeners) . ')');
+confere(str_contains(file_get_contents('/repo/packages/storefront/server/src/Providers/EventServiceProvider.php'), '\Fleetbase\FleetOps\Events\OrderDispatched::class     => [\Fleetbase\Storefront\Listeners\HandleOrderDispatched::class]'), 'o Storefront também escuta o OrderDispatched (preservado pela troca)');
+
+$provedor = str_replace("\r\n", "\n", file_get_contents('/repo/api/app/Providers/AppServiceProvider.php'));
 preg_match('/protected function distribuirPedidosAbertos\(\): void\s*\{(.*?)\n    \}/s', $provedor, $troca);
-$ordem = [
-    'Order::updated(fn ($pedido) => ObservadorDaDistribuicao::aoAtualizar($pedido));',
-    '$this->app->booted(function () {',
-    'Event::forget(OrderDispatched::class);',
-    'Event::listen(OrderDispatched::class, DistribuirPedidoAberto::class);',
-    'Event::listen(OrderDispatched::class, SendResourceLifecycleWebhook::class);',
-    'Event::listen(OrderDispatched::class, NotifyOrderEvent::class);',
-];
-$posicoes = array_map(fn ($t) => strpos($troca[1] ?? '', $t), $ordem);
-confere(!in_array(false, $posicoes, true) && $posicoes === array_values(array_unique($posicoes)) && $posicoes == (function ($p) { sort($p); return $p; })($posicoes), 'distribuirPedidosAbertos: observador, e no booted esquece o evento e registra o nosso e os outros dois, nessa ordem');
-foreach (['use Fleetbase\FleetOps\Events\OrderDispatched;', 'use Fleetbase\FleetOps\Listeners\NotifyOrderEvent;', 'use Fleetbase\Listeners\SendResourceLifecycleWebhook;', 'use App\Listeners\Entregas\DistribuirPedidoAberto;', 'use App\Listeners\Entregas\ObservadorDaDistribuicao;'] as $uso) {
+confere(str_contains($troca[1] ?? '', 'Order::updated(fn ($pedido) => ObservadorDaDistribuicao::aoAtualizar($pedido));') && str_contains($troca[1] ?? '', '$this->app->booted(fn () => TrocaDoListenerDoDespacho::aplicar(Event::getFacadeRoot()));'), 'distribuirPedidosAbertos: o observador e, no booted, a troca no dispatcher do Laravel');
+foreach (['use App\Support\Entregas\Distribuicao\TrocaDoListenerDoDespacho;', 'use App\Listeners\Entregas\ObservadorDaDistribuicao;'] as $uso) {
     confere(str_contains($provedor, $uso), "import: {$uso}");
 }
 preg_match('/public function boot\(\)\s*\{(.*?)\n    \}/s', $provedor, $boot);

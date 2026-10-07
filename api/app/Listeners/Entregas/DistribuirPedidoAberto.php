@@ -33,7 +33,10 @@ class DistribuirPedidoAberto extends HandleOrderDispatched
         /** @var Order|null $order */
         $order = $event->getModelRecord();
         if (!$order) {
-            return; // apagado antes de o worker pegar o evento
+            // apagado antes de o worker pegar o evento
+            Log::info('[entregas] distribuição: pedido do despacho não encontrado');
+
+            return;
         }
         if (!$order->adhoc || $order->driver_assigned_uuid || !Distribuicao::ligada()) {
             return parent::handle($event);
