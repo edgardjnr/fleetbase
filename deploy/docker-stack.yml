@@ -48,6 +48,8 @@ x-api-env: &api-env
   REGISTRY_HOST: https://registry.fleetbase.io
   REGISTRY_PREINSTALLED_EXTENSIONS: "true"
   OSRM_HOST: ${OSRM_HOST:-https://router.project-osrm.org}
+  # rastreio e previsão de chegada do pedido pelo OSRM: o padrão do Fleet-Ops é o google_routes (Routes API, paga)
+  TRACKING_PROVIDER: ${TRACKING_PROVIDER:-osrm}
   GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
   GOOGLE_MAPS_LOCALE: ${GOOGLE_MAPS_LOCALE:-br}
   IPINFO_API_KEY: ${IPINFO_API_KEY:-}
