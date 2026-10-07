@@ -38,6 +38,12 @@ class Distribuicoes
         return DB::table(static::TABELA)->where('id', $id)->first();
     }
 
+    /** A última distribuição do pedido, encerrada ou não (o painel mostra o histórico depois do aceite). */
+    public static function ultimaDoPedido(string $pedidoUuid): ?object
+    {
+        return DB::table(static::TABELA)->where('pedido_uuid', $pedidoUuid)->orderBy('id', 'desc')->first();
+    }
+
     public static function emOfertas(string $pedidoUuid): bool
     {
         return DB::table(static::TABELA)->where('pedido_uuid', $pedidoUuid)->where('fase', Distribuicao::FASE_OFERTAS)->exists();

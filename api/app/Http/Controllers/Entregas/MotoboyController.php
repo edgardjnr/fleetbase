@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\ChatComACentral;
 use App\Support\Entregas\ConversasDaLoja;
+use App\Support\Entregas\Distribuicao\Distribuidor;
 use App\Support\Entregas\GanhosDoMotoboy;
 use App\Support\Entregas\Ifood\ConclusaoIfood;
 use App\Support\Entregas\Ifood\DadosIfoodDoMotoboy;
@@ -19,6 +20,7 @@ use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
 use Fleetbase\Http\Resources\ChatChannel as ChatChannelResource;
 use Fleetbase\Models\Company;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -260,6 +262,35 @@ class MotoboyController extends Controller
         $pedidos = SituacaoDoMotoboy::pedidosEmAndamento((string) session('company'), [$motoboy->uuid])[$motoboy->uuid] ?? [];
 
         return SituacaoDoMotoboy::classificar((bool) $motoboy->online, array_map(fn ($pedido) => $pedido->status, $pedidos));
+    }
+
+    /**
+     * Distribuição de pedidos abertos: o motoboy recusa a oferta que está com ele (o Distribuidor passa ao próximo na hora).
+     * 409 se não há oferta pendente dele neste pedido (já venceu, outro foi oferecido, pedido aberto a todos).
+     */
+    public function recusar(Request $request, string $id, Distribuidor $distribuidor)
+    {
+        $motoboy = MotoboyDaSessao::motoboy($request);
+        if (!$motoboy) {
+            return $this->soParaMotoboy();
+        }
+
+        $pedido = Order::where('company_uuid', session('company'))
+            ->where(fn ($query) => $query->where('public_id', $id)->orWhere('uuid', $id))
+            ->first();
+        if (!$pedido) {
+            return response()->json(['errors' => ['Pedido não encontrado.']], 404);
+        }
+
+        try {
+            $recusou = $distribuidor->recusar((string) $pedido->uuid, $motoboy);
+        } catch (LockTimeoutException $e) {
+            return response()->json(['errors' => ['Este pedido está sendo atualizado. Tente de novo.']], 503);
+        }
+
+        return $recusou
+            ? response()->json(['resultado' => 'recusada'])
+            : response()->json(['errors' => ['Esta oferta não está mais com você.']], 409);
     }
 
     protected function soParaMotoboy()
