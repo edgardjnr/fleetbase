@@ -57,6 +57,13 @@ Depois de cada deploy do console, abra o site com Ctrl+Shift+R. O console guarda
   - Moeda **BRL**, fuso **America/Sao_Paulo**.
   - A moeda foi gravada via API, porque o `CurrencySelect` só dispara a mudança quando o valor muda. Se a tela mostrar BRL só como sugestão, nada é salvo.
 - **E-mail:** `MAIL_MAILER=log` até alguém configurar SMTP no `stack.env`.
+- **Sem chave do Google no servidor** (decisão de 2026-10-07; relatório: `docs/superpowers/specs/2026-10-07-custo-geocoding-track-motoboy.md`).
+  - O `track()` do Fleet-Ops (cada posição do app do motoboy) geocodificava no Google enquanto a cidade do motoboy estivesse vazia. O Google não devolve a `locality` no Brasil, então foram ~16 mil consultas pagas em 5 dias, com a chave do RestaurantePro salva em Admin → Serviços.
+  - A chave saiu de Admin → Serviços (`settings` `system.services.google_maps`, `api_key` nulo). O `GOOGLE_MAPS_API_KEY` do stack também fica vazio.
+  - Sem a chave, as buscas de endereço (novo pedido, editar rota e locais no console; novo endereço no portal) mostram só os locais salvos, e o ponto é marcado no mapa. O resto não usa Google: iFood traz as coordenadas, e km e rotas vêm do OSRM. O mapa do app usa outra chave (Maps SDK for Android, grátis).
+  - **Defesa no código:** o `DriverControllerSemGeocodificacao` (trocado no `AppServiceProvider` pelo `Api\v1\DriverController`) roda o `track()` do Fleet-Ops com o geocoder desligado (`GeocoderDesligado`). Mesmo com uma chave de volta, a posição do motoboy não consulta o Google. Teste: `scripts/teste-php/track-sem-geocodificacao.php`. **Ao atualizar o fleetops-api, confira se o `track()` ainda geocodifica só pelo `Geocoder::reverse`** (o teste confere na cópia em `packages/fleetops`).
+  - **Se a chave voltar** (para as sugestões de endereço): use uma chave própria do Entregas, só com a Geocoding API e com limite diário, e ponha `TRACKING_PROVIDER=osrm` no stack. Senão, o rastreio do pedido (`tracker`) tenta a Routes API do Google, que também é paga.
+  - **Armadilha de Admin → Serviços:** o `deploy.sh` roda o `config:cache` com as configurações do banco já mescladas, e o core descarta o valor vazio que vem do banco (`array_filter` no `EnvironmentMapper`). Apagar um campo só vale depois de `docker service update --force` em `entregas_application`, `entregas_queue`, `entregas_queue-ifood` e `entregas_scheduler`. Se alguém salvar a tela antes disso, o valor antigo volta ao banco.
 
 ## Fuso (horário de Brasília)
 
@@ -677,3 +684,4 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 19. Integração iFood, etapa 4 (2026-10-06, ramos `ifood-etapa-4` aqui e no `entregas-navigator`): APK com cobrança, 0800 e código de entrega; selo, painel iFood e aviso de recusa no console, com as notas nas listas pelo `IncluirNotasNaListaDePedidos`; portal com o selo e sem o Cancelar.
 20. App do motoboy: aba Pedidos enxuta (novos e em andamento, card com o número e a loja da coleta) e aba Mapa do líder dos motoboys no lugar de Relatórios, com a troca do motoboy de um pedido (2026-10-06, ramos `app-pedidos-e-mapa-do-lider` aqui e no `entregas-navigator`, sobre o `ifood-etapa-4`).
 21. Fila própria do iFood (2026-10-06, ramo `fila-ifood`): jobs iFood na fila `ifood` com o worker `queue-ifood`, o `queue` em `default,ifood` e `after_commit` na conexão `redis` (ver "Integração iFood" → "Armadilhas").
+22. Custo da Geocoding do Google (2026-10-07, ramo `track-sem-geocodificacao`): chave tirada de Admin → Serviços e `track()` do motoboy sem geocodificação (`DriverControllerSemGeocodificacao`) (ver "Produção" → "Sem chave do Google no servidor").

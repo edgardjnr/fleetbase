@@ -7,6 +7,7 @@ use App\Console\Commands\Entregas\Fuso\DespacharPedidosAgendados;
 use App\Console\Commands\Entregas\Fuso\EnviarLembretesDeManutencao;
 use App\Console\Commands\Entregas\Fuso\ProcessarGatilhosDeManutencao;
 use App\Console\Commands\Entregas\ReenviarPedidosAbertos;
+use App\Http\Controllers\Entregas\DriverControllerSemGeocodificacao;
 use App\Listeners\Entregas\ObservadorDosPedidosIfood;
 use App\Notifications\Entregas\CanalFcmEntregas;
 use App\Notifications\Entregas\Email\CanalEmailEntregas;
@@ -17,6 +18,7 @@ use Fleetbase\FleetOps\Console\Commands\ProcessMaintenanceTriggers;
 use Fleetbase\FleetOps\Console\Commands\SendMaintenanceReminders;
 use Fleetbase\FleetOps\Console\Commands\TrackOrderDistanceAndTime;
 use Fleetbase\FleetOps\Events\OrderDriverAssigned;
+use Fleetbase\FleetOps\Http\Controllers\Api\v1\DriverController as ApiDriverController;
 use Fleetbase\FleetOps\Models\Order;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
@@ -83,6 +85,11 @@ class AppServiceProvider extends ServiceProvider
 
         // Entregas: todo e-mail de notificação sai em pt-BR e o motoboy não recebe e-mail (ver CanalEmailEntregas)
         $this->app->bind(MailChannel::class, CanalEmailEntregas::class);
+
+        // Entregas: a posição do motoboy (track) não geocodifica no Google; era uma consulta paga por posição (ver
+        // DriverControllerSemGeocodificacao). A rota e o Internal\v1\DriverController resolvem o controller pelo
+        // container
+        $this->app->bind(ApiDriverController::class, DriverControllerSemGeocodificacao::class);
     }
 
     /**
