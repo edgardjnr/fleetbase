@@ -472,6 +472,28 @@ namespace Fleetbase\FleetOps\Models {
     }
 }
 
+namespace Fleetbase\FleetOps\Notifications {
+    // o OrderPing do Fleet-Ops só com o que a distribuição usa (o real estende o Notification do Laravel e formata a
+    // distância pelo Utils); a OfertaDePedido o estende
+    class OrderPing
+    {
+        public $order;
+        public $distance;
+        public string $title;
+        public string $message;
+        public array $data = [];
+
+        public function __construct($order, $distance = null)
+        {
+            $this->order    = $order;
+            $this->distance = $distance;
+            $this->title    = 'New incoming order!';
+            $this->message  = 'New order is available for pickup.';
+            $this->data     = ['id' => $order->public_id, 'type' => 'order_ping'];
+        }
+    }
+}
+
 namespace Teste {
     // o container do Laravel (app()): instância registrada pelo teste ou criada com as dependências do construtor
     class Container
