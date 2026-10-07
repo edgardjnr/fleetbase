@@ -103,4 +103,93 @@ $resposta = listar('12|token-do-motoboy-a');
 confere(ids($resposta) === ['order_1', 'order_2', 'order_3', 'order_4'] && logou('filtro da lista', 'warning'), 'erro no banco: a resposta original e o log');
 Banco::$falharAoConsultar = [];
 
+echo '== Rodadas: lista fechada × aberta, dispensados e entregas_distribuicao' . PHP_EOL;
+
+// o recurso do Fleet-Ops (Http\Resources\v1\Order) só com o que o teste confere
+eval('namespace Fleetbase\FleetOps\Http\Resources\v1; class Order { public function __construct(public $resource) {} public function resolve($request = null) { return ["id" => $this->resource->public_id, "status" => $this->resource->status, "adhoc" => $this->resource->adhoc]; } }');
+
+function ponto(array $p): object
+{
+    return new class($p) { public function __construct(private array $p) {} public function getLat() { return $this->p[0]; } public function getLng() { return $this->p[1]; } };
+}
+
+/** O cenário de sempre com as rodadas ligadas e A parado em (-21.17, -47.81). */
+function cenarioRodadas(): void
+{
+    cenario();
+    Config::$valores['services.entregas.distribuicao_rodadas'] = '1';
+    Driver::$todos[0]->location = ponto([-21.1700, -47.8100]);
+}
+
+function item(array $itens, string $id): ?array
+{
+    foreach ($itens as $item) {
+        if (($item['id'] ?? null) === $id) {
+            return $item;
+        }
+    }
+
+    return null;
+}
+
+cenarioRodadas();
+$itens = itens(listar('12|token-do-motoboy-a'));
+confere(array_column($itens, 'id') === ['order_1', 'order_3', 'order_4'], 'lista fechada (pedido 2, oferta de B): A não vê, como hoje (' . json_encode(array_column($itens, 'id')) . ')');
+confere((item($itens, 'order_1')['entregas_distribuicao'] ?? null) === true && isset(item($itens, 'order_1')['entregas_oferta']), 'a oferta dele: entregas_oferta e entregas_distribuicao');
+confere(!isset(item($itens, 'order_3')['entregas_distribuicao']) && !isset(item($itens, 'order_4')['entregas_distribuicao']), 'fora de ofertas (aberta) e sem distribuição: sem entregas_distribuicao');
+
+Distribuicoes::abrirLista(2);
+$itens = itens(listar('12|token-do-motoboy-a'));
+confere(array_column($itens, 'id') === ['order_1', 'order_2', 'order_3', 'order_4'] && (item($itens, 'order_2')['entregas_distribuicao'] ?? null) === true && !isset(item($itens, 'order_2')['entregas_oferta']), 'lista aberta: A vê o pedido 2 (oferta de B), sem entregas_oferta');
+Distribuicoes::registrarResposta(Distribuicoes::porId(2), 'd-a', 'dispensada');
+confere(ids(listar('12|token-do-motoboy-a')) === ['order_1', 'order_3', 'order_4'], 'A dispensou o pedido 2 nesta volta: some da lista dele');
+session(['user' => 'u-b']);
+confere(ids(listar('13|token-do-motoboy-b', ['adhoc' => 1, 'unassigned' => 1, 'nearby' => 'driver_b'])) === ['order_2', 'order_3', 'order_4'], 'B (com a oferta do 2) continua vendo; o pedido 1 (lista fechada, oferta de A) não');
+session(['user' => 'u-a']);
+Distribuicoes::novaVolta(2, 2);
+confere(ids(listar('12|token-do-motoboy-a')) === ['order_1', 'order_2', 'order_3', 'order_4'], 'volta nova: A volta a ver o pedido 2');
+
+echo '== Rodadas: pedidos com a lista aberta além de R (até 2R)' . PHP_EOL;
+/** Pedido aberto da empresa com a coleta a $km ao norte de A, em distribuição; com a lista aberta se pedido. */
+function pedidoLonge(int $n, float $km, bool $listaAberta, array $extra = []): void
+{
+    $pedido          = new Order($extra + ['uuid' => "order-$n", 'public_id' => "order_$n", 'company_uuid' => 'empresa-1', 'adhoc' => true, 'status' => 'dispatched', 'driver_assigned_uuid' => null]);
+    $pedido->payload = (object) ['pickup' => (object) ['location' => ponto([-21.1700 + 0.009 * $km, -47.8100])]];
+    Order::$todos[]  = $pedido;
+    $d               = Distribuicoes::criar($pedido);
+    if ($listaAberta) {
+        Distribuicoes::abrirLista($d->id);
+    }
+}
+
+cenarioRodadas();
+pedidoLonge(5, 10, true);                                   // 10 km: dentro de 2R (12 km)
+pedidoLonge(6, 13, true);                                   // 13 km: fora de 2R
+pedidoLonge(7, 3, false);                                   // lista fechada
+pedidoLonge(8, 5, true, ['driver_assigned_uuid' => 'd-b']); // já tem motoboy
+pedidoLonge(9, 8, true, ['status' => 'canceled']);          // encerrado
+$itens = itens(listar('12|token-do-motoboy-a'));
+confere(array_column($itens, 'id') === ['order_1', 'order_3', 'order_4', 'order_5'], 'acrescenta só o pedido 5 (lista aberta, coleta a 10 km ≤ 2R, sem motoboy) (' . json_encode(array_column($itens, 'id')) . ')');
+confere(item($itens, 'order_5') === ['id' => 'order_5', 'status' => 'dispatched', 'adhoc' => true, 'entregas_distribuicao' => true], 'no formato do recurso do Fleet-Ops, com entregas_distribuicao (' . json_encode(item($itens, 'order_5')) . ')');
+confere(ids(listar('12|token-do-motoboy-a', ['adhoc' => 1, 'unassigned' => 1], new JsonResponse([]))) === ['order_5'], 'lista do Fleet-Ops vazia: ainda acrescenta');
+Distribuicoes::registrarResposta(Distribuicoes::doPedido('order-5'), 'd-a', 'dispensada');
+confere(!in_array('order_5', ids(listar('12|token-do-motoboy-a')), true), 'dispensado nesta volta: não acrescenta');
+
+cenarioRodadas();
+pedidoLonge(5, 10, true);
+Distribuicoes::criarOferta(Distribuicoes::doPedido('order-5'), ['motoboy_uuid' => 'd-a', 'tempo_s' => 900, 'encaixe' => false, 'aproximado' => true], 1, 1, 2, 9000);
+$item5 = item(itens(listar('12|token-do-motoboy-a')), 'order_5');
+confere(($item5['entregas_oferta']['segundos_restantes'] ?? null) === 20 && ($item5['entregas_distribuicao'] ?? null) === true, 'a oferta dele além de R (rodada 2) também vem, com entregas_oferta de 20 s');
+
+cenarioRodadas();
+Driver::$todos[0]->location = null;
+pedidoLonge(5, 10, true);
+confere(ids(listar('12|token-do-motoboy-a')) === ['order_1', 'order_3', 'order_4'], 'motoboy sem posição: nada a acrescentar');
+
+cenario(); // rodadas desligadas
+Driver::$todos[0]->location = ponto([-21.1700, -47.8100]);
+pedidoLonge(5, 10, true);
+$itens = itens(listar('12|token-do-motoboy-a'));
+confere(array_column($itens, 'id') === ['order_1', 'order_3', 'order_4'] && !isset(item($itens, 'order_1')['entregas_distribuicao']), 'rodadas desligadas: nada muda (sem acréscimo nem entregas_distribuicao)');
+
 resumo();
