@@ -114,7 +114,13 @@ class Distribuidor
         return TravaDoPedido::executar($pedidoUuid, function () use ($pedidoUuid, $motivo) {
             $distribuicao = Distribuicoes::doPedido($pedidoUuid);
             $pedido       = $distribuicao ? Order::where('uuid', $pedidoUuid)->first() : null;
-            if (!$distribuicao || !$pedido || $distribuicao->fase !== Distribuicao::FASE_OFERTAS || $this->encerrouPeloPedido($distribuicao, $pedido)) {
+            if ($distribuicao && !$pedido) {
+                // pedido apagado: encerra (cancelada), senão a varredura tenta abrir pelo prazo para sempre
+                $this->encerrarSemTrava($distribuicao, Distribuicao::CANCELADA);
+
+                return false;
+            }
+            if (!$distribuicao || $distribuicao->fase !== Distribuicao::FASE_OFERTAS || $this->encerrouPeloPedido($distribuicao, $pedido)) {
                 return false;
             }
             $this->abrirSemTrava($distribuicao, $pedido, $motivo);
@@ -166,7 +172,13 @@ class Distribuidor
     {
         $distribuicao = Distribuicoes::doPedido($pedidoUuid);
         $pedido       = $distribuicao ? Order::where('uuid', $pedidoUuid)->first() : null;
-        if ($distribuicao && $pedido) {
+        if ($distribuicao && !$pedido) {
+            // pedido apagado (avancar, vencer, recusar): encerra (cancelada), em vez de ficar em ofertas sem pendente
+            $this->encerrarSemTrava($distribuicao, Distribuicao::CANCELADA);
+
+            return;
+        }
+        if ($distribuicao) {
             $this->avancarSemTrava($distribuicao, $pedido);
         }
     }

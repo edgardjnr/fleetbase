@@ -74,6 +74,10 @@ $resposta = (new DistribuicaoController())->painel(requisicao('sessao'), 'order_
 confere($resposta->status === 200 && $resposta->dados['fase'] === 'ofertas' && $resposta->dados['oferta']['motoboy'] === 'Ana' && $resposta->dados['oferta']['vence_em'] === Distribuicoes::data('2026-10-07 10:00:30')->toIso8601String(), 'painel: fase, oferta atual com nome e vence_em (' . json_encode($resposta->dados) . ')');
 confere(count($resposta->dados['historico']) === 1 && $resposta->dados['historico'][0]['resposta'] === 'pendente' && $resposta->dados['historico'][0]['encaixe'] === true, 'histórico das ofertas');
 confere($resposta->dados['fila'] === [], 'fila (JSON gravado; vazia aqui)');
+confere($resposta->dados['ligada'] === true, 'painel: ligada = true com a chave ligada');
+Config::$valores['services.entregas.distribuicao'] = '';
+confere((new DistribuicaoController())->painel(requisicao('sessao'), 'order_1')->dados['ligada'] === false, 'painel: ligada = false com a chave desligada (o console não relê nem oferece o Abrir)');
+Config::$valores['services.entregas.distribuicao'] = '1';
 
 $resposta = (new DistribuicaoController())->abrir(requisicao('sessao'), 'order_1', $dist);
 confere($resposta->status === 200 && $resposta->dados['fase'] === 'aberta' && $resposta->dados['motivo'] === 'aberta_pela_central', 'abrir: fase aberta pela central (' . json_encode($resposta->dados) . ')');

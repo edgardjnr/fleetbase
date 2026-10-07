@@ -261,6 +261,31 @@ $dist->iniciar(pedidoDoCenario());
 pedidoDoCenario()->status = 'canceled';
 confere($dist->abrirATodos('order-1', 'aberta_pela_central') === false && distribuicao()->motivo === 'cancelada' && count(Driver::$avisos) === 1, 'pedido cancelado: abrir a todos encerra (cancelada) sem alarme');
 
+echo '== Pedido apagado' . PHP_EOL;
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+Order::$todos = []; // apagado (o Order::where não acha mais)
+Relogio::$agora = '2026-10-07 10:03:10';
+confere($dist->abrirATodos('order-1', 'prazo') === false && distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'cancelada' && ofertas()[0]->resposta === 'cancelada' && count(Driver::$avisos) === 1, 'pedido apagado: abrir a todos encerra (cancelada) e a varredura não tenta de novo');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+Order::$todos = [];
+Relogio::$agora = '2026-10-07 10:00:31';
+$dist->vencer((int) ofertas()[0]->id);
+confere(ofertas()[0]->resposta === 'vencida' && distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'cancelada' && count(ofertas()) === 1 && count(Driver::$avisos) === 1, 'pedido apagado: vencer encerra (cancelada) sem oferecer ao próximo');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+Order::$todos = [];
+confere($dist->recusar('order-1', Driver::$todos[0]) === true && distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'cancelada' && count(ofertas()) === 1, 'pedido apagado: recusar grava e encerra (cancelada)');
+
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+Order::$todos = [];
+$dist->avancar('order-1');
+confere(distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'cancelada', 'pedido apagado: avancar encerra (cancelada)');
+
 echo '== Falhas' . PHP_EOL;
 $dist = cenario();
 $quebrado = new Distribuidor(new FilaDeCandidatos(new class extends EstimadorDeTempo {

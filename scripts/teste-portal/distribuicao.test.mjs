@@ -34,8 +34,10 @@ test('minutos do tempo estimado', () => {
     assert.equal(minutos(null), null);
 });
 
-test('pode abrir a todos: só em ofertas e com pedido não encerrado', () => {
+test('pode abrir a todos: só em ofertas, ligada e com pedido não encerrado', () => {
     assert.equal(podeAbrir({ fase: 'ofertas' }, 'dispatched'), true);
+    assert.equal(podeAbrir({ fase: 'ofertas', ligada: true }, 'dispatched'), true);
+    assert.equal(podeAbrir({ fase: 'ofertas', ligada: false }, 'dispatched'), false);
     assert.equal(podeAbrir({ fase: 'aberta' }, 'dispatched'), false);
     assert.equal(podeAbrir({ fase: 'ofertas' }, 'canceled'), false);
     assert.equal(podeAbrir(null, 'dispatched'), false);

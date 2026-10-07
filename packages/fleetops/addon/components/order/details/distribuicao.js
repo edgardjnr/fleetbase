@@ -14,7 +14,8 @@ import { chaveDaFase, chaveDaResposta, chaveDoMotivo, minutos, podeAbrir, segund
  * a estimativa é em linha reta) e o histórico das ofertas. "Abrir a todos agora" (POST .../distribuicao/abrir) pula a
  * fila; o 409 (a distribuição já saiu de ofertas) mostra a mensagem do servidor e relê o painel.
  * Em fase ofertas, o cronômetro conta de segundo em segundo e o painel é relido a cada 5 s e quando a oferta vence (uma
- * vez por vencimento), menos com a aba oculta: a fila anda sem mudar o pedido. O cronômetro compara o relógio do PC com
+ * vez por vencimento), menos com a aba oculta: a fila anda sem mudar o pedido. Com a distribuição desligada no servidor
+ * (`ligada: false`), não relê nem oferece o "Abrir a todos agora": a fase fica parada em ofertas. O cronômetro compara o relógio do PC com
  * o `vence_em` do servidor: é só exibição (quem vence a oferta é o servidor). O laço vive na task `carregar`
  * (restartable), cancelada quando o pedido muda ou o componente sai da tela.
  */
@@ -127,7 +128,7 @@ export default class OrderDetailsDistribuicaoComponent extends Component {
         let passos = 0;
         // o vence_em da oferta cujo vencimento já provocou uma releitura (uma vez por vencimento)
         let vencimentoRelido = null;
-        while (this.painel?.fase === 'ofertas') {
+        while (this.painel?.fase === 'ofertas' && this.painel?.ligada !== false) {
             yield timeout(1000);
             this.agora = Date.now();
             passos += 1;

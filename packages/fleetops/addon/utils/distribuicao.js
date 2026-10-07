@@ -46,7 +46,10 @@ export function minutos(segundos) {
     return Math.ceil(Number(segundos) / 60);
 }
 
-/** "Abrir a todos agora": só com a distribuição em ofertas e o pedido não encerrado. */
+/**
+ * "Abrir a todos agora": só com a distribuição em ofertas, ligada no servidor (`ligada: false` = ENTREGAS_DISTRIBUICAO
+ * vazia: a distribuição parou de avançar e o aceite já é livre) e o pedido não encerrado.
+ */
 export function podeAbrir(painel, statusDoPedido) {
-    return painel?.fase === 'ofertas' && !ENCERRADOS.includes(statusDoPedido);
+    return painel?.fase === 'ofertas' && painel?.ligada !== false && !ENCERRADOS.includes(statusDoPedido);
 }

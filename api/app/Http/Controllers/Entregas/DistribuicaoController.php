@@ -82,6 +82,7 @@ class DistribuicaoController extends Controller
 
         return [
             'distribuicao'  => true,
+            'ligada'        => Distribuicao::ligada(), // desligada: o console não relê nem oferece o Abrir a todos
             'fase'          => $distribuicao->fase,
             'motivo'        => $distribuicao->motivo,
             'despachada_em' => Distribuicoes::data($distribuicao->despachada_em)?->toIso8601String(),
