@@ -187,6 +187,20 @@ confere($locais === [[
     'meta'    => ['entregas_sugestao' => ['place_id' => 'ChIJolinda45', 'sessao' => 'sessao-1', 'texto' => 'rua olinda 45']],
 ]], 'sugestões como Place para o campo do pedido, marcadas em meta.entregas_sugestao');
 
+echo '== Entrada (texto e sessão)' . PHP_EOL;
+[$t, $s] = BuscaDeEnderecos::entrada('  rua olinda  ', 'sessao_123-ABC');
+confere($t === 'rua olinda' && $s === 'sessao_123-ABC', 'entrada: texto sem espaços e sessão válida passam');
+[$t, $s] = BuscaDeEnderecos::entrada(['a'], ['b']);
+confere($t === '' && preg_match(BuscaDeEnderecos::FORMATO_DA_SESSAO, $s) === 1, 'entrada: array vira texto vazio e sessão nova');
+[$t, $s] = BuscaDeEnderecos::entrada(null, null);
+confere($t === '' && strlen($s) >= 8, 'entrada: nulos');
+[, $s] = BuscaDeEnderecos::entrada('x', str_repeat('a', 37));
+confere($s !== str_repeat('a', 37) && strlen($s) <= 36, 'entrada: sessão com mais de 36 caracteres é trocada');
+[, $s] = BuscaDeEnderecos::entrada('x', str_repeat('a', 36));
+confere($s === str_repeat('a', 36), 'entrada: sessão de 36 caracteres vale');
+[$t] = BuscaDeEnderecos::entrada(str_repeat('é', 500), 'sessao-1');
+confere(mb_strlen($t) === BuscaDeEnderecos::MAXIMO_DE_CARACTERES, 'entrada: texto cortado em 200 caracteres');
+
 echo '== Portal da loja e rotas' . PHP_EOL;
 function liberadaNoPortal(string $metodoECaminho): bool
 {
