@@ -106,7 +106,13 @@ Banco::$falharAoConsultar = [];
 echo '== Rodadas: lista fechada × aberta, dispensados e entregas_distribuicao' . PHP_EOL;
 
 // o recurso do Fleet-Ops (Http\Resources\v1\Order) só com o que o teste confere
-eval('namespace Fleetbase\FleetOps\Http\Resources\v1; class Order { public function __construct(public $resource) {} public function resolve($request = null) { return ["id" => $this->resource->public_id, "status" => $this->resource->status, "adhoc" => $this->resource->adhoc]; } }');
+eval('namespace Fleetbase\FleetOps\Http\Resources\v1; class Order { public static array $resolvidos = []; public function __construct(public $resource) {} public function resolve($request = null) { self::$resolvidos[] = $this->resource->public_id; return ["id" => $this->resource->public_id, "status" => $this->resource->status, "adhoc" => $this->resource->adhoc]; } }');
+
+/** O Payload do Fleet-Ops só com a coleta (getPickupLocation, como o Payload::getPickupLocation). */
+function payloadCom(object $local): object
+{
+    return new class($local) { public object $pickup; public function __construct(object $local) { $this->pickup = (object) ['location' => $local]; } public function getPickupLocation() { return $this->pickup->location; } };
+}
 
 function ponto(array $p): object
 {
@@ -154,7 +160,7 @@ echo '== Rodadas: pedidos com a lista aberta além de R (até 2R)' . PHP_EOL;
 function pedidoLonge(int $n, float $km, bool $listaAberta, array $extra = []): void
 {
     $pedido          = new Order($extra + ['uuid' => "order-$n", 'public_id' => "order_$n", 'company_uuid' => 'empresa-1', 'adhoc' => true, 'status' => 'dispatched', 'driver_assigned_uuid' => null]);
-    $pedido->payload = (object) ['pickup' => (object) ['location' => ponto([-21.1700 + 0.009 * $km, -47.8100])]];
+    $pedido->payload = payloadCom(ponto([-21.1700 + 0.009 * $km, -47.8100]));
     Order::$todos[]  = $pedido;
     $d               = Distribuicoes::criar($pedido);
     if ($listaAberta) {
@@ -168,7 +174,10 @@ pedidoLonge(6, 13, true);                                   // 13 km: fora de 2R
 pedidoLonge(7, 3, false);                                   // lista fechada
 pedidoLonge(8, 5, true, ['driver_assigned_uuid' => 'd-b']); // já tem motoboy
 pedidoLonge(9, 8, true, ['status' => 'canceled']);          // encerrado
+\Fleetbase\FleetOps\Http\Resources\v1\Order::$resolvidos = [];
 $itens = itens(listar('12|token-do-motoboy-a'));
+$resolvidos = \Fleetbase\FleetOps\Http\Resources\v1\Order::$resolvidos;
+confere(Order::$carregados === ['order-5'] && $resolvidos === ['order_5'], 'só o pedido que entra carrega as relações do recurso e é serializado; o fora de 2R, o com motoboy e o encerrado não (' . json_encode([Order::$carregados, $resolvidos]) . ')');
 confere(array_column($itens, 'id') === ['order_1', 'order_3', 'order_4', 'order_5'], 'acrescenta só o pedido 5 (lista aberta, coleta a 10 km ≤ 2R, sem motoboy) (' . json_encode(array_column($itens, 'id')) . ')');
 confere(item($itens, 'order_5') === ['id' => 'order_5', 'status' => 'dispatched', 'adhoc' => true, 'entregas_distribuicao' => true], 'no formato do recurso do Fleet-Ops, com entregas_distribuicao (' . json_encode(item($itens, 'order_5')) . ')');
 confere(ids(listar('12|token-do-motoboy-a', ['adhoc' => 1, 'unassigned' => 1], new JsonResponse([]))) === ['order_5'], 'lista do Fleet-Ops vazia: ainda acrescenta');

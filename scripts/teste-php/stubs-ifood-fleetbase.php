@@ -423,6 +423,17 @@ namespace Fleetbase\FleetOps\Models {
         public function getPickupLocation() { return $this->payload->pickup->location ?? null; }
         public function getAdhocDistance() { return $this->adhoc_distance ?? 6000; }
 
+        /** uuids dos pedidos que passaram por um newCollection(...)->loadMissing(...) (o carregamento em lote do Eloquent). */
+        public static array $carregados = [];
+
+        public function newCollection(array $modelos = [])
+        {
+            return new class($modelos) {
+                public function __construct(private array $modelos) {}
+                public function loadMissing($relacoes) { foreach ($this->modelos as $m) { Order::$carregados[] = $m->uuid; } return $this; }
+            };
+        }
+
         public function wasChanged($campos = null): bool
         {
             $campos = (array) $campos;
@@ -595,6 +606,7 @@ namespace {
         \Fleetbase\FleetOps\Models\OrderConfig::$todos = [];
         \Fleetbase\FleetOps\Models\Order::$todos       = [];
         \Fleetbase\FleetOps\Models\Order::$criados     = [];
+        \Fleetbase\FleetOps\Models\Order::$carregados  = [];
         \Fleetbase\FleetOps\Models\Order::$falharDespacho = false;
         \Fleetbase\FleetOps\Models\Order::$falharCancelamento = false;
         \Fleetbase\FleetOps\Models\Driver::$todos      = [];

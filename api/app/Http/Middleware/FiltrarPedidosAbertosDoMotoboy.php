@@ -36,6 +36,13 @@ class FiltrarPedidosAbertosDoMotoboy
 {
     public const LISTA = OrderController::class . '@query';
 
+    /**
+     * As relações que o Http\Resources\v1\Order lê: as que a própria lista do Fleet-Ops carrega
+     * (Api\v1\OrderController@query) e as que ele lê sempre (trackingNumber, purchaseRate, orderConfig, comments, files).
+     * Só para os pedidos acrescentados além de R, em lote.
+     */
+    public const RELACOES_DO_RECURSO = ['trackingStatuses', 'driverAssigned', 'vehicleAssigned', 'customer', 'facilitator', 'trackingNumber', 'purchaseRate', 'orderConfig', 'comments', 'files'];
+
     public function handle(Request $request, Closure $next)
     {
         $resposta = $next($request);
@@ -172,6 +179,10 @@ class FiltrarPedidosAbertosDoMotoboy
      * motoboy, não encerrados e com a coleta até MULTIPLICADOR_DA_LISTA × R da posição do motoboy, no formato do
      * Http\Resources\v1\Order.
      *
+     * Custo: para filtrar, só o payload (a relação payload do Order já traz pickup, dropoff, return, waypoints e entities,
+     * em lote) e a empresa (uma consulta só: todos são da empresa da sessão; o getAdhocDistance lê as opções dela). As
+     * relações que o recurso lê (RELACOES_DO_RECURSO) só são carregadas, em lote, nos pedidos que entram.
+     *
      * @return array<int, array{0: object, 1: object}> [item, distribuição]
      */
     private function alemDeR(Request $request, $motoboy, string $empresa, array $jaVieram): array
@@ -191,18 +202,27 @@ class FiltrarPedidosAbertosDoMotoboy
         }
         $pedidos = Order::whereIn('uuid', array_keys($distribuicoes))
             ->where('company_uuid', $empresa)
-            ->with(['payload.pickup', 'trackingStatuses', 'driverAssigned', 'vehicleAssigned', 'customer', 'facilitator'])
+            ->with(['payload', 'company'])
             ->get();
 
-        $extras = [];
+        $entram = [];
         foreach ($pedidos as $pedido) {
             if (!$pedido->adhoc || $pedido->driver_assigned_uuid || in_array(strtolower((string) $pedido->status), StatusDoPedido::ENCERRADOS, true)) {
                 continue;
             }
-            $coleta = Pontos::de($pedido->getPickupLocation());
+            $coleta = $this->coletaDe($pedido);
             if (!$coleta || Pontos::metros($posicao, $coleta) > Distribuicao::MULTIPLICADOR_DA_LISTA * max(1, (int) $pedido->getAdhocDistance())) {
                 continue;
             }
+            $entram[] = $pedido;
+        }
+        if ($entram === []) {
+            return [];
+        }
+        reset($entram)->newCollection($entram)->loadMissing(static::RELACOES_DO_RECURSO);
+
+        $extras = [];
+        foreach ($entram as $pedido) {
             $item = json_decode(json_encode((new OrderResource($pedido))->resolve($request)));
             if (is_object($item)) {
                 $extras[] = [$item, $distribuicoes[(string) $pedido->uuid]];
@@ -210,6 +230,17 @@ class FiltrarPedidosAbertosDoMotoboy
         }
 
         return $extras;
+    }
+
+    /**
+     * A coleta pelo payload já carregado. O Order::getPickupLocation (HasTrackingNumber) chama load('payload') a cada vez,
+     * o que refaria as consultas do payload pedido a pedido.
+     */
+    private function coletaDe($pedido): ?array
+    {
+        $payload = $pedido->payload ?? null;
+
+        return is_object($payload) && method_exists($payload, 'getPickupLocation') ? Pontos::de($payload->getPickupLocation()) : null;
     }
 
     /** A lista de pedidos do corpo (array simples, ou objeto com `data`/`orders`), ou null. */
