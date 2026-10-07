@@ -62,6 +62,9 @@ class RouteServiceProvider extends ServiceProvider
         // ao vivo trocar o capacete na hora (o toggle-online do Fleet-Ops grava sem disparar evento)
         $this->app['router']->pushMiddlewareToGroup('fleetbase.api', AvisarOnlineDoMotoboy::class);
 
+        // distribuição de pedidos abertos: a lista "Novos pedidos" do app só com a oferta dele e os abertos a todos
+        $this->app['router']->pushMiddlewareToGroup('fleetbase.api', FiltrarPedidosAbertosDoMotoboy::class);
+
         // Entregas RestaurantePro: rotas do app do motoboy, até 60 chamadas por minuto por usuário. O throttle do grupo
         // fleetbase.api conta por IP (roda antes da autenticação); este roda depois dela, com o usuário na sessão
         RateLimiter::for('entregas-motoboy', fn (Request $request) => Limit::perMinute(60)->by('entregas-motoboy:' . (session('user') ?: $request->ip())));
