@@ -296,6 +296,18 @@ fleet-ops:
       abrir-titulo: Abrir o pedido a todos os motoboys?
       abrir-texto: O pedido deixa de ser oferecido um a um e o alarme vai a todos os motoboys online perto da loja. O primeiro que aceitar leva.
       aberto: Pedido aberto a todos os motoboys.
+      mostrar: Mostrar a todos agora
+      mostrar-titulo: Mostrar o pedido a todos os motoboys?
+      mostrar-texto: O pedido passa a aparecer na lista "Novos pedidos" de todos os motoboys disponíveis no raio, sem alarme. As ofertas um a um continuam, e o primeiro que aceitar leva.
+      mostrada: Pedido mostrado a todos os motoboys.
+      rodada: Rodada atual
+      rodada-com-raio: 'Volta {volta} · rodada {rodada} · até {km} km'
+      rodada-sem-raio: 'Volta {volta} · rodada {rodada}'
+      lista-aberta: 'Lista aberta desde {hora}'
+      lista-fechada: Lista só para quem recebe a oferta
+      volta: 'Volta {volta}'
+      historico-rodada-com-raio: 'rodada {rodada} · até {km} km'
+      historico-rodada-sem-raio: 'rodada {rodada}'
       fase:
         ofertas: Oferecendo um a um
         aberta: Aberto a todos
@@ -318,6 +330,8 @@ fleet-ops:
         recusada: recusou
         vencida: não respondeu
         cancelada: cancelada
+        dispensada: dispensou pela lista
+        aceita_pela_lista: aceitou pela lista
         desconhecida: desconhecida
     order-form:
       store-or-customer: Loja ou cliente
