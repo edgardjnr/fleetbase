@@ -618,25 +618,43 @@ Fora dessa pasta:
 - **Onde:** Fleet-Ops → detalhe do pedido, painel "Distribuição" ao lado do painel iFood (`packages/fleetops/addon/components/order/details/distribuicao.*`; funções puras em `utils/distribuicao.js`; textos em `fleet-ops.ui.distribuicao.*`).
 - **Só admin:** para os outros, o painel nem carrega (a rota do servidor é só de admin).
 - **Quando aparece:** sempre que o pedido teve distribuição (`distribuicao: true`), inclusive encerrada, pelo histórico. **Não depende do `adhoc`**: a atribuição da central e a troca pelo líder desligam o adhoc, e o histórico continua ali. No erro de leitura, aparece só em pedido aberto.
-- **Conteúdo:** fase e motivo, oferta atual com o cronômetro, a fila calculada (**só em ofertas**: tempo até o cliente, "no caminho", "já leva pedido", "≈" na linha reta) e o histórico das ofertas.
+- **Conteúdo:** fase e motivo, oferta atual com o cronômetro, a fila calculada (**só em ofertas**: tempo até o cliente, "no caminho" (só sem rodadas), "já leva pedido", "≈" na linha reta) e o histórico das ofertas.
+- **Com rodadas** (`rodadas: true` na resposta, `ENTREGAS_DISTRIBUICAO_RODADAS=1`):
+  - em ofertas, a linha "Volta N · rodada M · até X km" e, embaixo, "Lista aberta desde HH:MM" (hora do navegador, 24 h) ou "Lista só para quem recebe a oferta";
+  - a oferta conta os 20 s pelo `vence_em`;
+  - a fila sai sem "no caminho";
+  - o histórico vem agrupado por volta ("Volta N"), com "rodada M · até X km" em cada linha e as respostas novas "dispensou pela lista" e "aceitou pela lista". As linhas sem oferta (dispensa, aceite pela lista) não mostram número;
+  - funções puras: `emRodadas`, `inteiroPositivo`, `kmTexto`, `horaCurta`, `agruparPorVolta` e `textosDoBotao`;
+  - sem `rodadas` (chave desligada ou API antiga), o painel é o de antes.
 - **Releitura:** em ofertas, a cada 5 s e uma vez quando a oferta vence (o cronômetro chega a 0). Não relê com a aba oculta nem com a distribuição desligada no servidor (`ligada: false` na resposta, `ENTREGAS_DISTRIBUICAO` vazia). Recarrega também quando o pedido, o status ou o `updated_at` mudam.
-- **"Abrir a todos agora"** (`POST .../distribuicao/abrir`, com confirmação): só em ofertas, com a distribuição ligada e o pedido não encerrado (`podeAbrir`). O 409 (a distribuição já saiu de ofertas) mostra a mensagem do servidor e relê o painel.
+- **O botão** (`POST .../distribuicao/abrir`, com confirmação): só em ofertas, com a distribuição ligada e o pedido não encerrado (`podeAbrir`).
+  - Sem rodadas: **"Abrir a todos agora"** (alarme a todos no raio).
+  - Com rodadas: **"Mostrar a todos agora"**. Grava a `lista_aberta_em`: o pedido aparece na lista de todos até 2R, sem alarme, e as ofertas continuam. Só aparece com a lista ainda fechada. Depois do sucesso, o painel volta a reler, porque a fase continua em ofertas.
+  - O 409 (a lista já aberta, ou a distribuição saiu de ofertas) mostra a mensagem do servidor e relê o painel.
 - O cronômetro compara o relógio do PC com o `vence_em` do servidor: é só exibição (quem vence a oferta é o servidor).
 
 ### APK
 
-Ramo `distribuicao-de-pedidos` do `entregas-navigator` (APK do push na `main` depois do merge). Funções puras em `src/utils/oferta.ts`.
+Ramos `distribuicao-de-pedidos` e `distribuicao-rodadas` do `entregas-navigator` (APK do push na `main` depois do merge; as rodadas pedem o APK 30). Funções puras em `src/utils/oferta.ts`.
 
 - **Card de aceitar** (`AdhocOrderCard`, aba Pedidos): a oferta vem no topo de "Novos pedidos" (`comOfertaPrimeiro`), com "Oferta para você · fecha em N s".
   - O cronômetro conta pelos `segundos_restantes` da lista, a partir do recebimento: **não depende do relógio do celular**.
   - Aceitar e Recusar vão direto, sem confirmação (o tempo corre). Recusar chama `POST .../recusar`. O 409 some sem aviso; rede e 503 avisam.
   - A recusa tira o pedido só da lista local, **sem pôr em `dismissedOrders`**: quando o pedido abre a todos, ele volta à lista e quem recusou também pode aceitar.
   - Vencida (inclusive a que já chega vencida): botões desabilitados e a lista recarrega.
+  - Os 20 s das rodadas vêm do servidor (`segundos_restantes`, `entregas_oferta_segundos`): o app não tem prazo fixo.
+- **Dispensar de pedido em distribuição** (rodadas): vale para todo pedido que a lista marca com `entregas_distribuicao: true`; na tela do pedido, conta também a oferta vinda do push ou do card (`ehDistribuido`).
+  - No card e na tela do pedido, a confirmação de sempre, com texto próprio, e depois `POST .../recusar` (200 `recusada` ou `dispensada`).
+  - Sucesso (2xx): o pedido sai da lista local, **sem ir para os dispensados**, e a lista recarrega (o servidor o devolve na volta seguinte).
+  - 409: some sem aviso e vai para os dispensados locais, para não voltar a cada recarga. A oferta dele continua aparecendo, mesmo dispensada localmente: o `secoesDaLista` não esconde pedido com `entregas_oferta`.
+  - Rede e 503: avisa e o pedido fica.
+  - O desfecho sai do `desfechoDaDispensa`. A recusa local de 2 h do cartão nativo não vale para esses pedidos.
 - **Tela do pedido** (`OrderScreen`, aberta pelo `OrderModal`): com oferta, o cronômetro, Aceitar direto e Recusar (avisa o servidor e fecha; erro de rede ou 503 fica na tela para tentar de novo).
   - O prazo vem do `ofertaPrazo` dos params (push pelo `DriverLayout`, ou o card) ou da `entregas_oferta` do pedido, com teto de 180 s.
   - No vencimento, o alarme da tela para e a lista recarrega. A tela volta ao pedido aberto comum (Aceitar com confirmação, Dispensar), e o servidor decide (409 se está com outro; aceita se abriu a todos).
 - **Cartão nativo do alarme** (`AlarmeDePedido.kt`, `AlarmePedidoActivity.kt`): título "Oferta para você" e o prazo pelos `entregas_oferta_segundos` do push (contados no servidor; de reserva, `entregas_oferta_vence_em`), gravado como fim em `elapsedRealtime` (`entregas_oferta_fim_elapsed`) para a contagem não reiniciar ao reabrir o cartão. A notificação some no vencimento (`setTimeoutAfter`).
-  - **Recusar** abre o app com `entregas_recusar=1` (com o celular bloqueado, pede o desbloqueio, como o Aceitar), e o `DriverLayout` chama a rota de recusa. O Kotlin não tem o token nem cliente HTTP. Sem desbloquear, a oferta vence sozinha em 30 s.
+  - **Recusar** abre o app com `entregas_recusar=1` (com o celular bloqueado, pede o desbloqueio, como o Aceitar), e o `DriverLayout` chama a rota de recusa (qualquer 2xx, `recusada` ou `dispensada`, vale como recusa). O Kotlin não tem o token nem cliente HTTP. Sem desbloquear, a oferta vence sozinha no prazo dela (30 s; 20 s com rodadas).
+  - Com rodadas, o Kotlin não mudou: só chegam pushes de oferta, porque não sai o `OrderPing` a todos. Caso de borda: um pedido recusado localmente no cartão de pedido aberto comum (ciclo antigo ou motivo `falha`) não toca por 2 h, nem como oferta.
   - Na oferta, Recusar **não** grava a recusa local de 2 h (a do pedido aberto comum): quando a fila esgota, o servidor abre o pedido a todos, e este celular tem de tocar.
   - Os segundos que faltam são regravados nos dados entregues ao app (`MainActivity`, ao abrir pelo cartão, pela notificação ou pelo pendente), porque os do envio já estão velhos.
 - **Batimento do GPS** (`LocationContext`, `heartbeatInterval: 60`): com o plugin parado, a cada 1 min pega uma posição (`maximumAge` de 5 min, reaproveita a do cache) e a envia pelo `/track`. Com o app fechado roda em headless (`index.native.tsx`). Sem isso, o motoboy livre parado perto da loja saía da fila depois de 30 min.
@@ -647,6 +665,7 @@ Ramo `distribuicao-de-pedidos` do `entregas-navigator` (APK do push na `main` de
   - o Aceitar atrasado leva 409 "Este pedido está sendo oferecido a outro motoboy." (aceita só se o pedido já abriu a todos);
   - o Recusar do cartão só cala e grava a recusa local de 2 h: o servidor não fica sabendo (a oferta vence em 30 s), e o celular não toca quando o pedido abre a todos;
   - por isso: **ligue primeiro num teste controlado** (loja de teste, motoboys avisados) e de vez só com o APK novo em todos os celulares.
+- **APK anterior com as rodadas ligadas:** o cartão conta 3 min e segue tocando depois que a oferta de 20 s passou ao próximo (vários celulares tocam juntos). O Dispensar só esconde o pedido no celular: o servidor não fica sabendo e pode oferecê-lo de novo na mesma volta. Por isso, a chave das rodadas só liga com o APK 30 em todos.
 - Testes: `scripts/testes/oferta.teste.ts` e `lista-de-pedidos.teste.ts` (`node --experimental-strip-types --test ...`). O Kotlin só compila no GitHub Actions.
 
 ### Logs
