@@ -6,13 +6,17 @@ import { task, timeout } from 'ember-concurrency';
 import { chaveDaFase, chaveDaResposta, chaveDoMotivo, minutos, podeAbrir, segundosRestantes } from '../../../utils/distribuicao';
 
 /**
- * Entregas: painel "Distribuição" no detalhe do pedido aberto (oferta um a um aos motoboys; rota GET
+ * Entregas: painel "Distribuição" no detalhe do pedido (oferta um a um aos motoboys; rota GET
  * int/v1/entregas/pedidos/{id}/distribuicao, só administradores: para os demais o painel nem aparece, nem carrega).
- * Mostra a fase, a oferta atual com o cronômetro, a fila calculada (tempo até o cliente, encaixe, ≈ quando a estimativa
- * é em linha reta) e o histórico das ofertas. "Abrir a todos agora" (POST .../distribuicao/abrir) pula a fila; o 409
- * (a distribuição já saiu de ofertas) mostra a mensagem do servidor e relê o painel.
- * Em fase ofertas, o cronômetro conta de segundo em segundo e o painel é relido a cada 5 s: a fila anda sem mudar o
- * pedido. O laço vive na task `carregar` (restartable), cancelada quando o pedido muda ou o componente sai da tela.
+ * Não depende do `adhoc`: a atribuição da central e a troca pelo líder o desligam, e o histórico precisa continuar ali.
+ * Carrega para todo pedido e só aparece quando houve distribuição (`distribuicao: true`) ou, no erro, em pedido aberto.
+ * Mostra a fase, a oferta atual com o cronômetro, a fila calculada (só em ofertas: tempo até o cliente, encaixe, ≈ quando
+ * a estimativa é em linha reta) e o histórico das ofertas. "Abrir a todos agora" (POST .../distribuicao/abrir) pula a
+ * fila; o 409 (a distribuição já saiu de ofertas) mostra a mensagem do servidor e relê o painel.
+ * Em fase ofertas, o cronômetro conta de segundo em segundo e o painel é relido a cada 5 s e quando a oferta vence (uma
+ * vez por vencimento), menos com a aba oculta: a fila anda sem mudar o pedido. O cronômetro compara o relógio do PC com
+ * o `vence_em` do servidor: é só exibição (quem vence a oferta é o servidor). O laço vive na task `carregar`
+ * (restartable), cancelada quando o pedido muda ou o componente sai da tela.
  */
 export default class OrderDetailsDistribuicaoComponent extends Component {
     @service fetch;
@@ -26,9 +30,18 @@ export default class OrderDetailsDistribuicaoComponent extends Component {
     // o pedido do último carregamento (não rastreado: só o `recarregar` lê e grava)
     ultimoId = null;
 
-    // só pedido aberto e só administrador: a rota do servidor é só de admin e os demais veriam só o aviso de erro
+    // só administrador carrega: a rota do servidor é só de admin e os demais veriam só o aviso de erro
+    get ehAdmin() {
+        return this.currentUser.isAdmin === true;
+    }
+
+    // o painel só aparece com distribuição (inclusive encerrada, pelo histórico) ou, no erro, em pedido aberto
     get mostrar() {
-        return this.args.resource?.adhoc === true && this.currentUser.isAdmin === true;
+        return this.temDistribuicao || (this.erro && this.args.resource?.adhoc === true);
+    }
+
+    get emOfertas() {
+        return this.painel?.fase === 'ofertas';
     }
 
     get id() {
@@ -75,6 +88,10 @@ export default class OrderDetailsDistribuicaoComponent extends Component {
         return podeAbrir(this.painel, this.args.resource?.status);
     }
 
+    abaOculta() {
+        return typeof document !== 'undefined' && document.hidden === true;
+    }
+
     tempoTexto(segundos) {
         const valor = minutos(segundos);
 
@@ -92,7 +109,7 @@ export default class OrderDetailsDistribuicaoComponent extends Component {
             this.painel = null;
             this.erro = false;
         }
-        if (this.mostrar) {
+        if (this.ehAdmin) {
             this.carregar.perform();
         }
     }
@@ -106,13 +123,21 @@ export default class OrderDetailsDistribuicaoComponent extends Component {
             return;
         }
         this.agora = Date.now();
-        // em ofertas: cronômetro a cada segundo e releitura a cada 5 s, enquanto o painel estiver na tela
+        // em ofertas: cronômetro a cada segundo; releitura a cada 5 s e no vencimento da oferta, com a aba visível
         let passos = 0;
+        // o vence_em da oferta cujo vencimento já provocou uma releitura (uma vez por vencimento)
+        let vencimentoRelido = null;
         while (this.painel?.fase === 'ofertas') {
             yield timeout(1000);
             this.agora = Date.now();
             passos += 1;
-            if (passos % 5 === 0) {
+            const venceEm = this.painel?.oferta?.vence_em ?? null;
+            const venceu = venceEm !== null && venceEm !== vencimentoRelido && this.segundos === 0;
+            if (venceu) {
+                vencimentoRelido = venceEm;
+            }
+            if ((passos >= 5 || venceu) && !this.abaOculta()) {
+                passos = 0;
                 try {
                     this.painel = yield this.fetch.get(`entregas/pedidos/${this.id}/distribuicao`);
                     this.agora = Date.now();

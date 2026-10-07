@@ -281,9 +281,8 @@ fleet-ops:
                 outra-forma: other method
                 misto: mixed methods
         distribuicao:
-            painel-titulo: Dispatch
-            erro: Could not load the dispatch (only administrators see this panel).
-            sem-distribuicao: This order was not offered one driver at a time.
+            painel-titulo: Driver offers
+            erro: Could not load the dispatch.
             situacao: Status
             oferta-atual: Current offer
             oferta-texto: '{motoboy} · closes in {segundos} s'

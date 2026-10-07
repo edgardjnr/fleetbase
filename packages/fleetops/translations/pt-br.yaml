@@ -282,8 +282,7 @@ fleet-ops:
         misto: formas variadas
     distribuicao:
       painel-titulo: Distribuição
-      erro: Não foi possível carregar a distribuição (só administradores veem este painel).
-      sem-distribuicao: Este pedido não passou pela oferta um a um.
+      erro: Não foi possível carregar a distribuição.
       situacao: Situação
       oferta-atual: Oferta atual
       oferta-texto: '{motoboy} · fecha em {segundos} s'
