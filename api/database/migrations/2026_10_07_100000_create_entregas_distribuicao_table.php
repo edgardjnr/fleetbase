@@ -29,6 +29,7 @@ return new class extends Migration
             $table->timestamp('encerrada_em')->nullable();
             $table->timestamps();
             $table->index(['pedido_uuid', 'fase']);
+            $table->index(['fase', 'despachada_em']);
         });
 
         Schema::create('entregas_ofertas', function (Blueprint $table) {

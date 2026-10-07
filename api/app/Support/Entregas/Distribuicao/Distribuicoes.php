@@ -172,8 +172,11 @@ class Distribuicoes
         return DB::table(static::TABELA)->where('fase', Distribuicao::FASE_OFERTAS)->where('despachada_em', '<', $limite)->orderBy('id')->get()->all();
     }
 
+    /** As não encerradas despachadas nas últimas 24 h (a varredura não mexe nas mais antigas: o observador as encerra). */
     public static function naoEncerradas(): array
     {
-        return DB::table(static::TABELA)->whereIn('fase', [Distribuicao::FASE_OFERTAS, Distribuicao::FASE_ABERTA])->orderBy('id')->get()->all();
+        $limite = now()->subDays(1)->format('Y-m-d H:i:s');
+
+        return DB::table(static::TABELA)->whereIn('fase', [Distribuicao::FASE_OFERTAS, Distribuicao::FASE_ABERTA])->where('despachada_em', '>=', $limite)->orderBy('id')->get()->all();
     }
 }

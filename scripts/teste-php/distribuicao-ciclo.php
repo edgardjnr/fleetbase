@@ -579,4 +579,21 @@ Config::$valores['services.entregas.distribuicao'] = '';
 Relogio::$agora = '2026-10-07 10:05:00';
 confere((new VarrerDistribuicoes())->handle($dist) === 0 && ofertas()[0]->resposta === 'pendente' && distribuicao()->fase === 'ofertas', 'desligada: sai sem agir');
 
+$dist = cenario();
+$dist->iniciar(pedidoDoCenario());
+DB::table('entregas_ofertas')->where('id', 1)->update(['vence_em' => '2026-10-07 10:03:30']); // pendente e ainda dentro da folga de 20 s
+Relogio::$agora = '2026-10-07 10:03:10';          // o prazo de 3 min passou
+(new VarrerDistribuicoes())->handle($dist);
+confere(distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'prazo' && ofertas()[0]->resposta === 'cancelada', 'prazo de 3 min com oferta pendente: abre a todos e cancela a oferta');
+
+foreach ([['2026-10-09 10:00:00', 'aberta', 'despachada há 2 dias: a varredura não mexe'], ['2026-10-07 11:00:00', 'encerrada', 'despachada há 1 h: encerra (cancelada)']] as [$hora, $fase, $nome]) {
+    $dist = cenario();
+    $dist->iniciar(pedidoDoCenario());
+    Distribuicoes::mudarFase(1, 'aberta', 'prazo');
+    pedidoDoCenario()->status = 'canceled';
+    Relogio::$agora = $hora;
+    (new VarrerDistribuicoes())->handle($dist);
+    confere(distribuicao()->fase === $fase, 'distribuição aberta ' . $nome);
+}
+
 resumo();

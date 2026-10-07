@@ -9,6 +9,7 @@ use App\Support\Entregas\TravaDoPedido;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Notifications\OrderPing;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -122,13 +123,33 @@ class Distribuidor
         });
     }
 
-    /** Sem a trava: pedido ganhou motoboy ou foi encerrado. Não muda uma distribuição já encerrada. */
+    /** Sem a trava: pedido ganhou motoboy ou foi encerrado (observador do Order). Não muda uma distribuição já encerrada. A varredura usa o encerrarDistribuicao. */
     public function encerrar(string $pedidoUuid, string $motivo): void
     {
         $distribuicao = Distribuicoes::doPedido($pedidoUuid);
         if ($distribuicao) {
             $this->encerrarSemTrava($distribuicao, $motivo);
         }
+    }
+
+    /** Como o encerrar, mas a distribuição exata (usado pela varredura): relê por id e só encerra se não estiver encerrada. Sem a trava. */
+    public function encerrarDistribuicao(int $id, string $motivo): void
+    {
+        $distribuicao = DB::table(Distribuicoes::TABELA)->where('id', $id)->first();
+        if ($distribuicao) {
+            $this->encerrarSemTrava($distribuicao, $motivo);
+        }
+    }
+
+    /** A regra única do pedido que não precisa mais de distribuição: sumido ou encerrado = cancelada; com motoboy = atribuida. */
+    public function motivoParaEncerrar(?object $pedido): ?string
+    {
+        return match (true) {
+            !$pedido                                                                         => Distribuicao::CANCELADA,
+            in_array(strtolower((string) $pedido->status), StatusDoPedido::ENCERRADOS, true) => Distribuicao::CANCELADA,
+            (bool) $pedido->driver_assigned_uuid                                             => Distribuicao::ATRIBUIDA,
+            default                                                                          => null,
+        };
     }
 
     /** Sem a trava (o middleware do aceite já a segura): a oferta foi aceita. */
@@ -313,11 +334,7 @@ class Distribuidor
     /** Pedido já com motoboy ou encerrado: encerra a distribuição (atribuida/cancelada) e devolve true. */
     protected function encerrouPeloPedido(object $distribuicao, Order $pedido): bool
     {
-        $motivo = match (true) {
-            in_array(strtolower((string) $pedido->status), StatusDoPedido::ENCERRADOS, true) => Distribuicao::CANCELADA,
-            (bool) $pedido->driver_assigned_uuid                                             => Distribuicao::ATRIBUIDA,
-            default                                                                         => null,
-        };
+        $motivo = $this->motivoParaEncerrar($pedido);
         if (!$motivo) {
             return false;
         }

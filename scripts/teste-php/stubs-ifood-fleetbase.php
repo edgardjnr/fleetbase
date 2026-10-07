@@ -176,6 +176,11 @@ namespace Teste {
             return $this->where($coluna, $valor);
         }
 
+        public function get()
+        {
+            return array_values(array_filter($this->itens, fn ($item) => $this->passa($item)));
+        }
+
         public function first()
         {
             foreach ($this->itens as $item) {
@@ -246,6 +251,7 @@ namespace Teste {
         }
 
         public static function where($coluna, $valor = null) { return (new ConsultaDeModelo(static::$todos))->where($coluna, $valor); }
+        public static function whereIn($coluna, array $valores) { return (new ConsultaDeModelo(static::$todos))->whereIn($coluna, $valores); }
         public function refresh() { return $this; }
     }
 }
