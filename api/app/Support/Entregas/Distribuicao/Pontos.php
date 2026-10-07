@@ -11,8 +11,14 @@ class Pontos
         if (!is_object($ponto) || !method_exists($ponto, 'getLat') || !method_exists($ponto, 'getLng')) {
             return null;
         }
+        if (!is_numeric($ponto->getLat()) || !is_numeric($ponto->getLng())) {
+            return null;
+        }
         $lat = (float) $ponto->getLat();
         $lng = (float) $ponto->getLng();
+        if (!is_finite($lat) || !is_finite($lng)) {
+            return null;
+        }
         if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180 || ($lat === 0.0 && $lng === 0.0)) {
             return null;
         }

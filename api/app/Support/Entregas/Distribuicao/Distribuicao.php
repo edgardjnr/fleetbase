@@ -47,8 +47,6 @@ class Distribuicao
 
     public static function ligada(): bool
     {
-        $valor = config('services.entregas.distribuicao');
-
-        return is_string($valor) ? !in_array(strtolower(trim($valor)), ['', '0', 'false', 'off'], true) : (bool) $valor;
+        return filter_var(config('services.entregas.distribuicao'), FILTER_VALIDATE_BOOLEAN);
     }
 }

@@ -16,7 +16,7 @@ class Encaixe
     /**
      * @param int                                           $posicao índice do ponto onde o motoboy está
      * @param array<int, array{indice: int, tipo: string}> $base    paradas que faltam, na ordem
-     * @param callable(int, int): float                     $dur     segundos de rota entre dois índices
+     * @param callable(int, int): float                     $dur     segundos de rota entre dois índices; deve ser um número finito (o EstimadorDeTempo garante)
      *
      * @return array{tempo_s: int, encaixe: bool, atraso_s: int} tempo até D; encaixe = P ou D entraram antes do fim; o maior atraso imposto
      */

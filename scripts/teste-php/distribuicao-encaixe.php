@@ -60,4 +60,24 @@ confere($r['tempo_s'] === min($terminaEVai, $pegaAntes) && $r['encaixe'] === tru
 // base vazia e dur nula: zero mais as paradas
 confere(Encaixe::calcular(0, [], 3, 4, fn () => 0.0)['tempo_s'] === $loja, 'tudo no mesmo ponto: só a parada na loja');
 
+// atraso exatamente no limite (600 s) cabe; 601 não cabe
+$limite = fn (int $rota32) => fn (int $i, int $j) => (float) (($i === 3 && $j === 2) ? $rota32 : $m[$i][$j]);
+$r = Encaixe::calcular(0, $soEntrega, 3, 4, $limite(1020));
+confere($r['atraso_s'] === Distribuicao::ATRASO_MAXIMO_S && $r['encaixe'] === true && $r['tempo_s'] === 300 + $loja + 1020 + $cliente + 300, 'atraso de exatamente 600 s cabe (' . json_encode($r) . ')');
+$r = Encaixe::calcular(0, $soEntrega, 3, 4, $limite(1021));
+confere($r['encaixe'] === false && $r['atraso_s'] === 0 && $r['tempo_s'] === 900 + $cliente + 600 + $loja + 900, 'atraso de 601 s não cabe: termina e vai (' . json_encode($r) . ')');
+
+echo '== ligada()' . PHP_EOL;
+foreach (['1' => true, 'true' => true, 'on' => true, 'yes' => true, '0' => false, '' => false, 'no' => false, 'nao' => false, 'off' => false] as $v => $esperado) {
+    \Teste\Config::$valores['services.entregas.distribuicao'] = (string) $v;
+    confere(Distribuicao::ligada() === $esperado, "ligada() com '$v' = " . json_encode($esperado));
+}
+\Teste\Config::$valores['services.entregas.distribuicao'] = null;
+confere(Distribuicao::ligada() === false, 'ligada() com null = false');
+
+echo '== Pontos (texto e não finito)' . PHP_EOL;
+confere(Pontos::de(new class { public function getLat() { return '-21.17'; } public function getLng() { return '-47.81'; } }) === [-21.17, -47.81], 'texto numérico vale');
+confere(Pontos::de(new class { public function getLat() { return 'abc'; } public function getLng() { return '10'; } }) === null, 'texto não numérico: null');
+confere(Pontos::de(new class { public function getLat() { return NAN; } public function getLng() { return 10; } }) === null, 'NAN: null');
+
 resumo();
