@@ -43,8 +43,8 @@ use Illuminate\Support\Facades\Log;
  * recusarOuDispensar, mostrarATodos e registrarAceitePelaLista são do ciclo em rodadas (com as rodadas desligadas, o
  * mostrarATodos devolve fora_de_ofertas sem tocar em nada e o recusarOuDispensar só recusa).
  *
- * Pedido que já tem motoboy ou está encerrado (o Order::updated não viu: saveQuietly) não recebe oferta nem alarme: a
- * distribuição é encerrada (atribuida/cancelada), como faz a varredura.
+ * Pedido que já tem motoboy, está encerrado ou deixou de ser aberto sem motoboy (o Order::updated não viu: saveQuietly)
+ * não recebe oferta nem alarme: a distribuição é encerrada (atribuida/cancelada), como faz a varredura.
  */
 class Distribuidor
 {
@@ -255,13 +255,18 @@ class Distribuidor
         }
     }
 
-    /** A regra única do pedido que não precisa mais de distribuição: sumido ou encerrado = cancelada; com motoboy = atribuida. */
+    /**
+     * A regra única do pedido que não precisa mais de distribuição: sumido ou encerrado = cancelada; com motoboy =
+     * atribuida; sem motoboy e que deixou de ser aberto (a central desligou o adhoc sem atribuir) = cancelada. Sem a
+     * última, o pedido seguiria recebendo ofertas (em rodadas, sem fim) e o Aceitar levaria o 400 do Fleet-Ops.
+     */
     public function motivoParaEncerrar(?object $pedido): ?string
     {
         return match (true) {
             !$pedido                                                                         => Distribuicao::CANCELADA,
             in_array(strtolower((string) $pedido->status), StatusDoPedido::ENCERRADOS, true) => Distribuicao::CANCELADA,
             (bool) $pedido->driver_assigned_uuid                                             => Distribuicao::ATRIBUIDA,
+            !$pedido->adhoc                                                                  => Distribuicao::CANCELADA,
             default                                                                          => null,
         };
     }

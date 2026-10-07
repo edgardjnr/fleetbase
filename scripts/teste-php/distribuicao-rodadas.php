@@ -375,4 +375,34 @@ Relogio::$agora = '2026-10-07 10:03:05';
 (new VarrerDistribuicoes())->handle($dist);
 confere(distribuicao()->fase === 'aberta' && distribuicao()->motivo === 'prazo', 'rodadas desligadas no meio: volta o ciclo de hoje (o prazo de 3 min abre a todos)');
 
+echo '== Pedido que deixou de ser aberto (adhoc falso, sem motoboy)' . PHP_EOL;
+$dist = cenarioRodadas([$ana, $bruno]);
+confere($dist->motivoParaEncerrar(new Order(['status' => 'dispatched', 'adhoc' => false])) === 'cancelada', 'motivoParaEncerrar: não encerrado, sem motoboy e adhoc falso = cancelada');
+confere($dist->motivoParaEncerrar(new Order(['status' => 'dispatched', 'adhoc' => true])) === null, 'motivoParaEncerrar: aberto e sem motoboy = null');
+confere($dist->motivoParaEncerrar(new Order(['status' => 'dispatched', 'adhoc' => false, 'driver_assigned_uuid' => 'd-x'])) === 'atribuida', 'motivoParaEncerrar: adhoc falso com motoboy = atribuida');
+$dist->iniciar(pedidoDoCenario());                                                // Ana
+pedidoDoCenario()->adhoc = false;                                                 // a central desligou o pedido aberto sem atribuir
+Relogio::$agora = '2026-10-07 10:00:20';
+$dist->vencer(1);
+confere(distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'cancelada' && count(ofertas()) === 1 && alarmesGerais() === [] && count(avisos()) === 1, 'oferta vencida: encerra (cancelada) sem oferecer a Bruno nem alarme geral');
+
+$dist = cenarioRodadas([]);
+$dist->iniciar(pedidoDoCenario());                                                // rodada 3, esperando a volta
+pedidoDoCenario()->adhoc = false;
+Relogio::$agora = '2026-10-07 10:01:00';
+(new VarrerDistribuicoes())->handle($dist);
+confere(distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'cancelada' && ofertas() === [] && Driver::$avisos === [], 'varredura: encerra (cancelada) a distribuição do pedido que deixou de ser aberto');
+
+$dist = cenarioRodadas([$ana]);
+$dist->iniciar(pedidoDoCenario());
+Distribuicoes::responder(1, 'vencida');
+pedidoDoCenario()->adhoc = false;
+(new AvancarDistribuicao('order-1'))->handle($dist);
+confere(distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'cancelada' && count(ofertas()) === 1, 'job da volta: encerra (cancelada) sem nova oferta');
+
+$dist = cenarioRodadas([$ana]);
+$dist->iniciar(pedidoDoCenario());
+pedidoDoCenario()->adhoc = false;
+confere($dist->mostrarATodos('order-1') === 'fora_de_ofertas' && distribuicao()->motivo === 'cancelada', 'mostrarATodos: fora_de_ofertas e encerra (cancelada)');
+
 resumo();

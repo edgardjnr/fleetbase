@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Entregas RestaurantePro: Order::updated → encerra a distribuição do pedido aberto quando ele ganha motoboy (aceite,
- * atribuição pela central, troca pelo líder) ou é encerrado (cancelamento, conclusão). Registrado no
+ * atribuição pela central, troca pelo líder), é encerrado (cancelamento, conclusão) ou deixa de ser aberto sem motoboy
+ * (a central desligou o adhoc: cancelada). Registrado no
  * AppServiceProvider::distribuirPedidosAbertos, ao lado do ObservadorDosPedidosIfood.
  *
  * Não toma a TravaDoPedido (o Distribuidor::encerrar só grava): roda dentro do startOrder (aceite), que está dentro da
@@ -25,13 +26,16 @@ class ObservadorDaDistribuicao
     public static function aoAtualizar(object $pedido): void
     {
         try {
-            if (!Distribuicao::ligada() || !$pedido->wasChanged(['driver_assigned_uuid', 'status'])) {
+            if (!Distribuicao::ligada() || !$pedido->wasChanged(['driver_assigned_uuid', 'status', 'adhoc'])) {
                 return;
             }
             $motivo = null;
             if ($pedido->wasChanged('driver_assigned_uuid') && $pedido->driver_assigned_uuid) {
                 $motivo = Distribuicao::ATRIBUIDA;
             } elseif ($pedido->wasChanged('status') && in_array(strtolower((string) $pedido->status), StatusDoPedido::ENCERRADOS, true)) {
+                $motivo = Distribuicao::CANCELADA;
+            } elseif ($pedido->wasChanged('adhoc') && !$pedido->adhoc && !$pedido->driver_assigned_uuid) {
+                // a central desligou o "pedido aberto" sem atribuir motoboy: não há mais o que oferecer
                 $motivo = Distribuicao::CANCELADA;
             }
             if ($motivo) {

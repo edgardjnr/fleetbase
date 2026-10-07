@@ -564,11 +564,11 @@ Fora dessa pasta:
   - O resto (não aberto, desligada, aberto que já tem motoboy): o original.
   - Falha ao iniciar: alarme geral do Fleet-Ops.
 - **Troca do listener:** o `AppServiceProvider::distribuirPedidosAbertos` chama o `TrocaDoListenerDoDespacho::aplicar` no `booted()`. Ele lê a lista crua do `OrderDispatched` (`getRawListeners`), esquece o evento, registra o nosso primeiro e depois **os outros, na ordem em que estavam** (o webhook, o `NotifyOrderEvent` e o `HandleOrderDispatched` do **Storefront**, que segue no composer).
-- **`ObservadorDaDistribuicao`** (`Order::updated`): ganhou motoboy → `atribuida`; status encerrado → `cancelada`. Nunca lança. No aceite, o `registrarAceite` do middleware sobrescreve com `aceita`.
+- **`ObservadorDaDistribuicao`** (`Order::updated`): ganhou motoboy → `atribuida`; status encerrado → `cancelada`; deixou de ser aberto (`adhoc` desligado pela central) sem motoboy → `cancelada`. Nunca lança. No aceite, o `registrarAceite` do middleware sobrescreve com `aceita`.
 - **Job `App\Jobs\Entregas\AvancarOferta`** (fila `default`, atraso de 30 s, `afterCommit`): vence a oferta pendente. Com a trava ocupada, volta à fila em 2 s, até 3 tentativas.
 - **Comando `entregas:distribuicao-varrer`** (`VarrerDistribuicoes`, a cada minuto, `withoutOverlapping(5)`, em segundo plano): reserva do job para o Redis reiniciado.
   - Vence a pendente vencida há mais de 20 s.
-  - Encerra a distribuição cujo pedido já tem motoboy, está encerrado ou sumiu.
+  - Encerra a distribuição cujo pedido já tem motoboy, está encerrado, sumiu ou deixou de ser aberto sem motoboy (`Distribuidor::motivoParaEncerrar`, a mesma regra do ciclo: o pedido que deixou de ser aberto não recebe mais oferta, nos dois ciclos).
   - Abre pelo prazo as que estão em `ofertas` há mais de 3 min.
   - O encerramento só olha as despachadas nas últimas 24 h (as mais antigas, o observador do Order encerra). Vencer e abrir pelo prazo não têm esse limite.
 
