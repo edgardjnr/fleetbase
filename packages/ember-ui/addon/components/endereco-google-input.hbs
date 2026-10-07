@@ -1,0 +1,36 @@
+<div class="entregas-endereco-google relative {{@wrapperClass}}">
+    <div class="relative">
+        <Input
+            @type="text"
+            @value={{@value}}
+            class="form-input w-full"
+            placeholder={{@placeholder}}
+            disabled={{@disabled}}
+            autocomplete="off"
+            {{on "input" this.aoDigitar}}
+            {{on "focus" this.aoEntrar}}
+            {{on "blur" this.aoSair}}
+        />
+        {{#if this.carregando}}
+            <div class="absolute inset-y-0 right-0 h-full w-10 pr-1 flex items-center justify-center">
+                <Spinner @iconClass="text-sky-500 fa-spin-800ms" />
+            </div>
+        {{/if}}
+    </div>
+
+    {{#if this.aberto}}
+        <div class="absolute z-50 w-full mt-1 rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+            {{#each this.sugestoes as |sugestao|}}
+                <a
+                    href="javascript:;"
+                    class="flex flex-col px-3 py-2 border-b border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    {{on "mousedown" (fn this.selecionar sugestao)}}
+                >
+                    <span class="font-semibold truncate">{{sugestao.principal}}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400 truncate">{{sugestao.secundario}}</span>
+                </a>
+            {{/each}}
+            <div class="px-3 py-1 text-right text-[10px] text-gray-400">{{t "ember-ui.endereco-google-input.atribuicao"}}</div>
+        </div>
+    {{/if}}
+</div>

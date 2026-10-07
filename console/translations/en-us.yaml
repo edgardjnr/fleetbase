@@ -1961,6 +1961,9 @@ ember-ui:
     click-to-copy: Click to copy
   click-to-reveal:
     click-to-reveal: Click to reveal
+  endereco-google-input:
+    atribuicao: Powered by Google
+    erro: Could not load the address. Mark the point on the map.
   coordinates-input:
     latitude: Latitude
     longitude: Longitude
