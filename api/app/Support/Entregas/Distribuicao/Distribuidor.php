@@ -27,9 +27,9 @@ use Illuminate\Support\Facades\Log;
  * - encerrar e registrarAceite: só gravação, sem a trava (rodam dentro de quem já a segura: o aceite no middleware, a
  *   TrocaDoMotoboy).
  *
- * iniciar, avancar, vencer, recusar e abrirATodos rodam sob a TravaDoPedido (a mesma do aceite e do cancelamento) e
- * relêem a distribuição com ela. A trava não é reentrante: dentro dela só se chamam os métodos *SemTrava e o
- * proximoPasso, nunca os públicos que a tomam. Lançam LockTimeoutException se a trava não sair: o chamador decide (o
+ * iniciar, avancar, avancarOuAbrir, vencer, recusar, recusarOuDispensar, abrirATodos e mostrarATodos rodam sob a
+ * TravaDoPedido (a mesma do aceite e do cancelamento) e relêem a distribuição com ela. A trava não é reentrante: dentro
+ * dela só se chamam os métodos *SemTrava e o proximoPasso/proximoPassoOuAbrir, nunca os públicos que a tomam. Lançam LockTimeoutException se a trava não sair: o chamador decide (o
  * listener cai no alarme geral; o job volta à fila). Uma falha no ciclo dentro do iniciar (banco, bug) abre a
  * distribuição na hora (motivo `falha`, sem alarme) e relança: o listener manda o alarme geral e o aceite fica livre.
  * No vencer e no recusar (resposta já gravada), a falha abre a todos (falha) com o alarme geral e não relança.
@@ -40,7 +40,8 @@ use Illuminate\Support\Facades\Log;
  * Em rodadas (Distribuicao::emRodadas), o avancarSemTrava segue o avancarEmRodadas: oferta de 20 s, rodadas R, 1,5R e
  * 2R, voltas até alguém aceitar e nunca o alarme a todos (sem prazo de 3 min; só a falha e o pedido sem coordenada
  * válida ainda abrem com o alarme geral).
- * recusarOuDispensar, mostrarATodos e registrarAceitePelaLista são do ciclo em rodadas.
+ * recusarOuDispensar, mostrarATodos e registrarAceitePelaLista são do ciclo em rodadas (com as rodadas desligadas, o
+ * mostrarATodos devolve fora_de_ofertas sem tocar em nada e o recusarOuDispensar só recusa).
  *
  * Pedido que já tem motoboy ou está encerrado (o Order::updated não viu: saveQuietly) não recebe oferta nem alarme: a
  * distribuição é encerrada (atribuida/cancelada), como faz a varredura.
@@ -133,9 +134,14 @@ class Distribuidor
     /**
      * "Mostrar a todos agora" (console, em rodadas): abre a lista na hora, sem alarme geral; o ciclo segue.
      * LISTA_ABERTA_AGORA, LISTA_JA_ABERTA ou FORA_DE_OFERTAS (fora de ofertas, pedido com motoboy, encerrado ou apagado).
+     * Rodadas desligadas: FORA_DE_OFERTAS sem tocar em nada (a lista aberta só existe em rodadas).
      */
     public function mostrarATodos(string $pedidoUuid): string
     {
+        if (!Distribuicao::emRodadas()) {
+            return Distribuicao::FORA_DE_OFERTAS;
+        }
+
         return TravaDoPedido::executar($pedidoUuid, function () use ($pedidoUuid) {
             $distribuicao = Distribuicoes::doPedido($pedidoUuid);
             $pedido       = $distribuicao ? Order::where('uuid', $pedidoUuid)->first() : null;
@@ -475,7 +481,7 @@ class Distribuidor
         if (!$primeiro) {
             return false;
         }
-        $posicao = count(Distribuicoes::ofertas((int) $distribuicao->id)) + 1;
+        $posicao = Distribuicoes::proximaPosicao((int) $distribuicao->id);
         $oferta  = Distribuicoes::criarOferta($distribuicao, $primeiro, $posicao, $volta, $rodada, $raio);
         try {
             AvancarOferta::agendar((int) $oferta->id);

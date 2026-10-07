@@ -60,7 +60,7 @@ confere(Distribuicoes::abrirLista($d->id) === true && Distribuicoes::abrirLista(
 $d = Distribuicoes::porId($d->id);
 confere($d->rodada === 2 && $d->lista_aberta_em === '2026-10-07 10:00:25' && $d->updated_at === '2026-10-07 10:00:25', 'irParaRodada e abrirLista gravam a rodada, a hora e o updated_at');
 $dispensa = Distribuicoes::registrarResposta($d, 'd-b', 'dispensada', 9000);
-confere($dispensa->resposta === 'dispensada' && $dispensa->oferecida_em === '2026-10-07 10:00:25' && $dispensa->vence_em === '2026-10-07 10:00:25' && $dispensa->respondida_em === '2026-10-07 10:00:25' && $dispensa->volta === 1 && $dispensa->rodada === 2 && $dispensa->raio_m === 9000 && $dispensa->posicao === 2 && $dispensa->tempo_estimado_s === null, 'registrarResposta: linha sem oferta, oferecida = vence = respondida = agora (' . json_encode($dispensa) . ')');
+confere($dispensa->resposta === 'dispensada' && $dispensa->oferecida_em === '2026-10-07 10:00:25' && $dispensa->vence_em === '2026-10-07 10:00:25' && $dispensa->respondida_em === '2026-10-07 10:00:25' && $dispensa->volta === 1 && $dispensa->rodada === 2 && $dispensa->raio_m === 9000 && $dispensa->posicao === 0 && $dispensa->tempo_estimado_s === null, 'registrarResposta: linha sem oferta, oferecida = vence = respondida = agora, posição 0 (' . json_encode($dispensa) . ')');
 confere(Distribuicoes::ofertaParaAceite('order-1', 'd-a')?->id === $o->id, 'ofertaParaAceite ignora a linha dispensada: a pendente de A continua valendo');
 Distribuicoes::responder($o->id, 'vencida');
 confere(Distribuicoes::motoboysDaVolta($d->id, 1) === ['d-a', 'd-b'] && Distribuicoes::motoboysQueDispensaramNaVolta($d->id, 1) === ['d-b'], 'quem tem linha na volta (qualquer resposta) e quem recusou ou dispensou (a vencida não some da lista)');
@@ -280,14 +280,14 @@ confere($dist->recusarOuDispensar('order-1', $davi['motoboy']) === 'dispensada',
 $linha = ofertas()[3];
 confere($linha->motoboy_uuid === 'd-davi' && $linha->resposta === 'dispensada' && $linha->volta === 1 && $linha->rodada === 2 && $linha->raio_m === 9000 && ofertas()[2]->resposta === 'pendente', 'linha dispensada na volta e na rodada atuais; a oferta de Caio continua');
 confere($dist->recusarOuDispensar('order-1', $davi['motoboy']) === 'dispensada' && count(ofertas()) === 4, 'dispensar de novo na mesma volta: sem linha nova');
-confere(logou('oferta dispensada', 'info'), 'log: oferta dispensada');
+confere(logou('oferta dispensada', 'info') && logsSem(['Davi', 'd-davi', '-21.1']), 'log: oferta dispensada, só com ids');
 Relogio::$agora = '2026-10-07 10:00:40';
 (new AvancarOferta(3))->handle($dist);                                            // Caio vence; Davi dispensou
 $job = end(Fila::$jobs);
 confere(count(ofertas()) === 4 && distribuicao()->rodada === 3 && $job instanceof AvancarDistribuicao && $job->delay === 20, 'quem dispensou não recebe oferta nesta volta: rodada 3 vazia, próximo passo quando completar 1 min');
 Relogio::$agora = '2026-10-07 10:01:00';
 $job->handle($dist);
-confere(ofertas()[4]->motoboy_uuid === 'd-ana' && ofertas()[4]->volta === 2, 'volta 2: todos de novo, inclusive quem recusou');
+confere(ofertas()[4]->motoboy_uuid === 'd-ana' && ofertas()[4]->volta === 2 && ofertas()[4]->posicao === 4 && ofertas()[3]->posicao === 0, 'volta 2: todos de novo, inclusive quem recusou (a dispensa não ocupa posição)');
 Config::$valores['services.entregas.distribuicao_rodadas'] = '';
 confere($dist->recusarOuDispensar('order-1', $davi['motoboy']) === null, 'rodadas desligadas: sem dispensa');
 
@@ -310,5 +310,31 @@ $dist->iniciar(pedidoDoCenario());
 pedidoDoCenario()->driver_assigned_uuid = 'd-x';
 confere($dist->mostrarATodos('order-1') === 'fora_de_ofertas' && distribuicao()->motivo === 'atribuida', 'pedido já com motoboy: encerra (atribuida)');
 confere(!isset(Trava::$ocupadas['entregas:pedido:order-1']), 'a trava é solta');
+
+echo '== Ajustes da revisão (Task 6)' . PHP_EOL;
+$dist = cenarioRodadas([$ana, $bruno]);
+$dist->iniciar(pedidoDoCenario());
+Config::$valores['services.entregas.distribuicao_rodadas'] = '';
+confere($dist->mostrarATodos('order-1') === 'fora_de_ofertas' && distribuicao()->lista_aberta_em === null && distribuicao()->fase === 'ofertas' && ofertas()[0]->resposta === 'pendente' && !logou('lista aberta'), 'rodadas desligadas: mostrarATodos devolve fora_de_ofertas sem tocar em nada');
+
+$dist = cenarioRodadas([$ana, $bruno]);
+$dist->iniciar(pedidoDoCenario());
+Distribuicoes::abrirLista(1);
+Distribuicoes::mudarFase(1, 'aberta', 'aberta_pela_central');
+confere($dist->recusarOuDispensar('order-1', $bruno['motoboy']) === null && count(ofertas()) === 1, 'distribuição em fase aberta: sem dispensa (null)');
+
+$dist = cenarioRodadas([$ana, $bruno, $caio]);
+$dist->iniciar(pedidoDoCenario());                                                // Ana
+Relogio::$agora = '2026-10-07 10:00:05';
+$dist->recusarOuDispensar('order-1', $ana['motoboy']);                           // Ana recusa: Bruno
+Distribuicoes::abrirLista(1);
+confere($dist->recusarOuDispensar('order-1', $ana['motoboy']) === 'dispensada' && count(ofertas()) === 2, 'quem já recusou na volta, ao dispensar: dispensada, sem linha nova');
+Relogio::$agora = '2026-10-07 10:00:08';
+confere($dist->recusarOuDispensar('order-1', $bruno['motoboy']) === 'recusada' && ofertas()[1]->resposta === 'recusada' && ofertas()[2]->motoboy_uuid === 'd-caio' && ofertas()[2]->resposta === 'pendente' && ofertas()[2]->posicao === 3, 'lista aberta e com a oferta pendente dele: recusada, e o ciclo avança (Caio, posição 3)');
+
+$dist = cenarioRodadas([$ana]);
+$dist->iniciar(pedidoDoCenario());
+Order::$todos = [];                                                               // apagado
+confere($dist->mostrarATodos('order-1') === 'fora_de_ofertas' && distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'cancelada' && ofertas()[0]->resposta === 'cancelada', 'pedido apagado: mostrarATodos encerra (cancelada)');
 
 resumo();

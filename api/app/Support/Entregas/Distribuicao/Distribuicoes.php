@@ -17,6 +17,9 @@ class Distribuicoes
     public const TABELA  = 'entregas_distribuicoes';
     public const OFERTAS = 'entregas_ofertas';
 
+    /** Respostas das linhas sem oferta (em rodadas): gravadas com posicao 0, não contam na ordem das ofertas. */
+    public const SEM_OFERTA = [Distribuicao::DISPENSADA, Distribuicao::ACEITA_PELA_LISTA];
+
     public static function agora(): string
     {
         return now()->format('Y-m-d H:i:s');
@@ -116,7 +119,7 @@ class Distribuicoes
 
     /**
      * Uma linha sem oferta (em rodadas: `dispensada` pela lista, `aceita_pela_lista`), na volta e rodada atuais da
-     * distribuição: oferecida, vencida e respondida agora.
+     * distribuição: oferecida, vencida e respondida agora. Posição 0: não ocupa número na ordem das ofertas.
      */
     public static function registrarResposta(object $distribuicao, string $motoboyUuid, string $resposta, ?int $raioM = null): object
     {
@@ -125,7 +128,7 @@ class Distribuicoes
             'distribuicao_id'  => (int) $distribuicao->id,
             'pedido_uuid'      => (string) $distribuicao->pedido_uuid,
             'motoboy_uuid'     => $motoboyUuid,
-            'posicao'          => count(static::ofertas((int) $distribuicao->id)) + 1,
+            'posicao'          => 0,
             'volta'            => (int) ($distribuicao->volta ?? 1),
             'rodada'           => (int) ($distribuicao->rodada ?? 1),
             'raio_m'           => $raioM,
@@ -217,6 +220,12 @@ class Distribuicoes
     public static function ofertas(int $distribuicaoId): array
     {
         return DB::table(static::OFERTAS)->where('distribuicao_id', $distribuicaoId)->orderBy('id')->get()->all();
+    }
+
+    /** A posição da próxima oferta de verdade: as linhas sem oferta (SEM_OFERTA, posicao 0) não contam. */
+    public static function proximaPosicao(int $distribuicaoId): int
+    {
+        return DB::table(static::OFERTAS)->where('distribuicao_id', $distribuicaoId)->whereNotIn('resposta', static::SEM_OFERTA)->count() + 1;
     }
 
     public static function responder(int $ofertaId, string $resposta): void
