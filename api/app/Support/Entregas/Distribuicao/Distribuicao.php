@@ -13,8 +13,12 @@ class Distribuicao
 {
     public const SEGUNDOS_DA_OFERTA = 30;
     public const MINUTOS_ATE_ABRIR  = 3;
-    /** Posição do GPS mais velha que isto não serve para estimar (drivers.updated_at). */
-    public const GPS_MINUTOS = 5;
+    /**
+     * Posição do GPS mais velha que isto não serve para estimar (drivers.updated_at). Posição de quem está online e parado
+     * continua certa; o corte só tira celular que morreu com o online ligado. O APK vai mandar posição a cada 1 min
+     * parado e aí a janela pode cair.
+     */
+    public const GPS_MINUTOS = 30;
     /** Atraso máximo aceito numa entrega já aceita ao encaixar o pedido novo. */
     public const ATRASO_MAXIMO_S = 600;
     public const PARADA_LOJA_S    = 180;
@@ -44,6 +48,11 @@ class Distribuicao
     public const RECUSADA = 'recusada';
     public const VENCIDA  = 'vencida';
     // 'aceita' e 'cancelada' são as mesmas constantes acima
+
+    public static function osrmLigado(): bool
+    {
+        return filter_var(config('services.entregas.distribuicao_osrm'), FILTER_VALIDATE_BOOLEAN);
+    }
 
     public static function ligada(): bool
     {

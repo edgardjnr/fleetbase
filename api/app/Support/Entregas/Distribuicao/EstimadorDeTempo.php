@@ -18,6 +18,10 @@ class EstimadorDeTempo
     /** @return array{durations: array<int, array<int, float>>, aproximado: bool} */
     public function matriz(array $pontos): array
     {
+        if (!Distribuicao::osrmLigado()) {
+            return ['durations' => $this->linhaReta($pontos), 'aproximado' => true];
+        }
+
         $n = count($pontos);
         if ($n > Distribuicao::MAX_PONTOS_DA_MATRIZ) {
             Log::warning('[entregas] distribuição: pontos demais para a matriz do OSRM; estimativa em linha reta', ['pontos' => $n]);
@@ -47,9 +51,12 @@ class EstimadorDeTempo
         $coordenadas = implode(';', array_map(fn ($p) => $p[1] . ',' . $p[0], $pontos));
         $url         = rtrim((string) config('fleetops.osrm.host', 'https://router.project-osrm.org'), '/') . "/table/v1/driving/{$coordenadas}";
 
+        $codigo = null;
+
         try {
             $resposta  = Http::timeout(static::TIMEOUT_S)->get($url, ['annotations' => 'duration']);
             $durations = $resposta->json('durations');
+            $codigo    = $resposta->json('code');
         } catch (\Throwable $e) {
             Log::warning('[entregas] distribuição: OSRM indisponível; estimativa em linha reta', ['erro' => get_class($e), 'pontos' => count($pontos)]);
 
@@ -57,7 +64,7 @@ class EstimadorDeTempo
         }
 
         if (!is_array($durations) || count($durations) !== count($pontos)) {
-            Log::warning('[entregas] distribuição: OSRM indisponível; estimativa em linha reta', ['motivo' => 'resposta sem durations', 'pontos' => count($pontos)]);
+            Log::warning('[entregas] distribuição: OSRM indisponível; estimativa em linha reta', ['motivo' => 'resposta sem durations', 'code' => is_scalar($codigo) ? $codigo : null, 'pontos' => count($pontos)]);
 
             return null;
         }

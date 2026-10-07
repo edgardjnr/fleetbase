@@ -92,9 +92,24 @@ class Candidatos
             ->whereNotIn('status', StatusDoPedido::ENCERRADOS)
             ->where('updated_at', '>=', now()->subHours(SituacaoDoMotoboy::HORAS_PEDIDO_EM_ANDAMENTO))
             ->with(['payload.pickup', 'payload.dropoff'])
-            ->orderByRaw('COALESCE(started_at, dispatched_at, created_at)')
+            ->orderByRaw('started_at IS NULL')
+            ->orderBy('started_at')
+            ->orderBy('dispatched_at')
+            ->orderBy('id')
             ->get();
 
+        return static::paradasDosPedidos($pedidos);
+    }
+
+    /**
+     * Pedidos (já na ordem de aceite) em paradas por motoboy: coleta (se ainda não pegou) e entrega; ponto inválido sai.
+     *
+     * @param iterable<object> $pedidos driver_assigned_uuid, status, payload->pickup->location, payload->dropoff->location
+     *
+     * @return array<string, array<int, array{0: float, 1: float, 2: string}>>
+     */
+    public static function paradasDosPedidos(iterable $pedidos): array
+    {
         $porMotoboy = [];
         foreach ($pedidos as $pedido) {
             $coleta    = Pontos::de($pedido->payload?->pickup?->location);

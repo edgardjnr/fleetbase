@@ -17,7 +17,8 @@ use Teste\Http;
 function reiniciar(): void
 {
     reiniciarIfood();
-    Config::$valores['fleetops.osrm.host'] = 'http://osrm:5000';
+    Config::$valores['fleetops.osrm.host']                  = 'http://osrm:5000';
+    Config::$valores['services.entregas.distribuicao_osrm'] = '1';
 }
 
 echo '== EstimadorDeTempo' . PHP_EOL;
@@ -46,6 +47,16 @@ confere($matriz['durations'][0][1] === (float) Pontos::segundos($pontos[0], $pon
 reiniciar();
 $muitos = array_map(fn ($i) => [-21.17 + $i / 1000, -47.81], range(0, Distribuicao::MAX_PONTOS_DA_MATRIZ));
 confere((new EstimadorDeTempo())->matriz($muitos)['aproximado'] === true && Http::urls() === [], 'acima do máximo de pontos: nem chama o OSRM');
+
+reiniciar();
+Config::$valores['services.entregas.distribuicao_osrm'] = '';
+$matriz = (new EstimadorDeTempo())->matriz($pontos);
+confere($matriz['aproximado'] === true && Http::urls() === [] && $matriz['durations'][0][1] === (float) Pontos::segundos($pontos[0], $pontos[1]) && !logou('OSRM', 'warning'), 'OSRM desligado (padrão): linha reta, sem chamar o Http e sem log');
+
+reiniciar();
+Http::responder(200, ['code' => 'TooBig']);
+(new EstimadorDeTempo())->matriz($pontos);
+confere(str_contains(json_encode(\Illuminate\Support\Facades\Log::$registros), 'TooBig'),'o code da resposta vai ao log');
 
 echo '== FilaDeCandidatos' . PHP_EOL;
 use App\Support\Entregas\Distribuicao\Candidatos;
@@ -120,6 +131,24 @@ confere(array_column((new FilaDeCandidatos($estimador))->para($pedido, Candidato
 
 $pedidoSemEntrega = pedidoCom($coleta, [0.0, 0.0]);
 confere((new FilaDeCandidatos($estimador))->para($pedidoSemEntrega, Candidatos::elegiveis($pedidoSemEntrega, [])) === [], 'pedido sem entrega válida: fila vazia (vai abrir a todos)');
+
+echo '== paradasDosPedidos' . PHP_EOL;
+function pedidoDaFila(string $motoboy, string $status, ?array $coleta, ?array $entrega): object
+{
+    return (object) ['driver_assigned_uuid' => $motoboy, 'status' => $status, 'payload' => (object) [
+        'pickup'  => (object) ['location' => $coleta ? ponto($coleta) : null],
+        'dropoff' => (object) ['location' => $entrega ? ponto($entrega) : null],
+    ]];
+}
+$paradas = Candidatos::paradasDosPedidos([
+    pedidoDaFila('d-a', 'enroute', [-21.1, -47.1], [-21.2, -47.2]),
+    pedidoDaFila('d-a', 'started', [-21.3, -47.3], [-21.4, -47.4]),
+    pedidoDaFila('d-b', 'dispatched', [-21.5, -47.5], [-21.6, -47.6]),
+    pedidoDaFila('d-b', 'started', [0.0, 0.0], [-21.7, -47.7]),
+]);
+confere($paradas['d-a'] === [[-21.2, -47.2, 'entrega'], [-21.3, -47.3, 'coleta'], [-21.4, -47.4, 'entrega']], 'enroute só entrega; started coleta e entrega; agrupa na ordem (' . json_encode($paradas['d-a']) . ')');
+confere($paradas['d-b'] === [[-21.5, -47.5, 'coleta'], [-21.6, -47.6, 'entrega'], [-21.7, -47.7, 'entrega']], 'dispatched coleta e entrega; ponto inválido descartado (' . json_encode($paradas['d-b']) . ')');
+confere(Candidatos::paradasDosPedidos([]) === [], 'sem pedidos: vazio');
 
 Candidatos::$buscarMotoboys = null;
 Candidatos::$buscarParadas  = null;
