@@ -23,12 +23,13 @@ import {
  * int/v1/entregas/pedidos/{id}/distribuicao, só administradores: para os demais o painel nem aparece, nem carrega).
  * Não depende do `adhoc`: a atribuição da central e a troca pelo líder o desligam, e o histórico precisa continuar ali.
  * Carrega para todo pedido e só aparece quando houve distribuição (`distribuicao: true`) ou, no erro, em pedido aberto.
- * Mostra a fase, a oferta atual com o cronômetro, a fila calculada (só em ofertas: tempo até o cliente, encaixe, ≈ quando
- * a estimativa é em linha reta) e o histórico das ofertas.
+ * Mostra a fase, a oferta atual com o cronômetro, a fila calculada (só em ofertas: tempo até o cliente, "no caminho" quando
+ * o pedido novo encaixa na sequência do motoboy, ≈ quando a estimativa é em linha reta) e o histórico das ofertas.
  * Com rodadas (`rodadas: true`, ENTREGAS_DISTRIBUICAO_RODADAS): em ofertas, "Volta N · rodada M · até X km" e a lista
- * aberta ("Lista aberta desde HH:MM") ou fechada; a fila sem o "no caminho" (não há mais encaixe); o histórico agrupado
- * por volta, com a rodada e o raio em cada linha; e o botão vira "Mostrar a todos agora" (grava a lista_aberta_em, sem
- * alarme; só com a lista ainda fechada). Sem rodadas, "Abrir a todos agora" pula a fila e manda o alarme a todos.
+ * aberta ("Lista aberta desde HH:MM") ou fechada; o "no caminho" também aparece (encaixe com até 5 min de atraso para
+ * quem já espera, em vez de 10 min); o histórico agrupado por volta, com a rodada e o raio em cada linha; e o botão
+ * vira "Mostrar a todos agora" (grava a lista_aberta_em, sem alarme; só com a lista ainda fechada). Sem rodadas, "Abrir
+ * a todos agora" pula a fila e manda o alarme a todos.
  * Nos dois, POST .../distribuicao/abrir; o 409 mostra a mensagem do servidor e relê o painel.
  * Em fase ofertas, o cronômetro conta de segundo em segundo e o painel é relido a cada 5 s e quando a oferta vence (uma
  * vez por vencimento), menos com a aba oculta: a fila anda sem mudar o pedido. Com a distribuição desligada no servidor
@@ -119,8 +120,8 @@ export default class OrderDetailsDistribuicaoComponent extends Component {
             posicao: index + 1,
             nome: item.nome || '—',
             tempo: this.tempoTexto(item.tempo_s),
-            // com rodadas não há encaixe ("termina tudo e depois vai"): o "no caminho" some
-            encaixe: !this.emRodadas && item.encaixe === true,
+            // com e sem rodadas (o servidor só limita o atraso: 5 min em rodadas, 10 min sem)
+            encaixe: item.encaixe === true,
             aproximado: item.aproximado === true,
             livre: item.livre === true,
         }));
