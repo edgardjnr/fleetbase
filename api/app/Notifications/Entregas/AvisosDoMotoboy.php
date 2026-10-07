@@ -12,6 +12,7 @@ use Fleetbase\FleetOps\Notifications\WaypointCompleted;
 use Fleetbase\Notifications\ChatMessageReceived;
 use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\CartaoDoAlarme;
+use App\Support\Entregas\Distribuicao\Distribuicao;
 use App\Support\Entregas\Ifood\CancelamentoPeloIfood;
 use App\Support\Entregas\Ifood\PedidosIfood;
 use Fleetbase\Notifications\TestPushNotification;
@@ -89,7 +90,7 @@ class AvisosDoMotoboy
         [$titulo, $corpo] = $texto;
 
         if (in_array($tipo, self::TIPOS_DE_ALARME, true) && static::alarmePorDados()) {
-            return static::comoDados($mensagem, $titulo, $corpo, static::cartao($notificacao));
+            return static::comoDados($mensagem, $titulo, $corpo, array_merge(static::cartao($notificacao), static::extras($notificacao)), static::validade($notificacao));
         }
 
         $mensagem->notification = new NotificacaoFcm(title: $titulo, body: $corpo);
@@ -100,7 +101,7 @@ class AvisosDoMotoboy
 
         // alarme comum também vence em 15 min: um pedido velho não pode tocar horas depois, quando o celular volta
         if (in_array($tipo, self::TIPOS_DE_ALARME, true)) {
-            $mensagem->custom['android']['ttl'] = self::VALIDADE_ALARME;
+            $mensagem->custom['android']['ttl'] = static::validade($notificacao);
         }
 
         return $mensagem;
@@ -116,6 +117,7 @@ class AvisosDoMotoboy
         $codigo = static::codigo((string) ($notificacao->title ?? ''));
 
         return match (true) {
+            $notificacao instanceof OfertaDePedido       => [$notificacao->title, $notificacao->message],
             $notificacao instanceof LembretePedidoAberto => [$notificacao->title, $notificacao->message],
             $notificacao instanceof PedidoPassadoParaOutro => [$notificacao->title, $notificacao->message],
             $notificacao instanceof OrderPing            => ['Novo pedido disponível', static::textoDaColeta($notificacao->distance)],
@@ -242,7 +244,19 @@ class AvisosDoMotoboy
      * Push de dados: sem bloco de notificação (o app monta a notificação), título e texto nos dados, todos os dados como
      * texto (exigência do FCM), prioridade alta e validade curta.
      */
-    protected static function comoDados(FcmMessage $mensagem, string $titulo, string $corpo, array $cartao = []): FcmMessage
+    /** Dados extras do push além do cartão: hoje, só os da oferta (OfertaDePedido). */
+    protected static function extras(Notification $notificacao): array
+    {
+        return $notificacao instanceof OfertaDePedido ? $notificacao->dadosDaOferta() : [];
+    }
+
+    /** O android.ttl do alarme: a oferta vence em SEGUNDOS_DA_OFERTA; o resto em VALIDADE_ALARME. */
+    protected static function validade(Notification $notificacao): string
+    {
+        return $notificacao instanceof OfertaDePedido ? Distribuicao::SEGUNDOS_DA_OFERTA . 's' : self::VALIDADE_ALARME;
+    }
+
+    protected static function comoDados(FcmMessage $mensagem, string $titulo, string $corpo, array $cartao = [], string $validade = self::VALIDADE_ALARME): FcmMessage
     {
         $dados = [];
         foreach ((array) $mensagem->data as $chave => $valor) {
@@ -260,7 +274,7 @@ class AvisosDoMotoboy
 
         $android = (array) ($mensagem->custom['android'] ?? []);
         unset($android['notification']);
-        $mensagem->custom['android'] = array_merge($android, ['priority' => 'high', 'ttl' => self::VALIDADE_ALARME]);
+        $mensagem->custom['android'] = array_merge($android, ['priority' => 'high', 'ttl' => $validade]);
 
         return $mensagem;
     }

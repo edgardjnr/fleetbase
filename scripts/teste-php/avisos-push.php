@@ -246,6 +246,20 @@ confere($dados['objeto'] === 'em texto', 'objeto com __toString vira o texto del
 confere($dados['quebrado'] === "[\"a\u{FFFD}\"]", 'UTF-8 inválido dentro de uma lista é substituído (json_encode não deixa false nos dados)');
 putenv('ENTREGAS_ALARME_POR_DADOS');
 
+echo '== Oferta de pedido (distribuição)' . PHP_EOL;
+putenv('ENTREGAS_ALARME_POR_DADOS=1');
+$venceEm  = new DateTimeImmutable('2026-10-07 10:00:30', new DateTimeZone(date_default_timezone_get()));
+$oferta   = new App\Notifications\Entregas\OfertaDePedido(pedidoDoTeste(), 850, $venceEm);
+$mensagem = enviado($oferta);
+confere(($mensagem['data']['title'] ?? null) === 'Oferta para você' && str_contains($mensagem['data']['body'] ?? '', '850 m'), 'título da oferta e a distância da coleta');
+confere(($mensagem['data']['entregas_oferta'] ?? null) === '1' && ($mensagem['data']['entregas_oferta_vence_em'] ?? null) === $venceEm->format(DATE_ATOM), 'dados da oferta');
+confere(($mensagem['android']['ttl'] ?? null) === '30s', 'vence em 30 s (android.ttl)');
+confere(($mensagem['data']['type'] ?? null) === 'order_ping' && ($mensagem['data']['id'] ?? null) === 'order_abc', 'continua um pedido aberto para o app (type order_ping)');
+putenv('ENTREGAS_ALARME_POR_DADOS=0');
+confere((enviado($oferta)['android']['ttl'] ?? null) === '30s', 'oferta como push comum também vence em 30 s');
+confere(!isset(enviado(new OrderPing(pedidoDoTeste(), 850))['data']['entregas_oferta']), 'pedido aberto comum não leva os dados da oferta');
+putenv('ENTREGAS_ALARME_POR_DADOS=1');
+
 echo '== Aviso sem tradução' . PHP_EOL;
 
 class AvisoNovoDoFleetOps extends Illuminate\Notifications\Notification
