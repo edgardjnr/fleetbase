@@ -173,7 +173,9 @@ class BarrarAceiteDePedidoEncerrado
         // distribuição de pedidos abertos: na fase ofertas só quem tem a oferta aceita (Distribuicoes::ofertaParaAceite)
         if ($atual && Distribuicao::ligada() && Distribuicoes::emOfertas((string) $atual->uuid)) {
             $quem   = $this->quemAceita($request);
-            $oferta = $quem ? Distribuicoes::ofertaParaAceite((string) $atual->uuid, $quem) : null;
+            $oferta = $quem && !$this->assignDivergeDaSessao($request)
+                ? Distribuicoes::ofertaParaAceite((string) $atual->uuid, $quem)
+                : null;
             if (!$oferta) {
                 Log::info('[entregas] aceite do motoboy barrado: pedido oferecido a outro motoboy', [
                     'pedido'  => $pedido->public_id,
@@ -186,7 +188,15 @@ class BarrarAceiteDePedidoEncerrado
 
             $resposta = $next($request);
             if ($this->deuCerto($resposta)) {
-                app(Distribuidor::class)->registrarAceite($oferta);
+                try {
+                    app(Distribuidor::class)->registrarAceite($oferta);
+                } catch (\Throwable $e) {
+                    // o startOrder já gravou o aceite: a falha aqui nunca o derruba (a varredura encerra a distribuição)
+                    Log::warning('[entregas] distribuição: falha ao registrar o aceite', [
+                        'pedido' => $pedido->public_id,
+                        'erro'   => get_class($e),
+                    ]);
+                }
             }
 
             return $resposta;
@@ -237,6 +247,18 @@ class BarrarAceiteDePedidoEncerrado
         }
 
         return null;
+    }
+
+    /** Há motoboy na sessão e veio um `assign` que não é o public_id dele: o startOrder atribuiria a outro. */
+    protected function assignDivergeDaSessao(Request $request): bool
+    {
+        $assign = $request->input('assign');
+        if (!is_string($assign) || $assign === '') {
+            return false;
+        }
+        $daSessao = MotoboyDaSessao::motoboy($request);
+
+        return $daSessao && (string) $daSessao->public_id !== $assign;
     }
 
     /** A resposta do startOrder foi 2xx (o Response do Laravel tem getStatusCode; a dos testes, `status`). */

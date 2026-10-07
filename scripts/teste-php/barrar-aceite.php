@@ -38,7 +38,7 @@ function aceitar(string $token, array $dados = [], string $acao = API . 'startOr
     $request->token = $token;
     $request->rota  = new Route($acao, ['id' => 'order_1']);
 
-    return (new BarrarAceiteDePedidoEncerrado())->handle($request, fn () => $proximo ?? 'passou');
+    return (new BarrarAceiteDePedidoEncerrado())->handle($request, fn () => is_callable($proximo) ? $proximo() : ($proximo ?? 'passou'));
 }
 
 const TOKEN_A = '12|token-do-motoboy-a';
@@ -147,5 +147,35 @@ Config::$valores['services.entregas.distribuicao'] = '1';
 comDistribuicao([['d-a', 'pendente']]);
 $falha = response()->json(['error' => 'Order has already started.'], 400);
 confere(aceitar(TOKEN_A, ['assign' => 'driver_a'], API . 'startOrder', $falha) === $falha && DB::table('entregas_ofertas')->where('id', 1)->value('resposta') === 'pendente', 'o Fleet-Ops recusou o aceite: a oferta continua pendente');
+
+comDistribuicao([['d-a', 'pendente']]);
+$resposta = aceitar(TOKEN_A, ['assign' => 'driver_b']);
+confere($resposta->status === 409 && DB::table('entregas_ofertas')->where('id', 1)->value('resposta') === 'pendente', 'sessão A com assign de B: 409 e a oferta continua pendente');
+
+comDistribuicao([['d-a', 'pendente']]);
+$real = aceitar(TOKEN_A, ['assign' => 'driver_a'], API . 'startOrder', function () {
+    app(\App\Support\Entregas\Distribuicao\Distribuidor::class)->encerrar('order-1', 'atribuida'); // o observador do startOrder
+
+    return response()->json(['id' => 'order_1'], 200);
+});
+confere($real->status === 200
+    && DB::table('entregas_ofertas')->where('id', 1)->value('resposta') === 'aceita'
+    && DB::table('entregas_distribuicoes')->where('id', 1)->value('fase') === 'encerrada'
+    && DB::table('entregas_distribuicoes')->where('id', 1)->value('motivo') === 'aceita', 'fluxo real: o observador encerra como atribuida e o aceite grava aceita por cima');
+
+comDistribuicao([['d-a', 'pendente']]);
+\Teste\Container::$instancias[\App\Support\Entregas\Distribuicao\Distribuidor::class] = new class extends \App\Support\Entregas\Distribuicao\Distribuidor {
+    public function __construct() {}
+
+    public function registrarAceite(object $oferta): void
+    {
+        throw new \RuntimeException('falhou');
+    }
+};
+Log::$registros = [];
+$ok = response()->json(['id' => 'order_1'], 200);
+confere(aceitar(TOKEN_A, ['assign' => 'driver_a'], API . 'startOrder', $ok) === $ok
+    && count(array_filter(Log::$registros, fn ($l) => str_contains(json_encode($l), 'falha ao registrar o aceite'))) === 1, 'registrarAceite lança: a resposta 2xx volta intacta e o warning é registrado');
+unset(\Teste\Container::$instancias[\App\Support\Entregas\Distribuicao\Distribuidor::class]);
 
 resumo();
