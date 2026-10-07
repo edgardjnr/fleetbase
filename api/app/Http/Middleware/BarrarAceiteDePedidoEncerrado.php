@@ -2,6 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Entregas\Distribuicao\Distribuicao;
+use App\Support\Entregas\Distribuicao\Distribuicoes;
+use App\Support\Entregas\Distribuicao\Distribuidor;
 use App\Support\Entregas\MotoboyDaSessao;
 use App\Support\Entregas\StatusDoPedido;
 use App\Support\Entregas\TravaDoPedido;
@@ -36,6 +39,11 @@ use Illuminate\Support\Facades\Log;
  * em pedido aberto, ele iniciaria o pedido em nome do novo motoboy. Aqui o aceite é barrado (409) quando o pedido não
  * é aberto, tem motoboy atribuído e quem aceita é outro: o motoboy da sessão (token de motoboy, MotoboyDaSessao; chave
  * de API não tem motoboy da sessão e não é conferida por aí) ou o `assign` enviado.
+ *
+ * Distribuição de pedidos abertos (ENTREGAS_DISTRIBUICAO): na fase `ofertas` só aceita quem tem a oferta pendente (ou a
+ * vencida, enquanto ninguém foi oferecido depois), `Distribuicoes::ofertaParaAceite`; quem aceita é o motoboy da sessão
+ * ou, sem ele, o `assign`. Os outros levam 409. O aceite válido (resposta 2xx do startOrder) registra a oferta como
+ * aceita (`Distribuidor::registrarAceite`, sem trava própria: já roda dentro desta). Na fase `aberta` o aceite é livre.
  *
  * O cancelamento da API v1 (DELETE v1/orders/{id}/cancel, OrderController@cancelOrder, o caminho provável da
  * integração iFood) também roda com a trava, sem conferência nenhuma: ele cancela até pedido iniciado, que é
@@ -162,6 +170,28 @@ class BarrarAceiteDePedidoEncerrado
             return $this->recusar('Este pedido passou para outro motoboy.', 409);
         }
 
+        // distribuição de pedidos abertos: na fase ofertas só quem tem a oferta aceita (Distribuicoes::ofertaParaAceite)
+        if ($atual && Distribuicao::ligada() && Distribuicoes::emOfertas((string) $atual->uuid)) {
+            $quem   = $this->quemAceita($request);
+            $oferta = $quem ? Distribuicoes::ofertaParaAceite((string) $atual->uuid, $quem) : null;
+            if (!$oferta) {
+                Log::info('[entregas] aceite do motoboy barrado: pedido oferecido a outro motoboy', [
+                    'pedido'  => $pedido->public_id,
+                    'motoboy' => $request->input('assign'),
+                    'ip'      => $request->ip(),
+                ]);
+
+                return $this->recusar('Este pedido está sendo oferecido a outro motoboy.', 409);
+            }
+
+            $resposta = $next($request);
+            if ($this->deuCerto($resposta)) {
+                app(Distribuidor::class)->registrarAceite($oferta);
+            }
+
+            return $resposta;
+        }
+
         // o aceite inteiro com a trava: um cancelamento que chegar agora espera o aceite terminar
         return $next($request);
     }
@@ -190,5 +220,35 @@ class BarrarAceiteDePedidoEncerrado
         }
 
         return false;
+    }
+
+    /** O uuid de quem está aceitando: o motoboy da sessão ou, sem ele, o `assign` (public_id). */
+    protected function quemAceita(Request $request): ?string
+    {
+        $daSessao = MotoboyDaSessao::motoboy($request);
+        if ($daSessao) {
+            return (string) $daSessao->uuid;
+        }
+        $assign = $request->input('assign');
+        if (is_string($assign) && $assign !== '') {
+            $uuid = Driver::where('public_id', $assign)->first()?->uuid;
+
+            return $uuid ? (string) $uuid : null;
+        }
+
+        return null;
+    }
+
+    /** A resposta do startOrder foi 2xx (o Response do Laravel tem getStatusCode; a dos testes, `status`). */
+    protected function deuCerto($resposta): bool
+    {
+        if (is_object($resposta) && method_exists($resposta, 'getStatusCode')) {
+            return $resposta->getStatusCode() < 300;
+        }
+        if (is_object($resposta) && isset($resposta->status)) {
+            return (int) $resposta->status < 300;
+        }
+
+        return true;
     }
 }
