@@ -280,6 +280,46 @@ fleet-ops:
         vale-presente: vale-presente
         outra-forma: outra forma
         misto: formas variadas
+    distribuicao:
+      painel-titulo: Distribuição
+      erro: Não foi possível carregar a distribuição (só administradores veem este painel).
+      sem-distribuicao: Este pedido não passou pela oferta um a um.
+      situacao: Situação
+      oferta-atual: Oferta atual
+      oferta-texto: '{motoboy} · fecha em {segundos} s'
+      fila: Fila (tempo até o cliente)
+      historico: Ofertas feitas
+      minutos: '{minutos} min'
+      aproximado: Estimativa pela distância em linha reta
+      encaixe: no caminho
+      ocupado: já leva pedido
+      abrir: Abrir a todos agora
+      abrir-titulo: Abrir o pedido a todos os motoboys?
+      abrir-texto: O pedido deixa de ser oferecido um a um e o alarme vai a todos os motoboys online perto da loja. O primeiro que aceitar leva.
+      aberto: Pedido aberto a todos os motoboys.
+      fase:
+        ofertas: Oferecendo um a um
+        aberta: Aberto a todos
+        encerrada: Encerrada
+        desconhecida: Situação desconhecida
+      motivo:
+        aceita: aceito pelo motoboy da oferta
+        atribuida: motoboy definido
+        cancelada: pedido encerrado
+        aberta_pela_central: aberto pela central
+        fila_esgotada: nenhum motoboy aceitou a oferta
+        prazo: passaram 3 min sem aceite
+        sem_candidato: nenhum motoboy disponível no raio
+        redespachada: pedido despachado de novo
+        falha: erro na distribuição; aberto a todos
+        desconhecido: motivo desconhecido
+      resposta:
+        pendente: aguardando
+        aceita: aceitou
+        recusada: recusou
+        vencida: não respondeu
+        cancelada: cancelada
+        desconhecida: desconhecida
     order-form:
       store-or-customer: Loja ou cliente
       store-or-customer-placeholder: Selecionar loja ou cliente

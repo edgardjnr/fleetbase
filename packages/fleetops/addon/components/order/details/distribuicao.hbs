@@ -1,0 +1,56 @@
+{{#if this.mostrar}}
+    <div {{did-insert this.recarregar}} {{did-update this.recarregar @resource.id @resource.status @resource.updated_at}}>
+        <ContentPanel @title={{t "fleet-ops.ui.distribuicao.painel-titulo"}} @isLoading={{or @isLoading (and this.carregar.isRunning (not this.painel))}} @open={{true}} @wrapperClass="bordered-top">
+            {{#if this.erro}}
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.distribuicao.erro"}}</p>
+            {{else if this.temDistribuicao}}
+                <div class="field-info-container field-vertical-container dashed-bottom">
+                    <div class="field-name">{{t "fleet-ops.ui.distribuicao.situacao"}}</div>
+                    <div class="field-value">{{this.faseTexto}}</div>
+                </div>
+                {{#if this.painel.oferta}}
+                    <div class="field-info-container field-vertical-container dashed-bottom">
+                        <div class="field-name">{{t "fleet-ops.ui.distribuicao.oferta-atual"}}</div>
+                        <div class="field-value">{{t "fleet-ops.ui.distribuicao.oferta-texto" motoboy=this.painel.oferta.motoboy segundos=this.segundos}}</div>
+                    </div>
+                {{/if}}
+                {{#if this.fila.length}}
+                    <div class="field-info-container field-vertical-container dashed-bottom">
+                        <div class="field-name">{{t "fleet-ops.ui.distribuicao.fila"}}</div>
+                        <div class="field-value">
+                            {{#each this.fila as |item|}}
+                                <div class="text-xs">
+                                    {{item.posicao}}. {{item.nome}} ·
+                                    {{#if item.aproximado}}<span class="text-gray-400 dark:text-gray-500" title={{t "fleet-ops.ui.distribuicao.aproximado"}}>≈</span>{{/if}}{{item.tempo}}
+                                    {{#if item.encaixe}}· {{t "fleet-ops.ui.distribuicao.encaixe"}}{{/if}}
+                                    {{#unless item.livre}}· {{t "fleet-ops.ui.distribuicao.ocupado"}}{{/unless}}
+                                </div>
+                            {{/each}}
+                        </div>
+                    </div>
+                {{/if}}
+                {{#if this.historico.length}}
+                    <div class="field-info-container field-vertical-container dashed-bottom">
+                        <div class="field-name">{{t "fleet-ops.ui.distribuicao.historico"}}</div>
+                        <div class="field-value">
+                            {{#each this.historico as |oferta|}}
+                                <div class="text-xs">
+                                    {{oferta.posicao}}. {{oferta.motoboy}} ·
+                                    {{#if oferta.aproximado}}<span class="text-gray-400 dark:text-gray-500" title={{t "fleet-ops.ui.distribuicao.aproximado"}}>≈</span>{{/if}}{{oferta.tempo}}
+                                    · {{oferta.resposta}}
+                                </div>
+                            {{/each}}
+                        </div>
+                    </div>
+                {{/if}}
+                {{#if this.podeAbrir}}
+                    <div class="mt-2">
+                        <Button @type="warning" @size="xs" @icon="bullhorn" @text={{t "fleet-ops.ui.distribuicao.abrir"}} @onClick={{this.abrirATodos}} @permission="fleet-ops update order" />
+                    </div>
+                {{/if}}
+            {{else if this.painel}}
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.distribuicao.sem-distribuicao"}}</p>
+            {{/if}}
+        </ContentPanel>
+    </div>
+{{/if}}
