@@ -2,6 +2,7 @@
 
 namespace App\Support\Entregas\Distribuicao;
 
+use App\Jobs\Entregas\AvancarDistribuicao;
 use App\Jobs\Entregas\AvancarOferta;
 use App\Notifications\Entregas\OfertaDePedido;
 use App\Support\Entregas\StatusDoPedido;
@@ -35,6 +36,10 @@ use Illuminate\Support\Facades\Log;
  *
  * Oferta: ao primeiro da fila que ainda existe e que não ganhou a oferta de outro pedido enquanto a fila era calculada
  * (as travas são por pedido); nenhum: abre a todos (fila_esgotada).
+ *
+ * Em rodadas (Distribuicao::emRodadas), o avancarSemTrava segue o avancarEmRodadas: oferta de 20 s, rodadas R, 1,5R e
+ * 2R, voltas até alguém aceitar e nunca o alarme a todos (sem prazo de 3 min; só a falha ainda abre com o alarme geral).
+ * recusarOuDispensar, mostrarATodos e registrarAceitePelaLista são do ciclo em rodadas.
  *
  * Pedido que já tem motoboy ou está encerrado (o Order::updated não viu: saveQuietly) não recebe oferta nem alarme: a
  * distribuição é encerrada (atribuida/cancelada), como faz a varredura.
@@ -70,6 +75,17 @@ class Distribuidor
     {
         TravaDoPedido::executar($pedidoUuid, function () use ($pedidoUuid) {
             $this->proximoPasso($pedidoUuid);
+        });
+    }
+
+    /**
+     * Como o avancar, mas uma falha no passo abre a todos (falha) com o alarme geral, como depois de uma resposta. Usado
+     * pelo job AvancarDistribuicao e pela varredura em rodadas. Lança LockTimeoutException se a trava não sair.
+     */
+    public function avancarOuAbrir(string $pedidoUuid): void
+    {
+        TravaDoPedido::executar($pedidoUuid, function () use ($pedidoUuid) {
+            $this->proximoPassoOuAbrir($pedidoUuid);
         });
     }
 
@@ -236,6 +252,11 @@ class Distribuidor
         if ($distribuicao->fase !== Distribuicao::FASE_OFERTAS || $this->encerrouPeloPedido($distribuicao, $pedido)) {
             return;
         }
+        if (Distribuicao::emRodadas()) {
+            $this->avancarEmRodadas($distribuicao, $pedido);
+
+            return;
+        }
         // o prazo vale antes da pendente: aos MINUTOS_ATE_ABRIR abre a todos, cancelando a oferta que ainda corre
         $despachada = Distribuicoes::data($distribuicao->despachada_em);
         if ($despachada && now() >= $despachada->addMinutes(Distribuicao::MINUTOS_ATE_ABRIR)) {
@@ -257,8 +278,94 @@ class Distribuidor
             return;
         }
         Distribuicoes::gravarFila((int) $distribuicao->id, $fila);
+        if (!$this->oferecerAoPrimeiro($distribuicao, $pedido, $fila, 1, 1, null)) {
+            $this->abrirSemTrava($distribuicao, $pedido, Distribuicao::FILA_ESGOTADA);
+        }
+    }
 
-        // o primeiro da fila que ainda existe e que não ganhou, nesse meio-tempo, a oferta de outro pedido (outra trava)
+    /**
+     * Um passo do ciclo em rodadas, já sob a trava e com a distribuição em `ofertas`: com uma oferta pendente, espera;
+     * senão oferece ao primeiro da rodada atual. Rodada vazia passa à seguinte (sair da rodada 1 da volta 1 abre a
+     * lista). Depois da rodada 3: volta nova (rodada 1, todos de novo) se já passou SEGUNDOS_ENTRE_VOLTAS do início da
+     * volta; senão agenda o próximo passo (AvancarDistribuicao) e para. No máximo uma volta nova por passo: uma volta
+     * inteira sem ninguém para e espera a varredura. Nunca abre a todos.
+     */
+    protected function avancarEmRodadas(object $distribuicao, Order $pedido): void
+    {
+        $id = (int) $distribuicao->id;
+        if (Distribuicoes::ofertaPendente($id)) {
+            return; // alguém ainda está decidindo
+        }
+        $raioBase  = max(1, (int) $pedido->getAdhocDistance());
+        $volta     = max(1, (int) ($distribuicao->volta ?? 1));
+        $rodada    = max(1, min(Distribuicao::ULTIMA_RODADA, (int) ($distribuicao->rodada ?? 1)));
+        $voltaNova = false;
+
+        while (true) {
+            if ($this->oferecerNaRodada($distribuicao, $pedido, $volta, $rodada, Distribuicao::raioDaRodada($raioBase, $rodada))) {
+                return;
+            }
+            if ($rodada < Distribuicao::ULTIMA_RODADA) {
+                if ($volta === 1 && $rodada === 1 && Distribuicoes::abrirLista($id)) {
+                    Log::info('[entregas] distribuição: lista aberta', ['pedido' => $pedido->public_id, 'distribuicao' => $id]);
+                }
+                $rodada++;
+                Distribuicoes::irParaRodada($id, $rodada);
+                Log::info('[entregas] distribuição: rodada ' . $rodada . ' (raio ' . Distribuicao::raioDaRodada($raioBase, $rodada) . ' m)', ['pedido' => $pedido->public_id, 'distribuicao' => $id, 'volta' => $volta]);
+
+                continue;
+            }
+            if ($voltaNova) {
+                // a volta inteira sem ninguém: para (a varredura tenta de novo a cada minuto)
+                Distribuicoes::tocar($id);
+                Log::info('[entregas] distribuição: aguardando motoboy', ['pedido' => $pedido->public_id, 'distribuicao' => $id, 'volta' => $volta]);
+
+                return;
+            }
+            $inicio = Distribuicoes::data($distribuicao->volta_iniciada_em ?? null) ?? Distribuicoes::data($distribuicao->despachada_em);
+            $falta  = $inicio ? $inicio->getTimestamp() + Distribuicao::SEGUNDOS_ENTRE_VOLTAS - now()->getTimestamp() : 0;
+            if ($falta > 0) {
+                Distribuicoes::tocar($id);
+                try {
+                    AvancarDistribuicao::agendar((string) $pedido->uuid, $falta);
+                } catch (\Throwable $e) {
+                    // a fila fora do ar: a varredura avança (SEGUNDOS_PARADA depois do updated_at)
+                    Log::warning('[entregas] distribuição: job da próxima volta não entrou na fila', ['distribuicao' => $id, 'erro' => get_class($e)]);
+                }
+
+                return;
+            }
+            $volta++;
+            $rodada    = 1;
+            $voltaNova = true;
+            Distribuicoes::novaVolta($id, $volta);
+            Log::info('[entregas] distribuição: volta ' . $volta, ['pedido' => $pedido->public_id, 'distribuicao' => $id]);
+        }
+    }
+
+    /**
+     * A oferta da rodada: os disponíveis até o raio, fora quem tem qualquer linha nesta volta e quem tem oferta pendente
+     * de outro pedido, na ordem "termina tudo e depois vai". False se ninguém recebeu.
+     */
+    protected function oferecerNaRodada(object $distribuicao, Order $pedido, int $volta, int $rodada, int $raio): bool
+    {
+        $id        = (int) $distribuicao->id;
+        $excluidos = array_merge(Distribuicoes::motoboysDaVolta($id, $volta), Distribuicoes::motoboysComOfertaPendente());
+        $fila      = $this->fila->para($pedido, Candidatos::elegiveis($pedido, $excluidos, $raio), true);
+        if ($fila === []) {
+            return false; // vazia não apaga a última fila gravada (o painel a mostra)
+        }
+        Distribuicoes::gravarFila($id, $fila);
+
+        return $this->oferecerAoPrimeiro($distribuicao, $pedido, $fila, $volta, $rodada, $raio);
+    }
+
+    /**
+     * Oferece ao primeiro da fila que ainda existe e que não ganhou, nesse meio-tempo, a oferta de outro pedido (outra
+     * trava): grava a oferta, agenda o AvancarOferta e manda o push. False se ninguém da fila serviu.
+     */
+    protected function oferecerAoPrimeiro(object $distribuicao, Order $pedido, array $fila, int $volta, int $rodada, ?int $raio): bool
+    {
         $ocupados = Distribuicoes::motoboysComOfertaPendente();
         $primeiro = null;
         $motoboy  = null;
@@ -273,12 +380,10 @@ class Distribuidor
             }
         }
         if (!$primeiro) {
-            $this->abrirSemTrava($distribuicao, $pedido, Distribuicao::FILA_ESGOTADA);
-
-            return;
+            return false;
         }
         $posicao = count(Distribuicoes::ofertas((int) $distribuicao->id)) + 1;
-        $oferta  = Distribuicoes::criarOferta($distribuicao, $primeiro, $posicao);
+        $oferta  = Distribuicoes::criarOferta($distribuicao, $primeiro, $posicao, $volta, $rodada, $raio);
         try {
             AvancarOferta::agendar((int) $oferta->id);
         } catch (\Throwable $e) {
@@ -286,12 +391,14 @@ class Distribuidor
             Log::warning('[entregas] distribuição: job da oferta não entrou na fila', ['oferta' => $oferta->id, 'erro' => get_class($e)]);
         }
         try {
-            $motoboy->notify(new OfertaDePedido($pedido, $primeiro['distancia_m'], Distribuicoes::data($oferta->vence_em)));
+            $motoboy->notify(new OfertaDePedido($pedido, $primeiro['distancia_m'], Distribuicoes::data($oferta->vence_em), Distribuicao::segundosDaOferta()));
         } catch (\Throwable $e) {
             // o envio para a fila falhou (Redis); a oferta vence sozinha (o FCM roda no worker)
             Log::warning('[entregas] distribuição: push da oferta falhou', ['oferta' => $oferta->id, 'erro' => get_class($e)]);
         }
-        Log::info('[entregas] distribuição: oferta enviada', ['pedido' => $pedido->public_id, 'oferta' => $oferta->id, 'motoboy' => $motoboy->public_id, 'posicao' => $posicao, 'tempo_s' => $primeiro['tempo_s'], 'encaixe' => $primeiro['encaixe']]);
+        Log::info('[entregas] distribuição: oferta enviada', ['pedido' => $pedido->public_id, 'oferta' => $oferta->id, 'motoboy' => $motoboy->public_id, 'posicao' => $posicao, 'tempo_s' => $primeiro['tempo_s'], 'encaixe' => $primeiro['encaixe'], 'volta' => $volta, 'rodada' => $rodada]);
+
+        return true;
     }
 
     protected function abrirSemTrava(object $distribuicao, Order $pedido, string $motivo): void
