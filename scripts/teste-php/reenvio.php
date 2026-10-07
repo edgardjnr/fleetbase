@@ -394,6 +394,44 @@ rodarMinutos('09:01:00', 30, function ($agora) {
 });
 confere(count(avisosACentral()) === 1, 'o comando padrão ignora a saída que não existe e avisa depois');
 
+echo '== Distribuição em ofertas: sem reenvio' . PHP_EOL;
+// o stubs.php não tem DB nem config(): o comando trata a falha da consulta como "não está em ofertas" e o reenvio segue
+$comandoOfertas = new class extends ReenviarPedidosAbertos {
+    public static array $emOfertas = [];
+    protected function emDistribuicao($pedido): bool { return in_array($pedido->uuid, self::$emOfertas, true); }
+};
+$classeOfertas = get_class($comandoOfertas);
+foreach ([true, false] as $emOfertas) {
+    $p = pedido('PED-O', '09:05:00');
+    reiniciar([$p], [motoboy('Motoca', 1200)]);
+    $classeOfertas::$emOfertas = $emOfertas ? [$p->uuid] : [];
+    CarbonImmutable::$agoraTeste = '2026-10-03 09:10:00';
+    (new $classeOfertas())->handle();
+    if ($emOfertas) {
+        confere(Registro::$avisos === [], 'em ofertas: nenhum aviso aos motoboys');
+        confere(Cache::$dados === [], 'em ofertas: o cache do reenvio não é gravado');
+    } else {
+        confere(count(Registro::$avisos) === 1, 'fora de ofertas: o reenvio sai como antes');
+    }
+}
+
+echo '== Distribuição em ofertas: o aviso à central segue' . PHP_EOL;
+$p = pedido('PED-O2', '09:00:30');
+reiniciar([$p], [motoboy('Motoca', 1200)]);
+$classeOfertas::$emOfertas = [$p->uuid];
+rodarMinutos('09:01:00', 30, null, $classeOfertas);
+confere(horarios('PED-O2') === [] && count(avisosACentral()) === 1, 'sem reenvio, mas a central é avisada aos 12 min (' . implode(', ', avisosACentral()) . ')');
+
+echo '== emDistribuicao real: sem config/banco (ou desligada) o reenvio segue' . PHP_EOL;
+$real = new class extends ReenviarPedidosAbertos {
+    public function consulta($pedido): bool { return $this->emDistribuicao($pedido); }
+};
+confere($real->consulta(pedido('PED-O3', '09:05:00')) === false, 'sem config/banco: false');
+reiniciar([pedido('PED-O4', '09:05:00')], [motoboy('Motoca', 1200)]);
+CarbonImmutable::$agoraTeste = '2026-10-03 09:10:00';
+(new ReenviarPedidosAbertos())->handle();
+confere(count(Registro::$avisos) === 1, 'o comando padrão reenvia normalmente');
+
 echo '== Fuso: a janela vai ao banco em hora de Brasília (dispatched_at é DATETIME; sessão do MySQL em -03:00)' . PHP_EOL;
 $p                = pedido('PED-F', '09:05:00');
 $p->dispatched_at = new DateTimeImmutable('2026-10-03 09:05:00'); // como o Eloquent lê o texto do banco: no fuso do app
