@@ -10,6 +10,7 @@ use App\Support\Entregas\TravaDoPedido;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Notifications\OrderPing;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -39,7 +40,8 @@ use Illuminate\Support\Facades\Log;
  *
  * Em rodadas (Distribuicao::emRodadas), o avancarSemTrava segue o avancarEmRodadas: oferta de 20 s, rodadas R, 1,5R e
  * 2R, voltas até alguém aceitar e nunca o alarme a todos (sem prazo de 3 min; só a falha e o pedido sem coordenada
- * válida ainda abrem com o alarme geral).
+ * válida ainda abrem com o alarme geral). Passada 1 h do despacho (MINUTOS_ATE_PARAR_DE_TOCAR), não oferece mais: o
+ * pedido fica só na lista aberta (soNaLista).
  * recusarOuDispensar, mostrarATodos e registrarAceitePelaLista são do ciclo em rodadas (com as rodadas desligadas, o
  * mostrarATodos devolve fora_de_ofertas sem tocar em nada e o recusarOuDispensar só recusa).
  *
@@ -402,6 +404,11 @@ class Distribuidor
         if (Distribuicoes::ofertaPendente($id)) {
             return; // alguém ainda está decidindo
         }
+        if ($this->passouDoLimiteDeTocar($distribuicao)) {
+            $this->soNaLista($distribuicao, $pedido);
+
+            return;
+        }
         $raioBase  = max(1, (int) $pedido->getAdhocDistance());
         $volta     = max(1, (int) ($distribuicao->volta ?? 1));
         $rodada    = max(1, min(Distribuicao::ULTIMA_RODADA, (int) ($distribuicao->rodada ?? 1)));
@@ -447,6 +454,35 @@ class Distribuidor
             Distribuicoes::novaVolta($id, $volta);
             Log::info('[entregas] distribuição: volta ' . $volta, ['pedido' => $pedido->public_id, 'distribuicao' => $id]);
         }
+    }
+
+    /** Em rodadas: passou MINUTOS_ATE_PARAR_DE_TOCAR do despacho (sem despachada_em, sem limite). */
+    protected function passouDoLimiteDeTocar(object $distribuicao): bool
+    {
+        $despachada = Distribuicoes::data($distribuicao->despachada_em ?? null);
+
+        return $despachada && now() >= $despachada->addMinutes(Distribuicao::MINUTOS_ATE_PARAR_DE_TOCAR);
+    }
+
+    /**
+     * Passado o limite de 1 h: ninguém mais recebe oferta (nem agenda o próximo passo); a distribuição segue em
+     * `ofertas` com a lista aberta (abre agora, se ainda estava fechada) e o aceite pela lista vale. O log sai uma vez
+     * por distribuição (marca no cache; se o cache falhar, loga de novo, nunca derruba o passo).
+     */
+    protected function soNaLista(object $distribuicao, Order $pedido): void
+    {
+        $id = (int) $distribuicao->id;
+        Distribuicoes::abrirLista($id);
+        $chave = 'entregas:distribuicao-parou-de-tocar:' . $id;
+        try {
+            if (Cache::get($chave)) {
+                return;
+            }
+            Cache::put($chave, true, 86400);
+        } catch (\Throwable $e) {
+            // sem o cache: o log pode repetir
+        }
+        Log::info('[entregas] distribuição: limite de 1 h; só na lista', ['pedido' => $pedido->public_id, 'distribuicao' => $id]);
     }
 
     /**

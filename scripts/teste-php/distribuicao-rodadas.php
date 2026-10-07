@@ -428,4 +428,57 @@ $dist->iniciar(pedidoDoCenario());
 pedidoDoCenario()->adhoc = false;
 confere($dist->mostrarATodos('order-1') === 'fora_de_ofertas' && distribuicao()->motivo === 'cancelada', 'mostrarATodos: fora_de_ofertas e encerra (cancelada)');
 
+echo '== Limite de 1 h: para de oferecer, só na lista' . PHP_EOL;
+function logsDoLimite(): int { return count(array_filter(\Illuminate\Support\Facades\Log::$registros, fn ($l) => str_contains($l[1], 'limite de 1 h; só na lista'))); }
+
+$dist = cenarioRodadas([$ana, $bruno, $caio]);
+$dist->iniciar(pedidoDoCenario());                                                // 10:00:00, Ana
+DB::table('entregas_distribuicoes')->where('id', 1)->update(['despachada_em' => '2026-10-07 09:00:21']);
+Relogio::$agora = '2026-10-07 10:00:20';
+(new AvancarOferta(1))->handle($dist);
+confere(count(ofertas()) === 2 && ofertas()[1]->motoboy_uuid === 'd-bruno' && logsDoLimite() === 0 && distribuicao()->lista_aberta_em === null, 'antes de 1 h do despacho: tudo como antes (Bruno, rodada 1, lista fechada)');
+Relogio::$agora = '2026-10-07 10:00:40';                                          // 1 h e 19 s do despacho
+(new AvancarOferta(2))->handle($dist);
+confere(ofertas()[1]->resposta === 'vencida' && count(ofertas()) === 2 && count(avisos()) === 2 && alarmesGerais() === [], 'passada 1 h: a oferta que corria vence normalmente, mas a seguinte não sai (nem alarme geral)');
+confere(distribuicao()->fase === 'ofertas' && distribuicao()->motivo === null && distribuicao()->lista_aberta_em === '2026-10-07 10:00:40', 'segue em ofertas e a lista abre nesse momento');
+confere(logsDoLimite() === 1 && logou('limite de 1 h; só na lista', 'info') && logsSem(['Ana', 'Bruno', '-21.1']), 'log info uma vez, só com ids');
+$jobsAntes = count(Fila::$jobs);
+Relogio::$agora = '2026-10-07 10:01:00';
+(new AvancarDistribuicao('order-1'))->handle($dist);                             // job agendado antes do limite
+confere(count(ofertas()) === 2 && count(Fila::$jobs) === $jobsAntes && logsDoLimite() === 1, 'AvancarDistribuicao depois do limite: não oferece, não agenda outro nem repete o log');
+$atualizada = distribuicao()->updated_at;
+Relogio::$agora = '2026-10-07 10:05:00';
+(new VarrerDistribuicoes())->handle($dist);
+confere(count(ofertas()) === 2 && distribuicao()->updated_at === $atualizada && distribuicao()->fase === 'ofertas' && logsDoLimite() === 1, 'a varredura não acorda a distribuição com mais de 1 h');
+confere(Distribuicoes::emOfertas('order-1') === true && distribuicao()->lista_aberta_em !== null, 'o aceite pela lista continua valendo (em ofertas, lista aberta)');
+$dist->registrarAceitePelaLista(distribuicao(), 'd-caio');
+confere(distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'aceita' && ofertas()[2]->resposta === 'aceita_pela_lista' && ofertas()[2]->motoboy_uuid === 'd-caio', 'aceite pela lista depois do limite: encerrada (aceita)');
+
+$dist = cenarioRodadas([$ana]);
+$dist->iniciar(pedidoDoCenario());
+Distribuicoes::responder(1, 'vencida');                                           // o job da volta se perdeu, lista ainda fechada
+DB::table('entregas_distribuicoes')->where('id', 1)->update(['despachada_em' => '2026-10-07 08:00:00', 'lista_aberta_em' => null, 'updated_at' => '2026-10-07 10:00:00']);
+Relogio::$agora = '2026-10-07 10:01:00';
+(new VarrerDistribuicoes())->handle($dist);
+confere(count(ofertas()) === 1 && distribuicao()->lista_aberta_em === '2026-10-07 10:01:00' && logsDoLimite() === 1, 'varredura: a de mais de 1 h com a lista ainda fechada é acordada uma vez, só para abrir a lista');
+Relogio::$agora = '2026-10-07 10:03:00';
+(new VarrerDistribuicoes())->handle($dist);
+confere(count(ofertas()) === 1 && distribuicao()->updated_at === '2026-10-07 10:01:00' && logsDoLimite() === 1, 'depois disso a varredura não a acorda mais');
+
+$dist = cenarioRodadas([$ana]);
+$dist->iniciar(pedidoDoCenario());
+DB::table('entregas_distribuicoes')->where('id', 1)->update(['despachada_em' => '2026-10-07 08:00:00']);
+pedidoDoCenario()->driver_assigned_uuid = 'd-x';
+Relogio::$agora = '2026-10-07 10:00:20';
+$dist->vencer(1);
+confere(distribuicao()->fase === 'encerrada' && distribuicao()->motivo === 'atribuida' && logsDoLimite() === 0, 'depois do limite, o encerramento segue igual (atribuida)');
+
+$dist = cenarioRodadas([$ana, $bruno]);
+$dist->iniciar(pedidoDoCenario());
+Config::$valores['services.entregas.distribuicao_rodadas'] = '';
+DB::table('entregas_distribuicoes')->where('id', 1)->update(['despachada_em' => '2026-10-07 09:59:00']);
+Relogio::$agora = '2026-10-07 10:00:30';
+$dist->vencer(1);
+confere(ofertas()[1]->motoboy_uuid === 'd-bruno' && logsDoLimite() === 0, 'rodadas desligadas: nada muda');
+
 resumo();

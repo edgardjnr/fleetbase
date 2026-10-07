@@ -187,14 +187,19 @@ class Distribuicoes
 
     /**
      * Em rodadas: as distribuições em ofertas, sem oferta pendente, paradas (updated_at) há mais de $segundos e
-     * despachadas nas últimas 24 h (a varredura avança; as mais antigas ficam com o observador do Order).
+     * despachadas nas últimas 24 h (a varredura avança; as mais antigas ficam com o observador do Order). Passado o
+     * limite de MINUTOS_ATE_PARAR_DE_TOCAR do despacho, só entra a que ainda está com a lista fechada (o passo a abre
+     * uma vez); as outras não recebem mais oferta e a varredura não as acorda a cada minuto.
      */
     public static function emOfertasParadasHa(int $segundos): array
     {
         $limite = now()->subSeconds($segundos)->format('Y-m-d H:i:s');
         $dia    = now()->subDays(1)->format('Y-m-d H:i:s');
+        $parou  = now()->subMinutes(Distribuicao::MINUTOS_ATE_PARAR_DE_TOCAR)->format('Y-m-d H:i:s');
         $linhas = DB::table(static::TABELA)->where('fase', Distribuicao::FASE_OFERTAS)->where('updated_at', '<', $limite)
-            ->where('despachada_em', '>=', $dia)->orderBy('id')->get()->all();
+            ->where('despachada_em', '>=', $dia)
+            ->where(fn ($q) => $q->where('despachada_em', '>', $parou)->orWhereNull('lista_aberta_em'))
+            ->orderBy('id')->get()->all();
 
         return array_values(array_filter($linhas, fn ($d) => !static::ofertaPendente((int) $d->id)));
     }

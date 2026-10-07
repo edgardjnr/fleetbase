@@ -22,13 +22,14 @@ crescendo, e recomeça até alguém aceitar. Sem alarme para todos de uma vez.
 | Tempo de cada oferta | **20 s** (era 30 s). |
 | Rodadas | 1 = até **R**; 2 = até **1,5R**; 3 = até **2R** (R = raio de pedido aberto da empresa, hoje 6 km → 6, 9 e 12 km). |
 | Quem entra em cada rodada | Os disponíveis até o raio da rodada **que ainda não receberam oferta nem dispensaram nesta volta**. |
-| Fim da rodada 3 | **Volta nova** na rodada 1, com todos de novo (inclusive quem recusou). Repete até alguém aceitar. |
+| Fim da rodada 3 | **Volta nova** na rodada 1, com todos de novo (inclusive quem recusou). Repete até alguém aceitar, por até 1 h. |
+| Limite de 1 h | Passada **1 h do despacho** (`Distribuicao::MINUTOS_ATE_PARAR_DE_TOCAR`), ninguém mais recebe oferta: a distribuição segue em `ofertas`, só na lista aberta (abre nesse momento, se ainda estava fechada), e o aceite pela lista vale. A oferta que já corria termina normalmente. Log `limite de 1 h; só na lista` uma vez. Decisão do Edgard (2026-10-07): o pedido de teste esquecido não toca o dia inteiro, e a `posicao` (`unsignedSmallInteger`) não estoura. |
 | Intervalo entre voltas | A volta nova só começa **1 min depois do início da anterior**. |
 | Recálculo | A cada oferta (quem ficou livre, online ou terminou uma entrega entra na hora). |
 | Lista "Novos pedidos" | Volta 1, rodada 1: só quem está com a oferta. **A partir da rodada 2 da volta 1: todos os disponíveis até 2R**, menos quem recusou ou dispensou nesta volta. Quem aceitar primeiro leva. |
 | Alarme | Sempre **um por vez** (só quem está com a oferta). Os outros veem na lista, sem tocar. |
 | Recusar e Dispensar | Fazem a mesma coisa em todo lugar (cartão da tela bloqueada, tela do pedido, card da lista): avisam o servidor, o pedido some da lista dele até a volta seguinte e não toca para ele nesta volta. |
-| Sem ninguém em nenhum raio | Tenta de novo a cada 1 min. |
+| Sem ninguém em nenhum raio | Tenta de novo a cada 1 min (até o limite de 1 h). |
 | Central | O aviso "sem motoboy" aos 12 min continua (uma vez). O ciclo segue. |
 | Sai | O prazo de 3 min, o alarme para todos (`OrderPing` a todos do raio) e os reenvios do Fleet-Ops nesses pedidos. |
 | Botão do console | "Abrir a todos agora" vira **"Mostrar a todos agora"**: abre a lista na hora, sem alarme geral; o ciclo continua. |
@@ -63,6 +64,9 @@ Exemplo com R = 6 km e quatro motoboys livres que não aceitam: Ana (2 km), Brun
    - senão, agenda o próximo passo para quando completar 1 min (job atrasado; a varredura é a reserva) e para.
 6. Uma volta inteira sem nenhum candidato (ninguém disponível em 2R): para e espera. A varredura tenta de novo a cada
    minuto. No máximo uma volta nova por passo, para nunca girar em falso.
+7. Passada 1 h do despacho (`despachada_em`), depois do item 2: não oferece mais nem agenda o próximo passo. Grava
+   `lista_aberta_em` se ainda estava fechada e registra `limite de 1 h; só na lista` uma vez. O pedido fica só na lista
+   até alguém aceitar ou a distribuição encerrar (atribuição, cancelamento, `adhoc` desligado).
 
 O motoboy que tem oferta pendente de outro pedido conta como "ainda não perguntado": entra num passo seguinte da mesma
 rodada, se ficar livre a tempo, ou na volta seguinte.
@@ -173,6 +177,8 @@ Com as rodadas ligadas:
 - encerra as distribuições cujo pedido ganhou motoboy, encerrou ou sumiu (como hoje);
 - **avança** as distribuições em `ofertas` sem oferta pendente e paradas há mais de 1 min (`updated_at`): volta que
   esperava o intervalo, ninguém disponível, job perdido. Cada tentativa sem candidato toca o `updated_at`;
+- não acorda as despachadas há mais de 1 h (limite de 1 h), exceto a que ainda está com a lista fechada: essa é
+  avançada uma vez, só para abrir a lista;
 - não abre mais pelo prazo.
 
 ## 12. Erros
@@ -181,7 +187,7 @@ Com as rodadas ligadas:
 - Push da oferta falhou: a oferta vence sozinha e o ciclo segue (como hoje).
 - Job perdido (Redis reiniciado): a varredura vence a oferta e avança a distribuição parada.
 - Logs novos (prefixo `[entregas] distribuição:`): `rodada <n> (raio <m> m)`, `volta <n>`, `lista aberta`,
-  `oferta dispensada`, `aceita pela lista`, `aguardando motoboy`.
+  `oferta dispensada`, `aceita pela lista`, `aguardando motoboy`, `limite de 1 h; só na lista`.
 
 ## 13. Testes
 
@@ -197,7 +203,8 @@ Com as rodadas ligadas:
 
 ## 14. Riscos aceitos
 
-- Com um motoboy só, ele recebe a oferta a cada 1 min até aceitar (20 s tocando, 40 s parado).
+- Com um motoboy só, ele recebe a oferta a cada 1 min por até 1 h (20 s tocando, 40 s parado); depois, o pedido fica
+  só na lista.
 - O tempo é estimado em linha reta; o OSRM próprio continua sendo a melhoria (`ENTREGAS_DISTRIBUICAO_OSRM`).
 - A sequência das paradas do motoboy ocupado é suposta pela ordem de aceite.
 - O motoboy a até 2R vê na lista pedidos de lojas a 12 km; o que é longe demais ele dispensa.

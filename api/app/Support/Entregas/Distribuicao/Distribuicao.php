@@ -69,6 +69,11 @@ class Distribuicao
     public const SEGUNDOS_ENTRE_VOLTAS = 60;
     /** A varredura avança a distribuição em ofertas, sem oferta pendente, parada (updated_at) há mais que isto. */
     public const SEGUNDOS_PARADA = 60;
+    /**
+     * Em rodadas: passado isto do despacho, ninguém mais recebe oferta (o pedido de teste esquecido não toca o dia
+     * inteiro, e a `posicao` não estoura). A distribuição segue em `ofertas`, só na lista aberta, e o aceite pela lista vale.
+     */
+    public const MINUTOS_ATE_PARAR_DE_TOCAR = 60;
     /** A lista aberta mostra o pedido ao motoboy com a coleta até este múltiplo de R da posição dele. */
     public const MULTIPLICADOR_DA_LISTA = 2.0;
 

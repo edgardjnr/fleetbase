@@ -200,6 +200,11 @@ $linhas = DB::table('entregas_ofertas')->orderBy('id')->get()->all();
 confere(count($linhas) === 2 && $linhas[0]->resposta === 'cancelada' && $linhas[1]->resposta === 'aceita_pela_lista' && $linhas[1]->motoboy_uuid === 'd-b', 'a oferta de A vira cancelada; B ganha a linha aceita_pela_lista');
 confere(DB::table('entregas_distribuicoes')->where('id', 1)->value('fase') === 'encerrada' && DB::table('entregas_distribuicoes')->where('id', 1)->value('motivo') === 'aceita', 'distribuição encerrada (aceita)');
 
+comRodadas([['d-a', 'vencida']], true);
+DB::table('entregas_distribuicoes')->where('id', 1)->update(['despachada_em' => '2026-10-07 07:00:00']); // passou do limite de 1 h
+session(['user' => 'u-b']);
+confere(aceitar('13|token-do-motoboy-b', ['assign' => 'driver_b']) === 'passou' && DB::table('entregas_distribuicoes')->where('id', 1)->value('motivo') === 'aceita', 'depois do limite de 1 h (só na lista): B aceita pela lista');
+
 comRodadas([['d-a', 'pendente']], true);
 confere(aceitar(TOKEN_A, ['assign' => 'driver_a']) === 'passou' && DB::table('entregas_ofertas')->where('id', 1)->value('resposta') === 'aceita' && DB::table('entregas_ofertas')->count() === 1, 'lista aberta, quem tem a oferta aceita: aceita na própria oferta, sem linha nova');
 
