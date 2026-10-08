@@ -97,6 +97,7 @@ namespace Illuminate\Support\Facades {
         public static function get($chave, $padrao = null) { return array_key_exists($chave, self::$dados) ? self::$dados[$chave] : $padrao; }
         public static function put($chave, $valor, $ttl = null) { self::$dados[$chave] = $valor; self::$validades[$chave] = $ttl; return true; }
         public static function forget($chave) { unset(self::$dados[$chave], self::$validades[$chave]); return true; }
+        public static function pull($chave, $padrao = null) { $valor = self::get($chave, $padrao); self::forget($chave); return $valor; }
         // grava só se a chave não existe (o teste simula o vencimento com forget)
         public static function add($chave, $valor, $ttl = null) { if (array_key_exists($chave, self::$dados)) { return false; } return self::put($chave, $valor, $ttl); }
         public static function lock($nome, $segundos = 0) { \Teste\Trava::$validades[$nome] = $segundos; return new \Teste\Trava($nome); }

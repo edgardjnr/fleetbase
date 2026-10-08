@@ -6,7 +6,9 @@ use Closure;
 use GuzzleHttp\Exception\TransferException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 /**
@@ -20,6 +22,11 @@ use InvalidArgumentException;
  * ou outro erro de transferência do Guzzle vira ErroIfood com status 0. Não renova token: quem chama
  * (VinculosIfood::comToken) renova no 401 e repete uma vez. Não registra nada no log, para nenhum token, nome, telefone
  * ou endereço ir parar lá; tokens, refresh, código e verificador levam #[\SensitiveParameter] (fora do stack trace).
+ *
+ * Modo homologação (ENTREGAS_IFOOD_HOMOLOGACAO=1, desligado por padrão): cada chamada sai no log
+ * "[entregas] ifood: chamada" só com a operação, o status HTTP, o tempo e ids (pedido do iFood, quantidade de lojas ou
+ * de eventos), e a operação pode receber um erro simulado, uma vez (HomologacaoIfood, comando
+ * entregas:ifood-homologacao), para mostrar ao analista o tratamento do 429, 5xx, 404 e 409.
  */
 class ClienteIfood
 {
@@ -65,6 +72,18 @@ class ClienteIfood
     public static function exigeAppNovo(): bool
     {
         return filter_var(config('services.ifood.exige_app_novo'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /** Modo homologação (ENTREGAS_IFOOD_HOMOLOGACAO=1): log de cada chamada e erro simulado (ver o docblock da classe). */
+    public static function emHomologacao(): bool
+    {
+        return filter_var(config('services.ifood.homologacao'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /** Chave do cache com o erro simulado da operação ({status, espera}), consumida na próxima chamada dela. */
+    public static function chaveDaSimulacao(string $operacao): string
+    {
+        return 'entregas:ifood-simular:' . $operacao;
     }
 
     /** Código de vínculo (userCode, authorizationCodeVerifier, verificationUrl, verificationUrlComplete, expiresIn). */
@@ -117,9 +136,16 @@ class ClienteIfood
 
         $resposta = $this->enviar('polling', fn () => $this->comToken($token)
             ->withHeaders(['x-polling-merchants' => implode(',', $merchantIds)])
-            ->get($this->baseUrl . '/events/v1.0/events:polling', ['excludeHeartbeat' => 'true']));
+            ->get($this->baseUrl . '/events/v1.0/events:polling', ['excludeHeartbeat' => 'true']), ['lojas' => count($merchantIds)]);
 
-        return $resposta->status() === 204 ? [] : array_values(array_filter((array) $resposta->json(), 'is_array'));
+        $eventos = $resposta->status() === 204 ? [] : array_values(array_filter((array) $resposta->json(), 'is_array'));
+        if ($eventos && static::emHomologacao()) {
+            // só os códigos (PLC, DDCR...), nunca o payload
+            $codigos = array_values(array_unique(array_map(fn ($evento) => substr((string) ($evento['code'] ?? '?'), 0, 10), $eventos)));
+            Log::info('[entregas] ifood: eventos recebidos', ['quantidade' => count($eventos), 'codigos' => $codigos]);
+        }
+
+        return $eventos;
     }
 
     /** Confirma o recebimento dos eventos (202), em lotes de até MAX_IDS_POR_ACK. */
@@ -128,14 +154,14 @@ class ClienteIfood
         $ids = array_values(array_unique(array_filter($ids, fn ($id) => is_string($id) && $id !== '')));
         foreach (array_chunk($ids, static::MAX_IDS_POR_ACK) as $lote) {
             $this->enviar('ack', fn () => $this->comToken($token)
-                ->post($this->baseUrl . '/events/v1.0/events/acknowledgment', array_map(fn ($id) => ['id' => $id], $lote)));
+                ->post($this->baseUrl . '/events/v1.0/events/acknowledgment', array_map(fn ($id) => ['id' => $id], $lote)), ['eventos' => count($lote)]);
         }
     }
 
     /** O pedido no módulo Logistics (GET /logistics/v1.0/orders/{id}). */
     public function pedidoLogistics(#[\SensitiveParameter] string $token, string $pedidoId): array
     {
-        $resposta = $this->enviar('pedido', fn () => $this->comToken($token)->get($this->baseUrl . '/logistics/v1.0/orders/' . rawurlencode($pedidoId)));
+        $resposta = $this->enviar('pedido', fn () => $this->comToken($token)->get($this->baseUrl . '/logistics/v1.0/orders/' . rawurlencode($pedidoId)), ['pedido_ifood' => $pedidoId]);
 
         return (array) $resposta->json();
     }
@@ -155,7 +181,7 @@ class ClienteIfood
         $url = $this->baseUrl . '/logistics/v1.0/orders/' . rawurlencode($pedidoId) . '/' . $acao;
         $this->enviar($acao, fn () => $corpo === null || $corpo === []
             ? $this->comToken($token)->send('POST', $url)
-            : $this->comToken($token)->post($url, $corpo));
+            : $this->comToken($token)->post($url, $corpo), ['pedido_ifood' => $pedidoId]);
     }
 
     /**
@@ -166,7 +192,7 @@ class ClienteIfood
     public function verificarCodigo(#[\SensitiveParameter] string $token, string $pedidoId, #[\SensitiveParameter] string $codigo): array
     {
         $resposta = $this->enviar('verifyDeliveryCode', fn () => $this->comToken($token)
-            ->post($this->baseUrl . '/logistics/v1.0/orders/' . rawurlencode($pedidoId) . '/verifyDeliveryCode', ['code' => $codigo]));
+            ->post($this->baseUrl . '/logistics/v1.0/orders/' . rawurlencode($pedidoId) . '/verifyDeliveryCode', ['code' => $codigo]), ['pedido_ifood' => $pedidoId]);
 
         return (array) $resposta->json();
     }
@@ -189,13 +215,27 @@ class ClienteIfood
         return Http::withToken($token)->acceptJson()->timeout(static::TEMPO_LIMITE);
     }
 
-    protected function enviar(string $operacao, Closure $chamada): Response
+    /** $contexto: só ids e contagens, para o log do modo homologação. */
+    protected function enviar(string $operacao, Closure $chamada, array $contexto = []): Response
     {
+        $homologacao = static::emHomologacao();
+        if ($homologacao) {
+            static::erroSimulado($operacao, $contexto);
+        }
+        $inicio = microtime(true);
+
         try {
             $resposta = $chamada();
         } catch (ConnectionException | TransferException $e) {
+            if ($homologacao) {
+                static::registrarChamada($operacao, 0, $inicio, $contexto);
+            }
             // rede fora, tempo esgotado ou outra falha do Guzzle (redirecionamentos demais, resposta truncada): temporário
             throw new ErroIfood($operacao, 0, substr($e->getMessage(), 0, 300));
+        }
+
+        if ($homologacao) {
+            static::registrarChamada($operacao, $resposta->status(), $inicio, $contexto);
         }
 
         if ($resposta->successful()) {
@@ -210,5 +250,29 @@ class ClienteIfood
         }
 
         throw new ErroIfood($operacao, $resposta->status(), substr($resposta->body(), 0, 2000), $espera);
+    }
+
+    /** Modo homologação: a chamada no log, sem corpo, token nem dado do cliente. */
+    protected static function registrarChamada(string $operacao, int $status, float $inicio, array $contexto): void
+    {
+        Log::info('[entregas] ifood: chamada', ['operacao' => $operacao, 'status' => $status, 'ms' => (int) round((microtime(true) - $inicio) * 1000)] + $contexto);
+    }
+
+    /**
+     * Modo homologação: o erro simulado da operação (HomologacaoIfood::simular), consumido aqui, sobe como a resposta
+     * de erro do iFood subiria, sem chamar o iFood.
+     */
+    protected static function erroSimulado(string $operacao, array $contexto): void
+    {
+        $simulado = Cache::pull(static::chaveDaSimulacao($operacao));
+        if (!is_array($simulado) || !is_int($simulado['status'] ?? null)) {
+            return;
+        }
+
+        $status = $simulado['status'];
+        $espera = $status === 429 ? min(static::ESPERA_MAXIMA_429, max(1, (int) ($simulado['espera'] ?? static::ESPERA_PADRAO_429))) : null;
+        Log::warning('[entregas] ifood: erro simulado (homologação)', ['operacao' => $operacao, 'status' => $status] + ($espera !== null ? ['retry_after' => $espera] : []) + $contexto);
+
+        throw new ErroIfood($operacao, $status, '{"simulado":true}', $espera);
     }
 }
