@@ -58,6 +58,9 @@ $cliente->polling('token-1', ['m1', 'm2']);
 $log = registros('chamada');
 confere(count($log) === 1 && $log[0][0] === 'info', 'uma linha "chamada" por chamada');
 confere($log[0][2]['operacao'] === 'polling' && $log[0][2]['status'] === 204 && $log[0][2]['lojas'] === 2 && is_int($log[0][2]['ms']), 'operação, status, tempo e quantidade de lojas');
+confere($log[0][2]['excludeHeartbeat'] === 'true' && $log[0][2]['x-polling-merchants'] === 'm1,m2', 'com o excludeHeartbeat e as lojas do x-polling-merchants (critérios do polling)');
+$ultima = end(Http::$chamadas);
+confere(($ultima['headers']['x-polling-merchants'] ?? null) === 'm1,m2' && ($ultima['dados']['excludeHeartbeat'] ?? null) === 'true', 'e os dois vão de verdade na chamada');
 confere(!str_contains(json_encode(Log::$registros), 'token-1'), 'sem o token no log');
 
 Http::responder(200, [['id' => 'e1', 'code' => 'PLC', 'orderId' => 'p1'], ['id' => 'e2', 'code' => 'DDCR', 'orderId' => 'p1'], ['id' => 'e3', 'code' => 'PLC', 'orderId' => 'p2']]);

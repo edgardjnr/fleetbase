@@ -3,6 +3,26 @@
 Base: os critérios em `docs/ifood/referencia-logistics.md`, seção 6. Quando o iFood mandar o checklist de gravação, ligue
 cada cenário dele a um passo deste roteiro (o checklist vale mais que este texto).
 
+## 0. Checklist do iFood (recebido em 2026-10-08)
+
+O iFood pede **um vídeo por cenário**, cada um num link separado (Google Drive, não anexo no chamado), com a **data e a
+hora da execução** e o **client_id do app de teste** no texto do chamado. Deixe o relógio do Windows visível na
+gravação. Faltou alguma informação? O iFood pede tudo de novo.
+
+| Cenário do iFood | Nosso passo | Observação |
+|---|---|---|
+| 1. Configuração inicial: Polling | Seção 3, critérios 1 e 9 | O log `chamada {operacao: polling}` mostra `excludeHeartbeat: true` e `x-polling-merchants: <id da loja>`; o `chamada ack` sai logo depois de cada `polling 200`. Grave ~1 min de 204 a cada 30 s e depois um pedido de teste entrando. |
+| 2. Configuração inicial: Webhook | **Não se aplica** | Pela documentação (Events → Webhook e Critérios de homologação), o webhook só existe para app **centralizado**, e a homologação é "Polling **OU** Webhook". O nosso app é **distribuído** e usa polling. Escreva isso no chamado, em vez de mandar o vídeo. |
+| 3. Fluxo de entrega | Seção 3, critérios 2 a 7 | Um pedido do começo ao fim: `assignDriver` → `goingToOrigin` → `arrivedAtOrigin` → `dispatch` → `arrivedAtDestination`, cada um com `chamada <ação> 202` no log. |
+| 4. Etapa obrigatória (código) | Seção 3, critério 8 | Pedido com `DELIVERY_DROP_CODE_REQUESTED` (DDCR no log `eventos recebidos`), o app pede o código, um **errado** (400/422) e depois o **certo** (`verifyDeliveryCode` 200) e o pedido conclui. Antes, descubra de onde vem o código do pedido de teste. |
+
+Pode ser o mesmo pedido nos cenários 3 e 4 (o código é o fim do fluxo), mas grave os dois vídeos separados, ou mande o
+mesmo vídeo em dois links com o trecho de cada um indicado.
+
+**Logs do Developer Portal** (também obrigatórios): Developer Portal → Logs da API → HTTP Requests → selecione o app de
+teste → Buscar → baixe e **anexe no chamado** (estes vão anexados; os vídeos vão por link). Baixe depois das gravações,
+para cobrirem os quatro cenários.
+
 **Ensaie o roteiro inteiro antes de gravar.** Se um critério falhar na análise, o chamado é encerrado e é preciso
 abrir outro. Pela documentação, depois de uma reprovação é preciso esperar 15 dias para pedir de novo.
 
