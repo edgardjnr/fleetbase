@@ -136,7 +136,9 @@ class ClienteIfood
 
         $resposta = $this->enviar('polling', fn () => $this->comToken($token)
             ->withHeaders(['x-polling-merchants' => implode(',', $merchantIds)])
-            ->get($this->baseUrl . '/events/v1.0/events:polling', ['excludeHeartbeat' => 'true']), ['lojas' => count($merchantIds)]);
+            ->get($this->baseUrl . '/events/v1.0/events:polling', ['excludeHeartbeat' => 'true']),
+            // no log da homologação, os dois critérios do polling à vista (só ids das lojas)
+            ['lojas' => count($merchantIds), 'excludeHeartbeat' => 'true', 'x-polling-merchants' => implode(',', $merchantIds)]);
 
         $eventos = $resposta->status() === 204 ? [] : array_values(array_filter((array) $resposta->json(), 'is_array'));
         if ($eventos && static::emHomologacao()) {
