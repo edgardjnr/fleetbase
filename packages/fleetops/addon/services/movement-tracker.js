@@ -20,6 +20,7 @@ import { task, timeout } from 'ember-concurrency';
 import { debug } from '@ember/debug';
 import getModelName from '@fleetbase/ember-core/utils/get-model-name';
 import LeafletTrackingMarkerComponent from '../components/leaflet-tracking-marker';
+import { paginaOculta, posicaoMaisRecente } from '../utils/entregas-posicao-do-socket';
 
 export class EventBuffer {
     @tracked events = [];
@@ -30,6 +31,9 @@ export class EventBuffer {
 
     /** @type {import('./map-manager').default|null} */
     mapManager = null;
+
+    /** Entregas: instante (ms) do created_at da última posição desenhada; uma mais antiga não volta ao mapa. */
+    ultimoInstante = -Infinity;
 
     constructor(model, { callback = null, waitTime = 1000 * 3, mapManager = null }) {
         this.model = model;
@@ -66,16 +70,27 @@ export class EventBuffer {
     }
 
     start() {
-        this.intervalId = setInterval(() => {
-            const bufferReady = this.process.isIdle && this.events.length > 0;
-            if (bufferReady) {
-                this.process.perform();
-            }
-        }, this.waitTime);
+        this.intervalId = setInterval(() => this.#processarSePronto(), this.waitTime);
+
+        // Entregas: ao voltar para a aba, desenha na hora a posição que chegou enquanto ela estava oculta
+        this._aoMudarVisibilidade = () => {
+            if (!paginaOculta()) this.#processarSePronto();
+        };
+        document.addEventListener('visibilitychange', this._aoMudarVisibilidade);
     }
 
     stop() {
         clearInterval(this.intervalId);
+        if (this._aoMudarVisibilidade) {
+            document.removeEventListener('visibilitychange', this._aoMudarVisibilidade);
+            this._aoMudarVisibilidade = null;
+        }
+    }
+
+    #processarSePronto() {
+        if (this.process.isIdle && this.events.length > 0) {
+            this.process.perform();
+        }
     }
 
     clear() {
@@ -94,78 +109,90 @@ export class EventBuffer {
         this.events = this.events.filter((e) => e !== event);
     }
 
+    /**
+     * Entregas: desenha só a posição mais recente da fila (utils/entregas-posicao-do-socket.js). Antes, cada evento
+     * acumulado era animado em sequência, 0,55 s por evento: depois de um tempo com a aba em segundo plano, o capacete
+     * reproduzia o trajeto perdido, indo e voltando. Com a aba oculta, a posição vai direto, sem animação (o navegador
+     * não roda a animação em segundo plano e o marcador ficaria parado onde estava).
+     */
     @task *process() {
         debug('Processing movement tracker event buffer.');
 
         const eventsToProcess = [...this.events];
         this.events = [];
 
-        eventsToProcess.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        debug(`[MovementTracker EventBuffer processing ${eventsToProcess.length} events]`);
-
-        for (const output of eventsToProcess) {
-            const { event, data } = output;
-
-            // Resolve marker via adapter (provider-agnostic) or Leaflet fallback
-            const markerId = this.#getMarkerId();
-            const hasAdapterMarker = markerId && this.mapManager?.hasMarker(markerId);
-            const leafletMarker = !hasAdapterMarker ? this.model?.leafletLayer || this.model?._layer || this.model?._marker : null;
-
-            if (!hasAdapterMarker && (!leafletMarker || !leafletMarker._map)) {
-                debug('No marker or marker not on map yet');
-                continue;
-            }
-
-            debug(`${event} - ${data.id} ${data.additionalData?.index ? '#' + data.additionalData?.index : ''} (${output.created_at}) [ ${data.location.coordinates.join(' ')} ]`);
-
-            // GeoJSON -> [lat, lng]
-            const [lng, lat] = data.location.coordinates;
-            const nextLatLng = [lat, lng];
-
-            // Calculate distance for animation duration
-            let meters = 0;
-            if (hasAdapterMarker) {
-                const adapterCenter = this.mapManager.getCenter?.();
-                if (adapterCenter) meters = this.#calcDistance(adapterCenter, nextLatLng);
-            } else if (leafletMarker) {
-                const map = leafletMarker._map;
-                const prev = leafletMarker.getLatLng();
-                meters = map ? map.distance(prev, nextLatLng) : prev.distanceTo(nextLatLng);
-            }
-
-            let mps = Number.isFinite(data.speed) && data.speed > 0 ? data.speed : null;
-            const durationMs = mps ? Math.max(100, Math.min((meters / mps) * 1000, 500)) : 500;
-
-            try {
-                if (hasAdapterMarker) {
-                    // ── Provider-agnostic path ─────────────────────────────
-                    if (Number.isFinite(data.heading) && data.heading !== -1) {
-                        this.mapManager.setMarkerRotation(markerId, data.heading);
-                    }
-                    this.mapManager.updateMarkerPosition(markerId, lat, lng, true, durationMs);
-                } else if (leafletMarker) {
-                    // ── Leaflet backward-compat path ───────────────────────
-                    if (typeof leafletMarker.setRotationAngle === 'function' && Number.isFinite(data.heading) && data.heading !== -1) {
-                        leafletMarker.setRotationAngle(data.heading);
-                    }
-                    if (typeof leafletMarker.slideTo === 'function') {
-                        leafletMarker.slideTo(nextLatLng, { duration: durationMs });
-                    } else {
-                        leafletMarker.setLatLng(nextLatLng);
-                    }
-                }
-
-                if (typeof this.callback === 'function') {
-                    this.callback(output, { nextLatLng, duration: durationMs, mps });
-                }
-
-                yield timeout(durationMs + 50);
-            } catch (err) {
-                debug('MovementTracker EventBuffer error: ' + err.message);
-            }
+        const maisRecente = posicaoMaisRecente(eventsToProcess, this.ultimoInstante);
+        debug(`[MovementTracker EventBuffer ${eventsToProcess.length} events, drawing ${maisRecente ? 'the latest' : 'none'}]`);
+        if (!maisRecente) {
+            return;
         }
 
-        debug(`[MovementTracker EventBuffer finished processing ${eventsToProcess.length} events]`);
+        const { evento: output, instante, latLng: nextLatLng } = maisRecente;
+        const { event, data } = output;
+        const [lat, lng] = nextLatLng;
+
+        // Resolve marker via adapter (provider-agnostic) or Leaflet fallback
+        const markerId = this.#getMarkerId();
+        const hasAdapterMarker = markerId && this.mapManager?.hasMarker(markerId);
+        const leafletMarker = !hasAdapterMarker ? this.model?.leafletLayer || this.model?._layer || this.model?._marker : null;
+
+        if (!hasAdapterMarker && (!leafletMarker || !leafletMarker._map)) {
+            debug('No marker or marker not on map yet');
+            return;
+        }
+
+        debug(`${event} - ${data.id} (${output.created_at}) [ ${lng} ${lat} ]`);
+
+        if (Number.isFinite(instante)) {
+            this.ultimoInstante = instante;
+        }
+
+        const animar = !paginaOculta();
+
+        // Calculate distance for animation duration
+        let meters = 0;
+        if (hasAdapterMarker) {
+            const adapterCenter = this.mapManager.getCenter?.();
+            if (adapterCenter) meters = this.#calcDistance(adapterCenter, nextLatLng);
+        } else if (leafletMarker) {
+            const map = leafletMarker._map;
+            const prev = leafletMarker.getLatLng();
+            meters = map ? map.distance(prev, nextLatLng) : prev.distanceTo(nextLatLng);
+        }
+
+        let mps = Number.isFinite(data.speed) && data.speed > 0 ? data.speed : null;
+        const durationMs = mps ? Math.max(100, Math.min((meters / mps) * 1000, 500)) : 500;
+
+        try {
+            if (hasAdapterMarker) {
+                // ── Provider-agnostic path ─────────────────────────────
+                if (Number.isFinite(data.heading) && data.heading !== -1) {
+                    this.mapManager.setMarkerRotation(markerId, data.heading);
+                }
+                this.mapManager.updateMarkerPosition(markerId, lat, lng, animar, durationMs);
+            } else if (leafletMarker) {
+                // ── Leaflet backward-compat path ───────────────────────
+                if (typeof leafletMarker.setRotationAngle === 'function' && Number.isFinite(data.heading) && data.heading !== -1) {
+                    leafletMarker.setRotationAngle(data.heading);
+                }
+                // setLatLng também cancela um deslize em andamento (evento move → slideCancel)
+                if (animar && typeof leafletMarker.slideTo === 'function') {
+                    leafletMarker.slideTo(nextLatLng, { duration: durationMs });
+                } else {
+                    leafletMarker.setLatLng(nextLatLng);
+                }
+            }
+
+            if (typeof this.callback === 'function') {
+                this.callback(output, { nextLatLng, duration: durationMs, mps });
+            }
+
+            if (animar) {
+                yield timeout(durationMs + 50);
+            }
+        } catch (err) {
+            debug('MovementTracker EventBuffer error: ' + err.message);
+        }
     }
 }
 

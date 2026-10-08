@@ -19,6 +19,7 @@ $arquivos = array_merge(
         $app . '/Http/Middleware/BarrarAceiteDePedidoEncerrado.php',
         $app . '/Http/Middleware/FiltrarPedidosAbertosDoMotoboy.php',
         $app . '/Http/Controllers/Entregas/DistribuicaoController.php',
+        $app . '/Http/Controllers/Entregas/DriverControllerSemGeocodificacao.php',
         $app . '/Console/Commands/Entregas/VarrerDistribuicoes.php',
         $app . '/Notifications/Entregas/OfertaDePedido.php',
     ]
