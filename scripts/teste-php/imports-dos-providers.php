@@ -22,6 +22,10 @@ $arquivos = array_merge(
         $app . '/Http/Controllers/Entregas/DriverControllerSemGeocodificacao.php',
         $app . '/Console/Commands/Entregas/VarrerDistribuicoes.php',
         $app . '/Notifications/Entregas/OfertaDePedido.php',
+        // trava "Atualize o app"
+        $app . '/Http/Middleware/ExigirAppAtualizado.php',
+        $app . '/Support/Entregas/AppDoMotoboy.php',
+        $app . '/Http/Controllers/Entregas/MotoboyController.php',
     ]
 );
 

@@ -62,6 +62,18 @@ namespace Illuminate\Http {
         public function method(): string { return $this->metodo; }
         public function boolean($chave, $padrao = false): bool { return filter_var($this->dados[$chave] ?? $padrao, FILTER_VALIDATE_BOOLEAN); }
         public function bearerToken(): ?string { return $this->token; }
+        /** Cabeçalhos da requisição (ExigirAppAtualizado: X-Entregas-App), sem diferença de maiúsculas. */
+        public array $cabecalhos = [];
+        public function header($nome, $padrao = null)
+        {
+            foreach ($this->cabecalhos as $chave => $valor) {
+                if (strcasecmp($chave, $nome) === 0) {
+                    return $valor;
+                }
+            }
+
+            return $padrao;
+        }
         public function input($chave = null, $padrao = null) { return $chave === null ? $this->dados : ($this->dados[$chave] ?? $padrao); }
         public function array($chave): array { return (array) ($this->dados[$chave] ?? []); }
         public function ip(): string { return '127.0.0.1'; }

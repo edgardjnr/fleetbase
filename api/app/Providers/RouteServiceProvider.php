@@ -15,6 +15,7 @@ use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use App\Http\Controllers\Entregas\PortalLojaController;
 use App\Http\Middleware\AvisarOnlineDoMotoboy;
 use App\Http\Middleware\BarrarAceiteDePedidoEncerrado;
+use App\Http\Middleware\ExigirAppAtualizado;
 use App\Http\Middleware\FiltrarPedidosAbertosDoMotoboy;
 use App\Http\Middleware\IncluirNotasNaListaDePedidos;
 use App\Http\Middleware\RegrasDoPedidoIfood;
@@ -45,6 +46,10 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        // Entregas RestaurantePro: trava "Atualize o app" (ExigirAppAtualizado, AppDoMotoboy). O primeiro dos nossos no grupo
+        // fleetbase.api: o app desatualizado é barrado antes das outras regras (aceite, iFood, lista de pedidos)
+        $this->app['router']->pushMiddlewareToGroup('fleetbase.api', ExigirAppAtualizado::class);
+
         // Entregas RestaurantePro: pedido iFood não se cancela do nosso lado (API v1, console) e, com a trava
         // ENTREGAS_IFOOD_EXIGE_APP_NOVO, só se conclui pela rota concluir-ifood do APK novo (ver RegrasDoPedidoIfood). Antes
         // do BarrarAceiteDePedidoEncerrado: o cancelamento recusado nem pega a trava do pedido
@@ -176,6 +181,8 @@ class RouteServiceProvider extends ServiceProvider
                 Route::prefix('v1/entregas/motoboy')
                     ->middleware(['fleetbase.api', 'throttle:entregas-motoboy'])
                     ->group(function () {
+                        // versão mínima do app e link do APK (trava "Atualize o app")
+                        Route::get('app', [MotoboyController::class, 'app']);
                         Route::get('ganhos', [MotoboyController::class, 'ganhos']);
                         Route::get('pedidos/{id}/valor', [MotoboyController::class, 'valor']);
                         // conversa do motoboy com a central (botão "Chat" do cliente nos detalhes do pedido)

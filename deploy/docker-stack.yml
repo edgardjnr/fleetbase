@@ -76,9 +76,14 @@ x-api-env: &api-env
   # matriz de tempos da distribuição pelo OSRM_HOST: 1 liga; vazio = linha reta. Ligar só com um OSRM próprio (o público é
   # servidor de demonstração, com limite de uso, e receberia as posições dos motoboys)
   ENTREGAS_DISTRIBUICAO_OSRM: ${ENTREGAS_DISTRIBUICAO_OSRM:-}
-  # distribuição em rodadas (20 s, raio R/1,5R/2R, voltas até aceitar, sem alarme a todos): 1 liga; vazio = ciclo de 30 s
+  # distribuição em rodadas (30 s, raio R/1,5R/2R, voltas até aceitar, sem alarme a todos): 1 liga; vazio = ciclo de 30 s
   # que abre a todos. Só vale com ENTREGAS_DISTRIBUICAO=1; ligar só com o APK 30 em todos os celulares
   ENTREGAS_DISTRIBUICAO_RODADAS: ${ENTREGAS_DISTRIBUICAO_RODADAS:-}
+  # trava "Atualize o app" do motoboy (AppDoMotoboy): 1 liga; a versão mínima é a última publicada no MinIO pelo
+  # GitHub Actions do app. ENTREGAS_APP_VERSAO_MINIMA fixa outra à mão (emergência). Ligar só com o APK 35+ em todos
+  ENTREGAS_APP_TRAVA: ${ENTREGAS_APP_TRAVA:-}
+  ENTREGAS_APP_VERSAO_URL: ${ENTREGAS_APP_VERSAO_URL:-https://s3arquivos.restaurantepro.com.br/entregas/APK/entregas-motoboy.json}
+  ENTREGAS_APP_VERSAO_MINIMA: ${ENTREGAS_APP_VERSAO_MINIMA:-}
 
 x-deploy: &default-deploy
   replicas: 1
