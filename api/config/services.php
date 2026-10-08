@@ -80,5 +80,7 @@ return [
         'base_url'      => env('IFOOD_BASE_URL', 'https://merchant-api.ifood.com.br'),
         // trava "Atualize o app" (RegrasDoPedidoIfood): 1 só depois do APK com a conclusão iFood em todos os celulares
         'exige_app_novo' => env('ENTREGAS_IFOOD_EXIGE_APP_NOVO'),
+        // modo homologação (ClienteIfood): log de cada chamada ao iFood e erros simulados; só durante a homologação
+        'homologacao' => env('ENTREGAS_IFOOD_HOMOLOGACAO'),
     ],
 ];

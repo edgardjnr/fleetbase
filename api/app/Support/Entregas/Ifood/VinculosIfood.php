@@ -408,6 +408,9 @@ class VinculosIfood
                 'updated_at'    => $agora,
             ]);
         if ($gravadas > 0) {
+            // motivo: o 401 do iFood (renovação reativa) ou o vencimento próximo (proativa)
+            Log::info('[entregas] ifood: token renovado', ['loja' => $atual->vendor_uuid, 'merchant' => $atual->merchant_id, 'motivo' => $tokenRecusado !== null ? '401' : 'vencimento']);
+
             return $tokens['accessToken'];
         }
 

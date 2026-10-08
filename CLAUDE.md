@@ -452,6 +452,25 @@ Todos com o prefixo `[entregas] ifood:` e só com ids, códigos e o número do p
   - pedidos fictícios em `fixtures-ifood.php`.
 - Funções da tela Lojas: `scripts/teste-portal/vinculo-ifood.test.mjs`.
 
+### Homologação
+
+Decisão de 2026-10-08. O iFood homologa por vídeos com a loja de teste e encerra o chamado se um critério falhar. Roteiro de ensaio e gravação: `docs/ifood/homologacao-roteiro.md`.
+
+- **Modo homologação** (`ENTREGAS_IFOOD_HOMOLOGACAO=1` no `stack.env`, `services.ifood.homologacao`, desligado por padrão; está no `x-api-env`):
+  - cada chamada ao iFood sai no log `[entregas] ifood: chamada` (operação, status, ms e só ids);
+  - o polling com eventos registra `eventos recebidos` (quantidade e códigos);
+  - a renovação do token registra `token renovado` com o motivo `vencimento` ou `401`. Esta linha sai sempre, mesmo com o modo desligado.
+- **Comando `entregas:ifood-homologacao`** (`HomologacaoIfood`, no container da API), só com o modo ligado (a ação `situacao` funciona sempre):
+  - `situacao`;
+  - `token-vencido`: marca o `expira_em` no passado;
+  - `token-invalido`: grava um access token inválido, e o 401 vem do iFood de verdade;
+  - `simular --operacao=… --status=… [--espera=…]`: erro simulado uma vez, por até 10 min, no `ClienteIfood::enviar`, sem ir ao iFood;
+  - `limpar`.
+  - O token e o refresh nunca são simulados: um refresh recusado derruba o vínculo.
+  - O 400 numa ação para a sequência daquele pedido: use num pedido separado.
+- Teste: `scripts/teste-php/ifood-homologacao.php`.
+- **Limpeza antes da homologação:** `deploy/limpeza/` (inventário, revisão com ROLLBACK, backup e execução). Apaga todos os pedidos, as conversas de teste, as lojas do teste de isolamento e os locais sem uso. Mantém o Terraço Pizza Bar e o vínculo iFood dele.
+
 ## Integração iFood (etapa 3: ciclo da entrega)
 
 Desenho: spec, seções 3 e 4. Plano: `docs/superpowers/plans/2026-10-06-ifood-etapa-3-ciclo.md` (executado com ajustes de revisão: **o código é a referência**). Tudo em `api/app` (nada em `packages/*/server` chega à produção).
@@ -957,3 +976,4 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
 24. Busca de endereço pelo Google Places (2026-10-07, ramo `busca-de-endereco`): sugestões da Places API (New) perto de quem digita, endereço gravado no formato brasileiro ("Rua Olinda, 45"), na "Rua 1" do cadastro de local, no novo endereço do portal e no campo de local do novo pedido (ver "Produção" → "Busca de endereço (Google Places)").
 25. Distribuição em rodadas (2026-10-07, ramo `distribuicao-rodadas`): oferta de 20 s em rodadas R, 1,5R e 2R e voltas até alguém aceitar, sem alarme a todos; lista "Novos pedidos" aberta a partir da rodada 2 (até 2R), Recusar/Dispensar pelo servidor e "Mostrar a todos agora" no console, atrás de `ENTREGAS_DISTRIBUICAO_RODADAS` (ver "Distribuição de pedidos abertos" → "Rodadas").
 26. Capacete sem vai e volta (2026-10-07, ramo `posicao-do-motoboy`): o mapa do console desenha só a posição mais recente do socket (sem reproduzir a fila ao voltar para a aba) e o `track()` descarta posição anterior à última aceita ou grosseira (ver "Mapa ao vivo" → "Posição pelo socket").
+27. Homologação do iFood (2026-10-08, ramo `homologacao-ifood`): modo homologação (log de cada chamada e erros simulados), comando `entregas:ifood-homologacao`, roteiro de gravação e limpeza dos testes (`deploy/limpeza/`) (ver "Integração iFood" → "Homologação").
