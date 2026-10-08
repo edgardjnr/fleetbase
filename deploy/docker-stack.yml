@@ -184,6 +184,11 @@ services:
   scheduler:
     image: entregas-api:latest
     command: ["go-crond", "--verbose", "root:./crontab"]
+    # o schedule:run abre os comandos em segundo plano (runInBackground), que ficam órfãos
+    # e são adotados pelo PID 1; o go-crond não os recolhe e eles viravam zumbis (~6 por
+    # minuto). Com o init do Docker (tini) como PID 1, ele recolhe. O /proc/1/fd/1 dos
+    # comandos (Kernel::SAIDA_DO_CONTAINER) continua sendo a saída do container.
+    init: true
     # a imagem base (dunglas/frankenphp) testa o admin do Caddy na :2019, que não existe
     # aqui; no Swarm isso faz o task ser morto a cada ~90s
     healthcheck:
