@@ -250,6 +250,8 @@ echo '== Oferta de pedido (distribuição)' . PHP_EOL;
 putenv('ENTREGAS_ALARME_POR_DADOS=1');
 $venceEm  = new DateTimeImmutable('2026-10-07 10:00:30', new DateTimeZone(date_default_timezone_get()));
 $oferta   = new App\Notifications\Entregas\OfertaDePedido(pedidoDoTeste(), 850, $venceEm);
+// relógio fixo: o ttl é o que falta até o vencimento, e com a hora real a oferta de 2026-10-07 já estaria vencida
+\Carbon\CarbonImmutable::$agoraTeste = '2026-10-07 10:00:00';
 $mensagem = enviado($oferta);
 confere(($mensagem['data']['title'] ?? null) === 'Oferta para você' && str_contains($mensagem['data']['body'] ?? '', '850 m'), 'título da oferta e a distância da coleta');
 confere(($mensagem['data']['entregas_oferta'] ?? null) === '1' && ($mensagem['data']['entregas_oferta_vence_em'] ?? null) === $venceEm->format(DATE_ATOM), 'dados da oferta');
@@ -273,7 +275,9 @@ confere((enviado($oferta)['data']['entregas_oferta_segundos'] ?? null) === '0', 
 confere(($oferta->toFcm(null)->data['entregas_oferta'] ?? null) === '1', 'o push original de reserva (toFcm) também leva os dados da oferta');
 
 putenv('ENTREGAS_ALARME_POR_DADOS=0');
+\Carbon\CarbonImmutable::$agoraTeste = '2026-10-07 10:00:00';
 confere((enviado($oferta)['android']['ttl'] ?? null) === '30s', 'oferta como push comum também vence em 30 s');
+\Carbon\CarbonImmutable::$agoraTeste = null;
 confere(!isset(enviado(new OrderPing(pedidoDoTeste(), 850))['data']['entregas_oferta']), 'pedido aberto comum não leva os dados da oferta');
 putenv('ENTREGAS_ALARME_POR_DADOS=1');
 

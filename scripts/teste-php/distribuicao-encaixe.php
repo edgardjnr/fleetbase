@@ -101,7 +101,7 @@ confere(Distribuicao::ligada() === false, 'ligada() com null = false');
 echo '== emRodadas(), segundosDaOferta() e raioDaRodada()' . PHP_EOL;
 \Teste\Config::$valores['services.entregas.distribuicao']         = '1';
 \Teste\Config::$valores['services.entregas.distribuicao_rodadas'] = '1';
-confere(Distribuicao::emRodadas() === true && Distribuicao::segundosDaOferta() === 20, 'rodadas ligadas: oferta de 20 s');
+confere(Distribuicao::emRodadas() === true && Distribuicao::segundosDaOferta() === 30, 'rodadas ligadas: oferta de 30 s');
 \Teste\Config::$valores['services.entregas.distribuicao'] = '';
 confere(Distribuicao::emRodadas() === false && Distribuicao::segundosDaOferta() === 30, 'rodadas só valem com a distribuição ligada');
 \Teste\Config::$valores['services.entregas.distribuicao']         = '1';

@@ -65,8 +65,8 @@ class Distribuicao
     /** Em rodadas: aceito pela lista aberta por quem não tinha a oferta. */
     public const ACEITA_PELA_LISTA = 'aceita_pela_lista';
 
-    /** Em rodadas: cada oferta dura isto (o ciclo de hoje, SEGUNDOS_DA_OFERTA). */
-    public const SEGUNDOS_DA_OFERTA_EM_RODADAS = 20;
+    /** Em rodadas: cada oferta dura isto (era 20 s; 30 s por decisão do Edgard em 2026-10-08, igual ao ciclo sem rodadas). */
+    public const SEGUNDOS_DA_OFERTA_EM_RODADAS = 30;
     /** Raio de cada rodada em múltiplos do raio de pedido aberto (R = Order::getAdhocDistance()). */
     public const MULTIPLICADOR_DA_RODADA = [1 => 1.0, 2 => 1.5, 3 => 2.0];
     public const ULTIMA_RODADA           = 3;
@@ -93,7 +93,7 @@ class Distribuicao
         return static::ligada() && filter_var(config('services.entregas.distribuicao_rodadas'), FILTER_VALIDATE_BOOLEAN);
     }
 
-    /** Quanto dura uma oferta: 20 s em rodadas, 30 s no ciclo de hoje. */
+    /** Quanto dura uma oferta: SEGUNDOS_DA_OFERTA_EM_RODADAS em rodadas, SEGUNDOS_DA_OFERTA no ciclo sem rodadas. */
     public static function segundosDaOferta(): int
     {
         return static::emRodadas() ? static::SEGUNDOS_DA_OFERTA_EM_RODADAS : static::SEGUNDOS_DA_OFERTA;
