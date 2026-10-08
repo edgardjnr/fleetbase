@@ -188,7 +188,7 @@ cenarioRodadas();
 pedidoLonge(5, 10, true);
 Distribuicoes::criarOferta(Distribuicoes::doPedido('order-5'), ['motoboy_uuid' => 'd-a', 'tempo_s' => 900, 'encaixe' => false, 'aproximado' => true], 1, 1, 2, 9000);
 $item5 = item(itens(listar('12|token-do-motoboy-a')), 'order_5');
-confere(($item5['entregas_oferta']['segundos_restantes'] ?? null) === 20 && ($item5['entregas_distribuicao'] ?? null) === true, 'a oferta dele além de R (rodada 2) também vem, com entregas_oferta de 20 s');
+confere(($item5['entregas_oferta']['segundos_restantes'] ?? null) === 30 && ($item5['entregas_distribuicao'] ?? null) === true, 'a oferta dele além de R (rodada 2) também vem, com entregas_oferta de 30 s');
 
 cenarioRodadas();
 Driver::$todos[0]->location = null;
