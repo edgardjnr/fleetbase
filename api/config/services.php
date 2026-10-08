@@ -64,9 +64,15 @@ return [
         'distribuicao' => env('ENTREGAS_DISTRIBUICAO'),
         // 1 = matriz de tempos pelo OSRM_HOST; vazio = linha reta. Ligar só com um OSRM próprio
         'distribuicao_osrm' => env('ENTREGAS_DISTRIBUICAO_OSRM'),
-        // 1 = distribuição em rodadas (20 s, raio crescente, voltas até aceitar, sem alarme a todos); só vale com a
+        // 1 = distribuição em rodadas (30 s, raio crescente, voltas até aceitar, sem alarme a todos); só vale com a
         // distribuição ligada. Vazio = o ciclo de 30 s que abre a todos. Ligar só com o APK 30 em todos os celulares
         'distribuicao_rodadas' => env('ENTREGAS_DISTRIBUICAO_RODADAS'),
+        // trava "Atualize o app" (AppDoMotoboy): 1 liga. Ligar só com o APK da trava (35+) em todos os celulares
+        'app_trava' => env('ENTREGAS_APP_TRAVA'),
+        // JSON {versao, url} que o GitHub Actions do entregas-navigator publica no MinIO a cada build
+        'app_versao_url' => env('ENTREGAS_APP_VERSAO_URL', 'https://s3arquivos.restaurantepro.com.br/entregas/APK/entregas-motoboy.json'),
+        // emergência (build quebrado): fixa a versão mínima à mão, ignorando a publicada; vazio = a publicada
+        'app_versao_minima' => env('ENTREGAS_APP_VERSAO_MINIMA'),
     ],
 
     // Entregas RestaurantePro: integração iFood Logistics, app distribuído (App\Support\Entregas\Ifood). ENTREGAS_IFOOD

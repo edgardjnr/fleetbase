@@ -2,6 +2,7 @@
 
 namespace App\Support\Entregas\Distribuicao;
 
+use App\Support\Entregas\AppDoMotoboy;
 use App\Support\Entregas\SituacaoDoMotoboy;
 use App\Support\Entregas\StatusDoPedido;
 use Fleetbase\FleetOps\Models\Driver;
@@ -14,6 +15,7 @@ use Fleetbase\FleetOps\Support\Utils;
  * Motoboys: os da empresa do pedido, online, com status `available` (o do Fleet-Ops, manual), com posição válida dentro
  * do raio de pedido aberto da coleta (Order::getAdhocDistance, linha reta, a mesma consulta do HandleOrderDispatched,
  * agora filtrada pela empresa) e, para a oferta, com o GPS atualizado há menos de GPS_MINUTOS (drivers.updated_at).
+ * Com a trava "Atualize o app" ligada, só quem usa o app na versão mínima ou acima (AppDoMotoboy::podeReceberOferta).
  * Paradas: os pedidos em andamento dele (a regra do capacete do mapa: SituacaoDoMotoboy), na ordem de aceite
  * (started_at, depois dispatched_at), com a coleta (se ainda não pegou) e a entrega.
  *
@@ -34,7 +36,11 @@ class Candidatos
      */
     public static function elegiveis(Order $pedido, array $excluidos, ?int $raio = null): array
     {
-        $motoboys = array_values(array_filter(static::noRaio($pedido, true, $raio), fn ($c) => !in_array((string) $c['motoboy']->uuid, $excluidos, true)));
+        // com a trava "Atualize o app" ligada, o motoboy com o app desatualizado não recebe oferta (AppDoMotoboy)
+        $motoboys = array_values(array_filter(
+            static::noRaio($pedido, true, $raio),
+            fn ($c) => !in_array((string) $c['motoboy']->uuid, $excluidos, true) && AppDoMotoboy::podeReceberOferta($c['motoboy']->user_uuid)
+        ));
         if ($motoboys === []) {
             return [];
         }

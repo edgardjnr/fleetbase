@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Entregas;
 
 use App\Http\Controllers\Controller;
+use App\Support\Entregas\AppDoMotoboy;
 use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\ChatComACentral;
 use App\Support\Entregas\ConversasDaLoja;
@@ -36,11 +37,30 @@ use Illuminate\Support\Carbon;
  * - chatComACentral: a conversa dele com a central (APKs anteriores ao chatDoPedido).
  * - ifood, concluirIfood e codigoIfood: o pedido iFood no app (DadosIfoodDoMotoboy) e a conclusão com o código do
  *   cliente (ConclusaoIfood): o servidor avisa a chegada ao iFood, confere o código na hora e libera a conclusão comum.
+ * - app: a versão mínima do app e o link do APK (trava "Atualize o app", AppDoMotoboy e ExigirAppAtualizado).
  * O motoboy vem do token (MotoboyDaSessao); as respostas só trazem o valor pago a ele (GanhosDoMotoboy). Usuário de
  * loja nem chega aqui: o ProtegerPortalLoja nega a API v1 a ele.
  */
 class MotoboyController extends Controller
 {
+    /**
+     * GET v1/entregas/motoboy/app: a situação do app que chamou (cabeçalho X-Entregas-App) diante da versão mínima. O
+     * ExigirAppAtualizado nunca barra esta rota. `bloqueado` = desatualizado e sem pedido em andamento (com pedido, o app
+     * mostra só o aviso e deixa terminar a entrega; o servidor também deixa).
+     */
+    public function app(Request $request)
+    {
+        $situacao      = AppDoMotoboy::situacao(AppDoMotoboy::versaoDaChamada($request));
+        $emAndamento   = false;
+        $motoboy       = $situacao['desatualizado'] ? MotoboyDaSessao::motoboy($request) : null;
+        if ($motoboy) {
+            $pedidos     = SituacaoDoMotoboy::pedidosEmAndamento((string) $motoboy->company_uuid, [(string) $motoboy->uuid]);
+            $emAndamento = ($pedidos[(string) $motoboy->uuid] ?? []) !== [];
+        }
+
+        return response()->json($situacao + ['bloqueado' => $situacao['desatualizado'] && !$emAndamento]);
+    }
+
     public function ganhos(Request $request, CalculoEntregas $calculo)
     {
         $motoboy = MotoboyDaSessao::motoboy($request);
