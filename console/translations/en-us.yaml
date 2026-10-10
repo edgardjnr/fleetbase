@@ -788,6 +788,74 @@ console:
         Received:
     message: No notifications to display.
   ui:
+    landing:
+      brand-sub: RestaurantePro
+      nav-consultor: Talk to a consultant
+      kicker: Dispatch center for delivery operators
+      headline: Get dispatch out of the WhatsApp group.
+      lead: iFood orders come in on their own, the system offers each order to the rider who gets there first and you follow your whole fleet on the map. At the end of the week, the settlement is ready, with your margin.
+      cta-consultor: Talk to a consultant
+      cta-como-funciona: See how it works
+      ifood-selo: Logistics integration certified by iFood
+      whatsapp-mensagem: Hi! I run a delivery operation and I want to know more about Entregas RestaurantePro.
+      login:
+        title: Sign in to the dispatch center
+        lead: For teams already running on Entregas.
+        loading: Signing in...
+      mapa:
+        title: The whole fleet, colored by status.
+        lead: Each rider is a helmet on the map. The color changes with the order status, without reloading the page.
+        aria: 'Live map illustration: riders moving between two stores and the delivery addresses.'
+        livre: Available
+        livre-texto: ready for the next offer
+        indo-loja: Heading to the store
+        indo-loja-texto: accepted and picking up the order
+        a-caminho: On the way to the customer
+        a-caminho-texto: order picked up, heading to drop-off
+        rua-1: Nove de Julho Ave.
+        rua-2: Olinda St.
+        oferta-titulo: Offer for you
+        oferta-fecha: closes in 30 s
+        oferta-rota: Pizzaria Centro → 45 Olinda St.
+        oferta-distancia: 3.2 km · 9 min
+        oferta-legenda: Example of the card the rider gets in the app.
+      passos:
+        title: From order to settlement, no spreadsheet.
+        p1-titulo: Comes in on its own
+        p1-texto: An iFood order, an order from the restaurant portal or one created by your team. Pickup is already set to the store address.
+        p2-titulo: Goes to whoever gets there first
+        p2-texto: The system works out who delivers fastest, including riders already carrying an order along the way, and offers it for 30 seconds. If nobody accepts, the radius grows in rounds.
+        p3-titulo: Tracked from start to finish
+        p3-texto: You see the fleet on the map, the restaurant follows its own orders in the portal and iFood receives every step of the delivery.
+        p4-titulo: Settled at the end of the week
+        p4-texto: Km by street route, from store to customer. How much to pay each rider, how much to charge each store and your margin, with the CSV ready.
+      telas:
+        title: One operation, three screens.
+        central-produto: Dispatch console
+        central-titulo: Your dispatch center
+        central-texto: Live map, real-time orders, a sound alert when an order has no rider, store registration and the weekly settlement.
+        lojas-produto: Store portal
+        lojas-titulo: Your restaurants
+        lojas-texto: Each store has its own portal. It requests a delivery by marking the address, follows the rider on the map, chats with them and sees its statement. It never sees other stores' orders.
+        frota-produto: Rider app
+        frota-titulo: Your fleet
+        frota-texto: A dedicated rider app, with offer alarms and the ride value, a delivery map, the iFood code at the door and daily and monthly earnings.
+      faixas:
+        title: One distance table. Payouts and billing together.
+        lead: You set how much you pay the rider and how much you charge the store for each km band. The value is frozen at delivery, so changing the table only applies to the next ones.
+        legenda: Example table
+        col-distancia: Distance
+        col-motoboy: Rider gets
+        col-loja: Store pays
+        col-margem: Your margin
+        ate-km: up to {km} km
+        acima-km: over {km} km
+      final:
+        title: Your fleet already runs. It just needs a dispatch center.
+        lead: Talk to a consultant and see Entregas working with your stores.
+        cta: Message us on WhatsApp
+        email: contato@restaurantepro.com.br
+        telefone: +55 16 99199-9000
     permission-text:
       full-resource: Permission to do anything with {resource} on {extension}
       full: Permission to do anything on {extension}

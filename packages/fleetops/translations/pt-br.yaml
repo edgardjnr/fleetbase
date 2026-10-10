@@ -1817,6 +1817,35 @@ fleet-ops:
         offline: Offline
         item: 'Item '
         no-description-provided: Nenhuma descrição informada.
+        pedido: Pedido
+        previsao: 'Chega em cerca de'
+        criado-em: 'Pedido feito em {data}'
+        mapa: Mapa da entrega
+        ver-rota: Ver o trajeto
+        ver-motoboy: Ver o motoboy
+        seu-motoboy: Seu motoboy
+        outro-pedido: Outro pedido
+        previsao-minutos: '{minutos} min'
+        previsao-horas: '{horas} h {minutos} min'
+        sem-motoboy: Ainda sem motoboy
+        andamento: Andamento
+        indo-para: Indo para
+        depois: Depois
+        conclusao-prevista: Entrega prevista
+        historico: Histórico
+        itens-do-pedido: Itens do pedido
+        titulo: Onde está o seu pedido?
+        ajuda: Digite o código de rastreio que a loja enviou para você.
+        codigo: Código de rastreio
+        rastrear: Rastrear
+        buscando: Buscando...
+        situacao:
+          recebido: Pedido recebido
+          procurando: Procurando um motoboy
+          coleta: O motoboy está buscando o seu pedido
+          a-caminho: Seu pedido está a caminho
+          entregue: Pedido entregue
+          cancelado: Pedido cancelado
       positions-replay:
         serial-no: 'Nº de Série:'
         driver: 'Motorista:'

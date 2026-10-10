@@ -1,110 +1,95 @@
-<div>
-    <LinkTo @route="portal" class="flex items-center justify-center">
-        <LogoIcon @brand={{@brand}} @size="12" class="rounded-md" />
-    </LinkTo>
-    <h2 class="mt-6 mb-3 text-3xl font-semibold leading-9 text-center text-gray-900 dark:text-gray-100">
-        {{t "customer-portal.ui.auth.customer-login"}}
-    </h2>
-</div>
-
-{{#if (gte this.failedAttempts 3)}}
-    <div class="flex flex-col flex-grow-0 flex-shrink-0 text-sm bg-yellow-800 border border-yellow-600 px-2 py-2 rounded-md text-yellow-100 my-4 transition-all">
-        <div class="flex flex-row items-start mb-2">
-            <div class="w-8 flex-grow-0 flex-shrink-0">
-                <FaIcon @icon="triangle-exclamation" @size="xl" class="pt-1" />
-            </div>
-            <div class="flex-1">
-                <p class="flex-1 text-sm text-yellow-100">
-                    {{t "customer-portal.ui.auth.login.failed-attempt-message" htmlSafe=true}}
-                </p>
-            </div>
+{{!-- Entregas: login do portal da loja com a faixa da marca. Página inteira (fixa sobre o layout portal-auth), no visual da landing do console (classes ent-* em console/app/styles/landing.css e entregas-telas.css). O fluxo é o original: tentativas falhas, "esqueci a senha" e os itens do registry customer-portal:auth:login. --}}
+<div class="ent-tema ent-acesso">
+    <aside class="ent-acesso-marca">
+        <div class="ent-acesso-marca-topo">
+            <LogoIcon @brand={{@brand}} @size="10" class="ent-marca-icone" />
+            <span class="ent-acesso-marca-nome">Entregas</span>
+            <span class="ent-acesso-marca-portal">{{t "customer-portal.ui.auth.login.portal-nome"}}</span>
         </div>
-        <Button
-            @text={{t "customer-portal.ui.auth.login.failed-attempt-button"}}
-            @type="link"
-            class="text-yellow-100"
-            @wrapperClass="px-4 py-2 bg-gray-900 bg-opacity-25 hover:opacity-50"
-            @onClick={{this.forgotPassword}}
-        />
-    </div>
-{{/if}}
+        <h1 class="ent-acesso-titulo">{{t "customer-portal.ui.auth.login.titulo-marca"}}</h1>
+        <ol class="ent-acesso-lista">
+            <li><img src="/images/entregas/loja-pin.png" alt="" width="26" height="30" /><span>{{t "customer-portal.ui.auth.login.item-pedir"}}</span></li>
+            <li><img src="/images/entregas/capacete-vermelho.png" alt="" width="30" height="30" /><span>{{t "customer-portal.ui.auth.login.item-mapa"}}</span></li>
+            <li><img src="/images/entregas/capacete-verde.png" alt="" width="30" height="30" /><span>{{t "customer-portal.ui.auth.login.item-extrato"}}</span></li>
+        </ol>
+    </aside>
 
-<form class="mt-8" {{on "submit" this.login}}>
-    <input type="hidden" name="remember" value="true" />
-    <div class="rounded-md shadow-sm">
-        <div>
-            <Input
-                @value={{this.identity}}
-                aria-label={{t "customer-portal.ui.auth.login.email-label"}}
-                name="email"
-                @type="email"
-                autocomplete="username"
-                required
-                class="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-none appearance-none rounded-t-md focus:outline-none focus:shadow-outline-blue focus:border-blue-300 focus:z-10 sm:text-sm sm:leading-5 dark:text-white dark:bg-gray-700 dark:border-gray-900"
-                placeholder={{t "customer-portal.ui.auth.login.email-label"}}
-                disabled={{this.isLoading}}
-            />
+    <main class="ent-acesso-corpo">
+        <div class="ent-acesso-form">
+            <h2 class="ent-acesso-form-titulo">{{t "customer-portal.ui.auth.login.titulo"}}</h2>
+            <p class="ent-acesso-form-lead">{{t "customer-portal.ui.auth.login.lead"}}</p>
+
+            {{#if (gte this.failedAttempts 3)}}
+                <div class="ent-aviso" role="alert">
+                    <p>{{t "customer-portal.ui.auth.login.failed-attempt-message" htmlSafe=true}}</p>
+                    <button type="button" class="ent-aviso-botao" {{on "click" this.forgotPassword}}>{{t "customer-portal.ui.auth.login.failed-attempt-button"}}</button>
+                </div>
+            {{/if}}
+
+            <form class="ent-form" {{on "submit" this.login}}>
+                <input type="hidden" name="remember" value="true" />
+                <label class="ent-campo" for="ent-portal-email">
+                    <span class="ent-rotulo">{{t "customer-portal.ui.auth.login.email-label"}}</span>
+                    <Input
+                        id="ent-portal-email"
+                        @value={{this.identity}}
+                        name="email"
+                        @type="email"
+                        autocomplete="username"
+                        required
+                        class="ent-input"
+                        disabled={{this.isLoading}}
+                    />
+                </label>
+                <label class="ent-campo" for="ent-portal-senha">
+                    <span class="ent-rotulo">{{t "customer-portal.ui.auth.login.password-label"}}</span>
+                    <Input
+                        id="ent-portal-senha"
+                        @value={{this.password}}
+                        name="password"
+                        @type="password"
+                        autocomplete="current-password"
+                        required
+                        class="ent-input"
+                        disabled={{this.isLoading}}
+                    />
+                </label>
+
+                <div class="ent-form-linha">
+                    <label class="ent-lembrar" for="rememberMe">
+                        <Input id="rememberMe" @type="checkbox" @checked={{this.rememberMe}} disabled={{this.isLoading}} class="ent-check" />
+                        <span>{{t "customer-portal.ui.auth.login.remember-me"}}</span>
+                    </label>
+                    <button type="button" class="ent-link" disabled={{this.isLoading}} {{on "click" this.forgotPassword}}>{{t "customer-portal.ui.auth.login.forgot-password"}}</button>
+                </div>
+
+                <button type="submit" class="ent-botao ent-botao-tinta ent-botao-cheio ent-botao-ui" disabled={{this.isLoading}} aria-busy={{if this.isLoading "true" "false"}}>
+                    {{#if this.isLoading}}
+                        <span class="ent-giro" aria-hidden="true"></span>
+                        {{t "customer-portal.ui.auth.login.entrando"}}
+                    {{else}}
+                        {{t "customer-portal.ui.auth.login.sign-in"}}
+                    {{/if}}
+                </button>
+
+                <div class="ent-registro">
+                    <RegistryYield @type="menu" @registry="customer-portal:auth:login" as |menuItem|>
+                        <Button
+                            @text={{menuItem.title}}
+                            @type={{menuItem.type}}
+                            @wrapperClass={{menuItem.wrapperClass}}
+                            @disabled={{this.isLoading}}
+                            @onClick={{menuItem.onClick}}
+                            @permission={{menuItem.permission}}
+                        />
+                    </RegistryYield>
+                </div>
+            </form>
+
+            <p class="ent-acesso-rodape">
+                {{t "customer-portal.ui.auth.login.central-pergunta"}}
+                <button type="button" class="ent-link" {{on "click" this.transitionToConsole}}>{{t "customer-portal.ui.auth.login.central-link"}}</button>
+            </p>
         </div>
-        <div class="-mt-px">
-            <Input
-                @value={{this.password}}
-                aria-label={{t "customer-portal.ui.auth.login.password-label"}}
-                name="password"
-                @type="password"
-                autocomplete="current-password"
-                required
-                class="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-none appearance-none rounded-b-md focus:outline-none focus:shadow-outline-blue focus:border-blue-300 focus:z-10 sm:text-sm sm:leading-5 dark:text-white dark:bg-gray-700 dark:border-gray-900"
-                placeholder={{t "customer-portal.ui.auth.login.password-label"}}
-                disabled={{this.isLoading}}
-            />
-        </div>
-    </div>
-
-    <div class="flex items-center justify-between mt-6">
-        <div class="flex items-center">
-            <Input id="rememberMe" @type="checkbox" @checked={{this.rememberMe}} disabled={{this.isLoading}} class="w-4 h-4 transition duration-150 ease-in-out form-checkbox text-sky-500" />
-            <label for="rememberMe" class="block ml-2 text-sm leading-5 text-gray-900 dark:text-gray-100">
-                {{t "customer-portal.ui.auth.login.remember-me"}}
-            </label>
-        </div>
-
-        <div class="text-sm leading-5">
-            <a
-                href="javascript:;"
-                {{on "click" this.forgotPassword}}
-                disabled={{this.isLoading}}
-                class="font-medium transition duration-150 ease-in-out text-sky-600 hover:text-sky-500 focus:outline-none focus:underline"
-            >
-                {{t "customer-portal.ui.auth.login.forgot-password"}}
-            </a>
-        </div>
-    </div>
-
-    <div class="mt-6 space-y-4">
-        <Button
-            @buttonType="submit"
-            @type="primary"
-            @text={{t "customer-portal.ui.auth.login.sign-in"}}
-            @icon="lock"
-            @wrapperClass="btn-block"
-            @isLoading={{this.isLoading}}
-            @onClick={{this.login}}
-        />
-        <RegistryYield @type="menu" @registry="customer-portal:auth:login" as |menuItem|>
-            <Button
-                @text={{menuItem.title}}
-                @type={{menuItem.type}}
-                @wrapperClass={{menuItem.wrapperClass}}
-                @disabled={{this.isLoading}}
-                @onClick={{menuItem.onClick}}
-                @permission={{menuItem.permission}}
-            />
-        </RegistryYield>
-    </div>
-</form>
-
-<div class="absolute left-0 top-0">
-    <div class="p-4">
-        <Button @text={{t "customer-portal.ui.auth.back-to-console"}} @icon="arrow-left" @onClick={{this.transitionToConsole}} @size="xs" />
-    </div>
+    </main>
 </div>

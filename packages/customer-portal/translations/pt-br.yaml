@@ -129,6 +129,16 @@ customer-portal:
       two-fa-title: Verificação em duas etapas
       login:
         email-label: Endereço de e-mail
+        portal-nome: Portal da loja
+        titulo-marca: Peça entrega e acompanhe o motoboy.
+        item-pedir: Peça a entrega marcando o endereço do cliente no mapa.
+        item-mapa: Veja o motoboy no mapa, do aceite à entrega.
+        item-extrato: Converse com ele e confira o extrato do mês.
+        titulo: Entrar no portal
+        lead: Use o e-mail e a senha que a central cadastrou para a sua loja.
+        entrando: Entrando...
+        central-pergunta: É da central?
+        central-link: Entrar no console
         password-label: Senha
         remember-me: Lembrar de mim
         forgot-password: Esqueceu sua senha?

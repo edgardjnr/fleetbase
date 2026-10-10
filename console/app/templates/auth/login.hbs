@@ -1,106 +1,304 @@
-<div>
-    <LinkTo @route="console" class="flex items-center justify-center">
-        <LogoIcon @brand={{@brand}} @size="12" class="rounded-md" />
-    </LinkTo>
-    <h2 class="mt-6 mb-3 text-3xl font-extrabold leading-9 text-center text-gray-900 dark:text-gray-100">
-        {{t "auth.login.title"}}
-    </h2>
-</div>
+{{!-- Entregas: a tela de login é a landing do produto para operadoras de entrega. O formulário fica no topo (sem rolar) e mantém o fluxo original: 2FA, tentativas falhas, "esqueci a senha" e os itens do registry auth:login. Estilos em app/styles/landing.css. --}}
+<div class="ent-landing ent-tema">
+    <section class="ent-hero">
+        <header class="ent-topo">
+            <LinkTo @route="console" class="ent-marca">
+                <LogoIcon @brand={{@brand}} @size="10" class="ent-marca-icone" />
+                <span class="ent-marca-nome">Entregas</span>
+                <span class="ent-marca-sub">{{t "console.ui.landing.brand-sub"}}</span>
+            </LinkTo>
+            <a class="ent-topo-link" href={{this.linkDoConsultor}} target="_blank" rel="noopener">{{t "console.ui.landing.nav-consultor"}}</a>
+        </header>
 
-{{#if (gte this.failedAttempts 3)}}
-    <div class="flex flex-col flex-grow-0 flex-shrink-0 text-sm bg-yellow-800 border border-yellow-600 px-2 py-2 rounded-md text-yellow-100 my-4 transition-all">
-        <div class="flex flex-row items-start mb-2">
-            <div class="w-8 flex-grow-0 flex-shrink-0">
-                <FaIcon @icon="triangle-exclamation" @size="xl" class="pt-1" />
+        <div class="ent-hero-grade">
+            <div class="ent-hero-texto">
+                <p class="ent-kicker">{{t "console.ui.landing.kicker"}}</p>
+                <h1 class="ent-titulo">{{t "console.ui.landing.headline"}}</h1>
+                <p class="ent-lead">{{t "console.ui.landing.lead"}}</p>
             </div>
-            <div class="flex-1">
-                <p class="flex-1 text-sm text-yellow-100">
-                    {{t "auth.login.failed-attempt.message" htmlSafe=true}}
+
+            <div class="ent-hero-acoes">
+                <div class="ent-acoes">
+                    <a class="ent-botao ent-botao-tinta" href={{this.linkDoConsultor}} target="_blank" rel="noopener">{{t "console.ui.landing.cta-consultor"}}</a>
+                    <a class="ent-link-seta" href="#como-funciona" {{on "click" (fn this.rolarPara "como-funciona")}}>{{t "console.ui.landing.cta-como-funciona"}}</a>
+                </div>
+                <p class="ent-selo">
+                    <svg viewBox="0 0 20 20" aria-hidden="true" class="ent-selo-icone"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                    {{t "console.ui.landing.ifood-selo"}}
                 </p>
             </div>
-        </div>
-        <Button
-            @text={{t "auth.login.failed-attempt.button-text"}}
-            @type="link"
-            class="text-yellow-100"
-            @wrapperClass="px-4 py-2 bg-gray-900 bg-opacity-25 hover:opacity-50"
-            @onClick={{this.forgotPassword}}
-        />
-    </div>
-{{/if}}
 
-<form class="mt-8" {{on "submit" this.login}}>
-    <input type="hidden" name="remember" value="true" />
-    <div class="rounded-md shadow-sm">
-        <div>
-            <Input
-                @value={{this.identity}}
-                aria-label={{t "auth.login.form.email-label"}}
-                name="email"
-                @type="email"
-                autocomplete="username"
-                required
-                class="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-none appearance-none rounded-t-md focus:outline-none focus:shadow-outline-blue focus:border-blue-300 focus:z-10 sm:text-sm sm:leading-5 dark:text-white dark:bg-gray-700 dark:border-gray-900"
-                placeholder={{t "auth.login.form.email-label"}}
-                disabled={{this.isLoading}}
-            />
-        </div>
-        <div class="-mt-px">
-            <Input
-                @value={{this.password}}
-                aria-label={{t "auth.login.form.password-label"}}
-                name="password"
-                @type="password"
-                autocomplete="current-password"
-                required
-                class="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-none appearance-none rounded-b-md focus:outline-none focus:shadow-outline-blue focus:border-blue-300 focus:z-10 sm:text-sm sm:leading-5 dark:text-white dark:bg-gray-700 dark:border-gray-900"
-                placeholder={{t "auth.login.form.password-label"}}
-                disabled={{this.isLoading}}
-            />
-        </div>
-    </div>
+            <div class="ent-painel" id="entrar">
+                <h2 class="ent-painel-titulo">{{t "console.ui.landing.login.title"}}</h2>
+                <p class="ent-painel-lead">{{t "console.ui.landing.login.lead"}}</p>
 
-    <div class="flex items-center justify-between mt-6">
-        <div class="flex items-center">
-            <Input id="rememberMe" @type="checkbox" @checked={{this.rememberMe}} disabled={{this.isLoading}} class="w-4 h-4 transition duration-150 ease-in-out form-checkbox text-sky-500" />
-            <label for="rememberMe" class="block ml-2 text-sm leading-5 text-gray-900 dark:text-gray-100">
-                {{t "auth.login.form.remember-me-label"}}
-            </label>
+                {{#if (gte this.failedAttempts 3)}}
+                    <div class="ent-aviso" role="alert">
+                        <p>{{t "auth.login.failed-attempt.message" htmlSafe=true}}</p>
+                        <button type="button" class="ent-aviso-botao" {{on "click" this.forgotPassword}}>{{t "auth.login.failed-attempt.button-text"}}</button>
+                    </div>
+                {{/if}}
+
+                <form class="ent-form" {{on "submit" this.login}}>
+                    <input type="hidden" name="remember" value="true" />
+                    <label class="ent-campo" for="ent-email">
+                        <span class="ent-rotulo">{{t "auth.login.form.email-label"}}</span>
+                        <Input
+                            id="ent-email"
+                            @value={{this.identity}}
+                            name="email"
+                            @type="email"
+                            autocomplete="username"
+                            required
+                            class="ent-input"
+                            disabled={{this.isLoading}}
+                        />
+                    </label>
+                    <label class="ent-campo" for="ent-senha">
+                        <span class="ent-rotulo">{{t "auth.login.form.password-label"}}</span>
+                        <Input
+                            id="ent-senha"
+                            @value={{this.password}}
+                            name="password"
+                            @type="password"
+                            autocomplete="current-password"
+                            required
+                            class="ent-input"
+                            disabled={{this.isLoading}}
+                        />
+                    </label>
+
+                    <div class="ent-form-linha">
+                        <label class="ent-lembrar" for="rememberMe">
+                            <Input id="rememberMe" @type="checkbox" @checked={{this.rememberMe}} disabled={{this.isLoading}} class="ent-check" />
+                            <span>{{t "auth.login.form.remember-me-label"}}</span>
+                        </label>
+                        <button type="button" class="ent-link" disabled={{this.isLoading}} {{on "click" this.forgotPassword}}>{{t "auth.login.form.forgot-password-label"}}</button>
+                    </div>
+
+                    <button type="submit" class="ent-botao ent-botao-tinta ent-botao-cheio" disabled={{this.isLoading}} aria-busy={{if this.isLoading "true" "false"}}>
+                        {{#if this.isLoading}}
+                            <span class="ent-giro" aria-hidden="true"></span>
+                            {{t "console.ui.landing.login.loading"}}
+                        {{else}}
+                            {{t "auth.login.form.sign-in-button"}}
+                        {{/if}}
+                    </button>
+
+                    {{!-- Entregas: sem o botão "Criar uma nova conta" (rota onboard). A organização é criada só pela central, e a API recusa o POST onboard/create-account. Só a primeira instalação, sem nenhuma organização, abre o cadastro: a rota auth.login manda para /onboard. --}}
+                    <div class="ent-registro">
+                        <RegistryYield @type="menu" @registry="auth:login" as |menuItem|>
+                            <Button
+                                @text={{menu-text menuItem "title"}}
+                                @icon={{menuItem.icon}}
+                                @type={{menuItem.type}}
+                                @wrapperClass={{menuItem.wrapperClass}}
+                                @disabled={{this.isLoading}}
+                                @onClick={{menuItem.onClick}}
+                                @permission={{menuItem.permission}}
+                            />
+                        </RegistryYield>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </section>
+
+    <section class="ent-mapa-secao" aria-labelledby="ent-mapa-titulo">
+        <div class="ent-mapa-cabeca">
+            <h2 id="ent-mapa-titulo" class="ent-h2">{{t "console.ui.landing.mapa.title"}}</h2>
+            <p class="ent-texto">{{t "console.ui.landing.mapa.lead"}}</p>
         </div>
 
-        <div class="text-sm leading-5">
-            <a
-                href="javascript:;"
-                {{on "click" this.forgotPassword}}
-                disabled={{this.isLoading}}
-                class="font-medium transition duration-150 ease-in-out text-sky-500 hover:text-sky-400 focus:outline-none focus:underline"
-            >
-                {{t "auth.login.form.forgot-password-label"}}
-            </a>
-        </div>
-    </div>
+        <div class="ent-mapa">
+            <svg class="ent-mapa-svg" viewBox="0 0 1200 560" preserveAspectRatio="xMidYMid slice" role="img" aria-label={{t "console.ui.landing.mapa.aria"}}>
+                <rect width="1200" height="560" class="ent-m-quadra" />
+                <rect x="452" y="362" width="156" height="116" rx="8" class="ent-m-praca" />
+                <rect x="992" y="82" width="156" height="116" rx="8" class="ent-m-praca" />
+                <path d="M620 490 L980 210" class="ent-m-rua-fina" />
+                <path d="M80 0V560M260 0V560M440 0V560M620 0V560M800 0V560M980 0V560M1160 0V560M0 70H1200M0 350H1200M0 490H1200" class="ent-m-rua" />
+                <path d="M0 210H1200" class="ent-m-avenida" />
+                <path d="M0 210H1200" class="ent-m-faixa" />
+                <text x="272" y="215" class="ent-m-nome-rua">{{t "console.ui.landing.mapa.rua-1"}}</text>
+                <text x="805" y="280" transform="rotate(-90 805 280)" text-anchor="middle" class="ent-m-nome-rua">{{t "console.ui.landing.mapa.rua-2"}}</text>
 
-    <div class="mt-6 space-y-4">
-        <Button
-            @buttonType="submit"
-            @type="primary"
-            @text={{t "auth.login.form.sign-in-button"}}
-            @icon="lock"
-            @wrapperClass="btn-block"
-            @isLoading={{this.isLoading}}
-            @onClick={{this.login}}
-        />
-        {{!-- Entregas: sem o botão "Criar uma nova conta" (rota onboard). A organização é criada só pela central, e a API recusa o POST onboard/create-account. Só a primeira instalação, sem nenhuma organização, abre o cadastro: a rota auth.login manda para /onboard. --}}
-        <RegistryYield @type="menu" @registry="auth:login" as |menuItem|>
-            <Button
-                @text={{menu-text menuItem "title"}}
-                @icon={{menuItem.icon}}
-                @type={{menuItem.type}}
-                @wrapperClass={{menuItem.wrapperClass}}
-                @disabled={{this.isLoading}}
-                @onClick={{menuItem.onClick}}
-                @permission={{menuItem.permission}}
-            />
-        </RegistryYield>
-    </div>
-</form>
+                {{!-- Endereços de entrega (alfinete vermelho, como no mapa do console) --}}
+                <g transform="translate(800 70)"><path d="M0 0C-4 -10 -14 -14 -14 -25A14 14 0 1 1 14 -25C14 -14 4 -10 0 0Z" class="ent-m-alfinete" /><circle cy="-25" r="5" class="ent-m-alfinete-miolo" /></g>
+                <g transform="translate(1160 490)"><path d="M0 0C-4 -10 -14 -14 -14 -25A14 14 0 1 1 14 -25C14 -14 4 -10 0 0Z" class="ent-m-alfinete" /><circle cy="-25" r="5" class="ent-m-alfinete-miolo" /></g>
+
+                {{!-- Lojas (pin laranja do console) --}}
+                <image href="/images/entregas/loja-pin.png" x="423" y="168" width="34" height="40" />
+                <image href="/images/entregas/loja-pin.png" x="963" y="308" width="34" height="40" />
+
+                {{!-- Motoboys parados (livres) --}}
+                <g transform="translate(260 490)">
+                    <image href="/images/entregas/capacete-verde.png" x="-23" y="-23" width="46" height="46" />
+                    <rect x="-24" y="25" width="48" height="20" rx="10" class="ent-m-nome-fundo" /><text y="39.5" text-anchor="middle" class="ent-m-nome">Bia</text>
+                </g>
+                <g transform="translate(80 70)">
+                    <image href="/images/entregas/capacete-verde.png" x="-23" y="-23" width="46" height="46" />
+                    <rect x="-24" y="25" width="48" height="20" rx="10" class="ent-m-nome-fundo" /><text y="39.5" text-anchor="middle" class="ent-m-nome">Caio</text>
+                </g>
+
+                {{#if this.movimentoReduzido}}
+                    <g transform="translate(620 210)">
+                        <image href="/images/entregas/capacete-vermelho.png" x="-23" y="-23" width="46" height="46" />
+                        <rect x="-28" y="25" width="56" height="20" rx="10" class="ent-m-nome-fundo" /><text y="39.5" text-anchor="middle" class="ent-m-nome">Jonas</text>
+                    </g>
+                    <g transform="translate(980 450)">
+                        <image href="/images/entregas/capacete-amarelo.png" x="-23" y="-23" width="46" height="46" />
+                        <rect x="-24" y="25" width="48" height="20" rx="10" class="ent-m-nome-fundo" /><text y="39.5" text-anchor="middle" class="ent-m-nome">Rafa</text>
+                    </g>
+                {{else}}
+                    {{!-- Jonas: aceita (amarelo), coleta na loja, leva ao cliente (vermelho) e volta livre (verde) --}}
+                    <g>
+                        <animateMotion dur="18s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0.25;0.25;0.5;0.5;1" keyTimes="0;0.22;0.3;0.52;0.6;1" path="M80 350H440V210H800V70H80V350" />
+                        <image href="/images/entregas/capacete-amarelo.png" x="-23" y="-23" width="46" height="46">
+                            <animate attributeName="opacity" dur="18s" repeatCount="indefinite" calcMode="discrete" values="1;0" keyTimes="0;0.3" />
+                        </image>
+                        <image href="/images/entregas/capacete-vermelho.png" x="-23" y="-23" width="46" height="46" opacity="0">
+                            <animate attributeName="opacity" dur="18s" repeatCount="indefinite" calcMode="discrete" values="0;1;0" keyTimes="0;0.3;0.6" />
+                        </image>
+                        <image href="/images/entregas/capacete-verde.png" x="-23" y="-23" width="46" height="46" opacity="0">
+                            <animate attributeName="opacity" dur="18s" repeatCount="indefinite" calcMode="discrete" values="0;1" keyTimes="0;0.6" />
+                        </image>
+                        <rect x="-28" y="25" width="56" height="20" rx="10" class="ent-m-nome-fundo" /><text y="39.5" text-anchor="middle" class="ent-m-nome">Jonas</text>
+                    </g>
+                    {{!-- Rafa: mesmo ciclo na segunda loja, defasado --}}
+                    <g>
+                        <animateMotion dur="14s" begin="-6s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0.368;0.368;0.603;0.603;1" keyTimes="0;0.26;0.33;0.53;0.6;1" path="M620 490H980V350H1160V490H620" />
+                        <image href="/images/entregas/capacete-amarelo.png" x="-23" y="-23" width="46" height="46">
+                            <animate attributeName="opacity" dur="14s" begin="-6s" repeatCount="indefinite" calcMode="discrete" values="1;0" keyTimes="0;0.33" />
+                        </image>
+                        <image href="/images/entregas/capacete-vermelho.png" x="-23" y="-23" width="46" height="46" opacity="0">
+                            <animate attributeName="opacity" dur="14s" begin="-6s" repeatCount="indefinite" calcMode="discrete" values="0;1;0" keyTimes="0;0.33;0.6" />
+                        </image>
+                        <image href="/images/entregas/capacete-verde.png" x="-23" y="-23" width="46" height="46" opacity="0">
+                            <animate attributeName="opacity" dur="14s" begin="-6s" repeatCount="indefinite" calcMode="discrete" values="0;1" keyTimes="0;0.6" />
+                        </image>
+                        <rect x="-24" y="25" width="48" height="20" rx="10" class="ent-m-nome-fundo" /><text y="39.5" text-anchor="middle" class="ent-m-nome">Rafa</text>
+                    </g>
+                {{/if}}
+            </svg>
+
+            <figure class="ent-oferta">
+                <div class="ent-oferta-cartao">
+                    <div class="ent-oferta-topo">
+                        <span class="ent-oferta-titulo">{{t "console.ui.landing.mapa.oferta-titulo"}}</span>
+                        <span class="ent-oferta-fecha">{{t "console.ui.landing.mapa.oferta-fecha"}}</span>
+                    </div>
+                    <div class="ent-oferta-barra" aria-hidden="true"><span></span></div>
+                    <p class="ent-oferta-rota">{{t "console.ui.landing.mapa.oferta-rota"}}</p>
+                    <div class="ent-oferta-base">
+                        <span>{{t "console.ui.landing.mapa.oferta-distancia"}}</span>
+                        <strong>{{format-number 8 style="currency" currency="BRL"}}</strong>
+                    </div>
+                </div>
+                <figcaption>{{t "console.ui.landing.mapa.oferta-legenda"}}</figcaption>
+            </figure>
+        </div>
+
+        <ul class="ent-legenda">
+            <li><img src="/images/entregas/capacete-verde.png" alt="" width="36" height="36" /><span><strong>{{t "console.ui.landing.mapa.livre"}}</strong> {{t "console.ui.landing.mapa.livre-texto"}}</span></li>
+            <li><img src="/images/entregas/capacete-amarelo.png" alt="" width="36" height="36" /><span><strong>{{t "console.ui.landing.mapa.indo-loja"}}</strong> {{t "console.ui.landing.mapa.indo-loja-texto"}}</span></li>
+            <li><img src="/images/entregas/capacete-vermelho.png" alt="" width="36" height="36" /><span><strong>{{t "console.ui.landing.mapa.a-caminho"}}</strong> {{t "console.ui.landing.mapa.a-caminho-texto"}}</span></li>
+        </ul>
+    </section>
+
+    <section class="ent-passos-secao" id="como-funciona" aria-labelledby="ent-passos-titulo">
+        <h2 id="ent-passos-titulo" class="ent-h2">{{t "console.ui.landing.passos.title"}}</h2>
+        <ol class="ent-passos">
+            <li class="ent-passo">
+                <span class="ent-passo-num" aria-hidden="true">1</span>
+                <h3 class="ent-passo-titulo">{{t "console.ui.landing.passos.p1-titulo"}}</h3>
+                <p class="ent-texto">{{t "console.ui.landing.passos.p1-texto"}}</p>
+            </li>
+            <li class="ent-passo">
+                <span class="ent-passo-num" aria-hidden="true">2</span>
+                <h3 class="ent-passo-titulo">{{t "console.ui.landing.passos.p2-titulo"}}</h3>
+                <p class="ent-texto">{{t "console.ui.landing.passos.p2-texto"}}</p>
+            </li>
+            <li class="ent-passo">
+                <span class="ent-passo-num" aria-hidden="true">3</span>
+                <h3 class="ent-passo-titulo">{{t "console.ui.landing.passos.p3-titulo"}}</h3>
+                <p class="ent-texto">{{t "console.ui.landing.passos.p3-texto"}}</p>
+            </li>
+            <li class="ent-passo">
+                <span class="ent-passo-num" aria-hidden="true">4</span>
+                <h3 class="ent-passo-titulo">{{t "console.ui.landing.passos.p4-titulo"}}</h3>
+                <p class="ent-texto">{{t "console.ui.landing.passos.p4-texto"}}</p>
+            </li>
+        </ol>
+    </section>
+
+    <section class="ent-telas-secao" aria-labelledby="ent-telas-titulo">
+        <h2 id="ent-telas-titulo" class="ent-h2 ent-telas-titulo">{{t "console.ui.landing.telas.title"}}</h2>
+        <dl class="ent-telas">
+            <div class="ent-tela">
+                <dt><span class="ent-tela-produto">{{t "console.ui.landing.telas.central-produto"}}</span>{{t "console.ui.landing.telas.central-titulo"}}</dt>
+                <dd class="ent-texto">{{t "console.ui.landing.telas.central-texto"}}</dd>
+            </div>
+            <div class="ent-tela">
+                <dt><span class="ent-tela-produto">{{t "console.ui.landing.telas.lojas-produto"}}</span>{{t "console.ui.landing.telas.lojas-titulo"}}</dt>
+                <dd class="ent-texto">{{t "console.ui.landing.telas.lojas-texto"}}</dd>
+            </div>
+            <div class="ent-tela">
+                <dt><span class="ent-tela-produto">{{t "console.ui.landing.telas.frota-produto"}}</span>{{t "console.ui.landing.telas.frota-titulo"}}</dt>
+                <dd class="ent-texto">{{t "console.ui.landing.telas.frota-texto"}}</dd>
+            </div>
+        </dl>
+    </section>
+
+    <section class="ent-faixas-secao" aria-labelledby="ent-faixas-titulo">
+        <div class="ent-faixas-texto">
+            <h2 id="ent-faixas-titulo" class="ent-h2">{{t "console.ui.landing.faixas.title"}}</h2>
+            <p class="ent-texto">{{t "console.ui.landing.faixas.lead"}}</p>
+        </div>
+        <div class="ent-tabela-moldura">
+            <table class="ent-tabela">
+                <caption>{{t "console.ui.landing.faixas.legenda"}}</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">{{t "console.ui.landing.faixas.col-distancia"}}</th>
+                        <th scope="col">{{t "console.ui.landing.faixas.col-motoboy"}}</th>
+                        <th scope="col">{{t "console.ui.landing.faixas.col-loja"}}</th>
+                        <th scope="col" class="ent-col-margem">{{t "console.ui.landing.faixas.col-margem"}}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each this.faixasDeExemplo as |faixa|}}
+                        <tr>
+                            <th scope="row">
+                                {{#if faixa.acima}}
+                                    {{t "console.ui.landing.faixas.acima-km" km=faixa.km}}
+                                {{else}}
+                                    {{t "console.ui.landing.faixas.ate-km" km=faixa.km}}
+                                {{/if}}
+                            </th>
+                            <td>{{format-number faixa.motoboy style="currency" currency="BRL"}}</td>
+                            <td>{{format-number faixa.loja style="currency" currency="BRL"}}</td>
+                            <td class="ent-col-margem">{{format-number faixa.margem style="currency" currency="BRL"}}</td>
+                        </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="ent-final" aria-labelledby="ent-final-titulo">
+        <h2 id="ent-final-titulo" class="ent-final-titulo">{{t "console.ui.landing.final.title"}}</h2>
+        <div class="ent-final-lado">
+            <p class="ent-final-lead">{{t "console.ui.landing.final.lead"}}</p>
+            <a class="ent-botao ent-botao-tinta" href={{this.linkDoConsultor}} target="_blank" rel="noopener">{{t "console.ui.landing.final.cta"}}</a>
+        </div>
+    </section>
+
+    <footer class="ent-rodape">
+        <span class="ent-rodape-marca">Entregas RestaurantePro</span>
+        <a href="mailto:contato@restaurantepro.com.br">{{t "console.ui.landing.final.email"}}</a>
+        <a href={{this.linkDoConsultor}} target="_blank" rel="noopener">{{t "console.ui.landing.final.telefone"}}</a>
+        <a href="#entrar" {{on "click" (fn this.rolarPara "entrar")}}>{{t "auth.login.form.sign-in-button"}}</a>
+        <FleetbaseAttribution />
+    </footer>
+</div>
