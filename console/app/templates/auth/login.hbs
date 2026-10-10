@@ -278,7 +278,7 @@
                             </th>
                             <td>{{format-number faixa.motoboy style="currency" currency="BRL"}}</td>
                             <td>{{format-number faixa.loja style="currency" currency="BRL"}}</td>
-                            <td class="ent-col-margem">{{format-number faixa.margem style="currency" currency="BRL"}}</td>
+                            <td class="ent-col-margem" data-valor={{faixa.margem}}>{{format-number faixa.margem style="currency" currency="BRL"}}</td>
                         </tr>
                     {{/each}}
                 </tbody>
@@ -301,4 +301,6 @@
         <a href="#entrar" {{on "click" (fn this.rolarPara "entrar")}}>{{t "auth.login.form.sign-in-button"}}</a>
         <FleetbaseAttribution />
     </footer>
+
+    <EntregasMotoboy @aoIniciar={{this.guardarRolagem}} />
 </div>

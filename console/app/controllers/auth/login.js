@@ -97,9 +97,21 @@ export default class AuthLoginController extends Controller {
         return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     }
 
+    // Rolagem suave (Lenis) do motoboy da landing; nula sem ele (reduzir animações ou falha ao carregar).
+    rolagemSuave = null;
+
+    @action guardarRolagem(lenis) {
+        this.rolagemSuave = lenis;
+    }
+
     @action rolarPara(id, event) {
         event?.preventDefault?.();
-        document.getElementById(id)?.scrollIntoView({ behavior: this.movimentoReduzido ? 'auto' : 'smooth', block: 'start' });
+        const alvo = document.getElementById(id);
+        if (alvo && this.rolagemSuave) {
+            this.rolagemSuave.scrollTo(alvo);
+            return;
+        }
+        alvo?.scrollIntoView({ behavior: this.movimentoReduzido ? 'auto' : 'smooth', block: 'start' });
     }
 
     /**

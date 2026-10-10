@@ -1105,3 +1105,148 @@ body .ent-tema .ent-registro .btn-wrapper > .btn .btn-icon-wrapper {
         transform: none;
     }
 }
+
+/* ---------- Motoboy que desce a página (components/entregas-motoboy) ---------- */
+
+/* O Lenis rola o .ent-landing quadro a quadro; o scroll-behavior suave do navegador brigaria com ele. */
+.ent-landing.lenis {
+    scroll-behavior: auto;
+}
+
+.ent-motoboy {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 400ms var(--ent-ease);
+}
+
+.ent-motoboy.is-pronto.is-visivel {
+    opacity: 1;
+}
+
+.ent-motoboy-corpo {
+    position: absolute;
+    left: 0;
+    top: 0;
+    will-change: transform;
+    transform-origin: 50% 85%;
+}
+
+/* Sombra no chão, para ele não flutuar sobre a página. */
+.ent-motoboy-corpo::after {
+    content: '';
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    bottom: 4%;
+    height: 8%;
+    z-index: -1;
+    background: radial-gradient(closest-side, oklch(0.2 0.014 60 / 0.3), transparent);
+}
+
+.ent-motoboy-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Com "reduzir animações" ele só anda com a rolagem: sem esmaecer e sem os pulos das reações. */
+@media (prefers-reduced-motion: reduce) {
+    .ent-motoboy,
+    .ent-tela::before,
+    .ent-passo-num,
+    .ent-oferta-cartao {
+        transition: none;
+    }
+    .ent-oferta.is-aceita .ent-oferta-cartao,
+    .ent-passo.is-visitado .ent-passo-num,
+    .ent-tema .ent-final .ent-botao.is-entregue {
+        animation: none;
+    }
+}
+
+/* O painel de login e o cartão de oferta ficam por cima: ele passa por trás deles, nunca os cobre. */
+.ent-painel,
+.ent-oferta {
+    position: relative;
+    z-index: 31;
+}
+
+@media (min-width: 720px) {
+    .ent-oferta {
+        position: absolute;
+    }
+}
+
+/* Reações das seções quando ele passa. */
+.ent-oferta-cartao {
+    transition: box-shadow 300ms var(--ent-ease);
+}
+
+.ent-oferta.is-aceita .ent-oferta-cartao {
+    box-shadow: 0 0 0 3px var(--ent-verde);
+    animation: ent-pulo 520ms var(--ent-ease);
+}
+
+.ent-oferta.is-aceita .ent-oferta-barra span {
+    animation: none;
+    transform: scaleX(1);
+    background: var(--ent-verde);
+}
+
+.ent-passo-num {
+    transition:
+        background-color 260ms var(--ent-ease),
+        color 260ms var(--ent-ease);
+}
+
+.ent-passo.is-visitado .ent-passo-num {
+    background: var(--ent-laranja);
+    color: var(--ent-tinta);
+    animation: ent-pulo 520ms var(--ent-ease);
+}
+
+.ent-tela {
+    position: relative;
+}
+
+.ent-tela::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -2px;
+    height: 4px;
+    background: var(--ent-laranja);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 700ms var(--ent-ease);
+}
+
+.ent-tela.is-visitada::before {
+    transform: scaleX(1);
+}
+
+.ent-tema .ent-final .ent-botao.is-entregue {
+    animation: ent-chamado 1.6s var(--ent-ease) 2;
+}
+
+@keyframes ent-pulo {
+    40% {
+        transform: scale(1.08);
+    }
+    to {
+        transform: none;
+    }
+}
+
+@keyframes ent-chamado {
+    from {
+        box-shadow: 0 0 0 0 oklch(0.2 0.014 60 / 0.45);
+    }
+    to {
+        box-shadow: 0 0 0 16px oklch(0.2 0.014 60 / 0);
+    }
+}

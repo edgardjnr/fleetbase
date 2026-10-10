@@ -1,0 +1,6 @@
+{{!-- Entregas: o motoboy que desce a landing com a rolagem. Decorativo (aria-hidden, sem clique). Lógica no .js; trajeto em utils/entregas-motoboy-trajeto.js; estilos em app/styles/landing.css. --}}
+<div class="ent-motoboy" aria-hidden="true" {{did-insert this.iniciar}} {{will-destroy this.encerrar}}>
+    <div class="ent-motoboy-corpo">
+        <canvas class="ent-motoboy-canvas"></canvas>
+    </div>
+</div>
