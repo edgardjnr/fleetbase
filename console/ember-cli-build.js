@@ -11,7 +11,7 @@ module.exports = function (defaults) {
         storeConfigInMeta: false,
 
         fingerprint: {
-            exclude: ['leaflet/', 'leaflet-images/', 'images/entregas/', 'socketcluster-client.min.js', 'fleetbase.config.json', 'extensions.json'],
+            exclude: ['leaflet/', 'leaflet-images/', 'images/entregas/', 'landing/', 'socketcluster-client.min.js', 'fleetbase.config.json', 'extensions.json'],
         },
 
         liveReload: {
