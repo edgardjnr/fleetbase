@@ -75,10 +75,22 @@ test('pilotagem lenta: no máximo 2 px de lado por px rolado, em velocidade cons
         });
 });
 
-test('fica escondido até o painel de login passar da linha dele', () => {
-    const trajeto = montarTrajeto({ ...desktop, inicio: 300 });
-    assert.equal(estadoNoScroll(trajeto, 120, quadros).visivel, false);
-    assert.equal(estadoNoScroll(trajeto, 320, quadros).visivel, true);
+test('aparece com a página carregada, mesmo com o painel de login no canto dele', () => {
+    // Celular: começa em cima do painel e chega à linha dele quando o painel passa.
+    const trajeto = montarTrajeto({ ...desktop, inicio: 400, partida: { x: 1202, y: 300 } });
+    const inicio = estadoNoScroll(trajeto, 0, quadros);
+    assert.equal(inicio.visivel, true);
+    assert.equal(inicio.clipe, 'partida');
+    assert.equal(Math.round(inicio.y), 300);
+    const naLinha = estadoNoScroll(trajeto, 400, quadros);
+    assert.equal(Math.round(naLinha.y), trajeto.yBase);
+    assert.equal(trajeto.trechos[0].ate, 400);
+
+    // Tela baixa: ao lado do painel, já na linha.
+    const aoLado = estadoNoScroll(montarTrajeto({ ...desktop, partida: { x: 675, y: 900 } }), 0, quadros);
+    assert.equal(aoLado.visivel, true);
+    assert.equal(Math.round(aoLado.x), 675);
+    assert.equal(Math.round(aoLado.y), montarTrajeto(desktop).yBase);
 });
 
 test('o loop gira com a rolagem e começa no quadro 0 ao fim da rampa', () => {

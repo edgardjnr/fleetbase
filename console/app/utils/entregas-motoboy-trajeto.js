@@ -13,7 +13,8 @@
  * Virado para a esquerda = o mesmo quadro espelhado.
  *
  * Roteiro (poucas paradas, velocidade baixa e constante, para a pilotagem fluir):
- * - parte embaixo do painel de login, de frente, e vira para a esquerda;
+ * - aparece já com a página carregada, de frente, num canto livre (embaixo à direita; ao lado do painel de login,
+ *   se o painel ocupa o canto; ou em cima do painel, no celular) e vira para a esquerda enquanto desce até a linha dele;
  * - desce a rampa para o mapa e atravessa o mapa da direita para a esquerda;
  * - meia-volta e uma travessia longa, da esquerda para a direita, pelos passos (acendem na ordem) e telas;
  * - meia-volta e desce devagar pelas faixas até a chamada final, onde para e entrega o pedido.
@@ -37,7 +38,8 @@ function suave(t) {
  * @param {number} geo.tamanho      lado do quadrado do motoboy (px)
  * @param {number} geo.margem       respiro lateral (px)
  * @param {number} geo.maximo       rolagem máxima (scrollHeight - altura)
- * @param {number} geo.inicio       rolagem em que ele aparece (o painel de login já passou da linha dele)
+ * @param {number} geo.inicio       rolagem em que ele chega à linha dele (o painel de login já passou dela)
+ * @param {{x: number, y: number}} [geo.partida]  onde ele aparece com a rolagem em 0 (padrão: embaixo à direita)
  * @param {Array<{nome: string, topo: number, base: number}>} geo.secoes  mapa, passos, telas e faixas (topo e base na página)
  * @param {{topo: number}} geo.final   seção da chamada final (topo na página)
  * @param {{x: number, y: number}} geo.alvo  onde ele para na chamada final (canto superior esquerdo, na tela, com a rolagem no máximo)
@@ -58,9 +60,9 @@ export function montarTrajeto(geo) {
         return secao ? cruza(secao.base) : padrao;
     };
 
-    let cursor = limitar(geo.inicio ?? 0, 0, maximo);
-    let x = xDireita;
-    let y = yBase;
+    let cursor = 0;
+    let x = limitar(geo.partida?.x ?? xDireita, xEsquerda, xDireita);
+    let y = limitar(geo.partida?.y ?? yBase, margem, yBase);
     const trecho = (ate, clipe, espelho, x1, extra = {}) => {
         const fim = limitar(ate, cursor, maximo);
         trechos.push({ de: cursor, ate: fim, clipe, espelho, x0: x, x1, y0: y, y1: extra.y1 ?? y, curva: clipe === 'pilotando' ? 'linear' : 'suave', secao: extra.secao ?? null });
@@ -69,7 +71,9 @@ export function montarTrajeto(geo) {
         y = extra.y1 ?? y;
     };
 
-    trecho(cursor + Math.max(altura * 0.3, 160), 'partida', true, xDireita, { secao: 'topo' });
+    // Vira de frente para o lado e desce até a linha dele quando o painel de login já saiu de baixo.
+    const inicio = limitar(geo.inicio ?? 0, 0, maximo);
+    trecho(Math.max(inicio, Math.max(altura * 0.3, 160)), 'partida', true, x, { secao: 'topo', y1: yBase });
 
     // Desce para o mapa e atravessa da direita para a esquerda.
     const fimDoMapa = Math.max(cursor, fimDa('mapa', cursor + altura));
