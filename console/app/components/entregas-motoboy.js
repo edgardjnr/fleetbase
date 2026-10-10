@@ -78,15 +78,16 @@ export default class EntregasMotoboyComponent extends Component {
         this.ativo = true;
 
         try {
-            const [manifesto] = await Promise.all([fetch(`${BASE}/manifesto.json`, { cache: 'no-cache' }).then((resposta) => resposta.json()), ...SCRIPTS.map(carregarScript)]);
-            if (!this.ativo) {
-                return;
-            }
-            this.manifesto = manifesto;
-            CLIPES.forEach((clipe) => (this.totais[clipe] = manifesto.clipes?.[clipe] ?? 0));
-
-            // Primeiro o que aparece no topo (partida e o loop); o resto depois, sem disputar com a página.
-            await Promise.all([this.carregarClipe('partida', 4), this.carregarClipe('pilotando', 4)]);
+            // Os primeiros quadros (o que aparece no topo) vêm junto com os scripts, para ele aparecer logo; o resto
+            // depois, sem disputar com a página.
+            const quadrosDoTopo = fetch(`${BASE}/manifesto.json`, { cache: 'no-cache' })
+                .then((resposta) => resposta.json())
+                .then((manifesto) => {
+                    this.manifesto = manifesto;
+                    CLIPES.forEach((clipe) => (this.totais[clipe] = manifesto.clipes?.[clipe] ?? 0));
+                    return Promise.all([this.carregarClipe('partida', 4), this.carregarClipe('pilotando', 2)]);
+                });
+            await Promise.all([quadrosDoTopo, ...SCRIPTS.map(carregarScript)]);
             if (!this.ativo) {
                 return;
             }
@@ -209,8 +210,37 @@ export default class EntregasMotoboyComponent extends Component {
         const maximo = Math.max(0, landing.scrollHeight - altura);
         const yBase = altura - tamanho - Math.round(margem * 0.5);
 
+        // Ele aparece já com a página carregada, num canto livre. Se o painel de login ocupa o canto de baixo à
+        // direita (telas baixas), fica ao lado do painel; sem espaço ao lado (celular), em cima do painel, à frente
+        // dele, e desce até a linha dele enquanto o painel sobe.
         const painel = landing.querySelector('#entrar');
-        const inicio = painel ? Math.max(0, this.topoNaPagina(painel) + painel.offsetHeight - yBase + 8) : 0;
+        let inicio = 0;
+        let partida = null;
+        this.naFrente = false;
+        if (painel) {
+            const caixa = this.caixaNaPagina(painel);
+            const xDireita = largura - tamanho - margem;
+            const cobre = caixa.y + caixa.altura > yBase + 8 && caixa.y < yBase + tamanho && caixa.x < xDireita + tamanho && caixa.x + caixa.largura > xDireita;
+            const aoLado = caixa.x - 24 - tamanho;
+            if (cobre && aoLado >= margem) {
+                partida = { x: aoLado, y: yBase };
+            } else if (cobre) {
+                // Rodas no canto livre do painel, ao lado do título, para cobrir menos o texto do hero; se o
+                // título chega até ali (tela estreita), na borda de cima do painel.
+                const titulo = painel.querySelector('.ent-painel-titulo');
+                let fimDoTitulo = 0;
+                if (titulo) {
+                    // O título é bloco (largura cheia): vale a largura do texto.
+                    const texto = document.createRange();
+                    texto.selectNodeContents(titulo);
+                    fimDoTitulo = this.caixaNaPagina(titulo).x + Math.min(titulo.offsetWidth, texto.getBoundingClientRect().width);
+                }
+                const chao = fimDoTitulo + 8 <= xDireita + tamanho * 0.25 ? caixa.y + tamanho * 0.48 : caixa.y;
+                partida = { x: xDireita, y: Math.max(margem, chao - tamanho * 0.97) };
+                inicio = Math.max(0, caixa.y + caixa.altura - yBase + 8);
+                this.naFrente = true;
+            }
+        }
 
         const secoes = SECOES.map(([nome, seletor]) => {
             const el = landing.querySelector(seletor);
@@ -245,7 +275,7 @@ export default class EntregasMotoboyComponent extends Component {
             }
         }
 
-        this.trajeto = montarTrajeto({ largura, altura, tamanho, margem, maximo, inicio, secoes, final: { topo: final ? this.topoNaPagina(final) : maximo }, alvo });
+        this.trajeto = montarTrajeto({ largura, altura, tamanho, margem, maximo, inicio, partida, secoes, final: { topo: final ? this.topoNaPagina(final) : maximo }, alvo });
         this.tamanho = tamanho;
 
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -349,6 +379,7 @@ export default class EntregasMotoboyComponent extends Component {
         const estado = estadoNoScroll(this.trajeto, rolagem, this.totais);
 
         this.elemento.classList.toggle('is-visivel', estado.visivel);
+        this.elemento.classList.toggle('is-na-frente', this.naFrente && estado.secao === 'topo');
         this.desenhar(estado.clipe, estado.quadro, estado.espelho);
 
         // Inclina na descida: bico para baixo quando a página desce, na direção em que ele está virado.

@@ -1167,7 +1167,7 @@ body .ent-tema .ent-registro .btn-wrapper > .btn .btn-icon-wrapper {
     }
 }
 
-/* O painel de login e o cartão de oferta ficam por cima: ele passa por trás deles, nunca os cobre. */
+/* O painel de login e o cartão de oferta ficam por cima: ele passa por trás deles (só no celular, no começo, desce à frente do painel). */
 .ent-painel,
 .ent-oferta {
     position: relative;
@@ -1178,6 +1178,11 @@ body .ent-tema .ent-registro .btn-wrapper > .btn .btn-icon-wrapper {
     .ent-oferta {
         position: absolute;
     }
+}
+
+/* No celular ele aparece em cima do painel de login e desce à frente dele enquanto o painel sobe. */
+.ent-motoboy.is-na-frente {
+    z-index: 32;
 }
 
 /* Reações das seções quando ele passa. */
