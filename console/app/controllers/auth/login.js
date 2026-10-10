@@ -77,6 +77,32 @@ export default class AuthLoginController extends Controller {
     @tracked token;
 
     /**
+     * Entregas: landing da tela de login (contato comercial e tabela de faixas de exemplo).
+     */
+    whatsappComercial = '5516991999000';
+
+    faixasDeExemplo = [
+        { km: 2, motoboy: 6, loja: 8 },
+        { km: 4, motoboy: 8, loja: 11 },
+        { km: 6, motoboy: 10, loja: 14 },
+        { km: 6, motoboy: 13, loja: 18, acima: true },
+    ].map((faixa) => ({ ...faixa, margem: faixa.loja - faixa.motoboy }));
+
+    get linkDoConsultor() {
+        const texto = encodeURIComponent(this.intl.t('console.ui.landing.whatsapp-mensagem'));
+        return `https://wa.me/${this.whatsappComercial}?text=${texto}`;
+    }
+
+    get movimentoReduzido() {
+        return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    }
+
+    @action rolarPara(id, event) {
+        event?.preventDefault?.();
+        document.getElementById(id)?.scrollIntoView({ behavior: this.movimentoReduzido ? 'auto' : 'smooth', block: 'start' });
+    }
+
+    /**
      * Action to login user.
      *
      * @param {Event} event

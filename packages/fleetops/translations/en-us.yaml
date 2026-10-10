@@ -1817,6 +1817,35 @@ fleet-ops:
                 offline: Offline
                 item: 'Item '
                 no-description-provided: No description provided.
+                pedido: Order
+                previsao: 'Arrives in about'
+                criado-em: 'Ordered on {data}'
+                mapa: Delivery map
+                ver-rota: Show the route
+                ver-motoboy: Show the rider
+                seu-motoboy: Your rider
+                outro-pedido: Another order
+                previsao-minutos: '{minutos} min'
+                previsao-horas: '{horas} h {minutos} min'
+                sem-motoboy: No rider yet
+                andamento: Progress
+                indo-para: Heading to
+                depois: Then
+                conclusao-prevista: Expected delivery
+                historico: History
+                itens-do-pedido: Order items
+                titulo: Where is your order?
+                ajuda: Enter the tracking code the store sent you.
+                codigo: Tracking code
+                rastrear: Track
+                buscando: Searching...
+                situacao:
+                    recebido: Order received
+                    procurando: Looking for a rider
+                    coleta: The rider is picking up your order
+                    a-caminho: Your order is on its way
+                    entregue: Order delivered
+                    cancelado: Order canceled
             positions-replay:
                 serial-no: 'Serial No:'
                 driver: 'Driver:'

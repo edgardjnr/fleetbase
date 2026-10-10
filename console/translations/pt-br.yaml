@@ -763,6 +763,74 @@ console:
     received: 'Recebido:'
     message: Nenhuma notificação para exibir.
   ui:
+    landing:
+      brand-sub: RestaurantePro
+      nav-consultor: Falar com um consultor
+      kicker: Central de despacho para operadoras de entrega
+      headline: Tire o despacho do grupo de WhatsApp.
+      lead: O pedido do iFood entra sozinho, o sistema oferece ao motoboy que chega antes e você acompanha a frota inteira no mapa. No fim da semana, o fechamento já está pronto, com a sua margem.
+      cta-consultor: Falar com um consultor
+      cta-como-funciona: Ver como funciona
+      ifood-selo: Integração de logística homologada pelo iFood
+      whatsapp-mensagem: Olá! Tenho uma operação de entregas e quero conhecer o Entregas RestaurantePro.
+      login:
+        title: Entrar na central
+        lead: Para quem já opera com o Entregas.
+        loading: Entrando...
+      mapa:
+        title: A frota inteira, na cor da situação.
+        lead: Cada motoboy é um capacete no mapa. A cor muda junto com o status do pedido, sem atualizar a página.
+        aria: 'Ilustração do mapa ao vivo: motoboys circulando entre duas lojas e os endereços de entrega.'
+        livre: Livre
+        livre-texto: pronto para a próxima oferta
+        indo-loja: Indo à loja
+        indo-loja-texto: aceitou e vai buscar o pedido
+        a-caminho: A caminho do cliente
+        a-caminho-texto: pedido coletado, rumo à entrega
+        rua-1: Av. Nove de Julho
+        rua-2: R. Olinda
+        oferta-titulo: Oferta para você
+        oferta-fecha: fecha em 30 s
+        oferta-rota: Pizzaria Centro → Rua Olinda, 45
+        oferta-distancia: 3,2 km · 9 min
+        oferta-legenda: Exemplo do cartão que o motoboy recebe no app.
+      passos:
+        title: Do pedido ao fechamento, sem planilha.
+        p1-titulo: Entra sozinho
+        p1-texto: Pedido do iFood, do portal do restaurante ou lançado pela central. A coleta já sai no endereço da loja.
+        p2-titulo: Vai para quem chega antes
+        p2-texto: O sistema calcula quem entrega mais rápido, inclusive quem já leva um pedido no caminho, e oferece por 30 segundos. Se ninguém aceita, o raio cresce em rodadas.
+        p3-titulo: Acompanhado do início ao fim
+        p3-texto: Você vê a frota no mapa, o restaurante acompanha os pedidos dele no portal e o iFood recebe cada etapa da entrega.
+        p4-titulo: Fechado no fim da semana
+        p4-texto: Km pela rota de rua, da loja ao cliente. Quanto pagar a cada motoboy, quanto cobrar de cada loja e a sua margem, com o CSV pronto.
+      telas:
+        title: Uma operação, três telas.
+        central-produto: Console da central
+        central-titulo: Sua central
+        central-texto: Mapa ao vivo, pedidos em tempo real, aviso sonoro quando um pedido fica sem motoboy, cadastro das lojas e o fechamento da semana.
+        lojas-produto: Portal da loja
+        lojas-titulo: Seus restaurantes
+        lojas-texto: Cada loja tem o próprio portal. Pede entrega marcando o endereço, acompanha o motoboy no mapa, conversa com ele e vê o extrato. Nunca enxerga os pedidos das outras lojas.
+        frota-produto: App do motoboy
+        frota-titulo: Sua frota
+        frota-texto: App próprio para o motoboy, com alarme de oferta e o valor da corrida, mapa da entrega, código do iFood na porta e os ganhos do dia e do mês.
+      faixas:
+        title: Uma tabela de faixas. Pagamento e cobrança juntos.
+        lead: Você define quanto paga ao motoboy e quanto cobra da loja em cada faixa de km. O valor congela na entrega, então mudar a tabela vale só para as próximas.
+        legenda: Exemplo de tabela
+        col-distancia: Distância
+        col-motoboy: Motoboy recebe
+        col-loja: Loja paga
+        col-margem: Sua margem
+        ate-km: até {km} km
+        acima-km: acima de {km} km
+      final:
+        title: Sua frota já roda. Falta a central.
+        lead: Fale com um consultor e veja o Entregas funcionando com as suas lojas.
+        cta: Chamar no WhatsApp
+        email: contato@restaurantepro.com.br
+        telefone: (16) 99199-9000
     permission-text:
       full-resource: Permissão total sobre {resource} em {extension}
       full: Permissão total em {extension}

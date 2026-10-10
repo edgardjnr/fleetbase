@@ -129,6 +129,16 @@ customer-portal:
       two-fa-title: Two-factor verification
       login:
         email-label: Email address
+        portal-nome: Store portal
+        titulo-marca: Request deliveries and follow the rider.
+        item-pedir: Request a delivery by marking the customer address on the map.
+        item-mapa: See the rider on the map, from acceptance to drop-off.
+        item-extrato: Chat with them and check the monthly statement.
+        titulo: Sign in to the portal
+        lead: Use the email and password the dispatch center created for your store.
+        entrando: Signing in...
+        central-pergunta: Part of the dispatch team?
+        central-link: Sign in to the console
         password-label: Password
         remember-me: Remember me
         forgot-password: Forgot your password?

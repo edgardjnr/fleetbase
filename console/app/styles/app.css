@@ -3,3 +3,5 @@
 @import 'tailwindcss/utilities';
 @import 'inter-ui/inter.css';
 @import 'console.css';
+@import 'landing.css';
+@import 'entregas-telas.css';

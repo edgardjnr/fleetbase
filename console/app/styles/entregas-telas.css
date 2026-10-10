@@ -1,0 +1,609 @@
+/*
+ * Entregas: login do portal da loja (customer-portal: portal-auth/login.hbs) e rastreio do cliente final
+ * (fleetops: components/order-tracking-lookup.hbs, rota /~/track-order). Usam os tokens e componentes
+ * de .ent-tema (landing.css). Telas de produto: tipografia de UI no corpo (Barlow), display só nos títulos.
+ */
+
+/* ---------- Componentes de UI compartilhados ---------- */
+
+.ent-tema .ent-botao-ui {
+    font-family: var(--ent-corpo);
+    font-weight: 600;
+    font-size: 1rem;
+    letter-spacing: 0;
+    min-height: 3rem;
+}
+
+.ent-tema .ent-botao-contorno {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding: 0 1rem;
+    border: 1.5px solid var(--ent-tinta);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ent-tinta);
+    font-family: var(--ent-corpo);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    white-space: nowrap;
+    transition:
+        background-color 160ms var(--ent-ease),
+        color 160ms var(--ent-ease);
+}
+
+.ent-tema .ent-botao-contorno:hover:not([disabled]) {
+    background: var(--ent-tinta);
+    color: var(--ent-papel);
+}
+
+.ent-tema .ent-botao-contorno[disabled] {
+    opacity: 0.4;
+}
+
+.ent-tema .ent-input.ent-input-grande {
+    height: 3.5rem;
+    font-size: 1.25rem;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+}
+
+.ent-registro:not(:has(.btn-wrapper)) {
+    display: none;
+}
+
+/* ---------- Login do portal da loja ---------- */
+
+.ent-acesso {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+}
+
+@media (min-width: 960px) {
+    .ent-acesso {
+        grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+        grid-template-rows: minmax(100%, auto);
+    }
+}
+
+.ent-acesso-marca {
+    background: var(--ent-laranja);
+    color: var(--ent-tinta);
+    padding: 1.25rem var(--ent-gutter) 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+@media (min-width: 960px) {
+    .ent-acesso-marca {
+        padding: 2rem clamp(2rem, 1rem + 3vw, 4.5rem) 3rem;
+        justify-content: space-between;
+    }
+}
+
+.ent-acesso-marca-topo {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.ent-acesso-marca-nome {
+    font-family: var(--ent-display);
+    font-weight: 800;
+    font-size: 1.75rem;
+    line-height: 1;
+}
+
+.ent-acesso-marca-portal {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--ent-tinta-sobre-laranja);
+    padding-left: 0.625rem;
+    border-left: 1px solid currentColor;
+    line-height: 1.1;
+}
+
+.ent-acesso-titulo {
+    font-family: var(--ent-display);
+    font-weight: 800;
+    font-size: clamp(2.25rem, 1.2rem + 3.6vw, 5rem);
+    line-height: 0.92;
+    letter-spacing: -0.015em;
+    max-width: 12ch;
+    text-wrap: balance;
+}
+
+.ent-acesso-lista {
+    display: none;
+    gap: 1rem;
+    max-width: 26rem;
+}
+
+@media (min-width: 640px) {
+    .ent-acesso-lista {
+        display: grid;
+    }
+}
+
+.ent-acesso-lista li {
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.0625rem;
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+.ent-acesso-lista img {
+    justify-self: center;
+}
+
+.ent-acesso-corpo {
+    display: grid;
+    place-items: center;
+    padding: 2rem var(--ent-gutter) 3rem;
+    background: var(--ent-papel);
+}
+
+.ent-acesso-form {
+    width: 100%;
+    max-width: 26rem;
+}
+
+.ent-acesso-form-titulo {
+    font-family: var(--ent-display);
+    font-weight: 700;
+    font-size: 2.25rem;
+    line-height: 1;
+}
+
+.ent-acesso-form-lead {
+    margin-top: 0.5rem;
+    font-size: 0.9375rem;
+    color: var(--ent-tinta-2);
+    max-width: 36ch;
+}
+
+.ent-acesso-rodape {
+    margin-top: 2rem;
+    font-size: 0.9375rem;
+    color: var(--ent-tinta-2);
+}
+
+/* ---------- Rastreio (cliente final) ---------- */
+
+.ent-rastreio {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.ent-rastreio-topo {
+    position: sticky;
+    top: 0;
+    z-index: 1100;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 3.5rem;
+    padding: 0.5rem var(--ent-gutter);
+    background: var(--ent-laranja);
+}
+
+.ent-tema .ent-rastreio-marca {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--ent-tinta);
+    font-family: var(--ent-display);
+    font-weight: 800;
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+/* Busca */
+
+.ent-rastreio-busca {
+    width: 100%;
+    max-width: 28rem;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 1.5rem + 6vh, 6rem) var(--ent-gutter) 3rem;
+}
+
+.ent-rastreio-busca-capacete {
+    width: 4.5rem;
+    height: 4.5rem;
+}
+
+.ent-rastreio-busca-titulo {
+    margin-top: 1.25rem;
+    font-family: var(--ent-display);
+    font-weight: 800;
+    font-size: clamp(2.5rem, 1.9rem + 2.4vw, 3.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+}
+
+.ent-rastreio-busca-lead {
+    margin-top: 0.75rem;
+    color: var(--ent-tinta-2);
+}
+
+.ent-rastreio-busca-form {
+    margin-top: 2rem;
+    display: grid;
+    gap: 1rem;
+}
+
+/* Resultado */
+
+.ent-rastreio-grade {
+    width: 100%;
+    max-width: 88rem;
+    margin: 0 auto;
+    padding: 1.5rem var(--ent-gutter) 3rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        'resumo'
+        'mapa'
+        'detalhes';
+    gap: 1.5rem;
+}
+
+@media (min-width: 960px) {
+    .ent-rastreio-grade {
+        grid-template-columns: minmax(0, 1.35fr) minmax(22rem, 0.8fr);
+        grid-template-areas:
+            'mapa resumo'
+            'mapa detalhes';
+        grid-template-rows: auto 1fr;
+        column-gap: 2.5rem;
+        row-gap: 1.75rem;
+        align-items: start;
+    }
+}
+
+.ent-rastreio-resumo {
+    grid-area: resumo;
+}
+
+.ent-rastreio-mapa-bloco {
+    grid-area: mapa;
+}
+
+.ent-rastreio-detalhes {
+    grid-area: detalhes;
+}
+
+.ent-rastreio-codigo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    color: var(--ent-tinta-2);
+}
+
+.ent-rastreio-codigo strong {
+    color: var(--ent-tinta);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    font-variant-numeric: tabular-nums;
+}
+
+.ent-rastreio-status {
+    margin-top: 0.5rem;
+    font-family: var(--ent-display);
+    font-weight: 800;
+    font-size: clamp(2.125rem, 1.6rem + 1.8vw, 3.25rem);
+    line-height: 0.98;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+}
+
+.ent-rastreio-status::before {
+    content: '';
+    display: inline-block;
+    width: 0.42em;
+    height: 0.42em;
+    margin-right: 0.3em;
+    border-radius: 50%;
+    vertical-align: 0.14em;
+    background: oklch(0.7 0.01 70);
+}
+
+.ent-rastreio-status-coleta::before {
+    background: oklch(0.82 0.16 90);
+}
+
+.ent-rastreio-status-a-caminho::before {
+    background: var(--ent-vermelho);
+}
+
+.ent-rastreio-status-entregue::before {
+    background: var(--ent-verde);
+}
+
+.ent-rastreio-status-procurando::before,
+.ent-rastreio-status-recebido::before {
+    background: var(--ent-laranja);
+}
+
+.ent-rastreio-previsao {
+    margin-top: 0.75rem;
+    font-size: 1.0625rem;
+    color: var(--ent-tinta-2);
+}
+
+.ent-rastreio-previsao strong {
+    font-family: var(--ent-display);
+    font-weight: 700;
+    font-size: 1.75rem;
+    color: var(--ent-tinta);
+    margin-left: 0.25rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.ent-rastreio-criado {
+    margin-top: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--ent-tinta-2);
+}
+
+/* Mapa */
+
+.ent-rastreio-mapa {
+    position: relative;
+    height: clamp(16rem, 46vh, 28rem);
+    border: 2px solid var(--ent-tinta);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--ent-quadra);
+}
+
+@media (min-width: 960px) {
+    .ent-rastreio-mapa-bloco {
+        position: sticky;
+        top: 5rem;
+    }
+
+    .ent-rastreio-mapa {
+        height: calc(100dvh - 3.5rem - 7.5rem);
+        min-height: 26rem;
+    }
+}
+
+.ent-rastreio-mapa .leaflet-container {
+    width: 100%;
+    height: 100%;
+    font-family: var(--ent-corpo);
+}
+
+.ent-rastreio-mapa-vazio {
+    width: 100%;
+    height: 100%;
+    background:
+        linear-gradient(var(--ent-rua) 0 0) 0 30% / 100% 14px no-repeat,
+        linear-gradient(var(--ent-rua) 0 0) 0 72% / 100% 10px no-repeat,
+        linear-gradient(var(--ent-rua) 0 0) 28% 0 / 12px 100% no-repeat,
+        linear-gradient(var(--ent-rua) 0 0) 70% 0 / 12px 100% no-repeat,
+        var(--ent-quadra);
+}
+
+.ent-rastreio-mapa-acoes {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.leaflet-tooltip.ent-rastreio-nome {
+    background: oklch(0.2 0.014 60);
+    color: oklch(0.975 0.01 75);
+    border: 0;
+    border-radius: 999px;
+    box-shadow: none;
+    padding: 0.125rem 0.625rem;
+    font-family: 'Barlow', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.8125rem;
+}
+
+.leaflet-tooltip.ent-rastreio-nome::before {
+    display: none;
+}
+
+/* Detalhes */
+
+.ent-rastreio-bloco {
+    padding: 1.25rem 0;
+    border-top: 1px solid var(--ent-linha);
+}
+
+.ent-rastreio-detalhes > .ent-rastreio-bloco:first-child {
+    border-top: 2px solid var(--ent-tinta);
+}
+
+.ent-rastreio-motoboy {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+}
+
+.ent-rastreio-motoboy img {
+    width: 3rem;
+    height: 3rem;
+    flex: none;
+}
+
+.ent-rastreio-rotulo {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--ent-tinta-2);
+}
+
+.ent-rastreio-motoboy-nome {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.ent-rastreio-apagado {
+    color: var(--ent-tinta-2);
+    font-weight: 500;
+}
+
+.ent-rastreio-h2 {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    margin-bottom: 0.875rem;
+}
+
+.ent-rastreio-progresso {
+    margin-bottom: 1rem;
+}
+
+.ent-rastreio-dados {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.ent-rastreio-dados dt {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--ent-tinta-2);
+}
+
+.ent-rastreio-dados dd {
+    margin: 0.125rem 0 0;
+}
+
+/* Linha do tempo: a última atividade fica em laranja */
+
+.ent-rastreio-linha li {
+    position: relative;
+    padding: 0 0 1rem 1.5rem;
+}
+
+.ent-rastreio-linha li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.45rem;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    background: var(--ent-tinta);
+}
+
+.ent-rastreio-linha li:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: calc(0.3125rem - 1px);
+    top: 1.25rem;
+    bottom: 0.125rem;
+    width: 2px;
+    background: var(--ent-linha);
+}
+
+.ent-rastreio-linha li:last-child {
+    padding-bottom: 0;
+}
+
+.ent-rastreio-linha li:last-child::before {
+    background: var(--ent-laranja);
+    box-shadow: 0 0 0 3px oklch(0.74 0.165 62 / 0.25);
+}
+
+.ent-rastreio-linha li.ent-rastreio-apagado::before {
+    display: none;
+}
+
+.ent-rastreio-linha-titulo {
+    font-weight: 600;
+}
+
+.ent-rastreio-linha-texto {
+    font-size: 0.9375rem;
+    color: var(--ent-tinta-2);
+}
+
+.ent-rastreio-linha-hora {
+    font-size: 0.8125rem;
+    color: var(--ent-tinta-2);
+    font-variant-numeric: tabular-nums;
+}
+
+.ent-rastreio-itens {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.ent-rastreio-itens li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.ent-rastreio-item-foto {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.ent-rastreio-item-nome {
+    font-weight: 600;
+}
+
+.ent-rastreio-item-preco {
+    margin-left: auto;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Ajustes do mapa e do cabeçalho do rastreio ---------- */
+
+.ent-rastreio-topo .ent-marca-nome {
+    font-size: 1.5rem;
+}
+
+/* O tema escuro do Fleetbase pinta os <a> de claro: os botões de zoom do Leaflet sumiam. */
+.ent-tema .leaflet-control-zoom a.leaflet-control-zoom-in,
+.ent-tema .leaflet-control-zoom a.leaflet-control-zoom-out {
+    color: var(--ent-tinta);
+    background: var(--ent-papel);
+}
+
+.ent-tema .leaflet-control-attribution a[href] {
+    color: var(--ent-tinta-2);
+}
+
+.leaflet-div-icon.ent-rastreio-destino {
+    background: none;
+    border: 0;
+}
+
+@media (max-width: 959px) {
+    .ent-acesso-corpo {
+        place-items: start center;
+    }
+}

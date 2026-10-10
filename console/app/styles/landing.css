@@ -1,0 +1,1107 @@
+/*
+ * Entregas: landing da tela de login (templates/auth/login.hbs).
+ * Linguagem de placa de trânsito + quadro de despacho: laranja do logo (#F28C13) como cor de comando,
+ * tinta quase preta, papel quente. Verde, amarelo e vermelho só no mapa, como no console.
+ * Fonte: Barlow / Barlow Condensed (index.html), nascida da sinalização viária.
+ */
+
+.ent-tema {
+    --ent-laranja: oklch(0.74 0.165 62);
+    --ent-laranja-claro: oklch(0.8 0.14 66);
+    --ent-laranja-texto: oklch(0.5 0.14 50);
+    --ent-tinta: oklch(0.2 0.014 60);
+    --ent-tinta-2: oklch(0.36 0.014 60);
+    --ent-tinta-sobre-laranja: oklch(0.27 0.05 55);
+    --ent-papel: oklch(0.975 0.01 75);
+    --ent-papel-2: oklch(0.945 0.016 75);
+    --ent-linha: oklch(0.82 0.015 70);
+    --ent-rua: oklch(0.992 0.006 80);
+    --ent-quadra: oklch(0.915 0.02 75);
+    --ent-praca: oklch(0.88 0.06 140);
+    --ent-verde: oklch(0.6 0.15 150);
+    --ent-vermelho: oklch(0.57 0.2 27);
+
+    --ent-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+    --ent-corpo: 'Barlow', system-ui, sans-serif;
+    --ent-gutter: clamp(1rem, 0.4rem + 3vw, 3.5rem);
+    --ent-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    background: var(--ent-papel);
+    color: var(--ent-tinta);
+    font-family: var(--ent-corpo);
+    font-size: 1.0625rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+.ent-landing {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ent-landing {
+        scroll-behavior: auto;
+    }
+}
+
+.ent-tema a,
+.ent-tema button,
+.ent-tema label[for],
+.ent-tema input[type='checkbox'] {
+    cursor: pointer;
+}
+
+.ent-tema button[disabled],
+.ent-tema input[disabled] {
+    cursor: not-allowed;
+}
+
+.ent-tema input.ent-input {
+    cursor: text;
+}
+
+.ent-tema :focus-visible {
+    outline: 3px solid var(--ent-tinta);
+    outline-offset: 3px;
+}
+
+/* ---------- Topo + hero (laranja) ---------- */
+
+.ent-hero {
+    background: var(--ent-laranja);
+    color: var(--ent-tinta);
+    padding: 0 var(--ent-gutter) clamp(3rem, 2rem + 4vw, 6rem);
+}
+
+.ent-topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 0;
+    max-width: 82rem;
+    margin: 0 auto;
+}
+
+.ent-landing a.ent-marca[href] {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    color: var(--ent-tinta);
+    text-decoration: none;
+}
+
+@media (max-width: 559px) {
+    .ent-marca-sub {
+        display: none;
+    }
+}
+
+.ent-marca-icone {
+    border-radius: 6px;
+}
+
+.ent-marca-nome {
+    font-family: var(--ent-display);
+    font-weight: 800;
+    font-size: 1.75rem;
+    line-height: 1;
+    letter-spacing: -0.01em;
+}
+
+.ent-marca-sub {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--ent-tinta-sobre-laranja);
+    padding-left: 0.625rem;
+    border-left: 1px solid currentColor;
+    line-height: 1.1;
+}
+
+.ent-landing a.ent-topo-link[href] {
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--ent-tinta);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+}
+
+.ent-landing a.ent-topo-link[href]:hover {
+    text-decoration-thickness: 3px;
+}
+
+.ent-hero-grade {
+    max-width: 82rem;
+    margin: 0 auto;
+    padding-top: clamp(1.5rem, 0.5rem + 4vw, 4.5rem);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        'texto'
+        'painel'
+        'acoes';
+    gap: 2rem;
+}
+
+.ent-hero-texto {
+    grid-area: texto;
+}
+
+.ent-hero-acoes {
+    grid-area: acoes;
+}
+
+.ent-painel {
+    grid-area: painel;
+}
+
+@media (min-width: 960px) {
+    .ent-hero-grade {
+        grid-template-columns: minmax(0, 1.35fr) minmax(22rem, 0.75fr);
+        grid-template-areas:
+            'texto painel'
+            'acoes painel';
+        grid-template-rows: auto 1fr;
+        column-gap: clamp(2.5rem, 1rem + 4vw, 6rem);
+        row-gap: 2.5rem;
+        align-items: start;
+    }
+}
+
+/* Notebook com tela baixa: o título encolhe para o botão de contato caber na dobra. */
+@media (min-width: 960px) and (max-height: 800px) {
+    .ent-hero-grade {
+        padding-top: 1.5rem;
+    }
+
+    .ent-titulo {
+        font-size: clamp(3rem, 0.8rem + 4.4vw, 5.5rem);
+    }
+
+    .ent-lead {
+        margin-top: 1rem;
+    }
+}
+
+.ent-kicker {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--ent-tinta-sobre-laranja);
+    margin-bottom: 1rem;
+}
+
+.ent-titulo {
+    font-family: var(--ent-display);
+    font-weight: 800;
+    font-size: clamp(3.25rem, 1.6rem + 5.6vw, 7.25rem);
+    line-height: 0.9;
+    letter-spacing: -0.015em;
+    max-width: 11ch;
+    text-wrap: balance;
+}
+
+.ent-lead {
+    margin-top: 1.5rem;
+    font-size: clamp(1.0625rem, 0.95rem + 0.4vw, 1.3125rem);
+    line-height: 1.5;
+    max-width: 38rem;
+    color: var(--ent-tinta);
+}
+
+.ent-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.75rem;
+}
+
+.ent-botao {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    min-height: 3.25rem;
+    padding: 0 1.5rem;
+    border-radius: 6px;
+    font-family: var(--ent-display);
+    font-weight: 700;
+    font-size: 1.3125rem;
+    letter-spacing: 0.005em;
+    text-decoration: none;
+    transition:
+        background-color 180ms var(--ent-ease),
+        transform 180ms var(--ent-ease);
+}
+
+.ent-tema .ent-botao-tinta[class] {
+    background: var(--ent-tinta);
+    color: var(--ent-papel);
+}
+
+.ent-tema .ent-botao-tinta[class]:hover {
+    background: oklch(0.3 0.02 60);
+}
+
+.ent-botao-tinta:active {
+    transform: translateY(1px);
+}
+
+.ent-botao-tinta[disabled] {
+    background: oklch(0.42 0.015 60);
+}
+
+.ent-botao-cheio {
+    width: 100%;
+}
+
+.ent-landing a.ent-link-seta[href] {
+    font-weight: 600;
+    color: var(--ent-tinta);
+    text-decoration: none;
+    border-bottom: 2px solid currentColor;
+    padding-bottom: 2px;
+}
+
+.ent-link-seta::after {
+    content: ' ↓';
+}
+
+.ent-selo {
+    margin-top: 1.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    padding: 0.5rem 0.875rem 0.5rem 0.625rem;
+    border: 1.5px solid var(--ent-tinta);
+    border-radius: 999px;
+}
+
+.ent-selo-icone {
+    width: 1.125rem;
+    height: 1.125rem;
+    flex: none;
+}
+
+/* ---------- Painel de login ---------- */
+
+.ent-painel {
+    background: var(--ent-papel);
+    color: var(--ent-tinta);
+    border: 2px solid var(--ent-tinta);
+    border-radius: 8px;
+    padding: clamp(1.25rem, 0.8rem + 1.6vw, 2rem);
+    width: 100%;
+    max-width: 30rem;
+}
+
+@media (min-width: 960px) {
+    .ent-painel {
+        justify-self: end;
+        margin-top: 0.5rem;
+    }
+}
+
+.ent-painel-titulo {
+    font-family: var(--ent-display);
+    font-weight: 700;
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.ent-painel-lead {
+    margin-top: 0.375rem;
+    font-size: 0.9375rem;
+    color: var(--ent-tinta-2);
+}
+
+.ent-form {
+    margin-top: 1.5rem;
+    display: grid;
+    gap: 1rem;
+}
+
+.ent-campo {
+    display: grid;
+    gap: 0.375rem;
+}
+
+.ent-rotulo {
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.ent-tema .ent-input {
+    width: 100%;
+    height: 3rem;
+    padding: 0 0.875rem;
+    border: 1.5px solid var(--ent-linha);
+    border-radius: 6px;
+    background: oklch(0.995 0.004 80);
+    color: var(--ent-tinta);
+    font: inherit;
+    font-size: 1rem;
+    transition: border-color 160ms var(--ent-ease);
+}
+
+.ent-tema .ent-input:hover {
+    border-color: var(--ent-tinta-2);
+}
+
+.ent-tema .ent-input:focus {
+    outline: 3px solid var(--ent-laranja);
+    outline-offset: 0;
+    border-color: var(--ent-tinta);
+    box-shadow: none;
+}
+
+.ent-form-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    font-size: 0.9375rem;
+}
+
+.ent-lembrar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ent-tema .ent-check {
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 1.5px solid var(--ent-tinta-2);
+    border-radius: 4px;
+    color: var(--ent-tinta);
+}
+
+.ent-tema .ent-check:focus {
+    box-shadow: none;
+    outline: 3px solid var(--ent-laranja);
+    outline-offset: 1px;
+}
+
+.ent-link {
+    font-weight: 600;
+    color: var(--ent-laranja-texto);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    background: none;
+    border: 0;
+    padding: 0;
+}
+
+.ent-link:hover {
+    color: var(--ent-tinta);
+}
+
+.ent-giro {
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: 50%;
+    border: 2.5px solid oklch(0.975 0.01 75 / 0.35);
+    border-top-color: var(--ent-papel);
+    animation: ent-girar 700ms linear infinite;
+}
+
+@keyframes ent-girar {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.ent-aviso {
+    margin-top: 1.25rem;
+    padding: 0.875rem 1rem;
+    border-radius: 6px;
+    background: oklch(0.93 0.07 85);
+    border: 1.5px solid oklch(0.6 0.12 75);
+    font-size: 0.9375rem;
+}
+
+.ent-aviso-botao {
+    margin-top: 0.5rem;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--ent-tinta);
+}
+
+/* Itens do registry auth:login (Portal do cliente, Rastrear pedido): botões do Fleetbase no tom do painel. */
+.ent-registro {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 0.625rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--ent-linha);
+}
+
+.ent-registro:empty {
+    display: none;
+}
+
+body .ent-tema .ent-registro .btn-wrapper {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 1.5px solid var(--ent-linha);
+    border-radius: 6px;
+    box-shadow: none;
+    background: transparent;
+    opacity: 1;
+    transition: border-color 160ms var(--ent-ease);
+}
+
+body .ent-tema .ent-registro .btn-wrapper:hover {
+    border-color: var(--ent-tinta);
+    opacity: 1;
+}
+
+body .ent-tema .ent-registro .btn.btn-link {
+    width: 100%;
+    min-height: 2.75rem;
+    justify-content: center;
+    color: var(--ent-tinta);
+    font-family: var(--ent-corpo);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    text-decoration: none;
+    background: transparent;
+    box-shadow: none;
+}
+
+body .ent-tema .ent-registro .btn.btn-link svg {
+    color: var(--ent-tinta-2);
+    margin-right: 0;
+}
+
+body .ent-tema .ent-registro .btn-wrapper > .btn .btn-icon-wrapper {
+    position: static;
+    padding-left: 0;
+    margin-right: 0.5rem;
+}
+
+/* ---------- Tipografia das seções ---------- */
+
+.ent-h2 {
+    font-family: var(--ent-display);
+    font-weight: 700;
+    font-size: clamp(2.25rem, 1.5rem + 2.8vw, 4.25rem);
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+}
+
+.ent-texto {
+    max-width: 62ch;
+    color: var(--ent-tinta-2);
+}
+
+/* ---------- Mapa ---------- */
+
+.ent-mapa-secao {
+    padding: clamp(3.5rem, 2rem + 5vw, 7rem) var(--ent-gutter) clamp(3rem, 2rem + 3vw, 5rem);
+    max-width: 82rem;
+    margin: 0 auto;
+    box-sizing: content-box;
+}
+
+.ent-mapa-cabeca {
+    display: grid;
+    gap: 1rem 4rem;
+    margin-bottom: 2.25rem;
+}
+
+@media (min-width: 960px) {
+    .ent-mapa-cabeca {
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+        align-items: end;
+    }
+
+    .ent-mapa-cabeca .ent-h2 {
+        max-width: 14ch;
+    }
+}
+
+.ent-mapa {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid var(--ent-tinta);
+    background: var(--ent-quadra);
+}
+
+.ent-mapa-svg {
+    display: block;
+    width: 100%;
+    height: clamp(22rem, 52vw, 36rem);
+}
+
+.ent-m-quadra {
+    fill: var(--ent-quadra);
+}
+
+.ent-m-praca {
+    fill: var(--ent-praca);
+}
+
+.ent-m-rua {
+    fill: none;
+    stroke: var(--ent-rua);
+    stroke-width: 20;
+}
+
+.ent-m-rua-fina {
+    fill: none;
+    stroke: var(--ent-rua);
+    stroke-width: 12;
+}
+
+.ent-m-avenida {
+    fill: none;
+    stroke: var(--ent-rua);
+    stroke-width: 38;
+}
+
+.ent-m-faixa {
+    fill: none;
+    stroke: var(--ent-laranja-claro);
+    stroke-width: 2.5;
+    stroke-dasharray: 16 14;
+}
+
+.ent-m-nome-rua {
+    font-family: var(--ent-corpo);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    fill: var(--ent-tinta-2);
+    dominant-baseline: middle;
+}
+
+.ent-m-alfinete {
+    fill: var(--ent-vermelho);
+    stroke: var(--ent-rua);
+    stroke-width: 2;
+}
+
+.ent-m-alfinete-miolo {
+    fill: var(--ent-rua);
+}
+
+.ent-m-nome-fundo {
+    fill: var(--ent-tinta);
+}
+
+.ent-m-nome {
+    font-family: var(--ent-corpo);
+    font-size: 12px;
+    font-weight: 600;
+    fill: var(--ent-papel);
+}
+
+/* Cartão de oferta (o que o motoboy vê no app) */
+
+.ent-oferta {
+    margin: 0;
+    padding: 1rem;
+    background: var(--ent-papel-2);
+    border-top: 2px solid var(--ent-tinta);
+}
+
+@media (min-width: 720px) {
+    .ent-oferta {
+        position: absolute;
+        right: 1.25rem;
+        top: 1.25rem;
+        width: 19rem;
+        padding: 0;
+        background: none;
+        border: 0;
+    }
+}
+
+.ent-oferta-cartao {
+    background: var(--ent-tinta);
+    color: var(--ent-papel);
+    border-radius: 10px;
+    padding: 1rem 1.125rem 1.125rem;
+}
+
+.ent-oferta-topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+}
+
+.ent-oferta-titulo {
+    font-family: var(--ent-display);
+    font-weight: 700;
+    font-size: 1.375rem;
+    line-height: 1.1;
+}
+
+.ent-oferta-fecha {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--ent-laranja-claro);
+    white-space: nowrap;
+}
+
+.ent-oferta-barra {
+    margin-top: 0.75rem;
+    height: 4px;
+    border-radius: 2px;
+    background: oklch(0.975 0.01 75 / 0.18);
+    overflow: hidden;
+}
+
+.ent-oferta-barra span {
+    display: block;
+    height: 100%;
+    background: var(--ent-laranja);
+    transform-origin: left center;
+    animation: ent-oferta-tempo 30s linear infinite;
+}
+
+@keyframes ent-oferta-tempo {
+    from {
+        transform: scaleX(1);
+    }
+    to {
+        transform: scaleX(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ent-oferta-barra span {
+        animation: none;
+        transform: scaleX(0.6);
+    }
+}
+
+.ent-oferta-rota {
+    margin-top: 0.875rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.ent-oferta-base {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.9375rem;
+    color: oklch(0.85 0.012 70);
+}
+
+.ent-oferta-base strong {
+    font-family: var(--ent-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--ent-papel);
+    font-variant-numeric: tabular-nums;
+}
+
+.ent-oferta figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--ent-tinta-2);
+}
+
+@media (min-width: 720px) {
+    .ent-oferta figcaption {
+        display: inline-block;
+        background: var(--ent-papel);
+        padding: 0.125rem 0.5rem;
+        border-radius: 4px;
+    }
+}
+
+.ent-legenda {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2.5rem;
+}
+
+.ent-legenda li {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 0.9375rem;
+    color: var(--ent-tinta-2);
+}
+
+.ent-legenda img {
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: none;
+}
+
+.ent-legenda strong {
+    color: var(--ent-tinta);
+    font-weight: 700;
+}
+
+/* ---------- Passos (a rota do pedido) ---------- */
+
+.ent-passos-secao {
+    padding: clamp(3rem, 2rem + 4vw, 6rem) var(--ent-gutter);
+    max-width: 82rem;
+    margin: 0 auto;
+    box-sizing: content-box;
+    scroll-margin-top: 1rem;
+}
+
+.ent-passos {
+    margin-top: clamp(2rem, 1.5rem + 2vw, 3.5rem);
+    display: grid;
+    gap: 2.25rem;
+    position: relative;
+    counter-reset: none;
+}
+
+/* A linha da rota liga as paradas: vertical no celular, horizontal no desktop. */
+.ent-passos::before {
+    content: '';
+    position: absolute;
+    left: 1.375rem;
+    top: 1.375rem;
+    bottom: 1.375rem;
+    border-left: 3px dashed var(--ent-laranja);
+}
+
+.ent-passo {
+    position: relative;
+    padding-left: 4.25rem;
+}
+
+.ent-passo-num {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: var(--ent-tinta);
+    color: var(--ent-papel);
+    display: grid;
+    place-items: center;
+    font-family: var(--ent-display);
+    font-weight: 800;
+    font-size: 1.375rem;
+    box-shadow: 0 0 0 5px var(--ent-papel);
+}
+
+.ent-passo:last-child .ent-passo-num {
+    background: var(--ent-laranja);
+    color: var(--ent-tinta);
+}
+
+.ent-passo-titulo {
+    font-family: var(--ent-display);
+    font-weight: 700;
+    font-size: 1.75rem;
+    line-height: 1.05;
+    margin: 0.375rem 0 0.5rem;
+}
+
+@media (min-width: 960px) {
+    .ent-passos {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 2.5rem;
+    }
+
+    .ent-passos::before {
+        left: 1.375rem;
+        right: 1.375rem;
+        top: 1.375rem;
+        bottom: auto;
+        border-left: 0;
+        border-top: 3px dashed var(--ent-laranja);
+    }
+
+    .ent-passo {
+        padding-left: 0;
+        padding-top: 4.25rem;
+    }
+
+    .ent-passo-titulo {
+        margin-top: 0;
+    }
+}
+
+/* ---------- Três telas ---------- */
+
+.ent-telas-secao {
+    background: var(--ent-papel-2);
+    padding: clamp(3rem, 2rem + 4vw, 6rem) var(--ent-gutter);
+}
+
+@media (min-width: 960px) {
+    .ent-telas-secao {
+        display: grid;
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
+        gap: 4rem;
+        align-items: start;
+    }
+}
+
+.ent-telas-titulo {
+    max-width: 9ch;
+}
+
+@media (min-width: 960px) {
+    .ent-telas-titulo {
+        position: sticky;
+        top: 2rem;
+        justify-self: end;
+    }
+}
+
+.ent-telas {
+    margin-top: 2rem;
+    max-width: 48rem;
+}
+
+@media (min-width: 960px) {
+    .ent-telas {
+        margin-top: 0;
+    }
+}
+
+.ent-tela {
+    padding: 1.75rem 0;
+    border-top: 2px solid var(--ent-tinta);
+    display: grid;
+    gap: 0.625rem;
+}
+
+.ent-tela:last-child {
+    border-bottom: 2px solid var(--ent-tinta);
+}
+
+@media (min-width: 720px) {
+    .ent-tela {
+        grid-template-columns: minmax(12rem, 0.8fr) minmax(0, 1.4fr);
+        gap: 2rem;
+    }
+}
+
+.ent-tela dt {
+    font-family: var(--ent-display);
+    font-weight: 700;
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.ent-tela-produto {
+    display: block;
+    font-family: var(--ent-corpo);
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--ent-laranja-texto);
+    margin-bottom: 0.375rem;
+}
+
+.ent-tela dd {
+    margin: 0;
+}
+
+/* ---------- Faixas (quadro escuro) ---------- */
+
+.ent-faixas-secao {
+    background: var(--ent-tinta);
+    color: var(--ent-papel);
+    padding: clamp(3.5rem, 2rem + 5vw, 7rem) var(--ent-gutter);
+    display: grid;
+    gap: 2.5rem;
+}
+
+@media (min-width: 960px) {
+    .ent-faixas-secao {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+        gap: 5rem;
+        align-items: center;
+    }
+}
+
+.ent-faixas-secao .ent-h2 {
+    max-width: 13ch;
+}
+
+.ent-faixas-secao .ent-texto {
+    margin-top: 1.25rem;
+    color: oklch(0.85 0.012 70);
+    line-height: 1.6;
+}
+
+.ent-tabela-moldura {
+    overflow-x: auto;
+}
+
+.ent-tabela {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+    min-width: 30rem;
+}
+
+.ent-tabela caption {
+    caption-side: top;
+    text-align: left;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: oklch(0.78 0.012 70);
+    padding-bottom: 0.75rem;
+}
+
+.ent-tabela th,
+.ent-tabela td {
+    text-align: right;
+    padding: 0.875rem 0.75rem;
+    border-bottom: 1px solid oklch(0.36 0.014 60);
+}
+
+.ent-tabela thead th {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: oklch(0.8 0.012 70);
+    border-bottom: 2px solid var(--ent-papel);
+}
+
+.ent-tabela th:first-child {
+    text-align: left;
+    padding-left: 0;
+}
+
+.ent-tabela tbody th {
+    font-weight: 600;
+}
+
+.ent-tabela tbody td {
+    font-family: var(--ent-display);
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.ent-tabela .ent-col-margem {
+    color: var(--ent-laranja-claro);
+    padding-right: 0;
+}
+
+.ent-tabela tbody td.ent-col-margem {
+    font-weight: 800;
+}
+
+/* ---------- Chamada final + rodapé ---------- */
+
+.ent-final {
+    background: var(--ent-laranja);
+    padding: clamp(3.5rem, 2rem + 5vw, 7rem) var(--ent-gutter);
+    display: grid;
+    gap: 2rem;
+}
+
+@media (min-width: 960px) {
+    .ent-final {
+        grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+        gap: 4rem;
+        align-items: end;
+    }
+}
+
+.ent-final-titulo {
+    font-family: var(--ent-display);
+    font-weight: 800;
+    font-size: clamp(2.75rem, 1.6rem + 4.4vw, 6rem);
+    line-height: 0.92;
+    letter-spacing: -0.015em;
+    max-width: 12ch;
+    text-wrap: balance;
+}
+
+.ent-final-lead {
+    font-size: 1.1875rem;
+    max-width: 30rem;
+    margin-bottom: 1.5rem;
+}
+
+.ent-rodape {
+    background: var(--ent-tinta);
+    color: oklch(0.85 0.012 70);
+    padding: 1.75rem var(--ent-gutter);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 2rem;
+    font-size: 0.9375rem;
+}
+
+.ent-rodape-marca {
+    font-family: var(--ent-display);
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--ent-papel);
+    margin-right: auto;
+}
+
+.ent-landing .ent-rodape a[href] {
+    color: oklch(0.85 0.012 70);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.ent-landing .ent-rodape a[href]:hover {
+    color: var(--ent-papel);
+}
+
+.ent-rodape :focus-visible {
+    outline-color: var(--ent-laranja);
+}
+
+/* ---------- Entrada da página ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+    .ent-hero-texto,
+    .ent-painel,
+    .ent-hero-acoes {
+        animation: ent-subir 700ms var(--ent-ease) both;
+    }
+
+    .ent-painel {
+        animation-delay: 120ms;
+    }
+
+    .ent-hero-acoes {
+        animation-delay: 220ms;
+    }
+}
+
+@keyframes ent-subir {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}

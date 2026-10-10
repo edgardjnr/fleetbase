@@ -12,6 +12,16 @@ import getRoutingHost from '@fleetbase/ember-core/utils/get-routing-host';
 import engineService from '@fleetbase/ember-core/decorators/engine-service';
 import { DEFAULT_LEAFLET_TILE_URL } from '../utils/leaflet-tile-url';
 
+// Entregas: ícones do trajeto (criados só quando o mapa existe, com o Leaflet global já carregado).
+const ICONE_DA_LOJA = () => L.icon({ iconUrl: '/images/entregas/loja-pin.png', iconSize: [34, 40], iconAnchor: [17, 40] });
+const ICONE_DO_DESTINO = () =>
+    L.divIcon({
+        className: 'ent-rastreio-destino',
+        html: '<svg viewBox="-16 -42 32 44" width="32" height="44" aria-hidden="true"><path d="M0 0C-4 -10 -14 -14 -14 -25A14 14 0 1 1 14 -25C14 -14 4 -10 0 0Z" fill="#d4302e" stroke="#fffcf8" stroke-width="2"/><circle cy="-25" r="5" fill="#fffcf8"/></svg>',
+        iconSize: [32, 44],
+        iconAnchor: [16, 42],
+    });
+
 export default class OrderTrackingLookupComponent extends Component {
     @service urlSearchParams;
     @service fetch;
@@ -19,11 +29,12 @@ export default class OrderTrackingLookupComponent extends Component {
     @service socket;
     @service currentUser;
     @service universe;
+    @service intl;
     @engineService('@fleetbase/fleetops-engine') location;
     @engineService('@fleetbase/fleetops-engine') movementTracker;
     @tracked trackingNumber;
     @tracked order;
-    @tracked zoom = 12;
+    @tracked zoom = 14;
     @tracked map;
     @tracked mapReady = false;
     @tracked latitude;
@@ -45,6 +56,77 @@ export default class OrderTrackingLookupComponent extends Component {
             this.longitude = longitude;
             this.mapReady = true;
         });
+    }
+
+    /**
+     * Entregas: situação do pedido do ponto de vista do cliente final (mesma regra de cor do capacete do console).
+     */
+    get situacao() {
+        const order = this.order;
+        const status = String(order?.status ?? '').toLowerCase();
+        if (status === 'completed') return 'entregue';
+        if (['canceled', 'cancelled', 'expired', 'failed'].includes(status)) return 'cancelado';
+        if (status === 'enroute') return 'a-caminho';
+        if (order?.has_driver_assigned || order?.driver_assigned) return 'coleta';
+        if (status === 'dispatched') return 'procurando';
+        return 'recebido';
+    }
+
+    get statusTexto() {
+        return this.intl.t(`fleet-ops.ui.component.order-tracking-lookup.situacao.${this.situacao}`);
+    }
+
+    get capaceteUrl() {
+        const cores = { 'a-caminho': 'vermelho', coleta: 'amarelo', entregue: 'verde' };
+        return `/images/entregas/capacete-${cores[this.situacao] ?? 'cinza'}.png`;
+    }
+
+    get previsaoSegundos() {
+        const segundos = Number(this.order?.tracker_data?.eta?.active_stop_seconds);
+        const emAndamento = ['coleta', 'a-caminho'].includes(this.situacao);
+        return emAndamento && Number.isFinite(segundos) && segundos > 0 ? segundos : null;
+    }
+
+    get previsaoTexto() {
+        const segundos = this.previsaoSegundos;
+        if (!segundos) return null;
+        const minutos = Math.max(1, Math.round(segundos / 60));
+        if (minutos < 60) {
+            return this.intl.t('fleet-ops.ui.component.order-tracking-lookup.previsao-minutos', { minutos });
+        }
+        return this.intl.t('fleet-ops.ui.component.order-tracking-lookup.previsao-horas', { horas: Math.floor(minutos / 60), minutos: String(minutos % 60).padStart(2, '0') });
+    }
+
+    get criadoEm() {
+        return this.formatarHora(this.order?.created_at ?? this.order?.createdAt);
+    }
+
+    formatarHora(valor) {
+        const data = valor ? new Date(valor) : null;
+        if (!data || Number.isNaN(data.getTime())) {
+            return null;
+        }
+        const hoje = new Date().toDateString() === data.toDateString();
+        const opcoes = hoje ? { hour: '2-digit', minute: '2-digit' } : { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
+        return new Intl.DateTimeFormat(this.intl.primaryLocale, opcoes).format(data);
+    }
+
+    get conclusaoPrevista() {
+        const valor = this.order?.tracker_data?.eta?.completion_at;
+        return this.formatarHora(valor) ?? valor ?? null;
+    }
+
+    get itens() {
+        const entidades = this.order?.payload?.entities;
+        return entidades ? entidades.toArray?.() ?? Array.from(entidades) : [];
+    }
+
+    @action buscar(event) {
+        event?.preventDefault?.();
+        this.trackingNumber = this.trackingNumber?.trim();
+        if (this.trackingNumber) {
+            this.lookupOrder.perform();
+        }
     }
 
     @task *lookupOrder() {
@@ -106,7 +188,7 @@ export default class OrderTrackingLookupComponent extends Component {
         if (this.order) {
             const waypoints = this.getRouteCoordinatesFromOrder(this.order);
             this.map.flyToBounds(waypoints, {
-                maxZoom: waypoints.length === 2 ? 12 : 11,
+                maxZoom: waypoints.length === 2 ? 16 : 15,
                 animate: true,
             });
         }
@@ -139,15 +221,18 @@ export default class OrderTrackingLookupComponent extends Component {
             waypoints,
             alternativeClassName: 'hidden',
             addWaypoints: false,
-            markerOptions: {
-                draggable: false,
-                icon: L.icon({
-                    iconUrl: '/assets/images/marker-icon.png',
-                    iconRetinaUrl: '/assets/images/marker-icon-2x.png',
-                    shadowUrl: '/assets/images/marker-shadow.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41],
+            // Entregas: pin da loja na coleta e alfinete vermelho no destino, como no mapa do console.
+            createMarker: (indice, waypoint) =>
+                L.marker(waypoint.latLng, {
+                    draggable: false,
+                    keyboard: false,
+                    icon: indice === 0 ? ICONE_DA_LOJA() : ICONE_DO_DESTINO(),
                 }),
+            lineOptions: {
+                styles: [
+                    { color: '#1b1510', opacity: 0.85, weight: 7 },
+                    { color: '#f38f17', opacity: 1, weight: 4 },
+                ],
             },
         }).addTo(this.map);
 
@@ -164,7 +249,7 @@ export default class OrderTrackingLookupComponent extends Component {
                 this,
                 () => {
                     this.map.flyToBounds(waypoints, {
-                        maxZoom: waypoints.length === 2 ? 12 : 11,
+                        maxZoom: waypoints.length === 2 ? 16 : 15,
                         animate: true,
                     });
                 },
