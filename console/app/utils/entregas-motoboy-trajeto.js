@@ -19,6 +19,11 @@
  * - meia-volta e uma travessia longa, da esquerda para a direita, pelos passos (acendem na ordem) e telas;
  * - meia-volta e desce devagar pelas faixas até a chamada final, onde para e entrega o pedido.
  * A seção "passa" pelo motoboy quando cruza a linha dele, que fica no pé da tela.
+ *
+ * Rolando de volta, ele faz o caminho inverso de frente, nunca de ré: o lado para onde está virado se inverte
+ * (`voltando` no estadoNoScroll), as rodas giram para a frente, a rampa vira pilotagem subindo, as meias-voltas
+ * tocam na ordem do vídeo e, ao trocar o sentido no meio do caminho, ele dá meia-volta (o componente toca o
+ * trecho "retorno" pelo tempo, de `lado` em `lado`, com girar e quadroDoGiro).
  */
 
 export const CLIPES = ['partida', 'pilotando', 'retorno', 'rampa', 'entrega'];
@@ -106,18 +111,23 @@ export function montarTrajeto(geo) {
 /**
  * Estado do motoboy numa rolagem.
  *
+ * `lado` diz para onde ele está virado: 0 = direita, 1 = esquerda e, no meio, a meia-volta (o quadro do trecho
+ * "retorno"). `deLado` é falso quando o quadro é de frente para quem olha (começo da partida): aí o lado pode
+ * trocar sem meia-volta.
+ *
  * @param {Object} trajeto      resultado de montarTrajeto
  * @param {number} rolagem
  * @param {Object<string, number>} quadros  total de quadros por trecho
  * @param {number} [passoDoLoop]  px de rolagem por quadro do loop "pilotando"
- * @return {{visivel: boolean, clipe: string, quadro: number, x: number, y: number, espelho: boolean, progresso: number, secao: ?string, indice: number}}
+ * @param {boolean} [voltando]  a pessoa está rolando para cima: ele faz o caminho inverso, virado para onde vai
+ * @return {{visivel: boolean, clipe: string, quadro: number, x: number, y: number, espelho: boolean, lado: number, deLado: boolean, progresso: number, secao: ?string, indice: number}}
  */
-export function estadoNoScroll(trajeto, rolagem, quadros, passoDoLoop = 14) {
+export function estadoNoScroll(trajeto, rolagem, quadros, passoDoLoop = 14, voltando = false) {
     const { trechos } = trajeto;
     const primeiro = trechos[0];
 
     if (rolagem < primeiro.de) {
-        return { visivel: false, clipe: 'partida', quadro: 0, x: primeiro.x0, y: primeiro.y0, espelho: true, progresso: 0, secao: null, indice: -1 };
+        return { visivel: false, clipe: 'partida', quadro: 0, x: primeiro.x0, y: primeiro.y0, espelho: true, lado: 1, deLado: false, progresso: 0, secao: null, indice: -1 };
     }
 
     let indice = trechos.findIndex((trecho) => rolagem < trecho.ate);
@@ -129,27 +139,87 @@ export function estadoNoScroll(trajeto, rolagem, quadros, passoDoLoop = 14) {
     const progresso = duracao > 0 ? limitar((rolagem - trecho.de) / duracao, 0, 1) : 1;
     const tx = trecho.curva === 'linear' ? progresso : suave(progresso);
     const ty = suave(progresso);
-    const total = Math.max(1, quadros[trecho.clipe] ?? 1);
+    // Na volta, a rampa vira pilotagem (subindo, de frente): o vídeo da rampa ao contrário seria de ré.
+    const clipe = voltando && trecho.clipe === 'rampa' ? 'pilotando' : trecho.clipe;
+    const total = Math.max(1, quadros[clipe] ?? 1);
 
     let quadro;
-    if (trecho.clipe === 'pilotando') {
+    let espelho = trecho.espelho;
+    let lado;
+    let deLado = true;
+    if (clipe === 'pilotando') {
         // As rodas giram com a rolagem: o quadro 0 cai no início do trecho, que emenda com a rampa e a partida.
-        quadro = Math.floor(Math.max(0, rolagem - trecho.de) / passoDoLoop) % total;
+        // Na volta, contam a partir do fim do trecho, para girarem para a frente enquanto a página sobe.
+        const andado = voltando ? trecho.ate - rolagem : rolagem - trecho.de;
+        quadro = Math.floor(Math.max(0, andado) / passoDoLoop) % total;
+        espelho = voltando ? !trecho.espelho : trecho.espelho;
+        lado = espelho ? 1 : 0;
+    } else if (clipe === 'retorno') {
+        // A meia-volta toca na ordem do vídeo nos dois sentidos: descendo, de um lado para o outro; subindo, de
+        // volta, já virado para o caminho de volta (o lado inverso em cada ponta).
+        const giro = trecho.espelho ? 1 - progresso : progresso;
+        lado = voltando ? 1 - giro : giro;
+        quadro = Math.round((trecho.espelho ? 1 - lado : lado) * (total - 1));
     } else {
         quadro = Math.round(progresso * (total - 1));
+        if (clipe === 'partida') {
+            // Na volta ele chega à partida virado para a direita e termina de frente.
+            espelho = voltando ? !trecho.espelho : trecho.espelho;
+            deLado = progresso >= 0.5;
+        }
+        lado = espelho ? 1 : 0;
     }
 
     return {
         visivel: true,
-        clipe: trecho.clipe,
+        clipe,
         quadro,
         x: trecho.x0 + (trecho.x1 - trecho.x0) * tx,
         y: trecho.y0 + (trecho.y1 - trecho.y0) * ty,
-        espelho: trecho.espelho,
+        espelho,
+        lado,
+        deLado,
         progresso,
         secao: trecho.secao ?? null,
         indice,
     };
+}
+
+/**
+ * Sentido da rolagem, com folga: só troca depois de andar `folga` px no sentido novo, para um tremor da roda não
+ * fazer a moto dar meia-volta.
+ *
+ * @param {{voltando: boolean, acumulado: number}} sentido
+ * @param {number} delta   quanto a rolagem andou desde o último quadro (negativo = subindo)
+ * @param {number} [folga]
+ * @return {{voltando: boolean, acumulado: number}}
+ */
+export function atualizarSentido(sentido, delta, folga = 6) {
+    if (!delta) {
+        return sentido;
+    }
+    if ((delta < 0) === sentido.voltando) {
+        return sentido.acumulado ? { voltando: sentido.voltando, acumulado: 0 } : sentido;
+    }
+    const acumulado = sentido.acumulado + Math.abs(delta);
+    return acumulado >= folga ? { voltando: !sentido.voltando, acumulado: 0 } : { voltando: sentido.voltando, acumulado };
+}
+
+/**
+ * Meia-volta pelo tempo: o lado mostrado anda até o lado pedido, no máximo `voltasPorSegundo` meias-voltas por segundo.
+ */
+export function girar(atual, alvo, segundos, voltasPorSegundo = 1.8) {
+    const passo = Math.max(0, segundos) * voltasPorSegundo;
+    return Math.abs(alvo - atual) <= passo ? alvo : atual + Math.sign(alvo - atual) * passo;
+}
+
+/**
+ * Quadro do trecho "retorno" para um lado (0 = direita, 1 = esquerda). O vídeo vira da direita para a esquerda;
+ * virando para a direita, o mesmo vídeo espelhado.
+ */
+export function quadroDoGiro(lado, paraEsquerda, total) {
+    const ultimo = Math.max(1, total) - 1;
+    return paraEsquerda ? { quadro: Math.round(lado * ultimo), espelho: false } : { quadro: Math.round((1 - lado) * ultimo), espelho: true };
 }
 
 /**

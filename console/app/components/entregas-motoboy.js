@@ -1,7 +1,7 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
-import { montarTrajeto, estadoNoScroll, passosVisitados, rolagemQueCruza, CLIPES } from '@fleetbase/console/utils/entregas-motoboy-trajeto';
+import { montarTrajeto, estadoNoScroll, passosVisitados, rolagemQueCruza, atualizarSentido, girar, quadroDoGiro, CLIPES } from '@fleetbase/console/utils/entregas-motoboy-trajeto';
 
 /**
  * Entregas: o motoboy que desce a landing (auth/login) junto com a rolagem.
@@ -15,8 +15,12 @@ import { montarTrajeto, estadoNoScroll, passosVisitados, rolagemQueCruza, CLIPES
  * as três telas se marcam, a margem da tabela conta de zero e, na chamada final, ele entrega o pedido ao
  * lado do botão do WhatsApp.
  *
+ * Rolando para cima, ele faz o caminho de volta virado para onde vai (moto não anda de ré): ao trocar o sentido,
+ * dá meia-volta com o trecho "retorno", tocado pelo tempo.
+ *
  * Com "reduzir animações" (no Windows, "Efeitos de animação" desligado já liga isso no Chrome) ele continua,
- * mas só anda quando a pessoa rola: sem Lenis, sem inclinação, sem as entradas das seções e sem a contagem.
+ * mas só anda quando a pessoa rola: sem Lenis, sem inclinação, sem as entradas das seções, sem a contagem e sem
+ * a meia-volta animada (vira na hora).
  */
 const BASE = '/images/entregas/motoboy';
 const SCRIPTS = ['/landing/gsap.min.js', '/landing/ScrollTrigger.min.js', '/landing/lenis.min.js'];
@@ -61,6 +65,10 @@ export default class EntregasMotoboyComponent extends Component {
     marcas = new Map();
     rotacao = 0;
     rolagemVisual = null;
+    sentido = { voltando: false, acumulado: 0 };
+    lado = null;
+    paraEsquerda = false;
+    ultimoTique = null;
     ultimoDesenho = '';
     ultimaPosicao = '';
     ativo = false;
@@ -376,15 +384,36 @@ export default class EntregasMotoboyComponent extends Component {
             rolagem = real;
         }
         this.rolagemVisual = rolagem;
-        const estado = estadoNoScroll(this.trajeto, rolagem, this.totais);
+        const velocidade = rolagem - anterior;
+        this.sentido = atualizarSentido(this.sentido, velocidade);
+        const estado = estadoNoScroll(this.trajeto, rolagem, this.totais, 14, this.sentido.voltando);
+
+        // Meia-volta: o lado mostrado persegue o lado do caminho pelo tempo; enquanto não chega, o quadro é do
+        // trecho "retorno". De frente (começo da partida) ou com "reduzir animações", vira na hora.
+        const agora = performance.now();
+        const segundos = this.ultimoTique === null ? 0 : Math.min(0.1, (agora - this.ultimoTique) / 1000);
+        this.ultimoTique = agora;
+        if (this.lado === null || this.reduzido || !estado.deLado) {
+            this.lado = estado.lado;
+        } else {
+            const novo = girar(this.lado, estado.lado, segundos);
+            if (novo !== this.lado) {
+                this.paraEsquerda = novo > this.lado;
+            }
+            this.lado = novo;
+        }
+        let { clipe, quadro, espelho } = estado;
+        if (Math.abs(this.lado - estado.lado) > 0.001) {
+            clipe = 'retorno';
+            ({ quadro, espelho } = quadroDoGiro(this.lado, this.paraEsquerda, this.totais.retorno));
+        }
 
         this.elemento.classList.toggle('is-visivel', estado.visivel);
         this.elemento.classList.toggle('is-na-frente', this.naFrente && estado.secao === 'topo');
-        this.desenhar(estado.clipe, estado.quadro, estado.espelho);
+        this.desenhar(clipe, quadro, espelho);
 
-        // Inclina na descida: bico para baixo quando a página desce, na direção em que ele está virado.
-        const velocidade = rolagem - anterior;
-        const alvoRotacao = estado.clipe === 'pilotando' && !this.reduzido ? limitar(velocidade * 0.3, -5, 5) * (estado.espelho ? -1 : 1) : 0;
+        // Inclina com a rolagem, na direção em que ele está virado: bico para baixo descendo, para cima subindo.
+        const alvoRotacao = clipe === 'pilotando' && !this.reduzido ? limitar(velocidade * 0.3, -5, 5) * (espelho ? -1 : 1) : 0;
         this.rotacao += (alvoRotacao - this.rotacao) * 0.12;
         const posicao = `translate3d(${estado.x.toFixed(1)}px, ${estado.y.toFixed(1)}px, 0) rotate(${this.rotacao.toFixed(2)}deg)`;
         if (posicao !== this.ultimaPosicao) {
