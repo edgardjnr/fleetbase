@@ -3558,6 +3558,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ### Task 17: Implantação e teste real (checklist)
 
+> Atualizado em 2026-10-12 depois das revisões da execução (commits de correção no ramo `integracao-entregas`).
+
 Ordem obrigatória: **banco (2026101201 e 02) → edges → banco (2026101203) → front → Entregas ligado → teste**. O front lê as colunas novas: no ar antes da migration, a carga dos pedidos do painel quebra.
 
 Pré-requisitos no Entregas (planos 1 e 2 já em produção): API com as rotas `v1/entregas/integracao/*`, console com a tela Lojas → Integração e o APK com a cobrança da integração em todos os celulares.
@@ -3585,7 +3587,17 @@ union all select 'anon_executa', p.proname from pg_proc p
  where p.proname like 'entregas_%' and has_function_privilege('anon', p.oid, 'EXECUTE') and p.prorettype <> 'trigger'::regtype;
 ```
 
-Expected: 2 tabelas; 6 colunas `entregas_*`; o CHECK com os 8 kinds; os 3 triggers; o segredo `entregas_encryption_key`; `rls` = `true` nas duas tabelas; **nenhuma** linha `anon_executa`. Rode também `supabase/checks/rls_guardrails.sql` (padrão da casa): nenhuma linha com `ok = false`.
+Expected: 2 tabelas; 6 colunas `entregas_*`; o CHECK com os 8 kinds; os 3 triggers; o segredo `entregas_encryption_key`; `rls` = `true` nas duas tabelas; **nenhuma** linha `anon_executa`.
+
+Confira também a trava de exclusividade nas duas funções dos gatilhos (a mesma chave `pg_advisory_xact_lock` por empresa, para ligar a Foody e o Entregas ao mesmo tempo não deixar os dois ligados):
+
+```sql
+select proname from pg_proc
+ where proname in ('entregas_integrations_desliga_foody','foody_integrations_desliga_entregas')
+   and prosrc like '%pg_advisory_xact_lock%';
+```
+
+Expected: **2 linhas**. Menos que isso: a migration 2026101201 não é a versão revisada; pare. Rode também `supabase/checks/rls_guardrails.sql` (padrão da casa): nenhuma linha com `ok = false`.
 
 - [ ] **Step 3: Prova dos gatilhos, desfeita no fim**
 
@@ -3599,6 +3611,7 @@ declare
   v_b text := 'ord-prova-b-' || replace(gen_random_uuid()::text, '-', '');
   v_n int;
   v_txt text;
+  v_tok text;
   v_log text := '';
 begin
   select id into v_company from companies order by created_at limit 1;
@@ -3655,10 +3668,13 @@ begin
   v_log := v_log || ' erro_limpo=' || v_n;
   v_log := v_log || ' retry_outra_empresa=' || entregas_reenfileirar_despacho('empresa-que-nao-existe', v_a);
 
-  -- 6) Religar a Foody desliga o Entregas.
+  -- 6) Religar a Foody desliga o Entregas, sem rotacionar o webhook_token (os pedidos já enviados seguem andando).
+  select webhook_token into v_tok from entregas_integrations where company_id = v_company;
   update foody_integrations set enabled = true where company_id = v_company;
   select count(*) into v_n from entregas_integrations where company_id = v_company and enabled;
   v_log := v_log || ' entregas_ligado_apos_foody=' || v_n;
+  select count(*) into v_n from entregas_integrations where company_id = v_company and webhook_token = v_tok;
+  v_log := v_log || ' token_mantido=' || v_n;
 
   -- 7) Cifra ida e volta.
   v_log := v_log || ' cifra=' || coalesce(entregas_decrypt_secret(entregas_encrypt_secret('segredo-prova')), 'NULL');
@@ -3667,7 +3683,7 @@ begin
 end $prova$;
 ```
 
-Expected: o erro `PROVA (tudo desfeito): foody_ligada_apos_entregas=0 despacho=1 foody=0 generico_A=0 generico_B=1 cancel=1 cancel_terminal=0 retry=reenfileirado:pending/0 erro_limpo=1 retry_outra_empresa=pedido_nao_encontrado entregas_ligado_apos_foody=0 cifra=segredo-prova`. Qualquer número diferente: pare e investigue antes do deploy das edges.
+Expected: o erro `PROVA (tudo desfeito): foody_ligada_apos_entregas=0 despacho=1 foody=0 generico_A=0 generico_B=1 cancel=1 cancel_terminal=0 retry=reenfileirado:pending/0 erro_limpo=1 retry_outra_empresa=pedido_nao_encontrado entregas_ligado_apos_foody=0 token_mantido=1 cifra=segredo-prova`. O `token_mantido=1` prova que a troca para a Foody não rotaciona o `webhook_token` do Entregas. Qualquer número diferente: pare e investigue antes do deploy das edges.
 
 - [ ] **Step 4: Secrets das edges**
 
@@ -3716,7 +3732,7 @@ git merge --no-ff integracao-entregas -m "Merge do ramo integracao-entregas: ped
 git push origin main
 ```
 
-O push faz o deploy na Vercel. Depois do deploy: painel com F5, Configurações → Delivery → "Entregas por" aparece com "Foody" marcado nas empresas que já usam a Foody e "Nenhum" nas outras; o kanban carrega os pedidos normalmente.
+O push faz o deploy na Vercel. Depois do deploy: painel com F5, Configurações → Delivery → "Entregas por" aparece com "Foody" marcado nas empresas que já usam a Foody e "Nenhum" nas outras; o kanban carrega os pedidos normalmente. A seção mostra "Carregando..." até o status chegar; "Indisponível" com o botão "Tentar de novo" significa que a edge `entregas-delivery` respondeu com erro: volte ao Step 5 (deploy e secrets) antes de seguir.
 
 - [ ] **Step 8: Ligar a integração no Entregas**
 
@@ -3726,7 +3742,7 @@ No PC do Edgard: `ENTREGAS_INTEGRACAO=1` no `deploy/stack.env` do repo `Delivery
 
 1. No Entregas (console, admin): Fleet-Ops → Recursos → Lojas → **Terraço Pizza Bar** → Integração → **Gerar chave** (aparece uma vez; copie).
 2. No RestaurantePro, numa **empresa de teste** (nunca uma loja real nesta etapa): Configurações → Delivery → "Entregas por" → **Entregas RestaurantePro** → cole a chave → Conectar.
-3. Expected: "Conectado à loja Terraço Pizza Bar no Entregas"; no Entregas, o bloco Integração mostra "Conectada a RestaurantePro". Se a empresa tinha a Foody, ela aparece desligada (`select enabled from foody_integrations where company_id = '<empresa>'` = `false`).
+3. Expected: "Conectado à loja Terraço Pizza Bar no Entregas"; no Entregas, o bloco Integração mostra "Conectada a RestaurantePro". Na troca Foody → Entregas, a confirmação diz "Ligar Entregas RestaurantePro desliga Foody…"; a Foody **continua ligada até o Conectar**. Só depois do Conectar, confira `select enabled from foody_integrations where company_id = '<empresa>'` = `false`.
 4. Se o connect responder "Entregas: webhook_url recusada: …", pare: é o risco do DNS/proxy (ver "Riscos"). Confira `nslookup api.restaurantepro.com.br` e o secret `PUBLIC_SUPABASE_URL`.
 
 - [ ] **Step 10: O ciclo de um pedido (motoboys avisados antes)**
@@ -3745,7 +3761,13 @@ Para cada caso, um pedido novo levado a "Preparando":
 2. **Aceito, antes do "A caminho":** cancele → "Entregas · cancelado"; o motoboy recebe "cancelado pela loja".
 3. **Depois do "A caminho":** cancele → "Entregas · cancelado (entrega cobrada)" (`entregas_status = 'cancelado_pago'`); no Entregas, "Cancelado pela loja (pago)".
 
-- [ ] **Step 12: Assinatura errada e token desconhecido**
+- [ ] **Step 12: Trocar Entregas → Foody com um pedido já aceito no Entregas**
+
+Numa empresa de teste com token da Foody (ou, sem token, simulando com `update entregas_integrations set enabled = false where company_id = '<empresa>'`, **sem mexer no token**): leve um pedido a "Preparando", deixe o motoboy aceitar e então troque "Entregas por" para **Foody** (ou rode o `update` acima).
+
+Expected: o pedido já enviado segue andando. Quando o motoboy toca "A caminho", o card move para "Saiu para entrega" e sai o WhatsApp com o link, como no Step 10. O `webhook_token` não muda: `select webhook_token from entregas_integrations where company_id = '<empresa>';` igual ao de antes da troca. Pedidos novos já não vão ao Entregas.
+
+- [ ] **Step 13: Assinatura errada e token desconhecido**
 
 Leia o token da empresa de teste no MCP (`select webhook_token from entregas_integrations where company_id = '<empresa de teste>';`) e rode, com ele no lugar de `<token>`:
 
@@ -3760,13 +3782,19 @@ curl -s -w "\n%{http_code}\n" -X POST "https://api.restaurantepro.com.br/functio
 
 Expected: `{"error":"assinatura inválida"}` e `401`; no log da edge, `[entregas-webhook] assinatura recusada`. Troque o `t` por 32 zeros: `410`.
 
-- [ ] **Step 13: Tentar de novo**
+A recusa (400) por cabeçalho `X-Entregas-Evento` ou `X-Entregas-Id` diferente do corpo só se prova com o segredo do webhook (que sai apenas na conexão e fica cifrado no banco): não dá para provar aqui, fica coberta só pelos testes Deno.
 
-Num pedido de teste, force um erro definitivo: no Entregas, revogue a chave da Terraço; leve um pedido a "Preparando" → card com "A chave do Entregas foi recusada…" e o botão **Tentar de novo**. Gere uma chave nova, conecte de novo no RestaurantePro e toque em **Tentar de novo** → "Reenviado: o Entregas recebe em até 1 minuto." e, em seguida, "Entregas · procurando motoboy".
+- [ ] **Step 14: Tentar de novo**
 
-- [ ] **Step 14: Rollback (se algo der errado)**
+Num pedido de teste, force um erro definitivo: no Entregas, revogue a chave da Terraço; leve um pedido a "Preparando" → card com "A chave do Entregas foi recusada…" e o botão **Tentar de novo**. O botão só existe com o pedido em "Preparando" ou "Saiu para entrega" e com usuário que tenha `orders.edit`; fora disso não há botão, e o card tira o "Toque em Tentar de novo.". Para reconectar depois do 401: Configurações → **Desconectar** → cole a chave nova → Conectar (o editor segue "Conectado" e sem campo de chave até desconectar). Gere uma chave nova no Entregas, reconecte como descrito e toque em **Tentar de novo** → "Reenviado: o Entregas recebe em até 1 minuto." e, em seguida, "Entregas · procurando motoboy".
 
-- Por empresa: "Entregas por" → Nenhum (ou Foody). Os pedidos novos param de ir.
+- [ ] **Step 15: Rollback (se algo der errado)**
+
+- Por empresa:
+  - escolher **Foody** desliga o Entregas **sem rotacionar** o token: os pedidos já enviados seguem andando no kanban e o cancelamento continua chegando ao Entregas;
+  - **Nenhum** = Desconectar, que rotaciona o token: o kanban para para esses pedidos;
+  - voltar ao Entregas pede uma chave nova, e gerar a chave nova no Entregas revoga a anterior.
+  - Em qualquer caso, os pedidos novos param de ir.
 - Geral: no Entregas, `ENTREGAS_INTEGRACAO=` vazio + Update the stack; o RestaurantePro grava "O Entregas recusou: Integração desligada." em `entregas_error`.
 - As migrations ficam (são neutras sem integração ligada). Para parar o cron: `select cron.unschedule('entregas-tick');`.
 
