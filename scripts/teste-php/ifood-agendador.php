@@ -238,6 +238,9 @@ foreach ($schedule->eventos as $evento) {
 // a distribuição de pedidos abertos tem o próprio when (ENTREGAS_DISTRIBUICAO), conferido à parte no fim
 $varrer = $porComando['entregas:distribuicao-varrer'] ?? null;
 unset($porComando['entregas:distribuicao-varrer']);
+// a integração de pedidos de outros sistemas tem o próprio when (ENTREGAS_INTEGRACAO), conferida à parte depois da distribuição
+$integracao = $porComando['entregas:integracao-acompanhar'] ?? null;
+unset($porComando['entregas:integracao-acompanhar']);
 confere(array_keys($porComando) === ['entregas:ifood-polling', 'entregas:ifood-agendados', 'entregas:ifood-acompanhar', 'entregas:ifood-tokens'], 'os quatro comandos agendados');
 confere(isset($porComando['entregas:ifood-polling']['everyThirtySeconds']) && isset($porComando['entregas:ifood-agendados']['everyMinute']) && isset($porComando['entregas:ifood-acompanhar']['everyThirtySeconds']) && isset($porComando['entregas:ifood-tokens']['everyThirtyMinutes']), 'a cada 30 s, a cada minuto, a cada 30 s e a cada 30 min');
 foreach ($porComando as $comando => $chamadas) {
@@ -271,6 +274,18 @@ if ($quandoDist instanceof Closure) {
     $ligadaDist                                        = $quandoDist();
     Config::$valores['services.entregas.distribuicao'] = '';
     confere($ligadaDist === true && $quandoDist() === false, 'entregas:distribuicao-varrer: o when() segue o Distribuicao::ligada()');
+}
+
+echo '== Kernel: integração' . PHP_EOL;
+confere($integracao !== null && isset($integracao['everyMinute']) && ($integracao['withoutOverlapping'][0] ?? null) === 5 && isset($integracao['runInBackground']) && ($integracao['appendOutputTo'] ?? null) === ['/proc/1/fd/1'], 'entregas:integracao-acompanhar: a cada minuto, withoutOverlapping(5), em segundo plano, saída no container');
+$quandoInt = $integracao['when'][0] ?? null;
+confere($quandoInt instanceof Closure, 'entregas:integracao-acompanhar: com when()');
+if ($quandoInt instanceof Closure) {
+    reiniciarIfood();
+    Config::$valores['services.entregas.integracao'] = '1';
+    $ligadaInt                                       = $quandoInt();
+    Config::$valores['services.entregas.integracao'] = '';
+    confere($ligadaInt === true && $quandoInt() === false, 'entregas:integracao-acompanhar: o when() segue o Integracao::ligada()');
 }
 
 resumo();
