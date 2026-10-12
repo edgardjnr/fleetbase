@@ -95,8 +95,8 @@
                                 <td class="text-right whitespace-nowrap font-semibold tabular-nums">{{this.dinheiro entrega.valor}}</td>
                                 <td class="whitespace-nowrap">
                                     {{#if entrega.cancelado_pago}}
-                                        {{! Entregas: estilo em linha, como o selo do iFood nas listas: as regras do portal não o sobrescrevem }}
-                                        <span class="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold" style="background-color: #FEF3C7; color: #92400E;">{{t "customer-portal.ui.entregas.canceled-ifood-charged"}}</span>
+                                        {{! Entregas: estilo em linha, como o selo de origem nas listas: as regras do portal não o sobrescrevem }}
+                                        <span class="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold" style="background-color: #FEF3C7; color: #92400E;">{{this.rotuloDoCancelado entrega}}</span>
                                     {{/if}}
                                 </td>
                             </tr>
