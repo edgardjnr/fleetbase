@@ -59,8 +59,12 @@ confere(UrlDoWebhook::recusa('https://interno.exemplo.com.br/x', fn ($host) => [
 confere(UrlDoWebhook::recusa('https://misto.exemplo.com.br/x', fn ($host) => ['200.150.10.20', '192.168.1.1']) !== null, 'nome com um dos IPs privado');
 confere(UrlDoWebhook::recusa('https://sumiu.exemplo.com.br/x', fn ($host) => []) !== null, 'nome que não resolve');
 confere(UrlDoWebhook::recusa('https://so6.exemplo.com.br/x', fn ($h) => ['2001:db8::1']) !== null, 'nome que resolve só para IPv6');
-$ok = UrlDoWebhook::conferir('https://API.Exemplo.com.br./x', $publico);
+$ok = UrlDoWebhook::conferir('https://API.Exemplo.com.br/x', $publico);
 confere($ok === ['motivo' => null, 'host' => 'api.exemplo.com.br', 'ip' => '200.150.10.20'], 'conferir: host limpo e IP conferido');
+$pontoFinal = 'endereço inválido (sem ponto no fim do domínio)';
+foreach (['https://api.exemplo.com.br./x', 'https://API.Exemplo.com.br./x', 'https://localhost./x', 'https://entregas_application./x'] as $u) {
+    confere(UrlDoWebhook::conferir($u, $publico) === ['motivo' => $pontoFinal, 'host' => null, 'ip' => null], "ponto no fim do domínio: {$u}");
+}
 confere(UrlDoWebhook::conferir('https://localhost/x', $publico)['ip'] === null, 'conferir: recusa sem IP');
 confere(UrlDoWebhook::recusa('https://' . str_repeat('a', 500) . '.com.br/x', $publico) !== null, 'URL longa demais');
 

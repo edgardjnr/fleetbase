@@ -12,10 +12,14 @@ use Illuminate\Support\Facades\Log;
  * (SequenciaDaIntegracao) e envia em ordem, gravando o ultimo_aviso a cada envio aceito (2xx).
  *
  * - Corpo JSON {evento, id_entrega, pedido_externo_id, id, status, motoboy, codigo_rastreio, link_rastreio,
- *   cancelamento, ocorrido_em}; cabeçalhos X-Entregas-Evento, X-Entregas-Id (estável por pedido, evento e motoboy: o
- *   destino descarta o repetido) e X-Entregas-Assinatura = "sha256=" + HMAC-SHA256 do corpo cru com o segredo da loja.
+ *   cancelamento, ocorrido_em}; cabeçalhos X-Entregas-Evento, X-Entregas-Id e X-Entregas-Assinatura = "sha256=" +
+ *   HMAC-SHA256 do corpo cru com o segredo da loja.
+ * - X-Entregas-Id: hash do pedido, do evento, do motoboy e do avisos_enviados da linha (quantos avisos o destino já
+ *   aceitou). Estável entre as tentativas do mesmo aviso (o destino descarta o repetido) e único por aviso: só muda
+ *   depois de um aceite, então a troca A → B → A manda três ids diferentes.
  * - Timeout de 5 s, sem seguir redirecionamento, URL conferida de novo a cada envio (UrlDoWebhook) e a conexão presa
- *   ao IP conferido (CURLOPT_RESOLVE, só IPv4): sem nova resolução de DNS no envio (rebinding, AAAA privado).
+ *   ao IP conferido (CURLOPT_RESOLVE, só IPv4): sem nova resolução de DNS no envio (rebinding, AAAA privado). A
+ *   fixação do IP depende da extensão curl (o Guzzle sem ela ignora a opção `curl`); a imagem de produção tem.
  * - Não 2xx ou rede: FalhaNoAviso (o job tenta de novo). 410: o destino desistiu: registra a falha na loja e para, sem
  *   exceção. URL recusada: registra e para.
  * - Loja sem chave ativa, sem URL ou sem segredo legível: nada a enviar.
@@ -61,12 +65,13 @@ class AvisosDaIntegracao
         }
     }
 
-    public static function idDoAviso(string $orderUuid, string $evento, ?string $motoboy): string
+    /** $enviados: o avisos_enviados da linha antes deste aviso. */
+    public static function idDoAviso(string $orderUuid, string $evento, ?string $motoboy, int $enviados): string
     {
-        return substr(hash('sha256', "{$orderUuid}|{$evento}|{$motoboy}"), 0, 32);
+        return substr(hash('sha256', "{$orderUuid}|{$evento}|{$motoboy}|{$enviados}"), 0, 32);
     }
 
-    public static function assinatura(string $json, string $segredo): string
+    public static function assinatura(string $json, #[\SensitiveParameter] string $segredo): string
     {
         return 'sha256=' . hash_hmac('sha256', $json, $segredo);
     }
@@ -122,7 +127,7 @@ class AvisosDaIntegracao
         $motoboy     = $pedido->driverAssigned ?? null;
         $enviados    = [];
         foreach ($eventos as $evento) {
-            $id     = static::idDoAviso($orderUuid, $evento, $motoboyUuid);
+            $id     = static::idDoAviso($orderUuid, $evento, $motoboyUuid, (int) ($linha->avisos_enviados ?? 0));
             $corpo  = static::corpo($evento, $linha, $pedido, $motoboy, $id, now()->toIso8601String());
             $status = $this->enviar($loja, $segredo, $evento, $id, $corpo, (string) $conferida['host'], (string) $conferida['ip']);
 
@@ -136,7 +141,10 @@ class AvisosDaIntegracao
                 throw new FalhaNoAviso($status);
             }
 
-            $valores = ['ultimo_aviso' => SequenciaDaIntegracao::depoisDe($linha->ultimo_aviso ?? null, $evento)];
+            $valores = [
+                'ultimo_aviso'    => SequenciaDaIntegracao::depoisDe($linha->ultimo_aviso ?? null, $evento),
+                'avisos_enviados' => (int) ($linha->avisos_enviados ?? 0) + 1,
+            ];
             if ($evento === SequenciaDaIntegracao::ACEITO) {
                 $valores['motoboy_avisado'] = $motoboyUuid;
             }
@@ -150,9 +158,9 @@ class AvisosDaIntegracao
     }
 
     /** O status HTTP da resposta, ou 0 sem resposta (rede, timeout). */
-    protected function enviar(object $loja, string $segredo, string $evento, string $id, array $corpo, string $host, string $ip): int
+    protected function enviar(object $loja, #[\SensitiveParameter] string $segredo, string $evento, string $id, array $corpo, string $host, string $ip): int
     {
-        $json = (string) json_encode($corpo, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $json = (string) json_encode($corpo, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 
         try {
             $resposta = Http::withHeaders([

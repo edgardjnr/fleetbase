@@ -45,7 +45,13 @@ final class UrlDoWebhook
             return $recusa('só a porta 443');
         }
 
-        $host = rtrim(strtolower(trim($partes['host'], '[]')), '.');
+        // ponto no fim: o envio usa a URL crua, e o curl poderia não casar o "host." da URL com a entrada do
+        // CURLOPT_RESOLVE (feita com o host sem o ponto) e resolver o DNS de novo
+        if (str_ends_with(trim($partes['host'], '[]'), '.')) {
+            return $recusa('endereço inválido (sem ponto no fim do domínio)');
+        }
+
+        $host = strtolower(trim($partes['host'], '[]'));
         if ($host === '') {
             return $recusa('a URL precisa começar com https://');
         }

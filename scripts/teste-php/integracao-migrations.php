@@ -24,7 +24,7 @@ confere(Banco::inserir('entregas_integracao_pedidos', ['vendor_uuid' => 'vendor-
 $erro = excecao(fn () => Banco::inserir('entregas_integracao_pedidos', ['vendor_uuid' => 'vendor-c', 'pedido_externo_id' => 'ord-9'] + $linha, false));
 confere($erro instanceof \Illuminate\Database\QueryException, 'order_uuid único');
 $nova = (new Teste\Consulta('entregas_integracao_pedidos'))->where('order_uuid', 'order-3')->first();
-confere($nova->cobranca_centavos === 0 && $nova->pago_mesmo_cancelado === false && $nova->sem_localizacao === false && $nova->ultimo_aviso === null, 'padrões da migration');
+confere($nova->cobranca_centavos === 0 && $nova->pago_mesmo_cancelado === false && $nova->sem_localizacao === false && $nova->ultimo_aviso === null && $nova->avisos_enviados === 0, 'padrões da migration');
 confere(Banco::tamanhoDe('entregas_integracao_pedidos', 'pedido_externo_id') === 100 && Banco::tamanhoDe('entregas_integracao_pedidos', 'numero') === 20, 'tamanhos');
 
 echo '== Config' . PHP_EOL;

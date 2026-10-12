@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Schema;
  * Entregas RestaurantePro: os dados de origem de cada pedido criado pela integração (App\Support\Entregas\Integracao).
  * Fica fora do `meta` do Order de propósito: o `meta` sai na API v1 e no socket, e aqui estão o telefone do cliente e a
  * cobrança. (vendor_uuid, pedido_externo_id) único = o mesmo pedido da origem nunca vira dois (o reenvio devolve o
- * mesmo). `ultimo_aviso`/`motoboy_avisado` guiam os avisos de volta (AvisosDaIntegracao); `despachado_em`, a
- * reconciliação do despacho (entregas:integracao-acompanhar).
+ * mesmo). `ultimo_aviso`/`motoboy_avisado`/`avisos_enviados` guiam os avisos de volta (AvisosDaIntegracao);
+ * `despachado_em`, a reconciliação do despacho (entregas:integracao-acompanhar).
  */
 return new class extends Migration
 {
@@ -39,6 +39,8 @@ return new class extends Migration
             // último aviso aceito pelo sistema de origem: aceito | a_caminho | concluido | cancelado
             $table->string('ultimo_aviso', 20)->nullable();
             $table->char('motoboy_avisado', 36)->nullable();
+            // avisos aceitos pelo destino: entra no X-Entregas-Id (único por aviso, estável entre as tentativas)
+            $table->unsignedSmallInteger('avisos_enviados')->default(0);
             $table->timestamp('cancelado_em')->nullable();
             // loja (a origem ou o portal) | central | sistema (expirado)
             $table->string('cancelado_por', 20)->nullable();
