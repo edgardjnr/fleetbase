@@ -37,3 +37,17 @@ export function tempoDesde(iso, agora) {
 
     return { unidade: 'dias', n: Math.floor(horas / 24) };
 }
+
+/**
+ * Quando abrir o modal da chave nova do "Gerar outra chave" (a anterior já foi revogada no servidor): 'ao-fechar' (a
+ * confirmação ainda está aberta; abre no onFinish, depois que ela sai da pilha), 'agora' (a confirmação já fechou por Esc
+ * ou clique fora durante o POST: o onDecline do Modal::Default não olha o isLoading, e o onFinish já rodou sem a chave)
+ * ou 'nada' (o POST falhou e já avisou). Sem isso, a chave nova se perderia com a anterior já revogada.
+ */
+export function quandoMostrarAChave(chave, confirmacaoFechada) {
+    if (!chave) {
+        return 'nada';
+    }
+
+    return confirmacaoFechada ? 'agora' : 'ao-fechar';
+}

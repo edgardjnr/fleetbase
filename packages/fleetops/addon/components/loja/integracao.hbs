@@ -17,10 +17,17 @@
     {{/if}}
     {{#unless this.erro}}
         {{#if this.podeGerar}}
-            <Button @size="xs" @icon="key" @text={{if this.integracao.ativa (t "fleet-ops.ui.lojas.integracao.gerar-de-novo") (t "fleet-ops.ui.lojas.integracao.gerar")}} @onClick={{this.gerarChave}} />
+            <Button
+                @size="xs"
+                @icon="key"
+                @text={{if this.integracao.ativa (t "fleet-ops.ui.lojas.integracao.gerar-de-novo") (t "fleet-ops.ui.lojas.integracao.gerar")}}
+                @isLoading={{this.gerarChave.isRunning}}
+                @disabled={{this.ocupado}}
+                @onClick={{perform this.gerarChave}}
+            />
         {{/if}}
         {{#if this.integracao.ativa}}
-            <Button @size="xs" @icon="ban" @text={{t "fleet-ops.ui.lojas.integracao.revogar"}} @onClick={{this.revogar}} />
+            <Button @size="xs" @icon="ban" @text={{t "fleet-ops.ui.lojas.integracao.revogar"}} @isLoading={{this.revogar.isRunning}} @disabled={{this.ocupado}} @onClick={{perform this.revogar}} />
         {{/if}}
         {{#if (and (not this.podeGerar) (not this.integracao.ativa) this.integracao)}}
             <span class="text-gray-400">{{t "fleet-ops.ui.lojas.integracao.desligada"}}</span>

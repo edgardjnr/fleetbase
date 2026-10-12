@@ -2,7 +2,7 @@
 // Uso: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/integracao-da-loja.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { situacaoDaIntegracao, tempoDesde } from '../../packages/fleetops/addon/utils/integracao-da-loja.js';
+import { quandoMostrarAChave, situacaoDaIntegracao, tempoDesde } from '../../packages/fleetops/addon/utils/integracao-da-loja.js';
 
 test('situação do bloco', () => {
     assert.equal(situacaoDaIntegracao(null), 'sem-chave');
@@ -23,4 +23,12 @@ test('tempo desde', () => {
     assert.equal(tempoDesde(null, agora), null);
     assert.equal(tempoDesde('', agora), null);
     assert.equal(tempoDesde('não é data', agora), null);
+});
+
+test('quando mostrar a chave nova do "Gerar outra chave"', () => {
+    assert.equal(quandoMostrarAChave('ent_live_x', false), 'ao-fechar', 'confirmação ainda aberta: abre no onFinish');
+    assert.equal(quandoMostrarAChave('ent_live_x', true), 'agora', 'Esc ou clique fora durante o POST: a confirmação já fechou');
+    assert.equal(quandoMostrarAChave(null, false), 'nada', 'o POST falhou (já avisou)');
+    assert.equal(quandoMostrarAChave(null, true), 'nada');
+    assert.equal(quandoMostrarAChave('', true), 'nada');
 });

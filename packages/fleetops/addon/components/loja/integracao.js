@@ -4,7 +4,7 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { next } from '@ember/runloop';
 import { task } from 'ember-concurrency';
-import { situacaoDaIntegracao, tempoDesde } from '../../utils/integracao-da-loja';
+import { quandoMostrarAChave, situacaoDaIntegracao, tempoDesde } from '../../utils/integracao-da-loja';
 
 const ENDPOINT = 'entregas/lojas';
 
@@ -108,9 +108,18 @@ export default class LojaIntegracaoComponent extends Component {
         });
     }
 
-    @action async gerarChave() {
+    /** Gerar ou revogar em curso: os dois botões ficam desabilitados (um POST e um DELETE juntos se atropelariam). */
+    get ocupado() {
+        return this.gerarChave.isRunning || this.revogar.isRunning;
+    }
+
+    /**
+     * drop: o segundo clique enquanto o primeiro corre é ignorado. Sem isso, um clique duplo em "Gerar chave" mandava dois
+     * POSTs e abria dois modais, e o de baixo mostrava uma chave já revogada pelo segundo POST.
+     */
+    @task({ drop: true }) *gerarChave() {
         if (this.integracao?.ativa !== true) {
-            const chave = await this.pedirChave();
+            const chave = yield this.pedirChave();
             if (chave) {
                 this.mostrarChave(chave);
             }
@@ -120,17 +129,30 @@ export default class LojaIntegracaoComponent extends Component {
         // Já há chave ativa: confirma antes. A chave nova só abre depois que o modal de confirmação sai da pilha
         // (onFinish + next): quando a promessa do confirm termina, o modalsManager (onClickConfirmWithDone) fecha o modal de
         // confirmação pelo id e só então chama o onFinish. Assim os dois modais nunca ficam abertos juntos.
+        // Esc ou clique fora durante o POST: o onClose do Modal::Default chama o onDecline sem olhar o isLoading, a
+        // confirmação fecha e o onFinish roda antes de a chave chegar. A marca `fechou` faz o confirm abrir a chave ele
+        // mesmo quando ela chega (quandoMostrarAChave); senão a chave nova se perderia com a anterior já revogada.
         let chaveNova = null;
-        this.modalsManager.confirm({
+        let fechou = false;
+        let pedido = null;
+        yield this.modalsManager.confirm({
             title: this.intl.t('fleet-ops.ui.lojas.integracao.regerar-titulo'),
             body: this.intl.t('fleet-ops.ui.lojas.integracao.regerar-texto', { name: this.args.loja?.nome ?? '', final: this.final }),
             acceptButtonText: this.intl.t('fleet-ops.ui.lojas.integracao.gerar-de-novo'),
             acceptButtonScheme: 'danger',
             confirm: async (modal) => {
                 modal.startLoading();
-                chaveNova = await this.pedirChave();
+                pedido = this.pedirChave();
+                const chave = await pedido;
+                const quando = quandoMostrarAChave(chave, fechou);
+                if (quando === 'agora') {
+                    next(() => this.mostrarChave(chave));
+                } else if (quando === 'ao-fechar') {
+                    chaveNova = chave;
+                }
             },
             onFinish: () => {
+                fechou = true;
                 if (chaveNova) {
                     const chave = chaveNova;
                     chaveNova = null;
@@ -138,24 +160,40 @@ export default class LojaIntegracaoComponent extends Component {
                 }
             },
         });
+        // A confirmação pode ter fechado (Esc) com o POST ainda em curso: a task só termina com ele, e até lá os botões
+        // seguem desabilitados (outro "Gerar outra chave" revogaria a chave que está chegando).
+        if (pedido) {
+            yield pedido;
+        }
     }
 
-    @action revogar() {
-        this.modalsManager.confirm({
+    /** DELETE .../integracao: atualiza o bloco e avisa; um erro já vira notificação. */
+    async pedirRevogacao() {
+        try {
+            const resposta = await this.fetch.delete(`${ENDPOINT}/${this.id}/integracao`);
+            this.integracao = resposta.integracao ?? null;
+            this.notifications.success(this.intl.t('fleet-ops.ui.lojas.integracao.revogada'));
+        } catch (error) {
+            this.notifications.serverError(error);
+        }
+    }
+
+    /** drop: um clique duplo não abre duas confirmações. A task dura até a confirmação fechar e o DELETE terminar. */
+    @task({ drop: true }) *revogar() {
+        let pedido = null;
+        yield this.modalsManager.confirm({
             title: this.intl.t('fleet-ops.ui.lojas.integracao.revogar-titulo'),
             body: this.intl.t('fleet-ops.ui.lojas.integracao.revogar-texto', { name: this.args.loja?.nome ?? '' }),
             acceptButtonText: this.intl.t('fleet-ops.ui.lojas.integracao.revogar'),
             acceptButtonScheme: 'danger',
             confirm: async (modal) => {
                 modal.startLoading();
-                try {
-                    const resposta = await this.fetch.delete(`${ENDPOINT}/${this.id}/integracao`);
-                    this.integracao = resposta.integracao ?? null;
-                    this.notifications.success(this.intl.t('fleet-ops.ui.lojas.integracao.revogada'));
-                } catch (error) {
-                    this.notifications.serverError(error);
-                }
+                pedido = this.pedirRevogacao();
+                await pedido;
             },
         });
+        if (pedido) {
+            yield pedido;
+        }
     }
 }
