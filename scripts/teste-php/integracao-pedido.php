@@ -55,6 +55,8 @@ confere(temErro(validar(['pedido_externo_id' => '']), 'pedido_externo_id é obri
 confere(temErro(validar(['pedido_externo_id' => 'ord 1/2']), 'pedido_externo_id aceita só'), 'pedido_externo_id com caractere estranho');
 confere(temErro(validar(['pedido_externo_id' => str_repeat('a', 101)]), 'pedido_externo_id passa de 100'), 'pedido_externo_id longo');
 confere(temErro(validar(['numero' => null]), 'numero é obrigatório'), 'sem número');
+confere(temErro(validar(['numero' => 'A 12']), 'numero aceita só'), 'número com espaço');
+confere(validar(['numero' => 4821])['dados']['numero'] === '4821', 'número inteiro continua valendo');
 confere(temErro(validar(['cliente' => ['nome' => ['x']]]), 'cliente.nome precisa ser texto'), 'nome que não é texto');
 confere(temErro(validar(['entrega' => ['endereco' => '  ']]), 'entrega.endereco é obrigatório'), 'sem endereço');
 confere(temErro(validar(['entrega' => ['cidade' => null]]), 'entrega.cidade é obrigatório'), 'sem cidade');

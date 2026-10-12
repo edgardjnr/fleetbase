@@ -27,6 +27,9 @@ final class PedidoDaIntegracao
             $erros[] = 'pedido_externo_id aceita só letras, números, ponto, hífen, sublinhado e dois-pontos.';
         }
         $numero      = static::texto($corpo, 'numero', 20, true, $erros, true, true);
+        if ($numero !== null && !preg_match('/^[A-Za-z0-9._:-]+$/', $numero)) {
+            $erros[] = 'numero aceita só letras, números, ponto, hífen, sublinhado e dois-pontos.';
+        }
         $nome        = static::texto($corpo, 'cliente.nome', 120, true, $erros);
         $telefone    = static::telefone($corpo, $erros);
         $endereco    = static::texto($corpo, 'entrega.endereco', 190, true, $erros);
