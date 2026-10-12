@@ -40,7 +40,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {{#each this.linhasFaixas as |faixa|}}
+                        {{#each this.linhasFaixas key="@index" as |faixa|}}
                             <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100">
                                 <td class="py-1 whitespace-nowrap">{{faixa.de_km}} km</td>
                                 <td class="py-1"><input type="text" inputmode="decimal" class="form-input form-input-sm w-24" value={{faixa.ate_km}} {{on "input" (fn this.setFaixa faixa.indice "ate_km")}} /></td>
