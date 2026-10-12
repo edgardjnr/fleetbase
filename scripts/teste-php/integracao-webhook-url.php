@@ -32,12 +32,26 @@ foreach ([
     'https://entregas_application/x'              => 'nome do Swarm, sem ponto',
     'https://usuario:senha@api.exemplo.com.br/x'  => 'com usuário e senha',
     'https://api.exemplo.com.br:8443/x'           => 'porta fora da 443',
+    'https://[::ffff:127.0.0.1]/x' => 'IPv4 embutido em IPv6 (loopback)',
+    'https://[::ffff:10.0.0.1]/x' => 'IPv4 embutido em IPv6 (privado)',
+    'https://[::ffff:169.254.169.254]/x' => 'IPv4 embutido em IPv6 (metadados)',
+    'https://[2001:4860:4860::8888]/x' => 'IPv6 literal público',
+    'https://100.64.1.1/x' => 'CGNAT',
+    'https://224.0.0.1/x' => 'multicast',
+    'https://localhost./x' => 'localhost com ponto final',
+    'https://entregas_application./x' => 'nome do Swarm com ponto final',
+    'https://0177.0.0.1/x' => 'IPv4 octal',
+    'https://127.1/x' => 'IPv4 abreviado',
 ] as $url => $caso) {
     confere(UrlDoWebhook::recusa($url, $publico) !== null, "recusa: {$caso}");
 }
 confere(UrlDoWebhook::recusa('https://interno.exemplo.com.br/x', fn ($host) => ['10.0.0.7']) !== null, 'nome que resolve para IP privado');
 confere(UrlDoWebhook::recusa('https://misto.exemplo.com.br/x', fn ($host) => ['200.150.10.20', '192.168.1.1']) !== null, 'nome com um dos IPs privado');
 confere(UrlDoWebhook::recusa('https://sumiu.exemplo.com.br/x', fn ($host) => []) !== null, 'nome que não resolve');
+confere(UrlDoWebhook::recusa('https://so6.exemplo.com.br/x', fn ($h) => ['2001:db8::1']) !== null, 'nome que resolve só para IPv6');
+$ok = UrlDoWebhook::conferir('https://API.Exemplo.com.br./x', $publico);
+confere($ok === ['motivo' => null, 'host' => 'api.exemplo.com.br', 'ip' => '200.150.10.20'], 'conferir: host limpo e IP conferido');
+confere(UrlDoWebhook::conferir('https://localhost/x', $publico)['ip'] === null, 'conferir: recusa sem IP');
 confere(UrlDoWebhook::recusa('https://' . str_repeat('a', 500) . '.com.br/x', $publico) !== null, 'URL longa demais');
 
 resumo();
