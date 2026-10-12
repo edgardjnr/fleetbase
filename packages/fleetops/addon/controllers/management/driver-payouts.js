@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task, timeout } from 'ember-concurrency';
+import { chaveDoCanceladoPago } from '../../utils/pedido-de-origem';
 
 const ENDPOINT = 'entregas/pagamento-motoboys';
 const pad = (n) => String(n).padStart(2, '0');
@@ -74,6 +75,11 @@ export default class ManagementDriverPayoutsController extends Controller {
 
     formatarData(iso) {
         return iso ? new Intl.DateTimeFormat(this.intl.primaryLocale ?? 'pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso)) : '';
+    }
+
+    /** Entregas: "Cancelado pelo iFood (pago)" ou "Cancelado pela loja (pago)" (pedido de outro sistema), pelo cancelado_origem. */
+    @action rotuloCanceladoPago(origem) {
+        return this.intl.t(`fleet-ops.ui.driver-payouts.${chaveDoCanceladoPago(origem)}`);
     }
 
     @action formatar(tipo, valor) {
@@ -224,7 +230,7 @@ export default class ManagementDriverPayoutsController extends Controller {
         linhas.push([celula(t('total')), this.totais.entregas, num(this.totais.km), num(this.totais.cobrar)].join(';'));
         linhas.push([celula(t('margin')), '', '', num(this.totais.margem)].join(';'));
         linhas.push('');
-        linhas.push([t('store'), t('driver'), t('order'), t('completed-at'), t('pickup'), t('dropoff'), t('km'), t('source'), t('band'), t('driver-amount'), t('store-amount'), t('cancelado-pago')].map(celula).join(';'));
+        linhas.push([t('store'), t('driver'), t('order'), t('completed-at'), t('pickup'), t('dropoff'), t('km'), t('source'), t('band'), t('driver-amount'), t('store-amount'), t('cancelado-pago-coluna')].map(celula).join(';'));
         for (const entrega of this.relatorio?.entregas ?? []) {
             linhas.push(
                 [
@@ -239,7 +245,7 @@ export default class ManagementDriverPayoutsController extends Controller {
                     celula(this.textoFaixa(entrega.faixa)),
                     entrega.valor_motoboy === null ? '' : num(entrega.valor_motoboy),
                     entrega.valor_loja === null ? '' : num(entrega.valor_loja),
-                    celula(entrega.cancelado_pago ? t('cancelado-pago') : ''),
+                    celula(entrega.cancelado_pago ? this.rotuloCanceladoPago(entrega.cancelado_origem) : ''),
                 ].join(';')
             );
         }

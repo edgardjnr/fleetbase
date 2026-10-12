@@ -137,6 +137,8 @@ fleet-ops:
       store: Loja
       without-store: Sem local de coleta
       cancelado-pago: Cancelado pelo iFood (pago)
+      cancelado-pago-loja: Cancelado pela loja (pago)
+      cancelado-pago-coluna: Cancelado (pago)
       charge: A cobrar
       deliveries-from: 'Entregas da loja {name}'
       deliveries-of-from: 'Entregas de {name} na loja {store}'

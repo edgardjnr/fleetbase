@@ -137,6 +137,8 @@ fleet-ops:
             store: Store
             without-store: No pickup place
             cancelado-pago: Canceled by iFood (paid)
+            cancelado-pago-loja: Canceled by the store (paid)
+            cancelado-pago-coluna: Canceled (paid)
             charge: To charge
             deliveries-from: 'Deliveries from {name}'
             deliveries-of-from: 'Deliveries by {name} from {store}'

@@ -207,7 +207,7 @@
                                         {{or entrega.id_interno entrega.pedido}}
                                     </LinkTo>
                                     {{#if entrega.cancelado_pago}}
-                                        <Badge @status="warning" @hideStatusDot={{true}}>{{t "fleet-ops.ui.driver-payouts.cancelado-pago"}}</Badge>
+                                        <Badge @status="warning" @hideStatusDot={{true}}>{{this.rotuloCanceladoPago entrega.cancelado_origem}}</Badge>
                                     {{/if}}
                                 </td>
                                 {{#unless this.lojaSelecionada}}
