@@ -284,6 +284,31 @@ fleet-ops:
         integracao:
             selo: '{sistema} #{numero}'
             selo-titulo: 'Order received from {sistema}'
+            painel-titulo: '{sistema} #{numero}'
+            erro: Could not load the integration data (only administrators see this panel).
+            pedido-externo: 'Order id in {sistema}'
+            cobranca: Charge at the door
+            pago: Already paid (nothing to charge)
+            sem-cobranca: Nothing to charge
+            observacoes: Customer notes
+            sem-localizacao: 'No location: the address arrived without valid coordinates, and dispatch assigns the courier.'
+            ultimo-aviso: 'Last update delivered to {sistema}'
+            nenhum-aviso: None yet
+            aviso:
+                aceito: Courier assigned
+                a_caminho: On the way to the customer
+                concluido: Completed
+                cancelado: Canceled
+                desconhecido: Unknown
+            ultima-falha: Store's last update failure
+            falha: '{texto} ({quando})'
+            cancelado: 'Canceled {por}'
+            cancelado-pago: 'Canceled {por} after pickup: the courier is paid and the store is charged'
+            cancelado-por:
+                loja: by the store
+                central: by dispatch
+                sistema: by the system
+                desconhecido: '(unknown source)'
         distribuicao:
             painel-titulo: Driver offers
             erro: Could not load the dispatch.
