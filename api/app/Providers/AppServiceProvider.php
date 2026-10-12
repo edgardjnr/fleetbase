@@ -8,6 +8,7 @@ use App\Console\Commands\Entregas\Fuso\EnviarLembretesDeManutencao;
 use App\Console\Commands\Entregas\Fuso\ProcessarGatilhosDeManutencao;
 use App\Console\Commands\Entregas\ReenviarPedidosAbertos;
 use App\Http\Controllers\Entregas\DriverControllerSemGeocodificacao;
+use App\Listeners\Entregas\ManterPayloadDoPedido;
 use App\Listeners\Entregas\ObservadorDaDistribuicao;
 use App\Listeners\Entregas\ObservadorDosPedidosIfood;
 use App\Notifications\Entregas\CanalFcmEntregas;
@@ -105,6 +106,16 @@ class AppServiceProvider extends ServiceProvider
         $this->configureTransactionTripwire();
         $this->acompanharPedidosIfood();
         $this->distribuirPedidosAbertos();
+        $this->manterPayloadDosPedidos();
+    }
+
+    /**
+     * Entregas: o pedido nunca perde a coleta e a entrega (payload_uuid preenchido → vazio) numa gravação; a troca de
+     * motoboy pelo console fazia isso (ver ManterPayloadDoPedido).
+     */
+    protected function manterPayloadDosPedidos(): void
+    {
+        Order::updating(fn ($pedido) => ManterPayloadDoPedido::aoAtualizar($pedido));
     }
 
     /**

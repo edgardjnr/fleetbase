@@ -265,6 +265,7 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
   - O `CompanyScope` existe, mas **não** está registrado nos models desta versão: filtre `company_uuid` de forma explícita.
   - `orders.customer_type` varia com e sem a barra inicial: a loja do pedido é o `customer_uuid`.
   - O `cancelOrder` do portal só troca o status (sem atividade nem evento), e o `startOrder` da API v1 não confere cancelamento: daí a trava e o `BarrarAceiteDePedidoEncerrado`.
+  - **A troca de motoboy pelo console deixava o pedido sem `payload_uuid`** (2026-10-12, RP570671 e RP444998): ele sumia da lista do motoboy (a consulta da API v1 exige `payload_uuid`) e dos mapas, mas seguia com o motoboy (capacete amarelo). O `ManterPayloadDoPedido` (`Order::updating`, `AppServiceProvider::manterPayloadDosPedidos`) devolve o payload anterior e registra `[entregas] pedido ia perder a coleta e a entrega (payload); mantido` com a ação da rota (`entregas_application`). Teste: `scripts/teste-php/manter-payload.php`.
 
 ## Integração iFood (etapa 2: entrada dos pedidos)
 
