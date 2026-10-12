@@ -27,7 +27,8 @@ use Illuminate\Support\Facades\Log;
  * - Order tipo transport, internal_id = número da origem, notas "RestaurantePro #4821" + as observações;
  * - a linha da entregas_integracao_pedidos na mesma transação: (vendor_uuid, pedido_externo_id) único impede um segundo
  *   pedido para o mesmo pedido da origem (o reenvio devolve o mesmo);
- * - ponto ausente, inválido ou a mais de 50 km da coleta: nasce sem despacho, adhoc falso, "[SEM LOCALIZAÇÃO]" nas notas
+ * - ponto ausente, inválido (0,0) ou a mais de 50 km da coleta: tenta o Google uma vez; se ele também não servir, nasce
+ *   sem despacho, adhoc falso, "[SEM LOCALIZAÇÃO]" nas notas
  *   e a entrega ~1 km ao norte da loja (a regra do iFood); a central atribui;
  * - despacho como o do iFood e do portal: adhoc + firstDispatchWithActivity, com a TravaDoPedido e o pedido relido, o
  *   que dispara a distribuição. Falhou (trava ocupada, erro): o entregas:integracao-acompanhar refaz em 1 min.
@@ -61,8 +62,8 @@ class CriadorDoPedidoDaIntegracao
             throw new ErroDaIntegracao(409, 'A loja não tem local de coleta válido no Entregas. Fale com a central.');
         }
 
-        [$latitude, $longitude, $semLocalizacao] = $this->destino($dados, $coleta);
-        $sistema                                 = Integracao::nomeDoSistema($loja->sistema ?? null);
+        [$latitude, $longitude, $semLocalizacao, $motivo] = $this->destino($dados, $coleta);
+        $sistema                                         = Integracao::nomeDoSistema($loja->sistema ?? null);
 
         // o TrackingNumberObserver e o OrderConfig::default() leem a empresa da sessão
         session(['company' => $loja->company_uuid]);
@@ -72,6 +73,8 @@ class CriadorDoPedidoDaIntegracao
         } catch (QueryException $e) {
             // o mesmo pedido chegou duas vezes no mesmo instante: a chave única segurou o segundo, que devolve o primeiro
             if ((string) $e->getCode() === '23000' && ($repetido = $this->existente($loja, $dados['pedido_externo_id']))) {
+                Log::info('[entregas] integração: pedido repetido', ['vendor' => $loja->vendor_uuid, 'pedido_externo' => $dados['pedido_externo_id'], 'corrida' => true]);
+
                 return [$repetido, false];
             }
             throw $e;
@@ -80,7 +83,7 @@ class CriadorDoPedidoDaIntegracao
         Log::info('[entregas] integração: pedido criado', ['pedido' => $pedido->public_id, 'sistema' => $sistema, 'sem_localizacao' => $semLocalizacao]);
 
         if ($semLocalizacao) {
-            Log::warning('[entregas] integração: pedido sem localização; a central atribui', ['pedido' => $pedido->public_id]);
+            Log::warning('[entregas] integração: pedido sem localização; a central atribui', ['pedido' => $pedido->public_id, 'motivo' => $motivo]);
         } else {
             $this->despachar($pedido);
         }
@@ -206,25 +209,39 @@ class CriadorDoPedidoDaIntegracao
         return $pedido;
     }
 
-    /** @return array{0: float, 1: float, 2: bool} latitude, longitude e se ficou sem localização */
+    /**
+     * Coordenada recebida ausente, inválida (0,0, fora da faixa) ou a mais de 50 km da coleta: tenta o Google uma vez (a
+     * origem pode mandar 0,0 quando a geocodificação dela falha). Se ele também não servir, fica sem localização.
+     *
+     * @return array{0: float, 1: float, 2: bool, 3: ?string} latitude, longitude, se ficou sem localização e o motivo
+     *                                                       (sem_coordenada, coordenada_invalida, longe_da_loja ou google_sem_resultado)
+     */
     protected function destino(array $dados, Place $coleta): array
     {
         $latitudeDaColeta  = (float) $coleta->location->getLat();
         $longitudeDaColeta = (float) $coleta->location->getLng();
+        $serve             = fn ($lat, $lng) => $lat !== null && $lng !== null && Coordenada::valida($lat, $lng)
+            && PedidoDoIfood::metrosEntre($latitudeDaColeta, $longitudeDaColeta, (float) $lat, (float) $lng) <= static::DISTANCIA_MAXIMA_METROS;
 
         $latitude  = $dados['latitude'];
         $longitude = $dados['longitude'];
-        if ($latitude === null || $longitude === null) {
-            [$latitude, $longitude] = $this->geocodificador->coordenadas($dados) ?? [null, null];
+        if ($serve($latitude, $longitude)) {
+            return [(float) $latitude, (float) $longitude, false, null];
         }
 
-        $valida = $latitude !== null && $longitude !== null
-            && Coordenada::valida($latitude, $longitude)
-            && PedidoDoIfood::metrosEntre($latitudeDaColeta, $longitudeDaColeta, (float) $latitude, (float) $longitude) <= static::DISTANCIA_MAXIMA_METROS;
+        $motivo = $latitude === null || $longitude === null
+            ? 'sem_coordenada'
+            : (Coordenada::valida($latitude, $longitude) ? 'longe_da_loja' : 'coordenada_invalida');
 
-        return $valida
-            ? [(float) $latitude, (float) $longitude, false]
-            : [$latitudeDaColeta + static::DESLOCAMENTO_SEM_LOCALIZACAO, $longitudeDaColeta, true];
+        $google = $this->geocodificador->coordenadas($dados);
+        if ($google !== null) {
+            if ($serve($google[0], $google[1])) {
+                return [(float) $google[0], (float) $google[1], false, null];
+            }
+            $motivo = 'google_sem_resultado';
+        }
+
+        return [$latitudeDaColeta + static::DESLOCAMENTO_SEM_LOCALIZACAO, $longitudeDaColeta, true, $motivo];
     }
 
     protected function existente(object $loja, string $pedidoExternoId): ?object

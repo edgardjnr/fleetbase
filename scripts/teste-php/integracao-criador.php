@@ -62,7 +62,7 @@ confere(logou('[entregas] integração: pedido repetido', 'info'), 'log do repet
 
 echo '== Sem coordenadas: geocodifica' . PHP_EOL;
 reiniciarIntegracao();
-Http::responder(200, ['status' => 'OK', 'results' => [['geometry' => ['location' => ['lat' => -21.19, 'lng' => -47.8]]]]]);
+Http::responder(200, ['status' => 'OK', 'results' => [['geometry' => ['location' => ['lat' => -21.19, 'lng' => -47.8], 'location_type' => 'ROOFTOP']]]]);
 [$linha] = criar(['entrega' => ['latitude' => null, 'longitude' => null]]);
 $chamada = Http::$chamadas[0] ?? null;
 confere($chamada && $chamada['metodo'] === 'GET' && $chamada['url'] === GeocodificadorDaIntegracao::URL && $chamada['timeout'] === 5, 'uma consulta ao Geocoding, com timeout de 5 s');
@@ -74,8 +74,10 @@ echo '== Sem localização: nasce sem despacho' . PHP_EOL;
 $casos = [
     'Google sem resultado'   => [fn () => Http::responder(200, ['status' => 'ZERO_RESULTS', 'results' => []]), ['entrega' => ['latitude' => null, 'longitude' => null]]],
     'Google fora do ar'      => [fn () => Http::falharConexao(), ['entrega' => ['latitude' => null, 'longitude' => null]]],
-    'longe da loja (50 km+)' => [fn () => null, ['entrega' => ['latitude' => -23.55, 'longitude' => -46.63]]],
-    'coordenada 0,0'         => [fn () => null, ['entrega' => ['latitude' => 0, 'longitude' => 0]]],
+    'Google APPROXIMATE'     => [fn () => Http::responder(200, ['status' => 'OK', 'results' => [['geometry' => ['location' => ['lat' => -21.19, 'lng' => -47.8], 'location_type' => 'APPROXIMATE']]]]), ['entrega' => ['latitude' => null, 'longitude' => null]]],
+    'Google partial_match'   => [fn () => Http::responder(200, ['status' => 'OK', 'results' => [['partial_match' => true, 'geometry' => ['location' => ['lat' => -21.19, 'lng' => -47.8], 'location_type' => 'ROOFTOP']]]]), ['entrega' => ['latitude' => null, 'longitude' => null]]],
+    'longe da loja (50 km+)' => [fn () => Http::responder(200, ['status' => 'ZERO_RESULTS', 'results' => []]), ['entrega' => ['latitude' => -23.55, 'longitude' => -46.63]]],
+    'coordenada 0,0'         => [fn () => Http::responder(200, ['status' => 'ZERO_RESULTS', 'results' => []]), ['entrega' => ['latitude' => 0, 'longitude' => 0]]],
 ];
 foreach ($casos as $caso => [$preparar, $mudancas]) {
     reiniciarIntegracao();
@@ -86,7 +88,20 @@ foreach ($casos as $caso => [$preparar, $mudancas]) {
     confere($pedido->notes === "RestaurantePro #4821 [SEM LOCALIZAÇÃO]\nSem cebola", "{$caso}: marca nas notas");
     confere(abs(Place::$criados[0]->location->getLat() - (-21.1775 + 0.009)) < 0.000001 && Place::$criados[0]->location->getLng() === -47.8103, "{$caso}: entrega ~1 km ao norte da loja");
     confere(logou('pedido sem localização', 'warning'), "{$caso}: aviso no log");
+    if (str_starts_with($caso, 'longe') || str_starts_with($caso, 'coordenada')) {
+        confere(count(Http::$chamadas) === 1, "{$caso}: tenta o Google uma vez");
+    }
 }
+echo '== Coordenada inválida recebida: reserva do Google' . PHP_EOL;
+reiniciarIntegracao();
+Http::responder(200, ['status' => 'OK', 'results' => [['geometry' => ['location' => ['lat' => -21.19, 'lng' => -47.8], 'location_type' => 'ROOFTOP']]]]);
+[$linha] = criar(['entrega' => ['latitude' => 0, 'longitude' => 0]]);
+confere(count(Http::$chamadas) === 1 && $linha->sem_localizacao === false && Place::$criados[0]->location->getLat() === -21.19 && Order::$criados[0]->dispatched === true, '0,0 recebido com Google ROOFTOP perto: usa o ponto do Google e despacha');
+reiniciarIntegracao();
+Http::responder(200, ['status' => 'OK', 'results' => [['geometry' => ['location' => ['lat' => -21.19, 'lng' => -47.8], 'location_type' => 'APPROXIMATE']]]]);
+criar(['entrega' => ['latitude' => null, 'longitude' => null]]);
+confere(logou('endereço geocodificado sem precisão', 'warning') && logsSem(['Rua Ficticia', 'chave-google']), 'aviso de imprecisão sem endereço');
+
 reiniciarIntegracao();
 unset(\Teste\Config::$valores['services.google_maps.api_key']);
 [$linha] = criar(['entrega' => ['latitude' => null, 'longitude' => null]]);

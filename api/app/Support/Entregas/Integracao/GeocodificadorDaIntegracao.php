@@ -10,10 +10,14 @@ use Illuminate\Support\Facades\Log;
  * chave de Admin → Serviços, `services.google_maps.api_key`, a mesma da busca de endereço), sem o Place::createFromMixed
  * do Fleet-Ops (que geocodifica sempre). O RestaurantePro manda as coordenadas, então isso é para terceiros e para a
  * falha de geocodificação dele. Sem chave, sem resultado ou Google fora do ar: null (o pedido nasce sem localização e
- * a central atribui). O log não leva o endereço nem a chave.
+ * a central atribui). Só vale resultado preciso: location_type ROOFTOP, RANGE_INTERPOLATED ou GEOMETRIC_CENTER e sem
+ * partial_match (o centro da cidade ou do bairro, APPROXIMATE, mandaria o motoboy ao lugar errado). O log não leva o
+ * endereço nem a chave.
  */
 final class GeocodificadorDaIntegracao
 {
+    public const PRECISOES = ['ROOFTOP', 'RANGE_INTERPOLATED', 'GEOMETRIC_CENTER'];
+
     public const URL = 'https://maps.googleapis.com/maps/api/geocode/json';
 
     /** @return array{0: float, 1: float}|null [latitude, longitude] */
@@ -39,6 +43,14 @@ final class GeocodificadorDaIntegracao
         $local      = is_array($resultados) ? ($resultados[0]['geometry']['location'] ?? null) : null;
         if (!is_array($local) || !is_numeric($local['lat'] ?? null) || !is_numeric($local['lng'] ?? null)) {
             Log::warning('[entregas] integração: endereço não geocodificado', ['status' => $resposta->status(), 'google' => (string) $resposta->json('status')]);
+
+            return null;
+        }
+
+        $tipo    = (string) ($resultados[0]['geometry']['location_type'] ?? '');
+        $parcial = ($resultados[0]['partial_match'] ?? false) === true;
+        if (!in_array($tipo, static::PRECISOES, true) || $parcial) {
+            Log::warning('[entregas] integração: endereço geocodificado sem precisão', ['location_type' => $tipo, 'partial_match' => $parcial]);
 
             return null;
         }

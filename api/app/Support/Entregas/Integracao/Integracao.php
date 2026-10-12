@@ -34,11 +34,12 @@ final class Integracao
         return $base . '/~/track-order?order=' . rawurlencode($codigo);
     }
 
-    /** "RestaurantePro": só letras, números, espaço, ponto, hífen e sublinhado, até 40 caracteres; vazio = "Integração". */
+    /** "RestaurantePro": só letras, números, espaço, ponto, hífen e sublinhado, até 40 caracteres; vazio ou começando com "ifood" = "Integração". */
     public static function nomeDoSistema(?string $sistema): string
     {
         $limpo = trim(preg_replace('/[^\p{L}\p{N} ._-]+/u', '', (string) $sistema) ?? '');
 
-        return $limpo === '' ? static::SISTEMA_PADRAO : mb_substr($limpo, 0, 40);
+        // "iFood" não: as notas "iFood #N" imitariam um pedido do iFood no console e no portal
+        return $limpo === '' || mb_stripos($limpo, 'ifood') === 0 ? static::SISTEMA_PADRAO : mb_substr($limpo, 0, 40);
     }
 }
