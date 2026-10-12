@@ -3,9 +3,7 @@
         <div class="portal-order-card-topline">
             <div class="portal-order-card-title">
                 <div class="font-semibold truncate">{{this.trackingNumber}}</div>
-                {{#if this.numeroIfood}}
-                    <span class="inline-flex self-start items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold text-white" style="background-color: #EA1D2C;">{{t "customer-portal.ui.entregas.ifood-selo" numero=this.numeroIfood}}</span>
-                {{/if}}
+                <Portal::Order::SeloDeOrigem @notas={{this.order.notes}} @idInterno={{this.order.internal_id}} class="self-start" />
                 <div class="portal-order-card-subtitle">{{n-a (smart-humanize @order.type)}}</div>
             </div>
             <Badge @status={{@order.status}} />

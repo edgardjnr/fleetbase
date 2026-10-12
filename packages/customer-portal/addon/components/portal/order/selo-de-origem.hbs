@@ -1,0 +1,7 @@
+{{#if this.origem}}
+    {{#if this.origem.ifood}}
+        <span class="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold text-white" style="background-color: #EA1D2C;" ...attributes>{{t "customer-portal.ui.entregas.ifood-selo" numero=this.origem.numero}}</span>
+    {{else}}
+        <span class="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold text-white" style="background-color: #C2410C;" ...attributes>{{t "customer-portal.ui.entregas.origem-selo" sistema=this.origem.sistema numero=this.origem.numero}}</span>
+    {{/if}}
+{{/if}}
