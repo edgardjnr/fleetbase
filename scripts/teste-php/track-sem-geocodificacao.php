@@ -445,7 +445,8 @@ namespace {
     confere(str_contains($register[1] ?? '', '$this->app->bind(ApiDriverController::class, DriverControllerSemGeocodificacao::class)'), 'AppServiceProvider::register troca o Api\v1\DriverController pelo nosso');
     confere(str_contains($provedor, 'use Fleetbase\FleetOps\Http\Controllers\Api\v1\DriverController as ApiDriverController;'), 'AppServiceProvider importa o controller certo');
     $nosso = file_get_contents('/repo/api/app/Http/Controllers/Entregas/DriverControllerSemGeocodificacao.php');
-    confere(str_contains($nosso, 'extends DriverController') && preg_match_all('/public function /', $nosso) === 1, 'o nosso controller só sobrescreve o track(); o resto é o do Fleet-Ops');
+    preg_match_all('/public function (\w+)\(/', $nosso, $publicos);
+    confere(str_contains($nosso, 'extends DriverController') && $publicos[1] === ['update', 'track'], 'o nosso controller só sobrescreve o update() (foto, ver foto-do-motoboy.php) e o track(); o resto é o do Fleet-Ops');
     foreach (['findDriver(string $id', 'driverResource(Driver $driver)', 'apiError(string $message'] as $assinatura) {
         confere(str_contains($apiDriver, 'protected function ' . $assinatura), "Api\\v1\\DriverController ainda tem o protected {$assinatura}…) que o descarte usa");
     }
