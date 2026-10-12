@@ -237,6 +237,13 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('pedidos/{id}/ifood', [MotoboyController::class, 'ifood']);
                     });
 
+                // Entregas RestaurantePro: dados do pedido de outro sistema no app (card de aceitar e detalhes; MotoboyController@integracao)
+                Route::prefix('v1/entregas/motoboy')
+                    ->middleware(['fleetbase.api', 'throttle:entregas-motoboy-integracao'])
+                    ->group(function () {
+                        Route::get('pedidos/{id}/integracao', [MotoboyController::class, 'integracao']);
+                    });
+
                 // Entregas RestaurantePro: pedidos de outros sistemas (RestaurantePro), com a chave da loja (IntegracaoController)
                 Route::prefix('v1/entregas/integracao')
                     ->middleware(['throttle:entregas-integracao'])

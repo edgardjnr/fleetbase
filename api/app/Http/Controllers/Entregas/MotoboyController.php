@@ -12,6 +12,8 @@ use App\Support\Entregas\GanhosDoMotoboy;
 use App\Support\Entregas\Ifood\ConclusaoIfood;
 use App\Support\Entregas\Ifood\DadosIfoodDoMotoboy;
 use App\Support\Entregas\Ifood\PedidosIfood;
+use App\Support\Entregas\Integracao\DadosDaIntegracaoDoMotoboy;
+use App\Support\Entregas\Integracao\PedidosDaIntegracao;
 use App\Support\Entregas\MotoboyDaSessao;
 use App\Support\Entregas\RotaDoPedido;
 use App\Support\Entregas\SituacaoDoMotoboy;
@@ -37,6 +39,7 @@ use Illuminate\Support\Carbon;
  * - chatComACentral: a conversa dele com a central (APKs anteriores ao chatDoPedido).
  * - ifood, concluirIfood e codigoIfood: o pedido iFood no app (DadosIfoodDoMotoboy) e a conclusão com o código do
  *   cliente (ConclusaoIfood): o servidor avisa a chegada ao iFood, confere o código na hora e libera a conclusão comum.
+ * - integracao: o pedido de outro sistema (RestaurantePro) no app: cobrança, observações e o telefone do cliente (DadosDaIntegracaoDoMotoboy).
  * - app: a versão mínima do app e o link do APK (trava "Atualize o app", AppDoMotoboy e ExigirAppAtualizado).
  * O motoboy vem do token (MotoboyDaSessao); as respostas só trazem o valor pago a ele (GanhosDoMotoboy). Usuário de
  * loja nem chega aqui: o ProtegerPortalLoja nega a API v1 a ele.
@@ -188,6 +191,21 @@ class MotoboyController extends Controller
         }
 
         return response()->json(DadosIfoodDoMotoboy::resposta(PedidosIfood::doPedido((string) $pedido->uuid), $pedido, (string) $motoboy->uuid, now()->toDateTimeString()));
+    }
+
+    public function integracao(Request $request, string $id)
+    {
+        $motoboy = MotoboyDaSessao::motoboy($request);
+        if (!$motoboy) {
+            return $this->soParaMotoboy();
+        }
+
+        $pedido = $this->pedidoQuePodeVer($id, $motoboy);
+        if (!$pedido) {
+            return response()->json(['errors' => ['Pedido não encontrado.']], 404);
+        }
+
+        return response()->json(DadosDaIntegracaoDoMotoboy::resposta(PedidosDaIntegracao::doPedido((string) $pedido->uuid), $pedido, (string) $motoboy->uuid));
     }
 
     public function concluirIfood(Request $request, string $id, ConclusaoIfood $conclusao)

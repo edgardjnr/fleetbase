@@ -57,8 +57,9 @@ class CalculoEntregas
     /**
      * Data da entrega no relatório, na cobrança e nos ganhos: a do COMPLETED (ou o updated_at) para o pedido concluído; a
      * do cancelamento pelo iFood para o pago mesmo cancelado (o único não concluído que entra: ver pedidosConcluidos).
+     * O pedido de outro sistema cancelado pela origem depois do "A caminho" (entregas_integracao_pedidos) também conta pela data do cancelamento.
      */
-    public const DATA_DA_ENTREGA = "CASE WHEN orders.status = 'completed' THEN COALESCE(conclusoes.concluido_em, orders.updated_at) ELSE entregas_ifood.cancelado_pelo_ifood_em END";
+    public const DATA_DA_ENTREGA = "CASE WHEN orders.status = 'completed' THEN COALESCE(conclusoes.concluido_em, orders.updated_at) ELSE COALESCE(entregas_ifood.cancelado_pelo_ifood_em, entregas_integracao.cancelado_em) END";
 
     /** Linha reta → rua, usado só quando o OSRM não responde. */
     public const FATOR_ESTIMATIVA = 1.3;
@@ -81,7 +82,7 @@ class CalculoEntregas
     }
 
     /**
-     * Pedidos concluídos no período, com a data de conclusão em `entregas_concluido_em`, e os pedidos iFood pagos mesmo
+     * Pedidos concluídos no período, com a data de conclusão em `entregas_concluido_em`, e os pedidos iFood e da integração pagos mesmo
      * cancelados, pela data do cancelamento (`entregas_cancelado_pago` = 1).
      * $filtro recebe a query para restringir (por motoboy, por loja); use colunas com a tabela (orders.…).
      */
@@ -98,9 +99,12 @@ class CalculoEntregas
             ->leftJoinSub($conclusoes, 'conclusoes', 'conclusoes.tracking_number_uuid', '=', 'orders.tracking_number_uuid')
             // a linha do iFood (uma por pedido, order_uuid único): o pago mesmo cancelado
             ->leftJoin('entregas_ifood_pedidos as entregas_ifood', 'entregas_ifood.order_uuid', '=', 'orders.uuid')
+            // a linha da integração de outros sistemas (uma por pedido, order_uuid único): o pago mesmo cancelado pela origem
+            ->leftJoin('entregas_integracao_pedidos as entregas_integracao', 'entregas_integracao.order_uuid', '=', 'orders.uuid')
             ->where('orders.company_uuid', $companyUuid)
             ->where(fn ($situacao) => $situacao->where('orders.status', 'completed')
-                ->orWhere(fn ($pago) => $pago->where('entregas_ifood.pago_mesmo_cancelado', true)->whereNotNull('entregas_ifood.cancelado_pelo_ifood_em')))
+                ->orWhere(fn ($pago) => $pago->where('entregas_ifood.pago_mesmo_cancelado', true)->whereNotNull('entregas_ifood.cancelado_pelo_ifood_em'))
+                ->orWhere(fn ($pago) => $pago->where('entregas_integracao.pago_mesmo_cancelado', true)->whereNotNull('entregas_integracao.cancelado_em')))
             ->whereNull('orders.deleted_at')
             ->whereNotNull('orders.driver_assigned_uuid')
             ->whereBetween(DB::raw(static::DATA_DA_ENTREGA), [$inicio, $fim])
