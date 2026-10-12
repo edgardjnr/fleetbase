@@ -96,6 +96,15 @@ confere(validar(['cliente' => ['nome' => "Maria \u{200B} Ficticia"]])['dados']['
 confere(validar(['observacoes' => "d\te"])['dados']['observacoes'] === 'd e', 'tab vira espaço nas observações');
 confere(validar(['observacoes' => "👨\u{200D}👩"])['dados']['observacoes'] === "👨\u{200D}👩", 'ZWJ de emoji composto fica');
 
+echo '== Emoji, acentos e CJK' . PHP_EOL;
+confere(validar(['cliente' => ['nome' => 'Maria 😅']])['dados']['cliente_nome'] === 'Maria 😅', 'nome com emoji');
+confere(validar(['entrega' => ['endereco' => 'Rua Å, 45']])['dados']['endereco'] === 'Rua Å, 45', 'endereço com Å');
+confere(validar(['entrega' => ['complemento' => 'Bloco 😅']])['dados']['complemento'] === 'Bloco 😅', 'complemento com emoji');
+confere(validar(['cliente' => ['nome' => "Maria\u{0085}Ficticia"]])['dados']['cliente_nome'] === 'Maria Ficticia', 'U+0085 vira espaço');
+confere(validar(['observacoes' => "Sem cebola 😅\nObrigado"])['dados']['observacoes'] === "Sem cebola 😅\nObrigado", 'observações com emoji intactas');
+confere(validar(['cliente' => ['nome' => '王小明']])['dados']['cliente_nome'] === '王小明', 'nome em CJK');
+confere(validar(['cliente' => ['nome' => 'José Ângelo Çãõ']])['dados']['cliente_nome'] === 'José Ângelo Çãõ', 'acentos variados');
+
 echo '== Cobrança' . PHP_EOL;
 confere(CobrancaDaIntegracao::texto('dinheiro', 5890, 10000) === 'Cobrar R$ 58,90 · dinheiro · troco p/ R$ 100', 'dinheiro com troco');
 confere(CobrancaDaIntegracao::texto('dinheiro', 5890, null) === 'Cobrar R$ 58,90 · dinheiro', 'dinheiro sem troco');

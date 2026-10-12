@@ -105,16 +105,23 @@ final class PedidoDaIntegracao
         if ($valor !== null) {
             // Primeiro as quebras e tabs viram espaço/linha, depois saem os controles e invisíveis (nulo, ESC, largura zero;
             // o ZWJ fica, é parte de emoji composto) e só então os espaços colapsam, para não sobrar espaço duplo.
+            // Todas as regex em modo UTF-8 (/u): sem ele o \v casa o byte 0x85 e corrompe emoji e "Å". Se alguma falhar
+            // (devolve null), o texto não é UTF-8 válido: erro, nunca "vazio".
             if ($umaLinha) {
-                $limpo = preg_replace('/[\t\n\r\f\v]/', ' ', $valor);
-                $limpo = preg_replace('/[\p{Cc}]|(?!\x{200D})\p{Cf}/u', '', (string) $limpo);
-                $limpo = preg_replace('/[\s\p{Z}]+/u', ' ', (string) $limpo);
+                $limpo = preg_replace('/[\t\n\r\f\v\x{85}]/u', ' ', $valor);
+                $limpo = $limpo === null ? null : preg_replace('/\p{Cc}|(?!\x{200D})\p{Cf}/u', '', $limpo);
+                $limpo = $limpo === null ? null : preg_replace('/[\s\p{Z}]+/u', ' ', $limpo);
             } else {
-                $limpo = preg_replace('/\r\n?/', "\n", $valor);
-                $limpo = str_replace("\t", ' ', (string) $limpo);
-                $limpo = preg_replace('/[^\P{Cc}\n]|(?!\x{200D})\p{Cf}/u', '', (string) $limpo);
+                $limpo = preg_replace('/\r\n?/u', "\n", $valor);
+                $limpo = $limpo === null ? null : preg_replace('/[\t\x{85}]/u', ' ', $limpo);
+                $limpo = $limpo === null ? null : preg_replace('/[^\P{Cc}\n]|(?!\x{200D})\p{Cf}/u', '', $limpo);
             }
-            $limpo = static::apara((string) $limpo) ?? '';
+            $limpo = $limpo === null ? null : static::apara($limpo);
+            if ($limpo === null) {
+                $erros[] = "{$caminho} precisa ser texto em UTF-8.";
+
+                return null;
+            }
         }
         if ($limpo === null || $limpo === '') {
             if ($obrigatorio) {
