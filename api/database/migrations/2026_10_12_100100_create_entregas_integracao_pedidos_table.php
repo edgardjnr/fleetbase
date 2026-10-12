@@ -20,7 +20,8 @@ return new class extends Migration
             $table->char('company_uuid', 36)->index();
             $table->char('vendor_uuid', 36);
             $table->char('order_uuid', 36)->nullable()->unique();
-            $table->string('pedido_externo_id', 100);
+            // ascii_bin: "aB1" e "Ab1" são pedidos diferentes (a collation padrão não diferencia maiúsculas)
+            $table->string('pedido_externo_id', 100)->charset('ascii')->collation('ascii_bin');
             $table->string('sistema', 40)->nullable();
             // número curto da origem (o código da comanda), o mesmo do internal_id do Order
             $table->string('numero', 20)->nullable();

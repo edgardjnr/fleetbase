@@ -74,6 +74,19 @@ confere(validar(['numero' => null])['dados'] === null, 'com erro: sem dados');
 $varios = PedidoDaIntegracao::validar([]);
 confere(count($varios['erros']) >= 5, 'corpo vazio: todos os obrigatórios de uma vez');
 
+echo '== Espaço Unicode, controles e teto' . PHP_EOL;
+confere(temErro(validar(['entrega' => ['endereco' => "\u{00A0}"]]), 'entrega.endereco é obrigatório'), 'endereço só com NBSP');
+confere(temErro(validar(['cliente' => ['nome' => "\u{2003}"]]), 'cliente.nome é obrigatório'), 'nome só com espaço largo');
+confere(validar(['entrega' => ['complemento' => "\u{00A0}"]])['dados']['complemento'] === null, 'complemento só com NBSP = null');
+confere(validar(['cliente' => ['nome' => "Ma\0ria"]])['dados']['cliente_nome'] === 'Maria', 'nome sem caractere nulo');
+confere(validar(['observacoes' => "a\rb\x07c"])['dados']['observacoes'] === "a\nbc", 'observações: \r vira \n, controle sai');
+confere(temErro(validar(['numero' => 1e20]), 'numero precisa ser texto'), 'número float');
+confere(temErro(validar(['cobranca' => ['valor' => (2 ** 64 + 4096) / 100]]), 'cobranca.valor'), 'valor float gigante');
+confere(temErro(validar(['cobranca' => ['troco_para' => 'abc']]), 'cobranca.troco_para precisa ser um valor em reais'), 'troco que não é número');
+confere(temErro(validar(['cobranca' => ['troco_para' => 200000]]), 'cobranca.troco_para passa de 100000'), 'troco acima do teto');
+$r = validar(['entrega' => ['uf' => '  ']]);
+confere($r['erros'] === [] && $r['dados']['uf'] === null, 'UF só com espaço = null');
+
 echo '== Cobrança' . PHP_EOL;
 confere(CobrancaDaIntegracao::texto('dinheiro', 5890, 10000) === 'Cobrar R$ 58,90 · dinheiro · troco p/ R$ 100', 'dinheiro com troco');
 confere(CobrancaDaIntegracao::texto('dinheiro', 5890, null) === 'Cobrar R$ 58,90 · dinheiro', 'dinheiro sem troco');
