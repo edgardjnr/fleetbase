@@ -232,7 +232,6 @@ fleet-ops:
         pedido-sem-motoboy:
             aviso: 'Order {numero} has had no driver for {minutos} min. Click to open and assign.'
         ifood:
-            coluna: iFood
             selo: 'iFood #{numero}'
             selo-titulo: iFood order
             painel-titulo: 'iFood #{numero}'

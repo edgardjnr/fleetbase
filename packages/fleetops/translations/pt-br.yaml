@@ -232,7 +232,6 @@ fleet-ops:
     pedido-sem-motoboy:
       aviso: 'Pedido {numero} está há {minutos} min sem motoboy. Clique para abrir e atribuir.'
     ifood:
-      coluna: iFood
       selo: 'iFood #{numero}'
       selo-titulo: Pedido do iFood
       painel-titulo: 'iFood #{numero}'

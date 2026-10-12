@@ -5,7 +5,10 @@
 // tela: quem decide de verdade é o servidor (RegrasDoPedidoIfood, entregas_integracao_pedidos).
 // A regra do iFood é a mesma do numeroIfood (utils/pedido-ifood.js), que continua decidindo o Cancelar escondido.
 // Mesma regra no portal (customer-portal/addon/utils/entregas-pedido.js, origemDoPedido) e no app
-// (src/utils/cartao-do-pedido.ts, origemDasNotas). Sem imports: testado no Node (scripts/teste-portal/pedido-de-origem.test.mjs).
+// (src/utils/cartao-do-pedido.ts, origemDasNotas).
+// Risco aceito: notas "<palavras> #N" com o internal_id N preenchidos à mão também ganham o selo. É só exibição: o painel e o
+// Cancelar dependem do servidor ou do ehPedidoIfood.
+// Sem imports: testado no Node (scripts/teste-portal/pedido-de-origem.test.mjs).
 
 // O nome do sistema passa pelo Integracao::nomeDoSistema do servidor: letras, números, espaço, ponto, hífen e
 // sublinhado, até 40 caracteres.
