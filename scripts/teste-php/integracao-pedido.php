@@ -87,6 +87,15 @@ confere(temErro(validar(['cobranca' => ['troco_para' => 200000]]), 'cobranca.tro
 $r = validar(['entrega' => ['uf' => '  ']]);
 confere($r['erros'] === [] && $r['dados']['uf'] === null, 'UF só com espaço = null');
 
+echo '== Revisão 2' . PHP_EOL;
+confere(validar(['cobranca' => ['troco_para' => '100,00']])['dados']['troco_para_centavos'] === 10000, 'troco com vírgula');
+confere(temErro(validar(['cliente' => ['telefone' => "\xFF16999990000"]]), 'cliente.telefone precisa ser texto em UTF-8'), 'telefone com UTF-8 inválido');
+confere(temErro(validar(['entrega' => ['cep' => "\xFF14090000"]]), 'entrega.cep precisa ser texto em UTF-8'), 'CEP com UTF-8 inválido');
+confere(temErro(validar(['entrega' => ['uf' => "\xFFSP"]]), 'entrega.uf precisa ser texto em UTF-8'), 'UF com UTF-8 inválido');
+confere(validar(['cliente' => ['nome' => "Maria \u{200B} Ficticia"]])['dados']['cliente_nome'] === 'Maria Ficticia', 'invisível entre espaços não deixa espaço duplo');
+confere(validar(['observacoes' => "d\te"])['dados']['observacoes'] === 'd e', 'tab vira espaço nas observações');
+confere(validar(['observacoes' => "👨\u{200D}👩"])['dados']['observacoes'] === "👨\u{200D}👩", 'ZWJ de emoji composto fica');
+
 echo '== Cobrança' . PHP_EOL;
 confere(CobrancaDaIntegracao::texto('dinheiro', 5890, 10000) === 'Cobrar R$ 58,90 · dinheiro · troco p/ R$ 100', 'dinheiro com troco');
 confere(CobrancaDaIntegracao::texto('dinheiro', 5890, null) === 'Cobrar R$ 58,90 · dinheiro', 'dinheiro sem troco');

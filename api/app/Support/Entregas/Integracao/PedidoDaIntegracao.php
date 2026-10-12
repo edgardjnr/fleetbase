@@ -103,10 +103,18 @@ final class PedidoDaIntegracao
 
         $limpo = null;
         if ($valor !== null) {
-            $limpo = $umaLinha ? preg_replace('/\s+/u', ' ', $valor) : preg_replace('/\r\n?/', "\n", $valor);
-            // Controles e caracteres invisíveis (nulo, ESC, largura zero...) saem; a quebra de linha das observações fica.
-            $limpo = preg_replace($umaLinha ? '/[\p{Cc}\p{Cf}]+/u' : '/[^\P{Cc}\n]|\p{Cf}/u', '', (string) $limpo);
-            $limpo = static::apara((string) $limpo);
+            // Primeiro as quebras e tabs viram espaço/linha, depois saem os controles e invisíveis (nulo, ESC, largura zero;
+            // o ZWJ fica, é parte de emoji composto) e só então os espaços colapsam, para não sobrar espaço duplo.
+            if ($umaLinha) {
+                $limpo = preg_replace('/[\t\n\r\f\v]/', ' ', $valor);
+                $limpo = preg_replace('/[\p{Cc}]|(?!\x{200D})\p{Cf}/u', '', (string) $limpo);
+                $limpo = preg_replace('/[\s\p{Z}]+/u', ' ', (string) $limpo);
+            } else {
+                $limpo = preg_replace('/\r\n?/', "\n", $valor);
+                $limpo = str_replace("\t", ' ', (string) $limpo);
+                $limpo = preg_replace('/[^\P{Cc}\n]|(?!\x{200D})\p{Cf}/u', '', (string) $limpo);
+            }
+            $limpo = static::apara((string) $limpo) ?? '';
         }
         if ($limpo === null || $limpo === '') {
             if ($obrigatorio) {
@@ -125,9 +133,9 @@ final class PedidoDaIntegracao
     }
 
     /** trim que também tira espaço Unicode (NBSP, espaço largo, ideográfico). */
-    protected static function apara(string $texto): string
+    protected static function apara(string $texto): ?string
     {
-        return (string) preg_replace('/^[\s\p{Z}]+|[\s\p{Z}]+$/u', '', $texto);
+        return preg_replace('/^[\s\p{Z}]+|[\s\p{Z}]+$/u', '', $texto);
     }
 
     protected static function telefone(array $corpo, array &$erros): ?string
@@ -135,6 +143,11 @@ final class PedidoDaIntegracao
         $valor = static::campo($corpo, 'cliente.telefone');
         if (is_string($valor)) {
             $valor = static::apara($valor);
+            if ($valor === null) {
+                $erros[] = 'cliente.telefone precisa ser texto em UTF-8.';
+
+                return null;
+            }
         }
         if ($valor === null || $valor === '') {
             return null;
@@ -162,6 +175,11 @@ final class PedidoDaIntegracao
         $valor = static::campo($corpo, 'entrega.uf');
         if (is_string($valor)) {
             $valor = static::apara($valor);
+            if ($valor === null) {
+                $erros[] = 'entrega.uf precisa ser texto em UTF-8.';
+
+                return null;
+            }
         }
         if ($valor === null || $valor === '') {
             return null;
@@ -180,6 +198,11 @@ final class PedidoDaIntegracao
         $valor = static::campo($corpo, 'entrega.cep');
         if (is_string($valor)) {
             $valor = static::apara($valor);
+            if ($valor === null) {
+                $erros[] = 'entrega.cep precisa ser texto em UTF-8.';
+
+                return null;
+            }
         }
         if ($valor === null || $valor === '') {
             return null;
@@ -234,10 +257,11 @@ final class PedidoDaIntegracao
 
         $bruto = static::campo($corpo, 'cobranca.troco_para');
         $troco = static::centavos($bruto);
+        $naoENumero = static::numero($bruto) === null;
         if ($bruto === null || $bruto === '' || $troco === 0) {
             return [$forma, $centavos, null];
         }
-        if (!is_numeric($bruto)) {
+        if ($naoENumero) {
             $erros[] = 'cobranca.troco_para precisa ser um valor em reais (ex.: 100).';
 
             return [$forma, $centavos, null];
@@ -261,18 +285,25 @@ final class PedidoDaIntegracao
         return [$forma, $centavos, $troco];
     }
 
-    protected static function centavos($valor): ?int
+    /** Número vindo do corpo: aceita "58,90" (vírgula só em texto); null se não for número ou não for finito. */
+    protected static function numero($valor): ?float
     {
         if (is_string($valor)) {
             $valor = str_replace(',', '.', trim($valor));
         }
-
         if (!is_numeric($valor)) {
             return null;
         }
         $f = (float) $valor;
+
+        return is_finite($f) ? $f : null;
+    }
+
+    protected static function centavos($valor): ?int
+    {
+        $f = static::numero($valor);
         // Compara o float antes do (int): um float gigante estoura o inteiro e pode voltar como centavos pequenos.
-        if (!is_finite($f) || abs($f) > static::VALOR_MAXIMO_CENTAVOS / 100) {
+        if ($f === null || abs($f) > static::VALOR_MAXIMO_CENTAVOS / 100) {
             return null;
         }
 
