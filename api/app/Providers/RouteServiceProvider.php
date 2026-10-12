@@ -116,7 +116,10 @@ class RouteServiceProvider extends ServiceProvider
 
         // integração de pedidos de outros sistemas (RestaurantePro): até 60 chamadas por minuto por chave (o hash do Bearer;
         // sem Bearer, o IP). As rotas ficam fora do fleetbase.api: a chave da loja é conferida no IntegracaoController
-        RateLimiter::for('entregas-integracao', fn (Request $request) => Limit::perMinute(60)->by('entregas-integracao:' . hash('sha256', (string) ($request->bearerToken() ?: $request->ip()))));
+        RateLimiter::for('entregas-integracao', fn (Request $request) => Limit::perMinute(60)
+            ->by('entregas-integracao:' . hash('sha256', (string) ($request->bearerToken() ?: $request->ip())))
+            // o 429 no formato da casa e com o Retry-After (o handler do core responderia em inglês e sem os cabeçalhos)
+            ->response(fn ($request, array $headers) => response()->json(['errors' => ['Muitas chamadas. Tente de novo em instantes.']], 429, $headers)));
 
         // dados do pedido da integração no app (card de aceitar e detalhes), num balde próprio por motoboy
         RateLimiter::for('entregas-motoboy-integracao', fn (Request $request) => Limit::perMinute(120)->by('entregas-motoboy-integracao:' . (session('user') ?: $request->ip())));
