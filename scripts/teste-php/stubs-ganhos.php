@@ -215,6 +215,8 @@ namespace Fleetbase\FleetOps\Models {
         public $address;
         public $city;
         public $location;
+        public $owner_uuid;
+        public $owner_type;
     }
 
     class Payload

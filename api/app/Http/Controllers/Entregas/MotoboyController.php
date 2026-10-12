@@ -145,10 +145,10 @@ class MotoboyController extends Controller
             return response()->json(['errors' => ['Aceite o pedido para conversar com a loja.']], 403);
         }
 
-        // a loja do pedido é o Vendor dono dele (customer_uuid), como na cobrança e no portal da loja
-        $loja = $pedido->customer_uuid
-            ? Vendor::where('company_uuid', session('company'))->where('uuid', $pedido->customer_uuid)->first()
-            : null;
+        // a loja do pedido é o Vendor dono dele (customer_uuid), como na cobrança e no portal da loja; sem ele (a central
+        // criou o pedido sem escolher a loja, ou escolheu o contato do usuário dela), a loja dona do Local de coleta
+        $loja = $this->lojaDaEmpresa($pedido->customer_uuid)
+            ?? $this->lojaDaEmpresa($pedido->payload?->getPickupOrFirstWaypoint()?->owner_uuid);
 
         $canal = $loja
             ? ConversasDaLoja::abrir($loja, $motoboy, (string) $motoboy->user_uuid)
@@ -318,5 +318,11 @@ class MotoboyController extends Controller
     protected function soParaMotoboy()
     {
         return response()->json(['errors' => ['Disponível só para motoboys.']], 403);
+    }
+
+    /** A loja (Vendor) com este uuid na empresa da sessão; um contato ou uma loja de outra empresa dá null. */
+    protected function lojaDaEmpresa(?string $uuid): ?Vendor
+    {
+        return $uuid ? Vendor::where('company_uuid', session('company'))->where('uuid', $uuid)->first() : null;
     }
 }
