@@ -456,12 +456,15 @@ namespace Teste {
 
     class PedidoHttp
     {
-        private array $opcoes = ['form' => false, 'token' => null, 'headers' => [], 'timeout' => null];
+        private array $opcoes = ['form' => false, 'token' => null, 'headers' => [], 'timeout' => null, 'options' => [], 'corpo' => null];
         public function asForm() { $this->opcoes['form'] = true; return $this; }
         public function acceptJson() { return $this; }
         public function withToken($token) { $this->opcoes['token'] = $token; return $this; }
         public function withHeaders(array $cabecalhos) { $this->opcoes['headers'] = array_merge($this->opcoes['headers'], $cabecalhos); return $this; }
         public function timeout($segundos) { $this->opcoes['timeout'] = $segundos; return $this; }
+        // o webhook da integração: corpo cru (JSON já assinado) e sem seguir redirecionamento
+        public function withOptions(array $opcoes) { $this->opcoes['options'] = array_merge($this->opcoes['options'], $opcoes); return $this; }
+        public function withBody($corpo, $tipo = 'application/json') { $this->opcoes['corpo'] = $corpo; return $this; }
         public function get($url, $query = []) { return $this->enviar('GET', $url, $query); }
         public function post($url, $dados = []) { return $this->enviar('POST', $url, $dados); }
         // send('POST', $url) sem opções = POST sem corpo (as ações de logística do iFood); dados = null
@@ -514,7 +517,7 @@ namespace Teste {
         /** Tabela => exceção que o DB::table lança (o banco fora do ar). */
         public static array $falharAoConsultar = [];
         /**
-         * Colunas e colunas únicas das tabelas entregas_ifood_* e da distribuição (entregas_distribuicoes, entregas_ofertas), lidas das migrations (carregadas uma vez, na primeira
+         * Colunas e colunas únicas das tabelas entregas_ifood_*, entregas_integracao_* e da distribuição (entregas_distribuicoes, entregas_ofertas), lidas das migrations (carregadas uma vez, na primeira
          * consulta): tabela => ['colunas' => [nomes], 'unicas' => [nomes]]. Assim um nome de coluna errado falha aqui,
          * como o "Unknown column" do MySQL, e a lista de únicas não se descola das migrations.
          */
@@ -549,7 +552,8 @@ namespace Teste {
             // as que criam e as que acrescentam colunas (Schema::table), na ordem dos arquivos (a data no nome)
             $arquivos = array_merge(
                 glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_ifood_*_table.php') ?: [],
-                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_distribuicao_*.php') ?: []
+                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_distribuicao_*.php') ?: [],
+                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_integracao_*_table.php') ?: []
             );
             foreach ($arquivos as $arquivo) {
                 \Illuminate\Support\Facades\Schema::$criadas   = [];
@@ -557,7 +561,7 @@ namespace Teste {
                 (require $arquivo)->up();
                 $blueprints = [];
                 foreach (\Illuminate\Support\Facades\Schema::$criadas as $tabela => $blueprint) {
-                    self::$esquema[$tabela] = ['colunas' => [], 'unicas' => [], 'padroes' => []];
+                    self::$esquema[$tabela] = ['colunas' => [], 'unicas' => [], 'padroes' => [], 'compostas' => []];
                     $blueprints[]           = [$tabela, $blueprint];
                 }
                 foreach (\Illuminate\Support\Facades\Schema::$alteradas as $tabela => $lista) {
@@ -570,12 +574,16 @@ namespace Teste {
                     $unicas  = [];
                     $padroes = [];
                     $tamanhos = [];
+                    $compostas = [];
                     foreach ($blueprint->colunas as $coluna) {
                         $primeiro = $coluna->argumentos[0] ?? null;
                         if ($coluna->tipo === 'timestamps') {
                             array_push($colunas, 'created_at', 'updated_at');
                         } elseif ($coluna->tipo === 'id') {
                             $colunas[] = $primeiro ?? 'id';
+                        } elseif ($coluna->tipo === 'unique' && is_array($primeiro)) {
+                            // $table->unique([...]): chave única de várias colunas
+                            $compostas[] = $primeiro;
                         } elseif (is_string($primeiro)) {
                             // index([...]) e afins não são colunas (o primeiro argumento é uma lista)
                             $colunas[] = $primeiro;
@@ -597,6 +605,7 @@ namespace Teste {
                         'unicas'  => array_merge(self::$esquema[$tabela]['unicas'] ?? [], $unicas),
                         'padroes' => array_merge(self::$esquema[$tabela]['padroes'] ?? [], $padroes),
                         'tamanhos' => array_merge(self::$esquema[$tabela]['tamanhos'] ?? [], $tamanhos),
+                        'compostas' => array_merge(self::$esquema[$tabela]['compostas'] ?? [], $compostas),
                     ];
                 }
             }
@@ -612,13 +621,13 @@ namespace Teste {
             return self::esquema()[$tabela]['tamanhos'][$coluna] ?? null;
         }
 
-        /** Colunas únicas da tabela (NULL não conta, como no MySQL); vazio para tabela fora do esquema do iFood e da distribuição. */
+        /** Colunas únicas da tabela (NULL não conta, como no MySQL); vazio para tabela fora do esquema do iFood, da integração e da distribuição. */
         public static function unicasDe(string $tabela): array
         {
             return self::esquema()[$tabela]['unicas'] ?? [];
         }
 
-        /** Lança como o MySQL ("Unknown column") se a coluna não existe na tabela entregas_ifood_*, entregas_distribuicoes ou entregas_ofertas; as outras tabelas passam. */
+        /** Lança como o MySQL ("Unknown column") se a coluna não existe na tabela entregas_ifood_*, entregas_integracao_*, entregas_distribuicoes ou entregas_ofertas; as outras tabelas passam. */
         public static function exigirColuna(string $tabela, $coluna): void
         {
             // "tabela.coluna" (com join): confere na tabela do prefixo
@@ -657,6 +666,18 @@ namespace Teste {
                     }
                 }
             }
+            // chaves únicas compostas: repetida quando todas as colunas repetem (com alguma NULL, não conta, como no MySQL)
+            foreach (self::esquema()[$tabela]['compostas'] ?? [] as $colunas) {
+                $valores = array_map(fn ($c) => $linha[$c] ?? null, $colunas);
+                if (in_array(null, $valores, true)) {
+                    continue;
+                }
+                foreach ($existentes as $existente) {
+                    if (array_map(fn ($c) => $existente[$c] ?? null, $colunas) === $valores) {
+                        return implode('+', $colunas);
+                    }
+                }
+            }
 
             return null;
         }
@@ -690,7 +711,7 @@ namespace Teste {
                 if ($ignorarRepetida) {
                     return false;
                 }
-                throw self::erroDeRepetida($tabela, $repetida, $linha[$repetida]);
+                throw self::erroDeRepetida($tabela, $repetida, $linha[$repetida] ?? $repetida);
             }
             $id                             = self::$proximoId[$tabela] = (self::$proximoId[$tabela] ?? 0) + 1;
             // como o MySQL, a coluna que o insert não trouxe existe na linha: com o ->default() da migration, ou NULL
@@ -991,7 +1012,7 @@ namespace Teste {
                 unset($outras[$id]);
                 $repetida = Banco::colunaRepetida($this->tabela, $novas[$id], $outras);
                 if ($repetida !== null) {
-                    throw Banco::erroDeRepetida($this->tabela, $repetida, $novas[$id][$repetida]);
+                    throw Banco::erroDeRepetida($this->tabela, $repetida, $novas[$id][$repetida] ?? $repetida);
                 }
             }
             $alteradas = 0;

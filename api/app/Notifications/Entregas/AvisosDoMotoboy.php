@@ -14,6 +14,8 @@ use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\CartaoDoAlarme;
 use App\Support\Entregas\Ifood\CancelamentoPeloIfood;
 use App\Support\Entregas\Ifood\PedidosIfood;
+use App\Support\Entregas\Integracao\CancelamentoPelaOrigem;
+use App\Support\Entregas\Integracao\PedidosDaIntegracao;
 use Fleetbase\Notifications\TestPushNotification;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
@@ -123,7 +125,7 @@ class AvisosDoMotoboy
             $notificacao instanceof OrderAssigned        => ['Novo pedido para você', static::textoDoAtribuido($notificacao, $codigo)],
             $notificacao instanceof OrderDispatched      => [static::comCodigo('Pedido %s liberado para você', 'Pedido liberado para você', $codigo), 'Toque para ver e iniciar a entrega.'],
             $notificacao instanceof OrderFailed          => [static::comCodigo('Entrega do pedido %s não concluída', 'Entrega não concluída', $codigo), static::comCodigo('A entrega do pedido %s falhou.', 'A entrega do pedido falhou.', $codigo)],
-            $notificacao instanceof OrderCanceled        => static::canceladoPeloIfood($notificacao) ?? [static::comCodigo('Pedido %s cancelado', 'Pedido cancelado', $codigo), static::comCodigo('O pedido %s foi cancelado.', 'O pedido foi cancelado.', $codigo)],
+            $notificacao instanceof OrderCanceled        => static::canceladoPeloIfood($notificacao) ?? static::canceladoPelaOrigem($notificacao) ?? [static::comCodigo('Pedido %s cancelado', 'Pedido cancelado', $codigo), static::comCodigo('O pedido %s foi cancelado.', 'O pedido foi cancelado.', $codigo)],
             $notificacao instanceof OrderCompleted       => [static::comCodigo('Pedido %s concluído', 'Pedido concluído', $codigo), static::comCodigo('O pedido %s foi concluído.', 'O pedido foi concluído.', $codigo)],
             $notificacao instanceof WaypointCompleted    => [static::comCodigo('Pedido %s: parada concluída', 'Parada concluída', $codigo), static::comCodigo('Uma parada do pedido %s foi concluída.', 'Uma parada do pedido foi concluída.', $codigo)],
             $notificacao instanceof ChatMessageReceived  => [static::tituloDoChat((string) $notificacao->title), (string) $notificacao->message],
@@ -144,6 +146,22 @@ class AvisosDoMotoboy
             $linha = $uuid ? PedidosIfood::doPedido((string) $uuid) : null;
 
             return $linha ? CancelamentoPeloIfood::textoDoPush($linha) : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Pedido de outro sistema cancelado pela loja (CancelamentoPelaOrigem): "Pedido #4821 cancelado pela loja", e "Você
+     * recebe por esta entrega…" depois do "A caminho". null para os outros cancelamentos, ou se a consulta falhar.
+     */
+    protected static function canceladoPelaOrigem(Notification $notificacao): ?array
+    {
+        try {
+            $uuid  = $notificacao->order->uuid ?? null;
+            $linha = $uuid ? PedidosDaIntegracao::doPedido((string) $uuid) : null;
+
+            return $linha ? CancelamentoPelaOrigem::textoDoPush($linha) : null;
         } catch (\Throwable) {
             return null;
         }

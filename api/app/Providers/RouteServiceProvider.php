@@ -7,6 +7,8 @@ use App\Http\Controllers\Entregas\DistribuicaoController;
 use App\Http\Controllers\Entregas\EnderecosController;
 use App\Http\Controllers\Entregas\IfoodLojasController;
 use App\Http\Controllers\Entregas\IfoodPedidosController;
+use App\Http\Controllers\Entregas\IntegracaoController;
+use App\Http\Controllers\Entregas\IntegracaoLojasController;
 use App\Http\Controllers\Entregas\LiderController;
 use App\Http\Controllers\Entregas\LojasController;
 use App\Http\Controllers\Entregas\MapaController;
@@ -112,6 +114,16 @@ class RouteServiceProvider extends ServiceProvider
         // entre teclas; o teto segura um script)
         RateLimiter::for('entregas-enderecos', fn (Request $request) => Limit::perMinute(120)->by('entregas-enderecos:' . (session('user') ?: $request->ip())));
 
+        // integração de pedidos de outros sistemas (RestaurantePro): até 60 chamadas por minuto por chave (o hash do Bearer;
+        // sem Bearer, o IP). As rotas ficam fora do fleetbase.api: a chave da loja é conferida no IntegracaoController
+        RateLimiter::for('entregas-integracao', fn (Request $request) => Limit::perMinute(60)
+            ->by('entregas-integracao:' . hash('sha256', (string) ($request->bearerToken() ?: $request->ip())))
+            // o 429 no formato da casa e com o Retry-After (o handler do core responderia em inglês e sem os cabeçalhos)
+            ->response(fn ($request, array $headers) => response()->json(['errors' => ['Muitas chamadas. Tente de novo em instantes.']], 429, $headers)));
+
+        // dados do pedido da integração no app (card de aceitar e detalhes), num balde próprio por motoboy
+        RateLimiter::for('entregas-motoboy-integracao', fn (Request $request) => Limit::perMinute(120)->by('entregas-motoboy-integracao:' . (session('user') ?: $request->ip())));
+
         $this->routes(
             function () {
                 Route::get(
@@ -144,9 +156,15 @@ class RouteServiceProvider extends ServiceProvider
                         Route::post('lojas/{id}/ifood/codigo', [IfoodLojasController::class, 'codigo'])->middleware('throttle:entregas-ifood-vinculo');
                         Route::post('lojas/{id}/ifood/vincular', [IfoodLojasController::class, 'vincular'])->middleware('throttle:entregas-ifood-vinculo');
                         Route::delete('lojas/{id}/ifood', [IfoodLojasController::class, 'desvincular']);
+                        // integração de pedidos de outros sistemas: a chave da loja (gerar, revogar, situação)
+                        Route::get('lojas/{id}/integracao', [IntegracaoLojasController::class, 'situacao']);
+                        Route::post('lojas/{id}/integracao/chave', [IntegracaoLojasController::class, 'gerarChave']);
+                        Route::delete('lojas/{id}/integracao', [IntegracaoLojasController::class, 'revogar']);
                         // painel iFood no detalhe do pedido e a liberação da conclusão sem o código do cliente
                         Route::get('pedidos/{id}/ifood', [IfoodPedidosController::class, 'painel']);
                         Route::post('pedidos/{id}/ifood/liberar-sem-codigo', [IfoodPedidosController::class, 'liberarSemCodigo']);
+                        // painel "Integração" no detalhe do pedido
+                        Route::get('pedidos/{id}/integracao', [IntegracaoLojasController::class, 'painel']);
                         // painel "Distribuição" no detalhe do pedido e o "Abrir a todos agora"
                         Route::get('pedidos/{id}/distribuicao', [DistribuicaoController::class, 'painel']);
                         Route::post('pedidos/{id}/distribuicao/abrir', [DistribuicaoController::class, 'abrir']);
@@ -217,6 +235,23 @@ class RouteServiceProvider extends ServiceProvider
                     ->middleware(['fleetbase.api', 'throttle:entregas-motoboy-ifood'])
                     ->group(function () {
                         Route::get('pedidos/{id}/ifood', [MotoboyController::class, 'ifood']);
+                    });
+
+                // Entregas RestaurantePro: dados do pedido de outro sistema no app (card de aceitar e detalhes; MotoboyController@integracao)
+                Route::prefix('v1/entregas/motoboy')
+                    ->middleware(['fleetbase.api', 'throttle:entregas-motoboy-integracao'])
+                    ->group(function () {
+                        Route::get('pedidos/{id}/integracao', [MotoboyController::class, 'integracao']);
+                    });
+
+                // Entregas RestaurantePro: pedidos de outros sistemas (RestaurantePro), com a chave da loja (IntegracaoController)
+                Route::prefix('v1/entregas/integracao')
+                    ->middleware(['throttle:entregas-integracao'])
+                    ->group(function () {
+                        Route::post('conexao', [IntegracaoController::class, 'conexao']);
+                        Route::post('pedidos', [IntegracaoController::class, 'criar']);
+                        Route::get('pedidos/{id}', [IntegracaoController::class, 'consultar']);
+                        Route::post('pedidos/{id}/cancelar', [IntegracaoController::class, 'cancelar']);
                     });
             }
         );

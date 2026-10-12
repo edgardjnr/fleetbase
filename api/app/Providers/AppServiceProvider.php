@@ -10,6 +10,7 @@ use App\Console\Commands\Entregas\ReenviarPedidosAbertos;
 use App\Http\Controllers\Entregas\DriverControllerSemGeocodificacao;
 use App\Listeners\Entregas\ManterPayloadDoPedido;
 use App\Listeners\Entregas\ObservadorDaDistribuicao;
+use App\Listeners\Entregas\ObservadorDosPedidosDaIntegracao;
 use App\Listeners\Entregas\ObservadorDosPedidosIfood;
 use App\Notifications\Entregas\CanalFcmEntregas;
 use App\Notifications\Entregas\Email\CanalEmailEntregas;
@@ -105,6 +106,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureOutboundHttpLogging();
         $this->configureTransactionTripwire();
         $this->acompanharPedidosIfood();
+        $this->acompanharPedidosDaIntegracao();
         $this->distribuirPedidosAbertos();
         $this->manterPayloadDosPedidos();
     }
@@ -128,6 +130,17 @@ class AppServiceProvider extends ServiceProvider
     {
         Order::updated(fn ($pedido) => ObservadorDosPedidosIfood::aoAtualizar($pedido));
         Event::listen(OrderDriverAssigned::class, fn ($evento) => ObservadorDosPedidosIfood::aoAtribuirMotoboy($evento));
+    }
+
+    /**
+     * Entregas: mudança de um pedido da integração de outros sistemas (motoboy definido, iniciado, a caminho, concluído,
+     * cancelado) → aviso de volta ao sistema de origem, na fila (ver ObservadorDosPedidosDaIntegracao). O resto, o
+     * entregas:integracao-acompanhar reconcilia em até 1 min.
+     */
+    protected function acompanharPedidosDaIntegracao(): void
+    {
+        Order::updated(fn ($pedido) => ObservadorDosPedidosDaIntegracao::aoAtualizar($pedido));
+        Event::listen(OrderDriverAssigned::class, fn ($evento) => ObservadorDosPedidosDaIntegracao::aoAtribuirMotoboy($evento));
     }
 
     /**

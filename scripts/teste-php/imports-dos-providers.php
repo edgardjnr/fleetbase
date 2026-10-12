@@ -13,6 +13,7 @@ $arquivos = array_merge(
     [$app . '/Console/Kernel.php'],
     glob($app . '/Support/Entregas/Distribuicao/*.php'),
     glob($app . '/Listeners/Entregas/*.php'),
+    glob($app . '/Support/Entregas/Integracao/*.php'),
     [
         $app . '/Jobs/Entregas/AvancarOferta.php',
         $app . '/Jobs/Entregas/AvancarDistribuicao.php',
@@ -26,6 +27,11 @@ $arquivos = array_merge(
         $app . '/Http/Middleware/ExigirAppAtualizado.php',
         $app . '/Support/Entregas/AppDoMotoboy.php',
         $app . '/Http/Controllers/Entregas/MotoboyController.php',
+        // integração de pedidos de outros sistemas
+        $app . '/Http/Controllers/Entregas/IntegracaoController.php',
+        $app . '/Http/Controllers/Entregas/IntegracaoLojasController.php',
+        $app . '/Jobs/Entregas/EnviarAvisoDaIntegracao.php',
+        $app . '/Console/Commands/Entregas/AcompanharIntegracao.php',
     ]
 );
 
@@ -110,7 +116,8 @@ function faltando(string $arquivo, string $app, array $reservadas): array
             || ($textoAnt === ':' && $texto($i - 2) === ')' && in_array($textoProx, ['{', ';'], true)) // tipo de retorno
             || (in_array($textoAnt, ['|', '?'], true) && in_array($textoProx, ['|', '{', ';'], true))
             || ($textoProx === '|' && in_array($textoAnt, ['(', ',', ':', '?'], true));      // primeiro tipo de uma união
-        if (!$comoClasse) {
+        // constante global do PHP (JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES): parece o início de uma união de tipos
+        if (!$comoClasse || (!str_contains($nome, BARRA) && defined($nome))) {
             continue;
         }
         $primeiro = strtolower(explode(BARRA, $nome)[0]);

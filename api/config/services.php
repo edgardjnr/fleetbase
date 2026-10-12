@@ -73,6 +73,11 @@ return [
         'app_versao_url' => env('ENTREGAS_APP_VERSAO_URL', 'https://s3arquivos.restaurantepro.com.br/entregas/APK/entregas-motoboy.json'),
         // emergência (build quebrado): fixa a versão mínima à mão, ignorando a publicada; vazio = a publicada
         'app_versao_minima' => env('ENTREGAS_APP_VERSAO_MINIMA'),
+        // integração de pedidos de outros sistemas (RestaurantePro primeiro): 1 liga as rotas v1/entregas/integracao/*,
+        // os avisos por webhook e o entregas:integracao-acompanhar; vazio = tudo responde 409 e nenhum aviso sai
+        'integracao' => env('ENTREGAS_INTEGRACAO'),
+        // domínio do console, para o link de rastreio do cliente final (…/~/track-order?order=<código>)
+        'console_url' => env('ENTREGAS_CONSOLE_URL', 'https://entregas.restaurantepro.com.br'),
     ],
 
     // Entregas RestaurantePro: integração iFood Logistics, app distribuído (App\Support\Entregas\Ifood). ENTREGAS_IFOOD

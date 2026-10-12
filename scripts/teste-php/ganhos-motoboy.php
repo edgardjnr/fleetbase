@@ -137,8 +137,16 @@ confere($pendentes === 1 && $entregas[0]['km'] === null && $entregas[0]['valor_m
 
 reiniciar();
 [$entregas] = $calculo->entregas(new Collection([comKm(pedido('order_d'), 3210.4)]), 'America/Sao_Paulo');
-confere(array_keys($entregas[0]) === ['loja', 'loja_nome', 'pedido', 'id_interno', 'motoboy', 'motoboy_nome', 'concluido_em', 'origem', 'destino', 'km', 'fonte', 'faixa', 'valor_motoboy', 'valor_loja', 'cancelado_pago'], 'o formato do relatório e do extrato (cancelado_pago: etapa 3 do iFood)');
-confere($entregas[0]['cancelado_pago'] === false, 'pedido concluído: cancelado_pago falso');
+confere(array_keys($entregas[0]) === ['loja', 'loja_nome', 'pedido', 'id_interno', 'motoboy', 'motoboy_nome', 'concluido_em', 'origem', 'destino', 'km', 'fonte', 'faixa', 'valor_motoboy', 'valor_loja', 'cancelado_pago', 'cancelado_origem'], 'o formato do relatório e do extrato (cancelado_pago: etapa 3 do iFood; cancelado_origem: integração)');
+confere($entregas[0]['cancelado_pago'] === false && $entregas[0]['cancelado_origem'] === null, 'pedido concluído: cancelado_pago falso, sem origem');
+[$cancelados] = $calculo->entregas(new Collection([
+    comKm(pedido('order_ci', ['entregas_cancelado_pago' => 1, 'entregas_cancelado_origem' => 'integracao']), 3210.4),
+    comKm(pedido('order_cf', ['entregas_cancelado_pago' => 1, 'entregas_cancelado_origem' => 'ifood']), 3210.4),
+    comKm(pedido('order_cc', ['entregas_cancelado_pago' => 0, 'entregas_cancelado_origem' => 'ifood']), 3210.4),
+]), 'America/Sao_Paulo');
+confere($cancelados[0]['cancelado_pago'] === true && $cancelados[0]['cancelado_origem'] === 'integracao', 'cancelado pela origem (integração): cancelado_origem integracao');
+confere($cancelados[1]['cancelado_pago'] === true && $cancelados[1]['cancelado_origem'] === 'ifood', 'cancelado pelo iFood: cancelado_origem ifood');
+confere($cancelados[2]['cancelado_pago'] === false && $cancelados[2]['cancelado_origem'] === null, 'não pago mesmo cancelado: sem origem');
 confere($entregas[0]['loja'] === 'loja:vendor_centro' && $entregas[0]['concluido_em'] === '2026-10-03T19:42:00-03:00', "loja dona do pedido e conclusão no fuso da organização ({$entregas[0]['concluido_em']})");
 
 echo '== Valor de um pedido (card de aceitar e detalhes)' . PHP_EOL;
@@ -177,8 +185,9 @@ $entrega = [
     'valor_loja'    => 11.37,
 ];
 $linha = GanhosDoMotoboy::linha($entrega);
-confere(array_keys($linha) === ['pedido', 'concluido_em', 'loja', 'destino', 'km', 'aproximado', 'faixa', 'valor', 'cancelado_pago'], 'só os campos do app');
+confere(array_keys($linha) === ['pedido', 'concluido_em', 'loja', 'destino', 'km', 'aproximado', 'faixa', 'valor', 'cancelado_pago', 'cancelado_origem'], 'só os campos do app');
 confere($linha['cancelado_pago'] === false && GanhosDoMotoboy::linha(['cancelado_pago' => true] + $entrega)['cancelado_pago'] === true, 'cancelado_pago repassado ao app');
+confere($linha['cancelado_origem'] === null && GanhosDoMotoboy::linha(['cancelado_pago' => true, 'cancelado_origem' => 'integracao'] + $entrega)['cancelado_origem'] === 'integracao' && GanhosDoMotoboy::linha(['cancelado_pago' => true, 'cancelado_origem' => 'ifood'] + $entrega)['cancelado_origem'] === 'ifood', 'cancelado_origem repassado ao app (integracao e ifood)');
 confere($linha['valor'] === 8.0 && $linha['loja'] === 'Loja Centro' && $linha['aproximado'] === true, 'valor do motoboy, nome da loja e km estimado marcado como aproximado');
 confere($linha['faixa'] === ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'a faixa vai só com os limites');
 $semKm  = ['km' => null, 'fonte' => null, 'faixa' => null, 'valor_motoboy' => null, 'valor_loja' => null] + $entrega;

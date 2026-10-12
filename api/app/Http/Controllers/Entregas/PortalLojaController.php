@@ -95,6 +95,8 @@ class PortalLojaController extends Controller
             'valor'        => $e['valor_loja'],
             // pedido do iFood cancelado pelo iFood depois da coleta: a entrega é cobrada pela data do cancelamento
             'cancelado_pago' => (bool) ($e['cancelado_pago'] ?? false),
+            // quem cancelou: 'ifood' ou 'integracao' (o sistema de origem); null no concluído
+            'cancelado_origem' => $e['cancelado_origem'] ?? null,
         ], $entregas);
 
         return response()->json([

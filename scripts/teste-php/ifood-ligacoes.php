@@ -84,6 +84,6 @@ echo '== Relatório, cobrança e ganhos: o pago mesmo cancelado' . PHP_EOL;
 $calculo = file_get_contents('/repo/api/app/Support/Entregas/CalculoEntregas.php');
 confere(str_contains($calculo, "->leftJoin('entregas_ifood_pedidos as entregas_ifood', 'entregas_ifood.order_uuid', '=', 'orders.uuid')"), 'junta a linha do iFood');
 confere(str_contains($calculo, "where('entregas_ifood.pago_mesmo_cancelado', true)->whereNotNull('entregas_ifood.cancelado_pelo_ifood_em')"), 'concluído ou pago mesmo cancelado');
-confere(str_contains(\App\Support\Entregas\CalculoEntregas::DATA_DA_ENTREGA, 'ELSE entregas_ifood.cancelado_pelo_ifood_em END'), 'o pago mesmo cancelado conta pela data do cancelamento');
+confere(str_contains(\App\Support\Entregas\CalculoEntregas::DATA_DA_ENTREGA, 'ELSE COALESCE(entregas_ifood.cancelado_pelo_ifood_em, entregas_integracao.cancelado_em) END'), 'o pago mesmo cancelado conta pela data do cancelamento');
 
 resumo();

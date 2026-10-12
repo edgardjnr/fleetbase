@@ -4,6 +4,8 @@ namespace App\Support\Entregas;
 
 use App\Support\Entregas\Ifood\CobrancaIfood;
 use App\Support\Entregas\Ifood\PedidosIfood;
+use App\Support\Entregas\Integracao\CobrancaDaIntegracao;
+use App\Support\Entregas\Integracao\PedidosDaIntegracao;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
 use Illuminate\Support\Facades\Log;
@@ -22,6 +24,7 @@ use Illuminate\Support\Facades\Log;
  * como polyline do Google): o push de dados do FCM tem limite de 4 KB.
  *
  * Pedido iFood (etapa 3): entregas_ifood (o número) e entregas_cobrar (o texto da cobrança na porta, CobrancaIfood).
+ * Pedido de outro sistema (RestaurantePro): entregas_origem ("RestaurantePro #4821") e entregas_cobrar (CobrancaDaIntegracao).
  */
 class CartaoDoAlarme
 {
@@ -61,7 +64,7 @@ class CartaoDoAlarme
             static::polyline(static::reduzir($rota['linha'] ?? [], static::MAX_PONTOS_DA_ROTA)),
             $pedido->status,
             !empty($rota['aproximado'])
-        ), static::ifoodDoPedido($pedido));
+        ), static::ifoodDoPedido($pedido), static::integracaoDoPedido($pedido));
     }
 
     /**
@@ -87,6 +90,36 @@ class CartaoDoAlarme
             return static::ifood(PedidosIfood::doPedido((string) $pedido->uuid));
         } catch (\Throwable $e) {
             Log::warning('[entregas] alarme sem os dados do iFood', ['pedido' => $pedido->public_id, 'erro' => get_class($e)]);
+
+            return [];
+        }
+    }
+
+    /**
+     * Pedido de outro sistema: entregas_origem ("RestaurantePro #4821", para o selo do cartão do APK novo) e
+     * entregas_cobrar (só com valor a cobrar na porta). O APK atual ignora o entregas_origem.
+     */
+    public static function integracao(?object $linha): array
+    {
+        if (!$linha) {
+            return [];
+        }
+
+        $numero = isset($linha->numero) && $linha->numero !== '' ? (string) $linha->numero : null;
+
+        return array_filter([
+            'entregas_origem' => $numero !== null ? ($linha->sistema ?: 'Integração') . ' #' . $numero : null,
+            'entregas_cobrar' => CobrancaDaIntegracao::texto($linha->cobranca_forma ?? null, (int) ($linha->cobranca_centavos ?? 0), isset($linha->troco_para_centavos) ? (int) $linha->troco_para_centavos : null),
+        ], fn ($valor) => $valor !== null);
+    }
+
+    /** Os dados da integração do pedido; uma falha na consulta não tira o resto do cartão. */
+    protected static function integracaoDoPedido(Order $pedido): array
+    {
+        try {
+            return static::integracao(PedidosDaIntegracao::doPedido((string) $pedido->uuid));
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] alarme sem os dados da integração', ['pedido' => $pedido->public_id, 'erro' => get_class($e)]);
 
             return [];
         }
