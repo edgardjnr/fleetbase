@@ -76,3 +76,29 @@ test('chaves de tradução', () => {
     assert.equal(chaveDoCanceladoPago(null), 'cancelado-pago', 'API antiga: o rótulo de hoje');
     assert.equal(chaveDoCanceladoPago(undefined), 'cancelado-pago');
 });
+
+// Portal da loja: a mesma regra, cópia própria (o engine do portal não importa do fleetops)
+import { chaveDoCanceladoCobrado, origemDoPedido as origemNoPortal } from '../../packages/customer-portal/addon/utils/entregas-pedido.js';
+
+test('portal: mesma origem do console', () => {
+    const casos = [
+        ['RestaurantePro #4821', '4821'],
+        ['RestaurantePro #4821 [SEM LOCALIZAÇÃO]', 4821],
+        ['iFood #4821 [TESTE]', '4821'],
+        ['Anota AI #77', '77'],
+        ['IFOOD falso #12', '12'],
+        ['Entregar no portão', '4821'],
+        ['RestaurantePro #4821', '1'],
+        [null, '1'],
+        ['RestaurantePro #4821', null],
+    ];
+    for (const [notas, id] of casos) {
+        assert.deepEqual(origemNoPortal(notas, id), origemDoPedido(notas, id), `${notas} / ${id}`);
+    }
+});
+
+test('portal: rótulo do cancelado cobrado', () => {
+    assert.equal(chaveDoCanceladoCobrado('integracao'), 'canceled-store-charged');
+    assert.equal(chaveDoCanceladoCobrado('ifood'), 'canceled-ifood-charged');
+    assert.equal(chaveDoCanceladoCobrado(null), 'canceled-ifood-charged', 'API antiga: o rótulo de hoje');
+});
