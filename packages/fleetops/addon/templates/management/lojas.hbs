@@ -206,6 +206,8 @@
                                     {{/if}}
                                 {{/let}}
                             </div>
+                            {{! Entregas: integração de pedidos de outros sistemas (RestaurantePro…): chave da loja, situação e falha do último aviso }}
+                            <Loja::Integracao @loja={{loja}} />
                         </div>
                         <div class="flex items-center gap-2">
                             <Button @size="xs" @icon="pen-to-square" @text={{t "fleet-ops.ui.lojas.edit"}} @onClick={{fn this.editar loja}} />

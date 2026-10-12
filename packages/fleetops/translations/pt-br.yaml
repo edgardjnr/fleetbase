@@ -229,6 +229,34 @@ fleet-ops:
         confirm: Vincular
         choose: 'A conta do iFood tem mais de uma loja. Escolha a que corresponde a {name}:'
         close: Fechar
+      integracao:
+        label: 'Integração:'
+        sem-chave: '—'
+        erro: não foi possível ler a integração
+        aguardando: 'Chave …{final} gerada · aguardando o sistema conectar'
+        conectada: 'Conectada a {sistema}'
+        conectada-uso: 'Conectada a {sistema} · último uso {uso}'
+        chave-final: 'chave …{final}'
+        falha: 'Falha no último aviso ({quando}): {texto}'
+        desligada: 'Integração desligada no servidor'
+        ha:
+          agora: agora há pouco
+          minutos: 'há {n} min'
+          horas: 'há {n} h'
+          dias: 'há {n, plural, one {# dia} other {# dias}}'
+        gerar: Gerar chave
+        gerar-de-novo: Gerar outra chave
+        revogar: Revogar
+        revogada: Integração revogada.
+        regerar-titulo: Gerar outra chave?
+        regerar-texto: 'A chave atual de {name} (final {final}) para de funcionar agora: os pedidos do sistema deixam de entrar e os avisos param. O restaurante precisa colar a chave nova no sistema dele e conectar de novo.'
+        revogar-titulo: Revogar a integração?
+        revogar-texto: 'A chave de {name} para de funcionar: os pedidos do sistema deixam de entrar no Entregas e os avisos param. Os pedidos já recebidos continuam.'
+        chave-titulo: 'Chave de integração de {name}'
+        chave-aviso: 'Copie agora: esta chave não aparece de novo. Se perder, gere outra.'
+        chave-copiar: Clique na chave para copiar.
+        chave-onde: 'No RestaurantePro: Configurações de delivery → "Entregas por" → Entregas RestaurantePro → cole a chave e conecte.'
+        ja-copiei: Já copiei
     pedido-sem-motoboy:
       aviso: 'Pedido {numero} está há {minutos} min sem motoboy. Clique para abrir e atribuir.'
     ifood:

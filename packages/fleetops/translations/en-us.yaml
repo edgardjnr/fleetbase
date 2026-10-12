@@ -229,6 +229,34 @@ fleet-ops:
                 confirm: Link
                 choose: 'The iFood account has more than one store. Choose the one that matches {name}:'
                 close: Close
+            integracao:
+                label: 'Integration:'
+                sem-chave: '—'
+                erro: could not read the integration
+                aguardando: 'Key …{final} created · waiting for the system to connect'
+                conectada: 'Connected to {sistema}'
+                conectada-uso: 'Connected to {sistema} · last used {uso}'
+                chave-final: 'key …{final}'
+                falha: 'Last update failed ({quando}): {texto}'
+                desligada: 'Integration turned off on the server'
+                ha:
+                    agora: just now
+                    minutos: '{n} min ago'
+                    horas: '{n} h ago'
+                    dias: '{n, plural, one {# day} other {# days}} ago'
+                gerar: Create key
+                gerar-de-novo: Create another key
+                revogar: Revoke
+                revogada: Integration revoked.
+                regerar-titulo: Create another key?
+                regerar-texto: 'The current key of {name} (ending {final}) stops working now: orders from the system stop coming in and updates stop. The restaurant must paste the new key in its system and connect again.'
+                revogar-titulo: Revoke the integration?
+                revogar-texto: 'The key of {name} stops working: orders from the system stop coming in and updates stop. Orders already received continue.'
+                chave-titulo: 'Integration key of {name}'
+                chave-aviso: 'Copy it now: this key is not shown again. If you lose it, create another.'
+                chave-copiar: Click the key to copy it.
+                chave-onde: 'In RestaurantePro: Delivery settings → "Delivered by" → Entregas RestaurantePro → paste the key and connect.'
+                ja-copiei: I copied it
         pedido-sem-motoboy:
             aviso: 'Order {numero} has had no driver for {minutos} min. Click to open and assign.'
         ifood:

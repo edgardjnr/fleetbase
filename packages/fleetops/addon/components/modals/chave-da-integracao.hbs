@@ -1,0 +1,10 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="px-4 space-y-4 text-gray-900 dark:text-gray-50">
+        <p class="text-sm font-semibold text-red-700 dark:text-red-300">{{t "fleet-ops.ui.lojas.integracao.chave-aviso"}}</p>
+        <ClickToCopy @value={{this.chave}} class="block w-full rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 px-3 py-3 text-center font-mono text-base break-all">
+            <FaIcon @icon="copy" class="mr-2 text-gray-400" />{{this.chave}}
+        </ClickToCopy>
+        <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.integracao.chave-copiar"}}</p>
+        <p class="text-sm">{{t "fleet-ops.ui.lojas.integracao.chave-onde"}}</p>
+    </div>
+</Modal::Default>

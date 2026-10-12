@@ -1,0 +1,29 @@
+<div class="mt-1 flex flex-wrap items-center gap-2 text-xs" {{did-insert this.carregarAoAparecer}}>
+    <span class="text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.integracao.label"}}</span>
+    {{#if this.erro}}
+        <span class="text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.integracao.erro"}}</span>
+    {{else if this.carregar.isRunning}}
+        <span class="text-gray-400">…</span>
+    {{else if (eq this.situacao "conectada")}}
+        <span class="font-medium rounded px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">{{this.conectadaTexto}}</span>
+        <span class="text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.integracao.chave-final" final=this.final}}</span>
+    {{else if (eq this.situacao "aguardando")}}
+        <span class="font-medium rounded px-2 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">{{t "fleet-ops.ui.lojas.integracao.aguardando" final=this.final}}</span>
+    {{else}}
+        <span class="text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.integracao.sem-chave"}}</span>
+    {{/if}}
+    {{#if this.falhaTexto}}
+        <span class="font-medium rounded px-2 py-0.5 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">{{this.falhaTexto}}</span>
+    {{/if}}
+    {{#unless this.erro}}
+        {{#if this.podeGerar}}
+            <Button @size="xs" @icon="key" @text={{if this.integracao.ativa (t "fleet-ops.ui.lojas.integracao.gerar-de-novo") (t "fleet-ops.ui.lojas.integracao.gerar")}} @onClick={{this.gerarChave}} />
+        {{/if}}
+        {{#if this.integracao.ativa}}
+            <Button @size="xs" @icon="ban" @text={{t "fleet-ops.ui.lojas.integracao.revogar"}} @onClick={{this.revogar}} />
+        {{/if}}
+        {{#if (and (not this.podeGerar) (not this.integracao.ativa) this.integracao)}}
+            <span class="text-gray-400">{{t "fleet-ops.ui.lojas.integracao.desligada"}}</span>
+        {{/if}}
+    {{/unless}}
+</div>
