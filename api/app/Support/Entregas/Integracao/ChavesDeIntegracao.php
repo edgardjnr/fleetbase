@@ -68,7 +68,7 @@ final class ChavesDeIntegracao
     }
 
     /** A loja da chave (Bearer), ou null: formato errado, chave desconhecida ou revogada. */
-    public static function daChave(?string $chave): ?object
+    public static function daChave(#[\SensitiveParameter] ?string $chave): ?object
     {
         $chave = trim((string) $chave);
         if (!str_starts_with($chave, Integracao::PREFIXO_DA_CHAVE) || strlen($chave) !== strlen(Integracao::PREFIXO_DA_CHAVE) + Integracao::TAMANHO_DA_CHAVE) {
@@ -148,7 +148,7 @@ final class ChavesDeIntegracao
         }
     }
 
-    public static function hash(string $chave): string
+    public static function hash(#[\SensitiveParameter] string $chave): string
     {
         return hash('sha256', $chave);
     }

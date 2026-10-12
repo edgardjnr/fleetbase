@@ -77,5 +77,7 @@ confere(Integracao::linkDeRastreio('RP12345') === 'https://entregas.restaurantep
 confere(Integracao::linkDeRastreio(null) === null && Integracao::linkDeRastreio('  ') === null, 'sem código: sem link');
 confere(Integracao::nomeDoSistema('Saipos <b>') === 'Saipos b' && Integracao::nomeDoSistema('') === 'Integração' && Integracao::nomeDoSistema(null) === 'Integração', 'nome do sistema limpo, com padrão');
 confere(mb_strlen(Integracao::nomeDoSistema(str_repeat('a', 60))) === 40, 'nome do sistema com até 40 caracteres');
+\Teste\Config::$valores['services.entregas.console_url'] = '';
+confere(Integracao::linkDeRastreio('RP1') === 'https://entregas.restaurantepro.com.br/~/track-order?order=RP1', 'console_url vazia: o domínio padrão');
 
 resumo();

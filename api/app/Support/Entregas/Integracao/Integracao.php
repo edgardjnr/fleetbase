@@ -29,7 +29,7 @@ final class Integracao
         if ($codigo === '') {
             return null;
         }
-        $base = rtrim((string) config('services.entregas.console_url', 'https://entregas.restaurantepro.com.br'), '/');
+        $base = rtrim((string) (config('services.entregas.console_url') ?: 'https://entregas.restaurantepro.com.br'), '/');
 
         return $base . '/~/track-order?order=' . rawurlencode($codigo);
     }
