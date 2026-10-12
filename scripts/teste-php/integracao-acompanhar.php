@@ -98,6 +98,16 @@ $novo = pedidoDaIntegracao(['status' => 'created', 'started' => false, 'dispatch
 acompanhar();
 confere($novo->chamadas === ['saveQuietly', 'firstDispatchWithActivity'], '300 pedidos cancelados sem despacho: o pedido novo é despachado');
 
+echo '== Aviso do pedido que mudou por último primeiro' . PHP_EOL;
+reiniciarIntegracao();
+lojaIntegradaA();
+for ($i = 0; $i < 310; $i++) {
+    pedidoDaIntegracao(['uuid' => "parado-{$i}", 'public_id' => "order_p{$i}", 'updated_at' => '2026-10-05 10:00:00'], ['order_uuid' => "parado-{$i}", 'pedido_externo_id' => "p{$i}", 'ultimo_aviso' => 'aceito', 'motoboy_avisado' => 'driver-1', 'created_at' => '2026-10-05 14:50:00']);
+}
+pedidoDaIntegracao(['status' => 'completed', 'updated_at' => '2026-10-05 14:59:00'], ['ultimo_aviso' => 'aceito', 'motoboy_avisado' => 'driver-1', 'created_at' => '2026-10-05 09:00:00']);
+acompanhar();
+confere(count(Fila::$jobs) === 1 && Fila::$jobs[0]->orderUuid === 'order-1', '310 pedidos parados e um concluído com o aviso perdido: o concluído é enfileirado');
+
 echo '== Despacho fora da janela de 30 min' . PHP_EOL;
 reiniciarIntegracao();
 lojaIntegradaA();

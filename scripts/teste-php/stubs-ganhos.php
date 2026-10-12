@@ -264,6 +264,8 @@ namespace Fleetbase\FleetOps\Models {
         public $payload               = null;
         public $driverAssigned        = null;
         public $entregas_concluido_em = '2026-10-03 19:42:00'; // texto do banco, em hora de Brasília
+        public $entregas_cancelado_pago;   // colunas do select do pedidosConcluidos (null = concluído)
+        public $entregas_cancelado_origem;
         public $updated_at            = null;
         public $timestamps            = true;
         public array $meta            = [];

@@ -54,6 +54,8 @@ confere(str_contains(file_get_contents('/repo/api/app/Console/Commands/Entregas/
 echo '== Pagamento e cobrança' . PHP_EOL;
 confere(str_contains($calculo, "->leftJoin('entregas_integracao_pedidos as entregas_integracao', 'entregas_integracao.order_uuid', '=', 'orders.uuid')"), 'junta a linha da integração');
 confere(str_contains($calculo, "where('entregas_integracao.pago_mesmo_cancelado', true)->whereNotNull('entregas_integracao.cancelado_em')"), 'pago mesmo cancelado pela origem entra');
+confere(str_contains($calculo, "WHEN entregas_integracao.cancelado_em IS NOT NULL THEN 'integracao' END as entregas_cancelado_origem"), 'a origem do cancelamento pago no select');
+confere(str_contains($calculo, "'cancelado_origem' => (\$pedido->entregas_cancelado_pago ?? false) ? (\$pedido->entregas_cancelado_origem ?? null) : null"), 'a origem na linha das entregas');
 confere(str_contains(CalculoEntregas::DATA_DA_ENTREGA, 'ELSE COALESCE(entregas_ifood.cancelado_pelo_ifood_em, entregas_integracao.cancelado_em) END'), 'conta pela data do cancelamento');
 
 echo '== Push' . PHP_EOL;

@@ -111,7 +111,7 @@ class CalculoEntregas
             // o filtro vai entre parênteses: um orWhere dele não escapa da empresa, do status e do período
             // (é o isolamento do extrato da loja). A condição é booleana porque o when() executaria a closure
             ->when($filtro !== null, fn ($query) => $query->where(fn ($grupo) => $filtro($grupo)))
-            ->select('orders.*', DB::raw(static::DATA_DA_ENTREGA . ' as entregas_concluido_em'), DB::raw("CASE WHEN orders.status = 'completed' THEN 0 ELSE 1 END as entregas_cancelado_pago"))
+            ->select('orders.*', DB::raw(static::DATA_DA_ENTREGA . ' as entregas_concluido_em'), DB::raw("CASE WHEN orders.status = 'completed' THEN 0 ELSE 1 END as entregas_cancelado_pago"), DB::raw("CASE WHEN entregas_ifood.cancelado_pelo_ifood_em IS NOT NULL THEN 'ifood' WHEN entregas_integracao.cancelado_em IS NOT NULL THEN 'integracao' END as entregas_cancelado_origem"))
             // coleta, destino e nome do motoboy em lote, sem uma consulta por pedido
             ->with(['payload.pickup', 'payload.dropoff', 'payload.waypoints', 'driverAssigned.user'])
             ->orderBy('entregas_concluido_em')
@@ -166,6 +166,8 @@ class CalculoEntregas
                 'valor_loja'    => $valor['loja'] ?? null,
                 // pedido iFood cancelado pelo iFood depois do dispatch: conta pela data do cancelamento
                 'cancelado_pago' => (bool) ($pedido->entregas_cancelado_pago ?? false),
+                // quem cancelou o pago mesmo cancelado: 'ifood' ou 'integracao' (o sistema de origem); null no concluído
+                'cancelado_origem' => ($pedido->entregas_cancelado_pago ?? false) ? ($pedido->entregas_cancelado_origem ?? null) : null,
             ];
         }
 
