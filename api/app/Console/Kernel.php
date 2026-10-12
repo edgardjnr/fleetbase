@@ -43,6 +43,9 @@ class Kernel extends ConsoleKernel
         $schedule->command('entregas:ifood-tokens')->everyThirtyMinutes()->when($ligada)->withoutOverlapping(10)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
         // distribuição de pedidos abertos: reserva do job AvancarOferta (ver VarrerDistribuicoes)
         $schedule->command('entregas:distribuicao-varrer')->everyMinute()->when(fn () => Distribuicao::ligada())->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
+
+        // integração de pedidos de outros sistemas: despacho que falhou e avisos que faltam (AcompanharIntegracao)
+        $schedule->command('entregas:integracao-acompanhar')->everyMinute()->when(fn () => Integracao::ligada())->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
     }
 
     /**
