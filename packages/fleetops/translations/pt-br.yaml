@@ -280,6 +280,11 @@ fleet-ops:
         vale-presente: vale-presente
         outra-forma: outra forma
         misto: formas variadas
+    origem:
+      coluna: Origem
+    integracao:
+      selo: '{sistema} #{numero}'
+      selo-titulo: 'Pedido recebido de {sistema}'
     distribuicao:
       painel-titulo: Distribuição
       erro: Não foi possível carregar a distribuição.

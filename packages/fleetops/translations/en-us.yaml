@@ -280,6 +280,11 @@ fleet-ops:
                 vale-presente: gift card
                 outra-forma: other method
                 misto: mixed methods
+        origem:
+            coluna: Source
+        integracao:
+            selo: '{sistema} #{numero}'
+            selo-titulo: 'Order received from {sistema}'
         distribuicao:
             painel-titulo: Driver offers
             erro: Could not load the dispatch.
