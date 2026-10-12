@@ -1,0 +1,43 @@
+<?php
+
+// Integração: a URL dos avisos só pode ser https pública (sem sondar a VPS pela rede interna).
+// Uso: PHP_WASM_DIR=<pasta> node scripts/teste-php/rodar.mjs scripts/teste-php/integracao-webhook-url.php
+
+require __DIR__ . '/stubs-integracao.php';
+
+use App\Support\Entregas\Integracao\UrlDoWebhook;
+
+$publico = resolverPublico();
+
+echo '== Aceitas' . PHP_EOL;
+confere(UrlDoWebhook::recusa('https://api.restaurantepro.com.br/functions/v1/entregas-webhook?t=abc', $publico) === null, 'https público');
+confere(UrlDoWebhook::recusa('https://api.exemplo.com.br:443/x', $publico) === null, 'porta 443 explícita');
+confere(UrlDoWebhook::recusa('https://200.150.10.20/x', $publico) === null, 'IP público direto');
+
+echo '== Recusadas' . PHP_EOL;
+foreach ([
+    'http://api.restaurantepro.com.br/x'          => 'http',
+    'ftp://api.exemplo.com.br/x'                  => 'outro esquema',
+    'não é url'                                   => 'texto',
+    'https://localhost/x'                         => 'localhost',
+    'https://algo.localhost/x'                    => '*.localhost',
+    'https://127.0.0.1/x'                         => 'loopback',
+    'https://0.0.0.0/x'                           => '0.0.0.0',
+    'https://10.0.0.5/x'                          => '10.x',
+    'https://172.16.3.4/x'                        => '172.16.x',
+    'https://192.168.0.10/x'                      => '192.168.x',
+    'https://169.254.169.254/latest/meta-data'    => 'metadados da nuvem',
+    'https://[::1]/x'                             => 'IPv6 loopback',
+    'https://[fd00::1]/x'                         => 'IPv6 privado',
+    'https://entregas_application/x'              => 'nome do Swarm, sem ponto',
+    'https://usuario:senha@api.exemplo.com.br/x'  => 'com usuário e senha',
+    'https://api.exemplo.com.br:8443/x'           => 'porta fora da 443',
+] as $url => $caso) {
+    confere(UrlDoWebhook::recusa($url, $publico) !== null, "recusa: {$caso}");
+}
+confere(UrlDoWebhook::recusa('https://interno.exemplo.com.br/x', fn ($host) => ['10.0.0.7']) !== null, 'nome que resolve para IP privado');
+confere(UrlDoWebhook::recusa('https://misto.exemplo.com.br/x', fn ($host) => ['200.150.10.20', '192.168.1.1']) !== null, 'nome com um dos IPs privado');
+confere(UrlDoWebhook::recusa('https://sumiu.exemplo.com.br/x', fn ($host) => []) !== null, 'nome que não resolve');
+confere(UrlDoWebhook::recusa('https://' . str_repeat('a', 500) . '.com.br/x', $publico) !== null, 'URL longa demais');
+
+resumo();
