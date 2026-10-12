@@ -13,14 +13,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Entregas RestaurantePro: reserva da integração de pedidos, a cada minuto (Kernel). Nos pedidos das últimas 24 h ainda
- * sem o aviso final:
- * - refaz o despacho que falhou no POST pedidos (trava ocupada, erro), passado 1 min da criação; o pedido sem
- *   localização fica com a central;
- * - enfileira o aviso que falta (o saveQuietly do Fleet-Ops, um job perdido com o Redis reiniciado), só para lojas
- *   conectadas e sem falha de aviso nos últimos 5 min (a falha esgotou as tentativas do job: espera antes de tentar de
- *   novo, em vez de bater no destino fora do ar a cada minuto).
- * Até 300 pedidos por rodada. Uma falha num pedido não para os outros (log `falha ao acompanhar o pedido`).
+ * Entregas RestaurantePro: reserva da integração de pedidos, a cada minuto (Kernel). Duas consultas, cada uma com o
+ * próprio limite (POR_RODADA), para linhas presas (Order apagado, loja sem conexão, destino fora do ar) não tirarem a
+ * vez dos pedidos novos:
+ * - despacho: pedido que ficou sem despachar (trava ocupada, erro no POST pedidos), de 1 min a 30 min depois da criação.
+ *   O limite de 30 min evita tentar 1440 vezes uma falha permanente. Dentro dessa janela o pedido que a central parou
+ *   (adhoc desligado) continua sendo despachado, como no entregas:ifood-agendados. O pedido sem localização fica com a
+ *   central; aceito, despachado ou encerrado não entra;
+ * - avisos: pedidos das últimas 24 h ainda sem o aviso final, só de lojas conectadas e sem falha de aviso nos últimos
+ *   5 min (a falha esgotou as tentativas do job: espera, em vez de bater no destino fora do ar a cada minuto), os mais
+ *   recentes primeiro. Enfileira o aviso que falta (o saveQuietly do Fleet-Ops, um job perdido com o Redis reiniciado).
+ * Pára depois de ORCAMENTO_SEGUNDOS (cada despacho pode esperar até 10 s pela trava); o que ficou vai na rodada seguinte.
+ * Uma falha num pedido não para os outros (log `falha ao acompanhar o pedido`).
  */
 class AcompanharIntegracao extends Command
 {
@@ -28,13 +32,17 @@ class AcompanharIntegracao extends Command
 
     protected $description = 'Entregas: refaz o despacho que falhou e reenvia os avisos que faltam dos pedidos da integração';
 
-    public const LIMITE = 300;
+    public const POR_RODADA = 300;
 
     public const JANELA_HORAS = 24;
 
     public const FOLGA_DO_DESPACHO_SEGUNDOS = 60;
 
+    public const JANELA_DO_DESPACHO_MINUTOS = 30;
+
     public const PAUSA_DEPOIS_DE_FALHA_MINUTOS = 5;
+
+    public const ORCAMENTO_SEGUNDOS = 45;
 
     public function handle(CriadorDoPedidoDaIntegracao $criador): int
     {
@@ -42,34 +50,73 @@ class AcompanharIntegracao extends Command
             return static::SUCCESS;
         }
 
-        $linhas = DB::table(Integracao::PEDIDOS)
-            ->where('created_at', '>=', now()->subHours(static::JANELA_HORAS)->toDateTimeString())
-            ->whereNotNull('order_uuid')
-            ->where(fn ($q) => $q->whereNull('ultimo_aviso')->orWhere('ultimo_aviso', SequenciaDaIntegracao::ACEITO)->orWhere('ultimo_aviso', SequenciaDaIntegracao::A_CAMINHO))
-            ->orderBy('id')
-            ->limit(static::LIMITE)
-            ->get();
-        if ($linhas->isEmpty()) {
+        $inicio = microtime(true);
+        $p      = Integracao::PEDIDOS;
+
+        $paraDespachar = DB::table($p)
+            ->join('orders', 'orders.uuid', '=', "{$p}.order_uuid")
+            ->whereNull("{$p}.despachado_em")
+            ->where("{$p}.sem_localizacao", false)
+            ->where("{$p}.created_at", '>=', now()->subMinutes(static::JANELA_DO_DESPACHO_MINUTOS)->toDateTimeString())
+            ->where("{$p}.created_at", '<=', now()->subSeconds(static::FOLGA_DO_DESPACHO_SEGUNDOS)->toDateTimeString())
+            ->where('orders.dispatched', false)
+            ->whereNull('orders.deleted_at')
+            ->orderBy("{$p}.id")
+            ->limit(static::POR_RODADA)
+            ->select("{$p}.*")
+            ->get()
+            ->all();
+
+        $lojas      = $this->lojasQueRecebem();
+        $paraAvisar = [];
+        if ($lojas !== []) {
+            $paraAvisar = DB::table($p)
+                ->join('orders', 'orders.uuid', '=', "{$p}.order_uuid")
+                ->whereIn("{$p}.vendor_uuid", array_keys($lojas))
+                ->where("{$p}.created_at", '>=', now()->subHours(static::JANELA_HORAS)->toDateTimeString())
+                ->where(fn ($q) => $q->whereNull("{$p}.ultimo_aviso")->orWhere("{$p}.ultimo_aviso", SequenciaDaIntegracao::ACEITO)->orWhere("{$p}.ultimo_aviso", SequenciaDaIntegracao::A_CAMINHO))
+                ->whereNull('orders.deleted_at')
+                ->orderBy("{$p}.created_at", 'desc')
+                ->limit(static::POR_RODADA)
+                ->select("{$p}.*")
+                ->get()
+                ->all();
+        }
+
+        $uuids = array_values(array_unique(array_merge(array_column($paraDespachar, 'order_uuid'), array_column($paraAvisar, 'order_uuid'))));
+        if ($uuids === []) {
             return static::SUCCESS;
         }
-
         $pedidos = [];
-        foreach (Order::whereIn('uuid', $linhas->pluck('order_uuid')->all())->get() as $pedido) {
+        foreach (Order::whereIn('uuid', $uuids)->get() as $pedido) {
             $pedidos[$pedido->uuid] = $pedido;
         }
-        $lojas = $this->lojasQueRecebem();
 
-        foreach ($linhas as $linha) {
+        foreach ($paraDespachar as $linha) {
+            if ($this->semTempo($inicio)) {
+                return static::SUCCESS;
+            }
+            $pedido = $pedidos[$linha->order_uuid] ?? null;
+            if (!$pedido || $pedido->started || in_array($pedido->status, StatusDoPedido::ENCERRADOS, true)) {
+                continue;
+            }
+            try {
+                $criador->despachar($pedido);
+            } catch (\Throwable $e) {
+                Log::warning('[entregas] integração: falha ao acompanhar o pedido', ['pedido' => $pedido->public_id, 'erro' => get_class($e)]);
+            }
+        }
+
+        foreach ($paraAvisar as $linha) {
+            if ($this->semTempo($inicio)) {
+                return static::SUCCESS;
+            }
             $pedido = $pedidos[$linha->order_uuid] ?? null;
             if (!$pedido) {
                 continue;
             }
-
             try {
-                if ($this->despachoFalhou($linha, $pedido)) {
-                    $criador->despachar($pedido);
-                }
-                if (isset($lojas[$linha->vendor_uuid]) && SequenciaDaIntegracao::doPedido($linha, $pedido) !== []) {
+                if (SequenciaDaIntegracao::doPedido($linha, $pedido) !== []) {
                     EnviarAvisoDaIntegracao::enfileirar((string) $pedido->uuid);
                 }
             } catch (\Throwable $e) {
@@ -78,6 +125,11 @@ class AcompanharIntegracao extends Command
         }
 
         return static::SUCCESS;
+    }
+
+    protected function semTempo(float $inicio): bool
+    {
+        return microtime(true) - $inicio > static::ORCAMENTO_SEGUNDOS;
     }
 
     /** vendor_uuid => loja, das lojas com chave ativa, conectadas e sem falha de aviso recente. */
@@ -93,14 +145,5 @@ class AcompanharIntegracao extends Command
         }
 
         return $lojas;
-    }
-
-    protected function despachoFalhou(object $linha, Order $pedido): bool
-    {
-        if ($linha->sem_localizacao || $linha->despachado_em || $pedido->dispatched || $pedido->started || in_array($pedido->status, StatusDoPedido::ENCERRADOS, true)) {
-            return false;
-        }
-
-        return substr((string) $linha->created_at, 0, 19) <= now()->subSeconds(static::FOLGA_DO_DESPACHO_SEGUNDOS)->toDateTimeString();
     }
 }

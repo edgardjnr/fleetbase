@@ -78,6 +78,31 @@ $pedido = pedidoDaIntegracao(['status' => 'canceled', 'started' => false, 'dispa
 acompanhar();
 confere($pedido->chamadas === [], 'cancelado: não despacha');
 
+echo '== Linhas presas não tiram a vez' . PHP_EOL;
+reiniciarIntegracao();
+lojaIntegradaA();
+for ($i = 0; $i < 300; $i++) {
+    pedidoDaIntegracao(['uuid' => "velho-{$i}", 'public_id' => "order_v{$i}", 'status' => 'created', 'started' => false, 'dispatched' => false, 'driver_assigned_uuid' => null, 'deleted_at' => '2026-10-05 14:00:00'], ['order_uuid' => "velho-{$i}", 'pedido_externo_id' => "v{$i}", 'despachado_em' => null, 'created_at' => '2026-10-05 14:50:00']);
+}
+$novo = pedidoDaIntegracao(['status' => 'created', 'started' => false, 'dispatched' => false, 'driver_assigned_uuid' => null], ['despachado_em' => null, 'created_at' => '2026-10-05 14:58:00']);
+acompanhar();
+confere($novo->chamadas === ['saveQuietly', 'firstDispatchWithActivity'], '300 linhas com Order apagado: o pedido novo é despachado');
+
+echo '== Despacho fora da janela de 30 min' . PHP_EOL;
+reiniciarIntegracao();
+lojaIntegradaA();
+$pedido = pedidoDaIntegracao(['status' => 'created', 'started' => false, 'dispatched' => false, 'driver_assigned_uuid' => null], ['despachado_em' => null, 'created_at' => '2026-10-05 14:20:00']);
+acompanhar();
+confere($pedido->chamadas === [], 'criado há mais de 30 min: não redespacha');
+
+echo '== Loja sem conexão fora dos avisos' . PHP_EOL;
+reiniciarIntegracao();
+lojaIntegradaA();
+pedidoDaIntegracao(['uuid' => 'order-b', 'public_id' => 'order_b', 'customer_uuid' => 'vendor-b'], ['order_uuid' => 'order-b', 'vendor_uuid' => 'vendor-b', 'pedido_externo_id' => 'ord-b']);
+pedidoDaIntegracao();
+acompanhar();
+confere(count(Fila::$jobs) === 1 && Fila::$jobs[0]->orderUuid === 'order-1', 'só o pedido da loja conectada recebe o job');
+
 echo '== Desligada' . PHP_EOL;
 reiniciarIntegracao();
 lojaIntegradaA();

@@ -4,6 +4,7 @@ namespace App\Console;
 
 use App\Support\Entregas\Distribuicao\Distribuicao;
 use App\Support\Entregas\Ifood\ClienteIfood;
+use App\Support\Entregas\Integracao\Integracao;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
