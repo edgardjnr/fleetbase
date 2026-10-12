@@ -19,10 +19,10 @@ use Illuminate\Support\Facades\Log;
  * - despacho: pedido que ficou sem despachar (trava ocupada, erro no POST pedidos), de 1 min a 30 min depois da criação.
  *   O limite de 30 min evita tentar 1440 vezes uma falha permanente. Dentro dessa janela o pedido que a central parou
  *   (adhoc desligado) continua sendo despachado, como no entregas:ifood-agendados. O pedido sem localização fica com a
- *   central; aceito, despachado ou encerrado não entra;
+ *   central; aceito, despachado ou encerrado não entra (filtrado no SQL, antes do limite, e conferido de novo no PHP);
  * - avisos: pedidos das últimas 24 h ainda sem o aviso final, só de lojas conectadas e sem falha de aviso nos últimos
- *   5 min (a falha esgotou as tentativas do job: espera, em vez de bater no destino fora do ar a cada minuto), os mais
- *   recentes primeiro. Enfileira o aviso que falta (o saveQuietly do Fleet-Ops, um job perdido com o Redis reiniciado).
+ *   5 min (a falha esgotou as tentativas do job: espera, em vez de bater no destino fora do ar a cada minuto), o pedido
+ *   que mudou por último primeiro (orders.updated_at: o concluído com aviso perdido não fica atrás dos parados). Enfileira o aviso que falta (o saveQuietly do Fleet-Ops, um job perdido com o Redis reiniciado).
  * Pára depois de ORCAMENTO_SEGUNDOS (cada despacho pode esperar até 10 s pela trava); o que ficou vai na rodada seguinte.
  * Uma falha num pedido não para os outros (log `falha ao acompanhar o pedido`).
  */
@@ -60,6 +60,8 @@ class AcompanharIntegracao extends Command
             ->where("{$p}.created_at", '>=', now()->subMinutes(static::JANELA_DO_DESPACHO_MINUTOS)->toDateTimeString())
             ->where("{$p}.created_at", '<=', now()->subSeconds(static::FOLGA_DO_DESPACHO_SEGUNDOS)->toDateTimeString())
             ->where('orders.dispatched', false)
+            ->where('orders.started', false)
+            ->whereNotIn('orders.status', StatusDoPedido::ENCERRADOS)
             ->whereNull('orders.deleted_at')
             ->orderBy("{$p}.id")
             ->limit(static::POR_RODADA)
@@ -76,7 +78,7 @@ class AcompanharIntegracao extends Command
                 ->where("{$p}.created_at", '>=', now()->subHours(static::JANELA_HORAS)->toDateTimeString())
                 ->where(fn ($q) => $q->whereNull("{$p}.ultimo_aviso")->orWhere("{$p}.ultimo_aviso", SequenciaDaIntegracao::ACEITO)->orWhere("{$p}.ultimo_aviso", SequenciaDaIntegracao::A_CAMINHO))
                 ->whereNull('orders.deleted_at')
-                ->orderBy("{$p}.created_at", 'desc')
+                ->orderBy('orders.updated_at', 'desc')
                 ->limit(static::POR_RODADA)
                 ->select("{$p}.*")
                 ->get()

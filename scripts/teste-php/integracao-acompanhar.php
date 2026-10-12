@@ -88,6 +88,16 @@ $novo = pedidoDaIntegracao(['status' => 'created', 'started' => false, 'dispatch
 acompanhar();
 confere($novo->chamadas === ['saveQuietly', 'firstDispatchWithActivity'], '300 linhas com Order apagado: o pedido novo é despachado');
 
+echo '== Cancelados sem despacho não tiram a vez' . PHP_EOL;
+reiniciarIntegracao();
+lojaIntegradaA();
+for ($i = 0; $i < 300; $i++) {
+    pedidoDaIntegracao(['uuid' => "cancelado-{$i}", 'public_id' => "order_c{$i}", 'status' => 'canceled', 'started' => false, 'dispatched' => false, 'driver_assigned_uuid' => null], ['order_uuid' => "cancelado-{$i}", 'pedido_externo_id' => "c{$i}", 'despachado_em' => null, 'created_at' => '2026-10-05 14:50:00']);
+}
+$novo = pedidoDaIntegracao(['status' => 'created', 'started' => false, 'dispatched' => false, 'driver_assigned_uuid' => null], ['despachado_em' => null, 'created_at' => '2026-10-05 14:58:00']);
+acompanhar();
+confere($novo->chamadas === ['saveQuietly', 'firstDispatchWithActivity'], '300 pedidos cancelados sem despacho: o pedido novo é despachado');
+
 echo '== Despacho fora da janela de 30 min' . PHP_EOL;
 reiniciarIntegracao();
 lojaIntegradaA();
