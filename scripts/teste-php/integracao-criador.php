@@ -136,5 +136,6 @@ $outra = clone $loja;
 $outra->vendor_uuid = 'vendor-b';
 confere(PedidosDaIntegracao::daLoja($outra, 'ord-6f1c') === null && PedidosDaIntegracao::daLoja($outra, 'order_1') === null, 'a outra loja não acha');
 confere(PedidosDaIntegracao::daLoja($loja, '') === null && PedidosDaIntegracao::daLoja($loja, 'nao-existe') === null, 'vazio ou desconhecido: null');
+confere(PedidosDaIntegracao::daLoja($loja, 'ord-ção') === null && PedidosDaIntegracao::daLoja($loja, str_repeat('a', 101)) === null, 'id fora do ASCII ou com mais de 100 caracteres: null');
 
 resumo();

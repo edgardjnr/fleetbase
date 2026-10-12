@@ -30,7 +30,8 @@ final class PedidosDaIntegracao
     public static function daLoja(object $loja, string $id): ?object
     {
         $id = trim($id);
-        if ($id === '') {
+        // A mesma regra do pedido_externo_id: id fora do padrão nem chega à coluna ascii_bin (collation).
+        if (!preg_match('/^[A-Za-z0-9._:-]{1,100}$/', $id)) {
             return null;
         }
 
