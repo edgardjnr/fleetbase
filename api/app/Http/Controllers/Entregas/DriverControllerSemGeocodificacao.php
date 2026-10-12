@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Entregas;
 
 use App\Support\Entregas\FiltroDePosicaoDoMotoboy;
+use App\Support\Entregas\FotoDoMotoboy;
 use App\Support\Entregas\GeocoderDesligado;
 use Fleetbase\FleetOps\Http\Controllers\Api\v1\DriverController;
+use Fleetbase\FleetOps\Http\Requests\UpdateDriverRequest;
 use Geocoder\Laravel\Facades\Geocoder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -29,12 +31,59 @@ use Illuminate\Support\Facades\Log;
  * resposta é a de sempre (200 com o motoboy): o plugin de GPS reenviaria uma posição recusada com erro. Duas posições
  * do mesmo celular ao mesmo tempo podem passar as duas (sem trava): o plugin manda uma por vez.
  *
- * Ao atualizar o fleetops-api, confira se o track() ainda geocodifica só pelo Geocoder::reverse e se o findDriver, o
- * driverResource e o apiError continuam no DriverController (o scripts/teste-php/track-sem-geocodificacao.php confere
- * na cópia em packages/fleetops).
+ * O update() (PUT v1/drivers/{id}, perfil do app) apaga a foto antiga quando o motoboy troca a foto e aceita a remoção
+ * (`photo: "REMOVE"`), que o Fleet-Ops ignorava: ver FotoDoMotoboy.
+ *
+ * Ao atualizar o fleetops-api, confira se o track() ainda geocodifica só pelo Geocoder::reverse, se o update() ainda
+ * grava a foto só no `users.avatar_uuid` e se o findDriver, o driverResource e o apiError continuam no DriverController
+ * (o scripts/teste-php/track-sem-geocodificacao.php e o foto-do-motoboy.php conferem na cópia em packages/fleetops).
  */
 class DriverControllerSemGeocodificacao extends DriverController
 {
+    public function update($id, UpdateDriverRequest $request)
+    {
+        if (!$request->has('photo')) {
+            return parent::update($id, $request);
+        }
+
+        $remover = FotoDoMotoboy::pedidoDeRemocao($request->input('photo'));
+        $antes   = FotoDoMotoboy::situacao((string) $id);
+
+        // o update do Fleet-Ops grava os outros campos e a foto nova ("REMOVE" ele ignora)
+        $resposta = parent::update($id, $request);
+
+        if (!$antes || !FotoDoMotoboy::deuCerto($resposta)) {
+            return $resposta;
+        }
+
+        try {
+            if ($remover) {
+                FotoDoMotoboy::removerDoUsuario($antes['usuario']);
+            }
+            $agora = FotoDoMotoboy::avatarDoUsuario($antes['usuario']);
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] foto do motoboy: ' . ($remover ? 'remoção' : 'troca') . ' falhou: ' . get_class($e), ['motoboy' => (string) $id]);
+
+            return $remover ? $this->apiError('Não foi possível remover a foto.', 500) : $resposta;
+        }
+
+        // a foto antiga só sai quando deixou de ser o avatar (foto nova gravada ou removida)
+        if ($antes['avatar'] && $antes['avatar'] !== $agora) {
+            FotoDoMotoboy::apagarArquivo($antes['avatar']);
+        }
+
+        if (!$remover) {
+            return $resposta;
+        }
+
+        // a resposta do Fleet-Ops foi montada antes da remoção: devolve o motoboy relido, já sem a foto
+        try {
+            return $this->driverResource($this->findDriver((string) $id, ['user', 'vehicle', 'vendor', 'currentJob']));
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+            return $resposta;
+        }
+    }
+
     public function track(string $id, Request $request)
     {
         // sem latitude e longitude o original só devolve o motoboy: nada a filtrar
