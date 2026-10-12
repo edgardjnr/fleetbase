@@ -34,6 +34,11 @@ reiniciarIntegracao();
 $pedido = pedidoDaIntegracao(['status' => 'enroute']);
 confere(cancelar() === CancelamentoPelaOrigem::CANCELADO_PAGO && $pedido->status === 'canceled' && linhaDaIntegracao()->pago_mesmo_cancelado === true, 'cancelado_pago');
 
+echo '== Outros status de entrega: paga' . PHP_EOL;
+reiniciarIntegracao();
+$pedido = pedidoDaIntegracao(['status' => 'picked_up']);
+confere(cancelar() === CancelamentoPelaOrigem::CANCELADO_PAGO && linhaDaIntegracao()->pago_mesmo_cancelado === true, 'picked_up: cancelado_pago');
+
 echo '== Concluído: nada muda' . PHP_EOL;
 reiniciarIntegracao();
 $pedido = pedidoDaIntegracao(['status' => 'completed']);
@@ -53,6 +58,15 @@ echo '== Expirado: registra como cancelado' . PHP_EOL;
 reiniciarIntegracao();
 $pedido = pedidoDaIntegracao(['status' => 'expired']);
 confere(cancelar() === CancelamentoPelaOrigem::CANCELADO && $pedido->chamadas === [] && linhaDaIntegracao()->cancelado_em !== null, 'sem cancel(), linha marcada');
+
+confere(linhaDaIntegracao()->cancelado_por === 'sistema' && linhaDaIntegracao()->pago_mesmo_cancelado === false, 'expirado sem registro anterior: cancelado_por sistema, sem pagamento');
+
+echo '== Linha sem order_uuid' . PHP_EOL;
+reiniciarIntegracao();
+pedidoDaIntegracao();
+$sem             = linhaDaIntegracao();
+$sem->order_uuid = null;
+confere((new CancelamentoPelaOrigem())->cancelar($sem) === CancelamentoPelaOrigem::CANCELADO && $sem->cancelado_em !== null && Trava::$ocupadas === [], 'order_uuid nulo: cancelado, sem TypeError');
 
 echo '== Sem Order: só registra' . PHP_EOL;
 reiniciarIntegracao();
