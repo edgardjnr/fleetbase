@@ -25,6 +25,16 @@ confere(!str_contains(json_encode($linhas), $chave), 'a chave em texto não fica
 confere(logou('[entregas] integração: chave gerada', 'info') && logsSem([$chave]), 'log sem a chave');
 $outra = ChavesDeIntegracao::gerar('empresa-1', 'vendor-a');
 confere($outra !== $chave && ChavesDeIntegracao::daChave($chave) === null && ChavesDeIntegracao::daChave($outra)?->vendor_uuid === 'vendor-a', 'gerar de novo revoga a anterior');
+\Teste\Trava::$ocupadas['entregas:integracao-chave:vendor-a'] = true;
+$antes = count(Banco::linhas('entregas_integracao_lojas'));
+$erroTrava = null;
+try {
+    ChavesDeIntegracao::gerar('empresa-1', 'vendor-a');
+} catch (\Throwable $e) {
+    $erroTrava = $e;
+}
+confere($erroTrava instanceof \Illuminate\Contracts\Cache\LockTimeoutException && count(Banco::linhas('entregas_integracao_lojas')) === $antes && ChavesDeIntegracao::daChave($outra)?->vendor_uuid === 'vendor-a', 'trava da loja ocupada: LockTimeoutException, nada gravado e a chave ativa segue');
+\Teste\Trava::$ocupadas = [];
 confere(ativaDaLojaA()->chave_hash === hash('sha256', $outra), 'ativa = a mais nova');
 
 echo '== daChave' . PHP_EOL;

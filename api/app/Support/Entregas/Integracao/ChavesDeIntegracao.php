@@ -3,6 +3,7 @@
 namespace App\Support\Entregas\Integracao;
 
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -10,7 +11,7 @@ use Illuminate\Support\Facades\Log;
  * Entregas RestaurantePro: a chave de integração de cada loja (entregas_integracao_lojas).
  *
  * - gerar: `ent_live_` + 40 caracteres de random_int; guarda só o SHA-256 e os 4 últimos; revoga a anterior na mesma
- *   transação (uma ativa por loja). A chave em texto só sai daqui (tela Lojas, uma vez).
+ *   transação, sob uma trava por loja (uma ativa por loja, garantida pela trava; duas gerações ao mesmo tempo esperam até 5 s). A chave em texto só sai daqui (tela Lojas, uma vez).
  * - daChave: a loja de um Bearer (formato exato, hash, não revogada) ou null.
  * - conectar: o sistema de origem registra a URL dos avisos; sai um segredo novo (64 hex), guardado com encrypt(), que
  *   só volta nessa resposta. O segredo assina os avisos (HMAC-SHA256, AvisosDaIntegracao).
@@ -28,16 +29,18 @@ final class ChavesDeIntegracao
         $chave = Integracao::PREFIXO_DA_CHAVE . static::aleatorio(Integracao::TAMANHO_DA_CHAVE);
         $agora = now()->toDateTimeString();
 
-        DB::transaction(function () use ($companyUuid, $vendorUuid, $chave, $agora) {
-            static::revogarAtivas($companyUuid, $vendorUuid, $agora);
-            DB::table(Integracao::LOJAS)->insert([
-                'company_uuid' => $companyUuid,
-                'vendor_uuid'  => $vendorUuid,
-                'chave_hash'   => static::hash($chave),
-                'chave_final'  => substr($chave, -4),
-                'created_at'   => $agora,
-                'updated_at'   => $agora,
-            ]);
+        Cache::lock("entregas:integracao-chave:{$vendorUuid}", 10)->block(5, function () use ($companyUuid, $vendorUuid, $chave, $agora) {
+            DB::transaction(function () use ($companyUuid, $vendorUuid, $chave, $agora) {
+                static::revogarAtivas($companyUuid, $vendorUuid, $agora);
+                DB::table(Integracao::LOJAS)->insert([
+                    'company_uuid' => $companyUuid,
+                    'vendor_uuid'  => $vendorUuid,
+                    'chave_hash'   => static::hash($chave),
+                    'chave_final'  => substr($chave, -4),
+                    'created_at'   => $agora,
+                    'updated_at'   => $agora,
+                ]);
+            });
         });
 
         Log::info('[entregas] integração: chave gerada', ['vendor' => $vendorUuid]);
