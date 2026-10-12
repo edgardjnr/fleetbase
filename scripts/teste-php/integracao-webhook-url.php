@@ -13,6 +13,9 @@ echo '== Aceitas' . PHP_EOL;
 confere(UrlDoWebhook::recusa('https://api.restaurantepro.com.br/functions/v1/entregas-webhook?t=abc', $publico) === null, 'https público');
 confere(UrlDoWebhook::recusa('https://api.exemplo.com.br:443/x', $publico) === null, 'porta 443 explícita');
 confere(UrlDoWebhook::recusa('https://200.150.10.20/x', $publico) === null, 'IP público direto');
+foreach (['https://cafe.be/x', 'https://dead.beef.cc/x', 'https://xn--aa-zia.com.br/x', 'https://1.2.3.4.nip.io/x', 'https://123.com.br/x'] as $u) {
+    confere(UrlDoWebhook::recusa($u, $publico) === null, "aceita: {$u}");
+}
 
 echo '== Recusadas' . PHP_EOL;
 foreach ([
@@ -42,6 +45,13 @@ foreach ([
     'https://entregas_application./x' => 'nome do Swarm com ponto final',
     'https://0177.0.0.1/x' => 'IPv4 octal',
     'https://127.1/x' => 'IPv4 abreviado',
+    'https://%31%32%37.0.0.1.evil.com/x' => 'host com percent-encoding',
+    'https://açaí.com.br/x' => 'acento sem punycode',
+    'https://a_b.exemplo.com.br/x' => 'sublinhado',
+    'https://-x.com.br/x' => 'rótulo começa com hífen',
+    'https://a..b.com.br/x' => 'rótulo vazio',
+    'https://0x7f000001/x' => 'IPv4 hexa inteiro',
+    'https://2130706433/x' => 'IPv4 decimal inteiro',
 ] as $url => $caso) {
     confere(UrlDoWebhook::recusa($url, $publico) !== null, "recusa: {$caso}");
 }

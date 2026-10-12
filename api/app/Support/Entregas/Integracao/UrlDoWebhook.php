@@ -56,10 +56,13 @@ final class UrlDoWebhook
         if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
             $ips = [$host];
         } else {
-            if (preg_match('/^[0-9a-fx.]+$/i', $host)) {
+            if (!preg_match('/^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/', $host)) {
+                return $recusa('endereço inválido (use só letras, números, hífen e ponto; domínio com acento em punycode)');
+            }
+            if (preg_match('/(^|\.)(0x[0-9a-f]*|[0-9]+)$/i', $host)) {
                 return $recusa('endereço interno');
             }
-            if (!str_contains($host, '.') || $host === 'localhost' || str_ends_with($host, '.localhost') || str_ends_with($host, '.local') || str_ends_with($host, '.internal')) {
+            if ($host === 'localhost' || str_ends_with($host, '.localhost') || str_ends_with($host, '.local') || str_ends_with($host, '.internal')) {
                 return $recusa('endereço interno');
             }
             $resolvidos = ($resolver ?? fn (string $nome) => gethostbynamel($nome) ?: [])($host);
