@@ -60,3 +60,40 @@ export function numeroIfood(notas, idInterno) {
 
     return achado && achado[1] === String(idInterno) ? achado[1] : null;
 }
+
+// Mesma regra do console (packages/fleetops/addon/utils/pedido-de-origem.js, origemDoPedido): o nome do sistema
+// passa pelo Integracao::nomeDoSistema do servidor (letras, números, espaço, ponto, hífen e sublinhado, até 40).
+const NOTAS_DE_ORIGEM = /^([\p{L}\p{N} ._-]{1,40}?) #(\S+)/u;
+
+/**
+ * Origem do pedido para o selo do portal: {ifood: true, sistema: 'iFood', numero} (notas "iFood #N"),
+ * {ifood: false, sistema, numero} (pedido que a loja mandou pelo sistema dela, notas "<Sistema> #N") ou null. Nos dois
+ * casos o internal_id precisa ser igual a N. O Cancelar não depende disto: no pedido da integração ele segue a regra do
+ * portal (antes do aceite); no do iFood, o numeroIfood esconde.
+ */
+export function origemDoPedido(notas, idInterno) {
+    if (typeof notas !== 'string' || idInterno === null || idInterno === undefined || idInterno === '') {
+        return null;
+    }
+    const achado = NOTAS_DE_ORIGEM.exec(notas.trim());
+    if (!achado || achado[2] !== String(idInterno)) {
+        return null;
+    }
+    const sistema = achado[1].trim();
+    if (sistema === 'iFood') {
+        return { ifood: true, sistema, numero: achado[2] };
+    }
+    if (sistema === '' || /^ifood/i.test(sistema)) {
+        return null;
+    }
+
+    return { ifood: false, sistema, numero: achado[2] };
+}
+
+/**
+ * Chave customer-portal.ui.entregas.<chave> do cancelado cobrado no extrato, pelo cancelado_origem do servidor:
+ * 'integracao' = a própria loja cancelou pelo sistema dela depois da coleta; 'ifood' ou ausente (API antiga) = o iFood.
+ */
+export function chaveDoCanceladoCobrado(origem) {
+    return origem === 'integracao' ? 'canceled-store-charged' : 'canceled-ifood-charged';
+}

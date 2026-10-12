@@ -704,7 +704,10 @@ customer-portal:
       cancel-locked: The courier already accepted. To cancel, contact the dispatcher.
       cancel-ifood: "iFood order: cancel it in the iFood order manager."
       ifood-selo: "iFood #{numero}"
+      origem-selo: "{sistema} #{numero}"
       canceled-ifood-charged: "Canceled by iFood (charged)"
+      canceled-store-charged: "Canceled by the store (charged)"
+      canceled-charged-column: "Canceled (charged)"
       statement-status: Status
       members-managed-by-central: To add or remove store users, contact the dispatcher.
       login-managed-by-central: The sign-in email and phone can only be changed by the dispatcher.

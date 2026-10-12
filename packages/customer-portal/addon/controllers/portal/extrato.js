@@ -5,6 +5,7 @@ import { action } from '@ember/object';
 import { restartableTask, timeout } from 'ember-concurrency';
 import { differenceInCalendarDays, format, isValid, parseISO, startOfMonth } from 'date-fns';
 import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
+import { chaveDoCanceladoCobrado } from '../../utils/entregas-pedido';
 
 // Entregas: o navegador dispara o `change` do campo de data a cada data válida durante a digitação (o ano 2026 passa por
 // 0002, 0020 e 0202). A consulta só sai depois deste tempo sem novas alterações
@@ -267,6 +268,11 @@ export default class PortalExtratoController extends Controller {
         return valor == null ? SEM_VALOR : this.intl.formatNumber(Number(valor), { style: 'currency', currency: 'BRL' });
     }
 
+    /** Entregas: "Cancelado pelo iFood (cobrado)" ou "Cancelado pela loja (cobrado)" (pedido do sistema da loja), pelo cancelado_origem. */
+    @action rotuloDoCancelado(entrega) {
+        return this.intl.t(`customer-portal.ui.entregas.${chaveDoCanceladoCobrado(entrega?.cancelado_origem)}`);
+    }
+
     // CSV para o Excel brasileiro: separador ";", vírgula decimal e BOM do UTF-8 (sem ele os acentos saem errados)
     @action baixarCsv() {
         if (!this.temEntregas) {
@@ -280,7 +286,7 @@ export default class PortalExtratoController extends Controller {
             this.intl.t('customer-portal.ui.entregas.km'),
             this.intl.t('customer-portal.ui.entregas.band'),
             this.intl.t('customer-portal.ui.entregas.amount'),
-            this.intl.t('customer-portal.ui.entregas.canceled-ifood-charged'),
+            this.intl.t('customer-portal.ui.entregas.canceled-charged-column'),
         ];
         const linhas = this.entregas.map((entrega) => [
             this.dataHora(entrega.concluido_em),
@@ -289,8 +295,8 @@ export default class PortalExtratoController extends Controller {
             entrega.km == null ? '' : decimalCsv(entrega.km),
             entrega.faixa ? this.textoFaixa(entrega.faixa) : '',
             entrega.valor == null ? '' : decimalCsv(entrega.valor),
-            // pedido do iFood cancelado pelo iFood depois da coleta, cobrado mesmo assim: vazio nas demais
-            entrega.cancelado_pago ? this.intl.t('customer-portal.ui.entregas.canceled-ifood-charged') : '',
+            // cancelado depois da coleta e cobrado mesmo assim (pelo iFood ou pela loja no sistema dela): vazio nas demais
+            entrega.cancelado_pago ? this.rotuloDoCancelado(entrega) : '',
         ]);
         const csv = BOM_UTF8 + [cabecalho, ...linhas].map((linha) => linha.map(celulaCsv).join(';')).join('\r\n');
 

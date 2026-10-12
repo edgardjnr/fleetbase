@@ -137,6 +137,8 @@ fleet-ops:
       store: Loja
       without-store: Sem local de coleta
       cancelado-pago: Cancelado pelo iFood (pago)
+      cancelado-pago-loja: Cancelado pela loja (pago)
+      cancelado-pago-coluna: Cancelado (pago)
       charge: A cobrar
       deliveries-from: 'Entregas da loja {name}'
       deliveries-of-from: 'Entregas de {name} na loja {store}'
@@ -229,10 +231,37 @@ fleet-ops:
         confirm: Vincular
         choose: 'A conta do iFood tem mais de uma loja. Escolha a que corresponde a {name}:'
         close: Fechar
+      integracao:
+        label: 'Integração:'
+        sem-chave: '—'
+        erro: não foi possível ler a integração
+        aguardando: 'Chave …{final} gerada · aguardando o sistema conectar'
+        conectada: 'Conectada a {sistema}'
+        conectada-uso: 'Conectada a {sistema} · último uso {uso}'
+        chave-final: 'chave …{final}'
+        falha: 'Falha no último aviso ({quando}): {texto}'
+        desligada: 'Integração desligada no servidor'
+        ha:
+          agora: agora há pouco
+          minutos: 'há {n} min'
+          horas: 'há {n} h'
+          dias: 'há {n, plural, one {# dia} other {# dias}}'
+        gerar: Gerar chave
+        gerar-de-novo: Gerar outra chave
+        revogar: Revogar
+        revogada: Integração revogada.
+        regerar-titulo: Gerar outra chave?
+        regerar-texto: 'A chave atual de {name} (final {final}) para de funcionar agora: os pedidos do sistema deixam de entrar e os avisos param. O restaurante precisa colar a chave nova no sistema dele e conectar de novo.'
+        revogar-titulo: Revogar a integração?
+        revogar-texto: 'A chave de {name} para de funcionar: os pedidos do sistema deixam de entrar no Entregas e os avisos param. Os pedidos já recebidos continuam.'
+        chave-titulo: 'Chave de integração de {name}'
+        chave-aviso: 'Copie agora: esta chave não aparece de novo. Se perder, gere outra.'
+        chave-copiar: Clique na chave para copiar.
+        chave-onde: 'No RestaurantePro: Configurações de delivery → "Entregas por" → Entregas RestaurantePro → cole a chave e conecte.'
+        ja-copiei: Já copiei
     pedido-sem-motoboy:
       aviso: 'Pedido {numero} está há {minutos} min sem motoboy. Clique para abrir e atribuir.'
     ifood:
-      coluna: iFood
       selo: 'iFood #{numero}'
       selo-titulo: Pedido do iFood
       painel-titulo: 'iFood #{numero}'
@@ -280,6 +309,36 @@ fleet-ops:
         vale-presente: vale-presente
         outra-forma: outra forma
         misto: formas variadas
+    origem:
+      coluna: Origem
+    integracao:
+      selo: '{sistema} #{numero}'
+      selo-titulo: 'Pedido recebido de {sistema}'
+      painel-titulo: '{sistema} #{numero}'
+      erro: Não foi possível carregar os dados da integração (só administradores veem este painel).
+      pedido-externo: 'Id do pedido no {sistema}'
+      cobranca: Cobrança na porta
+      pago: Já pago (nada a cobrar)
+      sem-cobranca: Nada a cobrar
+      observacoes: Observações do cliente
+      sem-localizacao: 'Sem localização: o endereço chegou sem coordenadas válidas, e a central atribui o motoboy.'
+      ultimo-aviso: 'Último aviso entregue ao {sistema}'
+      nenhum-aviso: Nenhum ainda
+      aviso:
+        aceito: Motoboy definido
+        a_caminho: A caminho do cliente
+        concluido: Concluído
+        cancelado: Cancelado
+        desconhecido: Desconhecido
+      ultima-falha: Última falha de aviso da loja
+      falha: '{texto} ({quando})'
+      cancelado: 'Cancelado {por}'
+      cancelado-pago: 'Cancelado {por} depois da coleta: o motoboy recebe e a loja é cobrada'
+      cancelado-por:
+        loja: pela loja
+        central: pela central
+        sistema: pelo sistema
+        desconhecido: '(origem desconhecida)'
     distribuicao:
       painel-titulo: Distribuição
       erro: Não foi possível carregar a distribuição.

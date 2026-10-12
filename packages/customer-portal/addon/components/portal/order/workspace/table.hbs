@@ -18,12 +18,8 @@
                     <tr>
                         <td>
                             <div class="font-semibold truncate">{{or order.tracking_number.tracking_number order.public_id order.id}}</div>
-                            {{!-- Entregas: selo do pedido do iFood (mesma regra das listas e do detalhe) --}}
-                            {{#let (numero-ifood order.notes order.internal_id) as |numeroIfood|}}
-                                {{#if numeroIfood}}
-                                    <span class="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold text-white" style="background-color: #EA1D2C;">{{t "customer-portal.ui.entregas.ifood-selo" numero=numeroIfood}}</span>
-                                {{/if}}
-                            {{/let}}
+                            {{!-- Entregas: selo da origem (iFood ou o sistema da loja; mesma regra das listas e do detalhe) --}}
+                            <Portal::Order::SeloDeOrigem @notas={{order.notes}} @idInterno={{order.internal_id}} />
                             <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{n-a (humanize order.type)}}</div>
                         </td>
                         <td><Badge @status={{order.status}} /></td>
