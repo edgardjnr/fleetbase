@@ -43,7 +43,8 @@ return new class extends Migration
             $table->string('cancelado_por', 20)->nullable();
             $table->boolean('pago_mesmo_cancelado')->default(false);
             $table->timestamps();
-            $table->unique(['vendor_uuid', 'pedido_externo_id']);
+            // nome curto: o gerado pelo Laravel teria 64 caracteres, o limite do MySQL
+            $table->unique(['vendor_uuid', 'pedido_externo_id'], 'entregas_integ_pedidos_externo_unique');
             // entregas:integracao-acompanhar: só as últimas 24 h
             $table->index('created_at');
         });
