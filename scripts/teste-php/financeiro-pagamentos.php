@@ -102,6 +102,12 @@ $linha = Banco::$tabelas['entregas_lancamentos'][$id] ?? [];
 confere(strlen((string) ($linha['uuid'] ?? '')) === 36 && $linha['created_at'] === '2026-10-05 15:00:00' && $linha['updated_at'] === '2026-10-05 15:00:00', 'gera o uuid e grava as datas na hora de Brasília');
 confere(json_decode((string) $linha['detalhes'], true) === ['pedido' => 'order-1', 'km' => 3.21], 'detalhes em JSON');
 confere(Lancamentos::inserir(corrida('driver-1', 9, '2026-10-02', 'order-1')) === null && count(linhasDe('entregas_lancamentos')) === 1, 'chave_unica repetida: null, sem erro e sem segunda linha');
+// o insertOrIgnore também engole outros erros (aqui, o uuid repetido): sem a chave_unica gravada, é falha de verdade
+$gerados                          = \Illuminate\Support\Str::$gerados;
+\Illuminate\Support\Str::$gerados = (int) substr((string) $linha['uuid'], -12) - 1;
+$erro                             = excecao(fn () => Lancamentos::inserir(corrida('driver-1', 7, '2026-10-03', 'order-novo')));
+\Illuminate\Support\Str::$gerados = $gerados;
+confere($erro instanceof \RuntimeException && count(linhasDe('entregas_lancamentos')) === 1, 'insert ignorado por outro motivo (a chave_unica não existe): lança (' . ($erro ? get_class($erro) . ': ' . $erro->getMessage() : 'nada') . ')');
 $semChave = Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-1', 'tipo' => 'diaria', 'valor' => 30, 'data_referencia' => '2026-10-01', 'motivo' => 'Diária', 'criado_por' => 'user-admin']);
 $outro    = Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-1', 'tipo' => 'diaria', 'valor' => 30, 'data_referencia' => '2026-10-01']);
 confere($semChave && $outro && $semChave !== $outro, 'sem chave_unica: lança quantas vezes for pedido (duas diárias)');

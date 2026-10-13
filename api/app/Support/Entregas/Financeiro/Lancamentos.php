@@ -18,8 +18,9 @@ final class Lancamentos
     private const OBRIGATORIOS = ['company_uuid', 'conta_tipo', 'conta_uuid', 'tipo', 'valor', 'data_referencia'];
 
     /**
-     * Insere e devolve o id; com chave_unica repetida devolve null sem erro (insertOrIgnore). Gera uuid e as datas (hora
-     * de Brasília, o fuso do app); `detalhes` em array vira JSON.
+     * Insere e devolve o id; com chave_unica repetida devolve null sem erro (insertOrIgnore; se o insert foi ignorado e a
+     * chave não existe, lança \RuntimeException). Gera uuid e as datas (hora de Brasília, o fuso do app); `detalhes` em
+     * array vira JSON.
      */
     public static function inserir(array $valores): ?int
     {
@@ -45,7 +46,13 @@ final class Lancamentos
         }
 
         if (DB::table(static::TABELA)->insertOrIgnore($linha) < 1) {
-            return null;
+            // o INSERT IGNORE do MySQL engole qualquer erro (dado truncado, outra chave única): só a chave_unica que já
+            // existe é "já lançado"; o resto é falha de verdade e não pode passar calada
+            if (DB::table(static::TABELA)->where('chave_unica', $linha['chave_unica'])->exists()) {
+                return null;
+            }
+
+            throw new \RuntimeException('Lançamento não gravado (o banco ignorou o insert): ' . $linha['chave_unica']);
         }
 
         return (int) DB::table(static::TABELA)->where('uuid', $linha['uuid'])->value('id');
