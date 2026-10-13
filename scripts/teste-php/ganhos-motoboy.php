@@ -54,9 +54,11 @@ const FAIXAS = [
 function reiniciar(array $faixas = FAIXAS): void
 {
     Setting::$valores = ['entregas.faixas' => $faixas];
-    Banco::$tabelas   = [];
-    Banco::$upserts   = 0;
-    OSRM::$chamadas   = 0;
+    Banco::$tabelas     = [];
+    Banco::$upserts     = 0;
+    Banco::$consultas   = [];
+    Banco::$falharAoLer = [];
+    OSRM::$chamadas     = 0;
     OSRM::$metros     = 3210.4;
 }
 
@@ -137,7 +139,10 @@ confere($pendentes === 1 && $entregas[0]['km'] === null && $entregas[0]['valor_m
 
 reiniciar();
 [$entregas] = $calculo->entregas(new Collection([comKm(pedido('order_d'), 3210.4)]), 'America/Sao_Paulo');
-confere(array_keys($entregas[0]) === ['loja', 'loja_nome', 'pedido', 'id_interno', 'motoboy', 'motoboy_nome', 'concluido_em', 'origem', 'destino', 'km', 'fonte', 'faixa', 'valor_motoboy', 'valor_loja', 'cancelado_pago', 'cancelado_origem'], 'o formato do relatório e do extrato (cancelado_pago: etapa 3 do iFood; cancelado_origem: integração)');
+confere(array_keys($entregas[0]) === ['loja', 'loja_nome', 'pedido', 'id_interno', 'motoboy', 'motoboy_nome', 'concluido_em', 'origem', 'destino', 'km', 'fonte', 'faixa', 'valor_motoboy', 'valor_loja', 'cancelado_pago', 'cancelado_origem', 'order_uuid', 'motoboy_uuid', 'loja_uuid'], 'o formato do relatório e do extrato (cancelado_pago: etapa 3 do iFood; cancelado_origem: integração; uuids: financeiro)');
+confere($entregas[0]['order_uuid'] === 'uuid-order_d' && $entregas[0]['motoboy_uuid'] === 'uuid-driver_motoca' && $entregas[0]['loja_uuid'] === 'uuid-vendor_centro', 'uuids do pedido, do motoboy e da loja (para o lançador do financeiro)');
+[$semLoja] = $calculo->entregas(new Collection([comKm(pedido('order_sl', ['customer_uuid' => 'uuid-contato']), 3210.4)]), 'America/Sao_Paulo');
+confere($semLoja[0]['loja_uuid'] === null && $semLoja[0]['motoboy_uuid'] === 'uuid-driver_motoca', 'pedido sem loja (cliente não é Vendor): loja_uuid nulo');
 confere($entregas[0]['cancelado_pago'] === false && $entregas[0]['cancelado_origem'] === null, 'pedido concluído: cancelado_pago falso, sem origem');
 [$cancelados] = $calculo->entregas(new Collection([
     comKm(pedido('order_ci', ['entregas_cancelado_pago' => 1, 'entregas_cancelado_origem' => 'integracao']), 3210.4),
@@ -148,6 +153,29 @@ confere($cancelados[0]['cancelado_pago'] === true && $cancelados[0]['cancelado_o
 confere($cancelados[1]['cancelado_pago'] === true && $cancelados[1]['cancelado_origem'] === 'ifood', 'cancelado pelo iFood: cancelado_origem ifood');
 confere($cancelados[2]['cancelado_pago'] === false && $cancelados[2]['cancelado_origem'] === null, 'não pago mesmo cancelado: sem origem');
 confere($entregas[0]['loja'] === 'loja:vendor_centro' && $entregas[0]['concluido_em'] === '2026-10-03T19:42:00-03:00', "loja dona do pedido e conclusão no fuso da organização ({$entregas[0]['concluido_em']})");
+
+echo '== Pedido já lançado no financeiro: o valor não muda' . PHP_EOL;
+reiniciar();
+$lancados = new Collection([comKm(pedido('order_l1'), 3210.4), comKm(pedido('order_l2'), 3210.4), comKm(pedido('order_l3'), 3210.4)]);
+$calculo->entregas($lancados, 'America/Sao_Paulo');
+Banco::$tabelas['entregas_lancamentos'] = [
+    1 => ['id' => 1, 'order_uuid' => 'uuid-order_l1', 'tipo' => 'corrida', 'conta_tipo' => 'motoboy', 'valor' => '8.00'],
+    2 => ['id' => 2, 'order_uuid' => 'uuid-order_l2', 'tipo' => 'ajuste', 'conta_tipo' => 'motoboy', 'valor' => '-2.00'],
+];
+foreach ($lancados as $p) {
+    comKm($p, 4500.0);
+}
+Banco::$consultas = [];
+[$entregas]       = $calculo->entregas($lancados, 'America/Sao_Paulo');
+confere($entregas[0]['km'] === 4.5 && $entregas[0]['valor_motoboy'] === 8.0 && $entregas[0]['valor_loja'] === 11.37, 'lançado (corrida): km mudou para 4,5, o valor continua 8,00 / 11,37');
+confere(Banco::$tabelas['entregas_valores_pedido']['uuid-order_l1']['metros'] === 3210, 'e a linha congelada não é regravada');
+confere($entregas[1]['valor_motoboy'] === 10.0 && $entregas[2]['valor_motoboy'] === 10.0,'sem corrida lançada (só ajuste, ou nada): recalcula como antes');
+confere(count(array_keys(Banco::$consultas, 'entregas_lancamentos')) === 1, 'os lançamentos dos 3 pedidos vêm numa consulta só');
+$valor = $calculo->valorDoPedido($lancados->first());
+confere($valor['valor_motoboy'] === 8.0 && $valor['km'] === 4.5, 'valor de um pedido (app): o lançado também não muda');
+Banco::$falharAoLer['entregas_lancamentos'] = new \RuntimeException("Table 'entregas_lancamentos' doesn't exist");
+[$entregas] = $calculo->entregas(new Collection([comKm(pedido('order_l4'), 3210.4)]), 'America/Sao_Paulo');
+confere($entregas[0]['valor_motoboy'] === 8.0, 'sem a tabela do financeiro (antes da migration): o relatório continua');
 
 echo '== Valor de um pedido (card de aceitar e detalhes)' . PHP_EOL;
 reiniciar();

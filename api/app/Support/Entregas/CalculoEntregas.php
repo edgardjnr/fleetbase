@@ -2,6 +2,7 @@
 
 namespace App\Support\Entregas;
 
+use App\Support\Entregas\Financeiro\Lancamentos;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Place;
 use Fleetbase\FleetOps\Models\Vendor;
@@ -42,7 +43,9 @@ use Illuminate\Support\Facades\Log;
  * O valor de cada entrega é congelado (ValoresCongelados, tabela entregas_valores_pedido): na primeira vez que o pedido
  * tem km e há faixas cadastradas, a faixa e os dois valores ficam gravados, e uma tabela de faixas nova só vale para as
  * entregas calculadas depois (o app do motoboy calcula ao mostrar o pedido no card de aceitar). Se o km mudar (endereço
- * alterado, estimativa trocada pela rota do OSRM), o valor é recalculado com a tabela vigente.
+ * alterado, estimativa trocada pela rota do OSRM), o valor é recalculado com a tabela vigente, a não ser que o pedido já
+ * tenha a corrida lançada no financeiro (entregas_lancamentos, App\Support\Entregas\Financeiro): depois de lançado, o
+ * valor não muda mais (correção só por ajuste).
  */
 class CalculoEntregas
 {
@@ -135,6 +138,7 @@ class CalculoEntregas
         $lojas      = $this->lojasDosPedidos($pedidos);
         $comCota    = $this->pedidosComCota($pedidos, $limiteCalculos);
         $congelados = $this->congelados->carregar($pedidos->pluck('uuid')->all());
+        $lancados   = $this->pedidosLancados($pedidos->pluck('uuid')->all());
 
         foreach ($pedidos as $i => $pedido) {
             $rota = $this->rotaDoPedido($pedido, isset($comCota[$i]));
@@ -145,7 +149,7 @@ class CalculoEntregas
             $motoboy           = $pedido->driverAssigned;
             $coleta            = $pedido->payload?->getPickupOrFirstWaypoint();
             $km                = $rota ? round($rota['metros'] / 1000, 2) : null;
-            $valor             = $rota ? $this->valorCongelado($pedido, $rota, $faixas, $congelados[$pedido->uuid] ?? null, $gravar) : null;
+            $valor             = $rota ? $this->valorCongelado($pedido, $rota, $faixas, $congelados[$pedido->uuid] ?? null, $gravar, isset($lancados[$pedido->uuid])) : null;
             [$loja, $lojaNome] = $this->lojaDoPedido($pedido, $coleta, $lojas);
 
             $entregas[] = [
@@ -168,6 +172,10 @@ class CalculoEntregas
                 'cancelado_pago' => (bool) ($pedido->entregas_cancelado_pago ?? false),
                 // quem cancelou o pago mesmo cancelado: 'ifood' ou 'integracao' (o sistema de origem); null no concluído
                 'cancelado_origem' => ($pedido->entregas_cancelado_pago ?? false) ? ($pedido->entregas_cancelado_origem ?? null) : null,
+                // para o lançador do financeiro (LancadorDeCorridas): o pedido, o motoboy atribuído e a loja (Vendor) dona
+                'order_uuid'    => $pedido->uuid,
+                'motoboy_uuid'  => $pedido->driver_assigned_uuid ?: $motoboy?->uuid,
+                'loja_uuid'     => $lojas->get($pedido->customer_uuid)?->uuid,
             ];
         }
 
@@ -193,7 +201,9 @@ class CalculoEntregas
 
         $gravar = [];
         $linha  = $this->congelados->carregar([$pedido->uuid])[$pedido->uuid] ?? null;
-        $valor  = $this->valorCongelado($pedido, $rota, $this->faixas(), $linha, $gravar);
+        // a consulta ao financeiro só quando o km mudou (o card de aceitar chama a cada exibição)
+        $mudou  = $linha !== null && (int) $linha['metros'] !== (int) round((float) $rota['metros']);
+        $valor  = $this->valorCongelado($pedido, $rota, $this->faixas(), $linha, $gravar, $mudou && isset($this->pedidosLancados([$pedido->uuid])[$pedido->uuid]));
         $this->congelados->gravar($gravar);
 
         return [
@@ -206,15 +216,15 @@ class CalculoEntregas
 
     /**
      * Valor da entrega para esta rota: o congelado, se foi calculado com o mesmo km (metros); senão, a faixa da tabela
-     * vigente, que entra em $gravar (congela, ou recongela quando o km mudou). Sem faixas cadastradas e sem valor
-     * congelado para este km, null.
+     * vigente, que entra em $gravar (congela, ou recongela quando o km mudou). Pedido com a corrida lançada no financeiro
+     * ($lancado) fica com o congelado, mesmo com outro km. Sem faixas cadastradas e sem valor congelado para este km, null.
      *
      * @return array{faixa: array, motoboy: float, loja: float}|null
      */
-    protected function valorCongelado(Order $pedido, array $rota, array $faixas, ?array $linha, array &$gravar): ?array
+    protected function valorCongelado(Order $pedido, array $rota, array $faixas, ?array $linha, array &$gravar, bool $lancado = false): ?array
     {
         $metros = (int) round((float) $rota['metros']);
-        if ($linha !== null && (int) $linha['metros'] === $metros) {
+        if ($linha !== null && ($lancado || (int) $linha['metros'] === $metros)) {
             return $this->valorDaLinha($linha);
         }
 
@@ -239,6 +249,30 @@ class CalculoEntregas
         $gravar[] = $nova;
 
         return $this->valorDaLinha($nova);
+    }
+
+    /**
+     * Pedidos (uuid => true) que já têm a corrida lançada no financeiro, numa consulta por lote de mil. Se a tabela ainda
+     * não existe (API nova antes da migration) ou o banco falha, nenhum: o relatório e o app seguem como antes.
+     */
+    protected function pedidosLancados(array $orderUuids): array
+    {
+        $orderUuids = array_values(array_unique(array_filter($orderUuids)));
+        $lancados   = [];
+
+        try {
+            foreach (array_chunk($orderUuids, 1000) as $lote) {
+                foreach (DB::table(Lancamentos::TABELA)->whereIn('order_uuid', $lote)->where('tipo', 'corrida')->pluck('order_uuid') as $uuid) {
+                    $lancados[(string) $uuid] = true;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] financeiro: não deu para ler as corridas lançadas; o valor congelado segue a regra antiga', ['erro' => get_class($e)]);
+
+            return [];
+        }
+
+        return $lancados;
     }
 
     /** Linha congelada no formato do relatório: a faixa (com os dois valores) e os valores soltos, em números. */

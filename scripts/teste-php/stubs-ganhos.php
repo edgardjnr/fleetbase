@@ -304,27 +304,52 @@ namespace Teste {
         public function __construct(public $dados, public int $status = 200) {}
     }
 
-    // tabela entregas_valores_pedido em memória: order_uuid => linha
+    // tabelas em memória: entregas_valores_pedido (order_uuid => linha) e entregas_lancamentos (do financeiro, só lida)
     class Banco
     {
         public static array $tabelas = [];
         public static int $upserts   = 0;
+        /** As tabelas lidas com get()/pluck(), na ordem (o teste conta as consultas). */
+        public static array $consultas = [];
+        /** Tabela => exceção que a leitura lança (tabela ainda não criada pela migration). */
+        public static array $falharAoLer = [];
     }
 
     class Tabela
     {
-        private ?array $filtro = null;
+        /** Filtros E: [coluna, valores aceitos]. */
+        private array $filtros = [];
         public function __construct(private string $nome) {}
 
-        public function whereIn($coluna, array $valores) { $this->filtro = [$coluna, $valores]; return $this; }
+        public function whereIn($coluna, array $valores) { $this->filtros[] = [$coluna, $valores]; return $this; }
+        public function where($coluna, $valor) { $this->filtros[] = [$coluna, [$valor]]; return $this; }
+
+        private function linhas(): array
+        {
+            Banco::$consultas[] = $this->nome;
+            if (isset(Banco::$falharAoLer[$this->nome])) {
+                throw Banco::$falharAoLer[$this->nome];
+            }
+
+            return array_values(array_filter(Banco::$tabelas[$this->nome] ?? [], function ($linha) {
+                foreach ($this->filtros as [$coluna, $valores]) {
+                    if (!in_array($linha[$coluna] ?? null, $valores, true)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }));
+        }
 
         public function get()
         {
-            [$coluna, $valores] = $this->filtro ?? [null, []];
-            $linhas             = array_filter(Banco::$tabelas[$this->nome] ?? [], fn ($linha) => $coluna === null || in_array($linha[$coluna], $valores, true));
+            $comoMysql = $this->nome === 'entregas_valores_pedido' ? fn ($linha) => static::comoMysql($linha) : fn ($linha) => $linha;
 
-            return new \Illuminate\Support\Collection(array_values(array_map(fn ($linha) => (object) static::comoMysql($linha), $linhas)));
+            return new \Illuminate\Support\Collection(array_map(fn ($linha) => (object) $comoMysql($linha), $this->linhas()));
         }
+
+        public function pluck($coluna) { return new \Illuminate\Support\Collection(array_map(fn ($linha) => $linha[$coluna] ?? null, $this->linhas())); }
 
         public function upsert(array $linhas, $unicas, array $atualizar)
         {
