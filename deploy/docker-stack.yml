@@ -84,6 +84,9 @@ x-api-env: &api-env
   ENTREGAS_INTEGRACAO: ${ENTREGAS_INTEGRACAO:-}
   # domínio do console no link de rastreio que o sistema de origem manda ao cliente (…/~/track-order?order=<código>)
   ENTREGAS_CONSOLE_URL: ${ENTREGAS_CONSOLE_URL:-https://entregas.restaurantepro.com.br}
+  # financeiro (extrato e pagamento dos motoboys, faturas das lojas): 1 liga o lançamento automático das corridas, as
+  # rotinas entregas:financeiro-* e os e-mails das faturas; vazio = só as telas e os lançamentos manuais
+  ENTREGAS_FINANCEIRO: ${ENTREGAS_FINANCEIRO:-}
   # trava "Atualize o app" do motoboy (AppDoMotoboy): 1 liga; a versão mínima é a última publicada no MinIO pelo
   # GitHub Actions do app. ENTREGAS_APP_VERSAO_MINIMA fixa outra à mão (emergência). Ligar só com o APK 35+ em todos
   ENTREGAS_APP_TRAVA: ${ENTREGAS_APP_TRAVA:-}

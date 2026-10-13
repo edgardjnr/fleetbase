@@ -299,6 +299,9 @@ namespace Illuminate\Console {
     {
         public const SUCCESS = 0;
         public const FAILURE = 1;
+        /** As opções da linha de comando (--company=...), que o teste preenche. */
+        public array $opcoes = [];
+        public function option($chave = null) { return $chave === null ? $this->opcoes : ($this->opcoes[$chave] ?? null); }
         public function info($texto) {}
         public function line($texto) {}
         public function warn($texto) {}
@@ -860,6 +863,8 @@ namespace Teste {
                 '<='       => $atual <= $valor,
                 '>'        => $atual > $valor,
                 '>='       => $atual >= $valor,
+                // LIKE com % (as chaves do Setting: company.%.entregas.financeiro_corte)
+                'like'     => (bool) preg_match('/^' . str_replace('%', '.*', preg_quote((string) $valor, '/')) . '$/s', (string) $atual),
             };
         }
 

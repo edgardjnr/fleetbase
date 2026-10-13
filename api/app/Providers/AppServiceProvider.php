@@ -12,6 +12,7 @@ use App\Listeners\Entregas\ManterPayloadDoPedido;
 use App\Listeners\Entregas\ObservadorDaDistribuicao;
 use App\Listeners\Entregas\ObservadorDosPedidosDaIntegracao;
 use App\Listeners\Entregas\ObservadorDosPedidosIfood;
+use App\Listeners\Entregas\ObservadorFinanceiroDosPedidos;
 use App\Notifications\Entregas\CanalFcmEntregas;
 use App\Notifications\Entregas\Email\CanalEmailEntregas;
 use App\Support\Entregas\Distribuicao\TrocaDoListenerDoDespacho;
@@ -109,6 +110,16 @@ class AppServiceProvider extends ServiceProvider
         $this->acompanharPedidosDaIntegracao();
         $this->distribuirPedidosAbertos();
         $this->manterPayloadDosPedidos();
+        $this->lancarCorridasNoFinanceiro();
+    }
+
+    /**
+     * Entregas: pedido concluído (ou cancelado) → lançamento da corrida no financeiro, na fila (ver
+     * ObservadorFinanceiroDosPedidos e LancarCorridaDoPedido). O resto, o entregas:financeiro-conferir lança em até 5 min.
+     */
+    protected function lancarCorridasNoFinanceiro(): void
+    {
+        Order::updated(fn ($pedido) => ObservadorFinanceiroDosPedidos::aoAtualizar($pedido));
     }
 
     /**

@@ -76,6 +76,9 @@ return [
         // integração de pedidos de outros sistemas (RestaurantePro primeiro): 1 liga as rotas v1/entregas/integracao/*,
         // os avisos por webhook e o entregas:integracao-acompanhar; vazio = tudo responde 409 e nenhum aviso sai
         'integracao' => env('ENTREGAS_INTEGRACAO'),
+        // financeiro (extrato e pagamento dos motoboys, faturas das lojas): 1 liga o lançamento automático das corridas,
+        // as rotinas (entregas:financeiro-*) e os e-mails das faturas; vazio = só as telas e os lançamentos manuais
+        'financeiro' => env('ENTREGAS_FINANCEIRO'),
         // domínio do console, para o link de rastreio do cliente final (…/~/track-order?order=<código>)
         'console_url' => env('ENTREGAS_CONSOLE_URL', 'https://entregas.restaurantepro.com.br'),
     ],

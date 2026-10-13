@@ -8,8 +8,13 @@
 
 require __DIR__ . '/stubs-financeiro.php';
 
+use App\Console\Commands\Entregas\FinanceiroConferir;
+use App\Console\Commands\Entregas\FinanceiroLancarHistorico;
+use App\Jobs\Entregas\LancarCorridaDoPedido;
+use App\Listeners\Entregas\ObservadorFinanceiroDosPedidos;
 use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\Financeiro\LancadorDeCorridas;
+use Teste\Relogio;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\Models\Setting;
 use Illuminate\Support\Carbon;
@@ -248,5 +253,119 @@ $lancador->lancarPedido('uuid-order_g');
 confere(count(lancamentosDo('order_g')) === 2 && !lancamentosDo('order_h'), 'lança só o pedido pedido');
 confere(session('company') === 'empresa-1', 'com a empresa do pedido na sessão');
 confere(excecao(fn () => $lancador->lancarPedido('uuid-nao-existe')) === null && count(linhasDe('entregas_lancamentos')) === 2, 'pedido que não existe: nada');
+
+echo '== Observador do pedido' . PHP_EOL;
+reiniciarFinanceiro();
+$pedido = new Order(['uuid' => 'uuid-order_obs', 'public_id' => 'order_obs', 'company_uuid' => 'empresa-1', 'status' => 'completed', 'alterados' => ['status']]);
+\Teste\Config::$valores['services.entregas.financeiro'] = null;
+ObservadorFinanceiroDosPedidos::aoAtualizar($pedido);
+confere(\Teste\Fila::$jobs === [], 'chave desligada: não enfileira');
+\Teste\Config::$valores['services.entregas.financeiro'] = '1';
+ObservadorFinanceiroDosPedidos::aoAtualizar($pedido);
+$job = \Teste\Fila::$jobs[0] ?? null;
+confere($job instanceof LancarCorridaDoPedido && $job->orderUuid === 'uuid-order_obs' && count(\Teste\Fila::$jobs) === 1, 'status mudou para concluído: enfileira o job com o uuid');
+confere($job instanceof \Illuminate\Contracts\Queue\ShouldQueue && $job->afterCommit === true, 'na fila, depois do commit');
+foreach (['done' => 1, 'canceled' => 1, 'CANCELED' => 1, 'order_canceled' => 1, 'started' => 0, 'dispatched' => 0] as $status => $esperado) {
+    \Teste\Fila::$jobs = [];
+    $pedido->status    = $status;
+    ObservadorFinanceiroDosPedidos::aoAtualizar($pedido);
+    confere(count(\Teste\Fila::$jobs) === $esperado, "status {$status}: " . ($esperado ? 'enfileira' : 'não enfileira'));
+}
+\Teste\Fila::$jobs = [];
+$pedido->status    = 'completed';
+$pedido->alterados = ['driver_assigned_uuid'];
+ObservadorFinanceiroDosPedidos::aoAtualizar($pedido);
+confere(\Teste\Fila::$jobs === [], 'concluído, mas o status não mudou nesta gravação: não enfileira');
+$pedido->alterados  = ['status'];
+\Teste\Fila::$falhar = new \RuntimeException('Redis fora do ar');
+confere(excecao(fn () => ObservadorFinanceiroDosPedidos::aoAtualizar($pedido)) === null && logou('[entregas] financeiro', 'warning'), 'fila fora do ar: não lança, só registra');
+\Teste\Fila::$falhar = null;
+confere(excecao(fn () => ObservadorFinanceiroDosPedidos::aoAtualizar(new \stdClass())) === null, 'objeto estranho: não lança');
+
+echo '== Job LancarCorridaDoPedido' . PHP_EOL;
+reiniciarFinanceiro();
+\Teste\Sessao::$dados = [];
+pedidoConcluido('order_job', '2026-10-05 14:30:00');
+(new LancarCorridaDoPedido('uuid-order_job'))->handle(new LancadorDeCorridas(new CalculoFalso()));
+confere(count(lancamentosDo('order_job')) === 2 && session('company') === 'empresa-1', 'lança a corrida do pedido, com a empresa dele na sessão');
+\Teste\Config::$valores['services.entregas.financeiro'] = null;
+pedidoConcluido('order_job2', '2026-10-05 14:40:00');
+(new LancarCorridaDoPedido('uuid-order_job2'))->handle(new LancadorDeCorridas(new CalculoFalso()));
+confere(!lancamentosDo('order_job2'), 'chave desligada quando o job roda: nada');
+
+echo '== Comando entregas:financeiro-conferir' . PHP_EOL;
+
+/** Empresas com data de corte no Setting e na tabela settings (o comando procura as empresas pela tabela). */
+function corteDa(string $empresa, ?string $corte): void
+{
+    Setting::$valores['company.' . $empresa . '.entregas.financeiro_corte'] = $corte;
+    Banco::inserir('settings', ['key' => 'company.' . $empresa . '.entregas.financeiro_corte', 'value' => json_encode($corte)], false);
+}
+
+reiniciarFinanceiro();
+Setting::$valores = [];
+corteDa('empresa-1', '2026-10-01');
+corteDa('empresa-2', '2026-10-04');
+corteDa('empresa-3', null);
+Banco::inserir('settings', ['key' => 'company.empresa-4.entregas.faixas', 'value' => '[]'], false);
+\Fleetbase\Models\Company::$fusos['empresa-2'] = 'America/Sao_Paulo';
+$calculo = new CalculoFalso();
+$comando = new FinanceiroConferir();
+\Teste\Config::$valores['services.entregas.financeiro'] = null;
+confere($comando->handle(new LancadorDeCorridas($calculo)) === 0 && $calculo->chamadas === [], 'chave desligada: não faz nada');
+\Teste\Config::$valores['services.entregas.financeiro'] = '1';
+pedidoConcluido('order_c1', '2026-10-04 10:00:00');
+pedidoConcluido('order_c2', '2026-10-04 11:00:00', ['company_uuid' => 'empresa-2', 'driver_assigned_uuid' => 'driver-2', 'customer_uuid' => null]);
+confere($comando->handle(new LancadorDeCorridas($calculo)) === 0, 'sai com SUCCESS');
+confere(count(lancamentosDo('order_c1')) === 2 && count(lancamentosDo('order_c2')) === 1, 'lança o que faltou em cada empresa com corte');
+$porEmpresa = [];
+foreach ($calculo->chamadas as $chamada) {
+    $porEmpresa[$chamada['empresa']][] = $chamada['inicio'];
+}
+confere(array_keys($porEmpresa) === ['empresa-1', 'empresa-2'], 'só as empresas com data de corte válida');
+confere(($porEmpresa['empresa-1'][0] ?? null) === '2026-10-01 00:00:00' && ($porEmpresa['empresa-2'][0] ?? null) === '2026-10-04 00:00:00', 'a conferência começa no corte quando ele é recente (max(corte, hoje − 7 dias))');
+Relogio::$agora    = '2026-10-20 15:00:00';
+$calculo->chamadas = [];
+$comando->handle(new LancadorDeCorridas($calculo));
+confere(($calculo->chamadas[0]['inicio'] ?? null) === '2026-10-13 15:00:00', 'e em hoje − 7 dias quando o corte é antigo (' . ($calculo->chamadas[0]['inicio'] ?? '') . ')');
+Banco::$falharAoConsultar['entregas_lancamentos'] = new \RuntimeException('banco fora do ar');
+confere(excecao(fn () => $comando->handle(new LancadorDeCorridas($calculo))) === null && logou('[entregas] financeiro: conferência falhou', 'warning'), 'falha numa empresa: registra e segue');
+unset(Banco::$falharAoConsultar['entregas_lancamentos']);
+
+echo '== Comando entregas:financeiro-lancar-historico' . PHP_EOL;
+reiniciarFinanceiro();
+Setting::$valores = [];
+corteDa('empresa-1', '2026-09-20');
+\Teste\Config::$valores['services.entregas.financeiro'] = null; // roda mesmo com a chave desligada
+Relogio::$agora = '2026-10-05 15:00:00';
+pedidoConcluido('order_h1', '2026-09-19 23:00:00');
+pedidoConcluido('order_h2', '2026-09-20 10:00:00');
+pedidoConcluido('order_h3', '2026-10-01 10:00:00');
+pedidoConcluido('order_h4', '2026-10-05 14:00:00');
+$calculo   = new CalculoFalso();
+$historico = new FinanceiroLancarHistorico();
+confere($historico->handle($calculo) === 0, 'sai com SUCCESS');
+confere(!lancamentosDo('order_h1') && count(lancamentosDo('order_h2')) === 2 && count(lancamentosDo('order_h3')) === 2 && count(lancamentosDo('order_h4')) === 2, 'lança do corte até agora (antes do corte, nada)');
+$janelas = array_map(fn ($c) => [$c['inicio'], $c['fim']], $calculo->chamadas);
+confere(count($janelas) === 3 && $janelas[0] === ['2026-09-20 00:00:00', '2026-09-26 23:59:59'] && $janelas[2][1] === '2026-10-05 15:00:00', 'em janelas de 7 dias, a última até agora (' . json_encode($janelas) . ')');
+$antes = count(linhasDe('entregas_lancamentos'));
+$historico->handle(new CalculoFalso());
+confere(count(linhasDe('entregas_lancamentos')) === $antes, 'repetir é seguro');
+$historico->opcoes = ['company' => 'empresa-9'];
+$calculo           = new CalculoFalso();
+$historico->handle($calculo);
+confere($calculo->chamadas === [], '--company sem data de corte: nada');
+
+echo '== Ligações (agenda, providers, configuração, stack)' . PHP_EOL;
+$kernel = file_get_contents('/repo/api/app/Console/Kernel.php');
+$app    = file_get_contents('/repo/api/app/Providers/AppServiceProvider.php');
+$config = file_get_contents('/repo/api/config/services.php');
+$stack  = file_get_contents('/repo/deploy/docker-stack.yml');
+$modelo = file_get_contents('/repo/deploy/stack.env.example');
+confere(str_contains($kernel, "\$schedule->command('entregas:financeiro-conferir')->everyFiveMinutes()->when(fn () => Financeiro::ligada())->withoutOverlapping(10)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);") && str_contains($kernel, 'use App\Support\Entregas\Financeiro\Financeiro;'), 'agenda: conferência a cada 5 min, só com a chave ligada');
+confere(str_contains(file_get_contents('/repo/api/app/Console/Commands/Entregas/FinanceiroConferir.php'), "'entregas:financeiro-conferir'") && str_contains(file_get_contents('/repo/api/app/Console/Commands/Entregas/FinanceiroLancarHistorico.php'), "'entregas:financeiro-lancar-historico {--company=}'"), 'assinaturas dos comandos');
+confere(str_contains($app, 'Order::updated(fn ($pedido) => ObservadorFinanceiroDosPedidos::aoAtualizar($pedido));') && str_contains($app, '$this->lancarCorridasNoFinanceiro();') && str_contains($app, 'use App\Listeners\Entregas\ObservadorFinanceiroDosPedidos;'), 'AppServiceProvider: Order::updated → observador do financeiro');
+confere(str_contains($config, "'financeiro' => env('ENTREGAS_FINANCEIRO'),"), 'config/services.php: services.entregas.financeiro');
+confere(str_contains($stack, 'ENTREGAS_FINANCEIRO: ${ENTREGAS_FINANCEIRO:-}') && preg_match('/^ENTREGAS_FINANCEIRO=\r?$/m', $modelo) === 1, 'stack e modelo do stack.env');
 
 resumo();

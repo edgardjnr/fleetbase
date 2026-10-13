@@ -241,6 +241,9 @@ unset($porComando['entregas:distribuicao-varrer']);
 // a integração de pedidos de outros sistemas tem o próprio when (ENTREGAS_INTEGRACAO), conferida à parte depois da distribuição
 $integracao = $porComando['entregas:integracao-acompanhar'] ?? null;
 unset($porComando['entregas:integracao-acompanhar']);
+// o financeiro tem o próprio when (ENTREGAS_FINANCEIRO), conferido à parte no fim
+$financeiro = $porComando['entregas:financeiro-conferir'] ?? null;
+unset($porComando['entregas:financeiro-conferir']);
 confere(array_keys($porComando) === ['entregas:ifood-polling', 'entregas:ifood-agendados', 'entregas:ifood-acompanhar', 'entregas:ifood-tokens'], 'os quatro comandos agendados');
 confere(isset($porComando['entregas:ifood-polling']['everyThirtySeconds']) && isset($porComando['entregas:ifood-agendados']['everyMinute']) && isset($porComando['entregas:ifood-acompanhar']['everyThirtySeconds']) && isset($porComando['entregas:ifood-tokens']['everyThirtyMinutes']), 'a cada 30 s, a cada minuto, a cada 30 s e a cada 30 min');
 foreach ($porComando as $comando => $chamadas) {
@@ -286,6 +289,18 @@ if ($quandoInt instanceof Closure) {
     $ligadaInt                                       = $quandoInt();
     Config::$valores['services.entregas.integracao'] = '';
     confere($ligadaInt === true && $quandoInt() === false, 'entregas:integracao-acompanhar: o when() segue o Integracao::ligada()');
+}
+
+echo '== Kernel: financeiro' . PHP_EOL;
+confere($financeiro !== null && isset($financeiro['everyFiveMinutes']) && ($financeiro['withoutOverlapping'][0] ?? null) === 10 && isset($financeiro['runInBackground']) && ($financeiro['appendOutputTo'] ?? null) === ['/proc/1/fd/1'], 'entregas:financeiro-conferir: a cada 5 min, withoutOverlapping(10), em segundo plano, saída no container');
+$quandoFin = $financeiro['when'][0] ?? null;
+confere($quandoFin instanceof Closure, 'entregas:financeiro-conferir: com when()');
+if ($quandoFin instanceof Closure) {
+    reiniciarIfood();
+    Config::$valores['services.entregas.financeiro'] = '1';
+    $ligadaFin                                       = $quandoFin();
+    Config::$valores['services.entregas.financeiro'] = '';
+    confere($ligadaFin === true && $quandoFin() === false, 'entregas:financeiro-conferir: o when() segue o Financeiro::ligada()');
 }
 
 resumo();

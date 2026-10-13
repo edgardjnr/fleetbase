@@ -3,6 +3,7 @@
 namespace App\Console;
 
 use App\Support\Entregas\Distribuicao\Distribuicao;
+use App\Support\Entregas\Financeiro\Financeiro;
 use App\Support\Entregas\Ifood\ClienteIfood;
 use App\Support\Entregas\Integracao\Integracao;
 use Illuminate\Console\Scheduling\Schedule;
@@ -47,6 +48,10 @@ class Kernel extends ConsoleKernel
 
         // integração de pedidos de outros sistemas: despacho que falhou e avisos que faltam (AcompanharIntegracao)
         $schedule->command('entregas:integracao-acompanhar')->everyMinute()->when(fn () => Integracao::ligada())->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
+
+        // financeiro: lança as corridas que o observador não lançou e estorna as de pedidos cancelados depois da
+        // conclusão (FinanceiroConferir)
+        $schedule->command('entregas:financeiro-conferir')->everyFiveMinutes()->when(fn () => Financeiro::ligada())->withoutOverlapping(10)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
     }
 
     /**

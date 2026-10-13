@@ -14,6 +14,7 @@ $arquivos = array_merge(
     glob($app . '/Support/Entregas/Distribuicao/*.php'),
     glob($app . '/Listeners/Entregas/*.php'),
     glob($app . '/Support/Entregas/Integracao/*.php'),
+    glob($app . '/Support/Entregas/Financeiro/*.php'),
     [
         $app . '/Jobs/Entregas/AvancarOferta.php',
         $app . '/Jobs/Entregas/AvancarDistribuicao.php',
@@ -32,6 +33,11 @@ $arquivos = array_merge(
         $app . '/Http/Controllers/Entregas/IntegracaoLojasController.php',
         $app . '/Jobs/Entregas/EnviarAvisoDaIntegracao.php',
         $app . '/Console/Commands/Entregas/AcompanharIntegracao.php',
+        // financeiro
+        $app . '/Support/Entregas/CalculoEntregas.php',
+        $app . '/Jobs/Entregas/LancarCorridaDoPedido.php',
+        $app . '/Console/Commands/Entregas/FinanceiroConferir.php',
+        $app . '/Console/Commands/Entregas/FinanceiroLancarHistorico.php',
     ]
 );
 
