@@ -399,6 +399,13 @@ namespace {
     confere($painel['a_receber'] === $emAbertoTotal && $painel['vencido'] === $vencidoTotal, "painel: a receber {$painel['a_receber']} e vencido {$painel['vencido']} = soma das faturas dos portais");
     Config::$valores['services.entregas.financeiro'] = '1';
 
+    // o aviso "Sem e-mail para receber a fatura" da lista de lojas segue quem recebe de verdade (AvisosDaFatura)
+    $emails = fn () => array_column($console->lojas(new \Illuminate\Http\Request([]))->dados['lojas'] ?? [], 'email', 'id');
+    confere($emails() === ['vendor_b' => null, 'vendor_a' => 'ze@pizzaria.com'], 'Lojas: o e-mail da loja; sem e-mail e sem usuário do portal com e-mail, null');
+    Banco::$tabelas['vendor_personnels'][10] = ['id' => 10, 'vendor_uuid' => 'vendor-b', 'contact_uuid' => 'contato-10', 'status' => 'active', 'deleted_at' => null];
+    Banco::$tabelas['contacts'][10]          = ['id' => 10, 'uuid' => 'contato-10', 'company_uuid' => 'empresa-1', 'type' => 'customer', 'email' => 'Gerente@Burger.com', 'deleted_at' => null];
+    confere($emails()['vendor_b'] === 'gerente@burger.com', 'Lojas: loja sem e-mail, mas com usuário do portal com e-mail: o dele (a fatura vai para ele)');
+
     // ------------------------------------------------------------------------------------------------------------------
     echo '== E-mails: destinatários (AvisosDaFatura::emailsDaLoja)' . PHP_EOL;
     montarLojas();

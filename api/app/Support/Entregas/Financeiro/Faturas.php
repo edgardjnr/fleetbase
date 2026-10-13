@@ -465,7 +465,7 @@ final class Faturas
                 'nao_faturado' => round((float) ($naoFaturado[$uuid] ?? 0), 2),
                 'ciclo'        => $config,
                 'ciclo_atual'  => CicloDeCobranca::periodoQueContem($config, $hoje),
-                'email'        => isset($vendor->email) && trim((string) $vendor->email) !== '' ? (string) $vendor->email : null,
+                'email'        => static::emailDaLoja($companyUuid, $vendor),
             ];
         }
         usort($linhas, fn ($a, $b) => strcasecmp($a['nome'], $b['nome']));
@@ -481,6 +481,21 @@ final class Faturas
     public static function itensFormatados(object $fatura, bool $publico): array
     {
         return ExtratoDaConta::linhas(static::itens($fatura), [], $publico);
+    }
+
+    /**
+     * O e-mail que a lista de lojas mostra (o aviso "Sem e-mail para receber a fatura" aparece quando é null): o da loja
+     * (Vendor) ou, sem ele, o primeiro dos usuários ativos do portal dela, que também recebem a fatura
+     * (AvisosDaFatura::emailsDaLoja). Só consulta os usuários quando a loja não tem e-mail.
+     */
+    private static function emailDaLoja(string $companyUuid, object $vendor): ?string
+    {
+        $proprio = trim((string) ($vendor->email ?? ''));
+        if ($proprio !== '') {
+            return $proprio;
+        }
+
+        return AvisosDaFatura::emailsDaLoja($companyUuid, (string) $vendor->uuid)[0] ?? null;
     }
 
     /** Lançamentos de loja da empresa ainda sem fatura, menos recebimentos e estornos de recebimento (têm pagamento_uuid). */
