@@ -95,11 +95,19 @@ final class Lancamentos
      * Cria o estorno (valor oposto, estorno_de, chave_unica 'estorno:<id>'); null se já estornado ou se for estorno.
      * Mesma conta, pedido, pagamento e detalhes; data de hoje no fuso da empresa. O estorno de um lançamento de loja
      * fica sem fatura (entra no próximo rascunho).
+     *
+     * $parte (opcional, em reais, positivo): estorna só essa parte do valor (o estorno automático do pedido cancelado
+     * depois de um "Não pagar"/desconto parcial, LancadorDeCorridas::estornarCancelados). Sem ela, o valor inteiro.
      */
-    public static function estornar(object $lancamento, ?string $usuarioUuid, ?string $motivo): ?int
+    public static function estornar(object $lancamento, ?string $usuarioUuid, ?string $motivo, ?float $parte = null): ?int
     {
         if ($lancamento->tipo === 'estorno') {
             return null;
+        }
+
+        $valor = round((float) $lancamento->valor, 2);
+        if ($parte !== null) {
+            $valor = ($valor < 0 ? -1 : 1) * min(abs($valor), round(abs($parte), 2));
         }
 
         return static::inserir([
@@ -107,7 +115,7 @@ final class Lancamentos
             'conta_tipo'      => $lancamento->conta_tipo,
             'conta_uuid'      => $lancamento->conta_uuid,
             'tipo'            => 'estorno',
-            'valor'           => -round((float) $lancamento->valor, 2),
+            'valor'           => -$valor,
             'data_referencia' => Financeiro::hoje((string) $lancamento->company_uuid),
             'order_uuid'      => $lancamento->order_uuid ?? null,
             'pagamento_uuid'  => $lancamento->pagamento_uuid ?? null,

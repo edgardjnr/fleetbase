@@ -193,25 +193,73 @@ final class LancadorDeCorridas
             return 0;
         }
 
-        $lancamentos = DB::table(Lancamentos::TABELA)
+        // todos os lançamentos desses pedidos (corridas, ajustes e estornos), separados por conta e pedido
+        $grupos = [];
+        $linhas = DB::table(Lancamentos::TABELA)
             ->where('company_uuid', $companyUuid)
-            ->where('tipo', 'corrida')
             ->whereIn('order_uuid', $alvos)
-            ->get()
-            ->all();
-        $jaEstornados = array_flip(Lancamentos::jaEstornados(array_map(fn ($l) => (int) $l->id, $lancamentos)));
+            ->orderBy('id')
+            ->get();
+        foreach ($linhas as $lancamento) {
+            $grupos[$lancamento->conta_tipo . '|' . $lancamento->conta_uuid . '|' . $lancamento->order_uuid][] = $lancamento;
+        }
 
         $estornos = 0;
-        foreach ($lancamentos as $lancamento) {
-            if (isset($jaEstornados[(int) $lancamento->id])) {
-                continue;
-            }
-            if (Lancamentos::estornar($lancamento, null, static::MOTIVO_CANCELADO)) {
-                $estornos++;
+        foreach ($grupos as $grupo) {
+            foreach (static::estornosDevidos($grupo) as [$corrida, $parte]) {
+                if (Lancamentos::estornar($corrida, null, static::MOTIVO_CANCELADO, $parte)) {
+                    $estornos++;
+                }
             }
         }
 
         return $estornos;
+    }
+
+    /**
+     * O que estornar das corridas de um pedido numa conta (lançamentos da conta com aquele order_uuid, em ordem de id):
+     * [[corrida, parte em reais]]. Desconta o que o pedido já perdeu por ajuste negativo ("Não pagar", "Não cobrar",
+     * desconto parcial) e pelos estornos de antes, para o pedido cancelado ficar com zero na conta, sem debitar duas vezes.
+     * O líquido do pedido = corridas + ajustes negativos com o pedido + os estornos desses dois; cada corrida ainda não
+     * estornada é estornada até esse líquido (nada se ele já é zero ou menos).
+     */
+    public static function estornosDevidos(array $grupo): array
+    {
+        $centavos = fn ($lancamento) => (int) round(((float) $lancamento->valor) * 100);
+        $contam   = [];
+        foreach ($grupo as $lancamento) {
+            if ($lancamento->tipo === 'corrida' || ($lancamento->tipo === 'ajuste' && $centavos($lancamento) < 0)) {
+                $contam[(int) $lancamento->id] = true;
+            }
+        }
+
+        $liquido    = 0;
+        $estornados = [];
+        foreach ($grupo as $lancamento) {
+            if (isset($contam[(int) $lancamento->id])) {
+                $liquido += $centavos($lancamento);
+            } elseif ($lancamento->tipo === 'estorno' && $lancamento->estorno_de !== null && isset($contam[(int) $lancamento->estorno_de])) {
+                $liquido                                  += $centavos($lancamento);
+                $estornados[(int) $lancamento->estorno_de] = true;
+            }
+        }
+
+        $devidos = [];
+        foreach ($grupo as $lancamento) {
+            if ($liquido <= 0) {
+                break;
+            }
+            if ($lancamento->tipo !== 'corrida' || isset($estornados[(int) $lancamento->id])) {
+                continue;
+            }
+            $parte = min($centavos($lancamento), $liquido);
+            if ($parte > 0) {
+                $devidos[] = [$lancamento, $parte / 100];
+                $liquido  -= $parte;
+            }
+        }
+
+        return $devidos;
     }
 
     /** Usado pelo job do observador (LancarCorridaDoPedido): lança a corrida de um pedido, se ele estiver no relatório. */

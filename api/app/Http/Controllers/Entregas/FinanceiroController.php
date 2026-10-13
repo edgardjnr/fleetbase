@@ -213,16 +213,10 @@ class FinanceiroController extends Controller
             return $erro;
         }
 
-        $pedido = null;
         $codigo = $request->input('pedido');
-        if ($codigo !== null && trim((string) $codigo) !== '') {
-            if ($tipo !== 'ajuste') {
-                return $this->erro('Só o ajuste pode ter pedido.');
-            }
-            $pedido = $this->pedido(trim((string) $codigo));
-            if (!$pedido) {
-                return $this->erro('Pedido não encontrado.');
-            }
+        $codigo = is_scalar($codigo) ? trim((string) $codigo) : '';
+        if ($codigo !== '' && $tipo !== 'ajuste') {
+            return $this->erro('Só o ajuste pode ter pedido.');
         }
 
         $ids = $request->input('contas');
@@ -237,6 +231,19 @@ class FinanceiroController extends Controller
         $faltam = array_values(array_diff($ids, array_keys($contas)));
         if ($faltam) {
             return $this->erro('Conta não encontrada: ' . implode(', ', array_slice($faltam, 0, 5)) . '.');
+        }
+
+        $pedido = null;
+        if ($codigo !== '') {
+            $pedido = $this->pedido($codigo);
+            if (!$pedido) {
+                return $this->erro('Pedido não encontrado.');
+            }
+            // o desconto de uma corrida já estornada debitaria duas vezes (o caminho inverso, estorno automático depois
+            // do "Não pagar", desconta o ajuste: LancadorDeCorridas::estornosDevidos)
+            if ($valor < 0 && $this->corridaEstornada($contaTipo, array_values($contas), (string) $pedido->uuid)) {
+                return $this->erro('A corrida deste pedido já foi estornada.');
+            }
         }
 
         $empresa = $this->empresa();
@@ -547,6 +554,37 @@ class FinanceiroController extends Controller
         }
 
         return $contas;
+    }
+
+    /**
+     * Se, em alguma das contas, o pedido tem corrida lançada e todas as corridas dele estão estornadas (sem corrida
+     * viva, nada a descontar).
+     */
+    protected function corridaEstornada(string $contaTipo, array $contaUuids, string $orderUuid): bool
+    {
+        $corridas = DB::table(Lancamentos::TABELA)
+            ->where('company_uuid', $this->empresa())
+            ->where('conta_tipo', $contaTipo)
+            ->whereIn('conta_uuid', $contaUuids)
+            ->where('tipo', 'corrida')
+            ->where('order_uuid', $orderUuid)
+            ->get()
+            ->all();
+        if (!$corridas) {
+            return false;
+        }
+
+        $estornadas = array_flip(Lancamentos::jaEstornados(array_map(fn ($l) => (int) $l->id, $corridas)));
+        $vivas      = [];
+        $daConta    = [];
+        foreach ($corridas as $corrida) {
+            $daConta[(string) $corrida->conta_uuid] = true;
+            if (!isset($estornadas[(int) $corrida->id])) {
+                $vivas[(string) $corrida->conta_uuid] = true;
+            }
+        }
+
+        return (bool) array_diff_key($daConta, $vivas);
     }
 
     protected function motoboy(string $id): ?Driver

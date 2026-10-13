@@ -246,6 +246,46 @@ confere($lancador->estornarCancelados('empresa-1', Carbon::parse('2026-09-05 15:
 confere(count(array_filter(linhasDe('entregas_lancamentos'), fn ($l) => $l['tipo'] === 'estorno' && in_array($l['order_uuid'], ['uuid-order_ok', 'uuid-order_pago', 'uuid-order_sm'], true))) === 0, 'concluído, cancelado pago e concluído sem motoboy: intactos');
 confere($lancador->estornarCancelados('empresa-1', Carbon::parse('2026-10-04 00:00:00')) === 0, 'só olha os lançamentos a partir de $desde');
 
+echo '== estornarCancelados depois de "Não pagar" / "Não cobrar" (não debita duas vezes)' . PHP_EOL;
+
+/** Ajuste com pedido (o "Não pagar" do motoboy, o "Não cobrar" da loja, ou um desconto parcial). */
+function ajusteDoPedido(string $conta, string $contaUuid, string $pedido, float $valor): int
+{
+    return App\Support\Entregas\Financeiro\Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => $conta, 'conta_uuid' => $contaUuid,
+        'tipo' => 'ajuste', 'valor' => $valor, 'data_referencia' => '2026-10-04', 'order_uuid' => $pedido, 'motivo' => 'Ajuste', 'criado_por' => 'user-admin']);
+}
+
+/** Soma dos lançamentos do pedido na conta (o que o motoboy/a loja ainda tem daquele pedido). */
+function liquidoDoPedido(string $pedido, string $conta): float
+{
+    return round(array_sum(array_map(fn ($l) => (float) $l['valor'], array_filter(linhasDe('entregas_lancamentos'), fn ($l) => $l['order_uuid'] === 'uuid-' . $pedido && $l['conta_tipo'] === $conta))), 2);
+}
+
+reiniciarFinanceiro();
+$calculo  = new CalculoFalso();
+$lancador = new LancadorDeCorridas($calculo);
+$np       = pedidoConcluido('order_np', '2026-10-03 10:00:00');
+$pp       = pedidoConcluido('order_pp', '2026-10-03 11:00:00');
+$ae       = pedidoConcluido('order_ae', '2026-10-03 12:00:00');
+$lancador->lancar('empresa-1', new Collection([$np, $pp, $ae]));
+ajusteDoPedido('motoboy', 'driver-1', 'uuid-order_np', -8.0);    // "Não pagar" inteiro
+ajusteDoPedido('loja', 'vendor-a', 'uuid-order_np', -11.37);     // "Não cobrar" inteiro
+ajusteDoPedido('motoboy', 'driver-1', 'uuid-order_pp', -3.0);    // desconto de 3,00
+ajusteDoPedido('motoboy', 'driver-2', 'uuid-order_pp', -5.0);    // de outra conta: não conta
+$estornado = ajusteDoPedido('motoboy', 'driver-1', 'uuid-order_ae', -8.0);
+App\Support\Entregas\Financeiro\Lancamentos::estornar(App\Support\Entregas\Financeiro\Lancamentos::porId('empresa-1', $estornado), 'user-admin', null);
+foreach ([$np, $pp, $ae] as $pedido) {
+    $pedido->status = 'canceled';
+}
+$n = $lancador->estornarCancelados('empresa-1', Carbon::parse('2026-09-05 15:00:00'));
+confere(liquidoDoPedido('order_np', 'motoboy') === 0.0 && liquidoDoPedido('order_np', 'loja') === 0.0, '"Não pagar"/"Não cobrar" do valor inteiro: o estorno automático não tira de novo (motoboy ' . liquidoDoPedido('order_np', 'motoboy') . ', loja ' . liquidoDoPedido('order_np', 'loja') . ')');
+$parcial = array_values(array_filter(linhasDe('entregas_lancamentos'), fn ($l) => $l['tipo'] === 'estorno' && $l['order_uuid'] === 'uuid-order_pp' && $l['conta_tipo'] === 'motoboy' && $l['motivo'] === 'Pedido cancelado após a conclusão'));
+confere(count($parcial) === 1 && (float) $parcial[0]['valor'] === -5.0 && liquidoDoPedido('order_pp', 'loja') === 0.0, 'desconto de 3,00 antes: estorna só os 5,00 que sobram (' . json_encode(array_column($parcial, 'valor')) . ')');
+confere(round(array_sum(array_map(fn ($l) => (float) $l['valor'], array_filter(linhasDe('entregas_lancamentos'), fn ($l) => $l['order_uuid'] === 'uuid-order_pp' && $l['conta_uuid'] === 'driver-1'))), 2) === 0.0, 'o motoboy fica com zero do pedido cancelado');
+confere(liquidoDoPedido('order_ae', 'motoboy') === 0.0 && count(array_filter(linhasDe('entregas_lancamentos'), fn ($l) => $l['tipo'] === 'estorno' && $l['order_uuid'] === 'uuid-order_ae' && $l['conta_tipo'] === 'motoboy' && $l['motivo'] === 'Pedido cancelado após a conclusão' && (float) $l['valor'] === -8.0)) === 1, 'ajuste já estornado não desconta: a corrida é estornada inteira');
+confere($n === 4, "estornos criados: motoboy do order_pp e do order_ae, loja do order_pp e do order_ae ({$n})");
+confere($lancador->estornarCancelados('empresa-1', Carbon::parse('2026-09-05 15:00:00')) === 0 && liquidoDoPedido('order_np', 'motoboy') === 0.0, 'de novo: nada');
+
 echo '== lancarPedido (job)' . PHP_EOL;
 reiniciarFinanceiro();
 \Teste\Sessao::$dados = [];
