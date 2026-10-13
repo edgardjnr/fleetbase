@@ -283,3 +283,46 @@ export function linhasCsvDaFatura(fatura, itens, rotulos = {}) {
 
     return linhas;
 }
+
+/**
+ * Extrato da loja agrupado por dia: `[{ data, lancamentos }]`, na ordem em que o servidor mandou (mais novo primeiro).
+ * Só junta dias seguidos, para nunca reordenar.
+ */
+export function agruparLancamentosPorDia(lancamentos) {
+    const grupos = [];
+    for (const lancamento of lancamentos ?? []) {
+        const ultimo = grupos[grupos.length - 1];
+        if (ultimo && ultimo.data === lancamento?.data) {
+            ultimo.lancamentos.push(lancamento);
+        } else {
+            grupos.push({ data: lancamento?.data, lancamentos: [lancamento] });
+        }
+    }
+
+    return grupos;
+}
+
+/**
+ * Linhas do CSV do extrato da loja (Data;Tipo;Pedido;Motivo;Fatura;Valor;Situação). `rotulos` traz os cabeçalhos e os
+ * mapas `tipos` e `situacoes` já traduzidos.
+ */
+export function linhasCsvDoExtratoDaLoja(extrato, rotulos = {}) {
+    const r = (chave) => rotulos[chave] ?? chave;
+    const linhas = [[r('data'), r('tipo'), r('pedido'), r('motivo'), r('fatura'), r('valor'), r('situacao')].map(celula).join(';')];
+
+    for (const lancamento of extrato?.lancamentos ?? []) {
+        linhas.push(
+            [
+                celula(dataBr(lancamento?.data)),
+                celula(rotulos.tipos?.[lancamento?.tipo] ?? lancamento?.tipo),
+                celula(lancamento?.pedido ? lancamento.pedido.numero || lancamento.pedido.id : ''),
+                celula(lancamento?.motivo),
+                celula(lancamento?.fatura?.numero),
+                decimal(lancamento?.valor),
+                celula(lancamento?.situacao ? rotulos.situacoes?.[lancamento.situacao] ?? lancamento.situacao : ''),
+            ].join(';')
+        );
+    }
+
+    return linhas;
+}

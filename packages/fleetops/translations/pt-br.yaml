@@ -355,6 +355,40 @@ fleet-ops:
       ajuste-adicionado: Ajuste adicionado.
       motivo-visivel: Motivo (a loja vê)
       observacao-interna: Observação interna (só a central vê)
+      extrato: Extrato da loja
+      extrato-de: 'Extrato de {nome}'
+      saldo-a-receber: a receber da loja
+      saldo-credito: crédito da loja (recebido a mais)
+      ultimo-recebimento: 'Último recebimento: {valor} em {data}'
+      lancar-ajuste: Lançar ajuste / saldo inicial
+      aplicar: Aplicar
+      este-mes: Este mês
+      mes-passado: Mês passado
+      ultimos-90-dias: Últimos 90 dias
+      saldo-anterior: 'Saldo antes de {data}'
+      creditos-no-periodo: Créditos no período
+      debitos-no-periodo: Débitos no período
+      descricao: Descrição
+      tipo: Tipo
+      lancado-por: 'lançado por {nome}'
+      estornado-selo: estornado
+      comprovante: comprovante
+      estornar: Estornar
+      estornar-titulo: Estornar este lançamento?
+      estornar-texto: 'Entra um lançamento oposto ({tipo}, {valor}). Os dois ficam no extrato.'
+      estornar-recebimento-texto: 'O recebimento de {valor} é desfeito e o saldo da loja volta. Os dois lançamentos ficam no extrato.'
+      estornado: Estornado.
+      sem-lancamentos: Nenhum lançamento no período.
+      situacoes-lancamento:
+        pago: Pago
+        parcial: Pago em parte
+        aberto: A receber
+        anulado: Anulado
+      formas:
+        pix: Pix
+        dinheiro: Dinheiro
+        transferencia: Transferência
+        outro: Outro
       tipos:
         corrida: Corrida
         diaria: Diária

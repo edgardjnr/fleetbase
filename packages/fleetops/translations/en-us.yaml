@@ -355,6 +355,40 @@ fleet-ops:
             ajuste-adicionado: Adjustment added.
             motivo-visivel: Reason (the store sees it)
             observacao-interna: Internal note (only the office sees it)
+            extrato: Store statement
+            extrato-de: 'Statement of {nome}'
+            saldo-a-receber: receivable from the store
+            saldo-credito: store credit (overpaid)
+            ultimo-recebimento: 'Last payment received: {valor} on {data}'
+            lancar-ajuste: Post adjustment / opening balance
+            aplicar: Apply
+            este-mes: This month
+            mes-passado: Last month
+            ultimos-90-dias: Last 90 days
+            saldo-anterior: 'Balance before {data}'
+            creditos-no-periodo: Credits in the period
+            debitos-no-periodo: Debits in the period
+            descricao: Description
+            tipo: Type
+            lancado-por: 'posted by {nome}'
+            estornado-selo: reversed
+            comprovante: receipt
+            estornar: Reverse
+            estornar-titulo: Reverse this entry?
+            estornar-texto: 'An opposite entry is posted ({tipo}, {valor}). Both stay in the statement.'
+            estornar-recebimento-texto: 'The {valor} payment received is undone and the store balance goes back. Both entries stay in the statement.'
+            estornado: Reversed.
+            sem-lancamentos: No entries in the period.
+            situacoes-lancamento:
+                pago: Paid
+                parcial: Partially paid
+                aberto: Receivable
+                anulado: Voided
+            formas:
+                pix: Pix
+                dinheiro: Cash
+                transferencia: Bank transfer
+                outro: Other
             tipos:
                 corrida: Delivery
                 diaria: Daily allowance

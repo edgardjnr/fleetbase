@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+    agruparLancamentosPorDia,
     corDaFatura,
     corDaSituacao,
     dataBr,
@@ -10,6 +11,7 @@ import {
     jaNaoCobrado,
     lerValor,
     linhasCsvDaFatura,
+    linhasCsvDoExtratoDaLoja,
     numeroOuRascunho,
     opcoesDeDia,
     podeEstornarNaLoja,
@@ -227,4 +229,51 @@ test('CSV da fatura', () => {
     assert.equal(rascunho[1], '"Loja";""');
     assert.equal(rascunho[5], '"Data";"Pedido";"Km";"Destino";"Motivo";"Valor"');
     assert.equal(rascunho[7], '"Total";41,50');
+});
+
+test('agrupar lançamentos por dia, mantendo a ordem (mais novo primeiro)', () => {
+    const lancamentos = [
+        { id: 5, data: '2026-10-12' },
+        { id: 4, data: '2026-10-12' },
+        { id: 3, data: '2026-10-10' },
+        { id: 2, data: '2026-10-12' },
+    ];
+    assert.deepEqual(agruparLancamentosPorDia(lancamentos), [
+        { data: '2026-10-12', lancamentos: [lancamentos[0], lancamentos[1]] },
+        { data: '2026-10-10', lancamentos: [lancamentos[2]] },
+        { data: '2026-10-12', lancamentos: [lancamentos[3]] },
+    ], 'só junta dias seguidos (a ordem do servidor manda)');
+    assert.deepEqual(agruparLancamentosPorDia([]), []);
+    assert.deepEqual(agruparLancamentosPorDia(null), []);
+});
+
+test('CSV do extrato da loja', () => {
+    const extrato = {
+        conta: { tipo: 'loja', id: 'vendor_a', nome: 'Pizzaria' },
+        inicio: '2026-10-01',
+        fim: '2026-10-12',
+        lancamentos: [
+            { id: 9, tipo: 'recebimento', valor: -100, data: '2026-10-12', pedido: null, motivo: null, fatura: null, situacao: null },
+            { id: 8, tipo: 'corrida', valor: 8.5, data: '2026-10-11', pedido: { id: 'order_a', numero: 'RP1' }, motivo: null, fatura: { id: 'f', numero: 'FAT-0002' }, situacao: 'pago' },
+            { id: 7, tipo: 'ajuste', valor: -2, data: '2026-10-10', pedido: null, motivo: 'Desconto "amigo"', fatura: null, situacao: null },
+        ],
+    };
+    const rotulos = {
+        data: 'Data',
+        tipo: 'Tipo',
+        pedido: 'Pedido',
+        motivo: 'Motivo',
+        fatura: 'Fatura',
+        valor: 'Valor',
+        situacao: 'Situação',
+        tipos: { recebimento: 'Recebimento', corrida: 'Corrida', ajuste: 'Ajuste' },
+        situacoes: { pago: 'Pago' },
+    };
+    assert.deepEqual(linhasCsvDoExtratoDaLoja(extrato, rotulos), [
+        '"Data";"Tipo";"Pedido";"Motivo";"Fatura";"Valor";"Situação"',
+        '"12/10/2026";"Recebimento";"";"";"";-100,00;""',
+        '"11/10/2026";"Corrida";"RP1";"";"FAT-0002";8,50;"Pago"',
+        '"10/10/2026";"Ajuste";"";"Desconto ""amigo""";"";-2,00;""',
+    ]);
+    assert.deepEqual(linhasCsvDoExtratoDaLoja({ lancamentos: [] }, rotulos), ['"Data";"Tipo";"Pedido";"Motivo";"Fatura";"Valor";"Situação"']);
 });
