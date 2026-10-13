@@ -83,25 +83,55 @@ export function formatadores(idioma) {
     };
 }
 
+// formas aceitas do valor em reais (sem o sinal): milhar com ponto ("1.500", "1.234,56"), vírgula decimal ("30", "30,5")
+// ou ponto decimal ("12.5", "12.50"). Ponto seguido de 3 dígitos é sempre milhar ("1.500" = mil e quinhentos, nunca 1,5)
+const MILHAR_COM_PONTO = /^[1-9]\d{0,2}(\.\d{3})+(,\d{1,2})?$/;
+const VIRGULA_DECIMAL = /^\d+(,\d{1,2})?$/;
+const PONTO_DECIMAL = /^\d+\.\d{1,2}$/;
+
 /**
- * Número digitado: "30", "30,5", "-2,75", "1.234,56" ou "12.5". Vazio ou texto inválido vira NaN (Number('') seria 0).
+ * Número digitado em reais: "30", "30,5", "-2,75", "1.500" (mil e quinhentos), "1.234,56" ou "12.5". Vazio, texto
+ * inválido ou mais de 2 casas decimais ("1,505") vira NaN (Number('') seria 0).
  */
 export function numeroDigitado(valor) {
     if (typeof valor === 'number') {
-        return valor;
+        return Number.isFinite(valor) ? valor : NaN;
     }
-    let texto = String(valor ?? '')
-        .trim()
-        .replace(/\s/g, '');
-    if (texto.includes(',')) {
-        // vírgula decimal: os pontos são separador de milhar
-        texto = texto.replace(/\./g, '').replace(',', '.');
+    const partes = /^([+-]?)(.+)$/.exec(String(valor ?? '').replace(/\s/g, ''));
+    if (!partes) {
+        return NaN;
+    }
+    const [, sinal, corpo] = partes;
+    let normal;
+    if (MILHAR_COM_PONTO.test(corpo)) {
+        normal = corpo.replace(/\./g, '').replace(',', '.');
+    } else if (VIRGULA_DECIMAL.test(corpo)) {
+        normal = corpo.replace(',', '.');
+    } else if (PONTO_DECIMAL.test(corpo)) {
+        normal = corpo;
+    } else {
+        return NaN;
     }
 
-    return /^[+-]?\d+(\.\d+)?$/.test(texto) ? Number(texto) : NaN;
+    return Number(`${sinal}${normal}`);
 }
 
 const centavos = (valor) => Math.round(valor * 100) / 100;
+
+/**
+ * Valor para mandar ao servidor: texto com ponto decimal e 2 casas ("1500.00", "-2.50"), nunca o que foi digitado (o
+ * servidor recusa "1.500" sem vírgula). null se o digitado não é número.
+ */
+export function valorParaEnviar(valor) {
+    const numero = numeroDigitado(valor);
+    return Number.isFinite(numero) ? (centavos(numero) || 0).toFixed(2) : null;
+}
+
+/** Valor interpretado ao lado do campo ("R$ 1.500,00"); vazio enquanto o campo está vazio ou inválido. `f` = formatadores(idioma). */
+export function valorInterpretado(valor, f) {
+    const numero = numeroDigitado(valor);
+    return Number.isFinite(numero) ? f.valor(centavos(numero)) : '';
+}
 
 /** Chave i18n do tipo de lançamento (fleet-ops.ui.financeiro.tipos.<tipo>). */
 export function rotuloDoTipo(tipo) {
@@ -247,7 +277,7 @@ export function camposDoPagamento({ contaTipo, contaId, valor, forma, data, obse
     const campos = [
         ['conta_tipo', contaTipo === 'loja' ? 'loja' : 'motoboy'],
         ['conta', String(contaId ?? '')],
-        ['valor', (Math.round(numeroDigitado(valor) * 100) / 100).toFixed(2)],
+        ['valor', valorParaEnviar(valor) ?? ''],
         ['forma', FORMAS_DE_PAGAMENTO.includes(forma) ? forma : 'pix'],
         ['data', String(data ?? '')],
     ];

@@ -3,7 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
-import { aceitaNegativo, isoDate, numeroDigitado, rotuloDoTipo, tiposDaConta, validarLancamento } from '../../utils/financeiro';
+import { aceitaNegativo, formatadores, isoDate, rotuloDoTipo, tiposDaConta, validarLancamento, valorInterpretado, valorParaEnviar } from '../../utils/financeiro';
 
 const ENDPOINT = 'entregas/financeiro/lancamentos';
 
@@ -58,6 +58,11 @@ export default class ModalsLancarNoFinanceiroComponent extends Component {
         return this.intl.t(`fleet-ops.ui.financeiro.lancar.para-varios-${this.contaTipo}`, { count: this.contas.length });
     }
 
+    /** O valor como foi entendido ("1.500" = R$ 1.500,00), ao lado do campo. */
+    get valorInterpretado() {
+        return valorInterpretado(this.valor, formatadores(this.intl.primaryLocale));
+    }
+
     get aceitaPedido() {
         return this.tipo === 'ajuste';
     }
@@ -104,7 +109,8 @@ export default class ModalsLancarNoFinanceiroComponent extends Component {
             conta_tipo: this.contaTipo,
             contas: this.contas.map((conta) => conta.id),
             tipo: this.tipo,
-            valor: Math.round(numeroDigitado(this.valor) * 100) / 100,
+            // texto normalizado ("1500.00"): o servidor recusa o milhar com ponto sem vírgula
+            valor: valorParaEnviar(this.valor),
             data: this.data,
             pedido: this.aceitaPedido ? texto(this.pedido) : null,
             motivo: texto(this.motivo),

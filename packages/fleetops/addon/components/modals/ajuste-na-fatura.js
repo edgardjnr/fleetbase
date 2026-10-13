@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { lerValor, validarAjuste } from '../../utils/financeiro-faturas';
+import { valorParaEnviar } from '../../utils/financeiro';
 
 const PREFIXO = 'fleet-ops.ui.financeiro-lojas';
 
@@ -57,7 +58,8 @@ export default class ModalsAjusteNaFaturaComponent extends Component {
 
             modal.startLoading();
             try {
-                const corpo = { valor: lerValor(this.valor), motivo: this.motivo.trim(), observacao_interna: this.observacao.trim() || null };
+                // texto normalizado ("1500.00"): o servidor recusa o milhar com ponto sem vírgula
+                const corpo = { valor: valorParaEnviar(this.valor), motivo: this.motivo.trim(), observacao_interna: this.observacao.trim() || null };
                 await this.fetch.post(`entregas/financeiro/faturas/${fatura.id}/ajustes`, corpo);
                 this.notifications.success(this.intl.t(`${PREFIXO}.ajuste-adicionado`));
                 done();

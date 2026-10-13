@@ -3,7 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
-import { FORMAS_DE_PAGAMENTO, avisoDeAdiantamento, camposDoPagamento, formatadores, isoDate, numeroDigitado, validarComprovante } from '../../utils/financeiro';
+import { FORMAS_DE_PAGAMENTO, avisoDeAdiantamento, camposDoPagamento, formatadores, isoDate, numeroDigitado, validarComprovante, valorInterpretado } from '../../utils/financeiro';
 
 const ENDPOINT = 'entregas/financeiro/pagamentos';
 
@@ -55,6 +55,11 @@ export default class ModalsRegistrarPagamentoComponent extends Component {
 
     get formas() {
         return FORMAS_DE_PAGAMENTO.map((forma) => ({ valor: forma, chave: `fleet-ops.ui.financeiro.formas.${forma}` }));
+    }
+
+    /** O valor como foi entendido ("1.500" = R$ 1.500,00), ao lado do campo. */
+    get valorInterpretado() {
+        return valorInterpretado(this.valor, this.f);
     }
 
     get excedente() {

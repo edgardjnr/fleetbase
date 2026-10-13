@@ -576,6 +576,7 @@ fleet-ops:
         desconhecida: desconhecida
     financeiro:
       admin-only: Somente administradores podem ver o financeiro.
+      valor-interpretado: '= {valor}'
       menu:
         titulo: Financeiro
         descricao: 'Extrato e pagamento dos motoboys, faturas das lojas e margem'

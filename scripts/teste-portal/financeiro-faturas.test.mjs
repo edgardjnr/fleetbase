@@ -129,6 +129,9 @@ test('ler valor digitado', () => {
     assert.equal(lerValor('1.234,56'), 1234.56);
     assert.equal(lerValor('12.5'), 12.5);
     assert.equal(lerValor(' 30 '), 30);
+    assert.equal(lerValor('1.500'), 1500, 'milhar com ponto, não 1,50');
+    assert.equal(lerValor('-1.500,00'), -1500);
+    assert.ok(Number.isNaN(lerValor('1,505')));
     assert.ok(Number.isNaN(lerValor('')));
     assert.ok(Number.isNaN(lerValor('abc')));
     assert.ok(Number.isNaN(lerValor('-')));

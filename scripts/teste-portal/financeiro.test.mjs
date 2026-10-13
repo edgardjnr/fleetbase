@@ -23,6 +23,8 @@ import {
     validarComprovante,
     validarLancamento,
     validarPix,
+    valorInterpretado,
+    valorParaEnviar,
 } from '../../packages/fleetops/addon/utils/financeiro.js';
 
 test('número digitado: vírgula, ponto, sinal e milhar', () => {
@@ -36,6 +38,55 @@ test('número digitado: vírgula, ponto, sinal e milhar', () => {
     assert.ok(Number.isNaN(numeroDigitado(null)));
     assert.ok(Number.isNaN(numeroDigitado('abc')));
     assert.ok(Number.isNaN(numeroDigitado('1,2,3')));
+});
+
+test('número digitado: ponto com 3 dígitos é milhar ("1.500" nunca vira 1,50)', () => {
+    assert.equal(numeroDigitado('1.500'), 1500);
+    assert.equal(numeroDigitado('1.500,00'), 1500);
+    assert.equal(numeroDigitado('1.500,5'), 1500.5);
+    assert.equal(numeroDigitado('12.345'), 12345);
+    assert.equal(numeroDigitado('1.234.567,89'), 1234567.89);
+    assert.equal(numeroDigitado('-1.500'), -1500);
+    assert.equal(numeroDigitado('+1.500'), 1500);
+    assert.equal(numeroDigitado(' 1 500,00 '), 1500, 'espaços somem');
+    assert.equal(numeroDigitado('1500,00'), 1500);
+    assert.equal(numeroDigitado('12.50'), 12.5, 'ponto com 1 ou 2 casas é decimal');
+    assert.equal(numeroDigitado('0.5'), 0.5);
+    assert.equal(numeroDigitado('0,50'), 0.5);
+    assert.ok(Number.isNaN(numeroDigitado('1,505')), 'mais de 2 casas com vírgula');
+    assert.ok(Number.isNaN(numeroDigitado('1.5000')), 'mais de 2 casas com ponto que não é milhar');
+    assert.ok(Number.isNaN(numeroDigitado('0.500')), 'milhar não começa com zero');
+    assert.ok(Number.isNaN(numeroDigitado('1.50,00')), 'grupo de milhar com 2 dígitos');
+    assert.ok(Number.isNaN(numeroDigitado('1500.000,00')));
+    assert.ok(Number.isNaN(numeroDigitado('-')));
+    assert.ok(Number.isNaN(numeroDigitado('12,')));
+    assert.ok(Number.isNaN(numeroDigitado(',5')));
+    assert.ok(Number.isNaN(numeroDigitado(Infinity)));
+});
+
+test('valor para enviar: sempre ponto decimal e 2 casas', () => {
+    assert.equal(valorParaEnviar('1.500'), '1500.00');
+    assert.equal(valorParaEnviar('1.234,56'), '1234.56');
+    assert.equal(valorParaEnviar('-2,5'), '-2.50');
+    assert.equal(valorParaEnviar('12.5'), '12.50');
+    assert.equal(valorParaEnviar(30), '30.00');
+    assert.equal(valorParaEnviar('-0'), '0.00');
+    assert.equal(valorParaEnviar(''), null);
+    assert.equal(valorParaEnviar('abc'), null);
+    // o que sai nunca casa com o milhar sem vírgula que o servidor recusa
+    for (const digitado of ['1.500', '2.000.000', '999', '1.000,1']) {
+        assert.doesNotMatch(valorParaEnviar(digitado), /^\d{1,3}(\.\d{3})+$/);
+    }
+});
+
+test('valor interpretado ao lado do campo', () => {
+    const f = formatadores('pt-BR');
+    const limpo = (texto) => texto.replace(/\s/g, ' ');
+    assert.equal(limpo(valorInterpretado('1.500', f)), 'R$ 1.500,00');
+    assert.equal(limpo(valorInterpretado('12.5', f)), 'R$ 12,50');
+    assert.equal(limpo(valorInterpretado('-2,75', f)), '-R$ 2,75');
+    assert.equal(valorInterpretado('', f), '');
+    assert.equal(valorInterpretado('1,505', f), '');
 });
 
 test('rótulo do tipo', () => {
@@ -152,6 +203,7 @@ test('campos do multipart do pagamento', () => {
         ['forma', 'dinheiro'],
         ['data', '2026-10-12'],
     ]);
+    assert.equal(camposDoPagamento({ contaTipo: 'loja', contaId: 'vendor_x', valor: '1.500', forma: 'pix', data: '2026-10-12' })[2][1], '1500.00', '"1.500" vai como mil e quinhentos');
     const loja = camposDoPagamento({ contaTipo: 'loja', contaId: 'vendor_x', valor: 620, forma: 'boleto', data: '2026-10-12', observacao: 'Pix do sócio' });
     assert.deepEqual(loja[0], ['conta_tipo', 'loja']);
     assert.deepEqual(loja[3], ['forma', 'pix'], 'forma desconhecida vira pix');

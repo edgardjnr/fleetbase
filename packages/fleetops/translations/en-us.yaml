@@ -576,6 +576,7 @@ fleet-ops:
                 desconhecida: unknown
         financeiro:
             admin-only: Only administrators can see the finances.
+            valor-interpretado: '= {valor}'
             menu:
                 titulo: Finances
                 descricao: 'Driver statements and payments, store invoices and margin'

@@ -17,6 +17,9 @@
                 {{else}}
                     <input id={{id}} type="text" inputmode="decimal" autocomplete="off" placeholder="30,00" class="form-input form-input-sm w-full" value={{this.valor}} {{on "input" (fn this.setCampo "valor")}} />
                 {{/if}}
+                {{#if this.valorInterpretado}}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.valor-interpretado" valor=this.valorInterpretado}}</p>
+                {{/if}}
             </InputGroup>
             <InputGroup @name={{t "fleet-ops.ui.financeiro.lancar.data"}} @required={{true}} @wrapperClass="mb-0" as |id|>
                 <input id={{id}} type="date" class="form-input form-input-sm w-full" value={{this.data}} {{on "change" (fn this.setCampo "data")}} />

@@ -2,10 +2,12 @@
  * Entregas RestaurantePro: funções puras da tela "Lojas e faturas" do Financeiro (rotas financeiro.lojas,
  * financeiro.loja e financeiro.fatura). Os dados vêm de int/v1/entregas/financeiro/{lojas,faturas}
  * (FinanceiroLojasController, formatos "Fatura", "Lojas" e "Lancamento" do plano do Financeiro).
- * Sem imports: testado no Node (scripts/teste-portal/financeiro-faturas.test.mjs).
+ * Só importa o utils/financeiro (também puro): testado no Node (scripts/teste-portal/financeiro-faturas.test.mjs).
  *
  * As chaves devolvidas são relativas a `fleet-ops.ui.financeiro-lojas.` (o controller monta a chave inteira).
  */
+
+import { numeroDigitado } from './financeiro';
 
 const CICLOS = ['semanal', 'quinzenal', 'mensal'];
 
@@ -175,16 +177,11 @@ export function numeroOuRascunho(fatura, rotuloRascunho = 'Rascunho') {
 }
 
 /**
- * Valor digitado em reais: aceita vírgula decimal ("12,50", "-8,5", "1.234,56") e ponto decimal ("12.5"). Inválido ou
- * vazio = NaN.
+ * Valor digitado em reais, com a mesma regra dos outros campos de valor do Financeiro (numeroDigitado): vírgula decimal
+ * ("12,50", "-8,5"), milhar com ponto ("1.500", "1.234,56") e ponto decimal ("12.5"). Inválido ou vazio = NaN.
  */
 export function lerValor(texto) {
-    let digitado = String(texto ?? '').trim();
-    if (digitado.includes(',')) {
-        digitado = digitado.replace(/\./g, '').replace(',', '.');
-    }
-
-    return /^[+-]?\d+(\.\d+)?$/.test(digitado) ? Number(digitado) : NaN;
+    return numeroDigitado(texto);
 }
 
 /** Erros do ajuste na fatura: valor diferente de zero (positivo ou negativo) e motivo (aparece para a loja). */

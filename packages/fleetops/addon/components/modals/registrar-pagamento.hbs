@@ -8,6 +8,9 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <InputGroup @name={{t "fleet-ops.ui.financeiro.pagar.valor"}} @required={{true}} @wrapperClass="mb-0" as |id|>
                 <input id={{id}} type="text" inputmode="decimal" autocomplete="off" placeholder="150,00" class="form-input form-input-sm w-full" value={{this.valor}} {{on "input" (fn this.setCampo "valor")}} />
+                {{#if this.valorInterpretado}}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.valor-interpretado" valor=this.valorInterpretado}}</p>
+                {{/if}}
             </InputGroup>
             <InputGroup @name={{t "fleet-ops.ui.financeiro.pagar.forma"}} @required={{true}} @wrapperClass="mb-0" as |id|>
                 <select id={{id}} class="form-select form-select-sm w-full" {{on "change" (fn this.setCampo "forma")}}>
