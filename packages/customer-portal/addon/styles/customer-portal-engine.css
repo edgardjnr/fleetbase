@@ -3936,3 +3936,76 @@ body[data-theme='dark'].fleetbase-portal .portal-invoice-notes p {
 .fleetbase-portal .entregas-motoboy-destaque .entregas-motoboy-nome::before {
     border-bottom-color: #2563eb;
 }
+
+/* Entregas: Financeiro da loja (portal/financeiro e portal/fatura). Selo da situação da fatura: cores pelas classes de
+   utils/entregas-financeiro.js (classeDoSelo); a cancelada é riscada */
+.fleetbase-portal .entregas-fatura-selo {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 0.25rem;
+    padding: 0.125rem 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1rem;
+    white-space: nowrap;
+}
+
+.fleetbase-portal .entregas-fatura-selo-aberta {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.fleetbase-portal .entregas-fatura-selo-parcial {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.fleetbase-portal .entregas-fatura-selo-paga {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.fleetbase-portal .entregas-fatura-selo-vencida {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.fleetbase-portal .entregas-fatura-selo-cancelada {
+    background-color: #f3f4f6;
+    color: #6b7280;
+    text-decoration: line-through;
+}
+
+body[data-theme='dark'].fleetbase-portal .entregas-fatura-selo-aberta,
+body[data-theme='dark'].fleetbase-portal .entregas-fatura-selo-cancelada {
+    background-color: #374151;
+    color: #d1d5db;
+}
+
+body[data-theme='dark'].fleetbase-portal .entregas-fatura-selo-parcial {
+    background-color: rgb(146 64 14 / 35%);
+    color: #fcd34d;
+}
+
+body[data-theme='dark'].fleetbase-portal .entregas-fatura-selo-paga {
+    background-color: rgb(6 95 70 / 40%);
+    color: #6ee7b7;
+}
+
+body[data-theme='dark'].fleetbase-portal .entregas-fatura-selo-vencida {
+    background-color: rgb(153 27 27 / 40%);
+    color: #fca5a5;
+}
+
+.fleetbase-portal .entregas-fatura-texto-vencida {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+body[data-theme='dark'].fleetbase-portal .entregas-fatura-texto-vencida {
+    color: #f87171;
+}
+
+.fleetbase-portal .entregas-fatura-linha-cancelada td {
+    color: #9ca3af;
+}
