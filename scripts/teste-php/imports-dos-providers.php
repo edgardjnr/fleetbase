@@ -38,6 +38,8 @@ $arquivos = array_merge(
         $app . '/Jobs/Entregas/LancarCorridaDoPedido.php',
         $app . '/Console/Commands/Entregas/FinanceiroConferir.php',
         $app . '/Console/Commands/Entregas/FinanceiroLancarHistorico.php',
+        $app . '/Console/Commands/Entregas/FinanceiroRascunhos.php',
+        $app . '/Http/Controllers/Entregas/FinanceiroLojasController.php',
     ]
 );
 

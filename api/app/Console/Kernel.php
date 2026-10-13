@@ -52,6 +52,8 @@ class Kernel extends ConsoleKernel
         // financeiro: lança as corridas que o observador não lançou e estorna as de pedidos cancelados depois da
         // conclusão (FinanceiroConferir)
         $schedule->command('entregas:financeiro-conferir')->everyFiveMinutes()->when(fn () => Financeiro::ligada())->withoutOverlapping(10)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
+        // financeiro: rascunhos das faturas das lojas cujo ciclo fechou ontem (FinanceiroRascunhos)
+        $schedule->command('entregas:financeiro-rascunhos')->dailyAt('00:30')->when(fn () => Financeiro::ligada())->withoutOverlapping(30)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
     }
 
     /**
