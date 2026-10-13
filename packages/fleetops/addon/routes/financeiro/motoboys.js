@@ -7,6 +7,7 @@ import Route from '@ember/routing/route';
 export default class FinanceiroMotoboysRoute extends Route {
     setupController(controller) {
         super.setupController(...arguments);
+        controller.atualizarPeriodo();
         controller.carregar.perform();
     }
 

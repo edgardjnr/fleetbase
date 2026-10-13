@@ -11,6 +11,7 @@ export default class FinanceiroMotoboyRoute extends Route {
 
     setupController(controller, model) {
         super.setupController(...arguments);
+        controller.atualizarPeriodo();
         controller.abrir(model.id);
     }
 

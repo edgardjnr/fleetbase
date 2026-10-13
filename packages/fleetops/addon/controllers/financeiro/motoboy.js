@@ -9,6 +9,7 @@ import {
     corDaSituacao,
     formatadores,
     linhasCsvDoExtrato,
+    periodoAoAbrir,
     periodoDoAtalho,
     podeEstornar,
     rotuloDaSituacao,
@@ -42,6 +43,8 @@ export default class FinanceiroMotoboyController extends Controller {
     @tracked editandoPix = false;
     @tracked pixTipo = 'cpf';
     @tracked pixChave = '';
+    // atalho do período em uso (recalculado ao voltar à tela); null = datas escolhidas à mão
+    atalho = 'this-month';
 
     get f() {
         return formatadores(this.intl.primaryLocale);
@@ -83,6 +86,13 @@ export default class FinanceiroMotoboyController extends Controller {
             this.motoboyId = id;
         }
         this.carregar.perform();
+    }
+
+    /** Na entrada da tela (setupController): o período do atalho em uso recalculado para hoje; datas à mão ficam. */
+    atualizarPeriodo() {
+        const periodo = periodoAoAbrir(this.atalho, { inicio: this.inicio, fim: this.fim });
+        this.inicio = periodo.inicio;
+        this.fim = periodo.fim;
     }
 
     limpar() {
@@ -128,6 +138,7 @@ export default class FinanceiroMotoboyController extends Controller {
 
     @action setData(campo, event) {
         this[campo] = event.target.value;
+        this.atalho = null;
     }
 
     @action setTipo(event) {
@@ -138,6 +149,7 @@ export default class FinanceiroMotoboyController extends Controller {
     @action setPeriodo(atalho) {
         const periodo = periodoDoAtalho(atalho);
         if (periodo) {
+            this.atalho = atalho;
             this.inicio = periodo.inicio;
             this.fim = periodo.fim;
             this.carregar.perform();

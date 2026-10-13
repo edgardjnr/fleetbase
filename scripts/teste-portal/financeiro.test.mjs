@@ -16,6 +16,7 @@ import {
     itemDeAtencao,
     linhasCsvDoExtrato,
     numeroDigitado,
+    periodoAoAbrir,
     periodoDoAtalho,
     podeEstornar,
     rotuloDoTipo,
@@ -230,6 +231,17 @@ test('datas locais e atalhos de período', () => {
     assert.deepEqual(periodoDoAtalho('last-7-days', hoje), { inicio: '2026-10-06', fim: '2026-10-12' });
     assert.deepEqual(periodoDoAtalho('last-month', new Date(2026, 0, 15)), { inicio: '2025-12-01', fim: '2025-12-31' }, 'virada de ano');
     assert.equal(periodoDoAtalho('outro', hoje), null);
+    assert.deepEqual(periodoDoAtalho('last-90-days', hoje), { inicio: '2026-07-15', fim: '2026-10-12' });
+});
+
+test('período ao reabrir a tela: atalho recalculado para hoje, datas à mão ficam', () => {
+    const ontem = { inicio: '2026-10-01', fim: '2026-10-31' };
+    // tela aberta em 31/10 e reaberta em 01/11: "este mês" vira novembro
+    assert.deepEqual(periodoAoAbrir('this-month', ontem, new Date(2026, 10, 1, 8)), { inicio: '2026-11-01', fim: '2026-11-01' });
+    assert.deepEqual(periodoAoAbrir('last-7-days', ontem, new Date(2026, 10, 1)), { inicio: '2026-10-26', fim: '2026-11-01' });
+    assert.deepEqual(periodoAoAbrir(null, ontem, new Date(2026, 10, 1)), ontem, 'datas escolhidas à mão não mudam');
+    assert.deepEqual(periodoAoAbrir('desconhecido', ontem, new Date(2026, 10, 1)), ontem);
+    assert.deepEqual(periodoAoAbrir(null, null), { inicio: null, fim: null });
 });
 
 test('validar ciclo de cobrança', () => {

@@ -3,7 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
-import { formatadores } from '../../utils/financeiro';
+import { formatadores, periodoAoAbrir, periodoDoAtalho } from '../../utils/financeiro';
 import { agruparLancamentosPorDia, corDaSituacao, dataBr, linhasCsvDoExtratoDaLoja, podeEstornarNaLoja } from '../../utils/financeiro-faturas';
 
 const ENDPOINT = 'entregas/financeiro';
@@ -11,10 +11,6 @@ const PREFIXO = 'fleet-ops.ui.financeiro-lojas';
 const TIPOS = ['corrida', 'diaria', 'bonus', 'ajuste', 'saldo_inicial', 'pagamento', 'recebimento', 'estorno'];
 const SITUACOES = ['pago', 'parcial', 'aberto', 'anulado'];
 const FORMAS = ['pix', 'dinheiro', 'transferencia', 'outro'];
-const pad = (n) => String(n).padStart(2, '0');
-// data local 'Y-m-d' (nunca toISOString, que vira UTC)
-const isoDate = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-const inicioDoMes = () => isoDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 
 /**
  * Entregas RestaurantePro: extrato da conta de uma loja no Financeiro. Crédito = a loja me deve (corrida, ajuste
@@ -33,8 +29,10 @@ export default class FinanceiroLojaController extends Controller {
     @tracked id = null;
     @tracked extrato = null;
     @tracked carregado = false;
-    @tracked inicio = inicioDoMes();
-    @tracked fim = isoDate(new Date());
+    @tracked inicio = periodoDoAtalho('this-month').inicio;
+    @tracked fim = periodoDoAtalho('this-month').fim;
+    // atalho do período em uso (recalculado ao voltar à tela); null = datas escolhidas à mão
+    atalho = 'this-month';
 
     get nome() {
         return this.extrato?.conta?.nome ?? '';
@@ -54,6 +52,13 @@ export default class FinanceiroLojaController extends Controller {
         }
         this.id = id;
         this.carregar.perform();
+    }
+
+    /** Na entrada da tela (setupController): o período do atalho em uso recalculado para hoje; datas à mão ficam. */
+    atualizarPeriodo() {
+        const periodo = periodoAoAbrir(this.atalho, { inicio: this.inicio, fim: this.fim });
+        this.inicio = periodo.inicio;
+        this.fim = periodo.fim;
     }
 
     /** Zera a tela ao sair dela (resposta atrasada não regrava outra loja). O período escolhido fica. */
@@ -101,21 +106,17 @@ export default class FinanceiroLojaController extends Controller {
 
     @action setData(campo, event) {
         this[campo] = event.target.value;
+        this.atalho = null;
     }
 
     @action setPeriodo(atalho) {
-        const hoje = new Date();
-        if (atalho === 'este-mes') {
-            this.inicio = inicioDoMes();
-            this.fim = isoDate(hoje);
-        } else if (atalho === 'mes-passado') {
-            this.inicio = isoDate(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1));
-            this.fim = isoDate(new Date(hoje.getFullYear(), hoje.getMonth(), 0));
-        } else if (atalho === 'ultimos-90-dias') {
-            this.inicio = isoDate(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 89));
-            this.fim = isoDate(hoje);
+        const periodo = periodoDoAtalho(atalho);
+        if (periodo) {
+            this.atalho = atalho;
+            this.inicio = periodo.inicio;
+            this.fim = periodo.fim;
+            this.carregar.perform();
         }
-        this.carregar.perform();
     }
 
     @task({ restartable: true }) *carregar() {

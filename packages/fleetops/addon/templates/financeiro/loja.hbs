@@ -42,9 +42,9 @@
                 </InputGroup>
                 <Button @type="primary" @size="sm" @icon="magnifying-glass" @text={{t "fleet-ops.ui.financeiro-lojas.aplicar"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
                 <div class="flex items-center gap-2">
-                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro-lojas.este-mes"}} @onClick={{fn this.setPeriodo "este-mes"}} />
-                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro-lojas.mes-passado"}} @onClick={{fn this.setPeriodo "mes-passado"}} />
-                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro-lojas.ultimos-90-dias"}} @onClick={{fn this.setPeriodo "ultimos-90-dias"}} />
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro-lojas.este-mes"}} @onClick={{fn this.setPeriodo "this-month"}} />
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro-lojas.mes-passado"}} @onClick={{fn this.setPeriodo "last-month"}} />
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro-lojas.ultimos-90-dias"}} @onClick={{fn this.setPeriodo "last-90-days"}} />
                 </div>
             </div>
         </ContentPanel>

@@ -320,7 +320,10 @@ export function avisoDeAdiantamento(valor, saldo) {
     return excedente > 0 ? excedente : 0;
 }
 
-/** Atalhos de período ('this-month', 'last-month', 'last-7-days') a partir do dia local de hoje; null se desconhecido. */
+/**
+ * Atalhos de período ('this-month', 'last-month', 'last-7-days', 'last-90-days') a partir do dia local de hoje; null se
+ * desconhecido.
+ */
 export function periodoDoAtalho(atalho, hoje = new Date()) {
     const ano = hoje.getFullYear();
     const mes = hoje.getMonth();
@@ -333,8 +336,19 @@ export function periodoDoAtalho(atalho, hoje = new Date()) {
     if (atalho === 'last-7-days') {
         return { inicio: isoDate(new Date(ano, mes, hoje.getDate() - 6)), fim: isoDate(hoje) };
     }
+    if (atalho === 'last-90-days') {
+        return { inicio: isoDate(new Date(ano, mes, hoje.getDate() - 89)), fim: isoDate(hoje) };
+    }
 
     return null;
+}
+
+/**
+ * Período ao (re)abrir uma tela: com um atalho em uso (o padrão é 'this-month'), o atalho recalculado para hoje — a tela
+ * aberta ontem não fica presa no dia de ontem; com datas escolhidas à mão (atalho null), as mesmas datas.
+ */
+export function periodoAoAbrir(atalho, atual, hoje = new Date()) {
+    return (atalho && periodoDoAtalho(atalho, hoje)) || { inicio: atual?.inicio ?? null, fim: atual?.fim ?? null };
 }
 
 /**

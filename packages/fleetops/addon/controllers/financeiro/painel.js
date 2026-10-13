@@ -3,7 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
-import { formatadores, itemDeAtencao, periodoDoAtalho } from '../../utils/financeiro';
+import { formatadores, itemDeAtencao, periodoAoAbrir, periodoDoAtalho } from '../../utils/financeiro';
 
 const ENDPOINT = 'entregas/financeiro/painel';
 
@@ -19,6 +19,8 @@ export default class FinanceiroPainelController extends Controller {
     @tracked inicio = periodoDoAtalho('this-month').inicio;
     @tracked fim = periodoDoAtalho('this-month').fim;
     @tracked painel = null;
+    // atalho do período em uso (recalculado ao voltar à tela); null = datas escolhidas à mão
+    atalho = 'this-month';
 
     get f() {
         return formatadores(this.intl.primaryLocale);
@@ -33,6 +35,13 @@ export default class FinanceiroPainelController extends Controller {
         return (this.painel?.atencao ?? []).map((item) => itemDeAtencao(item, f)).filter(Boolean);
     }
 
+    /** Na entrada da tela (setupController): o período do atalho em uso recalculado para hoje; datas à mão ficam. */
+    atualizarPeriodo() {
+        const periodo = periodoAoAbrir(this.atalho, { inicio: this.inicio, fim: this.fim });
+        this.inicio = periodo.inicio;
+        this.fim = periodo.fim;
+    }
+
     limpar() {
         this.carregar.cancelAll();
         this.painel = null;
@@ -44,11 +53,13 @@ export default class FinanceiroPainelController extends Controller {
 
     @action setData(campo, event) {
         this[campo] = event.target.value;
+        this.atalho = null;
     }
 
     @action setPeriodo(atalho) {
         const periodo = periodoDoAtalho(atalho);
         if (periodo) {
+            this.atalho = atalho;
             this.inicio = periodo.inicio;
             this.fim = periodo.fim;
             this.carregar.perform();
