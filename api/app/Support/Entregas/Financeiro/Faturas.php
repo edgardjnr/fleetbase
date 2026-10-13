@@ -80,8 +80,8 @@ final class Faturas
                 ->where('periodo_fim', $fim)
                 ->whereIn('situacao', ['rascunho', 'emitida'])
                 ->lockForUpdate()
-                ->exists();
-            if ($repetida) {
+                ->value('id');
+            if ($repetida !== null) {
                 return null;
             }
 
