@@ -309,6 +309,21 @@ export function camposDoPagamento({ contaTipo, contaId, valor, forma, data, obse
     return campos;
 }
 
+/**
+ * Valor que já vem no campo do "Registrar pagamento/recebimento", com vírgula ("520,00"): a sugestão (o em aberto da
+ * fatura, quando o recebimento parte dela) se positiva; senão o saldo da conta, se positivo; senão vazio.
+ */
+export function valorSugerido({ saldo, sugestao } = {}) {
+    for (const valor of [sugestao, saldo]) {
+        const numero = valor === null || valor === undefined || valor === '' ? NaN : centavos(Number(valor));
+        if (numero > 0) {
+            return numero.toFixed(2).replace('.', ',');
+        }
+    }
+
+    return '';
+}
+
 /** Quanto do pagamento passa do saldo (vira adiantamento); 0 quando cabe no saldo ou o valor é inválido. */
 export function avisoDeAdiantamento(valor, saldo) {
     const pago = numeroDigitado(valor);

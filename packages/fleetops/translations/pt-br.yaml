@@ -705,6 +705,7 @@ fleet-ops:
         data: Data
         acima-do-saldo-motoboy: 'Vai ficar como adiantamento de {valor}.'
         acima-do-saldo-loja: 'Valor acima do saldo da loja ({valor} a mais).'
+        ordem-da-quitacao: O recebimento quita primeiro a fatura mais antiga em aberto da loja.
         comprovante: Comprovante (opcional)
         comprovante-ajuda: Imagem ou PDF, até 10 MB.
         tirar-comprovante: Tirar o comprovante

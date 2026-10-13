@@ -3,17 +3,21 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
-import { FORMAS_DE_PAGAMENTO, avisoDeAdiantamento, camposDoPagamento, formatadores, isoDate, numeroDigitado, validarComprovante, valorInterpretado } from '../../utils/financeiro';
+import { FORMAS_DE_PAGAMENTO, avisoDeAdiantamento, camposDoPagamento, formatadores, isoDate, numeroDigitado, validarComprovante, valorInterpretado, valorSugerido } from '../../utils/financeiro';
 
 const ENDPOINT = 'entregas/financeiro/pagamentos';
+const EXTRATO = { motoboy: 'entregas/financeiro/motoboys', loja: 'entregas/financeiro/lojas' };
 
 /**
  * Entregas RestaurantePro: modal "Registrar pagamento" (conta do motoboy) ou "Registrar recebimento" (conta da loja, F2).
  * Só registra: o dinheiro sai e entra fora do sistema. Envia multipart para POST int/v1/entregas/financeiro/pagamentos
  * (campos de camposDoPagamento + o arquivo no campo "comprovante"); a resposta é { pagamento, saldo }.
  *
- * Opções: contaTipo ('motoboy' | 'loja'), contaId (public_id), nome, saldo (o valor sugerido é o saldo, se positivo) e
+ * Opções: contaTipo ('motoboy' | 'loja'), contaId (public_id), nome, saldo (o saldo real da conta; sem ele, o modal o
+ * busca no extrato), sugestao (opcional: o valor sugerido, ex. o em aberto da fatura; sem ela, o saldo se positivo) e
  * onFinish(options). O onFinish roda ao fechar de qualquer jeito; depois de registrar, options.registrado traz a resposta.
+ * O aviso de excedente compara com o saldo real: na loja, o servidor quita primeiro a fatura mais antiga em aberto, não
+ * a fatura de onde o recebimento partiu.
  *
  * O confirm não devolve promessa de propósito (o modals-manager fecharia o modal mesmo com erro): o modal só fecha
  * (done) depois de registrar.
@@ -29,14 +33,18 @@ export default class ModalsRegistrarPagamentoComponent extends Component {
     @tracked observacao = '';
     @tracked comprovante = null;
     @tracked tentou = false;
+    // saldo real da conta; null enquanto não se sabe (buscado no extrato quando quem abriu não mandou)
+    @tracked saldo = null;
 
     constructor(owner, { options }) {
         super(...arguments);
         this.options = options;
         this.contaTipo = options.contaTipo === 'loja' ? 'loja' : 'motoboy';
-        this.saldo = Number(options.saldo) || 0;
-        if (this.saldo > 0) {
-            this.valor = this.saldo.toFixed(2).replace('.', ',');
+        const saldoInformado = options.saldo !== null && options.saldo !== undefined && options.saldo !== '';
+        this.saldo = saldoInformado ? Number(options.saldo) || 0 : null;
+        this.valor = valorSugerido({ saldo: this.saldo, sugestao: options.sugestao });
+        if (!saldoInformado) {
+            this.buscarSaldo.perform();
         }
 
         options.title = this.intl.t(`fleet-ops.ui.financeiro.pagar.titulo-${this.contaTipo}`);
@@ -63,7 +71,11 @@ export default class ModalsRegistrarPagamentoComponent extends Component {
     }
 
     get excedente() {
-        return avisoDeAdiantamento(this.valor, this.saldo);
+        return this.saldo === null ? 0 : avisoDeAdiantamento(this.valor, this.saldo);
+    }
+
+    get saldoTexto() {
+        return this.saldo === null ? '…' : this.f.valor(this.saldo);
     }
 
     get erros() {
@@ -110,6 +122,21 @@ export default class ModalsRegistrarPagamentoComponent extends Component {
         }
 
         this.enviar.perform(modal, done);
+    }
+
+    /** Saldo real da conta (o `saldo` do extrato é o da conta inteira; o período de hoje só deixa a lista curta). */
+    @task *buscarSaldo() {
+        const hoje = isoDate(new Date());
+        try {
+            const extrato = yield this.fetch.get(`${EXTRATO[this.contaTipo]}/${this.options.contaId}/extrato`, { inicio: hoje, fim: hoje });
+            this.saldo = Number(extrato?.saldo) || 0;
+            if (!String(this.valor).trim()) {
+                this.valor = valorSugerido({ saldo: this.saldo });
+            }
+        } catch (error) {
+            // sem o saldo, o modal só não avisa o excedente; o registro funciona igual
+            this.saldo = null;
+        }
     }
 
     @task({ drop: true }) *enviar(modal, done) {

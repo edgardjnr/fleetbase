@@ -130,13 +130,19 @@ export default class FinanceiroLojasController extends Controller {
         return this.hostRouter.transitionTo('console.fleet-ops.financeiro.loja', loja.id);
     }
 
-    /** "Registrar recebimento" da fatura (modal da tela de motoboys, na conta da loja). Sugere o em aberto da fatura. */
+    /**
+     * "Registrar recebimento" da fatura (modal da tela de motoboys, na conta da loja). Sugere o em aberto da fatura; o
+     * saldo é o da loja (da aba Lojas; sem a linha, o modal busca), porque o recebimento quita primeiro a fatura mais
+     * antiga em aberto.
+     */
     @action registrarRecebimento(fatura) {
+        const loja = this.lojas.find((linha) => linha.id === fatura.loja?.id);
         this.modalsManager.show('modals/registrar-pagamento', {
             contaTipo: 'loja',
             contaId: fatura.loja?.id,
             nome: fatura.loja?.nome,
-            saldo: Number(fatura.em_aberto) || 0,
+            saldo: loja ? loja.saldo : undefined,
+            sugestao: Number(fatura.em_aberto) || 0,
             fatura: fatura.id,
             onFinish: () => this.recarregar(),
         });

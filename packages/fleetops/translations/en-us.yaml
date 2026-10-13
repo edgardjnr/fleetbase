@@ -705,6 +705,7 @@ fleet-ops:
                 data: Date
                 acima-do-saldo-motoboy: 'This will be an advance of {valor}.'
                 acima-do-saldo-loja: 'Amount above the store balance ({valor} more).'
+                ordem-da-quitacao: The receipt pays off the oldest open invoice of the store first.
                 comprovante: Receipt (optional)
                 comprovante-ajuda: Image or PDF, up to 10 MB.
                 tirar-comprovante: Remove the receipt

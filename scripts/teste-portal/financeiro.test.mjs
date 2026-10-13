@@ -25,6 +25,7 @@ import {
     validarComprovante,
     validarLancamento,
     validarPix,
+    valorSugerido,
     valorInterpretado,
     valorParaEnviar,
 } from '../../packages/fleetops/addon/utils/financeiro.js';
@@ -79,6 +80,17 @@ test('valor para enviar: sempre ponto decimal e 2 casas', () => {
     for (const digitado of ['1.500', '2.000.000', '999', '1.000,1']) {
         assert.doesNotMatch(valorParaEnviar(digitado), /^\d{1,3}(\.\d{3})+$/);
     }
+});
+
+test('valor sugerido no registrar pagamento/recebimento: a fatura, senão o saldo', () => {
+    assert.equal(valorSugerido({ saldo: 900, sugestao: 520 }), '520,00', 'recebimento a partir da fatura: o em aberto dela');
+    assert.equal(valorSugerido({ saldo: 150.5 }), '150,50');
+    assert.equal(valorSugerido({ saldo: 150.5, sugestao: 0 }), '150,50', 'fatura sem nada em aberto: o saldo');
+    assert.equal(valorSugerido({ saldo: -20 }), '', 'saldo negativo: nada sugerido');
+    assert.equal(valorSugerido({ saldo: null }), '', 'saldo ainda desconhecido');
+    assert.equal(valorSugerido({ saldo: '1500.00' }), '1500,00');
+    assert.equal(numeroDigitado(valorSugerido({ saldo: 1500 })), 1500, 'o sugerido é lido de volta igual');
+    assert.equal(valorSugerido(), '');
 });
 
 test('valor interpretado ao lado do campo', () => {

@@ -207,7 +207,8 @@ export default class FinanceiroFaturaController extends Controller {
             contaTipo: 'loja',
             contaId: fatura.loja?.id,
             nome: fatura.loja?.nome,
-            saldo: Number(fatura.em_aberto) || 0,
+            // saldo real da loja: o modal busca (o recebimento quita primeiro a fatura mais antiga em aberto)
+            sugestao: Number(fatura.em_aberto) || 0,
             fatura: fatura.id,
             onFinish: () => this.carregar.perform(),
         });
