@@ -665,6 +665,8 @@ fleet-ops:
                 saldo: Balance
                 ultimo-pagamento: Last payment
                 sem-pix: No Pix key on file
+                excluido: Deleted
+                excluido-ajuda: Driver removed from the records. The balance stays in finances and still accepts payments and entries.
                 a-pagar: owed
                 adiantado: advanced
                 pagamento-em: '{valor} on {data}'

@@ -203,6 +203,14 @@ export function podeEstornar(lancamento) {
     return true;
 }
 
+/**
+ * Motoboy excluído do cadastro que ainda tem saldo: `excluido: true` em cada motoboy de GET financeiro/motoboys e em
+ * `conta.excluido` do extrato. Campo ausente (servidor antigo) = não excluído.
+ */
+export function estaExcluido(registro) {
+    return registro?.excluido === true;
+}
+
 /** Tipos que o admin lança à mão na conta (motoboy: diária, bônus, ajuste, saldo inicial; loja: ajuste, saldo inicial). */
 export function tiposDaConta(contaTipo) {
     return [...(TIPOS_MANUAIS[contaTipo] ?? [])];

@@ -86,6 +86,10 @@
                                 </td>
                                 <td class="py-2">
                                     {{motoboy.nome}}
+                                    {{! motoboy excluído do cadastro que ainda tem saldo (o servidor manda excluido: true) }}
+                                    {{#if (this.excluido motoboy)}}
+                                        <span class="ml-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200" title={{t "fleet-ops.ui.financeiro.motoboys.excluido-ajuda"}}>{{t "fleet-ops.ui.financeiro.motoboys.excluido"}}</span>
+                                    {{/if}}
                                     {{#unless motoboy.tem_pix}}
                                         <span class="ml-1 text-yellow-600 dark:text-yellow-400" title={{t "fleet-ops.ui.financeiro.motoboys.sem-pix"}}>
                                             <FaIcon @icon="key" @size="xs" />

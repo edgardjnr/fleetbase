@@ -3,7 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
-import { formatadores, periodoAoAbrir, periodoDoAtalho } from '../../utils/financeiro';
+import { estaExcluido, formatadores, periodoAoAbrir, periodoDoAtalho } from '../../utils/financeiro';
 
 const ENDPOINT = 'entregas/financeiro/motoboys';
 
@@ -68,6 +68,10 @@ export default class FinanceiroMotoboysController extends Controller {
 
     @action dia(data) {
         return this.f.diaCurto(data);
+    }
+
+    @action excluido(motoboy) {
+        return estaExcluido(motoboy);
     }
 
     @action selecionado(id) {

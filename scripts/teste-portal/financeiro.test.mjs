@@ -11,6 +11,7 @@ import {
     dataDoDia,
     diaAoTrocarDeCiclo,
     diasDeFechamento,
+    estaExcluido,
     formatadores,
     isoDate,
     itemDeAtencao,
@@ -80,6 +81,14 @@ test('valor para enviar: sempre ponto decimal e 2 casas', () => {
     for (const digitado of ['1.500', '2.000.000', '999', '1.000,1']) {
         assert.doesNotMatch(valorParaEnviar(digitado), /^\d{1,3}(\.\d{3})+$/);
     }
+});
+
+test('motoboy excluído só com excluido === true', () => {
+    assert.equal(estaExcluido({ id: 'driver_a', excluido: true }), true);
+    assert.equal(estaExcluido({ id: 'driver_a', excluido: false }), false);
+    assert.equal(estaExcluido({ id: 'driver_a' }), false, 'campo ausente = não excluído');
+    assert.equal(estaExcluido({ excluido: 1 }), false);
+    assert.equal(estaExcluido(null), false);
 });
 
 test('valor sugerido no registrar pagamento/recebimento: a fatura, senão o saldo', () => {

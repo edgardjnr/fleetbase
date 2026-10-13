@@ -665,6 +665,8 @@ fleet-ops:
         saldo: Saldo
         ultimo-pagamento: Último pagamento
         sem-pix: Sem chave Pix cadastrada
+        excluido: Excluído
+        excluido-ajuda: Motoboy excluído do cadastro. O saldo continua no financeiro e ainda aceita pagamento e lançamentos.
         a-pagar: a pagar
         adiantado: adiantado
         pagamento-em: '{valor} em {data}'

@@ -7,6 +7,7 @@ import {
     TIPOS_CHAVE_PIX,
     agruparPorDia,
     corDaSituacao,
+    estaExcluido,
     formatadores,
     linhasCsvDoExtrato,
     periodoAoAbrir,
@@ -52,6 +53,11 @@ export default class FinanceiroMotoboyController extends Controller {
 
     get nome() {
         return this.extrato?.conta?.nome ?? '';
+    }
+
+    /** Motoboy excluído do cadastro que ainda tem saldo (conta.excluido do extrato; ausente = não excluído). */
+    get excluido() {
+        return estaExcluido(this.extrato?.conta);
     }
 
     get pix() {
