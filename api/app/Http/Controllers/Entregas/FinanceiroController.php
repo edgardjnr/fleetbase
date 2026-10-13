@@ -168,8 +168,8 @@ class FinanceiroController extends Controller
     /**
      * POST financeiro/lancamentos {conta_tipo, contas: [public_id…], tipo, valor, data, pedido, motivo, observacao_interna}
      * → {lancamentos: [Lancamento…]} (um por conta, na mesma transação). Tipo dos manuais da conta; valor ≠ 0, positivo em
-     * diária e bônus; pedido (public_id ou número) só em ajuste. Na conta da loja, o lançamento fica sem fatura (entra no
-     * próximo rascunho).
+     * diária e bônus; pedido (public_id, uuid ou número com corrida na conta) só em ajuste; ajuste negativo de pedido com
+     * a corrida estornada é recusado. Na conta da loja, o lançamento fica sem fatura (entra no próximo rascunho).
      */
     public function lancar(Request $request)
     {
@@ -235,7 +235,10 @@ class FinanceiroController extends Controller
 
         $pedido = null;
         if ($codigo !== '') {
-            $pedido = $this->pedido($codigo);
+            $pedido = $this->pedido($codigo, $contaTipo, array_values($contas));
+            if (is_string($pedido)) {
+                return $this->erro($pedido);
+            }
             if (!$pedido) {
                 return $this->erro('Pedido não encontrado.');
             }
@@ -592,12 +595,43 @@ class FinanceiroController extends Controller
         return Driver::where('company_uuid', $this->empresa())->where('public_id', $id)->with(['user'])->first();
     }
 
-    /** Pedido da empresa pelo public_id, pelo número (internal_id) ou pelo uuid. */
-    protected function pedido(string $codigo): ?Order
+    /**
+     * Pedido da empresa pelo public_id ou pelo uuid; ou pelo número (internal_id, que se repete entre dias e lojas), só
+     * entre os pedidos com corrida lançada numa das contas escolhidas. null = não achou; texto = a mensagem de erro (o
+     * número é de mais de um pedido).
+     */
+    protected function pedido(string $codigo, string $contaTipo, array $contaUuids): Order|string|null
     {
-        return Order::where('company_uuid', $this->empresa())
-            ->where(fn ($query) => $query->where('public_id', $codigo)->orWhere('internal_id', $codigo)->orWhere('uuid', $codigo))
+        $empresa = $this->empresa();
+        $pedido  = Order::where('company_uuid', $empresa)
+            ->where(fn ($query) => $query->where('public_id', $codigo)->orWhere('uuid', $codigo))
             ->first();
+        if ($pedido) {
+            return $pedido;
+        }
+
+        $candidatos = [];
+        foreach (Order::where('company_uuid', $empresa)->where('internal_id', $codigo)->get() as $candidato) {
+            $candidatos[(string) $candidato->uuid] = $candidato;
+        }
+        if (!$candidatos) {
+            return null;
+        }
+
+        $comCorrida = DB::table(Lancamentos::TABELA)
+            ->where('company_uuid', $empresa)
+            ->where('conta_tipo', $contaTipo)
+            ->whereIn('conta_uuid', $contaUuids)
+            ->where('tipo', 'corrida')
+            ->whereIn('order_uuid', array_map('strval', array_keys($candidatos)))
+            ->pluck('order_uuid')
+            ->all();
+        $comCorrida = array_values(array_unique(array_map('strval', $comCorrida)));
+        if (count($comCorrida) > 1) {
+            return 'Há mais de um pedido com esse número; use o código do pedido (order_…)';
+        }
+
+        return $comCorrida ? ($candidatos[$comCorrida[0]] ?? null) : null;
     }
 
     protected function empresa(): string

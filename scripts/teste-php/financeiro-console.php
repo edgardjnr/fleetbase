@@ -328,6 +328,25 @@ $gravado = end($gravado);
 confere(($gravado['order_uuid'] ?? null) === 'order-2' && json_decode((string) $gravado['detalhes'], true) === ['pedido' => 'order_2', 'numero' => 'RP2'], 'ajuste: order_uuid e o pedido nos detalhes');
 confere($controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => 5, 'pedido' => 'order_1'])))->status === 200, 'ajuste positivo com o public_id do pedido');
 confere($controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'saldo_inicial', 'valor' => -40])))->status === 200, 'saldo inicial negativo (o motoboy devia)');
+// o número (internal_id) se repete entre dias e lojas: só vale o pedido com corrida lançada na conta escolhida
+Order::$todos[] = new Order(['uuid' => 'order-r8a', 'public_id' => 'order_r8a', 'internal_id' => 'RP8', 'company_uuid' => 'empresa-1']);
+Order::$todos[] = new Order(['uuid' => 'order-r8b', 'public_id' => 'order_r8b', 'internal_id' => 'RP8', 'company_uuid' => 'empresa-1']);
+Order::$todos[] = new Order(['uuid' => 'order-r9a', 'public_id' => 'order_r9a', 'internal_id' => 'RP9', 'company_uuid' => 'empresa-1']);
+Order::$todos[] = new Order(['uuid' => 'order-r9b', 'public_id' => 'order_r9b', 'internal_id' => 'RP9', 'company_uuid' => 'empresa-1']);
+foreach (['order-r8b', 'order-r9a', 'order-r9b'] as $pedidoDaCorrida) {
+    Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-1', 'tipo' => 'corrida', 'valor' => 7,
+        'data_referencia' => '2026-10-08', 'order_uuid' => $pedidoDaCorrida, 'chave_unica' => 'corrida:motoboy:' . $pedidoDaCorrida]);
+}
+$resposta = $controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => -1, 'pedido' => 'RP8'])));
+confere($resposta->status === 200 && ($resposta->dados['lancamentos'][0]['pedido']['id'] ?? null) === 'order_r8b', 'número repetido: o pedido com corrida na conta (' . json_encode($resposta->dados['lancamentos'][0]['pedido'] ?? null) . ')');
+$antes    = count(linhasDe('entregas_lancamentos'));
+$resposta = $controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => -1, 'pedido' => 'RP9'])));
+confere($resposta->status === 422 && erroDa($resposta) === 'Há mais de um pedido com esse número; use o código do pedido (order_…)' && count(linhasDe('entregas_lancamentos')) === $antes, 'dois pedidos com o número e corrida na conta → 422 (' . erroDa($resposta) . ')');
+confere($controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => -1, 'pedido' => 'order_r9a'])))->status === 200, 'pelo código do pedido (public_id) resolve');
+confere($controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => -1, 'pedido' => 'order-r9b'])))->status === 200, 'pelo uuid também');
+$resposta = $controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => -1, 'pedido' => 'RP8', 'contas' => ['driver_2']])));
+confere($resposta->status === 422 && erroDa($resposta) === 'Pedido não encontrado.', 'número sem corrida na conta escolhida → 422 (' . erroDa($resposta) . ')');
+
 Lancamentos::estornar(Lancamentos::porId('empresa-1', $ids['corrida1']), null, 'Pedido cancelado após a conclusão');
 $antes    = count(linhasDe('entregas_lancamentos'));
 $resposta = $controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => -8.5, 'pedido' => 'order_1', 'motivo' => 'Não pagar'])));
