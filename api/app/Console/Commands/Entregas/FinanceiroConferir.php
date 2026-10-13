@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * Entregas RestaurantePro: conferência do financeiro, a cada 5 min (Kernel, só com ENTREGAS_FINANCEIRO). Para cada
  * empresa com data de corte: lança as corridas que escaparam do observador (pedidos concluídos desde max(corte, hoje − 7
- * dias) sem lançamento do motoboy) e estorna as corridas dos pedidos cancelados depois da conclusão (últimos 30 dias).
+ * dias) sem lançamento do motoboy) e estorna as corridas dos pedidos cancelados depois da conclusão (últimos 30 dias);
+ * se um desses pedidos volta a valer (cancelado pago marcado depois, ou concluído de novo), relança a corrida.
  * Uma falha numa empresa não para as outras (log só com ids).
  */
 class FinanceiroConferir extends Command
@@ -44,6 +45,12 @@ class FinanceiroConferir extends Command
                 $n = $lancador->estornarCancelados($companyUuid, now()->subDays(static::DIAS_DO_ESTORNO));
                 if ($n > 0) {
                     Log::info('[entregas] financeiro: corridas de pedidos cancelados estornadas', ['empresa' => $companyUuid, 'estornos' => $n]);
+                }
+            });
+            $this->tentar($companyUuid, 'relancar', function () use ($lancador, $companyUuid) {
+                $n = $lancador->relancarEstornados($companyUuid, now()->subDays(static::DIAS_DO_ESTORNO));
+                if ($n > 0) {
+                    Log::info('[entregas] financeiro: corridas de pedidos que voltaram a valer lançadas de novo', ['empresa' => $companyUuid, 'corridas' => $n]);
                 }
             });
         }

@@ -25,6 +25,9 @@ final class LancadorDeCorridas
 {
     public const MOTIVO_CANCELADO = 'Pedido cancelado após a conclusão';
 
+    /** Motivo da corrida lançada de novo quando o pedido estornado volta a valer (relancarEstornados). */
+    public const MOTIVO_RELANCADO = 'Pedido voltou a valer depois do cancelamento';
+
     /** Rotas que o cálculo pode pedir ao OSRM por chamada (o resto fica sem valor até a próxima conferência). */
     public const LIMITE_CALCULOS = 200;
 
@@ -214,6 +217,110 @@ final class LancadorDeCorridas
         }
 
         return $estornos;
+    }
+
+    /**
+     * O caminho de volta do estornarCancelados: o pedido cuja corrida foi estornada pelo sistema (motivo
+     * MOTIVO_CANCELADO, estorno com data_referencia a partir de $desde) e que voltou ao relatório (cancelado pago marcado
+     * depois, ou voltou a concluído) ganha a corrida de novo, em cada conta em que a última corrida do pedido tem esse
+     * estorno automático (estorno feito à mão pelo admin não volta). A corrida nova vale o que o estorno tirou (o desconto
+     * de antes continua), na data e com os detalhes da corrida estornada, com chave_unica `corrida:<conta>:<pedido>:<n>`
+     * (n = 2, 3…) e o motivo MOTIVO_RELANCADO. Devolve quantas corridas lançou.
+     */
+    public function relancarEstornados(string $companyUuid, Carbon $desde): int
+    {
+        $dia = $desde->format('Y-m-d');
+
+        // estornos automáticos do período → as corridas estornadas
+        $automaticos = [];
+        $estornos    = DB::table(Lancamentos::TABELA)
+            ->where('company_uuid', $companyUuid)
+            ->where('tipo', 'estorno')
+            ->where('motivo', static::MOTIVO_CANCELADO)
+            ->whereNull('criado_por')
+            ->where('data_referencia', '>=', $dia)
+            ->get();
+        foreach ($estornos as $estorno) {
+            if ($estorno->estorno_de !== null) {
+                $automaticos[(int) $estorno->estorno_de] = $estorno;
+            }
+        }
+        if (!$automaticos) {
+            return 0;
+        }
+        $pedidos = DB::table(Lancamentos::TABELA)
+            ->where('company_uuid', $companyUuid)
+            ->where('tipo', 'corrida')
+            ->whereIn('id', array_keys($automaticos))
+            ->pluck('order_uuid')
+            ->all();
+        $pedidos = array_values(array_unique(array_filter(array_map('strval', $pedidos))));
+        if (!$pedidos) {
+            return 0;
+        }
+
+        // todas as corridas desses pedidos, por conta e pedido: só volta onde a última corrida tem o estorno automático
+        $corridas = DB::table(Lancamentos::TABELA)
+            ->where('company_uuid', $companyUuid)
+            ->where('tipo', 'corrida')
+            ->whereIn('order_uuid', $pedidos)
+            ->orderBy('id')
+            ->get()
+            ->all();
+        $estornadas = array_flip(Lancamentos::jaEstornados(array_map(fn ($l) => (int) $l->id, $corridas)));
+        $grupos     = [];
+        foreach ($corridas as $corrida) {
+            $grupos[$corrida->conta_tipo . '|' . $corrida->conta_uuid . '|' . $corrida->order_uuid][] = $corrida;
+        }
+        $aRelancar = [];
+        foreach ($grupos as $chave => $grupo) {
+            $ultima = end($grupo);
+            if (!isset($automaticos[(int) $ultima->id])) {
+                continue; // a última corrida vale, ou foi estornada à mão
+            }
+            foreach ($grupo as $corrida) {
+                if (!isset($estornadas[(int) $corrida->id])) {
+                    continue 2; // há corrida valendo
+                }
+            }
+            $aRelancar[$chave] = [$ultima, $automaticos[(int) $ultima->id], count($grupo) + 1];
+        }
+        if (!$aRelancar) {
+            return 0;
+        }
+
+        // só os pedidos que estão de novo no relatório, desde a data da corrida mais antiga (um dia de folga: a data de
+        // referência é no fuso da empresa e o período do relatório no do app)
+        $alvos    = array_values(array_unique(array_map(fn ($item) => (string) $item[0]->order_uuid, $aRelancar)));
+        $primeira = min(array_map(fn ($item) => substr((string) $item[0]->data_referencia, 0, 10), $aRelancar));
+        session(['company' => $companyUuid]);
+        $inicio   = Carbon::parse($primeira . ' 00:00:00', date_default_timezone_get())->subDays(1);
+        $pagaveis = [];
+        foreach ($this->calculo->pedidosConcluidos($companyUuid, $inicio, now(), fn ($query) => $query->whereIn('orders.uuid', $alvos)) as $pedido) {
+            $pagaveis[(string) $pedido->uuid] = true;
+        }
+
+        $lancadas = 0;
+        foreach ($aRelancar as [$corrida, $estorno, $n]) {
+            if (!isset($pagaveis[(string) $corrida->order_uuid])) {
+                continue;
+            }
+            $id = Lancamentos::inserir([
+                'company_uuid'    => $companyUuid,
+                'conta_tipo'      => $corrida->conta_tipo,
+                'conta_uuid'      => $corrida->conta_uuid,
+                'tipo'            => 'corrida',
+                'valor'           => -round((float) $estorno->valor, 2),
+                'data_referencia' => substr((string) $corrida->data_referencia, 0, 10),
+                'order_uuid'      => $corrida->order_uuid,
+                'motivo'          => static::MOTIVO_RELANCADO,
+                'detalhes'        => $corrida->detalhes ?? null,
+                'chave_unica'     => 'corrida:' . $corrida->conta_tipo . ':' . $corrida->order_uuid . ':' . $n,
+            ]);
+            $lancadas += $id ? 1 : 0;
+        }
+
+        return $lancadas;
     }
 
     /**

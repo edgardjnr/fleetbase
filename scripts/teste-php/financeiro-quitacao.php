@@ -71,6 +71,14 @@ $r = Quitacao::creditos([['id' => 1, 'tipo' => 'corrida', 'valor' => 8, 'data_re
 confere(situacao($r, 1) === 'pago', 'aceita arrays e números');
 confere(Quitacao::creditos([]) === [], 'conta vazia: nada');
 
+// pedido com a corrida relançada (estorno automático parcial depois de um desconto, e o pedido voltou a valer): o
+// "Não pagar" da corrida nova abate a nova, não vira caixa que pagaria outra corrida
+$r = Quitacao::creditos([l(1, 'corrida', 10, '2026-10-01', 'o1'), l(2, 'ajuste', -4, '2026-10-02', 'o1'), l(3, 'corrida', 10, '2026-10-02', 'o2'),
+    l(4, 'estorno', -6, '2026-10-03', 'o1', 1), l(5, 'corrida', 6, '2026-10-01', 'o1'), l(6, 'ajuste', -6, '2026-10-04', 'o1')]);
+confere(situacao($r, 1) === 'anulado' && situacao($r, 5) === 'anulado' && situacao($r, 3) === 'aberto', 'duas corridas do pedido: o ajuste abate a que ainda tem valor (' . json_encode($r) . ')');
+$r = Quitacao::creditos([l(1, 'corrida', 10, '2026-10-01', 'o1'), l(2, 'ajuste', -10, '2026-10-01', 'o1'), l(3, 'estorno', -10, '2026-10-02', 'o1', 1), l(4, 'corrida', 10, '2026-10-02', 'o2')]);
+confere(situacao($r, 1) === 'anulado' && situacao($r, 4) === 'pago', 'o estorno abate a corrida dele primeiro; o "Não pagar" que sobra vai ao caixa');
+
 echo '== Faturas da loja' . PHP_EOL;
 
 $faturas = [

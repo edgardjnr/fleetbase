@@ -286,6 +286,43 @@ confere(liquidoDoPedido('order_ae', 'motoboy') === 0.0 && count(array_filter(lin
 confere($n === 4, "estornos criados: motoboy do order_pp e do order_ae, loja do order_pp e do order_ae ({$n})");
 confere($lancador->estornarCancelados('empresa-1', Carbon::parse('2026-09-05 15:00:00')) === 0 && liquidoDoPedido('order_np', 'motoboy') === 0.0, 'de novo: nada');
 
+echo '== relancarEstornados (o pedido voltou a valer depois do estorno automático)' . PHP_EOL;
+reiniciarFinanceiro();
+$calculo  = new CalculoFalso();
+$lancador = new LancadorDeCorridas($calculo);
+$v        = pedidoConcluido('order_v', '2026-10-03 10:00:00');
+$w        = pedidoConcluido('order_w', '2026-10-03 11:00:00');
+$lancador->lancar('empresa-1', new Collection([$v, $w]));
+ajusteDoPedido('motoboy', 'driver-1', 'uuid-order_v', -3.0); // desconto antes do cancelamento: o motoboy tinha 5,00
+$v->status = 'canceled';
+$w->status = 'canceled';
+$lancador->estornarCancelados('empresa-1', Carbon::parse('2026-09-05 15:00:00'));
+confere(liquidoDoPedido('order_v', 'motoboy') === 0.0 && liquidoDoPedido('order_v', 'loja') === 0.0, 'cancelado: estornado');
+// order_w: depois do estorno automático, o motoboy ganhou uma corrida nova que o admin estornou à mão (a última corrida
+// do motoboy está estornada à mão: não volta); a da loja só tem o estorno automático (volta)
+$w->pago_mesmo_cancelado = true;
+$wManual = App\Support\Entregas\Financeiro\Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-1', 'tipo' => 'corrida',
+    'valor' => 8, 'data_referencia' => '2026-10-03', 'order_uuid' => 'uuid-order_w', 'chave_unica' => 'corrida:motoboy:uuid-order_w:2']);
+App\Support\Entregas\Financeiro\Lancamentos::estornar(App\Support\Entregas\Financeiro\Lancamentos::porId('empresa-1', $wManual), 'user-admin', 'Lançada por engano');
+$v->pago_mesmo_cancelado = true; // o iFood marcou depois como cancelado pago
+$n      = $lancador->relancarEstornados('empresa-1', Carbon::parse('2026-09-05 15:00:00'));
+$nova   = array_values(array_filter(linhasDe('entregas_lancamentos'), fn ($l) => $l['chave_unica'] === 'corrida:motoboy:uuid-order_v:2'));
+confere(count($nova) === 1 && $nova[0]['tipo'] === 'corrida' && (float) $nova[0]['valor'] === 5.0 && $nova[0]['data_referencia'] === '2026-10-03' && $nova[0]['criado_por'] === null, 'motoboy: corrida relançada (chave :2) com o que o estorno tirou (5,00), na data da corrida: ' . json_encode($nova[0] ?? null));
+confere(liquidoDoPedido('order_v', 'motoboy') === 5.0 && liquidoDoPedido('order_v', 'loja') === 11.37, 'o pedido volta a valer como antes do cancelamento (motoboy 5,00 com o desconto; loja 11,37)');
+confere(($nova[0]['motivo'] ?? null) === 'Pedido voltou a valer depois do cancelamento' && json_decode((string) $nova[0]['detalhes'], true)['pedido'] === 'order_v', 'com o motivo e os detalhes da corrida');
+confere(liquidoDoPedido('order_w', 'motoboy') === 0.0 && liquidoDoPedido('order_w', 'loja') === 11.37, 'corrida estornada à mão pelo admin não volta; a estornada pelo sistema volta');
+confere($n === 3, "relançados: motoboy e loja do order_v e loja do order_w ({$n})");
+confere($lancador->relancarEstornados('empresa-1', Carbon::parse('2026-09-05 15:00:00')) === 0, 'de novo: nada (já tem corrida valendo)');
+$v->pago_mesmo_cancelado = false;
+$lancador->estornarCancelados('empresa-1', Carbon::parse('2026-09-05 15:00:00'));
+confere(liquidoDoPedido('order_v', 'motoboy') === 0.0 && liquidoDoPedido('order_v', 'loja') === 0.0, 'cancelado de novo: estorna a corrida relançada');
+$v->pago_mesmo_cancelado = true;
+$lancador->relancarEstornados('empresa-1', Carbon::parse('2026-09-05 15:00:00'));
+confere(count(array_filter(linhasDe('entregas_lancamentos'), fn ($l) => $l['chave_unica'] === 'corrida:motoboy:uuid-order_v:3')) === 1 && liquidoDoPedido('order_v', 'motoboy') === 5.0, 'e volta de novo (chave :3)');
+$lancamentos = array_filter(linhasDe('entregas_lancamentos'), fn ($l) => $l['conta_uuid'] === 'driver-1' && $l['order_uuid'] === 'uuid-order_v');
+$situacoes   = App\Support\Entregas\Financeiro\Quitacao::creditos(array_map(fn ($l) => (object) $l, $lancamentos));
+confere(count(array_filter($situacoes, fn ($s) => $s['situacao'] === 'aberto')) === 1 && round(array_sum(array_column($situacoes, 'restante')), 2) === 5.0, 'no extrato: só a corrida que vale fica a receber (5,00)');
+
 echo '== lancarPedido (job)' . PHP_EOL;
 reiniciarFinanceiro();
 \Teste\Sessao::$dados = [];
@@ -374,6 +411,20 @@ confere(($calculo->chamadas[0]['inicio'] ?? null) === '2026-10-13 15:00:00', 'e 
 Banco::$falharAoConsultar['entregas_lancamentos'] = new \RuntimeException('banco fora do ar');
 confere(excecao(fn () => $comando->handle(new LancadorDeCorridas($calculo))) === null && logou('[entregas] financeiro: conferência falhou', 'warning'), 'falha numa empresa: registra e segue');
 unset(Banco::$falharAoConsultar['entregas_lancamentos']);
+
+reiniciarFinanceiro();
+Setting::$valores = [];
+corteDa('empresa-1', '2026-10-01');
+Relogio::$agora = '2026-10-05 15:00:00';
+$calculo        = new CalculoFalso();
+$volta          = pedidoConcluido('order_volta', '2026-10-04 10:00:00');
+$comando->handle(new LancadorDeCorridas($calculo));
+$volta->status = 'canceled';
+$comando->handle(new LancadorDeCorridas($calculo));
+confere(liquidoDoPedido('order_volta', 'motoboy') === 0.0 && liquidoDoPedido('order_volta', 'loja') === 0.0, 'conferência: lança e, cancelado depois, estorna');
+$volta->pago_mesmo_cancelado = true;
+$comando->handle(new LancadorDeCorridas($calculo));
+confere(liquidoDoPedido('order_volta', 'motoboy') === 8.0 && liquidoDoPedido('order_volta', 'loja') === 11.37, 'e relança quando o pedido volta a valer (cancelado pago marcado depois)');
 
 echo '== Comando entregas:financeiro-lancar-historico' . PHP_EOL;
 reiniciarFinanceiro();
