@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
+import { formatadores } from '../../utils/financeiro';
 import { chaveDoNaoEnvio, corDaFatura, dataBr, jaNaoCobrado, linhasCsvDaFatura, numeroOuRascunho, podeNaoCobrar, rotuloDaFatura } from '../../utils/financeiro-faturas';
 
 const ENDPOINT = 'entregas/financeiro/faturas';
@@ -85,14 +86,14 @@ export default class FinanceiroFaturaController extends Controller {
     }
 
     @action valor(numero) {
-        return new Intl.NumberFormat(this.intl.primaryLocale ?? 'pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(numero) || 0);
+        return formatadores(this.intl.primaryLocale).valor(numero);
     }
 
     @action km(valor) {
         if (valor === null || valor === undefined) {
             return '—';
         }
-        return `${new Intl.NumberFormat(this.intl.primaryLocale ?? 'pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(valor) || 0)} km`;
+        return `${formatadores(this.intl.primaryLocale).km(Number(valor) || 0)} km`;
     }
 
     @action data(iso) {
@@ -100,7 +101,7 @@ export default class FinanceiroFaturaController extends Controller {
     }
 
     @action instante(iso) {
-        return iso ? new Intl.DateTimeFormat(this.intl.primaryLocale ?? 'pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso)) : '';
+        return formatadores(this.intl.primaryLocale).instante(iso);
     }
 
     @action tipo(item) {

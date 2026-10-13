@@ -61,14 +61,30 @@ export function dataDoDia(dia) {
     return partes ? new Date(Number(partes[1]), Number(partes[2]) - 1, Number(partes[3])) : null;
 }
 
-/** Formatadores de exibição no idioma do console: valor (R$), dia, diaCurto, diaComSemana (dias 'Y-m-d') e km. */
+const FORMATADORES = new Map();
+
+/**
+ * Formatadores de exibição no idioma do console: valor (R$), dia, diaCurto, diaComSemana (dias 'Y-m-d'), km e instante
+ * (data e hora de um instante ISO). Um conjunto por idioma, criado na primeira vez: as telas chamam isto a cada célula.
+ */
 export function formatadores(idioma) {
     const locale = idioma || 'pt-BR';
+    let conjunto = FORMATADORES.get(locale);
+    if (!conjunto) {
+        conjunto = criarFormatadores(locale);
+        FORMATADORES.set(locale, conjunto);
+    }
+
+    return conjunto;
+}
+
+function criarFormatadores(locale) {
     const moeda = new Intl.NumberFormat(locale, { style: 'currency', currency: 'BRL' });
     const doisDecimais = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const dia = new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
     const diaCurto = new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit' });
     const diaComSemana = new Intl.DateTimeFormat(locale, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const dataHora = new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' });
     const comData = (formato) => (valor) => {
         const data = dataDoDia(valor);
         return data ? formato.format(data) : '';
@@ -80,6 +96,10 @@ export function formatadores(idioma) {
         diaCurto: comData(diaCurto),
         diaComSemana: comData(diaComSemana),
         km: (km) => (km === null || km === undefined || km === '' ? '' : doisDecimais.format(Number(km) || 0)),
+        instante: (iso) => {
+            const data = iso ? new Date(iso) : null;
+            return data && !Number.isNaN(data.getTime()) ? dataHora.format(data) : '';
+        },
     };
 }
 

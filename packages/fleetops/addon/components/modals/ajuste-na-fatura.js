@@ -3,7 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { lerValor, validarAjuste } from '../../utils/financeiro-faturas';
-import { valorParaEnviar } from '../../utils/financeiro';
+import { formatadores, valorParaEnviar } from '../../utils/financeiro';
 
 const PREFIXO = 'fleet-ops.ui.financeiro-lojas';
 
@@ -35,7 +35,7 @@ export default class ModalsAjusteNaFaturaComponent extends Component {
 
     get valorEmReais() {
         const numero = lerValor(this.valor);
-        return Number.isFinite(numero) && numero !== 0 ? new Intl.NumberFormat(this.intl.primaryLocale ?? 'pt-BR', { style: 'currency', currency: 'BRL' }).format(numero) : '';
+        return Number.isFinite(numero) && numero !== 0 ? formatadores(this.intl.primaryLocale).valor(numero) : '';
     }
 
     get desconto() {

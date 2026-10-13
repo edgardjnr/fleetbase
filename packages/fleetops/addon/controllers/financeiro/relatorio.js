@@ -4,6 +4,7 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task, timeout } from 'ember-concurrency';
 import { chaveDoCanceladoPago } from '../../utils/pedido-de-origem';
+import { formatadores } from '../../utils/financeiro';
 
 const ENDPOINT = 'entregas/pagamento-motoboys';
 const pad = (n) => String(n).padStart(2, '0');
@@ -70,15 +71,15 @@ export default class FinanceiroRelatorioController extends Controller {
     }
 
     formatarValor(valor) {
-        return new Intl.NumberFormat(this.intl.primaryLocale ?? 'pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor) || 0);
+        return formatadores(this.intl.primaryLocale).valor(valor);
     }
 
     formatarKm(km) {
-        return new Intl.NumberFormat(this.intl.primaryLocale ?? 'pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(km) || 0);
+        return formatadores(this.intl.primaryLocale).km(Number(km) || 0);
     }
 
     formatarData(iso) {
-        return iso ? new Intl.DateTimeFormat(this.intl.primaryLocale ?? 'pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso)) : '';
+        return formatadores(this.intl.primaryLocale).instante(iso);
     }
 
     /** Entregas: "Cancelado pelo iFood (pago)" ou "Cancelado pela loja (pago)" (pedido de outro sistema), pelo cancelado_origem. */

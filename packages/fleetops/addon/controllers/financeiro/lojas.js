@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
+import { formatadores } from '../../utils/financeiro';
 import { corDaFatura, dataBr, filtrarFaturas, numeroOuRascunho, opcoesDeDia, rotuloDaFatura, textoDoCiclo, validarCiclo } from '../../utils/financeiro-faturas';
 
 const ENDPOINT = 'entregas/financeiro';
@@ -82,7 +83,7 @@ export default class FinanceiroLojasController extends Controller {
     }
 
     @action valor(numero) {
-        return new Intl.NumberFormat(this.intl.primaryLocale ?? 'pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(numero) || 0);
+        return formatadores(this.intl.primaryLocale).valor(numero);
     }
 
     @action data(iso) {

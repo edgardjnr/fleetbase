@@ -290,6 +290,16 @@ test('formatadores', () => {
     assert.equal(f.km(3.214), '3,21');
     assert.equal(f.km(null), '');
     assert.equal(formatadores(undefined).dia('2026-10-02'), '02/10/2026', 'sem idioma: pt-BR');
+    assert.match(f.instante('2026-10-12T14:05:00'), /^12\/10\/2026,?\s14:05$/);
+    assert.equal(f.instante(null), '');
+    assert.equal(f.instante('não é data'), '', 'instante inválido não quebra a tela');
+});
+
+test('formatadores: um conjunto por idioma (não recria a cada célula)', () => {
+    assert.equal(formatadores('pt-BR'), formatadores('pt-BR'));
+    assert.equal(formatadores(undefined), formatadores('pt-BR'), 'sem idioma = pt-BR');
+    assert.notEqual(formatadores('en-US'), formatadores('pt-BR'));
+    assert.equal(formatadores('en-US'), formatadores('en-US'));
 });
 
 test('itens da lista Atenção do painel', () => {
