@@ -97,7 +97,10 @@ export default class FinanceiroConfiguracoesController extends Controller {
 
         try {
             const resposta = yield this.fetch.put(ENDPOINT, { corte: this.corte || null, cobranca_padrao: config });
-            this.preencher(resposta);
+            // o contrato devolve o formato "Configuracoes"; sem ele, a tela fica com o que foi salvo
+            if (resposta?.cobranca_padrao) {
+                this.preencher(resposta);
+            }
             this.notifications.success(this.intl.t('fleet-ops.ui.financeiro.configuracoes.salvo'));
         } catch (error) {
             this.notifications.serverError(error);
