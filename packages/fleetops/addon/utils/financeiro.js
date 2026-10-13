@@ -55,6 +55,34 @@ export function isoDate(data) {
     return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}`;
 }
 
+/** 'Y-m-d' do servidor → Date local à meia-noite (new Date('Y-m-d') seria UTC e cairia no dia anterior); null se inválido. */
+export function dataDoDia(dia) {
+    const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dia ?? ''));
+    return partes ? new Date(Number(partes[1]), Number(partes[2]) - 1, Number(partes[3])) : null;
+}
+
+/** Formatadores de exibição no idioma do console: valor (R$), dia, diaCurto, diaComSemana (dias 'Y-m-d') e km. */
+export function formatadores(idioma) {
+    const locale = idioma || 'pt-BR';
+    const moeda = new Intl.NumberFormat(locale, { style: 'currency', currency: 'BRL' });
+    const doisDecimais = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const dia = new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const diaCurto = new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit' });
+    const diaComSemana = new Intl.DateTimeFormat(locale, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const comData = (formato) => (valor) => {
+        const data = dataDoDia(valor);
+        return data ? formato.format(data) : '';
+    };
+
+    return {
+        valor: (valor) => moeda.format(Number(valor) || 0),
+        dia: comData(dia),
+        diaCurto: comData(diaCurto),
+        diaComSemana: comData(diaComSemana),
+        km: (km) => (km === null || km === undefined || km === '' ? '' : doisDecimais.format(Number(km) || 0)),
+    };
+}
+
 /**
  * Número digitado: "30", "30,5", "-2,75", "1.234,56" ou "12.5". Vazio ou texto inválido vira NaN (Number('') seria 0).
  */
@@ -210,6 +238,42 @@ export function diasDeFechamento(ciclo) {
     }
 
     return [];
+}
+
+const ROTA_DO_PEDIDO = 'operations.orders.index.details';
+const ROTA_DA_FATURA = 'financeiro.fatura';
+const ATENCAO = {
+    fatura_vencida: { icone: 'circle-exclamation', cor: 'text-red-600 dark:text-red-400', rota: ROTA_DA_FATURA },
+    rascunho: { icone: 'file-pen', cor: 'text-yellow-600 dark:text-yellow-400', rota: ROTA_DA_FATURA },
+    email_nao_enviado: { icone: 'envelope', cor: 'text-yellow-600 dark:text-yellow-400', rota: ROTA_DA_FATURA },
+    sem_loja: { icone: 'store-slash', cor: 'text-gray-500 dark:text-gray-400', rota: ROTA_DO_PEDIDO },
+    sem_valor: { icone: 'ruler', cor: 'text-gray-500 dark:text-gray-400', rota: ROTA_DO_PEDIDO },
+};
+
+/**
+ * Item da lista "Atenção" do painel → { tipo, icone, cor, chave, params, rota, modelo } para o template (rota relativa ao
+ * engine; fatura → financeiro.fatura com o uuid, pedido → detalhes do pedido com o public_id). Tipo desconhecido: null.
+ * `f` = formatadores(idioma).
+ */
+export function itemDeAtencao(item, f) {
+    const config = ATENCAO[item?.tipo];
+    if (!config) {
+        return null;
+    }
+    const ehPedido = config.rota === ROTA_DO_PEDIDO;
+    const params = ehPedido
+        ? { numero: item.numero || item.pedido }
+        : { numero: item.numero ?? '', loja: item.loja ?? '', valor: f.valor(item.valor), vencimento: f.dia(item.vencimento) };
+
+    return {
+        tipo: item.tipo,
+        icone: config.icone,
+        cor: config.cor,
+        chave: `${PREFIXO}.painel.atencao.${item.tipo}`,
+        params,
+        rota: config.rota,
+        modelo: ehPedido ? item.pedido : item.fatura,
+    };
 }
 
 const dataBr = (data) => {

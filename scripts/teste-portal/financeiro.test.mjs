@@ -6,8 +6,11 @@ import {
     agruparPorDia,
     avisoDeAdiantamento,
     corDaSituacao,
+    dataDoDia,
     diasDeFechamento,
+    formatadores,
     isoDate,
+    itemDeAtencao,
     linhasCsvDoExtrato,
     numeroDigitado,
     periodoDoAtalho,
@@ -145,6 +148,60 @@ test('dias de fechamento do ciclo', () => {
     assert.deepEqual(mensal[28], { valor: 0, chave: 'fleet-ops.ui.financeiro.configuracoes.ultimo-dia', params: {} });
     assert.deepEqual(diasDeFechamento('quinzenal'), []);
     assert.deepEqual(diasDeFechamento(undefined), []);
+});
+
+test('dia do servidor vira data local (sem UTC)', () => {
+    const dia = dataDoDia('2026-10-12');
+    assert.equal(dia.getFullYear(), 2026);
+    assert.equal(dia.getMonth(), 9);
+    assert.equal(dia.getDate(), 12, 'new Date("2026-10-12") cairia no dia 11 em Brasília');
+    assert.equal(dataDoDia(''), null);
+    assert.equal(dataDoDia(null), null);
+    assert.equal(dataDoDia('12/10/2026'), null);
+});
+
+test('formatadores', () => {
+    const f = formatadores('pt-BR');
+    assert.match(f.valor(8.5), /^R\$\s8,50$/);
+    assert.match(f.valor(-150), /^-R\$\s150,00$/);
+    assert.match(f.valor('1234.5'), /^R\$\s1\.234,50$/);
+    assert.match(f.valor(null), /^R\$\s0,00$/);
+    assert.equal(f.dia('2026-10-02'), '02/10/2026');
+    assert.equal(f.dia(null), '');
+    assert.equal(f.diaCurto('2026-10-02'), '02/10');
+    assert.match(f.diaComSemana('2026-10-12'), /seg/i, '12/10/2026 é segunda-feira');
+    assert.equal(f.km(3.214), '3,21');
+    assert.equal(f.km(null), '');
+    assert.equal(formatadores(undefined).dia('2026-10-02'), '02/10/2026', 'sem idioma: pt-BR');
+});
+
+test('itens da lista Atenção do painel', () => {
+    const f = formatadores('pt-BR');
+    const vencida = itemDeAtencao({ tipo: 'fatura_vencida', fatura: 'uuid-1', numero: 'FAT-0031', loja: 'Pizzaria do Zé', valor: 620, vencimento: '2026-10-08' }, f);
+    assert.equal(vencida.rota, 'financeiro.fatura');
+    assert.equal(vencida.modelo, 'uuid-1');
+    assert.equal(vencida.chave, 'fleet-ops.ui.financeiro.painel.atencao.fatura_vencida');
+    assert.equal(vencida.params.numero, 'FAT-0031');
+    assert.equal(vencida.params.vencimento, '08/10/2026');
+    assert.match(vencida.params.valor, /620,00/);
+    assert.match(vencida.cor, /red/);
+
+    const rascunho = itemDeAtencao({ tipo: 'rascunho', fatura: 'uuid-2', loja: 'Terraço', valor: 412 }, f);
+    assert.equal(rascunho.modelo, 'uuid-2');
+    assert.equal(rascunho.params.numero, '', 'rascunho não tem número');
+    assert.equal(rascunho.params.vencimento, '');
+
+    const semLoja = itemDeAtencao({ tipo: 'sem_loja', pedido: 'order_x', numero: 'RP5702' }, f);
+    assert.equal(semLoja.rota, 'operations.orders.index.details');
+    assert.equal(semLoja.modelo, 'order_x');
+    assert.deepEqual(semLoja.params, { numero: 'RP5702' });
+
+    const semValor = itemDeAtencao({ tipo: 'sem_valor', pedido: 'order_y', numero: null }, f);
+    assert.deepEqual(semValor.params, { numero: 'order_y' }, 'sem número: o id do pedido');
+
+    assert.equal(itemDeAtencao({ tipo: 'email_nao_enviado', fatura: 'u3', numero: 'FAT-0033', loja: 'Burger Hub' }, f).icone, 'envelope');
+    assert.equal(itemDeAtencao({ tipo: 'novo-tipo' }, f), null);
+    assert.equal(itemDeAtencao(null, f), null);
 });
 
 test('linhas do CSV do extrato', () => {
