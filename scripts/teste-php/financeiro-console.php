@@ -295,6 +295,9 @@ foreach ([
     'valor zero'                  => ['valor' => 0],
     'valor 0,001'                 => ['valor' => 0.001],
     'valor texto'                 => ['valor' => 'trinta'],
+    'milhar sem centavos (1.500)' => ['valor' => '1.500'],
+    'milhar negativo (-2.000)'    => ['tipo' => 'ajuste', 'valor' => '-2.000'],
+    'milhões (1.234.567)'         => ['valor' => '1.234.567'],
     'diária negativa'             => ['valor' => -30],
     'bônus negativo'              => ['tipo' => 'bonus', 'valor' => '-5'],
     'pedido em diária'            => ['pedido' => 'order_1'],
@@ -311,6 +314,11 @@ foreach ([
     confere($resposta->status === 422 && erroDa($resposta) !== null, "lançar com {$caso} → 422 (" . erroDa($resposta) . ')');
 }
 confere(count(linhasDe('entregas_lancamentos')) === $antes, 'nenhum lançamento gravado nos casos inválidos');
+confere(erroDa($controller->lancar(pedidoFeito(array_merge($base, ['valor' => '1.500'])))) === 'Valor ambíguo: para mil e quinhentos, escreva 1500 ou 1.500,00 (vírgula antes dos centavos).', 'milhar com ponto e sem vírgula: a mensagem explica');
+$resposta = $controller->lancar(pedidoFeito(array_merge($base, ['valor' => '1.500,00'])));
+confere($resposta->status === 200 && ($resposta->dados['lancamentos'][0]['valor'] ?? null) === 1500.0, 'milhar com vírgula ("1.500,00") vale 1500');
+$resposta = $controller->lancar(pedidoFeito(array_merge($base, ['valor' => '1.50'])));
+confere($resposta->status === 200 && ($resposta->dados['lancamentos'][0]['valor'] ?? null) === 1.5, 'ponto com duas casas ("1.50") continua decimal');
 
 $resposta = $controller->lancar(pedidoFeito(array_merge($base, ['contas' => ['driver_1', 'driver_2', 'driver_1'], 'observacao_interna' => 'chuva'])));
 $criados  = $resposta->dados['lancamentos'] ?? [];
@@ -385,6 +393,7 @@ foreach ([
     'motoboy inexistente'  => [['conta' => 'driver_9'], 404],
     'outra empresa'        => [['conta' => 'driver_x'], 404],
     'valor texto'          => [['valor' => 'cinquenta'], 422],
+    'milhar sem centavos'  => [['valor' => '1.500'], 422],
     'valor zero'           => [['valor' => '0.00'], 422],
     'forma inválida'       => [['forma' => 'cheque'], 422],
     'data inválida'        => [['data' => '2026-13-01'], 422],

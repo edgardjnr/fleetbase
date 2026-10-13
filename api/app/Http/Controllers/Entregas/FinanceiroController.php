@@ -187,6 +187,9 @@ class FinanceiroController extends Controller
             return $this->erro('Tipo de lançamento inválido para esta conta.');
         }
 
+        if (static::milharSemCentavos($request->input('valor'))) {
+            return $this->erro(static::MILHAR_SEM_CENTAVOS);
+        }
         $valor = static::numero($request->input('valor'));
         if ($valor === null) {
             return $this->erro('Valor inválido.');
@@ -332,6 +335,9 @@ class FinanceiroController extends Controller
         if (!$conta) {
             return $this->erro($contaTipo === Financeiro::CONTA_MOTOBOY ? 'Motoboy não encontrado.' : 'Loja não encontrada.', 404);
         }
+        if (static::milharSemCentavos($request->input('valor'))) {
+            return $this->erro(static::MILHAR_SEM_CENTAVOS);
+        }
         $valor = static::numero($request->input('valor'));
         if ($valor === null) {
             return $this->erro('Valor inválido.');
@@ -449,9 +455,27 @@ class FinanceiroController extends Controller
         return CicloDeCobranca::validar($config) ?? CicloDeCobranca::normalizar($config);
     }
 
-    /** Número digitado ou enviado: 30, "30", "30.5", "30,5", "-2,75", "1.234,56". null se não for número. */
+    /** Mensagem do valor no formato de milhar com ponto e sem vírgula ("1.500"), que viraria 1,50. */
+    public const MILHAR_SEM_CENTAVOS = 'Valor ambíguo: para mil e quinhentos, escreva 1500 ou 1.500,00 (vírgula antes dos centavos).';
+
+    /**
+     * Texto no formato de milhar com ponto e sem vírgula ("1.500", "-2.000", "12.345"): ambíguo (1,50 ou 1.500?), é
+     * recusado com 422 (MILHAR_SEM_CENTAVOS) para não gravar R$ 1,50 por engano vindo de outro cliente da API.
+     */
+    public static function milharSemCentavos($valor): bool
+    {
+        return is_string($valor) && preg_match('/^[+-]?\d{1,3}(\.\d{3})+$/', preg_replace('/\s/', '', $valor)) === 1;
+    }
+
+    /**
+     * Número digitado ou enviado: 30, "30", "30.5", "30,5", "-2,75", "1.234,56". null se não for número ou se for o
+     * milhar ambíguo "1.500" (quem chama confere antes com milharSemCentavos, para a mensagem certa).
+     */
     public static function numero($valor): ?float
     {
+        if (static::milharSemCentavos($valor)) {
+            return null;
+        }
         if (is_int($valor) || is_float($valor)) {
             return is_finite((float) $valor) ? (float) $valor : null;
         }

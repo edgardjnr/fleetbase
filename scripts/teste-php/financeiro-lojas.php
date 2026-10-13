@@ -188,6 +188,7 @@ namespace {
         'valor zero'   => ['valor' => 0, 'motivo' => 'x'],
         'sem valor'    => ['motivo' => 'x'],
         'valor texto'  => ['valor' => 'abc', 'motivo' => 'x'],
+        'milhar 1.500' => ['valor' => '1.500', 'motivo' => 'x'],
         'sem motivo'   => ['valor' => 3],
     ] as $caso => $corpo) {
         $r = api()->ajuste(req($corpo), $id);
