@@ -368,14 +368,26 @@ confere(count(array_filter($situacoes, fn ($s) => $s['situacao'] === 'aberto')) 
 
 echo '== lancarPedido (job)' . PHP_EOL;
 reiniciarFinanceiro();
-\Teste\Sessao::$dados = [];
-$lancador = new LancadorDeCorridas(new CalculoFalso());
+// o worker da fila reaproveita o processo entre jobs: a sessão volta como estava
+\Teste\Sessao::$dados = ['company' => 'empresa-anterior'];
+$calculo  = new CalculoFalso();
+$lancador = new LancadorDeCorridas($calculo);
 $g        = pedidoConcluido('order_g', '2026-10-05 14:00:00');
 pedidoConcluido('order_h', '2026-10-05 14:10:00');
 $lancador->lancarPedido('uuid-order_g');
 confere(count(lancamentosDo('order_g')) === 2 && !lancamentosDo('order_h'), 'lança só o pedido pedido');
-confere(session('company') === 'empresa-1', 'com a empresa do pedido na sessão');
+confere($calculo->sessaoNoCalculo === ['empresa-1'], 'calcula com a empresa do pedido na sessão');
+confere(session('company') === 'empresa-anterior', 'e devolve a sessão como estava (' . json_encode(session('company')) . ')');
 confere(excecao(fn () => $lancador->lancarPedido('uuid-nao-existe')) === null && count(linhasDe('entregas_lancamentos')) === 2, 'pedido que não existe: nada');
+$g->status = 'canceled';
+$lancador->estornarCancelados('empresa-1', Carbon::parse('2026-09-05 15:00:00'));
+confere(count(lancamentosDo('order_g')) === 4 && session('company') === 'empresa-anterior', 'estornarCancelados também devolve a sessão');
+$g->pago_mesmo_cancelado = true;
+$lancador->relancarEstornados('empresa-1', Carbon::parse('2026-09-05 15:00:00'));
+confere(count(lancamentosDo('order_g')) === 6 && session('company') === 'empresa-anterior', 'relancarEstornados também');
+\Teste\Sessao::$dados = [];
+$lancador->lancar('empresa-1', new Collection([$g]));
+confere(session('company') === null, 'sem empresa na sessão antes: sem empresa depois');
 
 echo '== Observador do pedido' . PHP_EOL;
 reiniciarFinanceiro();
@@ -407,10 +419,12 @@ confere(excecao(fn () => ObservadorFinanceiroDosPedidos::aoAtualizar(new \stdCla
 
 echo '== Job LancarCorridaDoPedido' . PHP_EOL;
 reiniciarFinanceiro();
-\Teste\Sessao::$dados = [];
+\Teste\Sessao::$dados = ['company' => 'empresa-do-job-anterior'];
 pedidoConcluido('order_job', '2026-10-05 14:30:00');
-(new LancarCorridaDoPedido('uuid-order_job'))->handle(new LancadorDeCorridas(new CalculoFalso()));
-confere(count(lancamentosDo('order_job')) === 2 && session('company') === 'empresa-1', 'lança a corrida do pedido, com a empresa dele na sessão');
+$calculo = new CalculoFalso();
+(new LancarCorridaDoPedido('uuid-order_job'))->handle(new LancadorDeCorridas($calculo));
+confere(count(lancamentosDo('order_job')) === 2 && $calculo->sessaoNoCalculo === ['empresa-1'], 'lança a corrida do pedido, com a empresa dele na sessão');
+confere(session('company') === 'empresa-do-job-anterior', 'a sessão do worker não fica com a empresa deste job');
 \Teste\Config::$valores['services.entregas.financeiro'] = null;
 pedidoConcluido('order_job2', '2026-10-05 14:40:00');
 (new LancarCorridaDoPedido('uuid-order_job2'))->handle(new LancadorDeCorridas(new CalculoFalso()));

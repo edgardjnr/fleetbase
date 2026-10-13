@@ -19,7 +19,8 @@ use Illuminate\Support\Facades\DB;
  * (entregas:financeiro-conferir) e pelo entregas:financeiro-lancar-historico. Pedido sem valor (sem faixas, OSRM fora e
  * sem estimativa) fica para a próxima conferência.
  *
- * O CalculoEntregas lê as faixas pela empresa da sessão: lancar() põe a empresa na sessão antes de calcular.
+ * O CalculoEntregas lê as faixas pela empresa da sessão: cada chamada a ele põe a empresa na sessão e, no fim, devolve
+ * a sessão como estava (naEmpresa; o worker da fila reaproveita o processo entre jobs).
  */
 final class LancadorDeCorridas
 {
@@ -53,8 +54,7 @@ final class LancadorDeCorridas
         }
 
         // as faixas do CalculoEntregas vêm do Setting da empresa da sessão (comando e job não têm sessão)
-        session(['company' => $companyUuid]);
-        [$entregas] = $this->calculo->entregas($pedidos, Financeiro::fuso($companyUuid), static::LIMITE_CALCULOS);
+        [$entregas] = $this->naEmpresa($companyUuid, fn () => $this->calculo->entregas($pedidos, Financeiro::fuso($companyUuid), static::LIMITE_CALCULOS));
 
         foreach ($entregas as $entrega) {
             if (empty($entrega['order_uuid']) || empty($entrega['motoboy_uuid'])) {
@@ -218,10 +218,10 @@ final class LancadorDeCorridas
 
         // o cancelado pago continua no relatório: não estorna. Um dia de folga antes de $desde (a data de referência é no
         // fuso da empresa e o período do relatório no do app)
-        session(['company' => $companyUuid]);
         $inicio   = Carbon::parse($dia . ' 00:00:00', date_default_timezone_get())->subDays(1);
         $pagaveis = [];
-        foreach ($this->calculo->pedidosConcluidos($companyUuid, $inicio, now(), fn ($query) => $query->whereIn('orders.uuid', $candidatos)) as $pedido) {
+        $doRelatorio = $this->naEmpresa($companyUuid, fn () => $this->calculo->pedidosConcluidos($companyUuid, $inicio, now(), fn ($query) => $query->whereIn('orders.uuid', $candidatos)));
+        foreach ($doRelatorio as $pedido) {
             $pagaveis[(string) $pedido->uuid] = true;
         }
         $alvos = array_values(array_filter($candidatos, fn ($uuid) => !isset($pagaveis[$uuid])));
@@ -326,10 +326,10 @@ final class LancadorDeCorridas
         // referência é no fuso da empresa e o período do relatório no do app)
         $alvos    = array_values(array_unique(array_map(fn ($item) => (string) $item[0]->order_uuid, $aRelancar)));
         $primeira = min(array_map(fn ($item) => substr((string) $item[0]->data_referencia, 0, 10), $aRelancar));
-        session(['company' => $companyUuid]);
-        $inicio   = Carbon::parse($primeira . ' 00:00:00', date_default_timezone_get())->subDays(1);
-        $pagaveis = [];
-        foreach ($this->calculo->pedidosConcluidos($companyUuid, $inicio, now(), fn ($query) => $query->whereIn('orders.uuid', $alvos)) as $pedido) {
+        $inicio      = Carbon::parse($primeira . ' 00:00:00', date_default_timezone_get())->subDays(1);
+        $pagaveis    = [];
+        $doRelatorio = $this->naEmpresa($companyUuid, fn () => $this->calculo->pedidosConcluidos($companyUuid, $inicio, now(), fn ($query) => $query->whereIn('orders.uuid', $alvos)));
+        foreach ($doRelatorio as $pedido) {
             $pagaveis[(string) $pedido->uuid] = true;
         }
 
@@ -415,12 +415,26 @@ final class LancadorDeCorridas
             return;
         }
 
-        session(['company' => $companyUuid]);
         // do início do dia do corte (no fuso da empresa), levado ao fuso do app, que é o da sessão do MySQL
         $inicio  = Carbon::parse($corte . ' 00:00:00', Financeiro::fuso($companyUuid))->setTimezone(new \DateTimeZone(date_default_timezone_get()));
-        $pedidos = $this->calculo->pedidosConcluidos($companyUuid, $inicio, now(), fn ($query) => $query->where('orders.uuid', $orderUuid));
+        $pedidos = $this->naEmpresa($companyUuid, fn () => $this->calculo->pedidosConcluidos($companyUuid, $inicio, now(), fn ($query) => $query->where('orders.uuid', $orderUuid)));
 
         $this->lancar($companyUuid, $pedidos);
+    }
+
+    /**
+     * Roda $fazer com a empresa na sessão (o CalculoEntregas lê as faixas por ela) e devolve a sessão como estava: o
+     * worker da fila reaproveita o processo entre jobs, e a empresa de um job não pode vazar para o seguinte.
+     */
+    private function naEmpresa(string $companyUuid, \Closure $fazer)
+    {
+        $anterior = session('company');
+        session(['company' => $companyUuid]);
+        try {
+            return $fazer();
+        } finally {
+            session(['company' => $anterior]);
+        }
     }
 
     /** Detalhes da corrida (iguais nas duas contas: nenhum valor, só a faixa com os limites). */
