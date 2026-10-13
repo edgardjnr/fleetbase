@@ -78,23 +78,28 @@ final class LancadorDeCorridas
                 'detalhes'        => static::detalhes($entrega),
             ];
 
-            $motoboy = Lancamentos::inserir($base + [
-                'conta_tipo'  => Financeiro::CONTA_MOTOBOY,
-                'conta_uuid'  => $entrega['motoboy_uuid'],
-                'valor'       => (float) $entrega['valor_motoboy'],
-                'chave_unica' => 'corrida:' . Financeiro::CONTA_MOTOBOY . ':' . $entrega['order_uuid'],
-            ]);
-            $resultado['lancados'] += $motoboy ? 1 : 0;
-
-            if (!empty($entrega['loja_uuid']) && $entrega['valor_loja'] !== null) {
-                $loja = Lancamentos::inserir($base + [
-                    'conta_tipo'  => Financeiro::CONTA_LOJA,
-                    'conta_uuid'  => $entrega['loja_uuid'],
-                    'valor'       => (float) $entrega['valor_loja'],
-                    'chave_unica' => 'corrida:' . Financeiro::CONTA_LOJA . ':' . $entrega['order_uuid'],
+            // os dois numa transação: a corrida do motoboy não fica sem a da loja por uma falha no meio (a conferência só
+            // refaz a da loja quando a do motoboy existe: pedidosSemLancamentoDaLoja)
+            $resultado['lancados'] += DB::transaction(function () use ($base, $entrega) {
+                $motoboy = Lancamentos::inserir($base + [
+                    'conta_tipo'  => Financeiro::CONTA_MOTOBOY,
+                    'conta_uuid'  => $entrega['motoboy_uuid'],
+                    'valor'       => (float) $entrega['valor_motoboy'],
+                    'chave_unica' => 'corrida:' . Financeiro::CONTA_MOTOBOY . ':' . $entrega['order_uuid'],
                 ]);
-                $resultado['lancados'] += $loja ? 1 : 0;
-            }
+
+                $loja = null;
+                if (!empty($entrega['loja_uuid']) && $entrega['valor_loja'] !== null) {
+                    $loja = Lancamentos::inserir($base + [
+                        'conta_tipo'  => Financeiro::CONTA_LOJA,
+                        'conta_uuid'  => $entrega['loja_uuid'],
+                        'valor'       => (float) $entrega['valor_loja'],
+                        'chave_unica' => 'corrida:' . Financeiro::CONTA_LOJA . ':' . $entrega['order_uuid'],
+                    ]);
+                }
+
+                return ($motoboy ? 1 : 0) + ($loja ? 1 : 0);
+            });
         }
 
         return $resultado;
@@ -104,7 +109,8 @@ final class LancadorDeCorridas
      * Pedidos concluídos (ou cancelados pagos) de $inicio até agora sem lançamento de corrida do motoboy: lança o que der e
      * devolve ['lancados' => int, 'sem_valor' => int, 'sem_lancamento' => [['id' => public_id, 'numero' => internal_id,
      * 'concluido_em' => 'Y-m-d H:i:s' no fuso do app]]] (os que continuam sem lançamento: sem valor, antes do corte...).
-     * O painel usa `sem_lancamento` para as "corridas sem valor". Sem data de corte, nem consulta.
+     * O painel usa `sem_lancamento` para as "corridas sem valor". Também lança a corrida da loja que faltou
+     * (pedidosSemLancamentoDaLoja; entra em `lancados`). Sem data de corte, nem consulta.
      */
     public function conferir(string $companyUuid, Carbon $inicio): array
     {
@@ -114,11 +120,19 @@ final class LancadorDeCorridas
         }
 
         $pedidos = $this->pedidosSemLancamento($companyUuid, $inicio);
+        if (!$pedidos->isEmpty()) {
+            $resultado = $this->lancar($companyUuid, $pedidos) + $resultado;
+        }
+
+        // a corrida da loja que faltou (pedido com a do motoboy, sem a da loja e com uma loja de cliente): o lancar só
+        // grava a dela (a do motoboy já tem a chave)
+        $semLoja = $this->pedidosSemLancamentoDaLoja($companyUuid, $inicio);
+        if (!$semLoja->isEmpty()) {
+            $resultado['lancados'] += $this->lancar($companyUuid, $semLoja)['lancados'];
+        }
         if ($pedidos->isEmpty()) {
             return $resultado;
         }
-
-        $resultado = $this->lancar($companyUuid, $pedidos) + $resultado;
 
         $lancados = [];
         foreach (array_chunk(array_values(array_filter($pedidos->pluck('uuid')->all())), 1000) as $lote) {
@@ -158,6 +172,25 @@ final class LancadorDeCorridas
                 ->where(Lancamentos::TABELA . '.conta_tipo', Financeiro::CONTA_MOTOBOY)
                 ->where(Lancamentos::TABELA . '.tipo', 'corrida')
         ));
+    }
+
+    /**
+     * Pedidos do relatório de $inicio até agora com a corrida do motoboy lançada, sem a da loja e cujo cliente é uma loja
+     * (Vendor, inclusive excluída, como no CalculoEntregas::lojasDosPedidos): a corrida da loja que faltou (lançamento de
+     * antes da transação, ou loja ligada ao pedido depois). A conferência lança a da loja.
+     */
+    public function pedidosSemLancamentoDaLoja(string $companyUuid, Carbon $inicio): Collection
+    {
+        $corrida = fn (string $conta) => fn ($sub) => $sub->selectRaw('1')
+            ->from(Lancamentos::TABELA)
+            ->whereColumn(Lancamentos::TABELA . '.order_uuid', 'orders.uuid')
+            ->where(Lancamentos::TABELA . '.conta_tipo', $conta)
+            ->where(Lancamentos::TABELA . '.tipo', 'corrida');
+
+        return $this->calculo->pedidosConcluidos($companyUuid, $inicio, now(), fn ($query) => $query
+            ->whereExists($corrida(Financeiro::CONTA_MOTOBOY))
+            ->whereNotExists($corrida(Financeiro::CONTA_LOJA))
+            ->whereExists(fn ($sub) => $sub->selectRaw('1')->from('vendors')->whereColumn('vendors.uuid', 'orders.customer_uuid')));
     }
 
     /**

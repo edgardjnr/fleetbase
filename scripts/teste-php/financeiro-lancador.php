@@ -28,7 +28,7 @@ class QueryRegistrada
 
     public function __call($metodo, $argumentos)
     {
-        if ($metodo === 'whereNotExists' && ($argumentos[0] ?? null) instanceof \Closure) {
+        if (in_array($metodo, ['whereExists', 'whereNotExists'], true) && ($argumentos[0] ?? null) instanceof \Closure) {
             $sub = new QueryRegistrada();
             ($argumentos[0])($sub);
             $argumentos = [$sub->chamadas];
@@ -67,11 +67,24 @@ class CalculoFalso extends CalculoEntregas
                 if ($metodo === 'whereIn' && $args[0] === 'orders.uuid' && !in_array($p->uuid, $args[1], true)) {
                     return false;
                 }
-                if ($metodo === 'whereNotExists') {
-                    foreach (Banco::$tabelas['entregas_lancamentos'] ?? [] as $l) {
-                        if ($l['order_uuid'] === $p->uuid && $l['conta_tipo'] === 'motoboy' && $l['tipo'] === 'corrida') {
-                            return false;
+                if (in_array($metodo, ['whereExists', 'whereNotExists'], true)) {
+                    // a subconsulta: from entregas_lancamentos (corrida da conta_tipo do where) ou from vendors (cliente é loja)
+                    $de    = null;
+                    $conta = null;
+                    foreach ($args[0] as [$m, $a]) {
+                        $de    = $m === 'from' ? $a[0] : $de;
+                        $conta = $m === 'where' && $a[0] === 'entregas_lancamentos.conta_tipo' ? $a[1] : $conta;
+                    }
+                    $existe = false;
+                    if ($de === 'vendors') {
+                        $existe = $p->customer_uuid !== null;
+                    } else {
+                        foreach (Banco::$tabelas['entregas_lancamentos'] ?? [] as $l) {
+                            $existe = $existe || ($l['order_uuid'] === $p->uuid && $l['conta_tipo'] === $conta && $l['tipo'] === 'corrida');
                         }
+                    }
+                    if ($existe !== ($metodo === 'whereExists')) {
+                        return false;
                     }
                 }
             }
@@ -224,6 +237,36 @@ confere(in_array(['where', ['entregas_lancamentos.conta_tipo', 'motoboy']], $sub
 $calculo->chamadas = [];
 Setting::$valores  = [];
 confere($lancador->conferir('empresa-1', Carbon::parse('2026-09-28 00:00:00')) === ['lancados' => 0, 'sem_valor' => 0, 'sem_lancamento' => []] && $calculo->chamadas === [], 'sem data de corte: nem consulta');
+
+echo '== Corrida da loja que faltou (lançamento numa transação; a conferência refaz)' . PHP_EOL;
+reiniciarFinanceiro();
+$calculo  = new CalculoFalso();
+$lancador = new LancadorDeCorridas($calculo);
+$t        = pedidoConcluido('order_t', '2026-10-04 10:00:00');
+// o insert da loja (o segundo) falha: o do motoboy não pode ficar sozinho
+Banco::$antesDeInserir['entregas_lancamentos'] = function () {
+    Banco::$antesDeInserir['entregas_lancamentos'] = function () {
+        Banco::$falharComo['entregas_lancamentos'] = ['HY000', 2006];
+    };
+};
+confere(excecao(fn () => $lancador->lancar('empresa-1', new Collection([$t]))) !== null && !lancamentosDo('order_t'), 'falha no lançamento da loja: o do motoboy é desfeito (os dois numa transação)');
+unset(Banco::$antesDeInserir['entregas_lancamentos'], Banco::$falharComo['entregas_lancamentos']);
+// o que já está no banco de antes da transação: corrida do motoboy sem a da loja (pedido com loja)
+$s = pedidoConcluido('order_s', '2026-10-04 11:00:00');
+$u = pedidoConcluido('order_u', '2026-10-04 12:00:00', ['customer_uuid' => null]);
+foreach ([$s, $u] as $pedido) {
+    App\Support\Entregas\Financeiro\Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-1', 'tipo' => 'corrida', 'valor' => 8,
+        'data_referencia' => '2026-10-04', 'order_uuid' => $pedido->uuid, 'chave_unica' => 'corrida:motoboy:' . $pedido->uuid]);
+}
+$calculo->chamadas = [];
+$r = $lancador->conferir('empresa-1', Carbon::parse('2026-09-28 00:00:00'));
+confere(count(lancamentosDo('order_t')) === 2 && daConta(lancamentosDo('order_s'), 'loja') && (float) daConta(lancamentosDo('order_s'), 'loja')['valor'] === 11.37, 'conferência: lança o que faltou e a corrida da loja que faltou (' . json_encode(['lancados' => $r['lancados']]) . ')');
+confere(count(lancamentosDo('order_s')) === 2 && count(lancamentosDo('order_u')) === 1, 'sem duplicar a do motoboy; pedido sem loja continua só com o motoboy');
+$daLoja = $calculo->chamadas[1]['filtro'] ?? [];
+confere(array_column($daLoja, 0) === ['whereExists', 'whereNotExists', 'whereExists'] && in_array(['from', ['vendors']], $daLoja[2][1][0] ?? [], true), 'a consulta da loja: com corrida do motoboy, sem a da loja, cliente é loja (vendors)');
+$calculo->chamadas = [];
+$lancador->conferir('empresa-1', Carbon::parse('2026-09-28 00:00:00'));
+confere(count(linhasDe('entregas_lancamentos')) === 5, 'de novo: nada');
 
 echo '== estornarCancelados' . PHP_EOL;
 reiniciarFinanceiro();
