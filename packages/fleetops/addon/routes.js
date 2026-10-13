@@ -35,7 +35,19 @@ export default buildRoutes(function () {
             });
         });
     });
+    // Entregas RestaurantePro: Financeiro (só admin; guarda em routes/financeiro.js)
+    this.route('financeiro', function () {
+        this.route('painel');
+        this.route('motoboys');
+        this.route('motoboy', { path: '/motoboys/:id' });
+        this.route('lojas');
+        this.route('loja', { path: '/lojas/:id' });
+        this.route('fatura', { path: '/faturas/:id' });
+        this.route('relatorio');
+        this.route('configuracoes');
+    });
     this.route('management', { path: '/manage' }, function () {
+        // Entregas: a antiga "Pagamento e cobrança"; só redireciona para financeiro.relatorio (links salvos)
         this.route('driver-payouts');
         this.route('lojas');
         this.route('fleets', function () {

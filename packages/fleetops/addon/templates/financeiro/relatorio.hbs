@@ -1,4 +1,4 @@
-<Layout::Section::Header @title={{t "fleet-ops.ui.driver-payouts.title"}}>
+<Layout::Section::Header @title={{t "fleet-ops.ui.financeiro.relatorio.titulo"}}>
     <div class="flex items-center space-x-2">
         <Button @icon="refresh" @size="sm" @helpText={{t "common.reload"}} @isLoading={{this.load.isRunning}} @onClick={{perform this.load}} />
         <Button @icon="file-export" @size="sm" @text={{t "fleet-ops.ui.driver-payouts.export-csv"}} @disabled={{not this.relatorio.entregas.length}} @onClick={{this.exportarCsv}} />

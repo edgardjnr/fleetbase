@@ -392,6 +392,18 @@ fleet-ops:
         dispensada: dispensou pela lista
         aceita_pela_lista: aceitou pela lista
         desconhecida: desconhecida
+    financeiro:
+      admin-only: Somente administradores podem ver o financeiro.
+      menu:
+        titulo: Financeiro
+        descricao: 'Extrato e pagamento dos motoboys, faturas das lojas e margem'
+        painel: Painel
+        motoboys: Motoboys
+        lojas: Lojas e faturas
+        relatorio: Tabela de km e relatório
+        configuracoes: Configurações
+      relatorio:
+        titulo: Tabela de km e relatório
     order-form:
       store-or-customer: Loja ou cliente
       store-or-customer-placeholder: Selecionar loja ou cliente

@@ -392,6 +392,18 @@ fleet-ops:
                 dispensada: dismissed from the list
                 aceita_pela_lista: accepted from the list
                 desconhecida: unknown
+        financeiro:
+            admin-only: Only administrators can see the finances.
+            menu:
+                titulo: Finances
+                descricao: 'Driver statements and payments, store invoices and margin'
+                painel: Overview
+                motoboys: Drivers
+                lojas: Stores and invoices
+                relatorio: Km table and report
+                configuracoes: Settings
+            relatorio:
+                titulo: Km table and report
         order-form:
             store-or-customer: Store or customer
             store-or-customer-placeholder: Select store or customer

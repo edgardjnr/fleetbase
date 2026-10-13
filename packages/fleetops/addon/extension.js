@@ -35,11 +35,12 @@ export default {
                     route: 'console.fleet-ops.management.drivers',
                 },
                 {
+                    // Entregas: o id fica (atalhos salvos); a "Pagamento e cobrança" virou o Financeiro
                     id: 'fleet-ops-sc-driver-payouts',
-                    title: intlService.t('fleet-ops.ui.driver-payouts.title'),
-                    description: intlService.t('fleet-ops.ui.driver-payouts.menu-description'),
-                    icon: 'money-bill-wave',
-                    route: 'console.fleet-ops.management.driver-payouts',
+                    title: intlService.t('fleet-ops.ui.financeiro.menu.titulo'),
+                    description: intlService.t('fleet-ops.ui.financeiro.menu.descricao'),
+                    icon: 'sack-dollar',
+                    route: 'console.fleet-ops.financeiro.painel',
                 },
             ],
         });
