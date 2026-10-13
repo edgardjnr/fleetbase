@@ -50,8 +50,9 @@ class FinanceiroController extends Controller
 
     /**
      * GET financeiro/motoboys?inicio&fim (padrão: este mês): todos os motoboys da empresa (mesmo sem lançamento), com o
-     * saldo de agora, o último pagamento, as corridas do período (sem as estornadas) e se tem chave Pix. Ordem: saldo
-     * desc, depois nome.
+     * saldo de agora, o último pagamento, as corridas do período (sem as estornadas), se tem chave Pix e `excluido` (o
+     * motoboy excluído com soft delete só aparece com saldo ≠ 0, e aceita pagamento e lançamento). Ordem: saldo desc,
+     * depois nome.
      */
     public function motoboys(Request $request)
     {
@@ -105,9 +106,15 @@ class FinanceiroController extends Controller
             $porMotoboy[$conta]['centavos'] = ($porMotoboy[$conta]['centavos'] ?? 0) + (int) round((float) $corrida->valor * 100);
         }
 
+        // o motoboy excluído (soft delete) com saldo entra, marcado: ainda dá para pagar o acerto final (o painel já soma o
+        // saldo dele no "a pagar")
         $lista = [];
-        foreach (Driver::where('company_uuid', $empresa)->with(['user'])->get() as $motoboy) {
-            $uuid    = (string) $motoboy->uuid;
+        foreach (Driver::withTrashed()->where('company_uuid', $empresa)->with(['user'])->get() as $motoboy) {
+            $uuid     = (string) $motoboy->uuid;
+            $excluido = $motoboy->deleted_at !== null;
+            if ($excluido && round((float) ($saldos[$uuid] ?? 0), 2) == 0) {
+                continue;
+            }
             $lista[] = [
                 'id'               => $motoboy->public_id,
                 'nome'             => $motoboy->name,
@@ -116,6 +123,7 @@ class FinanceiroController extends Controller
                 'corridas'         => $porMotoboy[$uuid]['corridas'] ?? 0,
                 'valor_corridas'   => round(($porMotoboy[$uuid]['centavos'] ?? 0) / 100, 2),
                 'tem_pix'          => isset($comPix[$uuid]),
+                'excluido'         => $excluido,
             ];
         }
         usort($lista, fn ($a, $b) => [$b['saldo'], mb_strtolower((string) $a['nome'])] <=> [$a['saldo'], mb_strtolower((string) $b['nome'])]);
@@ -571,12 +579,15 @@ class FinanceiroController extends Controller
         return [$texto, null];
     }
 
-    /** [public_id => uuid] das contas da empresa encontradas (motoboys ou lojas). */
+    /**
+     * [public_id => uuid] das contas da empresa encontradas (motoboys ou lojas). O motoboy excluído (soft delete) também
+     * (o acerto final: pagamento e lançamento depois da exclusão).
+     */
     protected function contas(string $contaTipo, array $ids): array
     {
-        $modelo = $contaTipo === Financeiro::CONTA_MOTOBOY ? Driver::class : Vendor::class;
-        $contas = [];
-        foreach ($modelo::where('company_uuid', $this->empresa())->whereIn('public_id', $ids)->get() as $conta) {
+        $consulta = $contaTipo === Financeiro::CONTA_MOTOBOY ? Driver::withTrashed()->where('company_uuid', $this->empresa()) : Vendor::where('company_uuid', $this->empresa());
+        $contas   = [];
+        foreach ($consulta->whereIn('public_id', $ids)->get() as $conta) {
             $contas[(string) $conta->public_id] = (string) $conta->uuid;
         }
 
@@ -614,9 +625,10 @@ class FinanceiroController extends Controller
         return (bool) array_diff_key($daConta, $vivas);
     }
 
+    /** O motoboy da empresa pelo public_id, inclusive o excluído (o extrato dele continua acessível no console). */
     protected function motoboy(string $id): ?Driver
     {
-        return Driver::where('company_uuid', $this->empresa())->where('public_id', $id)->with(['user'])->first();
+        return Driver::withTrashed()->where('company_uuid', $this->empresa())->where('public_id', $id)->with(['user'])->first();
     }
 
     /**

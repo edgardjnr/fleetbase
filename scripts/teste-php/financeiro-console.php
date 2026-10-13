@@ -95,7 +95,7 @@ echo '== Extrato da conta (ExtratoDaConta::montar)' . PHP_EOL;
 Banco::inserir('entregas_motoboys_financeiro', ['company_uuid' => 'empresa-1', 'driver_uuid' => 'driver-1', 'chave_pix' => '11999994321', 'tipo_chave' => 'telefone'], false);
 
 $extrato = ExtratoDaConta::montar('empresa-1', 'motoboy', 'driver-1', '2026-10-03', '2026-10-12', false);
-confere(($extrato['conta'] ?? null) === ['tipo' => 'motoboy', 'id' => 'driver_1', 'nome' => 'João Silva', 'pix' => ['chave' => '11999994321', 'tipo' => 'telefone']], 'conta: tipo, public_id, nome e Pix: ' . json_encode($extrato['conta'] ?? null, JSON_UNESCAPED_UNICODE));
+confere(($extrato['conta'] ?? null) === ['tipo' => 'motoboy', 'id' => 'driver_1', 'nome' => 'João Silva', 'pix' => ['chave' => '11999994321', 'tipo' => 'telefone'], 'excluido' => false], 'conta: tipo, public_id, nome, Pix e excluido (console): ' . json_encode($extrato['conta'] ?? null, JSON_UNESCAPED_UNICODE));
 confere(($extrato['inicio'] ?? null) === '2026-10-03' && ($extrato['fim'] ?? null) === '2026-10-12', 'início e fim do filtro');
 confere(reais($extrato['saldo'] ?? null) === 31.5, 'saldo = soma de todos os lançamentos (8,50 + 10 + 30 − 15 − 2 = 31,50): ' . json_encode($extrato['saldo'] ?? null));
 confere(reais($extrato['saldo_anterior'] ?? null) === 8.5, 'saldo anterior = soma antes do início (a corrida de 01/10)');
@@ -139,6 +139,7 @@ confere(!str_contains($tudo, 'criado_por') && !str_contains($tudo, 'Edgard'), 'p
 confere(!str_contains($tudo, 'comprovante_url'), 'público: sem a URL do comprovante na lista (o recibo tem a sua)');
 confere(linhaDoExtrato($publico, $ids['daMaria']) === null && linhaDoExtrato($publico, $ids['loja1']) === null, 'público: sem lançamento de outra conta (outro motoboy, a loja)');
 confere(($publico['conta']['pix'] ?? null) === ['chave' => '11999994321', 'tipo' => 'telefone'], 'público: o motoboy vê a chave Pix dele');
+confere(!array_key_exists('excluido', $publico['conta'] ?? []), 'público: sem o campo excluido (só o console)');
 confere(reais($publico['saldo'] ?? null) === 31.5 && count($publico['lancamentos'] ?? []) === 4, 'público: mesmo saldo e mesmos lançamentos');
 confere((linhaDoExtrato($publico, $ids['pagamento'])['pagamento'] ?? null) === ['id' => $pagamento->uuid, 'forma' => 'pix', 'tem_comprovante' => true, 'estornado' => false], 'público: pagamento só com id, forma, tem_comprovante e estornado');
 
@@ -238,7 +239,7 @@ ChavePix::salvar('empresa-1', 'driver-2', '12345678901', 'cpf');
 $resposta = $controller->motoboys(pedidoFeito(['inicio' => '2026-10-02', 'fim' => '2026-10-12']));
 $lista    = $resposta->dados['motoboys'] ?? [];
 confere($resposta->status === 200 && array_column($lista, 'id') === ['driver_1', 'driver_2'], 'todos os motoboys da empresa (não os de outra), por saldo: ' . json_encode(array_column($lista, 'id')));
-confere(($lista[0] ?? null) === ['id' => 'driver_1', 'nome' => 'João Silva', 'saldo' => 31.5, 'ultimo_pagamento' => ['id' => $pagamento->uuid, 'valor' => 15.0, 'data' => '2026-10-06', 'forma' => 'pix'], 'corridas' => 1, 'valor_corridas' => 10.0, 'tem_pix' => false], 'João: saldo, último pagamento, corridas do período (só a de 03/10) e sem Pix: ' . json_encode($lista[0] ?? null, JSON_UNESCAPED_UNICODE));
+confere(($lista[0] ?? null) === ['id' => 'driver_1', 'nome' => 'João Silva', 'saldo' => 31.5, 'ultimo_pagamento' => ['id' => $pagamento->uuid, 'valor' => 15.0, 'data' => '2026-10-06', 'forma' => 'pix'], 'corridas' => 1, 'valor_corridas' => 10.0, 'tem_pix' => false, 'excluido' => false],'João: saldo, último pagamento, corridas do período (só a de 03/10) e sem Pix: ' . json_encode($lista[0] ?? null, JSON_UNESCAPED_UNICODE));
 confere(($lista[1]['saldo'] ?? null) === 25.0 && nulo($lista[1] ?? null, 'ultimo_pagamento') && ($lista[1]['corridas'] ?? null) === 0 && ($lista[1]['tem_pix'] ?? null) === true, 'Maria: saldo da diária, sem pagamento, sem corridas, com Pix');
 Lancamentos::estornar(Lancamentos::porId('empresa-1', $ids['corrida2']), 'user-admin', null);
 $lista = $controller->motoboys(pedidoFeito(['inicio' => '2026-10-02', 'fim' => '2026-10-12']))->dados['motoboys'];
@@ -249,6 +250,26 @@ confere(array_column($lista, 'id') === ['driver_2', 'driver_1', 'driver_3'], 'mo
 confere($controller->motoboys(pedidoFeito(['inicio' => '2026-10-12', 'fim' => '2026-10-01']))->status === 422, 'fim antes do início → 422');
 confere($controller->motoboys(pedidoFeito(['inicio' => '2026-02-30', 'fim' => '2026-10-01']))->status === 422, 'data inexistente → 422');
 confere($controller->motoboys(pedidoFeito())->status === 200, 'sem período: este mês');
+
+echo '== Motoboy excluído (soft delete) com saldo' . PHP_EOL;
+cenario();
+comoAdmin();
+Driver::$todos[] = new Driver(['uuid' => 'driver-4', 'public_id' => 'driver_4', 'company_uuid' => 'empresa-1', 'name' => 'Paulo Antigo', 'deleted_at' => '2026-10-10 12:00:00']);
+Driver::$todos[] = new Driver(['uuid' => 'driver-5', 'public_id' => 'driver_5', 'company_uuid' => 'empresa-1', 'name' => 'Zerado Antigo', 'deleted_at' => '2026-10-10 12:00:00']);
+Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-4', 'tipo' => 'diaria', 'valor' => 12, 'data_referencia' => '2026-10-08']);
+Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-5', 'tipo' => 'diaria', 'valor' => 5, 'data_referencia' => '2026-10-08']);
+Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-5', 'tipo' => 'ajuste', 'valor' => -5, 'data_referencia' => '2026-10-09']);
+$lista = array_column($controller->motoboys(pedidoFeito())->dados['motoboys'] ?? [], null, 'id');
+confere(isset($lista['driver_4']) && $lista['driver_4']['excluido'] === true && $lista['driver_4']['saldo'] === 12.0 && $lista['driver_4']['nome'] === 'Paulo Antigo', 'excluído com saldo: na lista, marcado excluido: true');
+confere(!isset($lista['driver_5']), 'excluído com saldo zero: fora da lista');
+confere(($lista['driver_1']['excluido'] ?? null) === false && ($lista['driver_2']['excluido'] ?? null) === false, 'os outros com excluido: false');
+$resposta = $controller->registrarPagamento(pedidoFeito(['conta_tipo' => 'motoboy', 'conta' => 'driver_4', 'valor' => '12,00', 'forma' => 'pix', 'data' => '2026-10-12']));
+confere($resposta->status === 200 && ($resposta->dados['saldo'] ?? null) === 0.0, 'aceita o pagamento ao excluído (acerto final): ' . json_encode($resposta->dados));
+$resposta = $controller->lancar(pedidoFeito(['conta_tipo' => 'motoboy', 'contas' => ['driver_4'], 'tipo' => 'ajuste', 'valor' => 1, 'data' => '2026-10-12', 'motivo' => 'Acerto']));
+confere($resposta->status === 200, 'aceita lançamento para o excluído');
+$extrato = $controller->extratoDoMotoboy(pedidoFeito(), 'driver_4');
+confere($extrato->status === 200 && ($extrato->dados['conta']['excluido'] ?? null) === true && ($extrato->dados['conta']['nome'] ?? null) === 'Paulo Antigo', 'extrato do excluído: conta.excluido = true');
+confere(($controller->extratoDoMotoboy(pedidoFeito(), 'driver_1')->dados['conta']['excluido'] ?? null) === false, 'extrato de quem não foi excluído: conta.excluido = false');
 
 echo '== Extrato do motoboy (console)' . PHP_EOL;
 ['ids' => $ids] = cenario();
