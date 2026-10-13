@@ -292,11 +292,6 @@ export default buildRoutes(function () {
             });
         });
     });
-    this.route('financeiro', function () {
-        this.route('lojas');
-        this.route('loja', { path: '/lojas/:id' });
-        this.route('fatura', { path: '/faturas/:id' });
-    });
     this.route('analytics', function () {
         this.route('reports', function () {
             this.route('index', { path: '/' }, function () {
