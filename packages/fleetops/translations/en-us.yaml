@@ -603,7 +603,7 @@ fleet-ops:
                 vencido: '{valor} overdue'
                 nada-vencido: Nothing overdue
                 nao-faturado: Not invoiced yet
-                nao-faturado-ajuda: Store deliveries and adjustments that go into the next invoice
+                nao-faturado-ajuda: Store deliveries and adjustments not issued yet (no invoice or in a draft)
                 margem-titulo: Margin for the period
                 cobrado: Charged to stores
                 pago-motoboys: Driver cost

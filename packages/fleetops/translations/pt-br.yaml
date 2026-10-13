@@ -603,7 +603,7 @@ fleet-ops:
         vencido: '{valor} vencido'
         nada-vencido: Nada vencido
         nao-faturado: Ainda sem fatura
-        nao-faturado-ajuda: Entregas e ajustes das lojas que entram na próxima fatura
+        nao-faturado-ajuda: Entregas e ajustes das lojas ainda não emitidos (sem fatura ou em rascunho)
         margem-titulo: Margem do período
         cobrado: Cobrado das lojas
         pago-motoboys: Custo dos motoboys
