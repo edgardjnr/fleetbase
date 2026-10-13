@@ -38,6 +38,14 @@ $arquivos = array_merge(
         $app . '/Jobs/Entregas/LancarCorridaDoPedido.php',
         $app . '/Console/Commands/Entregas/FinanceiroConferir.php',
         $app . '/Console/Commands/Entregas/FinanceiroLancarHistorico.php',
+        // financeiro: portal da loja e e-mails das faturas
+        $app . '/Http/Controllers/Entregas/PortalLojaController.php',
+        $app . '/Console/Commands/Entregas/FinanceiroAvisos.php',
+        $app . '/Notifications/Entregas/Email/CanalEmailEntregas.php',
+        $app . '/Notifications/Entregas/Email/AvisoDeFatura.php',
+        $app . '/Notifications/Entregas/Email/FaturaEmitida.php',
+        $app . '/Notifications/Entregas/Email/LembreteDeFatura.php',
+        $app . '/Notifications/Entregas/Email/FaturaVencida.php',
     ]
 );
 

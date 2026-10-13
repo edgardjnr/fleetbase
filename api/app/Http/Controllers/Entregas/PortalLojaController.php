@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Entregas;
 
 use App\Http\Controllers\Controller;
 use App\Support\Entregas\CalculoEntregas;
+use App\Support\Entregas\Financeiro\FaturasDaLoja;
+use App\Support\Entregas\Financeiro\Financeiro;
+use App\Support\Entregas\Financeiro\Lancamentos;
 use App\Support\Entregas\LojaDoUsuario;
 use App\Support\Entregas\MotoboysNoMapaDaLoja;
 use App\Support\Entregas\PedidosNoMapa;
@@ -13,6 +16,7 @@ use Fleetbase\FleetOps\Models\Vendor;
 use Fleetbase\Models\Company;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Entregas RestaurantePro: dados do portal da loja (usuário type=customer).
@@ -152,6 +156,61 @@ class PortalLojaController extends Controller
         return response()->json([
             'motoboys' => MotoboysNoMapaDaLoja::listar(session('company'), $donos),
             'pedidos'  => PedidosNoMapa::daLoja(session('company'), $donos),
+        ]);
+    }
+
+    /**
+     * Financeiro da loja: o ciclo em andamento (lançamentos ainda sem fatura) e as faturas emitidas e canceladas, mais nova
+     * primeiro (formatos "Portal loja/financeiro" e "Fatura" pública do contrato do Financeiro). Rascunho não aparece.
+     */
+    public function financeiro()
+    {
+        $vendor      = $this->lojaDaSessao();
+        $companyUuid = (string) session('company');
+        $lancamentos = Lancamentos::daConta($companyUuid, Financeiro::CONTA_LOJA, $vendor->uuid);
+        $hoje        = Financeiro::hoje($companyUuid);
+        $fuso        = Financeiro::fuso($companyUuid);
+        $situacoes   = FaturasDaLoja::situacoes($companyUuid, $vendor->uuid, $lancamentos);
+        $entregas    = FaturasDaLoja::entregasPorFatura($lancamentos);
+        $loja        = ['id' => $vendor->public_id, 'nome' => $vendor->name];
+
+        $faturas = array_map(
+            fn ($fatura) => FaturasDaLoja::publica($fatura, $situacoes, $loja, $entregas[$fatura->uuid] ?? 0, $fuso),
+            FaturasDaLoja::daLoja($companyUuid, $vendor->uuid, FaturasDaLoja::VISIVEIS)
+        );
+
+        return response()->json([
+            'ciclo_atual' => FaturasDaLoja::cicloAtual($lancamentos, $hoje, FaturasDaLoja::periodoEmAndamento($companyUuid, $vendor->uuid, $hoje)),
+            'faturas'     => $faturas,
+        ]);
+    }
+
+    /**
+     * Uma fatura da loja (o :id é o uuid) com os itens, para a tela e a impressão. Rascunho, fatura de outra loja ou de
+     * outra empresa → 404 (a mesma resposta de inexistente, para não revelar que existe).
+     */
+    public function fatura(string $id)
+    {
+        $vendor      = $this->lojaDaSessao();
+        $companyUuid = (string) session('company');
+        $fatura      = FaturasDaLoja::porUuid($companyUuid, $id);
+
+        if (!$fatura || $fatura->vendor_uuid !== $vendor->uuid || !in_array($fatura->situacao, FaturasDaLoja::VISIVEIS, true)) {
+            return response()->json(['errors' => ['Fatura não encontrada.']], 404);
+        }
+
+        $fuso      = Financeiro::fuso($companyUuid);
+        $itens     = FaturasDaLoja::itensPublicos($fatura, $fuso);
+        $situacoes = $fatura->situacao === 'emitida' ? FaturasDaLoja::situacoes($companyUuid, $vendor->uuid) : [];
+        $entregas  = count(array_filter($itens, fn ($item) => $item['tipo'] === 'corrida'));
+        $coleta    = LojaDoUsuario::coleta($vendor);
+        $endereco  = $coleta ? implode(', ', array_filter([$coleta->street1 ?? null, $coleta->street2 ?? null, $coleta->neighborhood ?? null, $coleta->city ?? null])) : '';
+
+        return response()->json([
+            'fatura'  => FaturasDaLoja::publica($fatura, $situacoes, ['id' => $vendor->public_id, 'nome' => $vendor->name], $entregas, $fuso),
+            'itens'   => $itens,
+            'loja'    => ['nome' => $vendor->name, 'endereco' => $endereco === '' ? null : $endereco],
+            'empresa' => ['nome' => DB::table('companies')->where('uuid', $companyUuid)->value('name')],
         ]);
     }
 
