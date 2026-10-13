@@ -51,36 +51,42 @@ final class Quitacao
         $creditos = array_filter($linhas, fn ($linha) => $linha['centavos'] > 0 && $linha['tipo'] !== 'estorno');
         $abatido  = array_fill_keys(array_keys($creditos), 0);
 
-        // a corrida de cada pedido (uma por conta: chave_unica), para o ajuste com pedido
-        $corridaDoPedido = [];
-        foreach ($creditos as $credito) {
-            if ($credito['tipo'] === 'corrida' && $credito['order_uuid'] !== null && !isset($corridaDoPedido[$credito['order_uuid']])) {
-                $corridaDoPedido[$credito['order_uuid']] = $credito['id'];
+        // as corridas de cada pedido, em ordem de id, para o ajuste com pedido (normalmente uma por conta, pela chave_unica;
+        // mais de uma quando a corrida estornada foi relançada: corrida:<conta>:<pedido>:2)
+        $corridasDoPedido = [];
+        $porId            = $creditos;
+        ksort($porId);
+        foreach ($porId as $credito) {
+            if ($credito['tipo'] === 'corrida' && $credito['order_uuid'] !== null) {
+                $corridasDoPedido[$credito['order_uuid']][] = $credito['id'];
             }
         }
 
-        foreach ($linhas as $linha) {
-            if ($linha['centavos'] >= 0 || isset($estornados[$linha['id']])) {
+        // primeiro o débito com estorno_de abate o crédito estornado; depois o ajuste negativo com pedido abate as
+        // corridas do pedido que ainda têm valor; o que sobra (e os débitos soltos) vai ao caixa
+        $abater = function (int $alvo, int $debito) use (&$abatido, $creditos): int {
+            $usado           = min(max(0, $creditos[$alvo]['centavos'] - $abatido[$alvo]), $debito);
+            $abatido[$alvo] += $usado;
+
+            return $debito - $usado;
+        };
+        $debitos = array_filter($linhas, fn ($linha) => $linha['centavos'] < 0 && !isset($estornados[$linha['id']]));
+        $restos  = [];
+        foreach ($debitos as $id => $linha) {
+            $restos[$id] = -$linha['centavos'];
+            if ($linha['estorno_de'] !== null && isset($creditos[$linha['estorno_de']])) {
+                $restos[$id] = $abater($linha['estorno_de'], $restos[$id]);
+            }
+        }
+        foreach ($debitos as $id => $linha) {
+            if ($linha['tipo'] !== 'ajuste' || $linha['order_uuid'] === null || ($linha['estorno_de'] !== null && isset($creditos[$linha['estorno_de']]))) {
                 continue;
             }
-            $debito = -$linha['centavos'];
-
-            $alvo = null;
-            if ($linha['estorno_de'] !== null && isset($creditos[$linha['estorno_de']])) {
-                $alvo = $linha['estorno_de'];
-            } elseif ($linha['tipo'] === 'ajuste' && $linha['order_uuid'] !== null && isset($corridaDoPedido[$linha['order_uuid']])) {
-                $alvo = $corridaDoPedido[$linha['order_uuid']];
+            foreach ($corridasDoPedido[$linha['order_uuid']] ?? [] as $alvo) {
+                $restos[$id] = $abater($alvo, $restos[$id]);
             }
-
-            if ($alvo !== null) {
-                $cabe             = max(0, $creditos[$alvo]['centavos'] - $abatido[$alvo]);
-                $usado            = min($cabe, $debito);
-                $abatido[$alvo]  += $usado;
-                $debito          -= $usado;
-            }
-            $caixa += $debito;
         }
-        $caixa = max(0, $caixa);
+        $caixa = max(0, $caixa + array_sum($restos));
 
         uasort($creditos, fn ($a, $b) => [$a['data'], $a['id']] <=> [$b['data'], $b['id']]);
 

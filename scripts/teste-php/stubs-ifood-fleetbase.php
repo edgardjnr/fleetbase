@@ -508,10 +508,18 @@ namespace Fleetbase\FleetOps\Models {
         public $online = false;
         public $status = 'available';
         public $distance = null;
+        /** Soft delete (o Model do Fleetbase usa SoftDeletes): com data, só o withTrashed() acha. */
+        public $deleted_at = null;
         /** Avisos enviados (notify): [[motoboy public_id, notificação]] */
         public static array $avisos = [];
 
         public function notify($notificacao): void { self::$avisos[] = [$this->public_id, $notificacao]; }
+
+        // como o escopo global do SoftDeletes: where/whereIn não acham o excluído; withTrashed() acha todos
+        public static function where($coluna, $valor = null) { return (new \Teste\ConsultaDeModelo(self::naoExcluidos()))->where($coluna, $valor); }
+        public static function whereIn($coluna, array $valores) { return (new \Teste\ConsultaDeModelo(self::naoExcluidos()))->whereIn($coluna, $valores); }
+        public static function withTrashed() { return new \Teste\ConsultaDeModelo(static::$todos); }
+        private static function naoExcluidos(): array { return array_values(array_filter(static::$todos, fn ($d) => ($d->deleted_at ?? null) === null)); }
     }
 }
 

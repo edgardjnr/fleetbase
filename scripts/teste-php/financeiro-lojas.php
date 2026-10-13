@@ -188,6 +188,7 @@ namespace {
         'valor zero'   => ['valor' => 0, 'motivo' => 'x'],
         'sem valor'    => ['motivo' => 'x'],
         'valor texto'  => ['valor' => 'abc', 'motivo' => 'x'],
+        'milhar 1.500' => ['valor' => '1.500', 'motivo' => 'x'],
         'sem motivo'   => ['valor' => 3],
     ] as $caso => $corpo) {
         $r = api()->ajuste(req($corpo), $id);
@@ -210,7 +211,7 @@ namespace {
     echo '== Emitir' . PHP_EOL;
     // total negativo (−1): não emite
     $r = api()->emitir(req(), $id);
-    confere($r->status === 422 && erroDe($r) === 'O total da fatura não pode ser negativo.' && AvisosFalsos::$emitidas === [], 'total negativo: 422, sem e-mail');
+    confere($r->status === 422 && erroDe($r) === 'Fatura sem valor a cobrar; cancele o rascunho.' && AvisosFalsos::$emitidas === [], 'total negativo: 422, sem e-mail');
     api()->ajuste(req(['valor' => 21, 'motivo' => 'Mensalidade']), $id);
     Relogio::$agora = '2026-10-12 11:00:00';
     $r = api()->emitir(req(), $id);
@@ -346,16 +347,32 @@ namespace {
     (new FinanceiroRascunhos())->handle();
     $daB = array_values(array_filter(linhasDe('entregas_faturas'), fn ($f) => $f['vendor_uuid'] === 'vendor-b'))[0] ?? null;
     confere($daB && $daB['periodo_inicio'] === '2026-10-06' && $daB['periodo_fim'] === '2026-11-05' && $daB['vencimento'] === '2026-11-15', 'ciclo mensal fecha no dia 5 (de 06/10 a 05/11)');
+    $daA = array_values(array_filter(linhasDe('entregas_faturas'), fn ($f) => $f['vendor_uuid'] === 'vendor-a' && $f['periodo_fim'] === '2026-11-01'))[0] ?? null;
+    confere($daA && $daA['periodo_inicio'] === '2026-10-26' && count(linhasDe('entregas_faturas')) === 4, 'e o semanal da loja A que fechou no domingo 01/11 (nos últimos 7 dias), com a corrida atrasada de 12/10');
     Config::$valores['services.entregas.financeiro'] = '';
-    Relogio::$agora = '2026-10-19 00:30:00';
-    corridaDaLoja('vendor-a', 1, '2026-10-14', 'q5');
+    Relogio::$agora = '2026-11-09 00:30:00';
+    corridaDaLoja('vendor-a', 1, '2026-11-03', 'q5');
     (new FinanceiroRascunhos())->handle();
-    confere(count(linhasDe('entregas_faturas')) === 3, 'com ENTREGAS_FINANCEIRO desligado: não faz nada');
+    confere(count(linhasDe('entregas_faturas')) === 4, 'com ENTREGAS_FINANCEIRO desligado: não faz nada');
     Config::$valores['services.entregas.financeiro'] = '1';
     Banco::$falhar['entregas_faturas'] = 'banco fora do ar';
     (new FinanceiroRascunhos())->handle();
     unset(Banco::$falhar['entregas_faturas']);
     confere(logou('[entregas] financeiro: rascunho da fatura falhou', 'warning'), 'falha numa loja: loga e segue');
+
+    // o agendador ficou fora do ar no dia seguinte ao fechamento: a rotina procura os fechamentos dos últimos 7 dias
+    preparar();
+    corridaDaLoja('vendor-a', 10, '2026-10-08', 'r1');
+    corridaDaLoja('vendor-a', 7, '2026-10-12', 'r2');
+    Relogio::$agora = '2026-10-15 00:30:00'; // ontem = quarta 14/10; o semanal fechou no domingo 11/10
+    (new FinanceiroRascunhos())->handle();
+    $faturas = linhasDe('entregas_faturas');
+    confere(count($faturas) === 1 && $faturas[0]['periodo_inicio'] === '2026-10-05' && $faturas[0]['periodo_fim'] === '2026-10-11', 'fechamento perdido (domingo 11/10) ganha o rascunho na quinta: ' . json_encode(array_map(fn ($f) => [$f['periodo_inicio'], $f['periodo_fim']], $faturas)));
+    confere(array_map(fn ($l) => (float) $l->valor, Faturas::itens((object) ($faturas[0] ?? ['company_uuid' => 'x', 'uuid' => 'x']))) === [10.0], 'só com os lançamentos até o fim daquele período');
+    Faturas::cancelar(Faturas::porUuid('empresa-1', $faturas[0]['uuid']), 'user-admin');
+    Relogio::$agora = '2026-10-16 00:30:00';
+    (new FinanceiroRascunhos())->handle();
+    confere(count(linhasDe('entregas_faturas')) === 1, 'rascunho descartado pelo admin: a rotina não cria de novo o mesmo período');
 
     echo '== Rotas e agenda' . PHP_EOL;
     $provider = file_get_contents('/repo/api/app/Providers/RouteServiceProvider.php');

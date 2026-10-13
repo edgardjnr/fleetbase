@@ -73,7 +73,7 @@ final class ExtratoDaConta
         $ultimo = Pagamentos::ultimoDaConta($companyUuid, $contaTipo, $contaUuid);
 
         return [
-            'conta'            => static::conta($companyUuid, $contaTipo, $contaUuid),
+            'conta'            => static::conta($companyUuid, $contaTipo, $contaUuid, $publico),
             'inicio'           => $inicio,
             'fim'              => $fim,
             'saldo'            => static::reais($saldo),
@@ -228,18 +228,26 @@ final class ExtratoDaConta
         return round((float) $soma, 2);
     }
 
-    /** {tipo, id (public_id), nome} da conta e, no motoboy, o `pix` ({chave, tipo} ou null). */
-    private static function conta(string $companyUuid, string $contaTipo, string $contaUuid): array
+    /**
+     * {tipo, id (public_id), nome} da conta e, no motoboy, o `pix` ({chave, tipo} ou null) e, só no console (não
+     * público), `excluido` (motoboy excluído com soft delete; o console mostra o selo).
+     */
+    private static function conta(string $companyUuid, string $contaTipo, string $contaUuid, bool $publico = false): array
     {
         if ($contaTipo === Financeiro::CONTA_MOTOBOY) {
-            $motoboy = Driver::where('company_uuid', $companyUuid)->where('uuid', $contaUuid)->with(['user'])->first();
+            $motoboy = Driver::withTrashed()->where('company_uuid', $companyUuid)->where('uuid', $contaUuid)->with(['user'])->first();
 
-            return [
+            $conta = [
                 'tipo' => $contaTipo,
                 'id'   => $motoboy?->public_id,
                 'nome' => $motoboy?->name,
                 'pix'  => ChavePix::doMotoboy($companyUuid, $contaUuid),
             ];
+            if (!$publico) {
+                $conta['excluido'] = $motoboy !== null && $motoboy->deleted_at !== null;
+            }
+
+            return $conta;
         }
 
         $loja = Vendor::where('company_uuid', $companyUuid)->where('uuid', $contaUuid)->first();

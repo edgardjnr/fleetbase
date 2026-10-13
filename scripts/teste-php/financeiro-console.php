@@ -95,7 +95,7 @@ echo '== Extrato da conta (ExtratoDaConta::montar)' . PHP_EOL;
 Banco::inserir('entregas_motoboys_financeiro', ['company_uuid' => 'empresa-1', 'driver_uuid' => 'driver-1', 'chave_pix' => '11999994321', 'tipo_chave' => 'telefone'], false);
 
 $extrato = ExtratoDaConta::montar('empresa-1', 'motoboy', 'driver-1', '2026-10-03', '2026-10-12', false);
-confere(($extrato['conta'] ?? null) === ['tipo' => 'motoboy', 'id' => 'driver_1', 'nome' => 'João Silva', 'pix' => ['chave' => '11999994321', 'tipo' => 'telefone']], 'conta: tipo, public_id, nome e Pix: ' . json_encode($extrato['conta'] ?? null, JSON_UNESCAPED_UNICODE));
+confere(($extrato['conta'] ?? null) === ['tipo' => 'motoboy', 'id' => 'driver_1', 'nome' => 'João Silva', 'pix' => ['chave' => '11999994321', 'tipo' => 'telefone'], 'excluido' => false], 'conta: tipo, public_id, nome, Pix e excluido (console): ' . json_encode($extrato['conta'] ?? null, JSON_UNESCAPED_UNICODE));
 confere(($extrato['inicio'] ?? null) === '2026-10-03' && ($extrato['fim'] ?? null) === '2026-10-12', 'início e fim do filtro');
 confere(reais($extrato['saldo'] ?? null) === 31.5, 'saldo = soma de todos os lançamentos (8,50 + 10 + 30 − 15 − 2 = 31,50): ' . json_encode($extrato['saldo'] ?? null));
 confere(reais($extrato['saldo_anterior'] ?? null) === 8.5, 'saldo anterior = soma antes do início (a corrida de 01/10)');
@@ -139,6 +139,7 @@ confere(!str_contains($tudo, 'criado_por') && !str_contains($tudo, 'Edgard'), 'p
 confere(!str_contains($tudo, 'comprovante_url'), 'público: sem a URL do comprovante na lista (o recibo tem a sua)');
 confere(linhaDoExtrato($publico, $ids['daMaria']) === null && linhaDoExtrato($publico, $ids['loja1']) === null, 'público: sem lançamento de outra conta (outro motoboy, a loja)');
 confere(($publico['conta']['pix'] ?? null) === ['chave' => '11999994321', 'tipo' => 'telefone'], 'público: o motoboy vê a chave Pix dele');
+confere(!array_key_exists('excluido', $publico['conta'] ?? []), 'público: sem o campo excluido (só o console)');
 confere(reais($publico['saldo'] ?? null) === 31.5 && count($publico['lancamentos'] ?? []) === 4, 'público: mesmo saldo e mesmos lançamentos');
 confere((linhaDoExtrato($publico, $ids['pagamento'])['pagamento'] ?? null) === ['id' => $pagamento->uuid, 'forma' => 'pix', 'tem_comprovante' => true, 'estornado' => false], 'público: pagamento só com id, forma, tem_comprovante e estornado');
 
@@ -238,7 +239,7 @@ ChavePix::salvar('empresa-1', 'driver-2', '12345678901', 'cpf');
 $resposta = $controller->motoboys(pedidoFeito(['inicio' => '2026-10-02', 'fim' => '2026-10-12']));
 $lista    = $resposta->dados['motoboys'] ?? [];
 confere($resposta->status === 200 && array_column($lista, 'id') === ['driver_1', 'driver_2'], 'todos os motoboys da empresa (não os de outra), por saldo: ' . json_encode(array_column($lista, 'id')));
-confere(($lista[0] ?? null) === ['id' => 'driver_1', 'nome' => 'João Silva', 'saldo' => 31.5, 'ultimo_pagamento' => ['id' => $pagamento->uuid, 'valor' => 15.0, 'data' => '2026-10-06', 'forma' => 'pix'], 'corridas' => 1, 'valor_corridas' => 10.0, 'tem_pix' => false], 'João: saldo, último pagamento, corridas do período (só a de 03/10) e sem Pix: ' . json_encode($lista[0] ?? null, JSON_UNESCAPED_UNICODE));
+confere(($lista[0] ?? null) === ['id' => 'driver_1', 'nome' => 'João Silva', 'saldo' => 31.5, 'ultimo_pagamento' => ['id' => $pagamento->uuid, 'valor' => 15.0, 'data' => '2026-10-06', 'forma' => 'pix'], 'corridas' => 1, 'valor_corridas' => 10.0, 'tem_pix' => false, 'excluido' => false],'João: saldo, último pagamento, corridas do período (só a de 03/10) e sem Pix: ' . json_encode($lista[0] ?? null, JSON_UNESCAPED_UNICODE));
 confere(($lista[1]['saldo'] ?? null) === 25.0 && nulo($lista[1] ?? null, 'ultimo_pagamento') && ($lista[1]['corridas'] ?? null) === 0 && ($lista[1]['tem_pix'] ?? null) === true, 'Maria: saldo da diária, sem pagamento, sem corridas, com Pix');
 Lancamentos::estornar(Lancamentos::porId('empresa-1', $ids['corrida2']), 'user-admin', null);
 $lista = $controller->motoboys(pedidoFeito(['inicio' => '2026-10-02', 'fim' => '2026-10-12']))->dados['motoboys'];
@@ -249,6 +250,26 @@ confere(array_column($lista, 'id') === ['driver_2', 'driver_1', 'driver_3'], 'mo
 confere($controller->motoboys(pedidoFeito(['inicio' => '2026-10-12', 'fim' => '2026-10-01']))->status === 422, 'fim antes do início → 422');
 confere($controller->motoboys(pedidoFeito(['inicio' => '2026-02-30', 'fim' => '2026-10-01']))->status === 422, 'data inexistente → 422');
 confere($controller->motoboys(pedidoFeito())->status === 200, 'sem período: este mês');
+
+echo '== Motoboy excluído (soft delete) com saldo' . PHP_EOL;
+cenario();
+comoAdmin();
+Driver::$todos[] = new Driver(['uuid' => 'driver-4', 'public_id' => 'driver_4', 'company_uuid' => 'empresa-1', 'name' => 'Paulo Antigo', 'deleted_at' => '2026-10-10 12:00:00']);
+Driver::$todos[] = new Driver(['uuid' => 'driver-5', 'public_id' => 'driver_5', 'company_uuid' => 'empresa-1', 'name' => 'Zerado Antigo', 'deleted_at' => '2026-10-10 12:00:00']);
+Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-4', 'tipo' => 'diaria', 'valor' => 12, 'data_referencia' => '2026-10-08']);
+Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-5', 'tipo' => 'diaria', 'valor' => 5, 'data_referencia' => '2026-10-08']);
+Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-5', 'tipo' => 'ajuste', 'valor' => -5, 'data_referencia' => '2026-10-09']);
+$lista = array_column($controller->motoboys(pedidoFeito())->dados['motoboys'] ?? [], null, 'id');
+confere(isset($lista['driver_4']) && $lista['driver_4']['excluido'] === true && $lista['driver_4']['saldo'] === 12.0 && $lista['driver_4']['nome'] === 'Paulo Antigo', 'excluído com saldo: na lista, marcado excluido: true');
+confere(!isset($lista['driver_5']), 'excluído com saldo zero: fora da lista');
+confere(($lista['driver_1']['excluido'] ?? null) === false && ($lista['driver_2']['excluido'] ?? null) === false, 'os outros com excluido: false');
+$resposta = $controller->registrarPagamento(pedidoFeito(['conta_tipo' => 'motoboy', 'conta' => 'driver_4', 'valor' => '12,00', 'forma' => 'pix', 'data' => '2026-10-12']));
+confere($resposta->status === 200 && ($resposta->dados['saldo'] ?? null) === 0.0, 'aceita o pagamento ao excluído (acerto final): ' . json_encode($resposta->dados));
+$resposta = $controller->lancar(pedidoFeito(['conta_tipo' => 'motoboy', 'contas' => ['driver_4'], 'tipo' => 'ajuste', 'valor' => 1, 'data' => '2026-10-12', 'motivo' => 'Acerto']));
+confere($resposta->status === 200, 'aceita lançamento para o excluído');
+$extrato = $controller->extratoDoMotoboy(pedidoFeito(), 'driver_4');
+confere($extrato->status === 200 && ($extrato->dados['conta']['excluido'] ?? null) === true && ($extrato->dados['conta']['nome'] ?? null) === 'Paulo Antigo', 'extrato do excluído: conta.excluido = true');
+confere(($controller->extratoDoMotoboy(pedidoFeito(), 'driver_1')->dados['conta']['excluido'] ?? null) === false, 'extrato de quem não foi excluído: conta.excluido = false');
 
 echo '== Extrato do motoboy (console)' . PHP_EOL;
 ['ids' => $ids] = cenario();
@@ -295,6 +316,9 @@ foreach ([
     'valor zero'                  => ['valor' => 0],
     'valor 0,001'                 => ['valor' => 0.001],
     'valor texto'                 => ['valor' => 'trinta'],
+    'milhar sem centavos (1.500)' => ['valor' => '1.500'],
+    'milhar negativo (-2.000)'    => ['tipo' => 'ajuste', 'valor' => '-2.000'],
+    'milhões (1.234.567)'         => ['valor' => '1.234.567'],
     'diária negativa'             => ['valor' => -30],
     'bônus negativo'              => ['tipo' => 'bonus', 'valor' => '-5'],
     'pedido em diária'            => ['pedido' => 'order_1'],
@@ -311,6 +335,11 @@ foreach ([
     confere($resposta->status === 422 && erroDa($resposta) !== null, "lançar com {$caso} → 422 (" . erroDa($resposta) . ')');
 }
 confere(count(linhasDe('entregas_lancamentos')) === $antes, 'nenhum lançamento gravado nos casos inválidos');
+confere(erroDa($controller->lancar(pedidoFeito(array_merge($base, ['valor' => '1.500'])))) === 'Valor ambíguo: para mil e quinhentos, escreva 1500 ou 1.500,00 (vírgula antes dos centavos).', 'milhar com ponto e sem vírgula: a mensagem explica');
+$resposta = $controller->lancar(pedidoFeito(array_merge($base, ['valor' => '1.500,00'])));
+confere($resposta->status === 200 && ($resposta->dados['lancamentos'][0]['valor'] ?? null) === 1500.0, 'milhar com vírgula ("1.500,00") vale 1500');
+$resposta = $controller->lancar(pedidoFeito(array_merge($base, ['valor' => '1.50'])));
+confere($resposta->status === 200 && ($resposta->dados['lancamentos'][0]['valor'] ?? null) === 1.5, 'ponto com duas casas ("1.50") continua decimal');
 
 $resposta = $controller->lancar(pedidoFeito(array_merge($base, ['contas' => ['driver_1', 'driver_2', 'driver_1'], 'observacao_interna' => 'chuva'])));
 $criados  = $resposta->dados['lancamentos'] ?? [];
@@ -328,6 +357,30 @@ $gravado = end($gravado);
 confere(($gravado['order_uuid'] ?? null) === 'order-2' && json_decode((string) $gravado['detalhes'], true) === ['pedido' => 'order_2', 'numero' => 'RP2'], 'ajuste: order_uuid e o pedido nos detalhes');
 confere($controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => 5, 'pedido' => 'order_1'])))->status === 200, 'ajuste positivo com o public_id do pedido');
 confere($controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'saldo_inicial', 'valor' => -40])))->status === 200, 'saldo inicial negativo (o motoboy devia)');
+// o número (internal_id) se repete entre dias e lojas: só vale o pedido com corrida lançada na conta escolhida
+Order::$todos[] = new Order(['uuid' => 'order-r8a', 'public_id' => 'order_r8a', 'internal_id' => 'RP8', 'company_uuid' => 'empresa-1']);
+Order::$todos[] = new Order(['uuid' => 'order-r8b', 'public_id' => 'order_r8b', 'internal_id' => 'RP8', 'company_uuid' => 'empresa-1']);
+Order::$todos[] = new Order(['uuid' => 'order-r9a', 'public_id' => 'order_r9a', 'internal_id' => 'RP9', 'company_uuid' => 'empresa-1']);
+Order::$todos[] = new Order(['uuid' => 'order-r9b', 'public_id' => 'order_r9b', 'internal_id' => 'RP9', 'company_uuid' => 'empresa-1']);
+foreach (['order-r8b', 'order-r9a', 'order-r9b'] as $pedidoDaCorrida) {
+    Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-1', 'tipo' => 'corrida', 'valor' => 7,
+        'data_referencia' => '2026-10-08', 'order_uuid' => $pedidoDaCorrida, 'chave_unica' => 'corrida:motoboy:' . $pedidoDaCorrida]);
+}
+$resposta = $controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => -1, 'pedido' => 'RP8'])));
+confere($resposta->status === 200 && ($resposta->dados['lancamentos'][0]['pedido']['id'] ?? null) === 'order_r8b', 'número repetido: o pedido com corrida na conta (' . json_encode($resposta->dados['lancamentos'][0]['pedido'] ?? null) . ')');
+$antes    = count(linhasDe('entregas_lancamentos'));
+$resposta = $controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => -1, 'pedido' => 'RP9'])));
+confere($resposta->status === 422 && erroDa($resposta) === 'Há mais de um pedido com esse número; use o código do pedido (order_…)' && count(linhasDe('entregas_lancamentos')) === $antes, 'dois pedidos com o número e corrida na conta → 422 (' . erroDa($resposta) . ')');
+confere($controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => -1, 'pedido' => 'order_r9a'])))->status === 200, 'pelo código do pedido (public_id) resolve');
+confere($controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => -1, 'pedido' => 'order-r9b'])))->status === 200, 'pelo uuid também');
+$resposta = $controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => -1, 'pedido' => 'RP8', 'contas' => ['driver_2']])));
+confere($resposta->status === 422 && erroDa($resposta) === 'Pedido não encontrado.', 'número sem corrida na conta escolhida → 422 (' . erroDa($resposta) . ')');
+
+Lancamentos::estornar(Lancamentos::porId('empresa-1', $ids['corrida1']), null, 'Pedido cancelado após a conclusão');
+$antes    = count(linhasDe('entregas_lancamentos'));
+$resposta = $controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => -8.5, 'pedido' => 'order_1', 'motivo' => 'Não pagar'])));
+confere($resposta->status === 422 && erroDa($resposta) === 'A corrida deste pedido já foi estornada.' && count(linhasDe('entregas_lancamentos')) === $antes, 'ajuste negativo de pedido com a corrida já estornada → 422 (' . erroDa($resposta) . ')');
+confere($controller->lancar(pedidoFeito(array_merge($base, ['tipo' => 'ajuste', 'valor' => -1, 'pedido' => 'order_1', 'contas' => ['driver_2']])))->status === 200, 'na conta de outro motoboy (sem a corrida estornada): aceita');
 $resposta = $controller->lancar(pedidoFeito(array_merge($base, ['conta_tipo' => 'loja', 'contas' => ['vendor_a'], 'tipo' => 'ajuste', 'valor' => 50, 'motivo' => 'Mensalidade'])));
 $gravado  = linhasDe('entregas_lancamentos');
 $gravado  = end($gravado);
@@ -361,6 +414,7 @@ foreach ([
     'motoboy inexistente'  => [['conta' => 'driver_9'], 404],
     'outra empresa'        => [['conta' => 'driver_x'], 404],
     'valor texto'          => [['valor' => 'cinquenta'], 422],
+    'milhar sem centavos'  => [['valor' => '1.500'], 422],
     'valor zero'           => [['valor' => '0.00'], 422],
     'forma inválida'       => [['forma' => 'cheque'], 422],
     'data inválida'        => [['data' => '2026-13-01'], 422],

@@ -533,6 +533,21 @@ namespace {
     confere($avisos === [[FaturaVencida::class, 'FAT-0017'], [LembreteDeFatura::class, 'FAT-0016']],
         'no dia seguinte: a que venceu ontem ganha o aviso de vencida e a de amanhã o lembrete; a que vence hoje, nada');
 
+    // as pagas não são reavaliadas uma a uma (a situação sai uma vez por empresa) e as muito antigas ficam de fora
+    reiniciarLoja();
+    Relogio::$agora = '2026-10-14 09:00:00';
+    foreach (range(1, 5) as $n) {
+        fatura('paga-' . $n, 'vendor-c', 'emitida', 20 + $n, '2026-09-21', '2026-09-27', '2026-10-0' . $n, 10.0);
+    }
+    lancamentoDaLoja('vendor-c', 'recebimento', -50, '2026-10-06', null, ['pagamento_uuid' => 'pag-tudo']);
+    fatura('velha', 'vendor-a', 'emitida', 30, '2026-07-27', '2026-08-02', '2026-08-05', 15.0);
+    Banco::$consultadas = [];
+    (new FinanceiroAvisos())->handle();
+    $leituras = count(array_filter(Banco::$consultadas, fn ($t) => $t === 'entregas_lancamentos'));
+    confere(Notification::$enviados === [], 'pagas e vencida há mais de 60 dias: nenhum aviso');
+    confere($leituras <= 1, "a situação das faturas é lida uma vez (leituras dos lançamentos: {$leituras})");
+    confere(Banco::$tabelas['entregas_faturas'][6]['aviso_vencida_enviado_em'] === null, 'a vencida há 70 dias fica de fora da rotina');
+
     reiniciarLoja();
     fatura('fa', 'vendor-a', 'emitida', 11, '2026-10-05', '2026-10-11', '2026-10-15', 10.0);
     Config::$valores['services.entregas.financeiro'] = '';

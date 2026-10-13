@@ -187,6 +187,9 @@ class FinanceiroLojasController extends Controller
         if ($erro = $this->negarSeNaoAdmin($request)) {
             return $erro;
         }
+        if (FinanceiroController::milharSemCentavos($request->input('valor'))) {
+            return $this->erro(FinanceiroController::MILHAR_SEM_CENTAVOS, 422);
+        }
         $valor = $this->numero($request->input('valor'));
         if ($valor === null) {
             return $this->erro('Informe o valor do ajuste.', 422);

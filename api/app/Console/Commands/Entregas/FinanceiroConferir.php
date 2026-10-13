@@ -11,13 +11,15 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Entregas RestaurantePro: conferência do financeiro, a cada 5 min (Kernel, só com ENTREGAS_FINANCEIRO). Para cada
- * empresa com data de corte: lança as corridas que escaparam do observador (pedidos concluídos desde max(corte, hoje − 7
- * dias) sem lançamento do motoboy) e estorna as corridas dos pedidos cancelados depois da conclusão (últimos 30 dias).
+ * empresa com data de corte: lança as corridas que escaparam do observador (pedidos concluídos desde max(corte, hoje − 30
+ * dias) sem a corrida do motoboy, ou com ela e sem a da loja) e estorna as corridas dos pedidos cancelados depois da
+ * conclusão (últimos 30 dias); se um desses pedidos volta a valer (cancelado pago marcado depois, ou concluído de novo),
+ * relança a corrida.
  * Uma falha numa empresa não para as outras (log só com ids).
  */
 class FinanceiroConferir extends Command
 {
-    public const DIAS_DA_CONFERENCIA = 7;
+    public const DIAS_DA_CONFERENCIA = 30;
 
     public const DIAS_DO_ESTORNO = 30;
 
@@ -34,8 +36,8 @@ class FinanceiroConferir extends Command
             $this->tentar($companyUuid, 'lancar', function () use ($lancador, $companyUuid, $corte) {
                 session(['company' => $companyUuid]);
                 $doCorte  = Carbon::parse($corte . ' 00:00:00', Financeiro::fuso($companyUuid))->setTimezone(new \DateTimeZone(date_default_timezone_get()));
-                $seteDias = now()->subDays(static::DIAS_DA_CONFERENCIA);
-                $r        = $lancador->conferir($companyUuid, $doCorte > $seteDias ? $doCorte : $seteDias);
+                $janela   = now()->subDays(static::DIAS_DA_CONFERENCIA);
+                $r        = $lancador->conferir($companyUuid, $doCorte > $janela ? $doCorte : $janela);
                 if ($r['lancados'] > 0) {
                     Log::info('[entregas] financeiro: conferência lançou corridas', ['empresa' => $companyUuid, 'lancados' => $r['lancados'], 'sem_valor' => $r['sem_valor']]);
                 }
@@ -44,6 +46,12 @@ class FinanceiroConferir extends Command
                 $n = $lancador->estornarCancelados($companyUuid, now()->subDays(static::DIAS_DO_ESTORNO));
                 if ($n > 0) {
                     Log::info('[entregas] financeiro: corridas de pedidos cancelados estornadas', ['empresa' => $companyUuid, 'estornos' => $n]);
+                }
+            });
+            $this->tentar($companyUuid, 'relancar', function () use ($lancador, $companyUuid) {
+                $n = $lancador->relancarEstornados($companyUuid, now()->subDays(static::DIAS_DO_ESTORNO));
+                if ($n > 0) {
+                    Log::info('[entregas] financeiro: corridas de pedidos que voltaram a valer lançadas de novo', ['empresa' => $companyUuid, 'corridas' => $n]);
                 }
             });
         }

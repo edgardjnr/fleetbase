@@ -50,8 +50,9 @@ class FinanceiroController extends Controller
 
     /**
      * GET financeiro/motoboys?inicio&fim (padrão: este mês): todos os motoboys da empresa (mesmo sem lançamento), com o
-     * saldo de agora, o último pagamento, as corridas do período (sem as estornadas) e se tem chave Pix. Ordem: saldo
-     * desc, depois nome.
+     * saldo de agora, o último pagamento, as corridas do período (sem as estornadas), se tem chave Pix e `excluido` (o
+     * motoboy excluído com soft delete só aparece com saldo ≠ 0, e aceita pagamento e lançamento). Ordem: saldo desc,
+     * depois nome.
      */
     public function motoboys(Request $request)
     {
@@ -105,9 +106,15 @@ class FinanceiroController extends Controller
             $porMotoboy[$conta]['centavos'] = ($porMotoboy[$conta]['centavos'] ?? 0) + (int) round((float) $corrida->valor * 100);
         }
 
+        // o motoboy excluído (soft delete) com saldo entra, marcado: ainda dá para pagar o acerto final (o painel já soma o
+        // saldo dele no "a pagar")
         $lista = [];
-        foreach (Driver::where('company_uuid', $empresa)->with(['user'])->get() as $motoboy) {
-            $uuid    = (string) $motoboy->uuid;
+        foreach (Driver::withTrashed()->where('company_uuid', $empresa)->with(['user'])->get() as $motoboy) {
+            $uuid     = (string) $motoboy->uuid;
+            $excluido = $motoboy->deleted_at !== null;
+            if ($excluido && round((float) ($saldos[$uuid] ?? 0), 2) == 0) {
+                continue;
+            }
             $lista[] = [
                 'id'               => $motoboy->public_id,
                 'nome'             => $motoboy->name,
@@ -116,6 +123,7 @@ class FinanceiroController extends Controller
                 'corridas'         => $porMotoboy[$uuid]['corridas'] ?? 0,
                 'valor_corridas'   => round(($porMotoboy[$uuid]['centavos'] ?? 0) / 100, 2),
                 'tem_pix'          => isset($comPix[$uuid]),
+                'excluido'         => $excluido,
             ];
         }
         usort($lista, fn ($a, $b) => [$b['saldo'], mb_strtolower((string) $a['nome'])] <=> [$a['saldo'], mb_strtolower((string) $b['nome'])]);
@@ -168,8 +176,8 @@ class FinanceiroController extends Controller
     /**
      * POST financeiro/lancamentos {conta_tipo, contas: [public_id…], tipo, valor, data, pedido, motivo, observacao_interna}
      * → {lancamentos: [Lancamento…]} (um por conta, na mesma transação). Tipo dos manuais da conta; valor ≠ 0, positivo em
-     * diária e bônus; pedido (public_id ou número) só em ajuste. Na conta da loja, o lançamento fica sem fatura (entra no
-     * próximo rascunho).
+     * diária e bônus; pedido (public_id, uuid ou número com corrida na conta) só em ajuste; ajuste negativo de pedido com
+     * a corrida estornada é recusado. Na conta da loja, o lançamento fica sem fatura (entra no próximo rascunho).
      */
     public function lancar(Request $request)
     {
@@ -187,6 +195,9 @@ class FinanceiroController extends Controller
             return $this->erro('Tipo de lançamento inválido para esta conta.');
         }
 
+        if (static::milharSemCentavos($request->input('valor'))) {
+            return $this->erro(static::MILHAR_SEM_CENTAVOS);
+        }
         $valor = static::numero($request->input('valor'));
         if ($valor === null) {
             return $this->erro('Valor inválido.');
@@ -213,16 +224,10 @@ class FinanceiroController extends Controller
             return $erro;
         }
 
-        $pedido = null;
         $codigo = $request->input('pedido');
-        if ($codigo !== null && trim((string) $codigo) !== '') {
-            if ($tipo !== 'ajuste') {
-                return $this->erro('Só o ajuste pode ter pedido.');
-            }
-            $pedido = $this->pedido(trim((string) $codigo));
-            if (!$pedido) {
-                return $this->erro('Pedido não encontrado.');
-            }
+        $codigo = is_scalar($codigo) ? trim((string) $codigo) : '';
+        if ($codigo !== '' && $tipo !== 'ajuste') {
+            return $this->erro('Só o ajuste pode ter pedido.');
         }
 
         $ids = $request->input('contas');
@@ -237,6 +242,22 @@ class FinanceiroController extends Controller
         $faltam = array_values(array_diff($ids, array_keys($contas)));
         if ($faltam) {
             return $this->erro('Conta não encontrada: ' . implode(', ', array_slice($faltam, 0, 5)) . '.');
+        }
+
+        $pedido = null;
+        if ($codigo !== '') {
+            $pedido = $this->pedido($codigo, $contaTipo, array_values($contas));
+            if (is_string($pedido)) {
+                return $this->erro($pedido);
+            }
+            if (!$pedido) {
+                return $this->erro('Pedido não encontrado.');
+            }
+            // o desconto de uma corrida já estornada debitaria duas vezes (o caminho inverso, estorno automático depois
+            // do "Não pagar", desconta o ajuste: LancadorDeCorridas::estornosDevidos)
+            if ($valor < 0 && $this->corridaEstornada($contaTipo, array_values($contas), (string) $pedido->uuid)) {
+                return $this->erro('A corrida deste pedido já foi estornada.');
+            }
         }
 
         $empresa = $this->empresa();
@@ -321,6 +342,9 @@ class FinanceiroController extends Controller
         $conta = $id !== '' ? ($this->contas($contaTipo, [$id])[$id] ?? null) : null;
         if (!$conta) {
             return $this->erro($contaTipo === Financeiro::CONTA_MOTOBOY ? 'Motoboy não encontrado.' : 'Loja não encontrada.', 404);
+        }
+        if (static::milharSemCentavos($request->input('valor'))) {
+            return $this->erro(static::MILHAR_SEM_CENTAVOS);
         }
         $valor = static::numero($request->input('valor'));
         if ($valor === null) {
@@ -439,9 +463,27 @@ class FinanceiroController extends Controller
         return CicloDeCobranca::validar($config) ?? CicloDeCobranca::normalizar($config);
     }
 
-    /** Número digitado ou enviado: 30, "30", "30.5", "30,5", "-2,75", "1.234,56". null se não for número. */
+    /** Mensagem do valor no formato de milhar com ponto e sem vírgula ("1.500"), que viraria 1,50. */
+    public const MILHAR_SEM_CENTAVOS = 'Valor ambíguo: para mil e quinhentos, escreva 1500 ou 1.500,00 (vírgula antes dos centavos).';
+
+    /**
+     * Texto no formato de milhar com ponto e sem vírgula ("1.500", "-2.000", "12.345"): ambíguo (1,50 ou 1.500?), é
+     * recusado com 422 (MILHAR_SEM_CENTAVOS) para não gravar R$ 1,50 por engano vindo de outro cliente da API.
+     */
+    public static function milharSemCentavos($valor): bool
+    {
+        return is_string($valor) && preg_match('/^[+-]?\d{1,3}(\.\d{3})+$/', preg_replace('/\s/', '', $valor)) === 1;
+    }
+
+    /**
+     * Número digitado ou enviado: 30, "30", "30.5", "30,5", "-2,75", "1.234,56". null se não for número ou se for o
+     * milhar ambíguo "1.500" (quem chama confere antes com milharSemCentavos, para a mensagem certa).
+     */
     public static function numero($valor): ?float
     {
+        if (static::milharSemCentavos($valor)) {
+            return null;
+        }
         if (is_int($valor) || is_float($valor)) {
             return is_finite((float) $valor) ? (float) $valor : null;
         }
@@ -537,29 +579,95 @@ class FinanceiroController extends Controller
         return [$texto, null];
     }
 
-    /** [public_id => uuid] das contas da empresa encontradas (motoboys ou lojas). */
+    /**
+     * [public_id => uuid] das contas da empresa encontradas (motoboys ou lojas). O motoboy excluído (soft delete) também
+     * (o acerto final: pagamento e lançamento depois da exclusão).
+     */
     protected function contas(string $contaTipo, array $ids): array
     {
-        $modelo = $contaTipo === Financeiro::CONTA_MOTOBOY ? Driver::class : Vendor::class;
-        $contas = [];
-        foreach ($modelo::where('company_uuid', $this->empresa())->whereIn('public_id', $ids)->get() as $conta) {
+        $consulta = $contaTipo === Financeiro::CONTA_MOTOBOY ? Driver::withTrashed()->where('company_uuid', $this->empresa()) : Vendor::where('company_uuid', $this->empresa());
+        $contas   = [];
+        foreach ($consulta->whereIn('public_id', $ids)->get() as $conta) {
             $contas[(string) $conta->public_id] = (string) $conta->uuid;
         }
 
         return $contas;
     }
 
-    protected function motoboy(string $id): ?Driver
+    /**
+     * Se, em alguma das contas, o pedido tem corrida lançada e todas as corridas dele estão estornadas (sem corrida
+     * viva, nada a descontar).
+     */
+    protected function corridaEstornada(string $contaTipo, array $contaUuids, string $orderUuid): bool
     {
-        return Driver::where('company_uuid', $this->empresa())->where('public_id', $id)->with(['user'])->first();
+        $corridas = DB::table(Lancamentos::TABELA)
+            ->where('company_uuid', $this->empresa())
+            ->where('conta_tipo', $contaTipo)
+            ->whereIn('conta_uuid', $contaUuids)
+            ->where('tipo', 'corrida')
+            ->where('order_uuid', $orderUuid)
+            ->get()
+            ->all();
+        if (!$corridas) {
+            return false;
+        }
+
+        $estornadas = array_flip(Lancamentos::jaEstornados(array_map(fn ($l) => (int) $l->id, $corridas)));
+        $vivas      = [];
+        $daConta    = [];
+        foreach ($corridas as $corrida) {
+            $daConta[(string) $corrida->conta_uuid] = true;
+            if (!isset($estornadas[(int) $corrida->id])) {
+                $vivas[(string) $corrida->conta_uuid] = true;
+            }
+        }
+
+        return (bool) array_diff_key($daConta, $vivas);
     }
 
-    /** Pedido da empresa pelo public_id, pelo número (internal_id) ou pelo uuid. */
-    protected function pedido(string $codigo): ?Order
+    /** O motoboy da empresa pelo public_id, inclusive o excluído (o extrato dele continua acessível no console). */
+    protected function motoboy(string $id): ?Driver
     {
-        return Order::where('company_uuid', $this->empresa())
-            ->where(fn ($query) => $query->where('public_id', $codigo)->orWhere('internal_id', $codigo)->orWhere('uuid', $codigo))
+        return Driver::withTrashed()->where('company_uuid', $this->empresa())->where('public_id', $id)->with(['user'])->first();
+    }
+
+    /**
+     * Pedido da empresa pelo public_id ou pelo uuid; ou pelo número (internal_id, que se repete entre dias e lojas), só
+     * entre os pedidos com corrida lançada numa das contas escolhidas. null = não achou; texto = a mensagem de erro (o
+     * número é de mais de um pedido).
+     */
+    protected function pedido(string $codigo, string $contaTipo, array $contaUuids): Order|string|null
+    {
+        $empresa = $this->empresa();
+        $pedido  = Order::where('company_uuid', $empresa)
+            ->where(fn ($query) => $query->where('public_id', $codigo)->orWhere('uuid', $codigo))
             ->first();
+        if ($pedido) {
+            return $pedido;
+        }
+
+        $candidatos = [];
+        foreach (Order::where('company_uuid', $empresa)->where('internal_id', $codigo)->get() as $candidato) {
+            $candidatos[(string) $candidato->uuid] = $candidato;
+        }
+        if (!$candidatos) {
+            return null;
+        }
+
+        $comCorrida = DB::table(Lancamentos::TABELA)
+            ->where('company_uuid', $empresa)
+            ->where('conta_tipo', $contaTipo)
+            ->whereIn('conta_uuid', $contaUuids)
+            ->where('tipo', 'corrida')
+            ->whereIn('order_uuid', array_map('strval', array_keys($candidatos)))
+            ->pluck('order_uuid')
+            ->all();
+        $comCorrida = array_values(array_unique(array_map('strval', $comCorrida)));
+        if (count($comCorrida) > 1) {
+            return 'Há mais de um pedido com esse número; use o código do pedido (order_…)';
+        }
+
+        return $comCorrida ? ($candidatos[$comCorrida[0]] ?? null) : null;
     }
 
     protected function empresa(): string
