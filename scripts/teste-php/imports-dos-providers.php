@@ -46,6 +46,8 @@ $arquivos = array_merge(
         $app . '/Notifications/Entregas/Email/FaturaEmitida.php',
         $app . '/Notifications/Entregas/Email/LembreteDeFatura.php',
         $app . '/Notifications/Entregas/Email/FaturaVencida.php',
+        $app . '/Console/Commands/Entregas/FinanceiroRascunhos.php',
+        $app . '/Http/Controllers/Entregas/FinanceiroLojasController.php',
     ]
 );
 

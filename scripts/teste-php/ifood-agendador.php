@@ -247,6 +247,8 @@ unset($porComando['entregas:financeiro-conferir']);
 // os e-mails das faturas (lembrete e vencida) também seguem o ENTREGAS_FINANCEIRO, conferidos à parte no fim
 $avisosFin = $porComando['entregas:financeiro-avisos'] ?? null;
 unset($porComando['entregas:financeiro-avisos']);
+$rascunhos = $porComando['entregas:financeiro-rascunhos'] ?? null;
+unset($porComando['entregas:financeiro-rascunhos']);
 confere(array_keys($porComando) === ['entregas:ifood-polling', 'entregas:ifood-agendados', 'entregas:ifood-acompanhar', 'entregas:ifood-tokens'], 'os quatro comandos agendados');
 confere(isset($porComando['entregas:ifood-polling']['everyThirtySeconds']) && isset($porComando['entregas:ifood-agendados']['everyMinute']) && isset($porComando['entregas:ifood-acompanhar']['everyThirtySeconds']) && isset($porComando['entregas:ifood-tokens']['everyThirtyMinutes']), 'a cada 30 s, a cada minuto, a cada 30 s e a cada 30 min');
 foreach ($porComando as $comando => $chamadas) {
@@ -316,6 +318,16 @@ if ($quandoAvisos instanceof Closure) {
     confere($ligadaAvisos === true && $quandoAvisos() === false, 'entregas:financeiro-avisos: o when() segue o Financeiro::ligada()');
 } else {
     confere(false, 'entregas:financeiro-avisos: com when()');
+}
+confere($rascunhos !== null && ($rascunhos['dailyAt'] ?? null) === ['00:30'] && ($rascunhos['withoutOverlapping'][0] ?? 0) > 0 && isset($rascunhos['runInBackground']) && ($rascunhos['appendOutputTo'] ?? null) === ['/proc/1/fd/1'], 'entregas:financeiro-rascunhos: às 00:30, sem sobrepor, em segundo plano, saída no container');
+$quandoRas = $rascunhos['when'][0] ?? null;
+if ($quandoRas instanceof Closure) {
+    Config::$valores['services.entregas.financeiro'] = '1';
+    $ligadaRas                                       = $quandoRas();
+    Config::$valores['services.entregas.financeiro'] = '';
+    confere($ligadaRas === true && $quandoRas() === false, 'entregas:financeiro-rascunhos: o when() segue o Financeiro::ligada()');
+} else {
+    confere(false, 'entregas:financeiro-rascunhos: com when()');
 }
 
 resumo();

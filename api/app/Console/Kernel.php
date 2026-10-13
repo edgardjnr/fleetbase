@@ -54,6 +54,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('entregas:financeiro-conferir')->everyFiveMinutes()->when(fn () => Financeiro::ligada())->withoutOverlapping(10)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
         // financeiro: e-mails às lojas de lembrete (vence amanhã) e de fatura vencida, uma vez por fatura (FinanceiroAvisos)
         $schedule->command('entregas:financeiro-avisos')->dailyAt('09:00')->when(fn () => Financeiro::ligada())->withoutOverlapping(10)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
+        // financeiro: rascunhos das faturas das lojas cujo ciclo fechou ontem (FinanceiroRascunhos)
+        $schedule->command('entregas:financeiro-rascunhos')->dailyAt('00:30')->when(fn () => Financeiro::ligada())->withoutOverlapping(30)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
     }
 
     /**

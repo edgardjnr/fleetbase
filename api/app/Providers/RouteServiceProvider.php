@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Http\Controllers\Entregas\ConversasDaLojaController;
 use App\Http\Controllers\Entregas\DistribuicaoController;
 use App\Http\Controllers\Entregas\EnderecosController;
+use App\Http\Controllers\Entregas\FinanceiroLojasController;
 use App\Http\Controllers\Entregas\IfoodLojasController;
 use App\Http\Controllers\Entregas\IfoodPedidosController;
 use App\Http\Controllers\Entregas\IntegracaoController;
@@ -172,6 +173,21 @@ class RouteServiceProvider extends ServiceProvider
                         // mapa ao vivo do console: só os locais de coleta (lojas) e a situação de cada motoboy (cor do capacete)
                         Route::get('mapa/locais-de-coleta', [MapaController::class, 'locaisDeColeta']);
                         Route::get('mapa/motoboys', [MapaController::class, 'motoboys']);
+
+                        // financeiro: lojas e faturas (FinanceiroLojasController, só admin): ciclo de cobrança, extrato da loja,
+                        // rascunho, conferência, emissão, cancelamento e reenvio do e-mail da fatura
+                        Route::get('financeiro/lojas', [FinanceiroLojasController::class, 'lojas']);
+                        Route::put('financeiro/lojas/{id}/ciclo', [FinanceiroLojasController::class, 'salvarCiclo']);
+                        Route::get('financeiro/lojas/{id}/extrato', [FinanceiroLojasController::class, 'extratoDaLoja']);
+                        Route::get('financeiro/faturas', [FinanceiroLojasController::class, 'faturas']);
+                        Route::post('financeiro/faturas', [FinanceiroLojasController::class, 'gerarRascunho']);
+                        Route::get('financeiro/faturas/{id}', [FinanceiroLojasController::class, 'fatura']);
+                        Route::put('financeiro/faturas/{id}', [FinanceiroLojasController::class, 'mudarVencimento']);
+                        Route::post('financeiro/faturas/{id}/ajustes', [FinanceiroLojasController::class, 'ajuste']);
+                        Route::post('financeiro/faturas/{id}/nao-cobrar', [FinanceiroLojasController::class, 'naoCobrar']);
+                        Route::post('financeiro/faturas/{id}/emitir', [FinanceiroLojasController::class, 'emitir']);
+                        Route::post('financeiro/faturas/{id}/cancelar', [FinanceiroLojasController::class, 'cancelar']);
+                        Route::post('financeiro/faturas/{id}/reenviar', [FinanceiroLojasController::class, 'reenviar']);
 
                         // portal da loja (usuário type=customer; o ProtegerPortalLoja só libera estas), até 60 chamadas por minuto por usuário
                         Route::get('loja/minha-loja', [PortalLojaController::class, 'minhaLoja'])->middleware('throttle:60,1');
