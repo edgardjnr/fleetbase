@@ -1,0 +1,159 @@
+<Layout::Section::Header @title={{if this.fatura (t "fleet-ops.ui.financeiro-lojas.fatura-titulo" numero=this.numero) (t "fleet-ops.ui.financeiro-lojas.fatura")}}>
+    <div class="flex items-center space-x-2">
+        <Button @icon="arrow-left" @size="sm" @text={{t "fleet-ops.ui.financeiro-lojas.voltar"}} @onClick={{this.voltar}} />
+        <Button @icon="refresh" @size="sm" @helpText={{t "common.reload"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
+        {{#if this.fatura}}
+            <Button @icon="file-export" @size="sm" @text={{t "fleet-ops.ui.financeiro-lojas.exportar-csv"}} @onClick={{this.exportarCsv}} />
+        {{/if}}
+    </div>
+</Layout::Section::Header>
+
+<Layout::Section::Body class="overflow-y-scroll-i h-full">
+    <div class="max-w-6xl mx-auto px-4 py-6 space-y-5">
+        {{#if this.fatura}}
+            {{! o bloco com data-fatura-impressao é o que sai no "Imprimir" (cópia no <body>); .entregas-nao-imprimir some no papel }}
+            <div class="space-y-5" data-fatura-impressao>
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl font-semibold dark:text-white">{{this.numero}}</span>
+                                <span class="text-xs font-medium rounded px-2 py-0.5 {{this.cor}}">{{this.rotulo}}</span>
+                            </div>
+                            <div class="text-base dark:text-gray-100">
+                                <LinkTo @route="financeiro.loja" @model={{this.fatura.loja.id}} class="text-blue-600 dark:text-blue-400 hover:underline">{{this.fatura.loja.nome}}</LinkTo>
+                            </div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                {{t "fleet-ops.ui.financeiro-lojas.periodo"}}:
+                                {{t "fleet-ops.ui.financeiro-lojas.periodo-de-a" inicio=(this.data this.fatura.periodo_inicio) fim=(this.data this.fatura.periodo_fim)}}
+                                · {{t "fleet-ops.ui.financeiro-lojas.entregas-n" n=(or this.fatura.entregas 0)}}
+                            </div>
+                            {{#if this.emitida}}
+                                <div class="text-xs text-gray-500 dark:text-gray-400 entregas-nao-imprimir">
+                                    {{t "fleet-ops.ui.financeiro-lojas.emitida-em" quando=(this.instante this.fatura.emitida_em)}}
+                                    ·
+                                    {{#if this.fatura.email_enviado_em}}
+                                        {{t "fleet-ops.ui.financeiro-lojas.email-enviado-em" quando=(this.instante this.fatura.email_enviado_em)}}
+                                    {{else}}
+                                        <span class="text-yellow-700 dark:text-yellow-300">{{t "fleet-ops.ui.financeiro-lojas.email-nao-enviado-ainda"}}</span>
+                                    {{/if}}
+                                </div>
+                            {{/if}}
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 entregas-nao-imprimir">
+                            {{#if this.rascunho}}
+                                <Button @size="sm" @icon="plus" @text={{t "fleet-ops.ui.financeiro-lojas.mais-ajuste"}} @onClick={{this.adicionarAjuste}} />
+                                <Button @size="sm" @type="primary" @icon="paper-plane" @text={{t "fleet-ops.ui.financeiro-lojas.emitir"}} @disabled={{not this.temItens}} @onClick={{this.emitir}} />
+                            {{else if this.emitida}}
+                                {{#if this.emAberto}}
+                                    <Button @size="sm" @type="primary" @icon="hand-holding-dollar" @text={{t "fleet-ops.ui.financeiro-lojas.registrar-recebimento"}} @onClick={{this.registrarRecebimento}} />
+                                {{/if}}
+                                <Button @size="sm" @icon="envelope" @text={{t "fleet-ops.ui.financeiro-lojas.reenviar-email"}} @isLoading={{this.reenviar.isRunning}} @onClick={{perform this.reenviar}} />
+                                <Button @size="sm" @icon="print" @text={{t "fleet-ops.ui.financeiro-lojas.imprimir"}} @onClick={{this.imprimir}} />
+                                <Button @size="sm" @type="danger" @icon="ban" @text={{t "fleet-ops.ui.financeiro-lojas.cancelar-fatura"}} @onClick={{this.cancelar}} />
+                            {{/if}}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.vencimento"}}</div>
+                            {{#if this.rascunho}}
+                                <div class="flex items-center gap-2 entregas-nao-imprimir">
+                                    <input type="date" class="form-input form-input-sm" value={{this.vencimento}} {{on "change" this.setVencimento}} />
+                                    {{#if this.vencimentoAlterado}}
+                                        <Button @size="xs" @type="primary" @icon="save" @text={{t "fleet-ops.ui.financeiro-lojas.salvar"}} @isLoading={{this.salvarVencimento.isRunning}} @onClick={{perform this.salvarVencimento}} />
+                                    {{/if}}
+                                </div>
+                            {{/if}}
+                            <div class="text-lg font-semibold dark:text-white {{if this.rascunho 'entregas-so-imprimir'}} {{if this.vencida 'text-red-700 dark:text-red-300'}}">{{this.data this.fatura.vencimento}}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.total"}}</div>
+                            <div class="text-lg font-semibold dark:text-white">{{this.valor this.fatura.total}}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.recebido"}}</div>
+                            <div class="text-lg font-semibold dark:text-white">{{if this.emitida (this.valor this.fatura.recebido) "—"}}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.em-aberto"}}</div>
+                            <div class="text-lg font-semibold {{if this.emAberto 'text-red-700 dark:text-red-300' 'dark:text-white'}}">{{if this.emitida (this.valor this.fatura.em_aberto) "—"}}</div>
+                        </div>
+                    </div>
+
+                    {{#if this.rascunho}}
+                        <p class="text-xs text-gray-500 dark:text-gray-400 entregas-nao-imprimir">{{t "fleet-ops.ui.financeiro-lojas.rascunho-ajuda"}}</p>
+                    {{/if}}
+                </div>
+
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="text-sm font-semibold dark:text-white mb-2">{{t "fleet-ops.ui.financeiro-lojas.itens"}}</div>
+                    {{#if this.temItens}}
+                        <table class="table w-full text-sm">
+                            <thead>
+                                <tr class="text-left text-gray-500 dark:text-gray-400">
+                                    <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.data"}}</th>
+                                    <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.pedido"}}</th>
+                                    <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro-lojas.km"}}</th>
+                                    <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.destino"}}</th>
+                                    <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.motivo"}}</th>
+                                    <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro-lojas.valor"}}</th>
+                                    {{#if this.rascunho}}
+                                        <th class="py-2 entregas-nao-imprimir"></th>
+                                    {{/if}}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{#each this.itens key="id" as |item|}}
+                                    <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100 {{if (this.naoCobrado item) 'text-gray-400 dark:text-gray-500'}}">
+                                        <td class="py-2 whitespace-nowrap">{{this.data item.data}}</td>
+                                        <td class="py-2 whitespace-nowrap">
+                                            {{#if item.pedido}}
+                                                <LinkTo @route="operations.orders.index.details" @model={{item.pedido.id}} class="text-blue-600 dark:text-blue-400 hover:underline">
+                                                    {{or item.pedido.numero item.pedido.id}}
+                                                </LinkTo>
+                                            {{else}}
+                                                —
+                                            {{/if}}
+                                        </td>
+                                        <td class="py-2 text-right whitespace-nowrap">{{if item.detalhes.km (this.km item.detalhes.km) "—"}}</td>
+                                        <td class="py-2">{{item.detalhes.destino}}</td>
+                                        <td class="py-2">
+                                            {{#if (eq item.tipo "corrida")}}
+                                                {{#if (this.naoCobrado item)}}
+                                                    <span class="text-xs font-medium rounded px-2 py-0.5 bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{t "fleet-ops.ui.financeiro-lojas.nao-cobrado-selo"}}</span>
+                                                {{/if}}
+                                            {{else}}
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">{{this.tipo item}}</span>
+                                                {{item.motivo}}
+                                            {{/if}}
+                                            {{#if item.observacao_interna}}
+                                                <span class="ml-1 text-gray-400 entregas-nao-imprimir" title={{item.observacao_interna}}><FaIcon @icon="lock" @size="xs" /></span>
+                                            {{/if}}
+                                        </td>
+                                        <td class="py-2 text-right whitespace-nowrap {{if (lt item.valor 0) 'text-red-700 dark:text-red-300'}}">{{this.valor item.valor}}</td>
+                                        {{#if this.rascunho}}
+                                            <td class="py-2 text-right whitespace-nowrap entregas-nao-imprimir">
+                                                {{#if (this.podeNaoCobrar item)}}
+                                                    <Button @size="xs" @icon="ban" @text={{t "fleet-ops.ui.financeiro-lojas.nao-cobrar"}} @onClick={{fn this.naoCobrar item}} />
+                                                {{/if}}
+                                            </td>
+                                        {{/if}}
+                                    </tr>
+                                {{/each}}
+                            </tbody>
+                        </table>
+                    {{else}}
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.sem-itens"}}</p>
+                    {{/if}}
+                </div>
+            </div>
+        {{else if this.carregar.isRunning}}
+            <Spinner />
+        {{else if this.carregado}}
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.fatura-nao-encontrada"}}</p>
+        {{/if}}
+    </div>
+    <Spacer @height="300px" />
+</Layout::Section::Body>

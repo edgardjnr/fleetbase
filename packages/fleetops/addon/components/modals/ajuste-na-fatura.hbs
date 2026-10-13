@@ -1,0 +1,23 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="px-4 space-y-4 text-gray-900 dark:text-gray-50">
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.ajuste-ajuda"}}</p>
+        {{! sem inputmode="decimal": o teclado decimal do celular não tem o "-" do desconto }}
+        <InputGroup @name={{t "fleet-ops.ui.financeiro-lojas.valor"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+            <input id={{id}} type="text" autocomplete="off" maxlength="12" placeholder="-10,00" class="form-input w-full" value={{this.valor}} {{on "input" (fn this.setCampo "valor")}} />
+        </InputGroup>
+        {{#if this.valorEmReais}}
+            <p class="text-xs {{if this.desconto 'text-red-700 dark:text-red-300' 'text-green-700 dark:text-green-400'}}">
+                {{if this.desconto (t "fleet-ops.ui.financeiro-lojas.ajuste-desconto" valor=this.valorEmReais) (t "fleet-ops.ui.financeiro-lojas.ajuste-acrescimo" valor=this.valorEmReais)}}
+            </p>
+        {{/if}}
+        <InputGroup @name={{t "fleet-ops.ui.financeiro-lojas.motivo-visivel"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+            <input id={{id}} type="text" autocomplete="off" maxlength="255" class="form-input w-full" value={{this.motivo}} {{on "input" (fn this.setCampo "motivo")}} />
+        </InputGroup>
+        <InputGroup @name={{t "fleet-ops.ui.financeiro-lojas.observacao-interna"}} @wrapperClass="mb-0" as |id|>
+            <textarea id={{id}} rows="2" maxlength="500" class="form-input w-full" value={{this.observacao}} {{on "input" (fn this.setCampo "observacao")}}></textarea>
+        </InputGroup>
+        {{#each this.erros as |erro|}}
+            <p class="text-xs text-yellow-700 dark:text-yellow-300">{{erro}}</p>
+        {{/each}}
+    </div>
+</Modal::Default>

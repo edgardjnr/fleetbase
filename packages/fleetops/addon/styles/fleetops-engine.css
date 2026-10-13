@@ -8924,3 +8924,50 @@ body[data-theme='dark'] .filter-multi-model > .clear-button {
 .leaflet-tooltip-bottom.entregas-nome-no-alfinete::before {
     border-bottom-color: rgba(153, 27, 27, 0.92);
 }
+
+/**
+ * Entregas: "Imprimir" da fatura (Financeiro → fatura). O controller copia o bloco [data-fatura-impressao] para o
+ * <body> (.entregas-impressao-copia) e marca o body com .entregas-imprimindo; no papel sai só a cópia, sem menu nem
+ * botões (.entregas-nao-imprimir), em preto no branco mesmo no tema escuro.
+ */
+.entregas-impressao-copia,
+.entregas-so-imprimir {
+    display: none;
+}
+
+@media print {
+    body.entregas-imprimindo > *:not(.entregas-impressao-copia) {
+        display: none !important;
+    }
+
+    body.entregas-imprimindo {
+        background: #fff !important;
+        overflow: visible !important;
+        height: auto !important;
+    }
+
+    body.entregas-imprimindo > .entregas-impressao-copia {
+        display: block !important;
+        padding: 0 8mm;
+        color: #000 !important;
+        background: #fff !important;
+    }
+
+    .entregas-impressao-copia * {
+        color: #000 !important;
+        background: transparent !important;
+        border-color: #ccc !important;
+    }
+
+    .entregas-impressao-copia .entregas-nao-imprimir {
+        display: none !important;
+    }
+
+    .entregas-impressao-copia .entregas-so-imprimir {
+        display: block !important;
+    }
+
+    .entregas-impressao-copia a {
+        text-decoration: none !important;
+    }
+}

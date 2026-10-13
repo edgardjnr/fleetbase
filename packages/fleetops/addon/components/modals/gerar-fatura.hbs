@@ -1,0 +1,24 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="px-4 space-y-4 text-gray-900 dark:text-gray-50">
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.gerar-fatura-ajuda"}}</p>
+        <InputGroup @name={{t "fleet-ops.ui.financeiro-lojas.loja"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+            <select id={{id}} class="form-select w-full text-sm" {{on "change" this.setLoja}}>
+                <option value="" selected={{not this.loja}}>{{t "fleet-ops.ui.financeiro-lojas.escolha-a-loja"}}</option>
+                {{#each this.lojas as |loja|}}
+                    <option value={{loja.id}} selected={{eq loja.id this.loja}}>{{loja.nome}}</option>
+                {{/each}}
+            </select>
+        </InputGroup>
+        <div class="grid grid-cols-2 gap-4">
+            <InputGroup @name={{t "fleet-ops.ui.financeiro-lojas.inicio"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="date" class="form-input w-full" value={{this.inicio}} max={{this.fim}} {{on "change" (fn this.setData "inicio")}} />
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.financeiro-lojas.fim"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="date" class="form-input w-full" value={{this.fim}} min={{this.inicio}} {{on "change" (fn this.setData "fim")}} />
+            </InputGroup>
+        </div>
+        {{#each this.erros as |erro|}}
+            <p class="text-xs text-yellow-700 dark:text-yellow-300">{{erro}}</p>
+        {{/each}}
+    </div>
+</Modal::Default>

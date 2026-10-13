@@ -1,0 +1,166 @@
+<Layout::Section::Header @title={{if this.nome (t "fleet-ops.ui.financeiro-lojas.extrato-de" nome=this.nome) (t "fleet-ops.ui.financeiro-lojas.extrato")}}>
+    <div class="flex items-center space-x-2">
+        <Button @icon="arrow-left" @size="sm" @text={{t "fleet-ops.ui.financeiro-lojas.voltar"}} @onClick={{this.voltar}} />
+        <Button @icon="refresh" @size="sm" @helpText={{t "common.reload"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
+        <Button @icon="file-export" @size="sm" @text={{t "fleet-ops.ui.financeiro-lojas.exportar-csv"}} @disabled={{not this.extrato.lancamentos.length}} @onClick={{this.exportarCsv}} />
+    </div>
+</Layout::Section::Header>
+
+<Layout::Section::Body class="overflow-y-scroll-i h-full">
+    <div class="max-w-6xl mx-auto px-4 py-6 space-y-5">
+        {{#if this.extrato}}
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <div class="text-xl font-semibold dark:text-white">{{this.nome}}</div>
+                        <div class="text-xs uppercase text-gray-500 dark:text-gray-400 mt-2">{{t "fleet-ops.ui.financeiro-lojas.saldo"}}</div>
+                        <div class="text-2xl font-semibold {{if (gt this.extrato.saldo 0) 'text-green-700 dark:text-green-400' 'dark:text-white'}}">{{this.valor this.extrato.saldo}}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                            {{if (lt this.extrato.saldo 0) (t "fleet-ops.ui.financeiro-lojas.saldo-credito") (t "fleet-ops.ui.financeiro-lojas.saldo-a-receber")}}
+                        </div>
+                        {{#if this.extrato.ultimo_pagamento}}
+                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {{t "fleet-ops.ui.financeiro-lojas.ultimo-recebimento" valor=(this.valor this.extrato.ultimo_pagamento.valor) data=(this.data this.extrato.ultimo_pagamento.data)}}
+                            </div>
+                        {{/if}}
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <Button @type="primary" @size="sm" @icon="hand-holding-dollar" @text={{t "fleet-ops.ui.financeiro-lojas.registrar-recebimento"}} @onClick={{this.registrarRecebimento}} />
+                        <Button @size="sm" @icon="plus" @text={{t "fleet-ops.ui.financeiro-lojas.lancar-ajuste"}} @onClick={{this.lancar}} />
+                    </div>
+                </div>
+            </div>
+        {{/if}}
+
+        <ContentPanel @title={{t "fleet-ops.ui.financeiro-lojas.periodo"}} @open={{true}} @wrapperClass="bordered-classic">
+            <div class="flex flex-wrap items-end gap-4">
+                <InputGroup @name={{t "fleet-ops.ui.financeiro-lojas.inicio"}} @wrapperClass="mb-0">
+                    <input type="date" class="form-input form-input-sm" value={{this.inicio}} max={{this.fim}} {{on "change" (fn this.setData "inicio")}} />
+                </InputGroup>
+                <InputGroup @name={{t "fleet-ops.ui.financeiro-lojas.fim"}} @wrapperClass="mb-0">
+                    <input type="date" class="form-input form-input-sm" value={{this.fim}} min={{this.inicio}} {{on "change" (fn this.setData "fim")}} />
+                </InputGroup>
+                <Button @type="primary" @size="sm" @icon="magnifying-glass" @text={{t "fleet-ops.ui.financeiro-lojas.aplicar"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
+                <div class="flex items-center gap-2">
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro-lojas.este-mes"}} @onClick={{fn this.setPeriodo "este-mes"}} />
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro-lojas.mes-passado"}} @onClick={{fn this.setPeriodo "mes-passado"}} />
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro-lojas.ultimos-90-dias"}} @onClick={{fn this.setPeriodo "ultimos-90-dias"}} />
+                </div>
+            </div>
+        </ContentPanel>
+
+        {{#if this.extrato}}
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.saldo-anterior" data=(this.data this.extrato.inicio)}}</div>
+                    <div class="text-xl font-semibold dark:text-white">{{this.valor this.extrato.saldo_anterior}}</div>
+                </div>
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.creditos-no-periodo"}}</div>
+                    <div class="text-xl font-semibold text-green-700 dark:text-green-400">{{this.valor this.totais.creditos}}</div>
+                </div>
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.debitos-no-periodo"}}</div>
+                    <div class="text-xl font-semibold text-red-700 dark:text-red-300">{{this.valor this.totais.debitos}}</div>
+                </div>
+            </div>
+
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                {{#if this.grupos.length}}
+                    <table class="table w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-500 dark:text-gray-400">
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.descricao"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.fatura"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.situacao"}}</th>
+                                <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro-lojas.valor"}}</th>
+                                <th class="py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each this.grupos as |grupo|}}
+                                <tr class="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                                    <td colspan="5" class="py-1 text-xs font-semibold text-gray-600 dark:text-gray-300">{{this.data grupo.data}}</td>
+                                </tr>
+                                {{#each grupo.lancamentos key="id" as |lancamento|}}
+                                    <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100 {{if lancamento.estornado 'text-gray-400 dark:text-gray-500'}}">
+                                        <td class="py-2">
+                                            {{#if (eq lancamento.tipo "corrida")}}
+                                                <span class="text-gray-500 dark:text-gray-400">{{this.tipo lancamento}}</span>
+                                                {{#if lancamento.pedido}}
+                                                    <LinkTo @route="operations.orders.index.details" @model={{lancamento.pedido.id}} class="text-blue-600 dark:text-blue-400 hover:underline">
+                                                        #{{or lancamento.pedido.numero lancamento.pedido.id}}
+                                                    </LinkTo>
+                                                {{/if}}
+                                                {{#if lancamento.detalhes.km}}
+                                                    · {{this.km lancamento.detalhes.km}}
+                                                {{/if}}
+                                                {{#if lancamento.detalhes.destino}}
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400">{{lancamento.detalhes.destino}}</div>
+                                                {{/if}}
+                                            {{else}}
+                                                <span class="text-gray-500 dark:text-gray-400">{{this.tipo lancamento}}</span>
+                                                {{#if lancamento.pedido}}
+                                                    <LinkTo @route="operations.orders.index.details" @model={{lancamento.pedido.id}} class="text-blue-600 dark:text-blue-400 hover:underline">
+                                                        #{{or lancamento.pedido.numero lancamento.pedido.id}}
+                                                    </LinkTo>
+                                                {{/if}}
+                                                {{lancamento.motivo}}
+                                                {{#if lancamento.pagamento}}
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">({{this.forma lancamento.pagamento.forma}})</span>
+                                                {{/if}}
+                                            {{/if}}
+                                            {{#if lancamento.observacao_interna}}
+                                                <span class="ml-1 text-gray-400" title={{lancamento.observacao_interna}}><FaIcon @icon="lock" @size="xs" /></span>
+                                            {{/if}}
+                                            {{#if lancamento.criado_por}}
+                                                <div class="text-xs text-gray-400 dark:text-gray-500">{{t "fleet-ops.ui.financeiro-lojas.lancado-por" nome=lancamento.criado_por.nome}}</div>
+                                            {{/if}}
+                                        </td>
+                                        <td class="py-2 whitespace-nowrap">
+                                            {{#if lancamento.fatura}}
+                                                <LinkTo @route="financeiro.fatura" @model={{lancamento.fatura.id}} class="text-blue-600 dark:text-blue-400 hover:underline">
+                                                    {{or lancamento.fatura.numero (t "fleet-ops.ui.financeiro-lojas.rascunho")}}
+                                                </LinkTo>
+                                            {{else if (gt lancamento.valor 0)}}
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.nao-faturado"}}</span>
+                                            {{/if}}
+                                        </td>
+                                        <td class="py-2 whitespace-nowrap">
+                                            {{#if lancamento.situacao}}
+                                                <span class="text-xs font-medium rounded px-2 py-0.5 {{this.corDaSituacao lancamento}}">{{this.situacao lancamento}}</span>
+                                            {{/if}}
+                                            {{#if lancamento.estornado}}
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.estornado-selo"}}</span>
+                                            {{/if}}
+                                        </td>
+                                        <td class="py-2 text-right whitespace-nowrap font-semibold {{if (lt lancamento.valor 0) 'text-red-700 dark:text-red-300' 'text-green-700 dark:text-green-400'}}">
+                                            {{this.valor lancamento.valor}}
+                                        </td>
+                                        <td class="py-2 text-right whitespace-nowrap">
+                                            <div class="inline-flex items-center gap-2">
+                                                {{#if lancamento.pagamento.comprovante_url}}
+                                                    <a href={{lancamento.pagamento.comprovante_url}} target="_blank" rel="noopener noreferrer" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">{{t
+                                                            "fleet-ops.ui.financeiro-lojas.comprovante"
+                                                        }}</a>
+                                                {{/if}}
+                                                {{#if (this.podeEstornar lancamento)}}
+                                                    <Button @size="xs" @icon="rotate-left" @text={{t "fleet-ops.ui.financeiro-lojas.estornar"}} @onClick={{fn this.estornar lancamento}} />
+                                                {{/if}}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {{/each}}
+                            {{/each}}
+                        </tbody>
+                    </table>
+                {{else}}
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.sem-lancamentos"}}</p>
+                {{/if}}
+            </div>
+        {{else if this.carregar.isRunning}}
+            <Spinner />
+        {{/if}}
+    </div>
+    <Spacer @height="300px" />
+</Layout::Section::Body>

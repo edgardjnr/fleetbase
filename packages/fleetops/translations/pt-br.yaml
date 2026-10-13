@@ -259,6 +259,186 @@ fleet-ops:
         chave-copiar: Clique na chave para copiar.
         chave-onde: 'No RestaurantePro: Configurações de delivery → "Entregas por" → Entregas RestaurantePro → cole a chave e conecte.'
         ja-copiei: Já copiei
+    financeiro-lojas:
+      admin-only: O financeiro é só para administradores.
+      title: Lojas e faturas
+      aba-faturas: Faturas
+      aba-lojas: Lojas
+      aba-ciclo: Ciclo em andamento
+      gerar-fatura: Gerar fatura
+      gerar-rascunho: Gerar rascunho
+      gerar-fatura-ajuda: 'Cria o rascunho com os lançamentos da loja ainda sem fatura até a data final. Depois confira, ajuste e emita.'
+      gerar-agora: Gerar fatura agora
+      escolha-a-loja: Escolha a loja
+      rascunho-gerado: Rascunho gerado. Confira e emita.
+      sem-lancamentos-no-periodo: Sem lançamentos para faturar nesse período.
+      inicio: Início
+      fim: Fim
+      situacao: Situação
+      loja: Loja
+      todas-as-lojas: Todas as lojas
+      em-aberto-no-filtro: 'Em aberto nas faturas listadas: {valor}'
+      numero: Nº
+      periodo: Período
+      periodo-de-a: '{inicio} a {fim}'
+      periodo-atual: Período atual
+      vencimento: Vencimento
+      valor: Valor
+      recebido: Recebido
+      em-aberto: Em aberto
+      vencido: Vencido
+      nao-faturado: Não faturado
+      saldo: Saldo
+      ciclo: Ciclo
+      padrao: padrão
+      rascunho: Rascunho
+      conferir-e-emitir: Conferir e emitir
+      registrar-recebimento: Registrar recebimento
+      sem-faturas: Nenhuma fatura com esse filtro.
+      sem-lojas: Nenhuma loja cadastrada.
+      sem-email: Sem e-mail para receber a fatura
+      editar-ciclo: Editar ciclo
+      ciclo-de: 'Ciclo de cobrança de {nome}'
+      dia-de-fechamento: Fecha em
+      prazo-dias: Prazo (dias)
+      quinzenal-ajuda: 'Fecha nos dias 15 e no último dia do mês.'
+      ciclo-ajuda: 'O rascunho da fatura é criado no dia seguinte ao fechamento e vence depois do prazo. Vale a partir do próximo fechamento.'
+      ciclo-andamento-ajuda: 'O período atual de cada loja e o que ela já deve e ainda não entrou em fatura (inclui lançamentos antigos sem fatura).'
+      ciclo-salvo: Ciclo salvo.
+      salvar: Salvar
+      cancelar: Cancelar
+      ultimo-dia: Último dia do mês
+      dia-do-mes: 'Dia {dia}'
+      fatura: Fatura
+      fatura-titulo: 'Fatura {numero}'
+      fatura-nao-encontrada: Fatura não encontrada.
+      voltar: Lojas e faturas
+      exportar-csv: Exportar CSV
+      entregas-n: '{n, plural, =0 {nenhuma entrega} one {# entrega} other {# entregas}}'
+      emitida-em: 'Emitida em {quando}'
+      email-enviado-em: 'e-mail enviado em {quando}'
+      email-nao-enviado-ainda: e-mail não enviado
+      mais-ajuste: + Ajuste
+      emitir: Emitir
+      emitir-titulo: Emitir a fatura?
+      emitir-texto: 'A loja {loja} vai ver a fatura de {valor} no portal e receber por e-mail. Depois de emitida, a fatura não muda mais (só cancelando).'
+      emitida: Fatura emitida.
+      reenviar-email: Reenviar e-mail
+      email-reenviado: E-mail reenviado.
+      email-nao-enviado: A loja não tem e-mail cadastrado; nada foi enviado.
+      imprimir: Imprimir
+      cancelar-fatura: Cancelar fatura
+      cancelar-fatura-titulo: 'Cancelar a fatura {numero}?'
+      cancelar-fatura-texto: 'Os lançamentos voltam para a próxima fatura. O número não é reaproveitado e a loja deixa de ver esta fatura como em aberto.'
+      cancelar-fatura-recebido: 'O que já foi recebido continua no saldo da loja e quita a próxima fatura.'
+      fatura-cancelada: Fatura cancelada.
+      total: Total
+      rascunho-ajuda: 'Rascunho: a loja ainda não vê esta fatura. Confira os itens, marque o que não deve ser cobrado, inclua ajustes e emita.'
+      itens: Itens
+      data: Data
+      pedido: Pedido
+      km: Km
+      destino: Destino
+      motivo: Motivo
+      sem-itens: Nenhum item nesta fatura.
+      vencimento-salvo: Vencimento salvo.
+      nao-cobrar: Não cobrar
+      nao-cobrar-titulo: Não cobrar esta entrega?
+      nao-cobrar-texto: 'Entra na fatura um ajuste de desconto do valor inteiro do pedido {pedido} ({valor}).'
+      nao-cobrado: Entrega marcada para não cobrar.
+      nao-cobrado-selo: Não cobrada
+      ajuste-titulo: 'Ajuste na fatura de {loja}'
+      ajuste-ajuda: 'Desconto, taxa ou mensalidade. Valor positivo cobra a mais; negativo (com "-") é desconto.'
+      ajuste-desconto: 'Desconto de {valor}'
+      ajuste-acrescimo: 'Acréscimo de {valor}'
+      adicionar-ajuste: Adicionar ajuste
+      ajuste-adicionado: Ajuste adicionado.
+      motivo-visivel: Motivo (a loja vê)
+      observacao-interna: Observação interna (só a central vê)
+      extrato: Extrato da loja
+      extrato-de: 'Extrato de {nome}'
+      saldo-a-receber: a receber da loja
+      saldo-credito: crédito da loja (recebido a mais)
+      ultimo-recebimento: 'Último recebimento: {valor} em {data}'
+      lancar-ajuste: Lançar ajuste / saldo inicial
+      aplicar: Aplicar
+      este-mes: Este mês
+      mes-passado: Mês passado
+      ultimos-90-dias: Últimos 90 dias
+      saldo-anterior: 'Saldo antes de {data}'
+      creditos-no-periodo: Créditos no período
+      debitos-no-periodo: Débitos no período
+      descricao: Descrição
+      tipo: Tipo
+      lancado-por: 'lançado por {nome}'
+      estornado-selo: estornado
+      comprovante: comprovante
+      estornar: Estornar
+      estornar-titulo: Estornar este lançamento?
+      estornar-texto: 'Entra um lançamento oposto ({tipo}, {valor}). Os dois ficam no extrato.'
+      estornar-recebimento-texto: 'O recebimento de {valor} é desfeito e o saldo da loja volta. Os dois lançamentos ficam no extrato.'
+      estornado: Estornado.
+      sem-lancamentos: Nenhum lançamento no período.
+      situacoes-lancamento:
+        pago: Pago
+        parcial: Pago em parte
+        aberto: A receber
+        anulado: Anulado
+      formas:
+        pix: Pix
+        dinheiro: Dinheiro
+        transferencia: Transferência
+        outro: Outro
+      tipos:
+        corrida: Corrida
+        diaria: Diária
+        bonus: Bônus
+        ajuste: Ajuste
+        saldo_inicial: Saldo inicial
+        pagamento: Pagamento
+        recebimento: Recebimento
+        estorno: Estorno
+      filtro:
+        todas: Todas
+        rascunho: Rascunhos
+        aberta: Em aberto
+        vencida: Vencidas
+        paga: Pagas
+        cancelada: Canceladas
+      situacoes:
+        rascunho: Rascunho
+        cancelada: Cancelada
+        vencida: Vencida
+        paga: Paga
+        parcial: Paga em parte
+        aberta: Em aberto
+      ciclos:
+        semanal: Semanal
+        quinzenal: Quinzenal
+        mensal: Mensal
+      ciclo-texto:
+        semanal: 'Semanal, fecha {dia} · vence {prazo, plural, =0 {no mesmo dia} one {em # dia} other {em # dias}}'
+        quinzenal: 'Quinzenal (1–15 e 16–fim) · vence {prazo, plural, =0 {no mesmo dia} one {em # dia} other {em # dias}}'
+        mensal: 'Mensal, fecha no dia {dia} · vence {prazo, plural, =0 {no mesmo dia} one {em # dia} other {em # dias}}'
+        mensal-ultimo-dia: 'Mensal, fecha no último dia · vence {prazo, plural, =0 {no mesmo dia} one {em # dia} other {em # dias}}'
+        desconhecido: Ciclo não configurado
+      dias-semana:
+        '0': domingo
+        '1': segunda-feira
+        '2': terça-feira
+        '3': quarta-feira
+        '4': quinta-feira
+        '5': sexta-feira
+        '6': sábado
+      erros:
+        ciclo-invalido: Escolha semanal, quinzenal ou mensal.
+        dia-invalido: Escolha o dia de fechamento.
+        prazo-invalido: O prazo é um número de 0 a 60 dias.
+        loja-obrigatoria: Escolha a loja.
+        periodo-obrigatorio: Informe o início e o fim do período.
+        periodo-invertido: O início precisa ser antes do fim.
+        valor-invalido: 'Informe um valor diferente de zero (use "-" para desconto).'
+        motivo-obrigatorio: Informe o motivo (a loja vê).
     pedido-sem-motoboy:
       aviso: 'Pedido {numero} está há {minutos} min sem motoboy. Clique para abrir e atribuir.'
     ifood:

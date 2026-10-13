@@ -259,6 +259,186 @@ fleet-ops:
                 chave-copiar: Click the key to copy it.
                 chave-onde: 'In RestaurantePro: Delivery settings → "Delivered by" → Entregas RestaurantePro → paste the key and connect.'
                 ja-copiei: I copied it
+        financeiro-lojas:
+            admin-only: Finance is for administrators only.
+            title: Stores and invoices
+            aba-faturas: Invoices
+            aba-lojas: Stores
+            aba-ciclo: Current cycle
+            gerar-fatura: Create invoice
+            gerar-rascunho: Create draft
+            gerar-fatura-ajuda: 'Creates the draft with the store entries not yet invoiced up to the end date. Then review, adjust and issue it.'
+            gerar-agora: Create invoice now
+            escolha-a-loja: Choose the store
+            rascunho-gerado: Draft created. Review and issue it.
+            sem-lancamentos-no-periodo: No entries to invoice in this period.
+            inicio: Start
+            fim: End
+            situacao: Status
+            loja: Store
+            todas-as-lojas: All stores
+            em-aberto-no-filtro: 'Outstanding in the listed invoices: {valor}'
+            numero: 'No.'
+            periodo: Period
+            periodo-de-a: '{inicio} to {fim}'
+            periodo-atual: Current period
+            vencimento: Due date
+            valor: Amount
+            recebido: Received
+            em-aberto: Outstanding
+            vencido: Overdue
+            nao-faturado: Not invoiced
+            saldo: Balance
+            ciclo: Cycle
+            padrao: default
+            rascunho: Draft
+            conferir-e-emitir: Review and issue
+            registrar-recebimento: Record payment received
+            sem-faturas: No invoices match this filter.
+            sem-lojas: No stores registered.
+            sem-email: No e-mail to receive the invoice
+            editar-ciclo: Edit cycle
+            ciclo-de: 'Billing cycle of {nome}'
+            dia-de-fechamento: Closes on
+            prazo-dias: Term (days)
+            quinzenal-ajuda: 'Closes on the 15th and on the last day of the month.'
+            ciclo-ajuda: 'The invoice draft is created the day after closing and is due after the term. Applies from the next closing.'
+            ciclo-andamento-ajuda: 'The current period of each store and what it already owes that is not invoiced yet (includes older entries without an invoice).'
+            ciclo-salvo: Cycle saved.
+            salvar: Save
+            cancelar: Cancel
+            ultimo-dia: Last day of the month
+            dia-do-mes: 'Day {dia}'
+            fatura: Invoice
+            fatura-titulo: 'Invoice {numero}'
+            fatura-nao-encontrada: Invoice not found.
+            voltar: Stores and invoices
+            exportar-csv: Export CSV
+            entregas-n: '{n, plural, =0 {no deliveries} one {# delivery} other {# deliveries}}'
+            emitida-em: 'Issued on {quando}'
+            email-enviado-em: 'e-mail sent on {quando}'
+            email-nao-enviado-ainda: e-mail not sent
+            mais-ajuste: + Adjustment
+            emitir: Issue
+            emitir-titulo: Issue the invoice?
+            emitir-texto: 'The store {loja} will see the {valor} invoice in the portal and receive it by e-mail. Once issued, the invoice no longer changes (only by cancelling).'
+            emitida: Invoice issued.
+            reenviar-email: Resend e-mail
+            email-reenviado: E-mail resent.
+            email-nao-enviado: The store has no e-mail registered; nothing was sent.
+            imprimir: Print
+            cancelar-fatura: Cancel invoice
+            cancelar-fatura-titulo: 'Cancel invoice {numero}?'
+            cancelar-fatura-texto: 'The entries go back to the next invoice. The number is not reused and the store no longer sees this invoice as outstanding.'
+            cancelar-fatura-recebido: 'What was already received stays in the store balance and pays the next invoice.'
+            fatura-cancelada: Invoice cancelled.
+            total: Total
+            rascunho-ajuda: 'Draft: the store does not see this invoice yet. Review the items, mark what should not be charged, add adjustments and issue it.'
+            itens: Items
+            data: Date
+            pedido: Order
+            km: Km
+            destino: Destination
+            motivo: Reason
+            sem-itens: No items in this invoice.
+            vencimento-salvo: Due date saved.
+            nao-cobrar: Do not charge
+            nao-cobrar-titulo: Do not charge this delivery?
+            nao-cobrar-texto: 'A discount adjustment for the full amount of order {pedido} ({valor}) is added to the invoice.'
+            nao-cobrado: Delivery marked as not charged.
+            nao-cobrado-selo: Not charged
+            ajuste-titulo: 'Adjustment on the invoice of {loja}'
+            ajuste-ajuda: 'Discount, fee or monthly fee. A positive amount charges more; a negative one (with "-") is a discount.'
+            ajuste-desconto: 'Discount of {valor}'
+            ajuste-acrescimo: 'Extra charge of {valor}'
+            adicionar-ajuste: Add adjustment
+            ajuste-adicionado: Adjustment added.
+            motivo-visivel: Reason (the store sees it)
+            observacao-interna: Internal note (only the office sees it)
+            extrato: Store statement
+            extrato-de: 'Statement of {nome}'
+            saldo-a-receber: receivable from the store
+            saldo-credito: store credit (overpaid)
+            ultimo-recebimento: 'Last payment received: {valor} on {data}'
+            lancar-ajuste: Post adjustment / opening balance
+            aplicar: Apply
+            este-mes: This month
+            mes-passado: Last month
+            ultimos-90-dias: Last 90 days
+            saldo-anterior: 'Balance before {data}'
+            creditos-no-periodo: Credits in the period
+            debitos-no-periodo: Debits in the period
+            descricao: Description
+            tipo: Type
+            lancado-por: 'posted by {nome}'
+            estornado-selo: reversed
+            comprovante: receipt
+            estornar: Reverse
+            estornar-titulo: Reverse this entry?
+            estornar-texto: 'An opposite entry is posted ({tipo}, {valor}). Both stay in the statement.'
+            estornar-recebimento-texto: 'The {valor} payment received is undone and the store balance goes back. Both entries stay in the statement.'
+            estornado: Reversed.
+            sem-lancamentos: No entries in the period.
+            situacoes-lancamento:
+                pago: Paid
+                parcial: Partially paid
+                aberto: Receivable
+                anulado: Voided
+            formas:
+                pix: Pix
+                dinheiro: Cash
+                transferencia: Bank transfer
+                outro: Other
+            tipos:
+                corrida: Delivery
+                diaria: Daily allowance
+                bonus: Bonus
+                ajuste: Adjustment
+                saldo_inicial: Opening balance
+                pagamento: Payment
+                recebimento: Payment received
+                estorno: Reversal
+            filtro:
+                todas: All
+                rascunho: Drafts
+                aberta: Outstanding
+                vencida: Overdue
+                paga: Paid
+                cancelada: Cancelled
+            situacoes:
+                rascunho: Draft
+                cancelada: Cancelled
+                vencida: Overdue
+                paga: Paid
+                parcial: Partially paid
+                aberta: Outstanding
+            ciclos:
+                semanal: Weekly
+                quinzenal: Fortnightly
+                mensal: Monthly
+            ciclo-texto:
+                semanal: 'Weekly, closes on {dia} · due {prazo, plural, =0 {the same day} one {in # day} other {in # days}}'
+                quinzenal: 'Fortnightly (1–15 and 16–end) · due {prazo, plural, =0 {the same day} one {in # day} other {in # days}}'
+                mensal: 'Monthly, closes on day {dia} · due {prazo, plural, =0 {the same day} one {in # day} other {in # days}}'
+                mensal-ultimo-dia: 'Monthly, closes on the last day · due {prazo, plural, =0 {the same day} one {in # day} other {in # days}}'
+                desconhecido: Cycle not set
+            dias-semana:
+                '0': Sunday
+                '1': Monday
+                '2': Tuesday
+                '3': Wednesday
+                '4': Thursday
+                '5': Friday
+                '6': Saturday
+            erros:
+                ciclo-invalido: Choose weekly, fortnightly or monthly.
+                dia-invalido: Choose the closing day.
+                prazo-invalido: The term is a number from 0 to 60 days.
+                loja-obrigatoria: Choose the store.
+                periodo-obrigatorio: Enter the start and end of the period.
+                periodo-invertido: The start must be before the end.
+                valor-invalido: 'Enter an amount other than zero (use "-" for a discount).'
+                motivo-obrigatorio: Enter the reason (the store sees it).
         pedido-sem-motoboy:
             aviso: 'Order {numero} has had no driver for {minutos} min. Click to open and assign.'
         ifood:
