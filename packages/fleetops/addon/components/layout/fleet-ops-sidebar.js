@@ -69,6 +69,17 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
                 keywords: ['drivers', 'vehicles', 'fleets', 'contacts', 'places'],
                 children: this.resourcesItems,
             }),
+            // Entregas RestaurantePro: Financeiro, só admin (sem filho visível, o grupo some)
+            this.createBranch({
+                id: 'financeiro',
+                label: this.intl.t('fleet-ops.ui.financeiro.menu.titulo'),
+                icon: 'sack-dollar',
+                route: 'financeiro',
+                defaultRoute: 'financeiro.painel',
+                requiresVisibleChildren: true,
+                keywords: ['financeiro', 'pagamento', 'motoboy', 'fatura', 'cobrança', 'extrato', 'diária'],
+                children: this.financeiroItems,
+            }),
             this.createBranch({
                 id: 'maintenance',
                 label: this.intl.t('menu.maintenance'),
@@ -146,10 +157,6 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
             ]),
             this.createItem('menu.drivers', 'id-card', 'management.drivers', 'fleet-ops list driver', 'fleet-ops see driver', ['driver', 'online drivers']),
             {
-                ...this.createItem('fleet-ops.ui.driver-payouts.title', 'money-bill-wave', 'management.driver-payouts', 'fleet-ops list driver', 'fleet-ops see driver', ['pagamento', 'motoboy', 'km', 'payout']),
-                visible: this.currentUser.isAdmin === true,
-            },
-            {
                 ...this.createItem('fleet-ops.ui.lojas.title', 'store', 'management.lojas', 'fleet-ops list driver', 'fleet-ops see driver', ['loja', 'restaurante', 'portal']),
                 description: this.intl.t('fleet-ops.ui.lojas.menu-description'),
                 visible: this.currentUser.isAdmin === true,
@@ -163,6 +170,23 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
             this.createItem('menu.fuel-reports', 'gas-pump', 'management.fuel-reports', 'fleet-ops list fuel-report', 'fleet-ops see fuel-report'),
             this.createItem('menu.fuel-transactions', 'credit-card', 'management.fuel-transactions', 'fleet-ops list fuel-report', 'fleet-ops see fuel-report'),
             this.createItem('menu.issues', 'triangle-exclamation', 'management.issues', 'fleet-ops list issue', 'fleet-ops see issue'),
+        ]);
+    }
+
+    /** Entregas RestaurantePro: telas do Financeiro (a API só atende administradores). */
+    get financeiroItems() {
+        const admin = this.currentUser.isAdmin === true;
+        const item = (intl, icon, route, keywords) => ({
+            ...this.createItem(intl, icon, route, 'fleet-ops list driver', 'fleet-ops see driver', keywords),
+            visible: admin,
+        });
+
+        return this.sortByPriority([
+            item('fleet-ops.ui.financeiro.menu.painel', 'chart-pie', 'financeiro.painel', ['a pagar', 'a receber', 'margem']),
+            item('fleet-ops.ui.financeiro.menu.motoboys', 'motorcycle', 'financeiro.motoboys', ['extrato', 'pagamento', 'diária', 'pix']),
+            item('fleet-ops.ui.financeiro.menu.lojas', 'file-invoice-dollar', 'financeiro.lojas', ['fatura', 'loja', 'cobrança', 'recebimento']),
+            item('fleet-ops.ui.financeiro.menu.relatorio', 'table', 'financeiro.relatorio', ['faixas', 'km', 'relatório', 'payout']),
+            item('fleet-ops.ui.financeiro.menu.configuracoes', 'gear', 'financeiro.configuracoes', ['data de corte', 'ciclo']),
         ]);
     }
 
@@ -359,8 +383,12 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
             'operations.service-rates': 4,
             'management.index': 0,
             'management.drivers': 1,
-            'management.driver-payouts': 1,
             'management.lojas': 1,
+            'financeiro.painel': 0,
+            'financeiro.motoboys': 1,
+            'financeiro.lojas': 2,
+            'financeiro.relatorio': 3,
+            'financeiro.configuracoes': 4,
             'management.vehicles': 2,
             'management.trailers': 3,
             'management.fleets': 4,

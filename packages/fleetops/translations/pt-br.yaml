@@ -392,6 +392,235 @@ fleet-ops:
         dispensada: dispensou pela lista
         aceita_pela_lista: aceitou pela lista
         desconhecida: desconhecida
+    financeiro:
+      admin-only: Somente administradores podem ver o financeiro.
+      menu:
+        titulo: Financeiro
+        descricao: 'Extrato e pagamento dos motoboys, faturas das lojas e margem'
+        painel: Painel
+        motoboys: Motoboys
+        lojas: Lojas e faturas
+        relatorio: Tabela de km e relatório
+        configuracoes: Configurações
+      relatorio:
+        titulo: Tabela de km e relatório
+      periodo:
+        inicio: Início
+        fim: Fim
+        aplicar: Aplicar
+        ultimos-7-dias: Últimos 7 dias
+        este-mes: Este mês
+        mes-passado: Mês passado
+      painel:
+        titulo: Painel financeiro
+        a-pagar: A pagar aos motoboys
+        a-pagar-ajuda: Soma dos saldos positivos, agora
+        adiantado: Adiantado aos motoboys
+        adiantado-ajuda: Pago além do saldo, agora
+        a-receber: A receber das lojas
+        vencido: '{valor} vencido'
+        nada-vencido: Nada vencido
+        nao-faturado: Ainda sem fatura
+        nao-faturado-ajuda: Entregas e ajustes das lojas que entram na próxima fatura
+        margem-titulo: Margem do período
+        cobrado: Cobrado das lojas
+        pago-motoboys: Custo dos motoboys
+        margem: Margem
+        margem-ajuda: 'Cobrado: corridas e ajustes das lojas no período. Custo dos motoboys: corridas, diárias, bônus e ajustes no período, pagos ou não.'
+        atencao-titulo: Atenção
+        nada-pede-atencao: Nada pede atenção agora.
+        atencao:
+          fatura_vencida: 'Fatura {numero} de {loja} vencida em {vencimento}: {valor}'
+          rascunho: 'Rascunho de fatura de {loja} para conferir: {valor}'
+          email_nao_enviado: 'Fatura {numero} de {loja} não foi enviada por e-mail'
+          sem_loja: 'Pedido {numero} sem loja para cobrar'
+          sem_valor: 'Pedido {numero} concluído sem valor (sem km ou sem faixas)'
+      tipos:
+        corrida: Corrida
+        diaria: Diária
+        bonus: Bônus
+        ajuste: Ajuste
+        saldo_inicial: Saldo inicial
+        pagamento: Pagamento
+        recebimento: Recebimento
+        estorno: Estorno
+        desconhecido: Outro
+      situacao:
+        pago: Pago
+        parcial: Pago em parte
+        aberto: A receber
+        anulado: Anulado
+      erros:
+        tipo-invalido: Escolha o tipo do lançamento.
+        valor-invalido: 'Informe o valor (ex.: 30,00).'
+        valor-zero: O valor não pode ser zero.
+        valor-negativo: Diária e bônus não podem ser negativos. Para descontar, use um ajuste.
+        pedido-so-em-ajuste: O pedido só vale em ajuste.
+        sem-conta: Escolha pelo menos uma conta.
+        contas-demais: No máximo 100 contas por vez.
+        pagamento-valor: 'Informe o valor pago (maior que zero).'
+        pagamento-data: Informe a data do pagamento.
+        comprovante-tipo: O comprovante precisa ser imagem ou PDF.
+        comprovante-grande: O comprovante pode ter no máximo 10 MB.
+        pix-tipo: Escolha o tipo da chave Pix.
+        pix-chave-vazia: Informe a chave Pix.
+        pix-chave-invalida: A chave não confere com o tipo escolhido.
+        ciclo-invalido: Escolha o ciclo (semanal, quinzenal ou mensal).
+        dia-invalido: Escolha o dia de fechamento.
+        prazo-invalido: O vencimento precisa ser um número inteiro de 0 a 60 dias.
+      motoboys:
+        titulo: Motoboys
+        lancar-selecionados: '{count, plural, =0 {Lançar para os selecionados} one {Lançar para 1 selecionado} other {Lançar para # selecionados}}'
+        periodo: Período das corridas
+        periodo-ajuda: O saldo é de agora; as corridas e o valor delas são do período.
+        corridas: Corridas no período
+        valor-corridas: Valor das corridas
+        ajuda: Clique num motoboy para ver o extrato. Marque vários para lançar a mesma diária (ou bônus) para todos.
+        marcar-todos: Marcar todos
+        marcar: 'Marcar {nome}'
+        motoboy: Motoboy
+        saldo: Saldo
+        ultimo-pagamento: Último pagamento
+        sem-pix: Sem chave Pix cadastrada
+        a-pagar: a pagar
+        adiantado: adiantado
+        pagamento-em: '{valor} em {data}'
+        vazio: Nenhum motoboy cadastrado.
+        pagar: Pagar
+      lancar:
+        titulo-motoboy: Lançar diária, bônus, ajuste ou saldo inicial
+        titulo-loja: Lançar ajuste ou saldo inicial
+        confirmar: Lançar
+        para-um: 'Para {nome}'
+        para-varios-motoboy: '{count, plural, one {Para # motoboy} other {Para # motoboys}}'
+        para-varios-loja: '{count, plural, one {Para # loja} other {Para # lojas}}'
+        tipo: Tipo
+        valor: Valor (R$)
+        data: Data
+        pedido: Pedido (opcional)
+        pedido-ajuda: 'Id do pedido (order_…) que este ajuste corrige. Um ajuste negativo com o pedido abate a corrida dele.'
+        negativo-ajuda: 'Use "-" para descontar (ex.: -2,50). No saldo inicial, negativo = o motoboy devia.'
+        motivo: Motivo
+        motivo-ajuda-motoboy: Aparece para o motoboy no app.
+        motivo-ajuda-loja: Aparece para a loja no portal.
+        observacao: Observação interna
+        observacao-ajuda: Só a central vê.
+        lancado: '{count, plural, one {Lançamento feito.} other {# lançamentos feitos.}}'
+      formas:
+        pix: Pix
+        dinheiro: Dinheiro
+        transferencia: Transferência
+        outro: Outro
+      pagar:
+        titulo-motoboy: Registrar pagamento
+        titulo-loja: Registrar recebimento
+        confirmar-motoboy: Registrar pagamento
+        confirmar-loja: Registrar recebimento
+        saldo-atual: 'saldo atual {valor}'
+        valor: Valor (R$)
+        forma: Forma
+        data: Data
+        acima-do-saldo-motoboy: 'Vai ficar como adiantamento de {valor}.'
+        acima-do-saldo-loja: 'Valor acima do saldo da loja ({valor} a mais).'
+        comprovante: Comprovante (opcional)
+        comprovante-ajuda: Imagem ou PDF, até 10 MB.
+        tirar-comprovante: Tirar o comprovante
+        aviso-app: O motoboy recebe um aviso no app com o valor e a forma.
+        registrado-motoboy: Pagamento registrado.
+        registrado-loja: Recebimento registrado.
+      estornar:
+        titulo: Estornar lançamento?
+        titulo-pagamento: Estornar pagamento?
+        titulo-recebimento: Estornar recebimento?
+        confirmar: Estornar
+        linha: '{tipo} de {valor} em {data}'
+        texto: 'O estorno cria um lançamento com o valor oposto. Os dois ficam no extrato; nada é apagado.'
+        texto-pagamento: 'O pagamento fica marcado como estornado e o valor volta para o saldo do motoboy.'
+        texto-recebimento: 'O recebimento fica marcado como estornado e o valor volta para o saldo da loja.'
+        motivo-ajuda: Opcional. Aparece junto do estorno no extrato do motoboy ou da loja.
+        feito: Estorno feito.
+      pix:
+        titulo: Chave Pix
+        tipo: Tipo da chave
+        chave: Chave
+        salvar: Salvar
+        cancelar: Cancelar
+        editar: Editar Pix
+        cadastrar: Cadastrar Pix
+        salvo: Chave Pix salva.
+        tipos:
+          cpf: CPF
+          cnpj: CNPJ
+          telefone: Telefone
+          email: E-mail
+          aleatoria: Chave aleatória
+      extrato:
+        titulo: Extrato
+        voltar: Motoboys
+        csv: Exportar CSV
+        lancar: Lançar
+        registrar-pagamento: Registrar pagamento
+        saldo: Saldo agora
+        saldo-a-pagar: a pagar ao motoboy
+        saldo-adiantado: adiantado (o motoboy recebeu a mais)
+        saldo-zerado: nada a pagar
+        ultimo-pagamento: Último pagamento
+        sem-pagamento: Nenhum pagamento registrado.
+        filtros: Período e tipo
+        tipo: Tipo
+        todos-os-tipos: Todos
+        saldo-anterior: 'Saldo antes do período: {valor}'
+        creditos: 'Créditos no período: {valor}'
+        debitos: 'Débitos no período: {valor}'
+        descricao: Lançamento
+        lancado-por: Lançado por
+        valor: Valor
+        situacao: Situação
+        cancelado-pago: Cancelado (pago)
+        comprovante: comprovante
+        estornado: Estornado
+        sistema: Sistema
+        pago-parte: '{valor} pago'
+        estornar: Estornar
+        vazio: Nenhum lançamento no período.
+        km: '{km} km'
+      csv:
+        data: Data
+        tipo: Tipo
+        pedido: Pedido
+        motivo: Motivo
+        valor: Valor
+        situacao: Situação
+      ciclos:
+        semanal: Semanal
+        quinzenal: Quinzenal
+        mensal: Mensal
+      dias-da-semana:
+        '0': domingo
+        '1': segunda-feira
+        '2': terça-feira
+        '3': quarta-feira
+        '4': quinta-feira
+        '5': sexta-feira
+        '6': sábado
+      configuracoes:
+        titulo: Configurações do financeiro
+        salvar: Salvar
+        salvo: Configurações salvas.
+        desligada: 'O lançamento automático está desligado no servidor (ENTREGAS_FINANCEIRO). As telas funcionam, mas nenhuma corrida é lançada sozinha.'
+        corte-titulo: Data de corte
+        corte: Lançar corridas a partir de
+        tirar-corte: Tirar a data
+        corte-ajuda: 'Corridas antes desta data não entram no financeiro. O que ficou pendente de antes entra como lançamento "Saldo inicial".'
+        sem-corte: Sem data de corte, nenhuma corrida é lançada automaticamente.
+        ciclo-titulo: Ciclo padrão de cobrança das lojas
+        ciclo: Ciclo
+        dia-fechamento: Fecha em
+        dia-do-mes: 'dia {dia}'
+        ultimo-dia: último dia do mês
+        quinzenal-ajuda: Fecha no dia 15 e no último dia do mês.
+        prazo: Vencimento (dias após o fechamento)
+        ciclo-ajuda: Vale para as lojas sem ciclo próprio. A fatura nasce como rascunho no dia seguinte ao fechamento.
     order-form:
       store-or-customer: Loja ou cliente
       store-or-customer-placeholder: Selecionar loja ou cliente

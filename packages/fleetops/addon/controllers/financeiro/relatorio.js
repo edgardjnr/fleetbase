@@ -11,7 +11,11 @@ const isoDate = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${p
 const numero = (valor) => Number(String(valor ?? '').trim().replace(',', '.'));
 const faixaParaEdicao = (faixa) => ({ ate_km: String(faixa.ate_km), motoboy: String(faixa.motoboy), loja: String(faixa.loja) });
 
-export default class ManagementDriverPayoutsController extends Controller {
+/**
+ * Entregas RestaurantePro: Financeiro → Tabela de km e relatório (a antiga tela "Pagamento e cobrança", movida de
+ * management/driver-payouts sem mudança de comportamento). Faixas de km e o relatório por período.
+ */
+export default class FinanceiroRelatorioController extends Controller {
     @service fetch;
     @service intl;
     @service notifications;

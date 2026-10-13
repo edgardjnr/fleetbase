@@ -1,0 +1,211 @@
+<Layout::Section::Header @title={{or this.nome (t "fleet-ops.ui.financeiro.extrato.titulo")}}>
+    <div class="flex items-center space-x-2">
+        <Button @icon="arrow-left" @size="sm" @text={{t "fleet-ops.ui.financeiro.extrato.voltar"}} @onClick={{this.voltar}} />
+        <Button @icon="refresh" @size="sm" @helpText={{t "common.reload"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
+        <Button @icon="file-export" @size="sm" @text={{t "fleet-ops.ui.financeiro.extrato.csv"}} @disabled={{not this.extrato}} @onClick={{this.exportarCsv}} />
+        <Button @icon="plus" @size="sm" @text={{t "fleet-ops.ui.financeiro.extrato.lancar"}} @disabled={{not this.extrato}} @onClick={{this.lancar}} />
+        <Button @type="primary" @icon="money-bill-wave" @size="sm" @text={{t "fleet-ops.ui.financeiro.extrato.registrar-pagamento"}} @disabled={{not this.extrato}} @onClick={{this.registrarPagamento}} />
+    </div>
+</Layout::Section::Header>
+
+<Layout::Section::Body class="overflow-y-scroll-i h-full">
+    <div class="max-w-6xl mx-auto px-4 py-6 space-y-5">
+        {{#if this.extrato}}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.extrato.saldo"}}</div>
+                    {{#if (gt this.saldo 0)}}
+                        <div class="text-2xl font-semibold text-green-700 dark:text-green-400">{{this.valor this.saldo}}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.extrato.saldo-a-pagar"}}</div>
+                    {{else if (lt this.saldo 0)}}
+                        <div class="text-2xl font-semibold text-red-600 dark:text-red-400">{{this.valor this.saldo}}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.extrato.saldo-adiantado"}}</div>
+                    {{else}}
+                        <div class="text-2xl font-semibold dark:text-white">{{this.valor 0}}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.extrato.saldo-zerado"}}</div>
+                    {{/if}}
+                </div>
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.extrato.ultimo-pagamento"}}</div>
+                    {{#if this.extrato.ultimo_pagamento}}
+                        <div class="text-2xl font-semibold dark:text-white">{{this.valor this.extrato.ultimo_pagamento.valor}}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                            {{this.dia this.extrato.ultimo_pagamento.data}}
+                            ·
+                            {{t (concat "fleet-ops.ui.financeiro.formas." this.extrato.ultimo_pagamento.forma)}}
+                        </div>
+                    {{else}}
+                        <div class="text-sm text-gray-500 dark:text-gray-400 mt-2">{{t "fleet-ops.ui.financeiro.extrato.sem-pagamento"}}</div>
+                    {{/if}}
+                </div>
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.pix.titulo"}}</div>
+                    {{#if this.editandoPix}}
+                        <div class="mt-2 space-y-2">
+                            <select class="form-select form-select-sm w-full" aria-label={{t "fleet-ops.ui.financeiro.pix.tipo"}} {{on "change" (fn this.setPix "pixTipo")}}>
+                                {{#each this.tiposDePix as |opcao|}}
+                                    <option value={{opcao.valor}} selected={{eq opcao.valor this.pixTipo}}>{{t opcao.chave}}</option>
+                                {{/each}}
+                            </select>
+                            <input
+                                type="text"
+                                autocomplete="off"
+                                maxlength="140"
+                                aria-label={{t "fleet-ops.ui.financeiro.pix.chave"}}
+                                placeholder={{t "fleet-ops.ui.financeiro.pix.chave"}}
+                                class="form-input form-input-sm w-full font-mono"
+                                value={{this.pixChave}}
+                                {{on "input" (fn this.setPix "pixChave")}}
+                            />
+                            {{#if (and this.pixChave this.erroDoPix)}}
+                                <p class="text-xs text-yellow-700 dark:text-yellow-300">{{this.erroDoPix}}</p>
+                            {{/if}}
+                            <div class="flex items-center gap-2">
+                                <Button @type="primary" @size="xs" @icon="save" @text={{t "fleet-ops.ui.financeiro.pix.salvar"}} @isLoading={{this.salvarPix.isRunning}} @onClick={{perform this.salvarPix}} />
+                                <Button @size="xs" @text={{t "fleet-ops.ui.financeiro.pix.cancelar"}} @onClick={{this.fecharPix}} />
+                            </div>
+                        </div>
+                    {{else if this.pix.chave}}
+                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{t (concat "fleet-ops.ui.financeiro.pix.tipos." this.pix.tipo)}}</div>
+                        <ClickToCopy @value={{this.pix.chave}} class="inline-block font-mono text-sm text-gray-800 dark:text-gray-100 break-all">
+                            <FaIcon @icon="copy" class="mr-1 text-gray-400" />{{this.pix.chave}}
+                        </ClickToCopy>
+                        <div class="mt-2">
+                            <Button @size="xs" @icon="pen-to-square" @text={{t "fleet-ops.ui.financeiro.pix.editar"}} @onClick={{this.abrirPix}} />
+                        </div>
+                    {{else}}
+                        <div class="mt-1 text-sm text-yellow-700 dark:text-yellow-300">{{t "fleet-ops.ui.financeiro.motoboys.sem-pix"}}</div>
+                        <div class="mt-2">
+                            <Button @size="xs" @icon="plus" @text={{t "fleet-ops.ui.financeiro.pix.cadastrar"}} @onClick={{this.abrirPix}} />
+                        </div>
+                    {{/if}}
+                </div>
+            </div>
+        {{/if}}
+
+        <ContentPanel @title={{t "fleet-ops.ui.financeiro.extrato.filtros"}} @open={{true}} @wrapperClass="bordered-classic">
+            <div class="flex flex-wrap items-end gap-4">
+                <InputGroup @name={{t "fleet-ops.ui.financeiro.periodo.inicio"}} @wrapperClass="mb-0">
+                    <input type="date" class="form-input form-input-sm" value={{this.inicio}} max={{this.fim}} {{on "change" (fn this.setData "inicio")}} />
+                </InputGroup>
+                <InputGroup @name={{t "fleet-ops.ui.financeiro.periodo.fim"}} @wrapperClass="mb-0">
+                    <input type="date" class="form-input form-input-sm" value={{this.fim}} min={{this.inicio}} {{on "change" (fn this.setData "fim")}} />
+                </InputGroup>
+                <InputGroup @name={{t "fleet-ops.ui.financeiro.extrato.tipo"}} @wrapperClass="mb-0" as |id|>
+                    <select id={{id}} class="form-select form-select-sm" {{on "change" this.setTipo}}>
+                        <option value="" selected={{eq this.tipo ""}}>{{t "fleet-ops.ui.financeiro.extrato.todos-os-tipos"}}</option>
+                        {{#each this.tiposDoFiltro as |opcao|}}
+                            <option value={{opcao.valor}} selected={{eq opcao.valor this.tipo}}>{{t opcao.chave}}</option>
+                        {{/each}}
+                    </select>
+                </InputGroup>
+                <Button @type="primary" @size="sm" @icon="magnifying-glass" @text={{t "fleet-ops.ui.financeiro.periodo.aplicar"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
+                <div class="flex items-center gap-2">
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro.periodo.ultimos-7-dias"}} @onClick={{fn this.setPeriodo "last-7-days"}} />
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro.periodo.este-mes"}} @onClick={{fn this.setPeriodo "this-month"}} />
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro.periodo.mes-passado"}} @onClick={{fn this.setPeriodo "last-month"}} />
+                </div>
+            </div>
+        </ContentPanel>
+
+        {{#if this.extrato}}
+            <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600 dark:text-gray-300">
+                <span>{{t "fleet-ops.ui.financeiro.extrato.saldo-anterior" valor=(this.valor this.extrato.saldo_anterior)}}</span>
+                <span class="text-green-700 dark:text-green-400">{{t "fleet-ops.ui.financeiro.extrato.creditos" valor=(this.valor this.extrato.totais.creditos)}}</span>
+                <span class="text-red-600 dark:text-red-400">{{t "fleet-ops.ui.financeiro.extrato.debitos" valor=(this.valor this.extrato.totais.debitos)}}</span>
+            </div>
+
+            {{#if this.grupos.length}}
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <table class="table w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-500 dark:text-gray-400">
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.extrato.descricao"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.extrato.lancado-por"}}</th>
+                                <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro.extrato.valor"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.extrato.situacao"}}</th>
+                                <th class="py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each this.grupos as |grupo|}}
+                                <tr class="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                                    <td colspan="5" class="py-1 px-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">{{this.dia grupo.data}}</td>
+                                </tr>
+                                {{#each grupo.lancamentos key="id" as |lancamento|}}
+                                    <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100 {{if lancamento.estornado 'opacity-60'}}">
+                                        <td class="py-2">
+                                            <div class="flex flex-wrap items-center gap-x-2">
+                                                <span class="font-medium">{{this.rotuloTipo lancamento.tipo}}</span>
+                                                {{#if lancamento.pedido}}
+                                                    <LinkTo @route="operations.orders.index.details" @model={{lancamento.pedido.id}} class="text-blue-600 dark:text-blue-400 hover:underline">
+                                                        #{{or lancamento.pedido.numero lancamento.pedido.id}}
+                                                    </LinkTo>
+                                                {{/if}}
+                                                {{#if lancamento.detalhes.loja_nome}}
+                                                    <span class="text-gray-500 dark:text-gray-400">· {{lancamento.detalhes.loja_nome}}</span>
+                                                {{/if}}
+                                                {{#if lancamento.detalhes.km}}
+                                                    <span class="text-gray-500 dark:text-gray-400">· {{t "fleet-ops.ui.financeiro.extrato.km" km=(this.km lancamento.detalhes.km)}}</span>
+                                                {{/if}}
+                                                {{#if lancamento.detalhes.cancelado_pago}}
+                                                    <Badge @status="warning" @hideStatusDot={{true}}>{{t "fleet-ops.ui.financeiro.extrato.cancelado-pago"}}</Badge>
+                                                {{/if}}
+                                                {{#if lancamento.pagamento}}
+                                                    <span class="text-gray-500 dark:text-gray-400">· {{t (concat "fleet-ops.ui.financeiro.formas." lancamento.pagamento.forma)}}</span>
+                                                    {{#if lancamento.pagamento.comprovante_url}}
+                                                        <a href={{lancamento.pagamento.comprovante_url}} target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                                            <FaIcon @icon="paperclip" class="mr-1" />{{t "fleet-ops.ui.financeiro.extrato.comprovante"}}
+                                                        </a>
+                                                    {{else if lancamento.pagamento.tem_comprovante}}
+                                                        <span class="text-gray-500 dark:text-gray-400"><FaIcon @icon="paperclip" class="mr-1" />{{t "fleet-ops.ui.financeiro.extrato.comprovante"}}</span>
+                                                    {{/if}}
+                                                {{/if}}
+                                                {{#if lancamento.observacao_interna}}
+                                                    <span class="text-gray-500 dark:text-gray-400 cursor-help" title={{lancamento.observacao_interna}}>
+                                                        <FaIcon @icon="lock" @size="xs" />
+                                                        <span class="sr-only">{{t "fleet-ops.ui.financeiro.lancar.observacao"}}: {{lancamento.observacao_interna}}</span>
+                                                    </span>
+                                                {{/if}}
+                                                {{#if lancamento.estornado}}
+                                                    <span class="text-xs font-medium rounded px-2 py-0.5 bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{t "fleet-ops.ui.financeiro.extrato.estornado"}}</span>
+                                                {{/if}}
+                                            </div>
+                                            {{#if lancamento.motivo}}
+                                                <div class="text-xs text-gray-500 dark:text-gray-400">{{lancamento.motivo}}</div>
+                                            {{/if}}
+                                        </td>
+                                        <td class="py-2 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                            {{if lancamento.criado_por lancamento.criado_por.nome (t "fleet-ops.ui.financeiro.extrato.sistema")}}
+                                        </td>
+                                        <td class="py-2 text-right whitespace-nowrap font-semibold {{if (lt lancamento.valor 0) 'text-red-600 dark:text-red-400' 'text-green-700 dark:text-green-400'}}">
+                                            {{this.valor lancamento.valor}}
+                                        </td>
+                                        <td class="py-2 whitespace-nowrap">
+                                            {{#if lancamento.situacao}}
+                                                <span class="text-xs font-medium rounded px-2 py-0.5 {{this.corSituacao lancamento.situacao}}">{{this.rotuloSituacao lancamento.situacao}}</span>
+                                                {{#if (eq lancamento.situacao "parcial")}}
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.extrato.pago-parte" valor=(this.valor lancamento.valor_pago)}}</div>
+                                                {{/if}}
+                                            {{/if}}
+                                        </td>
+                                        <td class="py-2 text-right whitespace-nowrap">
+                                            {{#if (this.podeEstornar lancamento)}}
+                                                <Button @size="xs" @icon="rotate-left" @text={{t "fleet-ops.ui.financeiro.extrato.estornar"}} @onClick={{fn this.estornar lancamento}} />
+                                            {{/if}}
+                                        </td>
+                                    </tr>
+                                {{/each}}
+                            {{/each}}
+                        </tbody>
+                    </table>
+                </div>
+            {{else}}
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.extrato.vazio"}}</p>
+            {{/if}}
+        {{else if this.carregar.isRunning}}
+            <Spinner />
+        {{/if}}
+    </div>
+    <Spacer @height="300px" />
+</Layout::Section::Body>

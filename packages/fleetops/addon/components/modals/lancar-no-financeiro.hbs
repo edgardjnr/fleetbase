@@ -1,0 +1,46 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="px-4 space-y-4 text-gray-900 dark:text-gray-50">
+        <p class="text-sm font-semibold">{{this.paraQuem}}</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.lancar.tipo"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                <select id={{id}} class="form-select form-select-sm w-full" {{on "change" (fn this.setCampo "tipo")}}>
+                    {{#each this.tipos as |opcao|}}
+                        <option value={{opcao.valor}} selected={{eq opcao.valor this.tipo}}>{{t opcao.chave}}</option>
+                    {{/each}}
+                </select>
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.lancar.valor"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                {{! ajuste e saldo inicial aceitam "-": sem inputmode decimal, cujo teclado do celular não tem o sinal }}
+                {{#if this.aceitaNegativo}}
+                    <input id={{id}} type="text" autocomplete="off" placeholder="-2,50" class="form-input form-input-sm w-full" value={{this.valor}} {{on "input" (fn this.setCampo "valor")}} />
+                {{else}}
+                    <input id={{id}} type="text" inputmode="decimal" autocomplete="off" placeholder="30,00" class="form-input form-input-sm w-full" value={{this.valor}} {{on "input" (fn this.setCampo "valor")}} />
+                {{/if}}
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.lancar.data"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="date" class="form-input form-input-sm w-full" value={{this.data}} {{on "change" (fn this.setCampo "data")}} />
+            </InputGroup>
+            {{#if this.aceitaPedido}}
+                <InputGroup @name={{t "fleet-ops.ui.financeiro.lancar.pedido"}} @helpText={{t "fleet-ops.ui.financeiro.lancar.pedido-ajuda"}} @wrapperClass="mb-0" as |id|>
+                    <input id={{id}} type="text" autocomplete="off" maxlength="60" placeholder="order_…" class="form-input form-input-sm w-full font-mono" value={{this.pedido}} {{on "input" (fn this.setCampo "pedido")}} />
+                </InputGroup>
+            {{/if}}
+        </div>
+
+        {{#if this.aceitaNegativo}}
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.lancar.negativo-ajuda"}}</p>
+        {{/if}}
+
+        <InputGroup @name={{t "fleet-ops.ui.financeiro.lancar.motivo"}} @helpText={{t (concat "fleet-ops.ui.financeiro.lancar.motivo-ajuda-" this.contaTipo)}} @wrapperClass="mb-0" as |id|>
+            <input id={{id}} type="text" autocomplete="off" maxlength="255" class="form-input form-input-sm w-full" value={{this.motivo}} {{on "input" (fn this.setCampo "motivo")}} />
+        </InputGroup>
+        <InputGroup @name={{t "fleet-ops.ui.financeiro.lancar.observacao"}} @helpText={{t "fleet-ops.ui.financeiro.lancar.observacao-ajuda"}} @wrapperClass="mb-0" as |id|>
+            <textarea id={{id}} rows="2" maxlength="500" class="form-input w-full" value={{this.observacao}} {{on "input" (fn this.setCampo "observacao")}}></textarea>
+        </InputGroup>
+
+        {{#each this.dicas as |dica|}}
+            <p class="text-xs text-yellow-700 dark:text-yellow-300">{{dica}}</p>
+        {{/each}}
+    </div>
+</Modal::Default>

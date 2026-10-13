@@ -1,0 +1,54 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="px-4 space-y-4 text-gray-900 dark:text-gray-50">
+        <div class="text-sm">
+            <span class="font-semibold">{{this.nome}}</span>
+            <span class="text-gray-500 dark:text-gray-400">· {{t "fleet-ops.ui.financeiro.pagar.saldo-atual" valor=(this.valorFormatado this.saldo)}}</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.pagar.valor"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="text" inputmode="decimal" autocomplete="off" placeholder="150,00" class="form-input form-input-sm w-full" value={{this.valor}} {{on "input" (fn this.setCampo "valor")}} />
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.pagar.forma"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                <select id={{id}} class="form-select form-select-sm w-full" {{on "change" (fn this.setCampo "forma")}}>
+                    {{#each this.formas as |opcao|}}
+                        <option value={{opcao.valor}} selected={{eq opcao.valor this.forma}}>{{t opcao.chave}}</option>
+                    {{/each}}
+                </select>
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.pagar.data"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="date" class="form-input form-input-sm w-full" value={{this.data}} {{on "change" (fn this.setCampo "data")}} />
+            </InputGroup>
+        </div>
+
+        {{#if this.excedente}}
+            <div class="text-sm rounded-md px-3 py-2 bg-yellow-50 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
+                {{t (concat "fleet-ops.ui.financeiro.pagar.acima-do-saldo-" this.contaTipo) valor=(this.valorFormatado this.excedente)}}
+            </div>
+        {{/if}}
+
+        <InputGroup @name={{t "fleet-ops.ui.financeiro.pagar.comprovante"}} @helpText={{t "fleet-ops.ui.financeiro.pagar.comprovante-ajuda"}} @wrapperClass="mb-0" as |id|>
+            {{#if this.comprovante}}
+                <div class="flex items-center gap-2 text-sm">
+                    <FaIcon @icon="paperclip" class="text-gray-400" />
+                    <span class="truncate">{{this.comprovante.name}}</span>
+                    <Button @size="xs" @icon="xmark" @helpText={{t "fleet-ops.ui.financeiro.pagar.tirar-comprovante"}} @onClick={{this.tirarComprovante}} />
+                </div>
+            {{else}}
+                <input id={{id}} type="file" accept="image/*,application/pdf" class="block w-full text-sm" {{on "change" this.setComprovante}} />
+            {{/if}}
+        </InputGroup>
+
+        <InputGroup @name={{t "fleet-ops.ui.financeiro.lancar.observacao"}} @helpText={{t "fleet-ops.ui.financeiro.lancar.observacao-ajuda"}} @wrapperClass="mb-0" as |id|>
+            <textarea id={{id}} rows="2" maxlength="500" class="form-input w-full" value={{this.observacao}} {{on "input" (fn this.setCampo "observacao")}}></textarea>
+        </InputGroup>
+
+        {{#if (eq this.contaTipo "motoboy")}}
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.pagar.aviso-app"}}</p>
+        {{/if}}
+
+        {{#each this.dicas as |dica|}}
+            <p class="text-xs text-yellow-700 dark:text-yellow-300">{{dica}}</p>
+        {{/each}}
+    </div>
+</Modal::Default>
