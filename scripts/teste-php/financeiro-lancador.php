@@ -446,11 +446,11 @@ foreach ($calculo->chamadas as $chamada) {
     $porEmpresa[$chamada['empresa']][] = $chamada['inicio'];
 }
 confere(array_keys($porEmpresa) === ['empresa-1', 'empresa-2'], 'só as empresas com data de corte válida');
-confere(($porEmpresa['empresa-1'][0] ?? null) === '2026-10-01 00:00:00' && ($porEmpresa['empresa-2'][0] ?? null) === '2026-10-04 00:00:00', 'a conferência começa no corte quando ele é recente (max(corte, hoje − 7 dias))');
-Relogio::$agora    = '2026-10-20 15:00:00';
+confere(($porEmpresa['empresa-1'][0] ?? null) === '2026-10-01 00:00:00' && ($porEmpresa['empresa-2'][0] ?? null) === '2026-10-04 00:00:00', 'a conferência começa no corte quando ele é recente (max(corte, hoje − 30 dias))');
+Relogio::$agora    = '2026-11-20 15:00:00';
 $calculo->chamadas = [];
 $comando->handle(new LancadorDeCorridas($calculo));
-confere(($calculo->chamadas[0]['inicio'] ?? null) === '2026-10-13 15:00:00', 'e em hoje − 7 dias quando o corte é antigo (' . ($calculo->chamadas[0]['inicio'] ?? '') . ')');
+confere(($calculo->chamadas[0]['inicio'] ?? null) === '2026-10-21 15:00:00', 'e em hoje − 30 dias quando o corte é antigo (' . ($calculo->chamadas[0]['inicio'] ?? '') . ')');
 Banco::$falharAoConsultar['entregas_lancamentos'] = new \RuntimeException('banco fora do ar');
 confere(excecao(fn () => $comando->handle(new LancadorDeCorridas($calculo))) === null && logou('[entregas] financeiro: conferência falhou', 'warning'), 'falha numa empresa: registra e segue');
 unset(Banco::$falharAoConsultar['entregas_lancamentos']);
