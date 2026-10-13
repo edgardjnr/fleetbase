@@ -170,4 +170,20 @@ Faturas::cancelar($rascunhoB, null);
 confere(Faturas::porUuid('empresa-1', $rascunhoB->uuid)->situacao === 'cancelada' && Faturas::porUuid('empresa-1', $rascunhoB->uuid)->numero === null, 'rascunho também pode ser descartado (cancelado, sem número)');
 confere(Faturas::gerarRascunho('empresa-1', 'vendor-b', '2026-10-16', '2026-10-31', null) !== null, 'e o mesmo período pode ser gerado de novo');
 
+echo '== Estorno de lançamento que está num rascunho' . PHP_EOL;
+reiniciarFinanceiro();
+Relogio::$agora = '2026-10-12 10:00:00';
+$e1       = corridaDaLoja('vendor-a', 10, '2026-10-02', 'e1');
+$e2       = corridaDaLoja('vendor-a', 12, '2026-10-03', 'e2');
+$rascunho = Faturas::gerarRascunho('empresa-1', 'vendor-a', '2026-09-28', '2026-10-04', null);
+$estorno  = Lancamentos::estornar(Lancamentos::porId('empresa-1', $e1), 'user-admin', 'Pedido cancelado após a conclusão');
+confere(Lancamentos::porId('empresa-1', $estorno)->fatura_uuid === $rascunho->uuid, 'o estorno entra no mesmo rascunho');
+$emitida = Faturas::emitir(Faturas::porUuid('empresa-1', $rascunho->uuid), null);
+confere((float) $emitida->total === 12.0, 'e o total emitido já desconta o estornado (12,00)');
+$estorno2 = Lancamentos::estornar(Lancamentos::porId('empresa-1', $e2), 'user-admin', null);
+confere(Lancamentos::porId('empresa-1', $estorno2)->fatura_uuid === null, 'estorno de lançamento de fatura emitida: sem fatura (entra no próximo rascunho)');
+$solto   = daLoja('vendor-a', 'ajuste', 5, '2026-10-06', ['motivo' => 'Taxa']);
+$estorno3 = Lancamentos::estornar(Lancamentos::porId('empresa-1', $solto), null, null);
+confere(Lancamentos::porId('empresa-1', $estorno3)->fatura_uuid === null, 'lançamento sem fatura: o estorno também fica sem');
+
 resumo();
