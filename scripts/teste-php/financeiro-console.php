@@ -440,4 +440,120 @@ confere(($resposta->dados['corte'] ?? null) === '2026-11-01' && ($resposta->dado
 $resposta = $controller->salvarConfiguracoes(pedidoFeito(['corte' => null]));
 confere($resposta->dados['corte'] === null && $resposta->dados['ligada'] === false && array_key_exists('company.empresa-1.entregas.financeiro_corte', \Fleetbase\Models\Setting::$valores) && \Fleetbase\Models\Setting::$valores['company.empresa-1.entregas.financeiro_corte'] === null, 'corte null tira a data de corte; ligada segue a variável do servidor');
 
+echo '== Painel (PainelFinanceiro::montar)' . PHP_EOL;
+
+// o CalculoEntregas falso do painel: os pedidos concluídos sem lançamento (a consulta do pedidosSemLancamento) vêm de
+// $pedidos, filtrados pelo período pedido; registra o período de cada chamada
+class CalculoDoPainel extends App\Support\Entregas\CalculoEntregas
+{
+    public array $pedidos  = [];
+    public array $chamadas = [];
+
+    public function pedidosConcluidos(string $companyUuid, \Illuminate\Support\Carbon $inicio, \Illuminate\Support\Carbon $fim, ?\Closure $filtro = null): \Illuminate\Support\Collection
+    {
+        $this->chamadas[] = [$companyUuid, $inicio->format('Y-m-d H:i:s'), $fim->format('Y-m-d H:i:s')];
+
+        return new \Illuminate\Support\Collection(array_values(array_filter($this->pedidos, fn ($p) => $p->company_uuid === $companyUuid
+            && $p->entregas_concluido_em >= $inicio->format('Y-m-d H:i:s') && $p->entregas_concluido_em <= $fim->format('Y-m-d H:i:s'))));
+    }
+}
+
+use App\Support\Entregas\Financeiro\LancadorDeCorridas;
+use App\Support\Entregas\Financeiro\PainelFinanceiro;
+
+/** Uma fatura na tabela; devolve o uuid. */
+function fatura(string $uuid, string $loja, ?int $numero, string $situacao, float $total, string $vencimento, ?string $email = '2026-10-05 10:00:00'): string
+{
+    Banco::inserir('entregas_faturas', ['uuid' => $uuid, 'company_uuid' => 'empresa-1', 'vendor_uuid' => $loja, 'numero' => $numero, 'periodo_inicio' => '2026-09-28',
+        'periodo_fim' => '2026-10-04', 'vencimento' => $vencimento, 'situacao' => $situacao, 'total' => $total, 'email_enviado_em' => $email], false);
+
+    return $uuid;
+}
+
+function lancamentoDeLoja(string $loja, string $tipo, float $valor, string $dia, ?string $fatura = null, ?string $pedido = null): int
+{
+    return Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'loja', 'conta_uuid' => $loja, 'tipo' => $tipo, 'valor' => $valor,
+        'data_referencia' => $dia, 'fatura_uuid' => $fatura, 'order_uuid' => $pedido]);
+}
+
+$calculo  = new CalculoDoPainel();
+$lancador = new LancadorDeCorridas($calculo);
+
+reiniciarFinanceiro();
+Relogio::$agora = '2026-10-12 10:00:00';
+$vazio = PainelFinanceiro::montar('empresa-1', '2026-10-01', '2026-10-31', $lancador);
+confere($vazio === ['inicio' => '2026-10-01', 'fim' => '2026-10-31', 'a_pagar' => 0.0, 'adiantado' => 0.0, 'a_receber' => 0.0, 'vencido' => 0.0, 'nao_faturado' => 0.0,
+    'periodo' => ['cobrado' => 0.0, 'pago_motoboys' => 0.0, 'margem' => 0.0], 'atencao' => []], 'sem lançamentos nem faturas: tudo zero: ' . json_encode($vazio));
+
+['ids' => $ids] = cenario();
+Vendor::$todos[] = new Vendor(['uuid' => 'vendor-b', 'public_id' => 'vendor_b', 'company_uuid' => 'empresa-1', 'name' => 'Burger Hub']);
+// motoboys: João 31,50, Maria 30,00 (diária 25 + corrida antiga 5) e Ana com saldo inicial −50 (adiantamento)
+Driver::$todos[] = new Driver(['uuid' => 'driver-3', 'public_id' => 'driver_3', 'company_uuid' => 'empresa-1', 'name' => 'Ana Lima']);
+Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-3', 'tipo' => 'saldo_inicial', 'valor' => -50, 'data_referencia' => '2026-10-01']);
+// corrida antiga (mais de 30 dias) sem loja e corrida estornada sem loja: fora do "sem loja"
+Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-2', 'tipo' => 'corrida', 'valor' => 5, 'data_referencia' => '2026-09-01', 'order_uuid' => 'order-velho', 'chave_unica' => 'corrida:motoboy:order-velho', 'detalhes' => ['pedido' => 'order_velho', 'numero' => 'RP0']]);
+$estornada = Lancamentos::inserir(['company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-2', 'tipo' => 'corrida', 'valor' => 9, 'data_referencia' => '2026-10-04', 'order_uuid' => 'order-3', 'chave_unica' => 'corrida:motoboy:order-3', 'detalhes' => ['pedido' => 'order_3', 'numero' => 'RP3']]);
+Lancamentos::estornar(Lancamentos::porId('empresa-1', $estornada), null, 'Pedido cancelado após a conclusão');
+// lojas: a vendor-a tem a corrida de 01/10 (12,00, sem fatura) e um ajuste −2 sem fatura; duas faturas emitidas (100 vencida, 40 a vencer e sem
+// e-mail) e 30 recebidos (mais 10 recebidos e estornados); a vendor-b tem um rascunho com 20 + 15 e uma fatura cancelada
+lancamentoDeLoja('vendor-a', 'ajuste', -2, '2026-10-10');
+$vencida  = fatura('fatura-31', 'vendor-a', 31, 'emitida', 100, '2026-10-08');
+$aVencer  = fatura('fatura-32', 'vendor-a', 32, 'emitida', 40, '2026-10-20', null);
+$rascunho = fatura('fatura-r', 'vendor-b', null, 'rascunho', 0, '2026-10-15', null);
+fatura('fatura-c', 'vendor-b', 30, 'cancelada', 999, '2026-10-01', null);
+lancamentoDeLoja('vendor-b', 'corrida', 20, '2026-10-02', $rascunho);
+lancamentoDeLoja('vendor-b', 'corrida', 15, '2026-10-03', $rascunho);
+Pagamentos::registrar('empresa-1', 'loja', 'vendor-a', 30, 'pix', '2026-10-09', null, null, 'user-admin');
+$devolvido = Pagamentos::registrar('empresa-1', 'loja', 'vendor-a', 10, 'pix', '2026-10-09', null, null, 'user-admin');
+Pagamentos::estornar($devolvido, 'user-admin');
+// pedidos concluídos sem lançamento (corridas sem valor): um há 2 h, outro há 30 min (ainda dentro da 1 h)
+$calculo->pedidos = [
+    (object) ['uuid' => 'order-7', 'public_id' => 'order_7', 'internal_id' => 'RP7', 'company_uuid' => 'empresa-1', 'entregas_concluido_em' => '2026-10-12 08:00:00'],
+    (object) ['uuid' => 'order-8', 'public_id' => 'order_8', 'internal_id' => 'RP8', 'company_uuid' => 'empresa-1', 'entregas_concluido_em' => '2026-10-12 09:30:00'],
+];
+
+$painel = PainelFinanceiro::montar('empresa-1', '2026-10-01', '2026-10-31', $lancador);
+confere(($painel['a_pagar'] ?? null) === 61.5 && ($painel['adiantado'] ?? null) === 50.0, 'a pagar = soma dos saldos positivos (31,50 + 30); adiantado = soma dos negativos (50): ' . json_encode([$painel['a_pagar'] ?? null, $painel['adiantado'] ?? null]));
+confere(($painel['a_receber'] ?? null) === 110.0 && ($painel['vencido'] ?? null) === 70.0, 'a receber = em aberto das emitidas (70 + 40); vencido = a parte vencida (70): ' . json_encode([$painel['a_receber'] ?? null, $painel['vencido'] ?? null]));
+confere(($painel['nao_faturado'] ?? null) === 45.0, 'não faturado = lançamentos de loja fora de fatura emitida (12 − 2 + rascunho 35), sem recebimentos: ' . json_encode($painel['nao_faturado'] ?? null));
+confere(($painel['periodo'] ?? null) === ['cobrado' => 45.0, 'pago_motoboys' => 71.5, 'margem' => -26.5], 'período: cobrado (corridas e ajustes da loja), pago aos motoboys (corridas, diárias, ajustes; o estorno abate, o saldo inicial não conta) e margem: ' . json_encode($painel['periodo'] ?? null));
+$tipos = array_column($painel['atencao'] ?? [], 'tipo');
+confere($tipos === ['fatura_vencida', 'rascunho', 'email_nao_enviado', 'sem_loja', 'sem_valor'], 'atenção na ordem do contrato: ' . json_encode($tipos));
+confere(($painel['atencao'][0] ?? null) === ['tipo' => 'fatura_vencida', 'fatura' => $vencida, 'numero' => 'FAT-0031', 'loja' => 'Pizzaria Ficticia', 'valor' => 70.0, 'vencimento' => '2026-10-08'], 'fatura vencida com o em aberto: ' . json_encode($painel['atencao'][0] ?? null, JSON_UNESCAPED_UNICODE));
+confere(($painel['atencao'][1] ?? null) === ['tipo' => 'rascunho', 'fatura' => $rascunho, 'loja' => 'Burger Hub', 'valor' => 35.0], 'rascunho com a soma dos itens: ' . json_encode($painel['atencao'][1] ?? null, JSON_UNESCAPED_UNICODE));
+confere(($painel['atencao'][2] ?? null) === ['tipo' => 'email_nao_enviado', 'fatura' => $aVencer, 'numero' => 'FAT-0032', 'loja' => 'Pizzaria Ficticia'], 'emitida sem e-mail: ' . json_encode($painel['atencao'][2] ?? null, JSON_UNESCAPED_UNICODE));
+confere(($painel['atencao'][3] ?? null) === ['tipo' => 'sem_loja', 'pedido' => 'order_2', 'numero' => 'RP2'], 'corrida do motoboy sem lançamento da loja (últimos 30 dias, não estornada): ' . json_encode($painel['atencao'][3] ?? null));
+confere(($painel['atencao'][4] ?? null) === ['tipo' => 'sem_valor', 'pedido' => 'order_7', 'numero' => 'RP7'], 'pedido concluído há mais de 1 h sem lançamento: ' . json_encode($painel['atencao'][4] ?? null));
+$consulta = end($calculo->chamadas);
+confere($consulta === ['empresa-1', '2026-10-01 00:00:00', '2026-10-12 10:00:00'], 'sem valor: a consulta da conferência do corte (no máximo 30 dias) até agora; a 1 h é filtrada depois: ' . json_encode($consulta));
+confere(!array_filter(linhasDe('entregas_lancamentos'), fn ($l) => in_array($l['order_uuid'], ['order-7', 'order-8'], true)), 'o painel não lança nada (só consulta)');
+
+$depois = PainelFinanceiro::montar('empresa-1', '2026-10-02', '2026-10-31', $lancador);
+confere(($depois['periodo'] ?? null) === ['cobrado' => 33.0, 'pago_motoboys' => 63.0, 'margem' => -30.0] && ($depois['a_pagar'] ?? null) === 61.5, 'outro período muda só a margem (os saldos são de agora): ' . json_encode($depois['periodo'] ?? null));
+
+\Teste\Config::$valores['services.entregas.financeiro'] = null;
+$desligado = PainelFinanceiro::montar('empresa-1', '2026-10-01', '2026-10-31', $lancador);
+confere(!in_array('sem_valor', array_column($desligado['atencao'], 'tipo'), true), 'com o financeiro desligado não há "sem valor" (nada é lançado sozinho)');
+\Teste\Config::$valores['services.entregas.financeiro'] = '1';
+\Fleetbase\Models\Setting::$valores = [];
+$semCorte = PainelFinanceiro::montar('empresa-1', '2026-10-01', '2026-10-31', $lancador);
+confere(!in_array('sem_valor', array_column($semCorte['atencao'], 'tipo'), true), 'sem data de corte não há "sem valor"');
+\Fleetbase\Models\Setting::$valores = ['company.empresa-1.entregas.financeiro_corte' => '2026-01-01'];
+PainelFinanceiro::montar('empresa-1', '2026-10-01', '2026-10-31', $lancador);
+confere((end($calculo->chamadas)[1] ?? null) === '2026-09-12 00:00:00', 'corte antigo: a consulta volta no máximo 30 dias');
+$calculo->pedidos = array_map(fn ($n) => (object) ['uuid' => 'order-s' . $n, 'public_id' => 'order_s' . $n, 'internal_id' => null, 'company_uuid' => 'empresa-1', 'entregas_concluido_em' => sprintf('2026-10-11 %02d:00:00', $n)], range(0, 23));
+$muitos = array_values(array_filter(PainelFinanceiro::montar('empresa-1', '2026-10-01', '2026-10-31', $lancador)['atencao'], fn ($item) => $item['tipo'] === 'sem_valor'));
+confere(count($muitos) === 20 && $muitos[0]['pedido'] === 'order_s23' && $muitos[0]['numero'] === null, 'no máximo 20 "sem valor", os mais recentes primeiro');
+\Teste\Banco::$falharAoConsultar = [];
+$calculo->pedidos = [];
+
+echo '== Painel no controller' . PHP_EOL;
+comoAdmin();
+\Teste\Container::$instancias[LancadorDeCorridas::class] = $lancador;
+$resposta = $controller->painel(pedidoFeito(['inicio' => '2026-10-01', 'fim' => '2026-10-31']));
+confere($resposta->status === 200 && ($resposta->dados['a_receber'] ?? null) === 110.0 && ($resposta->dados['inicio'] ?? null) === '2026-10-01', 'GET painel com o período');
+$resposta = $controller->painel(pedidoFeito());
+confere($resposta->status === 200 && ($resposta->dados['inicio'] ?? null) === '2026-10-01' && ($resposta->dados['fim'] ?? null) === '2026-10-12', 'sem período: este mês até hoje');
+confere($controller->painel(pedidoFeito(['inicio' => '2026-10-31', 'fim' => '2026-10-01']))->status === 422, 'período invertido → 422');
+
 resumo();
