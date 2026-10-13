@@ -143,7 +143,8 @@ namespace {
     confere(api()->extratoDaLoja(req(['inicio' => '2026-10-01', 'fim' => '2026-10-31']), 'vendor_z')->status === 404, 'loja de outra empresa: 404');
     confere(api()->extratoDaLoja(req(['inicio' => '01/10/2026', 'fim' => '2026-10-31']), 'vendor_a')->status === 422, 'data inválida: 422');
     confere(api()->extratoDaLoja(req(['inicio' => '2026-10-31', 'fim' => '2026-10-01']), 'vendor_a')->status === 422, 'início depois do fim: 422');
-    echo 'PENDENTE extrato da loja com dados: usa o ExtratoDaConta da B2 (conferir na integração)' . PHP_EOL;
+    confere(api()->extratoDaLoja(req(['inicio' => ['2026-10-01'], 'fim' => '2026-10-31']), 'vendor_a')->status === 422, 'data que não é texto (inicio[]=...): 422, sem TypeError');
+    // o extrato com dados (faturas, recebimento) fica depois da lista de faturas
 
     echo '== Gerar rascunho' . PHP_EOL;
     Faturas::salvarConfig('empresa-1', 'vendor-a', ['ciclo' => 'semanal', 'dia_fechamento' => 0, 'prazo_dias' => 3]);
@@ -270,6 +271,32 @@ namespace {
     confere($ids(api()->faturas(req(['situacao' => 'paga']))) === [$terceira, $outra], 'filtro paga');
     confere(api()->faturas(req(['situacao' => 'qualquer']))->status === 422, 'situação desconhecida: 422');
     confere(api()->faturas(req(['loja' => 'vendor_z']))->status === 404, 'loja de outra empresa: 404');
+
+    echo '== Extrato da loja com dados (ExtratoDaConta)' . PHP_EOL;
+    // loja A: FAT-0001 emitida (corrida p1 10, ajustes −2,50, +1,50 e +21, "Não cobrar" −10), corrida p2 12 no rascunho
+    // de 05 a 11/10 e o recebimento de 5 em 12/10
+    $r = api()->extratoDaLoja(req(['inicio' => '2026-10-01', 'fim' => '2026-10-31']), 'vendor_a');
+    $extrato = $r->dados;
+    confere($r->status === 200 && $extrato['conta'] === ['tipo' => 'loja', 'id' => 'vendor_a', 'nome' => 'Pizzaria Ficticia'], 'conta da loja: tipo, public_id e nome, sem pix');
+    confere($extrato['inicio'] === '2026-10-01' && $extrato['fim'] === '2026-10-31' && $extrato['saldo'] === 27.0 && $extrato['saldo_anterior'] === 0.0, 'saldo de todos os lançamentos (10 − 2,50 + 1,50 − 10 + 21 + 12 − 5)');
+    confere($extrato['totais'] === ['creditos' => 44.5, 'debitos' => 17.5], 'totais do período, os dois positivos');
+    confere(($extrato['ultimo_pagamento']['valor'] ?? null) === 5.0 && $extrato['ultimo_pagamento']['data'] === '2026-10-12' && $extrato['ultimo_pagamento']['forma'] === 'pix', 'último recebimento');
+    $porTipo = fn (string $tipo) => array_values(array_filter($extrato['lancamentos'], fn ($l) => $l['tipo'] === $tipo));
+    confere(count($extrato['lancamentos']) === 7 && $extrato['lancamentos'][0]['tipo'] === 'recebimento', '7 lançamentos, o mais novo primeiro');
+    $recebimento = $porTipo('recebimento')[0];
+    confere($recebimento['valor'] === -5.0 && $recebimento['fatura'] === null && ($recebimento['pagamento']['forma'] ?? null) === 'pix' && $recebimento['pagamento']['tem_comprovante'] === false
+        && array_key_exists('comprovante_url', $recebimento['pagamento']) && $recebimento['situacao'] === null, 'recebimento: débito, sem fatura, com o pagamento (console: comprovante_url)');
+    $corridas = array_column($porTipo('corrida'), null, 'valor');
+    confere(($corridas['10']['fatura'] ?? null) === ['id' => $id, 'numero' => 'FAT-0001'] && ($corridas['12']['fatura'] ?? null) === ['id' => $rascunho->uuid, 'numero' => null], 'coluna Fatura: emitida com número, rascunho sem número');
+    confere(($corridas['10']['pedido'] ?? null) === ['id' => 'order_p1', 'numero' => 'P1'] && ($corridas['10']['detalhes']['km'] ?? null) === 2.5, 'corrida com o pedido e os detalhes');
+    confere(($corridas['10']['situacao'] ?? null) === 'anulado', 'a corrida do "Não cobrar" fica anulada no extrato');
+    confere(array_key_exists('observacao_interna', $extrato['lancamentos'][0]) && array_key_exists('criado_por', $extrato['lancamentos'][0]), 'console: com observação interna e quem lançou');
+    $r = api()->extratoDaLoja(req(['inicio' => '2026-10-05', 'fim' => '2026-10-31']), 'vendor_a');
+    confere($r->dados['saldo_anterior'] === 20.0 && count($r->dados['lancamentos']) === 2 && $r->dados['saldo'] === 27.0, 'saldo anterior ao início do período; a lista só do período');
+    $r = api()->extratoDaLoja(req(), 'vendor_a');
+    confere($r->status === 200 && $r->dados['inicio'] === null && count($r->dados['lancamentos']) === 7, 'sem período: a conta inteira');
+    $r = api()->extratoDaLoja(req(['inicio' => '2026-10-01', 'fim' => '2026-10-31']), 'vendor_b');
+    confere($r->dados['conta']['id'] === 'vendor_b' && count($r->dados['lancamentos']) === 3 && $r->dados['saldo'] === 0.0, 'a loja B: só os dela (2 corridas e o recebimento de 12)');
 
     echo '== Cancelar' . PHP_EOL;
     $r = api()->cancelar(req(), $id);

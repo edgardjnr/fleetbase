@@ -88,7 +88,7 @@ class FinanceiroLojasController extends Controller
         $inicio = $request->input('inicio');
         $fim    = $request->input('fim');
         foreach ([$inicio, $fim] as $data) {
-            if ($data !== null && $data !== '' && !$this->dataValida($data)) {
+            if ($data !== null && $data !== '' && (!is_string($data) || !$this->dataValida($data))) {
                 return $this->erro('Data inválida.', 422);
             }
         }
