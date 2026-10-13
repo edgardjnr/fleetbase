@@ -7,7 +7,7 @@
  * As chaves devolvidas são relativas a `fleet-ops.ui.financeiro-lojas.` (o controller monta a chave inteira).
  */
 
-import { numeroDigitado } from './financeiro';
+import { celulaCsv, numeroDigitado } from './financeiro';
 
 const CICLOS = ['semanal', 'quinzenal', 'mensal'];
 
@@ -249,7 +249,7 @@ export function dataBr(iso) {
     return partes ? `${partes[3]}/${partes[2]}/${partes[1]}` : '';
 }
 
-const celula = (valor) => `"${String(valor ?? '').replace(/"/g, '""')}"`;
+const celula = celulaCsv;
 const decimal = (valor, casas = 2) => (Number(valor) || 0).toFixed(casas).replace('.', ',');
 
 /**

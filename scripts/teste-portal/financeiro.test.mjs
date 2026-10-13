@@ -6,6 +6,7 @@ import {
     agruparPorDia,
     avisoDeAdiantamento,
     camposDoPagamento,
+    celulaCsv,
     corDaSituacao,
     dataDoDia,
     diaAoTrocarDeCiclo,
@@ -354,4 +355,18 @@ test('linhas do CSV do extrato', () => {
     const traduzidas = linhasCsvDoExtrato(extrato, t);
     assert.equal(traduzidas[0], '"[data]";"[tipo]";"[pedido]";"[motivo]";"[valor]";"[situacao]"');
     assert.equal(traduzidas[3], '"10/10/2026";"[corrida]";"order_y";"";8,50;"[parcial]"');
+});
+
+test('CSV: texto que começa como fórmula ganha apóstrofo (mesma regra do portal)', () => {
+    assert.equal(celulaCsv('=HYPERLINK("x")'), '"\'=HYPERLINK(""x"")"');
+    assert.equal(celulaCsv('+5511999'), '"\'+5511999"');
+    assert.equal(celulaCsv('@SOMA(A1)'), '"\'@SOMA(A1)"');
+    assert.equal(celulaCsv('-cmd'), '"\'-cmd"');
+    assert.equal(celulaCsv('\tx'), '"\'\tx"');
+    assert.equal(celulaCsv('-2,00'), '"-2,00"', 'número formatado passa como está');
+    assert.equal(celulaCsv('Rua A, 10'), '"Rua A, 10"');
+    assert.equal(celulaCsv(null), '""');
+
+    const linhas = linhasCsvDoExtrato({ lancamentos: [{ tipo: 'ajuste', valor: -2, data: '2026-10-11', pedido: null, motivo: '=1+1', situacao: null }] });
+    assert.equal(linhas[1], '"11/10/2026";"Ajuste";"";"\'=1+1";-2,00;""', 'o valor (número) continua sem aspas');
 });

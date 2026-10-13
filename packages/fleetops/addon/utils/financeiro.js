@@ -436,7 +436,23 @@ const dataBr = (data) => {
     const partes = String(data ?? '').split('-');
     return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : String(data ?? '');
 };
-const celula = (valor) => `"${String(valor ?? '').replace(/"/g, '""')}"`;
+// O Excel executa como fórmula a célula de texto que começa com = + - @ (motivo, destino e nome vêm digitados). Mesma
+// regra do portal (customer-portal/addon/utils/entregas-financeiro.js; não dá para importar entre engines): número já
+// formatado ("-2,00") passa como está
+const INICIO_DE_FORMULA = /^[=+\-@\t\r]/;
+const NUMERO_CSV = /^-?\d+(,\d+)?$/;
+
+/** Célula de texto do CSV: entre aspas (aspas dobradas) e, se começar como fórmula, com um apóstrofo na frente. */
+export function celulaCsv(valor) {
+    let texto = String(valor ?? '');
+    if (INICIO_DE_FORMULA.test(texto) && !NUMERO_CSV.test(texto)) {
+        texto = `'${texto}`;
+    }
+
+    return `"${texto.replace(/"/g, '""')}"`;
+}
+
+const celula = celulaCsv;
 const valorCsv = (valor) => (Number(valor) || 0).toFixed(2).replace('.', ',');
 
 /**

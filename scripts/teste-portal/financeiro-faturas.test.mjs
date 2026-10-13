@@ -233,6 +233,15 @@ test('CSV da fatura', () => {
     assert.equal(rascunho[1], '"Loja";""');
     assert.equal(rascunho[5], '"Data";"Pedido";"Km";"Destino";"Motivo";"Valor"');
     assert.equal(rascunho[7], '"Total";41,50');
+
+    // destino e motivo vêm digitados (endereço do cliente, ajuste): nada de fórmula no Excel
+    const perigosa = linhasCsvDaFatura(emitida({ loja: { nome: '@loja' } }), [
+        { tipo: 'corrida', valor: 5, data: '2026-10-01', pedido: null, detalhes: { km: 1, destino: '=HYPERLINK("http://x")' }, motivo: null },
+        { tipo: 'ajuste', valor: -5, data: '2026-10-01', pedido: null, detalhes: null, motivo: '+cmd' },
+    ], rotulos);
+    assert.equal(perigosa[1], '"Loja";"\'@loja"');
+    assert.equal(perigosa[6], '"01/10/2026";"";1,00;"\'=HYPERLINK(""http://x"")";"";5,00');
+    assert.equal(perigosa[7], '"01/10/2026";"";;"";"\'+cmd";-5,00');
 });
 
 test('agrupar lançamentos por dia, mantendo a ordem (mais novo primeiro)', () => {
@@ -280,6 +289,11 @@ test('CSV do extrato da loja', () => {
         '"10/10/2026";"Ajuste";"";"Desconto ""amigo""";"";-2,00;""',
     ]);
     assert.deepEqual(linhasCsvDoExtratoDaLoja({ lancamentos: [] }, rotulos), ['"Data";"Tipo";"Pedido";"Motivo";"Fatura";"Valor";"Situação"']);
+    assert.equal(
+        linhasCsvDoExtratoDaLoja({ lancamentos: [{ tipo: 'ajuste', valor: 3, data: '2026-10-10', pedido: null, motivo: '-1+1', fatura: null, situacao: null }] }, rotulos)[1],
+        '"10/10/2026";"Ajuste";"";"\'-1+1";"";3,00;""',
+        'motivo que começa como fórmula'
+    );
 });
 
 test('aviso do reenviar sem envio segue o motivo do servidor', () => {
