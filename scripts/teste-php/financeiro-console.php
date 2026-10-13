@@ -625,6 +625,8 @@ session(['company' => null, 'user' => null]);
 $resposta = $comprovantes->mostrar(pedidoFeito(), $pagamento->uuid);
 confere(($resposta->disco ?? null) === 'local' && ($resposta->caminho ?? null) === 'entregas/comprovantes/empresa-1/' . $pagamento->uuid . '.jpg', 'serve o arquivo do disco local (sem sessão: a assinatura da URL é a proteção)');
 confere(($resposta->nome ?? null) === 'pix.jpg' && ($resposta->disposicao ?? null) === 'inline' && ($resposta->cabecalhos['Content-Type'] ?? null) === 'image/jpeg' && ($resposta->cabecalhos['X-Content-Type-Options'] ?? null) === 'nosniff', 'inline, com o tipo gravado e nosniff: ' . json_encode($resposta));
+Banco::$tabelas['entregas_pagamentos'][(int) $pagamento->id]['comprovante_nome'] = "pix\n../a\\b.jpg";
+confere(($comprovantes->mostrar(pedidoFeito(), $pagamento->uuid)->nome ?? null) === 'pix_.._a_b.jpg', 'nome do arquivo sem quebra de linha nem barras no Content-Disposition');
 confere($comprovantes->mostrar(pedidoFeito(), 'nao-existe')->status === 404, 'pagamento inexistente → 404');
 confere($comprovantes->mostrar(pedidoFeito(), $semArquivo->uuid)->status === 404, 'pagamento sem comprovante → 404');
 \Teste\Disco::$arquivos = [];

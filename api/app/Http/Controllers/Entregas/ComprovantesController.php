@@ -28,7 +28,11 @@ class ComprovantesController extends Controller
             return response()->json(['errors' => ['Comprovante não encontrado.']], 404);
         }
 
-        return $disco->response($pagamento->comprovante_path, $pagamento->comprovante_nome ?: null, [
+        // o nome que o navegador mandou vai no Content-Disposition: barra e caractere de controle derrubariam a resposta (o
+        // Symfony recusa) e não servem num nome de arquivo
+        $nome = $pagamento->comprovante_nome ? preg_replace('/[\x00-\x1f\x7f\/\\\\]/u', '_', (string) $pagamento->comprovante_nome) : null;
+
+        return $disco->response($pagamento->comprovante_path, $nome ?: null, [
             // o tipo detectado no envio (só imagem ou PDF): o navegador não adivinha outro
             'Content-Type'           => $pagamento->comprovante_tipo ?: 'application/octet-stream',
             'X-Content-Type-Options' => 'nosniff',
