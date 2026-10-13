@@ -8,6 +8,7 @@ import {
     camposDoPagamento,
     corDaSituacao,
     dataDoDia,
+    diaAoTrocarDeCiclo,
     diasDeFechamento,
     formatadores,
     isoDate,
@@ -18,6 +19,7 @@ import {
     podeEstornar,
     rotuloDoTipo,
     tiposDaConta,
+    validarCobranca,
     validarComprovante,
     validarLancamento,
     validarPix,
@@ -175,6 +177,28 @@ test('datas locais e atalhos de período', () => {
     assert.deepEqual(periodoDoAtalho('last-7-days', hoje), { inicio: '2026-10-06', fim: '2026-10-12' });
     assert.deepEqual(periodoDoAtalho('last-month', new Date(2026, 0, 15)), { inicio: '2025-12-01', fim: '2025-12-31' }, 'virada de ano');
     assert.equal(periodoDoAtalho('outro', hoje), null);
+});
+
+test('validar ciclo de cobrança', () => {
+    assert.deepEqual(validarCobranca({ ciclo: 'semanal', dia_fechamento: '0', prazo_dias: '3' }), { config: { ciclo: 'semanal', dia_fechamento: 0, prazo_dias: 3 } });
+    assert.deepEqual(validarCobranca({ ciclo: 'semanal', dia_fechamento: 7, prazo_dias: 3 }), { erro: 'dia-invalido' });
+    assert.deepEqual(validarCobranca({ ciclo: 'mensal', dia_fechamento: 28, prazo_dias: 60 }), { config: { ciclo: 'mensal', dia_fechamento: 28, prazo_dias: 60 } });
+    assert.deepEqual(validarCobranca({ ciclo: 'mensal', dia_fechamento: 29, prazo_dias: 5 }), { erro: 'dia-invalido' });
+    assert.deepEqual(validarCobranca({ ciclo: 'mensal', dia_fechamento: 0, prazo_dias: 5 }).config.dia_fechamento, 0, 'mensal 0 = último dia');
+    assert.deepEqual(validarCobranca({ ciclo: 'quinzenal', dia_fechamento: 99, prazo_dias: 0 }), { config: { ciclo: 'quinzenal', dia_fechamento: 0, prazo_dias: 0 } }, 'quinzenal ignora o dia');
+    assert.deepEqual(validarCobranca({ ciclo: 'semanal', dia_fechamento: 0, prazo_dias: '' }), { erro: 'prazo-invalido' });
+    assert.deepEqual(validarCobranca({ ciclo: 'semanal', dia_fechamento: 0, prazo_dias: '61' }), { erro: 'prazo-invalido' });
+    assert.deepEqual(validarCobranca({ ciclo: 'semanal', dia_fechamento: 0, prazo_dias: '2,5' }), { erro: 'prazo-invalido' });
+    assert.deepEqual(validarCobranca({ ciclo: 'anual', dia_fechamento: 0, prazo_dias: 3 }), { erro: 'ciclo-invalido' });
+    assert.deepEqual(validarCobranca(), { erro: 'ciclo-invalido' });
+});
+
+test('dia ao trocar de ciclo', () => {
+    assert.equal(diaAoTrocarDeCiclo('semanal', 3), 3);
+    assert.equal(diaAoTrocarDeCiclo('semanal', 15), 0, 'dia do mês não vale no semanal: domingo');
+    assert.equal(diaAoTrocarDeCiclo('mensal', 5), 5);
+    assert.equal(diaAoTrocarDeCiclo('mensal', '6'), 6);
+    assert.equal(diaAoTrocarDeCiclo('quinzenal', 5), 0);
 });
 
 test('dias de fechamento do ciclo', () => {

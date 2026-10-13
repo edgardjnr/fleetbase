@@ -465,6 +465,9 @@ fleet-ops:
                 pix-tipo: Choose the Pix key type.
                 pix-chave-vazia: Enter the Pix key.
                 pix-chave-invalida: The key does not match the chosen type.
+                ciclo-invalido: Choose the cycle (weekly, biweekly or monthly).
+                dia-invalido: Choose the closing day.
+                prazo-invalido: The due date must be a whole number from 0 to 60 days.
             motoboys:
                 titulo: Drivers
                 lancar-selecionados: '{count, plural, =0 {Add entry for selected} one {Add entry for 1 selected} other {Add entry for # selected}}'
@@ -588,6 +591,36 @@ fleet-ops:
                 motivo: Reason
                 valor: Amount
                 situacao: Status
+            ciclos:
+                semanal: Weekly
+                quinzenal: Biweekly
+                mensal: Monthly
+            dias-da-semana:
+                '0': Sunday
+                '1': Monday
+                '2': Tuesday
+                '3': Wednesday
+                '4': Thursday
+                '5': Friday
+                '6': Saturday
+            configuracoes:
+                titulo: Finance settings
+                salvar: Save
+                salvo: Settings saved.
+                desligada: 'Automatic entries are turned off on the server (ENTREGAS_FINANCEIRO). The screens work, but no ride is added on its own.'
+                corte-titulo: Cutoff date
+                corte: Add rides from
+                tirar-corte: Clear the date
+                corte-ajuda: 'Rides before this date are not part of the finances. Anything pending from before goes in as an "Opening balance" entry.'
+                sem-corte: Without a cutoff date, no ride is added automatically.
+                ciclo-titulo: Default store billing cycle
+                ciclo: Cycle
+                dia-fechamento: Closes on
+                dia-do-mes: 'day {dia}'
+                ultimo-dia: last day of the month
+                quinzenal-ajuda: Closes on the 15th and on the last day of the month.
+                prazo: Due date (days after closing)
+                ciclo-ajuda: Applies to stores without their own cycle. The invoice starts as a draft the day after closing.
         order-form:
             store-or-customer: Store or customer
             store-or-customer-placeholder: Select store or customer

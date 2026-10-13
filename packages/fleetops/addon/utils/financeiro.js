@@ -303,7 +303,45 @@ export function diasDeFechamento(ciclo) {
     return [];
 }
 
-const ROTA_DO_PEDIDO = 'operations.orders.index.details';
+export const CICLOS = ['semanal', 'quinzenal', 'mensal'];
+
+/**
+ * Ciclo de cobrança (padrão da organização ou de uma loja) com as regras do servidor (CicloDeCobranca::validar): ciclo
+ * semanal/quinzenal/mensal; dia 0..6 no semanal (0 = domingo), 0..28 no mensal (0 = último dia), ignorado no quinzenal;
+ * prazo 0..60 dias. Devolve { config: { ciclo, dia_fechamento, prazo_dias } } com números, ou { erro } com o código
+ * (fleet-ops.ui.financeiro.erros.*): ciclo-invalido, dia-invalido, prazo-invalido.
+ */
+export function validarCobranca({ ciclo, dia_fechamento, prazo_dias } = {}) {
+    if (!CICLOS.includes(ciclo)) {
+        return { erro: 'ciclo-invalido' };
+    }
+    const dia = ciclo === 'quinzenal' ? 0 : Number(dia_fechamento);
+    const maximo = ciclo === 'semanal' ? 6 : 28;
+    if (!Number.isInteger(dia) || dia < 0 || dia > maximo) {
+        return { erro: 'dia-invalido' };
+    }
+    const prazo = String(prazo_dias ?? '').trim() === '' ? NaN : Number(prazo_dias);
+    if (!Number.isInteger(prazo) || prazo < 0 || prazo > 60) {
+        return { erro: 'prazo-invalido' };
+    }
+
+    return { config: { ciclo, dia_fechamento: dia, prazo_dias: prazo } };
+}
+
+/** Dia de fechamento ao trocar de ciclo: mantém o que ainda vale no ciclo novo; senão domingo (semanal) ou último dia (mensal). */
+export function diaAoTrocarDeCiclo(ciclo, diaAtual) {
+    const dia = Number(diaAtual);
+    if (ciclo === 'semanal') {
+        return Number.isInteger(dia) && dia >= 0 && dia <= 6 ? dia : 0;
+    }
+    if (ciclo === 'mensal') {
+        return Number.isInteger(dia) && dia >= 0 && dia <= 28 ? dia : 0;
+    }
+
+    return 0;
+}
+
+const ROTA_DO_PEDIDO ='operations.orders.index.details';
 const ROTA_DA_FATURA = 'financeiro.fatura';
 const ATENCAO = {
     fatura_vencida: { icone: 'circle-exclamation', cor: 'text-red-600 dark:text-red-400', rota: ROTA_DA_FATURA },

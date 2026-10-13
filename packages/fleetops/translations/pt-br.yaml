@@ -465,6 +465,9 @@ fleet-ops:
         pix-tipo: Escolha o tipo da chave Pix.
         pix-chave-vazia: Informe a chave Pix.
         pix-chave-invalida: A chave não confere com o tipo escolhido.
+        ciclo-invalido: Escolha o ciclo (semanal, quinzenal ou mensal).
+        dia-invalido: Escolha o dia de fechamento.
+        prazo-invalido: O vencimento precisa ser um número inteiro de 0 a 60 dias.
       motoboys:
         titulo: Motoboys
         lancar-selecionados: '{count, plural, =0 {Lançar para os selecionados} one {Lançar para 1 selecionado} other {Lançar para # selecionados}}'
@@ -588,6 +591,36 @@ fleet-ops:
         motivo: Motivo
         valor: Valor
         situacao: Situação
+      ciclos:
+        semanal: Semanal
+        quinzenal: Quinzenal
+        mensal: Mensal
+      dias-da-semana:
+        '0': domingo
+        '1': segunda-feira
+        '2': terça-feira
+        '3': quarta-feira
+        '4': quinta-feira
+        '5': sexta-feira
+        '6': sábado
+      configuracoes:
+        titulo: Configurações do financeiro
+        salvar: Salvar
+        salvo: Configurações salvas.
+        desligada: 'O lançamento automático está desligado no servidor (ENTREGAS_FINANCEIRO). As telas funcionam, mas nenhuma corrida é lançada sozinha.'
+        corte-titulo: Data de corte
+        corte: Lançar corridas a partir de
+        tirar-corte: Tirar a data
+        corte-ajuda: 'Corridas antes desta data não entram no financeiro. O que ficou pendente de antes entra como lançamento "Saldo inicial".'
+        sem-corte: Sem data de corte, nenhuma corrida é lançada automaticamente.
+        ciclo-titulo: Ciclo padrão de cobrança das lojas
+        ciclo: Ciclo
+        dia-fechamento: Fecha em
+        dia-do-mes: 'dia {dia}'
+        ultimo-dia: último dia do mês
+        quinzenal-ajuda: Fecha no dia 15 e no último dia do mês.
+        prazo: Vencimento (dias após o fechamento)
+        ciclo-ajuda: Vale para as lojas sem ciclo próprio. A fatura nasce como rascunho no dia seguinte ao fechamento.
     order-form:
       store-or-customer: Loja ou cliente
       store-or-customer-placeholder: Selecionar loja ou cliente
