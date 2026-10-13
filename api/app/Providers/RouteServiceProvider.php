@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\Entregas\ComprovantesController;
 use App\Http\Controllers\Entregas\ConversasDaLojaController;
 use App\Http\Controllers\Entregas\DistribuicaoController;
 use App\Http\Controllers\Entregas\EnderecosController;
+use App\Http\Controllers\Entregas\FinanceiroController;
 use App\Http\Controllers\Entregas\IfoodLojasController;
 use App\Http\Controllers\Entregas\IfoodPedidosController;
 use App\Http\Controllers\Entregas\IntegracaoController;
@@ -21,6 +23,7 @@ use App\Http\Middleware\ExigirAppAtualizado;
 use App\Http\Middleware\FiltrarPedidosAbertosDoMotoboy;
 use App\Http\Middleware\IncluirNotasNaListaDePedidos;
 use App\Http\Middleware\RegrasDoPedidoIfood;
+use App\Support\Entregas\Financeiro\Pagamentos;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
@@ -145,6 +148,19 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('pagamento-motoboys', [PagamentoMotoboysController::class, 'relatorio']);
                         Route::put('pagamento-motoboys/faixas', [PagamentoMotoboysController::class, 'salvarFaixas']);
 
+                        // Financeiro (console → Fleet-Ops → Financeiro, só admin: FinanceiroController): painel, motoboys (lista,
+                        // extrato, Pix), lançamentos manuais e estornos, pagamentos com comprovante (multipart) e configurações
+                        Route::get('financeiro/painel', [FinanceiroController::class, 'painel']);
+                        Route::get('financeiro/motoboys', [FinanceiroController::class, 'motoboys']);
+                        Route::get('financeiro/motoboys/{id}/extrato', [FinanceiroController::class, 'extratoDoMotoboy']);
+                        Route::put('financeiro/motoboys/{id}/pix', [FinanceiroController::class, 'salvarPix']);
+                        Route::post('financeiro/lancamentos', [FinanceiroController::class, 'lancar']);
+                        Route::post('financeiro/lancamentos/{id}/estornar', [FinanceiroController::class, 'estornarLancamento']);
+                        Route::post('financeiro/pagamentos', [FinanceiroController::class, 'registrarPagamento']);
+                        Route::post('financeiro/pagamentos/{id}/estornar', [FinanceiroController::class, 'estornarPagamento']);
+                        Route::get('financeiro/configuracoes', [FinanceiroController::class, 'configuracoes']);
+                        Route::put('financeiro/configuracoes', [FinanceiroController::class, 'salvarConfiguracoes']);
+
                         // cadastro das lojas e dos usuários do portal (Fleet-Ops → Recursos → Lojas)
                         Route::get('lojas', [LojasController::class, 'index']);
                         Route::post('lojas', [LojasController::class, 'store']);
@@ -203,6 +219,9 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('app', [MotoboyController::class, 'app']);
                         Route::get('ganhos', [MotoboyController::class, 'ganhos']);
                         Route::get('pedidos/{id}/valor', [MotoboyController::class, 'valor']);
+                        // Financeiro no app: o extrato (Início) e o recibo de um pagamento
+                        Route::get('extrato', [MotoboyController::class, 'extrato']);
+                        Route::get('pagamentos/{id}', [MotoboyController::class, 'pagamento']);
                         // conversa do motoboy com a central (botão "Chat" do cliente nos detalhes do pedido)
                         Route::post('chat-central', [MotoboyController::class, 'chatComACentral']);
                         // conversa do motoboy com a loja do pedido (ou com a central, em pedido sem loja)
@@ -212,6 +231,14 @@ class RouteServiceProvider extends ServiceProvider
                         Route::post('pedidos/{id}/codigo-ifood', [MotoboyController::class, 'codigoIfood'])->middleware('throttle:entregas-ifood-codigo');
                         // distribuição de pedidos abertos: recusar a oferta
                         Route::post('pedidos/{id}/recusar', [MotoboyController::class, 'recusar'])->middleware('throttle:entregas-motoboy-recusa');
+                    });
+
+                // Entregas RestaurantePro: comprovante de pagamento do Financeiro (ComprovantesController), sem token: só pela URL
+                // assinada de 30 min (Pagamentos::urlDoComprovante) que o console e o app recebem
+                Route::prefix('v1/entregas/comprovantes')
+                    ->middleware(['signed', 'throttle:60,1'])
+                    ->group(function () {
+                        Route::get('{uuid}', [ComprovantesController::class, 'mostrar'])->name(Pagamentos::ROTA_DO_COMPROVANTE);
                     });
 
                 // Entregas RestaurantePro: traçado loja → cliente e situação do motoboy no mapa do pedido do app (MotoboyController@rota)

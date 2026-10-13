@@ -630,4 +630,48 @@ confere($comprovantes->mostrar(pedidoFeito(), $semArquivo->uuid)->status === 404
 \Teste\Disco::$arquivos = [];
 confere($comprovantes->mostrar(pedidoFeito(), $pagamento->uuid)->status === 404, 'arquivo que sumiu do disco → 404');
 
+echo '== Rotas (RouteServiceProvider)' . PHP_EOL;
+$rotas = file_get_contents('/repo/api/app/Providers/RouteServiceProvider.php');
+
+/** O trecho do grupo que começa em $inicio (até o fim do group). */
+function grupoDasRotas(string $rotas, string $inicio): string
+{
+    $comeco = strpos($rotas, $inicio);
+    if ($comeco === false) {
+        return '';
+    }
+    $fim = strpos($rotas, '});', $comeco);
+
+    return substr($rotas, $comeco, $fim === false ? null : $fim - $comeco);
+}
+
+$console = grupoDasRotas($rotas, "Route::prefix('int/v1/entregas')");
+foreach ([
+    "Route::get('financeiro/painel', [FinanceiroController::class, 'painel'])",
+    "Route::get('financeiro/motoboys', [FinanceiroController::class, 'motoboys'])",
+    "Route::get('financeiro/motoboys/{id}/extrato', [FinanceiroController::class, 'extratoDoMotoboy'])",
+    "Route::put('financeiro/motoboys/{id}/pix', [FinanceiroController::class, 'salvarPix'])",
+    "Route::post('financeiro/lancamentos', [FinanceiroController::class, 'lancar'])",
+    "Route::post('financeiro/lancamentos/{id}/estornar', [FinanceiroController::class, 'estornarLancamento'])",
+    "Route::post('financeiro/pagamentos', [FinanceiroController::class, 'registrarPagamento'])",
+    "Route::post('financeiro/pagamentos/{id}/estornar', [FinanceiroController::class, 'estornarPagamento'])",
+    "Route::get('financeiro/configuracoes', [FinanceiroController::class, 'configuracoes'])",
+    "Route::put('financeiro/configuracoes', [FinanceiroController::class, 'salvarConfiguracoes'])",
+] as $linha) {
+    confere(str_contains($console, $linha), 'console (fleetbase.protected): ' . $linha);
+}
+confere(str_contains($console, "->middleware(['fleetbase.protected'])"), 'o grupo das rotas do console é o fleetbase.protected');
+
+$doApp = grupoDasRotas($rotas, "->middleware(['fleetbase.api', 'throttle:entregas-motoboy'])");
+confere(str_contains($doApp, "Route::get('extrato', [MotoboyController::class, 'extrato'])") && str_contains($doApp, "Route::get('pagamentos/{id}', [MotoboyController::class, 'pagamento'])"), 'app: extrato e pagamentos/{id} no grupo v1/entregas/motoboy (fleetbase.api, throttle:entregas-motoboy)');
+
+$doComprovante = grupoDasRotas($rotas, "Route::prefix('v1/entregas/comprovantes')");
+confere(str_contains($doComprovante, "->middleware(['signed', 'throttle:60,1'])"), 'comprovante: grupo próprio com signed e throttle:60,1 (sem token)');
+confere(str_contains($doComprovante, "Route::get('{uuid}', [ComprovantesController::class, 'mostrar'])->name(Pagamentos::ROTA_DO_COMPROVANTE)"), 'comprovante: GET {uuid} com o nome Pagamentos::ROTA_DO_COMPROVANTE');
+confere(!str_contains($doComprovante, 'fleetbase.api') && !str_contains($doComprovante, 'fleetbase.protected'), 'comprovante fora dos grupos do Fleetbase (o link abre sem token)');
+foreach (['FinanceiroController', 'ComprovantesController'] as $classe) {
+    confere(str_contains($rotas, 'use App\\Http\\Controllers\\Entregas\\' . $classe . ';'), "use do {$classe} no provider");
+}
+confere(str_contains($rotas, 'use App\\Support\\Entregas\\Financeiro\\Pagamentos;'), 'use do Pagamentos (o nome da rota) no provider');
+
 resumo();
