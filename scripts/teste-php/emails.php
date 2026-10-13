@@ -319,6 +319,30 @@ $semTraducao        = new class extends \Illuminate\Notifications\Notification {
 confere($canal->send($ana, $semTraducao) === 'enviado' && ($carteiro->enviados[0]['dados']['subject'] ?? null) === 'Original in English', 'desconhecida sai como veio');
 confere((Log::$registros[0][1] ?? null) === '[entregas] e-mail sem tradução', 'desconhecida vai para o log');
 
+// os e-mails do próprio Entregas (App\Notifications\Entregas\...) já vêm em pt-BR: saem como vieram, sem "sem tradução"
+$carteiro->enviados = [];
+Log::$registros     = [];
+$faturaEmitida      = new \App\Notifications\Entregas\Email\FaturaEmitida([
+    'numero' => 'FAT-0031', 'loja' => 'Pizzaria do Zé', 'empresa' => 'Entregas Rápidas', 'periodo_inicio' => '2026-09-28',
+    'periodo_fim' => '2026-10-04', 'vencimento' => '2026-10-08', 'total' => 1620.5, 'em_aberto' => 1620.5,
+    'url' => 'https://entregas.restaurantepro.com.br/customer-portal/financeiro/fat-31',
+]);
+confere($canal->send($ana, $faturaEmitida) === 'enviado' && ($carteiro->enviados[0]['dados']['subject'] ?? null) === 'Fatura FAT-0031 emitida', 'fatura emitida sai com o assunto em pt-BR');
+confere(Log::$registros === [], 'fatura emitida: sem "e-mail sem tradução" no log');
+$dadosFatura = $carteiro->enviados[0]['dados'] ?? [];
+confere(in_array('Valor: R$ 1.620,50', $dadosFatura['introLines'] ?? [], true) && in_array('Vencimento: 08/10/2026', $dadosFatura['introLines'] ?? [], true)
+    && ($dadosFatura['introLines'][0] ?? null) === 'Olá, Pizzaria do Zé! A fatura FAT-0031, das entregas de 28/09/2026 a 04/10/2026, foi emitida.'
+    && ($dadosFatura['actionText'] ?? null) === 'Ver a fatura', 'fatura emitida: saudação, período, valor, vencimento e botão');
+foreach ([\App\Notifications\Entregas\Email\LembreteDeFatura::class => 'Fatura FAT-0031 vence amanhã', \App\Notifications\Entregas\Email\FaturaVencida::class => 'Fatura FAT-0031 está vencida'] as $classe => $assunto) {
+    $mensagemFatura = (new $classe($faturaEmitida->fatura))->toMail(null);
+    $textos         = array_merge([$mensagemFatura->subject, $mensagemFatura->greeting], $mensagemFatura->introLines, $mensagemFatura->outroLines);
+    confere($mensagemFatura->subject === $assunto && in_array('Em aberto: R$ 1.620,50', $mensagemFatura->introLines, true) && count(array_filter($textos, fn ($t) => str_contains($t, '&#'))) === 0,
+        "{$assunto}: assunto, valor em aberto e sem entidade HTML");
+}
+$semEmpresa = (new \App\Notifications\Entregas\Email\FaturaVencida(['numero' => 'FAT-0001', 'loja' => null, 'empresa' => null, 'vencimento' => '2026-10-08', 'em_aberto' => 5]))->toMail(null);
+confere(str_starts_with($semEmpresa->introLines[0], 'Olá! A fatura FAT-0001') && in_array('Dúvidas sobre a fatura? Fale com a central.', array_merge($semEmpresa->introLines, $semEmpresa->outroLines), true) && $semEmpresa->actionText === null,
+    'sem nome da loja, da empresa e sem link: "Olá!", "a central" e sem botão');
+
 // sem endereço de e-mail: não envia (como o MailChannel do Laravel)
 $carteiro->enviados = [];
 $semEmail           = usuario('Sem', '');

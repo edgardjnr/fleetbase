@@ -244,6 +244,9 @@ unset($porComando['entregas:integracao-acompanhar']);
 // o financeiro tem o próprio when (ENTREGAS_FINANCEIRO), conferido à parte no fim
 $financeiro = $porComando['entregas:financeiro-conferir'] ?? null;
 unset($porComando['entregas:financeiro-conferir']);
+// os e-mails das faturas (lembrete e vencida) também seguem o ENTREGAS_FINANCEIRO, conferidos à parte no fim
+$avisosFin = $porComando['entregas:financeiro-avisos'] ?? null;
+unset($porComando['entregas:financeiro-avisos']);
 confere(array_keys($porComando) === ['entregas:ifood-polling', 'entregas:ifood-agendados', 'entregas:ifood-acompanhar', 'entregas:ifood-tokens'], 'os quatro comandos agendados');
 confere(isset($porComando['entregas:ifood-polling']['everyThirtySeconds']) && isset($porComando['entregas:ifood-agendados']['everyMinute']) && isset($porComando['entregas:ifood-acompanhar']['everyThirtySeconds']) && isset($porComando['entregas:ifood-tokens']['everyThirtyMinutes']), 'a cada 30 s, a cada minuto, a cada 30 s e a cada 30 min');
 foreach ($porComando as $comando => $chamadas) {
@@ -301,6 +304,18 @@ if ($quandoFin instanceof Closure) {
     $ligadaFin                                       = $quandoFin();
     Config::$valores['services.entregas.financeiro'] = '';
     confere($ligadaFin === true && $quandoFin() === false, 'entregas:financeiro-conferir: o when() segue o Financeiro::ligada()');
+}
+confere($avisosFin !== null && ($avisosFin['dailyAt'] ?? null) === ['09:00'] && ($avisosFin['withoutOverlapping'][0] ?? null) === 10 && isset($avisosFin['runInBackground']) && ($avisosFin['appendOutputTo'] ?? null) === ['/proc/1/fd/1'],
+    'entregas:financeiro-avisos: às 09:00, withoutOverlapping(10), em segundo plano, saída no container');
+$quandoAvisos = $avisosFin['when'][0] ?? null;
+if ($quandoAvisos instanceof Closure) {
+    reiniciarIfood();
+    Config::$valores['services.entregas.financeiro'] = '1';
+    $ligadaAvisos                                    = $quandoAvisos();
+    Config::$valores['services.entregas.financeiro'] = '';
+    confere($ligadaAvisos === true && $quandoAvisos() === false, 'entregas:financeiro-avisos: o when() segue o Financeiro::ligada()');
+} else {
+    confere(false, 'entregas:financeiro-avisos: com when()');
 }
 
 resumo();

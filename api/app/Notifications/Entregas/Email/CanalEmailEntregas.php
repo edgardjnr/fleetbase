@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\Log;
  * - Motoboy não recebe e-mail: Driver (pedido atribuído, despachado, cancelado...) e o convite de organização para
  *   usuário do tipo driver. Ele já recebe push e entra pelo app; o código de login por e-mail é Mailable, não passa aqui.
  * - Notificação conhecida sai com assunto e texto em pt-BR (EmailsEmPortugues); desconhecida sai como veio, já no
- *   layout novo (views em api/resources/views/vendor), e aparece no log como "[entregas] e-mail sem tradução".
+ *   layout novo (views em api/resources/views/vendor), e aparece no log como "[entregas] e-mail sem tradução". As do
+ *   próprio Entregas (namespace App\Notifications\Entregas\, ex.: FaturaEmitida) já vêm em pt-BR e saem sem esse aviso.
  *
  * O send() repete o do MailChannel do Laravel 10 (commit 74e222ce) e só troca a MailMessage. Ao atualizar o Laravel,
  * confira o send() do pai e os métodos usados (buildView, additionalMessageData, messageBuilder). Ao atualizar o
@@ -64,6 +65,12 @@ class CanalEmailEntregas extends MailChannel
         return get_class($notification) === 'Fleetbase\Notifications\UserInvited' && ($notifiable->type ?? null) === 'driver';
     }
 
+    /** notificação do próprio Entregas (App\Notifications\Entregas\..., ex.: e-mails das faturas): já vem em pt-BR */
+    public static function doEntregas($notification): bool
+    {
+        return str_starts_with(get_class($notification), 'App\\Notifications\\Entregas\\');
+    }
+
     /** copia remetente, mailer, anexos, etiquetas etc. da original para a traduzida */
     public static function copiarEnvio(MailMessage $original, MailMessage $traduzida): MailMessage
     {
@@ -81,7 +88,9 @@ class CanalEmailEntregas extends MailChannel
         }
 
         if (!EmailsEmPortugues::conhece($notification)) {
-            Log::warning('[entregas] e-mail sem tradução', ['aviso' => get_class($notification)]);
+            if (!self::doEntregas($notification)) {
+                Log::warning('[entregas] e-mail sem tradução', ['aviso' => get_class($notification)]);
+            }
 
             return $original;
         }
