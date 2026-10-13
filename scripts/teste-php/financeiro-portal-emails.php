@@ -115,6 +115,7 @@ namespace App\Support\Entregas {
 
 namespace {
     use App\Console\Commands\Entregas\FinanceiroAvisos;
+    use App\Http\Controllers\Entregas\FinanceiroLojasController;
     use App\Http\Controllers\Entregas\PortalLojaController;
     use App\Notifications\Entregas\Email\FaturaEmitida;
     use App\Notifications\Entregas\Email\FaturaVencida;
@@ -156,12 +157,6 @@ namespace {
     require __DIR__ . '/laravel10/Action.php';
     require __DIR__ . '/laravel10/SimpleMessage.php';
     require __DIR__ . '/laravel10/MailMessage.php';
-
-    // o ciclo em andamento usa o CicloDeCobranca da B3 quando ele existe; sem ele (worktree da B4), um falso com a mesma
-    // resposta da regra semanal (domingo) para a quarta 14/10/2026: seg 12/10 a dom 18/10
-    if (!is_file('/repo/api/app/Support/Entregas/Financeiro/CicloDeCobranca.php')) {
-        eval('namespace App\Support\Entregas\Financeiro; final class CicloDeCobranca { public static array $chamadas = []; public static function periodoQueContem(array $config, string $dia): array { self::$chamadas[] = [$config, $dia]; return ["inicio" => "2026-10-12", "fim" => "2026-10-18"]; } }');
-    }
 
     /** Uma fatura no banco em memória. */
     function fatura(string $uuid, string $vendor, string $situacao, ?int $numero, string $inicio, string $fim, string $vencimento, ?float $total, array $extra = []): void
@@ -223,6 +218,10 @@ namespace {
         ];
         Banco::$tabelas['orders'] = [
             1 => ['id' => 1, 'uuid' => 'pedido-2', 'company_uuid' => 'empresa-1', 'public_id' => 'order_2', 'internal_id' => 'RP0002'],
+        ];
+        // o mesmo pedido no model (o ExtratoDaConta::linhas lê o pedido sem detalhes pelo Order)
+        \Fleetbase\FleetOps\Models\Order::$todos = [
+            new \Fleetbase\FleetOps\Models\Order(['uuid' => 'pedido-2', 'company_uuid' => 'empresa-1', 'public_id' => 'order_2', 'internal_id' => 'RP0002']),
         ];
     }
 
@@ -321,9 +320,9 @@ namespace {
     confere(FaturasDaLoja::cicloAtual([], '2026-10-14', ['inicio' => '2026-10-12', 'fim' => '2026-10-18']) === ['inicio' => '2026-10-12', 'fim' => '2026-10-18', 'entregas' => 0, 'valor' => 0.0],
         'sem lançamento: o ciclo, zerado');
     confere(FaturasDaLoja::cicloAtual([], '2026-10-14', null) === ['inicio' => '2026-10-14', 'fim' => '2026-10-14', 'entregas' => 0, 'valor' => 0.0], 'sem lançamento e sem ciclo: hoje, zerado');
-    confere(FaturasDaLoja::configDaLoja('empresa-1', 'vendor-a') === ['ciclo' => 'semanal', 'dia_fechamento' => 0, 'prazo_dias' => 3], 'loja sem ciclo próprio: o padrão da empresa');
+    confere(FaturasDaLoja::periodoEmAndamento('empresa-1', 'vendor-a', '2026-10-14') === ['inicio' => '2026-10-12', 'fim' => '2026-10-18'], 'loja sem ciclo próprio: o padrão da empresa (semanal, fecha domingo)');
     Banco::$tabelas['entregas_cobranca_lojas'] = [1 => ['id' => 1, 'company_uuid' => 'empresa-1', 'vendor_uuid' => 'vendor-a', 'ciclo' => 'mensal', 'dia_fechamento' => '5', 'prazo_dias' => '10']];
-    confere(FaturasDaLoja::configDaLoja('empresa-1', 'vendor-a') === ['ciclo' => 'mensal', 'dia_fechamento' => 5, 'prazo_dias' => 10], 'loja com ciclo próprio: o dela, em números');
+    confere(FaturasDaLoja::periodoEmAndamento('empresa-1', 'vendor-a', '2026-10-14') === ['inicio' => '2026-10-06', 'fim' => '2026-11-05'], 'loja com ciclo próprio (mensal, dia 5 em texto): o dela');
 
     echo '== Portal: loja/faturas/{id}' . PHP_EOL;
     montarLojas();
@@ -341,7 +340,8 @@ namespace {
         'item: os campos do Lancamento público (sem observacao_interna e criado_por)');
     confere($item['valor'] === 60.0 && $item['data'] === '2026-09-22' && $item['pedido'] === ['id' => 'order_1', 'numero' => 'RP0001'] && $item['fatura'] === ['id' => 'fat-1', 'numero' => 'FAT-0001'] && $item['estornado'] === false && $item['criado_em'] === '2026-10-14T10:00:00-03:00',
         'item: valor, data, pedido dos detalhes, fatura, criado_em em ISO');
-    confere($item['detalhes'] === ['km' => 3.21, 'faixa' => ['de_km' => 2, 'ate_km' => 4, 'acima' => false], 'loja_nome' => 'Pizzaria do Zé', 'destino' => 'Rua X, 10', 'cancelado_pago' => false, 'cancelado_origem' => null],
+    // faixa em números com casas (o ExtratoDaConta converte; no JSON, 2.0 e 2 são o mesmo número para a tela)
+    confere($item['detalhes'] === ['km' => 3.21, 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'loja_nome' => 'Pizzaria do Zé', 'destino' => 'Rua X, 10', 'cancelado_pago' => false, 'cancelado_origem' => null],
         'item: só os detalhes públicos');
     confere($dados['itens'][1]['pedido'] === ['id' => 'order_2', 'numero' => 'RP0002'] && $dados['itens'][1]['motivo'] === 'Taxa de espera' && $dados['itens'][1]['detalhes'] === null,
         'ajuste com pedido sem detalhes: o pedido vem da tabela orders; o motivo aparece');
@@ -355,6 +355,49 @@ namespace {
     }
     Banco::$tabelas['entregas_faturas'][1]['company_uuid'] = 'empresa-2';
     confere($controller->fatura('fat-1')->status === 404, 'fatura de outra empresa: 404');
+
+    // ------------------------------------------------------------------------------------------------------------------
+    echo '== Console × portal: os mesmos números da mesma fatura' . PHP_EOL;
+    montarLojas();
+    comoUsuario('usuario-a');
+    // o console (FinanceiroLojasController, admin) lê as lojas pelo model
+    \Fleetbase\FleetOps\Models\Vendor::$todos = [
+        new \Fleetbase\FleetOps\Models\Vendor(['uuid' => 'vendor-a', 'public_id' => 'vendor_a', 'company_uuid' => 'empresa-1', 'name' => 'Pizzaria do Zé', 'type' => 'customer', 'email' => 'ze@pizzaria.com']),
+        new \Fleetbase\FleetOps\Models\Vendor(['uuid' => 'vendor-b', 'public_id' => 'vendor_b', 'company_uuid' => 'empresa-1', 'name' => 'Burger Hub', 'type' => 'customer']),
+    ];
+    \Fleetbase\Support\Auth::$usuario = new class {
+        public string $uuid = 'usuario-admin';
+        public function isNotAdmin(): bool { return false; }
+    };
+    $console = new FinanceiroLojasController();
+    $campos  = array_flip(['numero', 'loja', 'periodo_inicio', 'periodo_fim', 'vencimento', 'situacao', 'pagamento', 'vencida', 'total', 'recebido', 'em_aberto', 'entregas', 'emitida_em']);
+    $doConsole = array_column($console->faturas(new \Illuminate\Http\Request([]))->dados['faturas'] ?? [], null, 'id');
+    $doPortal  = $controller->financeiro()->dados['faturas'];
+    confere(count($doPortal) === 3, 'o portal lista 3 faturas da loja A');
+    foreach ($doPortal as $fatura) {
+        confere(isset($doConsole[$fatura['id']]) && array_intersect_key($doConsole[$fatura['id']], $campos) === array_intersect_key($fatura, $campos),
+            "lista: {$fatura['id']} igual no console e no portal (situação, recebido, em aberto, entregas)");
+    }
+    foreach (['fat-1', 'fat-3', 'fat-2'] as $uuid) {
+        $p = $controller->fatura($uuid)->dados;
+        $c = $console->fatura(new \Illuminate\Http\Request([]), $uuid)->dados;
+        confere(array_diff_key($c['fatura'], ['email_enviado_em' => true]) === $p['fatura'], "detalhe: {$uuid} igual no console e no portal (menos email_enviado_em)");
+        confere(array_map(fn ($item) => array_diff_key($item, ['observacao_interna' => true, 'criado_por' => true]), $c['itens']) === $p['itens'],
+            "itens: {$uuid} iguais no console e no portal (menos observação interna e quem lançou)");
+    }
+    // a lista de lojas e o painel do console somam as mesmas faturas
+    $emAbertoDaA = array_sum(array_map(fn ($f) => $f['em_aberto'], $doPortal));
+    $vencidoDaA  = array_sum(array_map(fn ($f) => $f['vencida'] ? $f['em_aberto'] : 0, $doPortal));
+    $lojaA       = array_column($console->lojas(new \Illuminate\Http\Request([]))->dados['lojas'] ?? [], null, 'id')['vendor_a'] ?? [];
+    confere(($lojaA['em_aberto'] ?? null) === round($emAbertoDaA, 2) && ($lojaA['vencido'] ?? null) === round($vencidoDaA, 2), 'Lojas do console: em aberto e vencido da loja A = soma do portal (' . $emAbertoDaA . ' / ' . $vencidoDaA . ')');
+    Config::$valores['services.entregas.financeiro'] = ''; // o "sem valor" do painel fica de fora (precisa do CalculoEntregas)
+    $painel = \App\Support\Entregas\Financeiro\PainelFinanceiro::montar('empresa-1', '2026-10-01', '2026-10-31');
+    comoUsuario('usuario-b');
+    $doPortalB = $controller->financeiro()->dados['faturas'];
+    $emAbertoTotal = round($emAbertoDaA + array_sum(array_map(fn ($f) => $f['em_aberto'], $doPortalB)), 2);
+    $vencidoTotal  = round($vencidoDaA + array_sum(array_map(fn ($f) => $f['vencida'] ? $f['em_aberto'] : 0, $doPortalB)), 2);
+    confere($painel['a_receber'] === $emAbertoTotal && $painel['vencido'] === $vencidoTotal, "painel: a receber {$painel['a_receber']} e vencido {$painel['vencido']} = soma das faturas dos portais");
+    Config::$valores['services.entregas.financeiro'] = '1';
 
     // ------------------------------------------------------------------------------------------------------------------
     echo '== E-mails: destinatários (AvisosDaFatura::emailsDaLoja)' . PHP_EOL;

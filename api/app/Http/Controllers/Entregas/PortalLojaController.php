@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Entregas;
 
 use App\Http\Controllers\Controller;
 use App\Support\Entregas\CalculoEntregas;
+use App\Support\Entregas\Financeiro\Faturas;
 use App\Support\Entregas\Financeiro\FaturasDaLoja;
 use App\Support\Entregas\Financeiro\Financeiro;
 use App\Support\Entregas\Financeiro\Lancamentos;
@@ -161,7 +162,8 @@ class PortalLojaController extends Controller
 
     /**
      * Financeiro da loja: o ciclo em andamento (lançamentos ainda sem fatura) e as faturas emitidas e canceladas, mais nova
-     * primeiro (formatos "Portal loja/financeiro" e "Fatura" pública do contrato do Financeiro). Rascunho não aparece.
+     * primeiro (formatos "Portal loja/financeiro" e "Fatura" pública do contrato do Financeiro). Rascunho não aparece. A
+     * fatura sai pelo mesmo Faturas::resumo do console (público: sem email_enviado_em): os números são os mesmos.
      */
     public function financeiro()
     {
@@ -169,13 +171,18 @@ class PortalLojaController extends Controller
         $companyUuid = (string) session('company');
         $lancamentos = Lancamentos::daConta($companyUuid, Financeiro::CONTA_LOJA, $vendor->uuid);
         $hoje        = Financeiro::hoje($companyUuid);
-        $fuso        = Financeiro::fuso($companyUuid);
-        $situacoes   = FaturasDaLoja::situacoes($companyUuid, $vendor->uuid, $lancamentos);
-        $entregas    = FaturasDaLoja::entregasPorFatura($lancamentos);
-        $loja        = ['id' => $vendor->public_id, 'nome' => $vendor->name];
+        $situacoes   = Faturas::situacoesDaLoja($companyUuid, (string) $vendor->uuid);
+
+        // os itens de cada fatura, dos lançamentos já lidos (o resumo só conta as entregas)
+        $itens = [];
+        foreach ($lancamentos as $lancamento) {
+            if (($lancamento->fatura_uuid ?? null) !== null) {
+                $itens[(string) $lancamento->fatura_uuid][] = $lancamento;
+            }
+        }
 
         $faturas = array_map(
-            fn ($fatura) => FaturasDaLoja::publica($fatura, $situacoes, $loja, $entregas[$fatura->uuid] ?? 0, $fuso),
+            fn ($fatura) => Faturas::resumo($fatura, $situacoes, (string) $vendor->name, true, (string) $vendor->public_id, $itens[(string) $fatura->uuid] ?? []),
             FaturasDaLoja::daLoja($companyUuid, $vendor->uuid, FaturasDaLoja::VISIVEIS)
         );
 
@@ -187,7 +194,8 @@ class PortalLojaController extends Controller
 
     /**
      * Uma fatura da loja (o :id é o uuid) com os itens, para a tela e a impressão. Rascunho, fatura de outra loja ou de
-     * outra empresa → 404 (a mesma resposta de inexistente, para não revelar que existe).
+     * outra empresa → 404 (a mesma resposta de inexistente, para não revelar que existe). Fatura e itens pelos mesmos
+     * Faturas::resumo e Faturas::itensFormatados do console, no formato público.
      */
     public function fatura(string $id)
     {
@@ -199,16 +207,13 @@ class PortalLojaController extends Controller
             return response()->json(['errors' => ['Fatura não encontrada.']], 404);
         }
 
-        $fuso      = Financeiro::fuso($companyUuid);
-        $itens     = FaturasDaLoja::itensPublicos($fatura, $fuso);
-        $situacoes = $fatura->situacao === 'emitida' ? FaturasDaLoja::situacoes($companyUuid, $vendor->uuid) : [];
-        $entregas  = count(array_filter($itens, fn ($item) => $item['tipo'] === 'corrida'));
+        $situacoes = $fatura->situacao === 'emitida' ? Faturas::situacoesDaLoja($companyUuid, (string) $vendor->uuid) : [];
         $coleta    = LojaDoUsuario::coleta($vendor);
         $endereco  = $coleta ? implode(', ', array_filter([$coleta->street1 ?? null, $coleta->street2 ?? null, $coleta->neighborhood ?? null, $coleta->city ?? null])) : '';
 
         return response()->json([
-            'fatura'  => FaturasDaLoja::publica($fatura, $situacoes, ['id' => $vendor->public_id, 'nome' => $vendor->name], $entregas, $fuso),
-            'itens'   => $itens,
+            'fatura'  => Faturas::resumo($fatura, $situacoes, (string) $vendor->name, true, (string) $vendor->public_id),
+            'itens'   => Faturas::itensFormatados($fatura, true),
             'loja'    => ['nome' => $vendor->name, 'endereco' => $endereco === '' ? null : $endereco],
             'empresa' => ['nome' => DB::table('companies')->where('uuid', $companyUuid)->value('name')],
         ]);

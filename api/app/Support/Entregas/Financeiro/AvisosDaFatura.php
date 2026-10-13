@@ -97,7 +97,8 @@ final class AvisosDaFatura
             return false;
         }
 
-        $situacao = FaturasDaLoja::situacoes($fatura->company_uuid, $fatura->vendor_uuid)[$fatura->uuid] ?? null;
+        // a mesma situação do console e do portal (Faturas::situacoesDaLoja)
+        $situacao = Faturas::situacoesDaLoja((string) $fatura->company_uuid, (string) $fatura->vendor_uuid)[$fatura->uuid] ?? null;
         $emAberto = (float) ($situacao['em_aberto'] ?? 0);
         if ($soUmaVezEmAberto && $emAberto <= 0) {
             return false;

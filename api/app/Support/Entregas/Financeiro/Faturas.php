@@ -473,86 +473,14 @@ final class Faturas
         return $linhas;
     }
 
-    /** Os itens da fatura no formato JSON "Lancamento" (plano, 1.5), mais antigos primeiro. */
+    /**
+     * Os itens da fatura no formato JSON "Lancamento" (plano, 1.5), mais antigos primeiro, pelo mesmo formatador do
+     * extrato (ExtratoDaConta::linhas): console ($publico = false) e portal ($publico = true) mostram o mesmo item. Sem
+     * situação por item (`situacao`/`valor_pago` nulos): na conta da loja, quem quita é a fatura.
+     */
     public static function itensFormatados(object $fatura, bool $publico): array
     {
-        $itens = static::itens($fatura);
-        if (!$itens) {
-            return [];
-        }
-
-        $fuso       = Financeiro::fuso((string) $fatura->company_uuid);
-        $daFatura   = ['id' => (string) $fatura->uuid, 'numero' => Financeiro::numeroDaFatura($fatura->numero !== null ? (int) $fatura->numero : null)];
-        $estornados = array_flip(Lancamentos::jaEstornados(array_map(fn ($l) => (int) $l->id, $itens)));
-
-        $nomes = [];
-        $quem  = array_values(array_unique(array_filter(array_map(fn ($l) => $l->criado_por ?? null, $itens))));
-        if (!$publico && $quem) {
-            foreach (DB::table('users')->whereIn('uuid', $quem)->get() as $usuario) {
-                $nomes[(string) $usuario->uuid] = (string) $usuario->name;
-            }
-        }
-
-        // pedido sem detalhes (ajuste manual com pedido): o public_id e o número vêm da tabela orders
-        $pedidos = [];
-        $semDetalhe = array_values(array_unique(array_filter(array_map(fn ($l) => empty($l->detalhes) ? ($l->order_uuid ?? null) : null, $itens))));
-        if ($semDetalhe) {
-            foreach (DB::table('orders')->whereIn('uuid', $semDetalhe)->get() as $pedido) {
-                $pedidos[(string) $pedido->uuid] = ['id' => (string) $pedido->public_id, 'numero' => $pedido->internal_id ?? null];
-            }
-        }
-
-        return array_map(fn ($l) => static::linhaDoItem($l, $publico, $fuso, $daFatura, $nomes, $pedidos, isset($estornados[(int) $l->id])), $itens);
-    }
-
-    /** Um item no formato "Lancamento". Sem situação por item: na conta da loja, a situação é a da fatura. */
-    private static function linhaDoItem(object $l, bool $publico, string $fuso, array $daFatura, array $nomes, array $pedidos, bool $estornado): array
-    {
-        $detalhes = is_string($l->detalhes ?? null) ? json_decode($l->detalhes, true) : (is_array($l->detalhes ?? null) ? $l->detalhes : null);
-        $detalhes = is_array($detalhes) ? $detalhes : null;
-
-        $pedido = null;
-        if ($detalhes && !empty($detalhes['pedido'])) {
-            $pedido = ['id' => (string) $detalhes['pedido'], 'numero' => isset($detalhes['numero']) ? (string) $detalhes['numero'] : null];
-        } elseif (!empty($l->order_uuid) && isset($pedidos[(string) $l->order_uuid])) {
-            $pedido = $pedidos[(string) $l->order_uuid];
-        }
-
-        if ($detalhes) {
-            $detalhes['km'] = isset($detalhes['km']) ? (float) $detalhes['km'] : null;
-            if (is_array($detalhes['faixa'] ?? null)) {
-                $detalhes['faixa'] = [
-                    'de_km'  => (float) ($detalhes['faixa']['de_km'] ?? 0),
-                    'ate_km' => (float) ($detalhes['faixa']['ate_km'] ?? 0),
-                    'acima'  => !empty($detalhes['faixa']['acima']),
-                ];
-            }
-            unset($detalhes['pedido'], $detalhes['numero']);
-        }
-
-        $linha = [
-            'id'                 => (int) $l->id,
-            'tipo'               => (string) $l->tipo,
-            'valor'              => round((float) $l->valor, 2),
-            'data'               => substr((string) $l->data_referencia, 0, 10),
-            'criado_em'          => static::instante($l->created_at ?? null, $fuso),
-            'pedido'             => $pedido,
-            'detalhes'           => $detalhes,
-            'motivo'             => $l->motivo ?? null,
-            'observacao_interna' => $l->observacao_interna ?? null,
-            'situacao'           => null,
-            'valor_pago'         => null,
-            'pagamento'          => null,
-            'estorno_de'         => isset($l->estorno_de) ? (int) $l->estorno_de : null,
-            'estornado'          => $estornado,
-            'fatura'             => $daFatura,
-            'criado_por'         => !empty($l->criado_por) && isset($nomes[(string) $l->criado_por]) ? ['nome' => $nomes[(string) $l->criado_por]] : null,
-        ];
-        if ($publico) {
-            unset($linha['observacao_interna'], $linha['criado_por']);
-        }
-
-        return $linha;
+        return ExtratoDaConta::linhas(static::itens($fatura), [], $publico);
     }
 
     /** Lançamentos de loja da empresa ainda sem fatura, menos recebimentos e estornos de recebimento (têm pagamento_uuid). */
