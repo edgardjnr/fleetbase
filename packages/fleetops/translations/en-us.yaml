@@ -612,6 +612,7 @@ fleet-ops:
                 margem-ajuda: 'Charged: store rides and adjustments in the period. Driver cost: rides, daily allowances, bonuses and adjustments in the period, paid or not.'
                 atencao-titulo: Attention
                 nada-pede-atencao: Nothing needs attention right now.
+                sem-valor-ajuda: 'Order without a value: fix the order km or the Km table. The daily check posts these rides for the last 30 days; for older orders, run php artisan entregas:financeiro-lancar-historico on the server.'
                 atencao:
                     fatura_vencida: 'Invoice {numero} from {loja} overdue since {vencimento}: {valor}'
                     rascunho: 'Draft invoice for {loja} to review: {valor}'

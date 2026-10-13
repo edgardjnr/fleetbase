@@ -77,6 +77,9 @@
                         </li>
                     {{/each}}
                 </ul>
+                {{#if this.temSemValor}}
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">{{t "fleet-ops.ui.financeiro.painel.sem-valor-ajuda"}}</p>
+                {{/if}}
             {{else if this.carregar.isRunning}}
                 <Spinner />
             {{else}}

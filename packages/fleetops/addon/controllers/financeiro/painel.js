@@ -42,6 +42,11 @@ export default class FinanceiroPainelController extends Controller {
         this.fim = periodo.fim;
     }
 
+    /** Há pedido concluído sem valor na lista: o painel explica como lançar a corrida depois de corrigir. */
+    get temSemValor() {
+        return this.atencao.some((item) => item.tipo === 'sem_valor');
+    }
+
     limpar() {
         this.carregar.cancelAll();
         this.painel = null;
