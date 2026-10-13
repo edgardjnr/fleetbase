@@ -116,6 +116,12 @@ namespace Teste {
         }
 
         public function exists($caminho) { return isset(self::$arquivos[$this->nome . ':' . $caminho]); }
+
+        // o FilesystemAdapter::response (o comprovante servido pelo ComprovantesController): devolve o que seria enviado
+        public function response($caminho, $nome = null, array $cabecalhos = [], $disposicao = 'inline')
+        {
+            return (object) ['disco' => $this->nome, 'caminho' => $caminho, 'nome' => $nome, 'cabecalhos' => $cabecalhos, 'disposicao' => $disposicao];
+        }
     }
 }
 

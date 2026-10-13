@@ -556,4 +556,78 @@ $resposta = $controller->painel(pedidoFeito());
 confere($resposta->status === 200 && ($resposta->dados['inicio'] ?? null) === '2026-10-01' && ($resposta->dados['fim'] ?? null) === '2026-10-12', 'sem período: este mês até hoje');
 confere($controller->painel(pedidoFeito(['inicio' => '2026-10-31', 'fim' => '2026-10-01']))->status === 422, 'período invertido → 422');
 
+echo '== App do motoboy: extrato (MotoboyController@extrato)' . PHP_EOL;
+
+/** Chamada do app com o token do motoboy (Sanctum "id|token") e a sessão montada pelo core. */
+function doApp(array $dados = [], string $usuario = 'user-m1', string $token = '12|abc'): RequestComArquivo
+{
+    session(['company' => 'empresa-1', 'user' => $usuario]);
+    $request        = pedidoFeito($dados);
+    $request->token = $token;
+
+    return $request;
+}
+
+['ids' => $ids, 'pagamento' => $pagamento] = cenario();
+ChavePix::salvar('empresa-1', 'driver-1', '11999994321', 'telefone');
+$app = new App\Http\Controllers\Entregas\MotoboyController();
+confere($app->extrato(doApp(['inicio' => '2026-10-01', 'fim' => '2026-10-12'], 'user-m1', 'flb_live_chave'))->status === 403, 'chave de API (sem "|") → 403');
+confere($app->extrato(doApp(['inicio' => '2026-10-01', 'fim' => '2026-10-12'], 'user-loja'))->status === 403, 'usuário sem cadastro de motoboy → 403');
+foreach ([
+    'sem início'      => ['fim' => '2026-10-12'],
+    'sem fim'         => ['inicio' => '2026-10-01'],
+    'data inválida'   => ['inicio' => '2026-10-01', 'fim' => '2026-10-32'],
+    'fim antes'       => ['inicio' => '2026-10-12', 'fim' => '2026-10-01'],
+    'mais de 92 dias' => ['inicio' => '2026-07-01', 'fim' => '2026-10-12'],
+] as $caso => $dados) {
+    $resposta = $app->extrato(doApp($dados));
+    confere($resposta->status === 422 && erroDa($resposta) !== null, "extrato {$caso} → 422 (" . erroDa($resposta) . ')');
+}
+$resposta = $app->extrato(doApp(['inicio' => '2026-07-12', 'fim' => '2026-10-12']));
+confere($resposta->status === 200, '92 dias: aceito');
+$resposta = $app->extrato(doApp(['inicio' => '2026-10-03', 'fim' => '2026-10-12']));
+$extrato  = $resposta->dados;
+$tudo     = json_encode($extrato, JSON_UNESCAPED_UNICODE);
+confere($resposta->status === 200 && ($extrato['conta']['id'] ?? null) === 'driver_1' && reais($extrato['saldo'] ?? null) === 31.5, 'o extrato do motoboy do token');
+confere(($extrato['conta']['pix'] ?? null) === ['chave' => '11999994321', 'tipo' => 'telefone'], 'com a chave Pix dele (só leitura)');
+confere(array_column($extrato['lancamentos'] ?? [], 'id') === [$ids['ajuste'], $ids['pagamento'], $ids['diaria'], $ids['corrida2']], 'só os lançamentos dele no período');
+confere(!str_contains($tudo, 'observacao_interna') && !str_contains($tudo, 'combinado com o João') && !str_contains($tudo, 'criado_por') && !str_contains($tudo, 'comprovante_url'), 'nunca a observação interna, quem lançou ou o link do comprovante na lista');
+confere(!str_contains($tudo, '"valor":12') && linhaDoExtrato($extrato, $ids['loja1']) === null, 'nunca o valor da loja nem lançamento da conta da loja');
+$daMaria = $app->extrato(doApp(['inicio' => '2026-10-01', 'fim' => '2026-10-12'], 'user-m2'))->dados;
+confere(array_column($daMaria['lancamentos'] ?? [], 'id') === [$ids['daMaria']] && ($daMaria['conta']['id'] ?? null) === 'driver_2', 'outro motoboy vê só o dele');
+// a empresa vem da sessão: o mesmo usuário noutra empresa não acha o cadastro
+session(['company' => 'empresa-2', 'user' => 'user-m1']);
+$request        = pedidoFeito(['inicio' => '2026-10-01', 'fim' => '2026-10-12']);
+$request->token = '12|abc';
+confere($app->extrato($request)->status === 403, 'sessão de outra empresa: sem cadastro de motoboy → 403');
+
+echo '== App do motoboy: recibo (MotoboyController@pagamento)' . PHP_EOL;
+$resposta = $app->pagamento(doApp(), $pagamento->uuid);
+$recibo   = $resposta->dados;
+confere($resposta->status === 200 && ($recibo['id'] ?? null) === $pagamento->uuid && ($recibo['valor'] ?? null) === 15.0 && ($recibo['forma'] ?? null) === 'pix' && ($recibo['data'] ?? null) === '2026-10-06' && ($recibo['estornado'] ?? null) === false, 'recibo do pagamento dele: ' . json_encode($recibo));
+confere(($recibo['comprovante']['tipo'] ?? null) === 'image/jpeg' && ($recibo['comprovante']['nome'] ?? null) === 'pix.jpg' && str_contains((string) ($recibo['comprovante']['url'] ?? ''), '/v1/entregas/comprovantes/' . $pagamento->uuid . '?expires='), 'comprovante com o link assinado, o tipo e o nome');
+$assinada = end(\Illuminate\Support\Facades\URL::$assinadas);
+confere(($assinada['nome'] ?? null) === 'entregas.comprovantes.mostrar' && ($assinada['parametros'] ?? null) === ['uuid' => $pagamento->uuid], 'o link aponta para a rota nomeada do comprovante');
+confere(array_keys($recibo) === ['id', 'valor', 'forma', 'data', 'estornado', 'comprovante'] && !str_contains(json_encode($recibo), 'pix do banco X'), 'só os campos do contrato (sem observação interna)');
+confere($app->pagamento(doApp([], 'user-m2'), $pagamento->uuid)->status === 404, 'pagamento de outro motoboy → 404');
+$daLoja = Pagamentos::registrar('empresa-1', 'loja', 'vendor-a', 5, 'pix', '2026-10-09', null, null, 'user-admin');
+confere($app->pagamento(doApp(), $daLoja->uuid)->status === 404, 'recebimento de loja → 404');
+confere($app->pagamento(doApp(), 'nao-existe')->status === 404, 'pagamento inexistente → 404');
+confere($app->pagamento(doApp([], 'user-m1', 'flb_live_chave'), $pagamento->uuid)->status === 403, 'recibo com chave de API → 403');
+$semArquivo = Pagamentos::registrar('empresa-1', 'motoboy', 'driver-1', 5, 'dinheiro', '2026-10-09', null, null, 'user-admin');
+confere(nulo($app->pagamento(doApp(), $semArquivo->uuid)->dados, 'comprovante'), 'pagamento sem arquivo: comprovante null');
+Pagamentos::estornar($semArquivo, 'user-admin');
+confere(($app->pagamento(doApp(), $semArquivo->uuid)->dados['estornado'] ?? null) === true, 'pagamento estornado: estornado true');
+
+echo '== Comprovante por URL assinada (ComprovantesController@mostrar)' . PHP_EOL;
+$comprovantes = new App\Http\Controllers\Entregas\ComprovantesController();
+session(['company' => null, 'user' => null]);
+$resposta = $comprovantes->mostrar(pedidoFeito(), $pagamento->uuid);
+confere(($resposta->disco ?? null) === 'local' && ($resposta->caminho ?? null) === 'entregas/comprovantes/empresa-1/' . $pagamento->uuid . '.jpg', 'serve o arquivo do disco local (sem sessão: a assinatura da URL é a proteção)');
+confere(($resposta->nome ?? null) === 'pix.jpg' && ($resposta->disposicao ?? null) === 'inline' && ($resposta->cabecalhos['Content-Type'] ?? null) === 'image/jpeg' && ($resposta->cabecalhos['X-Content-Type-Options'] ?? null) === 'nosniff', 'inline, com o tipo gravado e nosniff: ' . json_encode($resposta));
+confere($comprovantes->mostrar(pedidoFeito(), 'nao-existe')->status === 404, 'pagamento inexistente → 404');
+confere($comprovantes->mostrar(pedidoFeito(), $semArquivo->uuid)->status === 404, 'pagamento sem comprovante → 404');
+\Teste\Disco::$arquivos = [];
+confere($comprovantes->mostrar(pedidoFeito(), $pagamento->uuid)->status === 404, 'arquivo que sumiu do disco → 404');
+
 resumo();
