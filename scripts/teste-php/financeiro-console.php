@@ -431,6 +431,11 @@ foreach ([
     confere($resposta->status === 422 && erroDa($resposta) !== null, "PUT com {$caso} → 422 (" . erroDa($resposta) . ')');
 }
 confere(\Fleetbase\Models\Setting::$valores === ['company.empresa-1.entregas.financeiro_corte' => '2026-10-01'], 'nada gravado nos casos inválidos');
+// as mesmas regras e mensagens do ciclo de cada loja (CicloDeCobranca::validar, integração B2 × B3)
+$resposta = $controller->salvarConfiguracoes(pedidoFeito(['cobranca_padrao' => ['ciclo' => 'semanal', 'dia_fechamento' => 7, 'prazo_dias' => 3]]));
+confere(erroDa($resposta) === \App\Support\Entregas\Financeiro\CicloDeCobranca::validar(['ciclo' => 'semanal', 'dia_fechamento' => 7, 'prazo_dias' => 3]), 'ciclo padrão inválido: a mensagem do CicloDeCobranca::validar (' . erroDa($resposta) . ')');
+$resposta = $controller->salvarConfiguracoes(pedidoFeito(['cobranca_padrao' => ['ciclo' => 'mensal', 'dia_fechamento' => 0, 'prazo_dias' => '61']]));
+confere(erroDa($resposta) === 'O prazo de vencimento vai de 0 a 60 dias.', 'prazo em texto acima de 60: a mensagem do CicloDeCobranca');
 $resposta = $controller->salvarConfiguracoes(pedidoFeito(['corte' => '2026-11-01', 'cobranca_padrao' => ['ciclo' => 'mensal', 'dia_fechamento' => '0', 'prazo_dias' => 10]]));
 confere($resposta->status === 200 && $resposta->dados === ['corte' => '2026-11-01', 'cobranca_padrao' => ['ciclo' => 'mensal', 'dia_fechamento' => 0, 'prazo_dias' => 10], 'ligada' => true], 'PUT grava e responde o formato completo: ' . json_encode($resposta->dados));
 confere((\Fleetbase\Models\Setting::$valores['company.empresa-1.entregas.cobranca_padrao'] ?? null) === ['ciclo' => 'mensal', 'dia_fechamento' => 0, 'prazo_dias' => 10], 'ciclo padrão gravado no Setting da empresa (números)');

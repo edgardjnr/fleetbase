@@ -430,38 +430,13 @@ class FinanceiroController extends Controller
     }
 
     /**
-     * Ciclo de cobrança conferido ({ciclo, dia_fechamento, prazo_dias} com números) ou a mensagem de erro. Usa o
-     * CicloDeCobranca::validar (tarefa B3) quando existe; sem ele, as mesmas regras: ciclo semanal/quinzenal/mensal, dia
-     * 0..6 no semanal (0 = domingo), 0..28 no mensal (0 = último dia), 0 no quinzenal, prazo 0..60.
+     * Ciclo de cobrança conferido ({ciclo, dia_fechamento, prazo_dias} com números) ou a mensagem de erro, pelas regras
+     * do CicloDeCobranca (as mesmas do ciclo de cada loja): semanal dia 0..6 (0 = domingo), mensal 0..28 (0 = último
+     * dia), quinzenal grava dia 0, prazo 0..60.
      */
     public static function cobranca(array $config): array|string
     {
-        $ciclo = $config['ciclo'] ?? null;
-        $dia   = static::inteiro($config['dia_fechamento'] ?? ($ciclo === 'quinzenal' ? 0 : null));
-        $prazo = static::inteiro($config['prazo_dias'] ?? null);
-        $limpo = ['ciclo' => is_string($ciclo) ? $ciclo : '', 'dia_fechamento' => $ciclo === 'quinzenal' ? 0 : $dia, 'prazo_dias' => $prazo];
-
-        if (class_exists(CicloDeCobranca::class) && method_exists(CicloDeCobranca::class, 'validar')) {
-            if ($limpo['dia_fechamento'] === null || $limpo['prazo_dias'] === null) {
-                return $limpo['dia_fechamento'] === null ? 'Dia de fechamento inválido.' : 'Prazo de vencimento inválido (0 a 60 dias).';
-            }
-            $erro = CicloDeCobranca::validar($limpo);
-
-            return $erro ?? $limpo;
-        }
-
-        if (!in_array($limpo['ciclo'], ['semanal', 'quinzenal', 'mensal'], true)) {
-            return 'Ciclo de cobrança inválido.';
-        }
-        $maximo = $limpo['ciclo'] === 'semanal' ? 6 : ($limpo['ciclo'] === 'mensal' ? 28 : 0);
-        if ($limpo['dia_fechamento'] === null || $limpo['dia_fechamento'] < 0 || $limpo['dia_fechamento'] > $maximo) {
-            return 'Dia de fechamento inválido.';
-        }
-        if ($limpo['prazo_dias'] === null || $limpo['prazo_dias'] < 0 || $limpo['prazo_dias'] > 60) {
-            return 'Prazo de vencimento inválido (0 a 60 dias).';
-        }
-
-        return $limpo;
+        return CicloDeCobranca::validar($config) ?? CicloDeCobranca::normalizar($config);
     }
 
     /** Número digitado ou enviado: 30, "30", "30.5", "30,5", "-2,75", "1.234,56". null se não for número. */
@@ -602,21 +577,6 @@ class FinanceiroController extends Controller
     protected function erro(string $mensagem, int $status = 422)
     {
         return response()->json(['errors' => [$mensagem]], $status);
-    }
-
-    protected static function inteiro($valor): ?int
-    {
-        if (is_int($valor)) {
-            return $valor;
-        }
-        if (is_string($valor) && preg_match('/^\d+$/', trim($valor))) {
-            return (int) trim($valor);
-        }
-        if (is_float($valor) && floor($valor) === $valor) {
-            return (int) $valor;
-        }
-
-        return null;
     }
 
     protected function negarSeNaoAdmin(Request $request)
