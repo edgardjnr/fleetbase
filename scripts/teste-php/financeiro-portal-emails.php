@@ -406,6 +406,34 @@ namespace {
     Banco::$tabelas['contacts'][10]          = ['id' => 10, 'uuid' => 'contato-10', 'company_uuid' => 'empresa-1', 'type' => 'customer', 'email' => 'Gerente@Burger.com', 'deleted_at' => null];
     confere($emails()['vendor_b'] === 'gerente@burger.com', 'Lojas: loja sem e-mail, mas com usuário do portal com e-mail: o dele (a fatura vai para ele)');
 
+    echo '== Reenviar do console com a AvisosDaFatura de verdade e o aviso "não enviada" do painel' . PHP_EOL;
+    // FAT-0001 já foi por e-mail; FAT-0003 (loja A) e FAT-0004 (loja B) em aberto e sem e-mail enviado
+    $semEmail = function () {
+        Config::$valores['services.entregas.financeiro'] = ''; // o painel sem a lista "sem valor" (precisa do CalculoEntregas)
+        $atencao = \App\Support\Entregas\Financeiro\PainelFinanceiro::montar('empresa-1', '2026-10-01', '2026-10-31')['atencao'];
+        Config::$valores['services.entregas.financeiro'] = '1';
+
+        return array_values(array_column(array_filter($atencao, fn ($item) => $item['tipo'] === 'email_nao_enviado'), 'fatura'));
+    };
+    confere(FinanceiroLojasController::$avisos === AvisosDaFatura::class, 'o console usa a AvisosDaFatura');
+    confere($semEmail() === ['fat-3', 'fat-b'], 'painel: as emitidas em aberto sem e-mail enviado');
+    Notification::$enviados = [];
+    Relogio::$agora = '2026-10-14 11:00:00';
+    $r = $console->reenviar(new \Illuminate\Http\Request([]), 'fat-3');
+    confere($r->status === 200 && $r->dados === ['enviado' => true] && count(Notification::$enviados) === 1 && Notification::$enviados[0]['aviso'] instanceof FaturaEmitida, 'reenviar: o FaturaEmitida sai pela AvisosDaFatura');
+    confere(Banco::$tabelas['entregas_faturas'][2]['email_enviado_em'] === '2026-10-14 11:00:00', 'e grava o email_enviado_em');
+    confere(($console->fatura(new \Illuminate\Http\Request([]), 'fat-3')->dados['fatura']['email_enviado_em'] ?? null) === '2026-10-14T11:00:00-03:00', 'a fatura do console mostra quando o e-mail saiu');
+    confere($semEmail() === ['fat-b'], 'painel: a FAT-0003 sai do aviso "não enviada por e-mail"');
+    unset(Banco::$tabelas['vendor_personnels'][10]);
+    $r = $console->reenviar(new \Illuminate\Http\Request([]), 'fat-b');
+    confere($r->dados === ['enviado' => false, 'motivo' => 'sem_email'] && count(Notification::$enviados) === 1 && Banco::$tabelas['entregas_faturas'][5]['email_enviado_em'] === null,
+        'loja sem e-mail: { enviado: false, motivo: sem_email }, nada gravado');
+    confere($semEmail() === ['fat-b'], 'painel: a FAT-0004 continua no aviso');
+    Notification::$falhar = new \RuntimeException('SMTP fora do ar');
+    $r = $console->reenviar(new \Illuminate\Http\Request([]), 'fat-3');
+    Notification::$falhar = null;
+    confere($r->dados === ['enviado' => false, 'motivo' => 'falha'], 'SMTP fora: { enviado: false, motivo: falha } (a AvisosDaFatura engole o erro e loga)');
+
     // ------------------------------------------------------------------------------------------------------------------
     echo '== E-mails: destinatários (AvisosDaFatura::emailsDaLoja)' . PHP_EOL;
     montarLojas();

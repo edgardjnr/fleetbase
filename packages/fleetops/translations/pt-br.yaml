@@ -325,7 +325,9 @@ fleet-ops:
       emitida: Fatura emitida.
       reenviar-email: Reenviar e-mail
       email-reenviado: E-mail reenviado.
-      email-nao-enviado: A loja não tem e-mail cadastrado; nada foi enviado.
+      email-nao-enviado: Nem a loja nem os usuários do portal dela têm e-mail cadastrado; nada foi enviado.
+      email-nao-enviado-desligado: O envio de e-mails do Financeiro está desligado no servidor (ENTREGAS_FINANCEIRO); nada foi enviado.
+      email-nao-enviado-falha: Não foi possível enviar o e-mail agora. Tente de novo mais tarde.
       imprimir: Imprimir
       cancelar-fatura: Cancelar fatura
       cancelar-fatura-titulo: 'Cancelar a fatura {numero}?'

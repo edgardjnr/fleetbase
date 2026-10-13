@@ -11,6 +11,13 @@ namespace Teste {
         public static array $emitidas = [];
         public static bool $resposta  = true;
         public static ?\Throwable $falha = null;
+        /** O que a AvisosDaFatura::emailsDaLoja responderia (o reenviar usa para dizer por que não enviou). */
+        public static array $emails = ['ze@pizzaria.test'];
+
+        public static function emailsDaLoja(string $companyUuid, string $vendorUuid): array
+        {
+            return self::$emails;
+        }
 
         public static function emitida(object $fatura): bool
         {
@@ -63,6 +70,7 @@ namespace {
         AvisosFalsos::$emitidas = [];
         AvisosFalsos::$resposta = true;
         AvisosFalsos::$falha    = null;
+        AvisosFalsos::$emails   = ['ze@pizzaria.test'];
         FinanceiroLojasController::$avisos = AvisosFalsos::class;
     }
 
@@ -234,12 +242,19 @@ namespace {
     confere(api()->emitir(req(), $terceira)->status === 200, 'sem a classe dos e-mails (B4 fora): emite sem enviar');
 
     echo '== Reenviar' . PHP_EOL;
-    confere(api()->reenviar(req(), $id)->dados === ['enviado' => false], 'sem a classe dos e-mails: { enviado: false }');
+    confere(api()->reenviar(req(), $id)->dados === ['enviado' => false, 'motivo' => 'falha'], 'sem a classe dos e-mails: { enviado: false, motivo: falha }');
     FinanceiroLojasController::$avisos = AvisosFalsos::class;
     $r = api()->reenviar(req(), $id);
     confere($r->status === 200 && $r->dados === ['enviado' => true] && AvisosFalsos::$emitidas[array_key_last(AvisosFalsos::$emitidas)] === $id, 'reenvia: { enviado: true }');
     AvisosFalsos::$resposta = false;
-    confere(api()->reenviar(req(), $id)->dados === ['enviado' => false], 'loja sem e-mail: { enviado: false }');
+    AvisosFalsos::$emails = [];
+    confere(api()->reenviar(req(), $id)->dados === ['enviado' => false, 'motivo' => 'sem_email'], 'loja sem e-mail: { enviado: false, motivo: sem_email }');
+    AvisosFalsos::$emails = ['ze@pizzaria.test'];
+    confere(api()->reenviar(req(), $id)->dados === ['enviado' => false, 'motivo' => 'falha'], 'com e-mail e sem envio (SMTP, no log): { enviado: false, motivo: falha }');
+    Config::$valores['services.entregas.financeiro'] = '';
+    confere(api()->reenviar(req(), $id)->dados === ['enviado' => false, 'motivo' => 'desligado'], 'ENTREGAS_FINANCEIRO desligado: { enviado: false, motivo: desligado }');
+    Config::$valores['services.entregas.financeiro'] = '1';
+    AvisosFalsos::$resposta = true;
     AvisosFalsos::$falha = new \RuntimeException('SMTP fora do ar');
     $r = api()->reenviar(req(), $id);
     AvisosFalsos::$falha = null;

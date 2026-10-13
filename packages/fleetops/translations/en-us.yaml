@@ -325,7 +325,9 @@ fleet-ops:
             emitida: Invoice issued.
             reenviar-email: Resend e-mail
             email-reenviado: E-mail resent.
-            email-nao-enviado: The store has no e-mail registered; nothing was sent.
+            email-nao-enviado: Neither the store nor its portal users have an e-mail registered; nothing was sent.
+            email-nao-enviado-desligado: Financial e-mails are turned off on the server (ENTREGAS_FINANCEIRO); nothing was sent.
+            email-nao-enviado-falha: The e-mail could not be sent right now. Try again later.
             imprimir: Print
             cancelar-fatura: Cancel invoice
             cancelar-fatura-titulo: 'Cancel invoice {numero}?'

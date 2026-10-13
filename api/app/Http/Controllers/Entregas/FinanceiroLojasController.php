@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Log;
  * - faturas (GET faturas?situacao&loja) → { faturas }; gerarRascunho (POST faturas {loja, inicio, fim}) → { fatura }
  *   (null = sem lançamentos no período ou período já faturado);
  * - fatura, mudarVencimento, ajuste, naoCobrar, emitir, cancelar → { fatura, itens };
- * - reenviar (POST faturas/{id}/reenviar) → { enviado }.
+ * - reenviar (POST faturas/{id}/reenviar) → { enviado: true } ou { enviado: false, motivo: desligado|sem_email|falha }.
  * {id} de loja = vendors.public_id; de fatura = uuid. Erros: { errors: ['mensagem pt-BR'] }, 422 para entrada inválida ou
  * operação que a situação da fatura não permite (ex.: ajuste em fatura emitida).
  *
@@ -257,7 +257,24 @@ class FinanceiroLojasController extends Controller
             return $this->erro('Não foi possível enviar o e-mail.', 502);
         }
 
-        return response()->json(['enviado' => $enviado]);
+        return response()->json($enviado ? ['enviado' => true] : ['enviado' => false, 'motivo' => $this->motivoDoNaoEnvio($fatura)]);
+    }
+
+    /**
+     * Por que o e-mail não saiu (a AvisosDaFatura só devolve false): 'desligado' (ENTREGAS_FINANCEIRO), 'sem_email' (nem a
+     * loja nem os usuários do portal dela têm e-mail) ou 'falha' (o envio falhou; o motivo fica no log).
+     */
+    protected function motivoDoNaoEnvio(object $fatura): string
+    {
+        if (!Financeiro::ligada()) {
+            return 'desligado';
+        }
+        $avisos = static::$avisos;
+        if (class_exists($avisos) && method_exists($avisos, 'emailsDaLoja') && !$avisos::emailsDaLoja((string) $fatura->company_uuid, (string) $fatura->vendor_uuid)) {
+            return 'sem_email';
+        }
+
+        return 'falha';
     }
 
     /**

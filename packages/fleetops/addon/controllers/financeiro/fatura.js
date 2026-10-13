@@ -3,7 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
-import { corDaFatura, dataBr, jaNaoCobrado, linhasCsvDaFatura, numeroOuRascunho, podeNaoCobrar, rotuloDaFatura } from '../../utils/financeiro-faturas';
+import { chaveDoNaoEnvio, corDaFatura, dataBr, jaNaoCobrado, linhasCsvDaFatura, numeroOuRascunho, podeNaoCobrar, rotuloDaFatura } from '../../utils/financeiro-faturas';
 
 const ENDPOINT = 'entregas/financeiro/faturas';
 const PREFIXO = 'fleet-ops.ui.financeiro-lojas';
@@ -216,7 +216,7 @@ export default class FinanceiroFaturaController extends Controller {
         try {
             const resposta = yield this.fetch.post(`${ENDPOINT}/${this.id}/reenviar`);
             if (resposta?.enviado === false) {
-                this.notifications.warning(this.intl.t(`${PREFIXO}.email-nao-enviado`));
+                this.notifications.warning(this.intl.t(`${PREFIXO}.${chaveDoNaoEnvio(resposta.motivo)}`));
             } else {
                 this.notifications.success(this.intl.t(`${PREFIXO}.email-reenviado`));
             }

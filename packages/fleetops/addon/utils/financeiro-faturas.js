@@ -160,6 +160,15 @@ export function validarCiclo({ ciclo, dia_fechamento, prazo_dias } = {}) {
     return erros;
 }
 
+/**
+ * Aviso do "Reenviar e-mail" quando nada saiu (`{ enviado: false, motivo }` do servidor): 'sem_email' (nem a loja nem os
+ * usuários do portal dela têm e-mail), 'desligado' (ENTREGAS_FINANCEIRO) ou 'falha' (o envio falhou). Sem motivo
+ * conhecido, o aviso genérico.
+ */
+export function chaveDoNaoEnvio(motivo) {
+    return { sem_email: 'email-nao-enviado', desligado: 'email-nao-enviado-desligado', falha: 'email-nao-enviado-falha' }[motivo] ?? 'email-nao-enviado-falha';
+}
+
 /** Número da fatura ('FAT-0031') ou o rótulo do rascunho (que não tem número). */
 export function numeroOuRascunho(fatura, rotuloRascunho = 'Rascunho') {
     return fatura?.numero || rotuloRascunho;

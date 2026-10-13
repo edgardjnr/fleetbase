@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
     agruparLancamentosPorDia,
+    chaveDoNaoEnvio,
     corDaFatura,
     corDaSituacao,
     dataBr,
@@ -276,4 +277,11 @@ test('CSV do extrato da loja', () => {
         '"10/10/2026";"Ajuste";"";"Desconto ""amigo""";"";-2,00;""',
     ]);
     assert.deepEqual(linhasCsvDoExtratoDaLoja({ lancamentos: [] }, rotulos), ['"Data";"Tipo";"Pedido";"Motivo";"Fatura";"Valor";"Situação"']);
+});
+
+test('aviso do reenviar sem envio segue o motivo do servidor', () => {
+    assert.equal(chaveDoNaoEnvio('sem_email'), 'email-nao-enviado');
+    assert.equal(chaveDoNaoEnvio('desligado'), 'email-nao-enviado-desligado');
+    assert.equal(chaveDoNaoEnvio('falha'), 'email-nao-enviado-falha');
+    assert.equal(chaveDoNaoEnvio(undefined), 'email-nao-enviado-falha', 'servidor antigo, sem motivo: o aviso genérico (não culpa a loja)');
 });
