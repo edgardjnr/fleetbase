@@ -1,0 +1,231 @@
+<Layout::Section::Header @title={{t "fleet-ops.ui.financeiro-lojas.title"}}>
+    <div class="flex items-center space-x-2">
+        <Button @icon="refresh" @size="sm" @helpText={{t "common.reload"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
+        <Button @type="primary" @icon="plus" @size="sm" @text={{t "fleet-ops.ui.financeiro-lojas.gerar-fatura"}} @onClick={{fn this.gerarFatura null}} />
+    </div>
+</Layout::Section::Header>
+
+<Layout::Section::Body class="overflow-y-scroll-i h-full">
+    <div class="max-w-6xl mx-auto px-4 py-6 space-y-5">
+        <TabNavigation @tabs={{this.abas}} @activeTabId={{this.abaAtiva}} @onTabChange={{this.mudarAba}} @contentClass="pt-4">
+            {{#if (eq this.abaAtiva "faturas")}}
+                <div class="space-y-4">
+                    <div class="flex flex-wrap items-end gap-4">
+                        <InputGroup @name={{t "fleet-ops.ui.financeiro-lojas.situacao"}} @wrapperClass="mb-0" as |id|>
+                            <select id={{id}} class="form-select form-select-sm text-sm" {{on "change" (fn this.setFiltro "filtroSituacao")}}>
+                                {{#each this.opcoesDeSituacao as |opcao|}}
+                                    <option value={{opcao.valor}} selected={{eq opcao.valor this.filtroSituacao}}>{{opcao.texto}}</option>
+                                {{/each}}
+                            </select>
+                        </InputGroup>
+                        <InputGroup @name={{t "fleet-ops.ui.financeiro-lojas.loja"}} @wrapperClass="mb-0" as |id|>
+                            <select id={{id}} class="form-select form-select-sm text-sm" {{on "change" (fn this.setFiltro "filtroLoja")}}>
+                                <option value="" selected={{not this.filtroLoja}}>{{t "fleet-ops.ui.financeiro-lojas.todas-as-lojas"}}</option>
+                                {{#each this.lojas as |loja|}}
+                                    <option value={{loja.id}} selected={{eq loja.id this.filtroLoja}}>{{loja.nome}}</option>
+                                {{/each}}
+                            </select>
+                        </InputGroup>
+                        {{#if this.faturasFiltradas.length}}
+                            <div class="text-sm text-gray-500 dark:text-gray-400 pb-1">
+                                {{t "fleet-ops.ui.financeiro-lojas.em-aberto-no-filtro" valor=(this.valor this.totalEmAbertoFiltrado)}}
+                            </div>
+                        {{/if}}
+                    </div>
+
+                    {{#if this.faturasFiltradas.length}}
+                        <table class="table w-full text-sm">
+                            <thead>
+                                <tr class="text-left text-gray-500 dark:text-gray-400">
+                                    <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.numero"}}</th>
+                                    <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.loja"}}</th>
+                                    <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.periodo"}}</th>
+                                    <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.vencimento"}}</th>
+                                    <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro-lojas.valor"}}</th>
+                                    <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro-lojas.recebido"}}</th>
+                                    <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.situacao"}}</th>
+                                    <th class="py-2"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{#each this.faturasFiltradas key="id" as |fatura|}}
+                                    <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100 {{if (this.vencida fatura) 'bg-red-50 dark:bg-red-900'}}">
+                                        <td class="py-2 whitespace-nowrap">
+                                            <LinkTo @route="financeiro.fatura" @model={{fatura.id}} class="text-blue-600 dark:text-blue-400 hover:underline">
+                                                {{this.numeroDaFatura fatura}}
+                                            </LinkTo>
+                                        </td>
+                                        <td class="py-2">{{fatura.loja.nome}}</td>
+                                        <td class="py-2 whitespace-nowrap">{{t "fleet-ops.ui.financeiro-lojas.periodo-de-a" inicio=(this.data fatura.periodo_inicio) fim=(this.data fatura.periodo_fim)}}</td>
+                                        <td class="py-2 whitespace-nowrap {{if (this.vencida fatura) 'font-semibold text-red-700 dark:text-red-300'}}">{{this.data fatura.vencimento}}</td>
+                                        <td class="py-2 text-right whitespace-nowrap">{{this.valor fatura.total}}</td>
+                                        <td class="py-2 text-right whitespace-nowrap">{{if (eq fatura.situacao "emitida") (this.valor fatura.recebido) "—"}}</td>
+                                        <td class="py-2 whitespace-nowrap">
+                                            <span class="text-xs font-medium rounded px-2 py-0.5 {{this.corDaFatura fatura}}">{{this.rotuloDaFatura fatura}}</span>
+                                        </td>
+                                        <td class="py-2 text-right whitespace-nowrap">
+                                            {{#if (eq fatura.situacao "rascunho")}}
+                                                <Button @size="xs" @type="primary" @icon="list-check" @text={{t "fleet-ops.ui.financeiro-lojas.conferir-e-emitir"}} @onClick={{fn this.abrirFatura fatura}} />
+                                            {{else if (this.emAberto fatura)}}
+                                                <Button @size="xs" @icon="hand-holding-dollar" @text={{t "fleet-ops.ui.financeiro-lojas.registrar-recebimento"}} @onClick={{fn this.registrarRecebimento fatura}} />
+                                            {{/if}}
+                                        </td>
+                                    </tr>
+                                {{/each}}
+                            </tbody>
+                        </table>
+                    {{else if this.carregar.isRunning}}
+                        <Spinner />
+                    {{else if this.carregado}}
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.sem-faturas"}}</p>
+                    {{/if}}
+                </div>
+            {{else if (eq this.abaAtiva "lojas")}}
+                {{#if this.lojas.length}}
+                    <table class="table w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-500 dark:text-gray-400">
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.loja"}}</th>
+                                <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro-lojas.saldo"}}</th>
+                                <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro-lojas.em-aberto"}}</th>
+                                <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro-lojas.vencido"}}</th>
+                                <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro-lojas.nao-faturado"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.ciclo"}}</th>
+                                <th class="py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each this.lojas key="id" as |loja|}}
+                                <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100 {{if (eq this.cicloEditando.lojaId loja.id) 'bg-blue-50 dark:bg-blue-900'}}">
+                                    <td class="py-2">
+                                        <LinkTo @route="financeiro.loja" @model={{loja.id}} class="text-blue-600 dark:text-blue-400 hover:underline">{{loja.nome}}</LinkTo>
+                                        {{#unless loja.email}}
+                                            <div class="text-xs text-yellow-700 dark:text-yellow-300">{{t "fleet-ops.ui.financeiro-lojas.sem-email"}}</div>
+                                        {{/unless}}
+                                    </td>
+                                    <td class="py-2 text-right whitespace-nowrap font-semibold">{{this.valor loja.saldo}}</td>
+                                    <td class="py-2 text-right whitespace-nowrap">{{this.valor loja.em_aberto}}</td>
+                                    <td class="py-2 text-right whitespace-nowrap {{if (gt loja.vencido 0) 'font-semibold text-red-700 dark:text-red-300'}}">{{this.valor loja.vencido}}</td>
+                                    <td class="py-2 text-right whitespace-nowrap">{{this.valor loja.nao_faturado}}</td>
+                                    <td class="py-2">
+                                        {{this.textoDoCiclo loja.ciclo}}
+                                        {{#if loja.ciclo.padrao}}
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">({{t "fleet-ops.ui.financeiro-lojas.padrao"}})</span>
+                                        {{/if}}
+                                    </td>
+                                    <td class="py-2 text-right whitespace-nowrap">
+                                        <Button @size="xs" @icon="pen-to-square" @text={{t "fleet-ops.ui.financeiro-lojas.editar-ciclo"}} @onClick={{fn this.editarCiclo loja}} />
+                                    </td>
+                                </tr>
+                                {{#if (eq this.cicloEditando.lojaId loja.id)}}
+                                    <tr class="dark:text-gray-100">
+                                        <td colspan="7" class="py-3">
+                                            <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 space-y-3">
+                                                <div class="text-sm font-semibold dark:text-white">{{t "fleet-ops.ui.financeiro-lojas.ciclo-de" nome=loja.nome}}</div>
+                                                <div class="flex flex-wrap items-end gap-4">
+                                                    <InputGroup @name={{t "fleet-ops.ui.financeiro-lojas.ciclo"}} @wrapperClass="mb-0" as |id|>
+                                                        <select id={{id}} class="form-select form-select-sm text-sm" {{on "change" (fn this.setCampoCiclo "ciclo")}}>
+                                                            <option value="semanal" selected={{eq this.cicloEditando.ciclo "semanal"}}>{{t "fleet-ops.ui.financeiro-lojas.ciclos.semanal"}}</option>
+                                                            <option value="quinzenal" selected={{eq this.cicloEditando.ciclo "quinzenal"}}>{{t "fleet-ops.ui.financeiro-lojas.ciclos.quinzenal"}}</option>
+                                                            <option value="mensal" selected={{eq this.cicloEditando.ciclo "mensal"}}>{{t "fleet-ops.ui.financeiro-lojas.ciclos.mensal"}}</option>
+                                                        </select>
+                                                    </InputGroup>
+                                                    {{#if this.opcoesDoDiaEditando.length}}
+                                                        <InputGroup @name={{t "fleet-ops.ui.financeiro-lojas.dia-de-fechamento"}} @wrapperClass="mb-0" as |id|>
+                                                            <select id={{id}} class="form-select form-select-sm text-sm" {{on "change" (fn this.setCampoCiclo "dia_fechamento")}}>
+                                                                {{#each this.opcoesDoDiaEditando as |opcao|}}
+                                                                    <option value={{opcao.valor}} selected={{eq opcao.valor this.cicloEditando.dia_fechamento}}>{{opcao.texto}}</option>
+                                                                {{/each}}
+                                                            </select>
+                                                        </InputGroup>
+                                                    {{else}}
+                                                        <p class="text-xs text-gray-500 dark:text-gray-400 pb-2">{{t "fleet-ops.ui.financeiro-lojas.quinzenal-ajuda"}}</p>
+                                                    {{/if}}
+                                                    <InputGroup @name={{t "fleet-ops.ui.financeiro-lojas.prazo-dias"}} @wrapperClass="mb-0" as |id|>
+                                                        <input
+                                                            id={{id}}
+                                                            type="text"
+                                                            inputmode="numeric"
+                                                            maxlength="2"
+                                                            autocomplete="off"
+                                                            class="form-input form-input-sm w-24"
+                                                            value={{this.cicloEditando.prazo_dias}}
+                                                            {{on "input" (fn this.setCampoCiclo "prazo_dias")}}
+                                                        />
+                                                    </InputGroup>
+                                                </div>
+                                                {{#each this.errosDoCiclo as |erro|}}
+                                                    <p class="text-xs text-yellow-700 dark:text-yellow-300">{{erro}}</p>
+                                                {{/each}}
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.ciclo-ajuda"}}</p>
+                                                <div class="flex items-center gap-2">
+                                                    <Button
+                                                        @type="primary"
+                                                        @size="sm"
+                                                        @icon="save"
+                                                        @text={{t "fleet-ops.ui.financeiro-lojas.salvar"}}
+                                                        @disabled={{gt this.errosDoCiclo.length 0}}
+                                                        @isLoading={{this.salvarCiclo.isRunning}}
+                                                        @onClick={{perform this.salvarCiclo}}
+                                                    />
+                                                    <Button @size="sm" @text={{t "fleet-ops.ui.financeiro-lojas.cancelar"}} @onClick={{this.cancelarCiclo}} />
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {{/if}}
+                            {{/each}}
+                        </tbody>
+                    </table>
+                {{else if this.carregar.isRunning}}
+                    <Spinner />
+                {{else if this.carregado}}
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.sem-lojas"}}</p>
+                {{/if}}
+            {{else}}
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">{{t "fleet-ops.ui.financeiro-lojas.ciclo-andamento-ajuda"}}</p>
+                {{#if this.lojas.length}}
+                    <table class="table w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-500 dark:text-gray-400">
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.loja"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.periodo-atual"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro-lojas.ciclo"}}</th>
+                                <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro-lojas.nao-faturado"}}</th>
+                                <th class="py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each this.lojas key="id" as |loja|}}
+                                <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100">
+                                    <td class="py-2">
+                                        <LinkTo @route="financeiro.loja" @model={{loja.id}} class="text-blue-600 dark:text-blue-400 hover:underline">{{loja.nome}}</LinkTo>
+                                    </td>
+                                    <td class="py-2 whitespace-nowrap">
+                                        {{#if loja.ciclo_atual}}
+                                            {{t "fleet-ops.ui.financeiro-lojas.periodo-de-a" inicio=(this.data loja.ciclo_atual.inicio) fim=(this.data loja.ciclo_atual.fim)}}
+                                        {{else}}
+                                            —
+                                        {{/if}}
+                                    </td>
+                                    <td class="py-2 text-gray-500 dark:text-gray-400">{{this.textoDoCiclo loja.ciclo}}</td>
+                                    <td class="py-2 text-right whitespace-nowrap font-semibold">{{this.valor loja.nao_faturado}}</td>
+                                    <td class="py-2 text-right whitespace-nowrap">
+                                        {{#if (gt loja.nao_faturado 0)}}
+                                            <Button @size="xs" @icon="file-circle-plus" @text={{t "fleet-ops.ui.financeiro-lojas.gerar-agora"}} @onClick={{fn this.gerarFatura loja}} />
+                                        {{/if}}
+                                    </td>
+                                </tr>
+                            {{/each}}
+                        </tbody>
+                    </table>
+                {{else if this.carregar.isRunning}}
+                    <Spinner />
+                {{else if this.carregado}}
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.sem-lojas"}}</p>
+                {{/if}}
+            {{/if}}
+        </TabNavigation>
+    </div>
+    <Spacer @height="300px" />
+</Layout::Section::Body>

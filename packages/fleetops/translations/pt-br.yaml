@@ -259,6 +259,97 @@ fleet-ops:
         chave-copiar: Clique na chave para copiar.
         chave-onde: 'No RestaurantePro: Configurações de delivery → "Entregas por" → Entregas RestaurantePro → cole a chave e conecte.'
         ja-copiei: Já copiei
+    financeiro-lojas:
+      admin-only: O financeiro é só para administradores.
+      title: Lojas e faturas
+      aba-faturas: Faturas
+      aba-lojas: Lojas
+      aba-ciclo: Ciclo em andamento
+      gerar-fatura: Gerar fatura
+      gerar-rascunho: Gerar rascunho
+      gerar-fatura-ajuda: 'Cria o rascunho com os lançamentos da loja ainda sem fatura até a data final. Depois confira, ajuste e emita.'
+      gerar-agora: Gerar fatura agora
+      escolha-a-loja: Escolha a loja
+      rascunho-gerado: Rascunho gerado. Confira e emita.
+      sem-lancamentos-no-periodo: Sem lançamentos para faturar nesse período.
+      inicio: Início
+      fim: Fim
+      situacao: Situação
+      loja: Loja
+      todas-as-lojas: Todas as lojas
+      em-aberto-no-filtro: 'Em aberto nas faturas listadas: {valor}'
+      numero: Nº
+      periodo: Período
+      periodo-de-a: '{inicio} a {fim}'
+      periodo-atual: Período atual
+      vencimento: Vencimento
+      valor: Valor
+      recebido: Recebido
+      em-aberto: Em aberto
+      vencido: Vencido
+      nao-faturado: Não faturado
+      saldo: Saldo
+      ciclo: Ciclo
+      padrao: padrão
+      rascunho: Rascunho
+      conferir-e-emitir: Conferir e emitir
+      registrar-recebimento: Registrar recebimento
+      sem-faturas: Nenhuma fatura com esse filtro.
+      sem-lojas: Nenhuma loja cadastrada.
+      sem-email: Sem e-mail para receber a fatura
+      editar-ciclo: Editar ciclo
+      ciclo-de: 'Ciclo de cobrança de {nome}'
+      dia-de-fechamento: Fecha em
+      prazo-dias: Prazo (dias)
+      quinzenal-ajuda: 'Fecha nos dias 15 e no último dia do mês.'
+      ciclo-ajuda: 'O rascunho da fatura é criado no dia seguinte ao fechamento e vence depois do prazo. Vale a partir do próximo fechamento.'
+      ciclo-andamento-ajuda: 'O período atual de cada loja e o que ela já deve e ainda não entrou em fatura (inclui lançamentos antigos sem fatura).'
+      ciclo-salvo: Ciclo salvo.
+      salvar: Salvar
+      cancelar: Cancelar
+      ultimo-dia: Último dia do mês
+      dia-do-mes: 'Dia {dia}'
+      filtro:
+        todas: Todas
+        rascunho: Rascunhos
+        aberta: Em aberto
+        vencida: Vencidas
+        paga: Pagas
+        cancelada: Canceladas
+      situacoes:
+        rascunho: Rascunho
+        cancelada: Cancelada
+        vencida: Vencida
+        paga: Paga
+        parcial: Paga em parte
+        aberta: Em aberto
+      ciclos:
+        semanal: Semanal
+        quinzenal: Quinzenal
+        mensal: Mensal
+      ciclo-texto:
+        semanal: 'Semanal, fecha {dia} · vence {prazo, plural, =0 {no mesmo dia} one {em # dia} other {em # dias}}'
+        quinzenal: 'Quinzenal (1–15 e 16–fim) · vence {prazo, plural, =0 {no mesmo dia} one {em # dia} other {em # dias}}'
+        mensal: 'Mensal, fecha no dia {dia} · vence {prazo, plural, =0 {no mesmo dia} one {em # dia} other {em # dias}}'
+        mensal-ultimo-dia: 'Mensal, fecha no último dia · vence {prazo, plural, =0 {no mesmo dia} one {em # dia} other {em # dias}}'
+        desconhecido: Ciclo não configurado
+      dias-semana:
+        '0': domingo
+        '1': segunda-feira
+        '2': terça-feira
+        '3': quarta-feira
+        '4': quinta-feira
+        '5': sexta-feira
+        '6': sábado
+      erros:
+        ciclo-invalido: Escolha semanal, quinzenal ou mensal.
+        dia-invalido: Escolha o dia de fechamento.
+        prazo-invalido: O prazo é um número de 0 a 60 dias.
+        loja-obrigatoria: Escolha a loja.
+        periodo-obrigatorio: Informe o início e o fim do período.
+        periodo-invertido: O início precisa ser antes do fim.
+        valor-invalido: 'Informe um valor diferente de zero (use "-" para desconto).'
+        motivo-obrigatorio: Informe o motivo (a loja vê).
     pedido-sem-motoboy:
       aviso: 'Pedido {numero} está há {minutos} min sem motoboy. Clique para abrir e atribuir.'
     ifood:
