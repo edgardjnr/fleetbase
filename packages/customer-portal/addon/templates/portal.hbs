@@ -46,6 +46,8 @@
                 <Layout::Sidebar::Item @route="customer-portal.portal.home" @icon="home">{{t "customer-portal.ui.nav.dashboard"}}</Layout::Sidebar::Item>
                 <Layout::Sidebar::Item @route="customer-portal.portal.orders" @icon="boxes-packing">{{t "customer-portal.ui.nav.orders"}}</Layout::Sidebar::Item>
                 <Layout::Sidebar::Item @route="customer-portal.portal.extrato" @icon="file-invoice-dollar">{{t "customer-portal.ui.entregas.statement"}}</Layout::Sidebar::Item>
+                {{!-- Entregas: faturas da loja; o detalhe (financeiro/:id) é outra rota e não acende este item --}}
+                <Layout::Sidebar::Item @route="customer-portal.portal.financeiro" @icon="file-invoice">{{t "customer-portal.ui.entregas.financeiro.menu"}}</Layout::Sidebar::Item>
                 {{!-- Entregas: rota-pai para o item acender nas duas abas (Sidebar::Item compara com startsWith); settings.index redireciona para a aba da conta --}}
                 <Layout::Sidebar::Item @route="customer-portal.portal.settings" @icon="gear">{{t "customer-portal.ui.nav.account-settings"}}</Layout::Sidebar::Item>
             </div>

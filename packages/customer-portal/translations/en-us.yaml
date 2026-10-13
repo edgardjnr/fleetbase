@@ -713,6 +713,51 @@ customer-portal:
       login-managed-by-central: The sign-in email and phone can only be changed by the dispatcher.
       dashboard-name: Overview
       eta: "ETA:"
+      financeiro:
+        menu: Billing
+        title: Billing
+        current-cycle: Current cycle
+        current-cycle-help: This amount goes into the next invoice.
+        cycle-summary: "Since {desde} · {entregas, plural, =0 {no deliveries} one {# delivery} other {# deliveries}} · {valor} so far"
+        number: No.
+        period: Period
+        period-range: "{inicio} to {fim}"
+        due-date: Due date
+        total: Total
+        received: Received
+        open-amount: Outstanding
+        status: Status
+        no-invoices: No invoices issued yet.
+        situacao:
+          aberta: Open
+          parcial: Partially paid
+          paga: Paid
+          vencida: Overdue
+          cancelada: Canceled
+        tipos:
+          corrida: Delivery
+          ajuste: Adjustment
+          saldo_inicial: Opening balance
+          estorno: Reversal
+          recebimento: Payment received
+        invoice-title: "Invoice {numero}"
+        back: Back
+        print: Print / save as PDF
+        issuer: Issued by
+        store: Store
+        address: Address
+        issued-at: Issued on
+        deliveries: Deliveries
+        date: Date
+        order: Order
+        km: Km
+        destination: Destination
+        description: Description
+        amount: Amount
+        no-items: This invoice has no items.
+        canceled-notice: This invoice was canceled. Its deliveries go back into the next invoice.
+        overdue-notice: "This invoice was due on {data} and still has {valor} outstanding."
+        printed-at: "Printed on {data}"
 
 menu-text:
   customer-portal:

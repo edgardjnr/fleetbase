@@ -713,6 +713,51 @@ customer-portal:
       login-managed-by-central: O e-mail e o telefone de acesso só podem ser alterados pela central.
       dashboard-name: Visão geral
       eta: "Previsão:"
+      financeiro:
+        menu: Financeiro
+        title: Financeiro
+        current-cycle: Ciclo em andamento
+        current-cycle-help: Este valor entra na próxima fatura.
+        cycle-summary: "Desde {desde} · {entregas, plural, =0 {nenhuma entrega} one {# entrega} other {# entregas}} · {valor} até agora"
+        number: Nº
+        period: Período
+        period-range: "{inicio} a {fim}"
+        due-date: Vencimento
+        total: Total
+        received: Recebido
+        open-amount: Em aberto
+        status: Situação
+        no-invoices: Nenhuma fatura emitida ainda.
+        situacao:
+          aberta: Em aberto
+          parcial: Paga em parte
+          paga: Paga
+          vencida: Vencida
+          cancelada: Cancelada
+        tipos:
+          corrida: Entrega
+          ajuste: Ajuste
+          saldo_inicial: Saldo inicial
+          estorno: Estorno
+          recebimento: Recebimento
+        invoice-title: "Fatura {numero}"
+        back: Voltar
+        print: Imprimir / salvar PDF
+        issuer: Emitida por
+        store: Loja
+        address: Endereço
+        issued-at: Emitida em
+        deliveries: Entregas
+        date: Data
+        order: Pedido
+        km: Km
+        destination: Destino
+        description: Descrição
+        amount: Valor
+        no-items: Esta fatura não tem itens.
+        canceled-notice: Esta fatura foi cancelada. As entregas dela voltam para a próxima fatura.
+        overdue-notice: "Esta fatura venceu em {data} e ainda tem {valor} em aberto."
+        printed-at: "Impresso em {data}"
 
 menu-text:
   customer-portal:

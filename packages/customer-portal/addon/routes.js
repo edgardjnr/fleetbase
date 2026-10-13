@@ -36,6 +36,9 @@ export default buildRoutes(function () {
         this.route('account');
         // Entregas: extrato de entregas da loja (antes de `virtual`, que é o catch-all `/:slug`)
         this.route('extrato');
+        // Entregas: faturas da loja e o ciclo em andamento; o detalhe da fatura é também a página de impressão
+        this.route('financeiro');
+        this.route('fatura', { path: '/financeiro/:id' });
         this.route('virtual', { path: '/:slug' });
     });
 });
