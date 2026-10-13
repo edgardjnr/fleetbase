@@ -1,0 +1,114 @@
+{{! Entregas: detalhe da fatura e página de impressão. No papel saem o título e o bloco .fatura-impressao; o menu, a barra superior, o rodapé e os botões (.fatura-nao-imprimir) somem pelo @media print do customer-portal-engine.css }}
+<Portal::ContentWrapper class="portal-page-card fatura-pagina">
+    <div class="portal-section-header">
+        <div class="min-w-0">
+            <h1>{{this.titulo}}</h1>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 fatura-nao-imprimir">
+            <Button @icon="arrow-left" @text={{t "customer-portal.ui.entregas.financeiro.back"}} @onClick={{this.voltar}} />
+            <Button @icon="download" @text={{t "customer-portal.ui.entregas.export-csv"}} @onClick={{this.baixarCsv}} @disabled={{not this.fatura}} />
+            <Button @type="primary" @icon="print" @text={{t "customer-portal.ui.entregas.financeiro.print"}} @onClick={{this.imprimir}} @disabled={{not this.fatura}} />
+        </div>
+    </div>
+
+    {{#if this.fatura}}
+        <div class="fatura-impressao mt-4">
+            <div class="fatura-cabecalho">
+                <div>
+                    <div class="fatura-rotulo">{{t "customer-portal.ui.entregas.financeiro.issuer"}}</div>
+                    <div class="fatura-valor">{{n-a this.dados.empresa.nome "—"}}</div>
+                </div>
+                <div>
+                    <div class="fatura-rotulo">{{t "customer-portal.ui.entregas.financeiro.store"}}</div>
+                    <div class="fatura-valor">{{n-a (or this.dados.loja.nome this.fatura.loja.nome) "—"}}</div>
+                    {{#if this.dados.loja.endereco}}
+                        <div class="fatura-detalhe">{{this.dados.loja.endereco}}</div>
+                    {{/if}}
+                </div>
+                <div>
+                    <div class="fatura-rotulo">{{t "customer-portal.ui.entregas.financeiro.period"}}</div>
+                    <div class="fatura-valor">{{this.periodo}}</div>
+                </div>
+                <div>
+                    <div class="fatura-rotulo">{{t "customer-portal.ui.entregas.financeiro.due-date"}}</div>
+                    <div class="fatura-valor {{if this.vencida 'entregas-fatura-texto-vencida'}}">{{this.dataCurta this.fatura.vencimento}}</div>
+                </div>
+                <div>
+                    <div class="fatura-rotulo">{{t "customer-portal.ui.entregas.financeiro.issued-at"}}</div>
+                    <div class="fatura-valor">{{this.dataHora this.fatura.emitida_em}}</div>
+                </div>
+                <div>
+                    <div class="fatura-rotulo">{{t "customer-portal.ui.entregas.financeiro.status"}}</div>
+                    <div class="fatura-valor"><span class={{this.classeDoSelo}}>{{this.rotuloDaSituacao}}</span></div>
+                </div>
+            </div>
+
+            {{#if this.cancelada}}
+                <div class="fatura-aviso" role="status">{{t "customer-portal.ui.entregas.financeiro.canceled-notice"}}</div>
+            {{else if this.vencida}}
+                <div class="fatura-aviso fatura-aviso-vencida" role="status">{{this.avisoDeVencida}}</div>
+            {{/if}}
+
+            <div class="next-table-wrapper no-scroll h-auto table-fluid portal-table-panel mt-4">
+                <table class="table portal-table">
+                    <thead>
+                        <tr>
+                            <th class="text-left">{{t "customer-portal.ui.entregas.financeiro.date"}}</th>
+                            <th class="text-left">{{t "customer-portal.ui.entregas.financeiro.order"}}</th>
+                            <th class="text-right">{{t "customer-portal.ui.entregas.financeiro.km"}}</th>
+                            <th class="text-left">{{t "customer-portal.ui.entregas.financeiro.destination"}}</th>
+                            <th class="text-left">{{t "customer-portal.ui.entregas.financeiro.description"}}</th>
+                            <th class="text-right">{{t "customer-portal.ui.entregas.financeiro.amount"}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each this.itens as |item|}}
+                            <tr>
+                                <td class="whitespace-nowrap">{{this.dataCurta item.data}}</td>
+                                <td class="font-semibold whitespace-nowrap">{{this.pedido item}}</td>
+                                <td class="text-right whitespace-nowrap tabular-nums">{{this.distancia item.detalhes.km}}</td>
+                                <td><div class="max-w-sm">{{n-a item.detalhes.destino "—"}}</div></td>
+                                <td><div class="max-w-sm">{{this.descricao item}}</div></td>
+                                <td class="text-right whitespace-nowrap font-semibold tabular-nums">{{this.dinheiro item.valor}}</td>
+                            </tr>
+                        {{else}}
+                            <tr>
+                                <td colspan="6">
+                                    <div class="portal-empty-state portal-table-empty-state">
+                                        <div class="portal-empty-state-title">{{t "customer-portal.ui.entregas.financeiro.no-items"}}</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            </div>
+
+            {{! Entregas: totais da fatura; "entregas" é a contagem do servidor (só as corridas, sem os ajustes) }}
+            <div class="fatura-totais">
+                <div class="fatura-total-linha">
+                    <span>{{t "customer-portal.ui.entregas.financeiro.deliveries"}}</span>
+                    <span class="tabular-nums">{{n-a this.fatura.entregas "—"}}</span>
+                </div>
+                <div class="fatura-total-linha fatura-total-principal">
+                    <span>{{t "customer-portal.ui.entregas.financeiro.total"}}</span>
+                    <span class="tabular-nums">{{this.dinheiro this.fatura.total}}</span>
+                </div>
+                <div class="fatura-total-linha">
+                    <span>{{t "customer-portal.ui.entregas.financeiro.received"}}</span>
+                    <span class="tabular-nums">{{this.dinheiro this.fatura.recebido}}</span>
+                </div>
+                <div class="fatura-total-linha {{if this.vencida 'entregas-fatura-texto-vencida'}}">
+                    <span>{{t "customer-portal.ui.entregas.financeiro.open-amount"}}</span>
+                    <span class="tabular-nums">{{this.dinheiro this.fatura.em_aberto}}</span>
+                </div>
+            </div>
+
+            <div class="fatura-so-impressao fatura-detalhe mt-4">{{this.textoImpressoEm}}</div>
+        </div>
+    {{else if this.carregar.isRunning}}
+        <div class="portal-empty-state portal-table-empty-state mt-5">
+            <Spinner />
+        </div>
+    {{/if}}
+</Portal::ContentWrapper>

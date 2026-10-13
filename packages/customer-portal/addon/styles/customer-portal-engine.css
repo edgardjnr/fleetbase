@@ -4009,3 +4009,174 @@ body[data-theme='dark'].fleetbase-portal .entregas-fatura-texto-vencida {
 .fleetbase-portal .entregas-fatura-linha-cancelada td {
     color: #9ca3af;
 }
+
+/* Entregas: detalhe da fatura (portal/fatura) */
+.fleetbase-portal .fatura-cabecalho {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.75rem 1.5rem;
+}
+
+.fleetbase-portal .fatura-rotulo {
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.fleetbase-portal .fatura-valor {
+    margin-top: 0.125rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.fleetbase-portal .fatura-detalhe {
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+body[data-theme='dark'].fleetbase-portal .fatura-rotulo {
+    color: #9ca3af;
+}
+
+body[data-theme='dark'].fleetbase-portal .fatura-valor {
+    color: #f9fafb;
+}
+
+body[data-theme='dark'].fleetbase-portal .fatura-detalhe {
+    color: #d1d5db;
+}
+
+.fleetbase-portal .fatura-aviso {
+    margin-top: 1rem;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: #f3f4f6;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.fleetbase-portal .fatura-aviso-vencida {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+body[data-theme='dark'].fleetbase-portal .fatura-aviso {
+    background-color: #374151;
+    color: #e5e7eb;
+}
+
+body[data-theme='dark'].fleetbase-portal .fatura-aviso-vencida {
+    background-color: rgb(153 27 27 / 40%);
+    color: #fecaca;
+}
+
+.fleetbase-portal .fatura-totais {
+    width: 100%;
+    max-width: 22rem;
+    margin: 1rem 0 0 auto;
+}
+
+.fleetbase-portal .fatura-total-linha {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.25rem 0;
+    font-size: 0.875rem;
+}
+
+.fleetbase-portal .fatura-total-principal {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 0.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+body[data-theme='dark'].fleetbase-portal .fatura-total-principal {
+    border-color: #374151;
+}
+
+/* Entregas: o que só sai no papel (o "Impresso em") */
+.fleetbase-portal .fatura-so-impressao {
+    display: none;
+}
+
+/* Entregas: impressão da fatura (botão "Imprimir / salvar PDF", window.print()). Some tudo o que não é a fatura: barra
+   superior, menu, rodapé e botões; o cartão perde a moldura e o tema escuro vira texto escuro no papel branco */
+@media print {
+    body.fleetbase-portal {
+        overflow: visible;
+        background: #fff !important;
+    }
+
+    .fleetbase-portal .portal-topbar,
+    .fleetbase-portal .portal-container > .portal-main > .portal-sidebar,
+    .fleetbase-portal .portal-footer,
+    .fleetbase-portal .fatura-nao-imprimir {
+        display: none !important;
+    }
+
+    .fleetbase-portal .portal-container,
+    body[data-theme='dark'].fleetbase-portal .portal-container {
+        min-height: 0;
+        background: #fff !important;
+    }
+
+    .fleetbase-portal .portal-container > .portal-main {
+        display: block;
+        min-height: 0;
+        padding: 0;
+    }
+
+    .fleetbase-portal .portal-container .portal-content-wrapper.fatura-pagina,
+    body[data-theme='dark'].fleetbase-portal .portal-container .portal-content-wrapper.fatura-pagina {
+        border: 0;
+        padding: 0;
+        background: #fff !important;
+        box-shadow: none;
+    }
+
+    .fleetbase-portal .fatura-pagina h1,
+    .fleetbase-portal .fatura-impressao,
+    .fleetbase-portal .fatura-impressao * {
+        color: #111827 !important;
+    }
+
+    .fleetbase-portal .fatura-impressao .portal-table-panel {
+        width: 100%;
+        margin: 0;
+        overflow: visible !important;
+    }
+
+    .fleetbase-portal .fatura-impressao table {
+        font-size: 11px;
+    }
+
+    .fleetbase-portal .fatura-impressao thead {
+        display: table-header-group;
+    }
+
+    .fleetbase-portal .fatura-impressao tr,
+    .fleetbase-portal .fatura-totais {
+        break-inside: avoid;
+    }
+
+    .fleetbase-portal .fatura-impressao .entregas-fatura-selo,
+    .fleetbase-portal .fatura-aviso {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    body[data-theme='dark'].fleetbase-portal .fatura-impressao .portal-table th,
+    body[data-theme='dark'].fleetbase-portal .fatura-impressao .portal-table td,
+    body[data-theme='dark'].fleetbase-portal .fatura-impressao .entregas-fatura-selo,
+    body[data-theme='dark'].fleetbase-portal .fatura-aviso {
+        background: transparent !important;
+    }
+
+    .fleetbase-portal .fatura-so-impressao {
+        display: block;
+    }
+}
