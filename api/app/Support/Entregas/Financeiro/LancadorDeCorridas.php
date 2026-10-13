@@ -110,13 +110,7 @@ final class LancadorDeCorridas
             return $resultado;
         }
 
-        $pedidos = $this->calculo->pedidosConcluidos($companyUuid, $inicio, now(), fn ($query) => $query->whereNotExists(
-            fn ($sub) => $sub->selectRaw('1')
-                ->from(Lancamentos::TABELA)
-                ->whereColumn(Lancamentos::TABELA . '.order_uuid', 'orders.uuid')
-                ->where(Lancamentos::TABELA . '.conta_tipo', Financeiro::CONTA_MOTOBOY)
-                ->where(Lancamentos::TABELA . '.tipo', 'corrida')
-        ));
+        $pedidos = $this->pedidosSemLancamento($companyUuid, $inicio);
         if ($pedidos->isEmpty()) {
             return $resultado;
         }
@@ -145,6 +139,22 @@ final class LancadorDeCorridas
         }
 
         return $resultado;
+    }
+
+    /**
+     * Só a consulta da conferência, sem lançar (o painel usa para as "corridas sem valor"): pedidos concluídos (ou
+     * cancelados pagos) de $inicio até agora sem lançamento de corrida do motoboy, como vêm do
+     * CalculoEntregas::pedidosConcluidos (entregas_concluido_em = texto no fuso do app).
+     */
+    public function pedidosSemLancamento(string $companyUuid, Carbon $inicio): Collection
+    {
+        return $this->calculo->pedidosConcluidos($companyUuid, $inicio, now(), fn ($query) => $query->whereNotExists(
+            fn ($sub) => $sub->selectRaw('1')
+                ->from(Lancamentos::TABELA)
+                ->whereColumn(Lancamentos::TABELA . '.order_uuid', 'orders.uuid')
+                ->where(Lancamentos::TABELA . '.conta_tipo', Financeiro::CONTA_MOTOBOY)
+                ->where(Lancamentos::TABELA . '.tipo', 'corrida')
+        ));
     }
 
     /**
