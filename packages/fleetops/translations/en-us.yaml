@@ -309,6 +309,61 @@ fleet-ops:
             cancelar: Cancel
             ultimo-dia: Last day of the month
             dia-do-mes: 'Day {dia}'
+            fatura: Invoice
+            fatura-titulo: 'Invoice {numero}'
+            fatura-nao-encontrada: Invoice not found.
+            voltar: Stores and invoices
+            exportar-csv: Export CSV
+            entregas-n: '{n, plural, =0 {no deliveries} one {# delivery} other {# deliveries}}'
+            emitida-em: 'Issued on {quando}'
+            email-enviado-em: 'e-mail sent on {quando}'
+            email-nao-enviado-ainda: e-mail not sent
+            mais-ajuste: + Adjustment
+            emitir: Issue
+            emitir-titulo: Issue the invoice?
+            emitir-texto: 'The store {loja} will see the {valor} invoice in the portal and receive it by e-mail. Once issued, the invoice no longer changes (only by cancelling).'
+            emitida: Invoice issued.
+            reenviar-email: Resend e-mail
+            email-reenviado: E-mail resent.
+            email-nao-enviado: The store has no e-mail registered; nothing was sent.
+            imprimir: Print
+            cancelar-fatura: Cancel invoice
+            cancelar-fatura-titulo: 'Cancel invoice {numero}?'
+            cancelar-fatura-texto: 'The entries go back to the next invoice. The number is not reused and the store no longer sees this invoice as outstanding.'
+            cancelar-fatura-recebido: 'What was already received stays in the store balance and pays the next invoice.'
+            fatura-cancelada: Invoice cancelled.
+            total: Total
+            rascunho-ajuda: 'Draft: the store does not see this invoice yet. Review the items, mark what should not be charged, add adjustments and issue it.'
+            itens: Items
+            data: Date
+            pedido: Order
+            km: Km
+            destino: Destination
+            motivo: Reason
+            sem-itens: No items in this invoice.
+            vencimento-salvo: Due date saved.
+            nao-cobrar: Do not charge
+            nao-cobrar-titulo: Do not charge this delivery?
+            nao-cobrar-texto: 'A discount adjustment for the full amount of order {pedido} ({valor}) is added to the invoice.'
+            nao-cobrado: Delivery marked as not charged.
+            nao-cobrado-selo: Not charged
+            ajuste-titulo: 'Adjustment on the invoice of {loja}'
+            ajuste-ajuda: 'Discount, fee or monthly fee. A positive amount charges more; a negative one (with "-") is a discount.'
+            ajuste-desconto: 'Discount of {valor}'
+            ajuste-acrescimo: 'Extra charge of {valor}'
+            adicionar-ajuste: Add adjustment
+            ajuste-adicionado: Adjustment added.
+            motivo-visivel: Reason (the store sees it)
+            observacao-interna: Internal note (only the office sees it)
+            tipos:
+                corrida: Delivery
+                diaria: Daily allowance
+                bonus: Bonus
+                ajuste: Adjustment
+                saldo_inicial: Opening balance
+                pagamento: Payment
+                recebimento: Payment received
+                estorno: Reversal
             filtro:
                 todas: All
                 rascunho: Drafts

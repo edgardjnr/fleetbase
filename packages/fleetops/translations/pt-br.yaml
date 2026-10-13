@@ -309,6 +309,61 @@ fleet-ops:
       cancelar: Cancelar
       ultimo-dia: Último dia do mês
       dia-do-mes: 'Dia {dia}'
+      fatura: Fatura
+      fatura-titulo: 'Fatura {numero}'
+      fatura-nao-encontrada: Fatura não encontrada.
+      voltar: Lojas e faturas
+      exportar-csv: Exportar CSV
+      entregas-n: '{n, plural, =0 {nenhuma entrega} one {# entrega} other {# entregas}}'
+      emitida-em: 'Emitida em {quando}'
+      email-enviado-em: 'e-mail enviado em {quando}'
+      email-nao-enviado-ainda: e-mail não enviado
+      mais-ajuste: + Ajuste
+      emitir: Emitir
+      emitir-titulo: Emitir a fatura?
+      emitir-texto: 'A loja {loja} vai ver a fatura de {valor} no portal e receber por e-mail. Depois de emitida, a fatura não muda mais (só cancelando).'
+      emitida: Fatura emitida.
+      reenviar-email: Reenviar e-mail
+      email-reenviado: E-mail reenviado.
+      email-nao-enviado: A loja não tem e-mail cadastrado; nada foi enviado.
+      imprimir: Imprimir
+      cancelar-fatura: Cancelar fatura
+      cancelar-fatura-titulo: 'Cancelar a fatura {numero}?'
+      cancelar-fatura-texto: 'Os lançamentos voltam para a próxima fatura. O número não é reaproveitado e a loja deixa de ver esta fatura como em aberto.'
+      cancelar-fatura-recebido: 'O que já foi recebido continua no saldo da loja e quita a próxima fatura.'
+      fatura-cancelada: Fatura cancelada.
+      total: Total
+      rascunho-ajuda: 'Rascunho: a loja ainda não vê esta fatura. Confira os itens, marque o que não deve ser cobrado, inclua ajustes e emita.'
+      itens: Itens
+      data: Data
+      pedido: Pedido
+      km: Km
+      destino: Destino
+      motivo: Motivo
+      sem-itens: Nenhum item nesta fatura.
+      vencimento-salvo: Vencimento salvo.
+      nao-cobrar: Não cobrar
+      nao-cobrar-titulo: Não cobrar esta entrega?
+      nao-cobrar-texto: 'Entra na fatura um ajuste de desconto do valor inteiro do pedido {pedido} ({valor}).'
+      nao-cobrado: Entrega marcada para não cobrar.
+      nao-cobrado-selo: Não cobrada
+      ajuste-titulo: 'Ajuste na fatura de {loja}'
+      ajuste-ajuda: 'Desconto, taxa ou mensalidade. Valor positivo cobra a mais; negativo (com "-") é desconto.'
+      ajuste-desconto: 'Desconto de {valor}'
+      ajuste-acrescimo: 'Acréscimo de {valor}'
+      adicionar-ajuste: Adicionar ajuste
+      ajuste-adicionado: Ajuste adicionado.
+      motivo-visivel: Motivo (a loja vê)
+      observacao-interna: Observação interna (só a central vê)
+      tipos:
+        corrida: Corrida
+        diaria: Diária
+        bonus: Bônus
+        ajuste: Ajuste
+        saldo_inicial: Saldo inicial
+        pagamento: Pagamento
+        recebimento: Recebimento
+        estorno: Estorno
       filtro:
         todas: Todas
         rascunho: Rascunhos
