@@ -1,5 +1,6 @@
 import Service, { inject as service } from '@ember/service';
 import isNotEmpty from '@fleetbase/ember-core/utils/is-not-empty';
+import { pendenciasDoPedidoNovo } from '../utils/entregas-pedido-novo';
 
 export default class OrderValidationService extends Service {
     @service orderCreation;
@@ -25,12 +26,14 @@ export default class OrderValidationService extends Service {
         const hasDropoff = isNotEmpty(order.payload.dropoff);
         const hasValidCustomFields = cfManager ? this.isCustomFieldsValid(cfManager) : true;
         const hasValidExtensionRules = this.orderCreation.validateOrderRules(order, cfManager);
+        // Entregas: a central só cria pedido com uma loja como cliente e com o ID interno (utils/entregas-pedido-novo)
+        const hasLojaEIdInterno = pendenciasDoPedidoNovo(order).length === 0;
 
         if (hasWaypoints) {
-            return hasOrderConfig && hasOrderType && hasValidCustomFields && hasValidExtensionRules;
+            return hasOrderConfig && hasOrderType && hasValidCustomFields && hasValidExtensionRules && hasLojaEIdInterno;
         }
 
-        return hasPickup && hasDropoff && hasOrderConfig && hasOrderType && hasValidCustomFields && hasValidExtensionRules;
+        return hasPickup && hasDropoff && hasOrderConfig && hasOrderType && hasValidCustomFields && hasValidExtensionRules && hasLojaEIdInterno;
     }
 
     validationFails(order, cfManager) {

@@ -7,6 +7,7 @@ import { task } from 'ember-concurrency';
 // Entregas: aviso da coleta da loja para o route e regra única de "o cliente é loja"
 import { COLETA_DA_LOJA } from '../../../services/order-creation';
 import ehLoja from '../../../utils/entregas-loja';
+import { pendenciasDoPedidoNovo } from '../../../utils/entregas-pedido-novo';
 
 export default class OrderFormDetailsComponent extends Component {
     @service store;
@@ -24,6 +25,20 @@ export default class OrderFormDetailsComponent extends Component {
     constructor() {
         super(...arguments);
         this.carregarTiposDePedido.perform();
+    }
+
+    // Entregas: no pedido novo, o que falta para criar (loja como cliente e ID interno); vazio na edição
+    get pendencias() {
+        const resource = this.args.resource;
+        return resource?.isNew ? pendenciasDoPedidoNovo(resource) : [];
+    }
+
+    get faltaLoja() {
+        return this.pendencias.includes('loja');
+    }
+
+    get faltaIdInterno() {
+        return this.pendencias.includes('id-interno');
     }
 
     // Entregas: um tipo só basta; pedido novo já vem com o tipo padrão (transport) selecionado

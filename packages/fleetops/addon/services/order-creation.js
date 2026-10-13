@@ -2,6 +2,7 @@ import Service, { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { next } from '@ember/runloop';
 import Evented from '@ember/object/evented';
+import { RAIO_ADHOC_PADRAO, padroesDoPedidoNovo } from '../utils/entregas-pedido-novo';
 
 export const SERVICE_QUOTE_REFRESH_REQUESTED = 'service-quote-refresh-requested';
 // Entregas: o details avisa o route de que a loja escolhida define a coleta ({ order, place }; place nulo = sem endereço)
@@ -9,6 +10,7 @@ export const COLETA_DA_LOJA = 'entregas:coleta-da-loja';
 
 export default class OrderCreationService extends Service.extend(Evented) {
     @service orderActions;
+    @service currentUser;
     @tracked context;
     @tracked order;
     @tracked cfManager;
@@ -16,7 +18,9 @@ export default class OrderCreationService extends Service.extend(Evented) {
     orderValidationRules = {};
 
     newOrder(attrs = {}) {
-        const order = this.orderActions.createNewInstance(attrs);
+        // Entregas: o pedido novo da central já abre como ad-hoc e com despacho ligado
+        const padroes = padroesDoPedidoNovo(this.currentUser.getCompanyOption('fleetops.adhoc_distance', RAIO_ADHOC_PADRAO));
+        const order = this.orderActions.createNewInstance({ ...padroes, ...attrs });
         this.order = order;
 
         next(() => {

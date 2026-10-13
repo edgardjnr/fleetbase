@@ -21,7 +21,20 @@
             </InputGroup>
         {{/if}}
 
-        <InputGroup @name={{t "order.fields.internal-id"}} @value={{@resource.internal_id}} @helpText={{t "order.fields.internal-id-help-text"}} @disabled={{cannot-write @resource}} />
+        {{!-- Entregas: no pedido novo, o ID interno é obrigatório (utils/entregas-pedido-novo) --}}
+        <div>
+            <InputGroup
+                @name={{t "order.fields.internal-id"}}
+                @value={{@resource.internal_id}}
+                @helpText={{t "order.fields.internal-id-help-text"}}
+                @disabled={{cannot-write @resource}}
+                @required={{@resource.isNew}}
+                @wrapperClass={{if this.faltaIdInterno "mb-0"}}
+            />
+            {{#if this.faltaIdInterno}}
+                <p class="text-xs text-red-600 dark:text-red-400 mt-1 mb-3">{{t "fleet-ops.ui.order-form.internal-id-required"}}</p>
+            {{/if}}
+        </div>
 
         <InputGroup>
             <InputLabel @labelText={{t "order.fields.schedule"}} @helpText={{t "order.fields.schedule-help-text"}} />
@@ -36,7 +49,7 @@
         </InputGroup>
 
         {{!-- Entregas: o cliente pode ser uma loja (a coleta vira o endereço dela) ou um cliente comum --}}
-        <InputGroup @name={{t "fleet-ops.ui.order-form.store-or-customer"}} @helpText={{t "fleet-ops.ui.order-form.store-or-customer-help"}}>
+        <InputGroup @name={{t "fleet-ops.ui.order-form.store-or-customer"}} @helpText={{t "fleet-ops.ui.order-form.store-or-customer-help"}} @required={{@resource.isNew}}>
             <ModelSelect
                 @modelName="customer"
                 @selectedModel={{@resource.customer}}
@@ -58,6 +71,10 @@
                     </span>
                 </div>
             </ModelSelect>
+            {{!-- Entregas: no pedido novo, o cliente tem de ser uma loja (portal e cobrança dela) --}}
+            {{#if this.faltaLoja}}
+                <p class="text-xs text-red-600 dark:text-red-400 mt-1">{{t "fleet-ops.ui.order-form.store-required"}}</p>
+            {{/if}}
         </InputGroup>
 
         <InputGroup @name={{t "order.fields.facilitator"}} @helpText={{t "order.fields.facilitator-help-text"}}>

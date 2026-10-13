@@ -811,6 +811,8 @@ fleet-ops:
         order-form:
             store-or-customer: Store or customer
             store-or-customer-placeholder: Select store or customer
+            store-required: Choose the store for this order. Without it, the order is not shown in the store portal or billed.
+            internal-id-required: Fill in the internal ID (the order number at the store).
             store-or-customer-help: Choosing a store sets the pickup to its address.
             pickup-locked: "Fixed pickup: the store address."
             endereco-do-google-falhou: Could not load the address from Google. Mark the point on the map or choose a saved place.

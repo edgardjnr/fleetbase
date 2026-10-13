@@ -811,6 +811,8 @@ fleet-ops:
     order-form:
       store-or-customer: Loja ou cliente
       store-or-customer-placeholder: Selecionar loja ou cliente
+      store-required: Escolha a loja do pedido. Sem ela, o pedido não aparece no portal da loja nem entra na cobrança.
+      internal-id-required: Preencha o ID interno (o número do pedido na loja).
       store-or-customer-help: Ao escolher uma loja, a coleta vira o endereço dela.
       pickup-locked: "Coleta fixa: endereço da loja."
       endereco-do-google-falhou: Não foi possível carregar o endereço do Google. Marque o ponto no mapa ou escolha um local salvo.
