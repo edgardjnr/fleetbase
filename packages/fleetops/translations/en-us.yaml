@@ -435,6 +435,66 @@ fleet-ops:
                     email_nao_enviado: 'Invoice {numero} from {loja} was not sent by email'
                     sem_loja: 'Order {numero} has no store to charge'
                     sem_valor: 'Order {numero} completed without a value (no km or no bands)'
+            tipos:
+                corrida: Ride
+                diaria: Daily allowance
+                bonus: Bonus
+                ajuste: Adjustment
+                saldo_inicial: Opening balance
+                pagamento: Payment
+                recebimento: Receipt
+                estorno: Reversal
+                desconhecido: Other
+            situacao:
+                pago: Paid
+                parcial: Partly paid
+                aberto: Outstanding
+                anulado: Voided
+            erros:
+                tipo-invalido: Choose the entry type.
+                valor-invalido: 'Enter the amount (e.g. 30.00).'
+                valor-zero: The amount cannot be zero.
+                valor-negativo: Daily allowance and bonus cannot be negative. Use an adjustment to deduct.
+                pedido-so-em-ajuste: The order only applies to adjustments.
+                sem-conta: Choose at least one account.
+                contas-demais: At most 100 accounts at a time.
+            motoboys:
+                titulo: Drivers
+                lancar-selecionados: '{count, plural, =0 {Add entry for selected} one {Add entry for 1 selected} other {Add entry for # selected}}'
+                periodo: Rides period
+                periodo-ajuda: The balance is current; rides and their value are for the period.
+                corridas: Rides in the period
+                valor-corridas: Rides value
+                ajuda: Click a driver to see the statement. Select several to add the same daily allowance (or bonus) to all of them.
+                marcar-todos: Select all
+                marcar: 'Select {nome}'
+                motoboy: Driver
+                saldo: Balance
+                ultimo-pagamento: Last payment
+                sem-pix: No Pix key on file
+                a-pagar: owed
+                adiantado: advanced
+                pagamento-em: '{valor} on {data}'
+                vazio: No drivers yet.
+            lancar:
+                titulo-motoboy: Add daily allowance, bonus, adjustment or opening balance
+                titulo-loja: Add adjustment or opening balance
+                confirmar: Add entry
+                para-um: 'For {nome}'
+                para-varios-motoboy: '{count, plural, one {For # driver} other {For # drivers}}'
+                para-varios-loja: '{count, plural, one {For # store} other {For # stores}}'
+                tipo: Type
+                valor: Amount (R$)
+                data: Date
+                pedido: Order (optional)
+                pedido-ajuda: 'Order id (order_…) this adjustment corrects. A negative adjustment with the order offsets its ride.'
+                negativo-ajuda: 'Use "-" to deduct (e.g. -2.50). For the opening balance, negative = the driver owed.'
+                motivo: Reason
+                motivo-ajuda-motoboy: Shown to the driver in the app.
+                motivo-ajuda-loja: Shown to the store in the portal.
+                observacao: Internal note
+                observacao-ajuda: Only the dispatch team sees it.
+                lancado: '{count, plural, one {Entry added.} other {# entries added.}}'
         order-form:
             store-or-customer: Store or customer
             store-or-customer-placeholder: Select store or customer

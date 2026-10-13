@@ -435,6 +435,66 @@ fleet-ops:
           email_nao_enviado: 'Fatura {numero} de {loja} não foi enviada por e-mail'
           sem_loja: 'Pedido {numero} sem loja para cobrar'
           sem_valor: 'Pedido {numero} concluído sem valor (sem km ou sem faixas)'
+      tipos:
+        corrida: Corrida
+        diaria: Diária
+        bonus: Bônus
+        ajuste: Ajuste
+        saldo_inicial: Saldo inicial
+        pagamento: Pagamento
+        recebimento: Recebimento
+        estorno: Estorno
+        desconhecido: Outro
+      situacao:
+        pago: Pago
+        parcial: Pago em parte
+        aberto: A receber
+        anulado: Anulado
+      erros:
+        tipo-invalido: Escolha o tipo do lançamento.
+        valor-invalido: 'Informe o valor (ex.: 30,00).'
+        valor-zero: O valor não pode ser zero.
+        valor-negativo: Diária e bônus não podem ser negativos. Para descontar, use um ajuste.
+        pedido-so-em-ajuste: O pedido só vale em ajuste.
+        sem-conta: Escolha pelo menos uma conta.
+        contas-demais: No máximo 100 contas por vez.
+      motoboys:
+        titulo: Motoboys
+        lancar-selecionados: '{count, plural, =0 {Lançar para os selecionados} one {Lançar para 1 selecionado} other {Lançar para # selecionados}}'
+        periodo: Período das corridas
+        periodo-ajuda: O saldo é de agora; as corridas e o valor delas são do período.
+        corridas: Corridas no período
+        valor-corridas: Valor das corridas
+        ajuda: Clique num motoboy para ver o extrato. Marque vários para lançar a mesma diária (ou bônus) para todos.
+        marcar-todos: Marcar todos
+        marcar: 'Marcar {nome}'
+        motoboy: Motoboy
+        saldo: Saldo
+        ultimo-pagamento: Último pagamento
+        sem-pix: Sem chave Pix cadastrada
+        a-pagar: a pagar
+        adiantado: adiantado
+        pagamento-em: '{valor} em {data}'
+        vazio: Nenhum motoboy cadastrado.
+      lancar:
+        titulo-motoboy: Lançar diária, bônus, ajuste ou saldo inicial
+        titulo-loja: Lançar ajuste ou saldo inicial
+        confirmar: Lançar
+        para-um: 'Para {nome}'
+        para-varios-motoboy: '{count, plural, one {Para # motoboy} other {Para # motoboys}}'
+        para-varios-loja: '{count, plural, one {Para # loja} other {Para # lojas}}'
+        tipo: Tipo
+        valor: Valor (R$)
+        data: Data
+        pedido: Pedido (opcional)
+        pedido-ajuda: 'Id do pedido (order_…) que este ajuste corrige. Um ajuste negativo com o pedido abate a corrida dele.'
+        negativo-ajuda: 'Use "-" para descontar (ex.: -2,50). No saldo inicial, negativo = o motoboy devia.'
+        motivo: Motivo
+        motivo-ajuda-motoboy: Aparece para o motoboy no app.
+        motivo-ajuda-loja: Aparece para a loja no portal.
+        observacao: Observação interna
+        observacao-ajuda: Só a central vê.
+        lancado: '{count, plural, one {Lançamento feito.} other {# lançamentos feitos.}}'
     order-form:
       store-or-customer: Loja ou cliente
       store-or-customer-placeholder: Selecionar loja ou cliente

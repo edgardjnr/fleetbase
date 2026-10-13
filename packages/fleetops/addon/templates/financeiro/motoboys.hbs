@@ -1,0 +1,127 @@
+<Layout::Section::Header @title={{t "fleet-ops.ui.financeiro.motoboys.titulo"}}>
+    <div class="flex items-center space-x-2">
+        <Button @icon="refresh" @size="sm" @helpText={{t "common.reload"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
+        <Button
+            @type="primary"
+            @icon="plus"
+            @size="sm"
+            @text={{t "fleet-ops.ui.financeiro.motoboys.lancar-selecionados" count=this.selecionados.length}}
+            @disabled={{not this.selecionados.length}}
+            @onClick={{this.lancarParaSelecionados}}
+        />
+    </div>
+</Layout::Section::Header>
+
+<Layout::Section::Body class="overflow-y-scroll-i h-full">
+    <div class="max-w-6xl mx-auto px-4 py-6 space-y-5">
+        <ContentPanel @title={{t "fleet-ops.ui.financeiro.motoboys.periodo"}} @open={{true}} @wrapperClass="bordered-classic">
+            <div class="flex flex-wrap items-end gap-4">
+                <InputGroup @name={{t "fleet-ops.ui.financeiro.periodo.inicio"}} @wrapperClass="mb-0">
+                    <input type="date" class="form-input form-input-sm" value={{this.inicio}} max={{this.fim}} {{on "change" (fn this.setData "inicio")}} />
+                </InputGroup>
+                <InputGroup @name={{t "fleet-ops.ui.financeiro.periodo.fim"}} @wrapperClass="mb-0">
+                    <input type="date" class="form-input form-input-sm" value={{this.fim}} min={{this.inicio}} {{on "change" (fn this.setData "fim")}} />
+                </InputGroup>
+                <Button @type="primary" @size="sm" @icon="magnifying-glass" @text={{t "fleet-ops.ui.financeiro.periodo.aplicar"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
+                <div class="flex items-center gap-2">
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro.periodo.ultimos-7-dias"}} @onClick={{fn this.setPeriodo "last-7-days"}} />
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro.periodo.este-mes"}} @onClick={{fn this.setPeriodo "this-month"}} />
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro.periodo.mes-passado"}} @onClick={{fn this.setPeriodo "last-month"}} />
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">{{t "fleet-ops.ui.financeiro.motoboys.periodo-ajuda"}}</p>
+        </ContentPanel>
+
+        {{#if this.motoboys.length}}
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.painel.a-pagar"}}</div>
+                    <div class="text-2xl font-semibold text-green-700 dark:text-green-400">{{this.valor this.totais.aPagar}}</div>
+                </div>
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.painel.adiantado"}}</div>
+                    <div class="text-2xl font-semibold dark:text-white">{{this.valor this.totais.adiantado}}</div>
+                </div>
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.motoboys.corridas"}}</div>
+                    <div class="text-2xl font-semibold dark:text-white">{{this.totais.corridas}}</div>
+                </div>
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.motoboys.valor-corridas"}}</div>
+                    <div class="text-2xl font-semibold dark:text-white">{{this.valor this.totais.valorCorridas}}</div>
+                </div>
+            </div>
+
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{t "fleet-ops.ui.financeiro.motoboys.ajuda"}}</p>
+                <table class="table w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-gray-500 dark:text-gray-400">
+                            <th class="py-2 w-8">
+                                <input type="checkbox" aria-label={{t "fleet-ops.ui.financeiro.motoboys.marcar-todos"}} checked={{this.todosSelecionados}} {{on "change" this.alternarTodos}} />
+                            </th>
+                            <th class="py-2">{{t "fleet-ops.ui.financeiro.motoboys.motoboy"}}</th>
+                            <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro.motoboys.saldo"}}</th>
+                            <th class="py-2">{{t "fleet-ops.ui.financeiro.motoboys.ultimo-pagamento"}}</th>
+                            <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro.motoboys.corridas"}}</th>
+                            <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro.motoboys.valor-corridas"}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each this.motoboys key="id" as |motoboy|}}
+                            <tr
+                                role="button"
+                                class="cursor-pointer border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100
+                                    {{if (this.selecionado motoboy.id) 'bg-blue-50 dark:bg-blue-900'}}"
+                                {{on "click" (fn this.abrirLinha motoboy)}}
+                            >
+                                <td class="py-2">
+                                    <input
+                                        type="checkbox"
+                                        aria-label={{t "fleet-ops.ui.financeiro.motoboys.marcar" nome=motoboy.nome}}
+                                        checked={{this.selecionado motoboy.id}}
+                                        {{on "change" (fn this.alternar motoboy.id)}}
+                                    />
+                                </td>
+                                <td class="py-2">
+                                    {{motoboy.nome}}
+                                    {{#unless motoboy.tem_pix}}
+                                        <span class="ml-1 text-yellow-600 dark:text-yellow-400" title={{t "fleet-ops.ui.financeiro.motoboys.sem-pix"}}>
+                                            <FaIcon @icon="key" @size="xs" />
+                                            <span class="sr-only">{{t "fleet-ops.ui.financeiro.motoboys.sem-pix"}}</span>
+                                        </span>
+                                    {{/unless}}
+                                </td>
+                                <td class="py-2 text-right whitespace-nowrap">
+                                    {{#if (gt motoboy.saldo 0)}}
+                                        <span class="font-semibold text-green-700 dark:text-green-400">{{this.valor motoboy.saldo}}</span>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.motoboys.a-pagar"}}</div>
+                                    {{else if (lt motoboy.saldo 0)}}
+                                        <span class="font-semibold text-red-600 dark:text-red-400">{{this.valor motoboy.saldo}}</span>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.motoboys.adiantado"}}</div>
+                                    {{else}}
+                                        <span class="text-gray-500 dark:text-gray-400">{{this.valor 0}}</span>
+                                    {{/if}}
+                                </td>
+                                <td class="py-2 whitespace-nowrap">
+                                    {{#if motoboy.ultimo_pagamento}}
+                                        {{t "fleet-ops.ui.financeiro.motoboys.pagamento-em" valor=(this.valor motoboy.ultimo_pagamento.valor) data=(this.dia motoboy.ultimo_pagamento.data)}}
+                                    {{else}}
+                                        <span class="text-gray-400">—</span>
+                                    {{/if}}
+                                </td>
+                                <td class="py-2 text-right">{{motoboy.corridas}}</td>
+                                <td class="py-2 text-right whitespace-nowrap">{{this.valor motoboy.valor_corridas}}</td>
+                            </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            </div>
+        {{else if this.carregar.isRunning}}
+            <Spinner />
+        {{else if this.carregado}}
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.motoboys.vazio"}}</p>
+        {{/if}}
+    </div>
+    <Spacer @height="300px" />
+</Layout::Section::Body>
