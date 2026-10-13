@@ -186,4 +186,15 @@ $solto   = daLoja('vendor-a', 'ajuste', 5, '2026-10-06', ['motivo' => 'Taxa']);
 $estorno3 = Lancamentos::estornar(Lancamentos::porId('empresa-1', $solto), null, null);
 confere(Lancamentos::porId('empresa-1', $estorno3)->fatura_uuid === null, 'lançamento sem fatura: o estorno também fica sem');
 
+echo '== Emitir sem valor a cobrar' . PHP_EOL;
+reiniciarFinanceiro();
+$z1     = corridaDaLoja('vendor-a', 10, '2026-10-02', 'z1');
+$zero   = Faturas::gerarRascunho('empresa-1', 'vendor-a', '2026-09-28', '2026-10-04', null);
+Faturas::naoCobrar($zero, Lancamentos::porId('empresa-1', $z1), null);
+$erro = excecao(fn () => Faturas::emitir($zero, null));
+confere($erro instanceof \DomainException && $erro->getMessage() === 'Fatura sem valor a cobrar; cancele o rascunho.' && Faturas::porUuid('empresa-1', $zero->uuid)->situacao === 'rascunho', 'total zero: recusa a emissão (' . ($erro?->getMessage()) . ')');
+Faturas::ajuste($zero, -3, 'Desconto', null, null);
+$erro = excecao(fn () => Faturas::emitir($zero, null));
+confere($erro instanceof \DomainException && $erro->getMessage() === 'Fatura sem valor a cobrar; cancele o rascunho.', 'total negativo: a mesma recusa');
+
 resumo();

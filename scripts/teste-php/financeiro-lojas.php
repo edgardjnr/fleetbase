@@ -211,7 +211,7 @@ namespace {
     echo '== Emitir' . PHP_EOL;
     // total negativo (−1): não emite
     $r = api()->emitir(req(), $id);
-    confere($r->status === 422 && erroDe($r) === 'O total da fatura não pode ser negativo.' && AvisosFalsos::$emitidas === [], 'total negativo: 422, sem e-mail');
+    confere($r->status === 422 && erroDe($r) === 'Fatura sem valor a cobrar; cancele o rascunho.' && AvisosFalsos::$emitidas === [], 'total negativo: 422, sem e-mail');
     api()->ajuste(req(['valor' => 21, 'motivo' => 'Mensalidade']), $id);
     Relogio::$agora = '2026-10-12 11:00:00';
     $r = api()->emitir(req(), $id);

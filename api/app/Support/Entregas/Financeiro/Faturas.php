@@ -146,9 +146,10 @@ final class Faturas
             if (!$itens) {
                 throw new \DomainException('A fatura não tem lançamentos.');
             }
+            // total zero ou negativo (tudo "Não cobrar", descontos): nada a cobrar, a fatura não é emitida nem enviada
             $total = static::soma($itens);
-            if ($total < 0) {
-                throw new \DomainException('O total da fatura não pode ser negativo.');
+            if ($total <= 0) {
+                throw new \DomainException('Fatura sem valor a cobrar; cancele o rascunho.');
             }
 
             // o maior número da empresa, travado até o fim da transação (duas emissões ao mesmo tempo não repetem)
