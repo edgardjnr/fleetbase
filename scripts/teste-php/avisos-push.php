@@ -119,6 +119,9 @@ confere((AvisosDoMotoboy::texto($agendadoSemCodigo)[1] ?? null) === 'Pedido agen
 confere(AvisosDoMotoboy::texto(new Illuminate\Notifications\Notification()) === null, 'classe sem tradução devolve null');
 $trocado = new App\Notifications\Entregas\PedidoPassadoParaOutro('4821', 'order_abc');
 confere(AvisosDoMotoboy::texto($trocado) === ['Pedido passado para outro motoboy', 'Pedido #4821 passou para outro motoboy.'], 'pedido passado para outro motoboy (líder dos motoboys): texto da própria notificação');
+$pago = new App\Notifications\Entregas\PagamentoRegistrado('00000000-0000-4000-8000-000000000001', 150.0, 'pix');
+confere(AvisosDoMotoboy::texto($pago) === ['Pagamento registrado', 'Pagamento de R$ 150,00 registrado (Pix).'], 'pagamento registrado (financeiro): texto da própria notificação');
+confere((new App\Notifications\Entregas\PagamentoRegistrado('p', 80.5, 'outro'))->message === 'Pagamento de R$ 80,50 registrado.', 'pagamento registrado com a forma "outro": sem os parênteses');
 
 // pedido iFood cancelado pelo iFood (CAN): o OrderCanceled sai com o texto do iFood (CancelamentoPeloIfood::textoDoPush).
 // DB mínimo, só a consulta do PedidosIfood::doPedido (linhas por order_uuid)
@@ -170,6 +173,9 @@ confere(isset($chat['android']['fcm_options'], $chat['apns']), 'fcm_options e ap
 $trocadoEnviado = enviado($trocado);
 confere(($trocadoEnviado['android']['notification']['channel_id'] ?? null) === 'avisos' && !isset($trocadoEnviado['android']['ttl']), 'pedido passado para outro motoboy: canal "avisos", sem validade curta');
 confere(($trocadoEnviado['data'] ?? null) === ['type' => 'entregas_pedido_trocado', 'pedido' => 'order_abc'], 'pedido passado para outro motoboy: dados sem "id" (o app não abre o pedido)');
+$pagoEnviado = enviado($pago);
+confere(($pagoEnviado['notification'] ?? null) === ['title' => 'Pagamento registrado', 'body' => 'Pagamento de R$ 150,00 registrado (Pix).'] && ($pagoEnviado['android']['notification']['channel_id'] ?? null) === 'avisos' && !isset($pagoEnviado['android']['ttl']), 'pagamento registrado: push comum no canal "avisos", sem validade curta');
+confere(($pagoEnviado['data'] ?? null) === ['type' => 'entregas_pagamento', 'pagamento' => '00000000-0000-4000-8000-000000000001'], 'pagamento registrado: dados {type, pagamento} sem "id" (o app abre o recibo)');
 
 echo '== Alarme como push de dados (o padrão)' . PHP_EOL;
 putenv('ENTREGAS_ALARME_POR_DADOS');
@@ -192,6 +198,7 @@ confere(($ping['android']['priority'] ?? null) === 'high' && ($ping['android']['
 confere(!isset($ping['android']['notification']), 'sem android.notification (senão o Android mostra como push comum)');
 confere(isset($ping['android']['fcm_options'], $ping['apns']), 'o resto do push (fcm_options, apns) fica');
 confere((enviado($trocado)['notification']['title'] ?? null) === 'Pedido passado para outro motoboy', 'pedido passado para outro motoboy: push comum também com o alarme por dados ligado (não é alarme)');
+confere((enviado($pago)['notification']['title'] ?? null) === 'Pagamento registrado', 'pagamento registrado: push comum também com o alarme por dados ligado (não é alarme)');
 
 echo '== Cartão do pedido nos dados do alarme' . PHP_EOL;
 $cartao                  = ['entregas_loja' => 'Terraço Pizza', 'entregas_destino' => 'Centro, Ribeirão Preto', 'entregas_km' => '3,2 km', 'entregas_valor' => 'R$ 8,00'];

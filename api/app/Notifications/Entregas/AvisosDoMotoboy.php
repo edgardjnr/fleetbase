@@ -56,6 +56,8 @@ class AvisosDoMotoboy
         'test'                  => 'avisos',
         // o líder dos motoboys passou o pedido para outro motoboy (PedidoPassadoParaOutro)
         'entregas_pedido_trocado' => 'avisos',
+        // a central registrou um pagamento ao motoboy (Financeiro: PagamentoRegistrado)
+        'entregas_pagamento'      => 'avisos',
     ];
 
     /** Canal do push de dados no APK antigo (a biblioteca de push mostra nele; o APK 16 usa o canal do alarme). */
@@ -121,6 +123,7 @@ class AvisosDoMotoboy
             $notificacao instanceof OfertaDePedido       => [$notificacao->title, $notificacao->message],
             $notificacao instanceof LembretePedidoAberto => [$notificacao->title, $notificacao->message],
             $notificacao instanceof PedidoPassadoParaOutro => [$notificacao->title, $notificacao->message],
+            $notificacao instanceof PagamentoRegistrado  => [$notificacao->title, $notificacao->message],
             $notificacao instanceof OrderPing            => ['Novo pedido disponível', static::textoDaColeta($notificacao->distance)],
             $notificacao instanceof OrderAssigned        => ['Novo pedido para você', static::textoDoAtribuido($notificacao, $codigo)],
             $notificacao instanceof OrderDispatched      => [static::comCodigo('Pedido %s liberado para você', 'Pedido liberado para você', $codigo), 'Toque para ver e iniciar a entrega.'],

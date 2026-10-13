@@ -48,6 +48,11 @@ $arquivos = array_merge(
         $app . '/Notifications/Entregas/Email/FaturaVencida.php',
         $app . '/Console/Commands/Entregas/FinanceiroRascunhos.php',
         $app . '/Http/Controllers/Entregas/FinanceiroLojasController.php',
+        // financeiro: API do console e do app (B2)
+        $app . '/Http/Controllers/Entregas/FinanceiroController.php',
+        $app . '/Http/Controllers/Entregas/ComprovantesController.php',
+        $app . '/Notifications/Entregas/PagamentoRegistrado.php',
+        $app . '/Notifications/Entregas/AvisosDoMotoboy.php',
     ]
 );
 

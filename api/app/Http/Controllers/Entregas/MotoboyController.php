@@ -8,6 +8,9 @@ use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\ChatComACentral;
 use App\Support\Entregas\ConversasDaLoja;
 use App\Support\Entregas\Distribuicao\Distribuidor;
+use App\Support\Entregas\Financeiro\ExtratoDaConta;
+use App\Support\Entregas\Financeiro\Financeiro;
+use App\Support\Entregas\Financeiro\Pagamentos;
 use App\Support\Entregas\GanhosDoMotoboy;
 use App\Support\Entregas\Ifood\ConclusaoIfood;
 use App\Support\Entregas\Ifood\DadosIfoodDoMotoboy;
@@ -41,6 +44,8 @@ use Illuminate\Support\Carbon;
  *   cliente (ConclusaoIfood): o servidor avisa a chegada ao iFood, confere o código na hora e libera a conclusão comum.
  * - integracao: o pedido de outro sistema (RestaurantePro) no app: cobrança, observações e o telefone do cliente (DadosDaIntegracaoDoMotoboy).
  * - app: a versão mínima do app e o link do APK (trava "Atualize o app", AppDoMotoboy e ExigirAppAtualizado).
+ * - extrato e pagamento: o Financeiro no app (Início = extrato: saldo, lançamentos com a situação, Pix) e o recibo de um
+ *   pagamento (com o link assinado do comprovante). Formato público: sem observação interna e sem quem lançou.
  * O motoboy vem do token (MotoboyDaSessao); as respostas só trazem o valor pago a ele (GanhosDoMotoboy). Usuário de
  * loja nem chega aqui: o ProtegerPortalLoja nega a API v1 a ele.
  */
@@ -92,6 +97,53 @@ class MotoboyController extends Controller
         [$entregas, $pendentes] = $calculo->entregas($pedidos, $fuso, GanhosDoMotoboy::LIMITE_CALCULOS);
 
         return response()->json(GanhosDoMotoboy::resumo($entregas, $request->input('inicio'), $request->input('fim'), $pendentes));
+    }
+
+    /**
+     * GET v1/entregas/motoboy/extrato?inicio&fim (até 92 dias): o extrato da conta do motoboy no Financeiro, no formato
+     * público (ExtratoDaConta: sem observação interna, sem quem lançou, sem o valor da loja), com a chave Pix dele em
+     * `conta.pix` (só leitura). A situação de cada crédito é calculada com a conta inteira.
+     */
+    public function extrato(Request $request)
+    {
+        $motoboy = MotoboyDaSessao::motoboy($request);
+        if (!$motoboy) {
+            return $this->soParaMotoboy();
+        }
+
+        $inicio = $this->dia($request->input('inicio'));
+        $fim    = $this->dia($request->input('fim'));
+        if ($inicio === null || $fim === null) {
+            return response()->json(['errors' => ['Escolha o período (início e fim).']], 422);
+        }
+        if ($fim < $inicio) {
+            return response()->json(['errors' => ['O fim do período precisa ser depois do início.']], 422);
+        }
+        if (GanhosDoMotoboy::diasDoPeriodo($inicio, $fim) > GanhosDoMotoboy::MAX_DIAS) {
+            return response()->json(['errors' => ['Escolha um período de até 3 meses.']], 422);
+        }
+
+        return response()->json(ExtratoDaConta::montar((string) session('company'), Financeiro::CONTA_MOTOBOY, (string) $motoboy->uuid, $inicio, $fim, true));
+    }
+
+    /**
+     * GET v1/entregas/motoboy/pagamentos/{id} (uuid): o recibo de um pagamento ao motoboy da sessão ({id, valor, forma,
+     * data, estornado, comprovante: {url assinada de 30 min, tipo, nome} | null}). Pagamento de outro motoboy, recebimento
+     * de loja ou de outra empresa: 404.
+     */
+    public function pagamento(Request $request, string $id)
+    {
+        $motoboy = MotoboyDaSessao::motoboy($request);
+        if (!$motoboy) {
+            return $this->soParaMotoboy();
+        }
+
+        $pagamento = Pagamentos::porUuid((string) session('company'), $id);
+        if (!$pagamento || $pagamento->conta_tipo !== Financeiro::CONTA_MOTOBOY || (string) $pagamento->conta_uuid !== (string) $motoboy->uuid) {
+            return response()->json(['errors' => ['Pagamento não encontrado.']], 404);
+        }
+
+        return response()->json(ExtratoDaConta::pagamento($pagamento));
     }
 
     public function valor(Request $request, string $id, CalculoEntregas $calculo)
@@ -331,6 +383,17 @@ class MotoboyController extends Controller
         return $resultado
             ? response()->json(['resultado' => $resultado])
             : response()->json(['errors' => ['Esta oferta não está mais com você.']], 409);
+    }
+
+    /** 'Y-m-d' válido, ou null. */
+    protected function dia($valor): ?string
+    {
+        if (!is_string($valor) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor)) {
+            return null;
+        }
+        [$ano, $mes, $dia] = array_map('intval', explode('-', $valor));
+
+        return checkdate($mes, $dia, $ano) ? $valor : null;
     }
 
     protected function soParaMotoboy()
