@@ -266,6 +266,9 @@ test('itens da lista Atenção do painel', () => {
 
     assert.equal(itemDeAtencao({ tipo: 'email_nao_enviado', fatura: 'u3', numero: 'FAT-0033', loja: 'Burger Hub' }, f).icone, 'envelope');
     assert.equal(itemDeAtencao({ tipo: 'novo-tipo' }, f), null);
+    // o servidor manda pedido null quando a corrida não tem os detalhes: sem link, o item não aparece (o LinkTo quebraria)
+    assert.equal(itemDeAtencao({ tipo: 'sem_loja', pedido: null, numero: null }, f), null);
+    assert.equal(itemDeAtencao({ tipo: 'rascunho', fatura: null, loja: 'Terraço', valor: 1 }, f), null);
     assert.equal(itemDeAtencao(null, f), null);
 });
 

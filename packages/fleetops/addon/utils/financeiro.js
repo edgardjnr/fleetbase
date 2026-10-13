@@ -362,6 +362,11 @@ export function itemDeAtencao(item, f) {
         return null;
     }
     const ehPedido = config.rota === ROTA_DO_PEDIDO;
+    // sem o id não há link (o LinkTo sem o modelo quebra a tela inteira): o item sai da lista
+    const modelo = ehPedido ? item.pedido : item.fatura;
+    if (!modelo) {
+        return null;
+    }
     const params = ehPedido
         ? { numero: item.numero || item.pedido }
         : { numero: item.numero ?? '', loja: item.loja ?? '', valor: f.valor(item.valor), vencimento: f.dia(item.vencimento) };
@@ -373,7 +378,7 @@ export function itemDeAtencao(item, f) {
         chave: `${PREFIXO}.painel.atencao.${item.tipo}`,
         params,
         rota: config.rota,
-        modelo: ehPedido ? item.pedido : item.fatura,
+        modelo,
     };
 }
 
