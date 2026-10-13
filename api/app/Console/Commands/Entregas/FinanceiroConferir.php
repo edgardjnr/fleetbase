@@ -12,8 +12,9 @@ use Illuminate\Support\Facades\Log;
 /**
  * Entregas RestaurantePro: conferência do financeiro, a cada 5 min (Kernel, só com ENTREGAS_FINANCEIRO). Para cada
  * empresa com data de corte: lança as corridas que escaparam do observador (pedidos concluídos desde max(corte, hoje − 30
- * dias, e a corrida da loja que faltou) sem lançamento do motoboy) e estorna as corridas dos pedidos cancelados depois da conclusão (últimos 30 dias);
- * se um desses pedidos volta a valer (cancelado pago marcado depois, ou concluído de novo), relança a corrida.
+ * dias) sem a corrida do motoboy, ou com ela e sem a da loja) e estorna as corridas dos pedidos cancelados depois da
+ * conclusão (últimos 30 dias); se um desses pedidos volta a valer (cancelado pago marcado depois, ou concluído de novo),
+ * relança a corrida.
  * Uma falha numa empresa não para as outras (log só com ids).
  */
 class FinanceiroConferir extends Command
