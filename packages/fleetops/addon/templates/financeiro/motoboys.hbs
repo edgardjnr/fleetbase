@@ -65,6 +65,7 @@
                             <th class="py-2">{{t "fleet-ops.ui.financeiro.motoboys.ultimo-pagamento"}}</th>
                             <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro.motoboys.corridas"}}</th>
                             <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro.motoboys.valor-corridas"}}</th>
+                            <th class="py-2"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -112,6 +113,9 @@
                                 </td>
                                 <td class="py-2 text-right">{{motoboy.corridas}}</td>
                                 <td class="py-2 text-right whitespace-nowrap">{{this.valor motoboy.valor_corridas}}</td>
+                                <td class="py-2 text-right">
+                                    <Button @size="xs" @icon="money-bill-wave" @text={{t "fleet-ops.ui.financeiro.motoboys.pagar"}} @onClick={{fn this.pagar motoboy}} />
+                                </td>
                             </tr>
                         {{/each}}
                     </tbody>

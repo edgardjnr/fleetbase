@@ -196,6 +196,69 @@ export function validarLancamento({ contaTipo = 'motoboy', tipo, valor, contas, 
     return erros;
 }
 
+/** Tipos de chave Pix (Financeiro::TIPOS_CHAVE_PIX) e formas de pagamento (Financeiro::FORMAS). */
+export const TIPOS_CHAVE_PIX = ['cpf', 'cnpj', 'telefone', 'email', 'aleatoria'];
+export const FORMAS_DE_PAGAMENTO = ['pix', 'dinheiro', 'transferencia', 'outro'];
+
+/**
+ * Conferência da chave Pix antes de salvar: null se está boa, ou o código do erro (fleet-ops.ui.financeiro.erros.*):
+ * pix-tipo, pix-chave-vazia, pix-chave-invalida. CPF/CNPJ/telefone aceitam pontuação (contam só os dígitos).
+ */
+export function validarPix(tipo, chave) {
+    if (!TIPOS_CHAVE_PIX.includes(tipo)) {
+        return 'pix-tipo';
+    }
+    const texto = String(chave ?? '').trim();
+    if (!texto) {
+        return 'pix-chave-vazia';
+    }
+    const digitos = texto.replace(/[\s.\-/()+]/g, '');
+    const valida = {
+        cpf: () => /^\d{11}$/.test(digitos),
+        cnpj: () => /^\d{14}$/.test(digitos),
+        telefone: () => /^\d{10,13}$/.test(digitos),
+        email: () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(texto),
+        aleatoria: () => /^[0-9a-f-]{32,36}$/i.test(texto),
+    }[tipo];
+
+    return valida() ? null : 'pix-chave-invalida';
+}
+
+export const LIMITE_DO_COMPROVANTE = 10 * 1024 * 1024;
+
+/** Comprovante opcional: imagem ou PDF até 10 MB. null se está bom (ou não há arquivo); senão comprovante-tipo ou comprovante-grande. */
+export function validarComprovante(arquivo) {
+    if (!arquivo) {
+        return null;
+    }
+    const tipo = String(arquivo.type ?? '');
+    if (!tipo.startsWith('image/') && tipo !== 'application/pdf') {
+        return 'comprovante-tipo';
+    }
+
+    return Number(arquivo.size) > LIMITE_DO_COMPROVANTE ? 'comprovante-grande' : null;
+}
+
+/**
+ * Campos do multipart de POST financeiro/pagamentos, como pares [nome, valor] para o FormData (o arquivo vai à parte, no
+ * campo "comprovante"). conta = public_id do motoboy (driver_…) ou da loja (vendor_…); valor com ponto e 2 casas.
+ */
+export function camposDoPagamento({ contaTipo, contaId, valor, forma, data, observacao }) {
+    const campos = [
+        ['conta_tipo', contaTipo === 'loja' ? 'loja' : 'motoboy'],
+        ['conta', String(contaId ?? '')],
+        ['valor', (Math.round(numeroDigitado(valor) * 100) / 100).toFixed(2)],
+        ['forma', FORMAS_DE_PAGAMENTO.includes(forma) ? forma : 'pix'],
+        ['data', String(data ?? '')],
+    ];
+    const nota = String(observacao ?? '').trim();
+    if (nota) {
+        campos.push(['observacao_interna', nota]);
+    }
+
+    return campos;
+}
+
 /** Quanto do pagamento passa do saldo (vira adiantamento); 0 quando cabe no saldo ou o valor é inválido. */
 export function avisoDeAdiantamento(valor, saldo) {
     const pago = numeroDigitado(valor);

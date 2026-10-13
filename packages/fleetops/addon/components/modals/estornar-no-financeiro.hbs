@@ -1,0 +1,13 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="px-4 space-y-4 text-gray-900 dark:text-gray-50">
+        <p class="text-sm font-semibold">{{this.descricao}}</p>
+        {{#if this.ehPagamento}}
+            <p class="text-sm">{{t (concat "fleet-ops.ui.financeiro.estornar.texto-" this.lancamento.tipo)}}</p>
+        {{else}}
+            <p class="text-sm">{{t "fleet-ops.ui.financeiro.estornar.texto"}}</p>
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.lancar.motivo"}} @helpText={{t "fleet-ops.ui.financeiro.estornar.motivo-ajuda"}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="text" autocomplete="off" maxlength="255" class="form-input form-input-sm w-full" value={{this.motivo}} {{on "input" this.setMotivo}} />
+            </InputGroup>
+        {{/if}}
+    </div>
+</Modal::Default>

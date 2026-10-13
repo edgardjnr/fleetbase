@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {
     agruparPorDia,
     avisoDeAdiantamento,
+    camposDoPagamento,
     corDaSituacao,
     dataDoDia,
     diasDeFechamento,
@@ -17,7 +18,9 @@ import {
     podeEstornar,
     rotuloDoTipo,
     tiposDaConta,
+    validarComprovante,
     validarLancamento,
+    validarPix,
 } from '../../packages/fleetops/addon/utils/financeiro.js';
 
 test('número digitado: vírgula, ponto, sinal e milhar', () => {
@@ -113,6 +116,44 @@ test('validar lançamento', () => {
     assert.deepEqual(validarLancamento({ ...ok, contaTipo: 'loja', tipo: 'diaria' }), ['tipo-invalido'], 'loja não tem diária');
     assert.deepEqual(validarLancamento({ ...ok, contaTipo: 'loja', tipo: 'ajuste', valor: '10' }), []);
     assert.deepEqual(validarLancamento({ ...ok, valor: '0', contas: [], pedido: 'RP1' }), ['valor-zero', 'pedido-so-em-ajuste', 'sem-conta'], 'vários erros juntos');
+});
+
+test('validar chave Pix', () => {
+    assert.equal(validarPix('cpf', '123.456.789-09'), null, 'CPF com pontuação');
+    assert.equal(validarPix('cpf', '1234567890'), 'pix-chave-invalida');
+    assert.equal(validarPix('cnpj', '12.345.678/0001-90'), null);
+    assert.equal(validarPix('telefone', '+55 (16) 99999-4321'), null);
+    assert.equal(validarPix('telefone', '9999'), 'pix-chave-invalida');
+    assert.equal(validarPix('email', 'joao@exemplo.com'), null);
+    assert.equal(validarPix('email', 'joao@'), 'pix-chave-invalida');
+    assert.equal(validarPix('aleatoria', '123e4567-e89b-12d3-a456-426614174000'), null);
+    assert.equal(validarPix('aleatoria', 'curta'), 'pix-chave-invalida');
+    assert.equal(validarPix('cpf', '   '), 'pix-chave-vazia');
+    assert.equal(validarPix('', '11999994321'), 'pix-tipo');
+    assert.equal(validarPix('banco', '11999994321'), 'pix-tipo');
+});
+
+test('comprovante do pagamento', () => {
+    assert.equal(validarComprovante(null), null, 'é opcional');
+    assert.equal(validarComprovante({ type: 'image/jpeg', size: 200000 }), null);
+    assert.equal(validarComprovante({ type: 'application/pdf', size: 10 * 1024 * 1024 }), null, 'exatamente 10 MB passa');
+    assert.equal(validarComprovante({ type: 'application/pdf', size: 10 * 1024 * 1024 + 1 }), 'comprovante-grande');
+    assert.equal(validarComprovante({ type: 'application/zip', size: 10 }), 'comprovante-tipo');
+    assert.equal(validarComprovante({ type: '', size: 10 }), 'comprovante-tipo');
+});
+
+test('campos do multipart do pagamento', () => {
+    assert.deepEqual(camposDoPagamento({ contaTipo: 'motoboy', contaId: 'driver_x1', valor: '150,5', forma: 'dinheiro', data: '2026-10-12', observacao: '  ' }), [
+        ['conta_tipo', 'motoboy'],
+        ['conta', 'driver_x1'],
+        ['valor', '150.50'],
+        ['forma', 'dinheiro'],
+        ['data', '2026-10-12'],
+    ]);
+    const loja = camposDoPagamento({ contaTipo: 'loja', contaId: 'vendor_x', valor: 620, forma: 'boleto', data: '2026-10-12', observacao: 'Pix do sócio' });
+    assert.deepEqual(loja[0], ['conta_tipo', 'loja']);
+    assert.deepEqual(loja[3], ['forma', 'pix'], 'forma desconhecida vira pix');
+    assert.deepEqual(loja[5], ['observacao_interna', 'Pix do sócio']);
 });
 
 test('aviso de adiantamento', () => {

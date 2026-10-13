@@ -458,6 +458,13 @@ fleet-ops:
         pedido-so-em-ajuste: O pedido só vale em ajuste.
         sem-conta: Escolha pelo menos uma conta.
         contas-demais: No máximo 100 contas por vez.
+        pagamento-valor: 'Informe o valor pago (maior que zero).'
+        pagamento-data: Informe a data do pagamento.
+        comprovante-tipo: O comprovante precisa ser imagem ou PDF.
+        comprovante-grande: O comprovante pode ter no máximo 10 MB.
+        pix-tipo: Escolha o tipo da chave Pix.
+        pix-chave-vazia: Informe a chave Pix.
+        pix-chave-invalida: A chave não confere com o tipo escolhido.
       motoboys:
         titulo: Motoboys
         lancar-selecionados: '{count, plural, =0 {Lançar para os selecionados} one {Lançar para 1 selecionado} other {Lançar para # selecionados}}'
@@ -476,6 +483,7 @@ fleet-ops:
         adiantado: adiantado
         pagamento-em: '{valor} em {data}'
         vazio: Nenhum motoboy cadastrado.
+        pagar: Pagar
       lancar:
         titulo-motoboy: Lançar diária, bônus, ajuste ou saldo inicial
         titulo-loja: Lançar ajuste ou saldo inicial
@@ -495,6 +503,91 @@ fleet-ops:
         observacao: Observação interna
         observacao-ajuda: Só a central vê.
         lancado: '{count, plural, one {Lançamento feito.} other {# lançamentos feitos.}}'
+      formas:
+        pix: Pix
+        dinheiro: Dinheiro
+        transferencia: Transferência
+        outro: Outro
+      pagar:
+        titulo-motoboy: Registrar pagamento
+        titulo-loja: Registrar recebimento
+        confirmar-motoboy: Registrar pagamento
+        confirmar-loja: Registrar recebimento
+        saldo-atual: 'saldo atual {valor}'
+        valor: Valor (R$)
+        forma: Forma
+        data: Data
+        acima-do-saldo-motoboy: 'Vai ficar como adiantamento de {valor}.'
+        acima-do-saldo-loja: 'Valor acima do saldo da loja ({valor} a mais).'
+        comprovante: Comprovante (opcional)
+        comprovante-ajuda: Imagem ou PDF, até 10 MB.
+        tirar-comprovante: Tirar o comprovante
+        aviso-app: O motoboy recebe um aviso no app com o valor e a forma.
+        registrado-motoboy: Pagamento registrado.
+        registrado-loja: Recebimento registrado.
+      estornar:
+        titulo: Estornar lançamento?
+        titulo-pagamento: Estornar pagamento?
+        titulo-recebimento: Estornar recebimento?
+        confirmar: Estornar
+        linha: '{tipo} de {valor} em {data}'
+        texto: 'O estorno cria um lançamento com o valor oposto. Os dois ficam no extrato; nada é apagado.'
+        texto-pagamento: 'O pagamento fica marcado como estornado e o valor volta para o saldo do motoboy.'
+        texto-recebimento: 'O recebimento fica marcado como estornado e o valor volta para o saldo da loja.'
+        motivo-ajuda: Opcional. Aparece junto do estorno no extrato do motoboy ou da loja.
+        feito: Estorno feito.
+      pix:
+        titulo: Chave Pix
+        tipo: Tipo da chave
+        chave: Chave
+        salvar: Salvar
+        cancelar: Cancelar
+        editar: Editar Pix
+        cadastrar: Cadastrar Pix
+        salvo: Chave Pix salva.
+        tipos:
+          cpf: CPF
+          cnpj: CNPJ
+          telefone: Telefone
+          email: E-mail
+          aleatoria: Chave aleatória
+      extrato:
+        titulo: Extrato
+        voltar: Motoboys
+        csv: Exportar CSV
+        lancar: Lançar
+        registrar-pagamento: Registrar pagamento
+        saldo: Saldo agora
+        saldo-a-pagar: a pagar ao motoboy
+        saldo-adiantado: adiantado (o motoboy recebeu a mais)
+        saldo-zerado: nada a pagar
+        ultimo-pagamento: Último pagamento
+        sem-pagamento: Nenhum pagamento registrado.
+        filtros: Período e tipo
+        tipo: Tipo
+        todos-os-tipos: Todos
+        saldo-anterior: 'Saldo antes do período: {valor}'
+        creditos: 'Créditos no período: {valor}'
+        debitos: 'Débitos no período: {valor}'
+        descricao: Lançamento
+        lancado-por: Lançado por
+        valor: Valor
+        situacao: Situação
+        cancelado-pago: Cancelado (pago)
+        comprovante: comprovante
+        estornado: Estornado
+        sistema: Sistema
+        pago-parte: '{valor} pago'
+        estornar: Estornar
+        vazio: Nenhum lançamento no período.
+        km: '{km} km'
+      csv:
+        data: Data
+        tipo: Tipo
+        pedido: Pedido
+        motivo: Motivo
+        valor: Valor
+        situacao: Situação
     order-form:
       store-or-customer: Loja ou cliente
       store-or-customer-placeholder: Selecionar loja ou cliente

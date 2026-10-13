@@ -458,6 +458,13 @@ fleet-ops:
                 pedido-so-em-ajuste: The order only applies to adjustments.
                 sem-conta: Choose at least one account.
                 contas-demais: At most 100 accounts at a time.
+                pagamento-valor: 'Enter the amount paid (greater than zero).'
+                pagamento-data: Enter the payment date.
+                comprovante-tipo: The receipt must be an image or a PDF.
+                comprovante-grande: The receipt can be at most 10 MB.
+                pix-tipo: Choose the Pix key type.
+                pix-chave-vazia: Enter the Pix key.
+                pix-chave-invalida: The key does not match the chosen type.
             motoboys:
                 titulo: Drivers
                 lancar-selecionados: '{count, plural, =0 {Add entry for selected} one {Add entry for 1 selected} other {Add entry for # selected}}'
@@ -476,6 +483,7 @@ fleet-ops:
                 adiantado: advanced
                 pagamento-em: '{valor} on {data}'
                 vazio: No drivers yet.
+                pagar: Pay
             lancar:
                 titulo-motoboy: Add daily allowance, bonus, adjustment or opening balance
                 titulo-loja: Add adjustment or opening balance
@@ -495,6 +503,91 @@ fleet-ops:
                 observacao: Internal note
                 observacao-ajuda: Only the dispatch team sees it.
                 lancado: '{count, plural, one {Entry added.} other {# entries added.}}'
+            formas:
+                pix: Pix
+                dinheiro: Cash
+                transferencia: Bank transfer
+                outro: Other
+            pagar:
+                titulo-motoboy: Record payment
+                titulo-loja: Record receipt
+                confirmar-motoboy: Record payment
+                confirmar-loja: Record receipt
+                saldo-atual: 'current balance {valor}'
+                valor: Amount (R$)
+                forma: Method
+                data: Date
+                acima-do-saldo-motoboy: 'This will be an advance of {valor}.'
+                acima-do-saldo-loja: 'Amount above the store balance ({valor} more).'
+                comprovante: Receipt (optional)
+                comprovante-ajuda: Image or PDF, up to 10 MB.
+                tirar-comprovante: Remove the receipt
+                aviso-app: The driver gets a notice in the app with the amount and method.
+                registrado-motoboy: Payment recorded.
+                registrado-loja: Receipt recorded.
+            estornar:
+                titulo: Reverse entry?
+                titulo-pagamento: Reverse payment?
+                titulo-recebimento: Reverse receipt?
+                confirmar: Reverse
+                linha: '{tipo} of {valor} on {data}'
+                texto: 'The reversal creates an entry with the opposite amount. Both stay in the statement; nothing is deleted.'
+                texto-pagamento: 'The payment is marked as reversed and the amount goes back to the driver balance.'
+                texto-recebimento: 'The receipt is marked as reversed and the amount goes back to the store balance.'
+                motivo-ajuda: Optional. Shown with the reversal in the driver or store statement.
+                feito: Reversal done.
+            pix:
+                titulo: Pix key
+                tipo: Key type
+                chave: Key
+                salvar: Save
+                cancelar: Cancel
+                editar: Edit Pix
+                cadastrar: Add Pix
+                salvo: Pix key saved.
+                tipos:
+                    cpf: CPF
+                    cnpj: CNPJ
+                    telefone: Phone
+                    email: Email
+                    aleatoria: Random key
+            extrato:
+                titulo: Statement
+                voltar: Drivers
+                csv: Export CSV
+                lancar: Add entry
+                registrar-pagamento: Record payment
+                saldo: Balance now
+                saldo-a-pagar: owed to the driver
+                saldo-adiantado: advanced (the driver received more)
+                saldo-zerado: nothing owed
+                ultimo-pagamento: Last payment
+                sem-pagamento: No payments recorded.
+                filtros: Period and type
+                tipo: Type
+                todos-os-tipos: All
+                saldo-anterior: 'Balance before the period: {valor}'
+                creditos: 'Credits in the period: {valor}'
+                debitos: 'Debits in the period: {valor}'
+                descricao: Entry
+                lancado-por: Added by
+                valor: Amount
+                situacao: Status
+                cancelado-pago: Canceled (paid)
+                comprovante: receipt
+                estornado: Reversed
+                sistema: System
+                pago-parte: '{valor} paid'
+                estornar: Reverse
+                vazio: No entries in the period.
+                km: '{km} km'
+            csv:
+                data: Date
+                tipo: Type
+                pedido: Order
+                motivo: Reason
+                valor: Amount
+                situacao: Status
         order-form:
             store-or-customer: Store or customer
             store-or-customer-placeholder: Select store or customer

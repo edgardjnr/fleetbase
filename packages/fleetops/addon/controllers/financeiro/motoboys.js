@@ -94,6 +94,20 @@ export default class FinanceiroMotoboysController extends Controller {
         this.hostRouter.transitionTo('console.fleet-ops.financeiro.motoboy', motoboy.id);
     }
 
+    @action pagar(motoboy) {
+        this.modalsManager.show('modals/registrar-pagamento', {
+            contaTipo: 'motoboy',
+            contaId: motoboy.id,
+            nome: motoboy.nome,
+            saldo: motoboy.saldo,
+            onFinish: (opcoes) => {
+                if (opcoes?.registrado) {
+                    this.carregar.perform();
+                }
+            },
+        });
+    }
+
     @action lancarParaSelecionados() {
         const contas = this.motoboys.filter((motoboy) => this.selecionados.includes(motoboy.id)).map((motoboy) => ({ id: motoboy.id, nome: motoboy.nome }));
         if (!contas.length) {
