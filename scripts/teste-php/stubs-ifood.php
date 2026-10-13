@@ -553,7 +553,9 @@ namespace Teste {
             $arquivos = array_merge(
                 glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_ifood_*_table.php') ?: [],
                 glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_distribuicao_*.php') ?: [],
-                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_integracao_*_table.php') ?: []
+                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_integracao_*_table.php') ?: [],
+                // o financeiro (entregas_lancamentos, entregas_pagamentos, entregas_faturas...): uma migration com as cinco
+                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_financeiro_*.php') ?: []
             );
             foreach ($arquivos as $arquivo) {
                 \Illuminate\Support\Facades\Schema::$criadas   = [];
@@ -765,6 +767,8 @@ namespace Teste {
         private array $juncoes = [];
         /** [coluna, direção] do orderByRaw('min(coluna) asc|desc'), ou null. */
         private ?array $ordemPeloMinimo = null;
+        /** [coluna do grupo, coluna somada, apelido] do selectRaw('<grupo>, SUM(<coluna>) as <apelido>'), ou null. */
+        private ?array $soma = null;
 
         public function __construct(private string $tabela) {}
 
@@ -798,6 +802,29 @@ namespace Teste {
         public function whereNotNull($coluna) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => ($linha[$coluna] ?? null) !== null; return $this; }
         public function orderBy($coluna, $direcao = 'asc') { Banco::exigirColuna($this->tabela, $coluna); $this->ordem[] = [$coluna, strtolower($direcao)]; return $this; }
         public function limit(int $quantos) { $this->limite = $quantos; return $this; }
+        // a trava de linha do MySQL (SELECT ... FOR UPDATE): sem efeito no banco em memória (um processo só)
+        public function lockForUpdate() { return $this; }
+
+        /** sum(coluna): a soma das linhas selecionadas (o MySQL devolve texto; aqui número, que o código converte com (float)). */
+        public function sum($coluna)
+        {
+            Banco::exigirColuna($this->tabela, $coluna);
+
+            return array_sum(array_map(fn ($linha) => (float) ($linha[$coluna] ?? 0), $this->selecionadas()));
+        }
+
+        // só "<grupo>, SUM(<coluna>) as <apelido>", com groupBy(<grupo>) (o saldo por conta); o resto lança
+        public function selectRaw(string $expressao)
+        {
+            if (!preg_match('/^\s*(\w+)\s*,\s*sum\((\w+)\)\s+as\s+(\w+)\s*$/i', $expressao, $partes)) {
+                throw new \LogicException("selectRaw não suportado no stub: {$expressao}");
+            }
+            Banco::exigirColuna($this->tabela, $partes[1]);
+            Banco::exigirColuna($this->tabela, $partes[2]);
+            $this->soma = [$partes[1], $partes[2], $partes[3]];
+
+            return $this;
+        }
         public function groupBy($coluna) { Banco::exigirColuna($this->tabela, $coluna); $this->grupo = $coluna; return $this; }
 
         // só "min(<coluna>) [asc|desc]", com groupBy (o que as classes do iFood usam); o resto lança, para não passar calado
@@ -901,7 +928,25 @@ namespace Teste {
             return $linhas;
         }
 
-        public function get($colunas = ['*']) { return new \Illuminate\Support\Collection(array_values(array_map(fn ($linha) => (object) $linha, $this->selecionadas()))); }
+        public function get($colunas = ['*'])
+        {
+            if ($this->soma !== null) {
+                [$grupo, $coluna, $apelido] = $this->soma;
+                if ($this->grupo !== $grupo) {
+                    throw new \LogicException("selectRaw com SUM sem groupBy({$grupo})");
+                }
+                $somas = [];
+                foreach ($this->selecionadas() as $linha) {
+                    $chave         = (string) ($linha[$grupo] ?? '');
+                    $somas[$chave] = ($somas[$chave] ?? 0) + (float) ($linha[$coluna] ?? 0);
+                }
+
+                // como o MySQL devolve a soma de um decimal: texto com 2 casas
+                return new \Illuminate\Support\Collection(array_values(array_map(fn ($chave, $soma) => (object) [$grupo => $chave, $apelido => number_format($soma, 2, '.', '')], array_keys($somas), $somas)));
+            }
+
+            return new \Illuminate\Support\Collection(array_values(array_map(fn ($linha) => (object) $linha, $this->selecionadas())));
+        }
         public function first() { $linhas = $this->selecionadas(); return $linhas ? (object) reset($linhas) : null; }
         public function distinct() { $this->distinta = true; return $this; }
 
