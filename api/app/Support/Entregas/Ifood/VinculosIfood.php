@@ -21,7 +21,8 @@ use Illuminate\Support\Facades\Log;
  *    (GET /merchant/v1.0/merchants). Os tokens da troca ficam no cache (cifrados, 10 min) até o fim do vínculo: se a
  *    lista falhar, repetir o vínculo usa esses tokens, sem pedir ao dono que autorize de novo. Uma só loja é vinculada
  *    direto; várias ficam no cache (cifradas, 10 min) até a central escolher (escolher()). Um merchantId nunca fica em
- *    duas Lojas (checagem e, na corrida, a chave única da tabela).
+ *    duas Lojas (checagem e, na corrida, a chave única da tabela). Lista vazia ou 403 (o app de produção não tem o
+ *    módulo Merchant homologado): as lojas saem do `merchant_scope` do token (lojasDoEscopo).
  *
  * Tokens cifrados com encrypt() (APP_KEY). Renovação: tokenValido() renova o que vence em menos de 5 min; o
  * entregas:ifood-tokens renova o que vence em menos de 1 h (renovarVencendo); comToken() renova no 401 e repete uma
@@ -134,11 +135,19 @@ class VinculosIfood
         try {
             $lojas = $this->lojasIfood($tokens['accessToken']);
         } catch (ErroIfood $e) {
-            if (!$e->temporario()) {
-                Cache::forget(static::chaveDosTokens($vendorUuid));
-            }
+            // 403: o app não tem o módulo Merchant homologado; as lojas ainda podem vir do token
+            $lojas = $e->status === 403 ? $this->lojasDoEscopo($vendorUuid, $tokens['accessToken'], 403) : [];
+            if (!$lojas) {
+                if (!$e->temporario()) {
+                    Cache::forget(static::chaveDosTokens($vendorUuid));
+                }
 
-            throw $e;
+                throw $e;
+            }
+        }
+        if (!$lojas) {
+            // lista vazia: o app "Restaurante Pro" não tem o módulo Merchant homologado (2026-10-19)
+            $lojas = $this->lojasDoEscopo($vendorUuid, $tokens['accessToken'], 200);
         }
         if (!$lojas) {
             throw new ErroDeVinculo('A conta do iFood que autorizou não tem lojas para este aplicativo.');
@@ -504,6 +513,59 @@ class VinculosIfood
         }
 
         return $lojas;
+    }
+
+    /**
+     * Lojas tiradas do `merchant_scope` do token (["<merchantId>:<escopo>", ...]), quando o GET /merchant/v1.0/merchants
+     * volta vazio ou com 403 (app sem o módulo Merchant homologado). O token acabou de vir do /oauth/token do iFood, por
+     * HTTPS, então a assinatura não é conferida. Sem o módulo Merchant não há o nome da loja: fica "Loja iFood <8 do id>".
+     */
+    protected function lojasDoEscopo(string $vendorUuid, #[\SensitiveParameter] string $token, int $statusDaLista): array
+    {
+        $carga = static::cargaDoToken($token);
+        $ids   = static::merchantsDaCarga($carga ?? []);
+        if (!$ids) {
+            // só os nomes dos campos, nunca os valores
+            Log::warning('[entregas] ifood: token sem lojas no merchant_scope', ['loja' => $vendorUuid, 'lista' => $statusDaLista, 'campos' => $carga === null ? 'token ilegível' : array_keys($carga)]);
+
+            return [];
+        }
+        Log::info('[entregas] ifood: lojas tiradas do token (merchant_scope)', ['loja' => $vendorUuid, 'lista' => $statusDaLista, 'merchants' => $ids]);
+
+        return array_map(fn ($id) => ['id' => $id, 'nome' => 'Loja iFood ' . substr($id, 0, 8)], $ids);
+    }
+
+    /** A carga (payload) do JWT, sem conferir a assinatura; null se não for um JWT legível. */
+    public static function cargaDoToken(#[\SensitiveParameter] string $token): ?array
+    {
+        $partes = explode('.', $token);
+        if (count($partes) !== 3) {
+            return null;
+        }
+        $base64 = strtr($partes[1], '-_', '+/');
+        $json   = base64_decode(str_pad($base64, (int) ceil(strlen($base64) / 4) * 4, '=', STR_PAD_RIGHT), true);
+        $carga  = is_string($json) ? json_decode($json, true) : null;
+
+        return is_array($carga) ? $carga : null;
+    }
+
+    /** Os merchantIds do `merchant_scope` (lista ou texto separado por vírgula/espaço), sem repetir, na ordem. */
+    public static function merchantsDaCarga(array $carga): array
+    {
+        $escopo = $carga['merchant_scope'] ?? [];
+        if (is_string($escopo)) {
+            $escopo = preg_split('/[\s,]+/', $escopo, -1, PREG_SPLIT_NO_EMPTY);
+        }
+
+        $ids = [];
+        foreach (is_array($escopo) ? $escopo : [] as $item) {
+            $id = is_string($item) ? explode(':', trim($item), 2)[0] : '';
+            if (preg_match('/^[A-Za-z0-9-]{8,64}$/', $id)) {
+                $ids[$id] = true;
+            }
+        }
+
+        return array_keys($ids);
     }
 
     protected function gravar(string $companyUuid, string $vendorUuid, string $merchantId, string $nome, #[\SensitiveParameter] array $tokens): void

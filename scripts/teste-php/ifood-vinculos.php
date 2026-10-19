@@ -127,6 +127,66 @@ respostaDoToken();
 Http::responder(200, []);
 confere(excecao(fn () => vinculos()->concluir(EMPRESA, LOJA_A, 'AUTH-1')) instanceof ErroDeVinculo, 'conta sem lojas: erro de vínculo');
 
+echo '== Lista vazia ou 403 (app sem o módulo Merchant): lojas do merchant_scope do token' . PHP_EOL;
+
+/** Um JWT de mentira (cabeçalho.carga.assinatura, base64url sem "="), como o do iFood. */
+function jwt(array $carga): string
+{
+    $b64 = fn (array $dados) => rtrim(strtr(base64_encode(json_encode($dados)), '+/', '-_'), '=');
+
+    return $b64(['typ' => 'JWT', 'alg' => 'RS512']) . '.' . $b64($carga) . '.assinatura';
+}
+
+const MERCHANT_JWT = 'd5d191fa-1111-2222-3333-444455556666';
+$jwtComLoja = jwt(['sub' => 'x', 'merchant_scope' => [MERCHANT_JWT . ':logistics', MERCHANT_JWT . ':events'], 'merchant_scoped' => true, 'client_id' => 'app-1']);
+reiniciarIfood();
+respostaDoCodigo();
+vinculos()->iniciar(LOJA_A);
+respostaDoToken($jwtComLoja);
+Http::responder(200, []);
+confere(vinculos()->concluir(EMPRESA, LOJA_A, 'AUTH-1') === ['situacao' => 'vinculada'], 'lista vazia: vincula pelo merchant_scope');
+$linha = linhaDa(LOJA_A);
+confere($linha->merchant_id === MERCHANT_JWT && $linha->nome_ifood === 'Loja iFood d5d191fa' && decrypt($linha->access_token) === $jwtComLoja, 'merchant do token (sem repetir os escopos), nome curto e o token gravado');
+confere(logou('[entregas] ifood: lojas tiradas do token (merchant_scope)', 'info') && !str_contains(json_encode(Illuminate\Support\Facades\Log::$registros), $jwtComLoja), 'log com os merchants, sem o token');
+
+reiniciarIfood();
+respostaDoCodigo();
+vinculos()->iniciar(LOJA_A);
+respostaDoToken($jwtComLoja);
+Http::responder(403, ['message' => 'Forbidden']);
+confere(vinculos()->concluir(EMPRESA, LOJA_A, 'AUTH-1') === ['situacao' => 'vinculada'] && linhaDa(LOJA_A)->merchant_id === MERCHANT_JWT, 'lista com 403: também vincula pelo merchant_scope');
+
+reiniciarIfood();
+respostaDoCodigo();
+vinculos()->iniciar(LOJA_A);
+respostaDoToken(jwt(['merchant_scope' => 'merchant-aaaa-1:order merchant-bbbb-2:order,merchant-aaaa-1:logistics']));
+Http::responder(200, []);
+$resultado = vinculos()->concluir(EMPRESA, LOJA_A, 'AUTH-1');
+confere($resultado === ['situacao' => 'escolher', 'lojas' => [['id' => 'merchant-aaaa-1', 'nome' => 'Loja iFood merchant'], ['id' => 'merchant-bbbb-2', 'nome' => 'Loja iFood merchant']]], 'merchant_scope em texto com duas lojas: a central escolhe');
+confere(vinculos()->escolher(EMPRESA, LOJA_A, 'merchant-bbbb-2') === ['situacao' => 'vinculada'] && linhaDa(LOJA_A)->merchant_id === 'merchant-bbbb-2', 'e a escolhida é vinculada');
+
+reiniciarIfood();
+respostaDoCodigo();
+vinculos()->iniciar(LOJA_A);
+respostaDoToken(jwt(['sub' => 'x', 'merchant_scope' => [], 'user_name' => 'dono@exemplo.com']));
+Http::responder(200, []);
+$erro = excecao(fn () => vinculos()->concluir(EMPRESA, LOJA_A, 'AUTH-1'));
+confere($erro instanceof ErroDeVinculo && str_contains($erro->getMessage(), 'não tem lojas') && linhaDa(LOJA_A) === null, 'token sem lojas no escopo: continua "não tem lojas"');
+$registros = json_encode(Illuminate\Support\Facades\Log::$registros);
+confere(logou('[entregas] ifood: token sem lojas no merchant_scope', 'warning') && str_contains($registros, 'user_name') && !str_contains($registros, 'dono@exemplo.com'), 'log com os nomes dos campos do token, sem os valores');
+
+reiniciarIfood();
+respostaDoCodigo();
+vinculos()->iniciar(LOJA_A);
+respostaDoToken();
+Http::responder(403, ['message' => 'Forbidden']);
+$erro = excecao(fn () => vinculos()->concluir(EMPRESA, LOJA_A, 'AUTH-1'));
+confere($erro instanceof ErroIfood && $erro->status === 403 && !isset(Cache::$dados[VinculosIfood::chaveDosTokens(LOJA_A)]), '403 e token que não é JWT: o 403 sobe e os tokens guardados saem (precisa de código novo)');
+confere(logou('token sem lojas no merchant_scope', 'warning') && str_contains(json_encode(Illuminate\Support\Facades\Log::$registros, JSON_UNESCAPED_UNICODE), 'token ilegível'), 'log diz que o token é ilegível');
+
+confere(VinculosIfood::merchantsDaCarga(['merchant_scope' => ['abc:order', 42, null, 'curto1:x', '  merchant-9999-z:order  ']]) === ['merchant-9999-z'], 'ignora item que não é texto e id curto ou inválido');
+confere(VinculosIfood::merchantsDaCarga([]) === [] && VinculosIfood::cargaDoToken('a.b') === null && VinculosIfood::cargaDoToken('a.###.c') === null, 'sem merchant_scope ou token ilegível: nada');
+
 echo '== Merchant já ligado a outra loja' . PHP_EOL;
 reiniciarIfood();
 vinculada(LOJA_B, 'merchant-1', '2026-10-05 20:00:00');
@@ -417,7 +477,7 @@ $erro = excecao(fn () => vinculos()->concluir(EMPRESA, LOJA_A, 'AUTH-1'));
 confere($erro instanceof ErroDeVinculo && str_contains($erro->getMessage(), 'código novo') && !isset(Cache::$dados[VinculosIfood::chaveDosTokens(LOJA_A)]), 'tokens guardados ilegíveis: ErroDeVinculo pedindo um código novo');
 
 echo '== 8. Segredos fora do stack trace' . PHP_EOL;
-foreach ([['concluir', 'codigoDeAutorizacao'], ['renovar', 'tokenRecusado'], ['lojasIfood', 'token'], ['gravar', 'tokens'], ['refreshDaResposta', 'tokens'], ['expiraEm', 'tokens']] as [$metodo, $parametro]) {
+foreach ([['concluir', 'codigoDeAutorizacao'], ['renovar', 'tokenRecusado'], ['lojasIfood', 'token'], ['lojasDoEscopo', 'token'], ['cargaDoToken', 'token'], ['gravar', 'tokens'], ['refreshDaResposta', 'tokens'], ['expiraEm', 'tokens']] as [$metodo, $parametro]) {
     $sensivel = false;
     foreach ((new ReflectionMethod(VinculosIfood::class, $metodo))->getParameters() as $p) {
         if ($p->getName() === $parametro) {
