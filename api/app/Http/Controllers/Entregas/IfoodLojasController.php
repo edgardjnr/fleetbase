@@ -109,7 +109,8 @@ class IfoodLojasController extends LojasController
      */
     protected function erroDoIfood(ErroIfood $e, string $etapa)
     {
-        Log::warning('[entregas] ifood: vínculo falhou', ['etapa' => $etapa, 'operacao' => $e->operacao, 'status' => $e->status]);
+        $motivo = static::motivoDoIfood($e);
+        Log::warning('[entregas] ifood: vínculo falhou', ['etapa' => $etapa, 'operacao' => $e->operacao, 'status' => $e->status, 'motivo' => $motivo]);
 
         if (in_array($e->status, [400, 401, 403], true)) {
             $mensagem = match ($e->operacao) {
@@ -121,9 +122,32 @@ class IfoodLojasController extends LojasController
                 default     => 'O iFood recusou o código. Confira o código de autorização ou gere um código de vínculo novo.',
             };
 
-            return response()->json(['errors' => [$mensagem]], 422);
+            // o motivo vai para a tela: o log da API (stdout do Octane) não chega ao docker service logs (2026-10-19)
+            return response()->json(['errors' => [$mensagem . ' (iFood ' . $e->status . ($motivo !== '' ? ': ' . $motivo : '') . ')']], 422);
         }
 
         return response()->json(['errors' => ['O iFood não respondeu agora. Tente de novo em instantes.']], 502);
+    }
+
+    /**
+     * O motivo do erro no corpo do iFood ({"error": {"code", "message"}} no /oauth/token; {"errorType", "code",
+     * "description"} ou {"message"} nas outras), até 200 caracteres, com sequências de 6+ dígitos mascaradas. O corpo de
+     * erro não traz token nem o código enviado; "" quando não há corpo JSON.
+     */
+    public static function motivoDoIfood(ErroIfood $e): string
+    {
+        $corpo  = $e->corpoJson() ?? [];
+        $fontes = [is_array($corpo['error'] ?? null) ? $corpo['error'] : ['code' => $corpo['error'] ?? null], $corpo];
+        $partes = [];
+        foreach ($fontes as $fonte) {
+            foreach (['errorType', 'code', 'message', 'description', 'error_description'] as $campo) {
+                $valor = $fonte[$campo] ?? null;
+                if (is_scalar($valor) && trim((string) $valor) !== '' && !in_array(trim((string) $valor), $partes, true)) {
+                    $partes[] = trim((string) $valor);
+                }
+            }
+        }
+
+        return mb_substr(preg_replace('/\d{6,}/', '***', implode(' · ', $partes)), 0, 200);
     }
 }
