@@ -144,7 +144,13 @@ services:
 
   application:
     image: entregas-api:latest
-    environment: *api-env
+    # Logs da API no docker service logs (2026-10-19): o octane:frankenphp descarta o stdout do servidor e só repassa o
+    # stderr, filtrado (linha JSON sem "msg" some). Com --log-level, ele repassa o stderr cru; WARN é o nível do Caddy
+    # que já valia em produção. Por isso LOG_CHANNEL=stderr só aqui: a fila e o scheduler (CLI) continuam no stdout.
+    command: ["sh", "-c", "php artisan octane:frankenphp --max-requests=1000 --port=8000 --host=0.0.0.0 --log-level=WARN"]
+    environment:
+      <<: *api-env
+      LOG_CHANNEL: stderr
     volumes:
       - api_storage:/fleetbase/api/storage/app
     # substitui o healthcheck herdado (admin do Caddy na :2019): só exige que o Octane responda HTTP

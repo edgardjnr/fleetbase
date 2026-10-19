@@ -122,7 +122,7 @@ class IfoodLojasController extends LojasController
                 default     => 'O iFood recusou o código. Confira o código de autorização ou gere um código de vínculo novo.',
             };
 
-            // o motivo vai para a tela: o log da API (stdout do Octane) não chega ao docker service logs (2026-10-19)
+            // o motivo vai para a tela: a central vê por que o iFood recusou sem abrir o log
             return response()->json(['errors' => [$mensagem . ' (iFood ' . $e->status . ($motivo !== '' ? ': ' . $motivo : '') . ')']], 422);
         }
 
