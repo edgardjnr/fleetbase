@@ -15,7 +15,7 @@ class FilaDeCandidatos
     public function __construct(protected EstimadorDeTempo $estimador) {}
 
     /**
-     * @param array<int, array{motoboy: object, posicao: array, distancia: float, paradas: array}> $candidatos
+     * @param array<int, array{motoboy: object, posicao: array, distancia: float, paradas: array, corridas_hoje?: int}> $candidatos
      * @param int $atrasoMaximoS maior atraso aceito numa entrega que o motoboy já leva (Encaixe::calcular): 10 min no ciclo
      *                           sem rodadas, Distribuicao::ATRASO_MAXIMO_EM_RODADAS_S (5 min) em rodadas
      *
@@ -50,14 +50,14 @@ class FilaDeCandidatos
         foreach ($plano as [$candidato, $posicao, $base]) {
             $resultado = Encaixe::calcular($posicao, $base, 0, 1, $dur, $atrasoMaximoS);
             $fila[]    = [
-                'motoboy_uuid' => (string) $candidato['motoboy']->uuid,
-                'public_id'    => (string) $candidato['motoboy']->public_id,
-                'nome'         => (string) $candidato['motoboy']->name,
-                'tempo_s'      => $resultado['tempo_s'],
-                'encaixe'      => $resultado['encaixe'],
-                'aproximado'   => $matriz['aproximado'],
-                'livre'        => $base === [],
-                'distancia_m'  => (int) round($candidato['distancia']),
+                'motoboy_uuid'  => (string) $candidato['motoboy']->uuid,
+                'public_id'     => (string) $candidato['motoboy']->public_id,
+                'nome'          => (string) $candidato['motoboy']->name,
+                'tempo_s'       => $resultado['tempo_s'],
+                'encaixe'       => $resultado['encaixe'],
+                'aproximado'    => $matriz['aproximado'],
+                'livre'         => $base === [],
+                'distancia_m'   => (int) round($candidato['distancia']),
                 'corridas_hoje' => (int) ($candidato['corridas_hoje'] ?? 0),
             ];
         }

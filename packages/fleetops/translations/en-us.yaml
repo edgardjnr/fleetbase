@@ -535,6 +535,7 @@ fleet-ops:
             ocupado: already carrying an order
             corridas-hoje: '{n, plural, =0 {no rides today} one {# ride today} other {# rides today}}'
             desempate: tie-break
+            desempate-titulo: Moved ahead of faster drivers for having fewer rides today
             abrir: Open to everyone now
             abrir-titulo: Open the order to all drivers?
             abrir-texto: The order stops being offered one at a time and the alarm goes to every online driver near the store. The first to accept takes it.

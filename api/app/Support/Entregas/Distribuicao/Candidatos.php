@@ -23,7 +23,8 @@ use Illuminate\Support\Facades\Log;
  * Corridas hoje (corridasHoje): pedidos dele aceitos desde as 00:00 de Brasília, sem cancelados e expirados, para o
  * desempate da fila (FilaDeCandidatos::ordenar).
  *
- * As três consultas ficam atrás de closures trocáveis para os testes (o banco em memória não simula distanceSphere).
+ * As três consultas ficam atrás de closures trocáveis para os testes (o banco em memória não simula distanceSphere; a das
+ * corridas serve aos testes de elegiveis e da falha).
  */
 class Candidatos
 {

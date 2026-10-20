@@ -33,7 +33,7 @@
                                         {{#if item.encaixe}}· {{t "fleet-ops.ui.distribuicao.encaixe"}}{{/if}}
                                         {{#unless item.livre}}· {{t "fleet-ops.ui.distribuicao.ocupado"}}{{/unless}}
                                         {{#if item.temCorridas}}· {{t "fleet-ops.ui.distribuicao.corridas-hoje" n=item.corridas}}{{/if}}
-                                        {{#if item.desempate}}· {{t "fleet-ops.ui.distribuicao.desempate"}}{{/if}}
+                                        {{#if item.desempate}}· <span title={{t "fleet-ops.ui.distribuicao.desempate-titulo"}}>{{t "fleet-ops.ui.distribuicao.desempate"}}</span>{{/if}}
                                     </div>
                                 {{/each}}
                             </div>

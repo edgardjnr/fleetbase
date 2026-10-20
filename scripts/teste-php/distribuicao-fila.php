@@ -6,9 +6,14 @@
 require __DIR__ . '/stubs-ifood.php';
 require __DIR__ . '/stubs-ifood-fleetbase.php';
 
+use App\Support\Entregas\Distribuicao\Candidatos;
 use App\Support\Entregas\Distribuicao\Distribuicao;
 use App\Support\Entregas\Distribuicao\EstimadorDeTempo;
+use App\Support\Entregas\Distribuicao\FilaDeCandidatos;
 use App\Support\Entregas\Distribuicao\Pontos;
+use Fleetbase\FleetOps\Models\Driver;
+use Fleetbase\FleetOps\Models\Order;
+use Illuminate\Support\Facades\DB;
 use Teste\Banco;
 use Teste\Config;
 use Teste\Http;
@@ -60,11 +65,6 @@ Http::responder(200, ['code' => 'TooBig']);
 confere(str_contains(json_encode(\Illuminate\Support\Facades\Log::$registros), 'TooBig'),'o code da resposta vai ao log');
 
 echo '== FilaDeCandidatos' . PHP_EOL;
-use App\Support\Entregas\Distribuicao\Candidatos;
-use App\Support\Entregas\Distribuicao\FilaDeCandidatos;
-use Fleetbase\FleetOps\Models\Driver;
-use Fleetbase\FleetOps\Models\Order;
-
 /** Um Point como o do Fleet-Ops (getLat/getLng). */
 function ponto(array $p): object
 {
@@ -223,10 +223,9 @@ $fila = FilaDeCandidatos::ordenar([linhaDaFila('a', 600, null), linhaDaFila('b',
 confere(array_column($fila, 'public_id') === ['driver_a', 'driver_b'] && $fila[0]['corridas_hoje'] === 0, 'linha sem corridas_hoje vale 0');
 
 confere(FilaDeCandidatos::ordenar([]) === [], 'fila vazia: vazia');
+confere(FilaDeCandidatos::ordenar([linhaDaFila('a', 600, 9)])[0]['desempate'] === false, 'um só candidato: sem desempate');
 
 echo '== Corridas de hoje (Candidatos::corridasHoje)' . PHP_EOL;
-use Illuminate\Support\Facades\DB;
-
 reiniciarIfood(); // banco em memória vazio; o relógio dos stubs está em 2026-10-05 15:00 (Brasília)
 $pedidoDoDia = fn (array $c) => DB::table('orders')->insert([$c + ['company_uuid' => 'empresa-1', 'deleted_at' => null, 'status' => 'completed', 'started_at' => null, 'dispatched_at' => null]]);
 $pedidoDoDia(['driver_assigned_uuid' => 'd-a', 'started_at' => '2026-10-05 09:00:00']);                           // conta
