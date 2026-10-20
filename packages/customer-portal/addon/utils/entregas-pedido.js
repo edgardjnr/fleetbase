@@ -97,3 +97,22 @@ export function origemDoPedido(notas, idInterno) {
 export function chaveDoCanceladoCobrado(origem) {
     return origem === 'integracao' ? 'canceled-store-charged' : 'canceled-ifood-charged';
 }
+
+/**
+ * Nome do cliente no card e no detalhe do pedido: o nome do Local de entrega. O iFood grava o `customer.name`
+ * (PedidoDoIfood, "Cliente iFood" sem nome), a integração o `cliente.nome` (em maiúsculas) e o portal o "Nome do cliente"
+ * do novo pedido. Sem nome, ou com o próprio endereço no lugar do nome, null.
+ */
+export function nomeDoCliente(local) {
+    const nome = typeof local?.name === 'string' ? local.name.trim() : '';
+
+    if (nome === '') {
+        return null;
+    }
+
+    const comparavel = (texto) => (typeof texto === 'string' ? texto.trim().toLowerCase() : '');
+    const enderecos = [local.street1, local.address].map(comparavel).filter((texto) => texto !== '');
+    const nomeComparavel = nome.toLowerCase();
+
+    return enderecos.some((endereco) => endereco === nomeComparavel || endereco.startsWith(nomeComparavel) || nomeComparavel.startsWith(endereco)) ? null : nome;
+}

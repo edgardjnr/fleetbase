@@ -631,6 +631,18 @@ customer-portal:
         label: Mercadorias de varejo
         description: Mercadorias de consumo ou varejo em geral.
     entregas:
+      card:
+        portal: "Portal"
+        procurando-motoboy: "procurando motoboy"
+      lista:
+        concluidos: "Concluídos e cancelados"
+        ver-na-tabela: "ver na Tabela"
+      menu:
+        titulo: "Menu"
+        abrir: "Abrir menu"
+        fechar: "Fechar menu"
+      nome-do-cliente: "Nome do cliente"
+      nome-do-cliente-placeholder: "Ex.: Mariana"
       chat-title: "Conversas"
       chat-new: "Nova conversa"
       chat-back: "Voltar"

@@ -1,6 +1,18 @@
 <Portal::Container>
     <div class="portal-topbar">
         <div class="portal-topbar-account">
+            {{!-- Entregas: ☰ do menu. Na tela Pedidos abre a gaveta (a coluna do menu fica com a lista de pedidos); nas outras,
+                 esconde ou mostra a coluna do menu --}}
+            <button
+                type="button"
+                class="portal-menu-toggle"
+                aria-label={{t "customer-portal.ui.entregas.menu.abrir"}}
+                aria-expanded={{if this.menuVisivel "true" "false"}}
+                aria-controls="portal-sidebar"
+                {{on "click" this.alternarMenu}}
+            >
+                <FaIcon @icon="bars" />
+            </button>
             <div class="portal-account-mark">
                 <FaIcon @icon="building-user" />
             </div>
@@ -39,8 +51,15 @@
             </BasicDropdown>
         </div>
     </div>
-    <Portal::Main>
+    <Portal::Main class="{{if this.naTelaPedidos 'is-pedidos'}} {{if this.gavetaAberta 'gaveta-aberta'}} {{if this.menuEscondido 'menu-escondido'}}">
         <Portal::Sidebar>
+            {{!-- Entregas: topo da gaveta (só aparece com a gaveta aberta, na tela Pedidos) --}}
+            <div class="portal-gaveta-topo">
+                <span class="portal-nav-label">{{t "customer-portal.ui.entregas.menu.titulo"}}</span>
+                <button type="button" class="portal-gaveta-fechar" aria-label={{t "customer-portal.ui.entregas.menu.fechar"}} {{on "click" this.fecharGaveta}}>
+                    <FaIcon @icon="xmark" />
+                </button>
+            </div>
             <div class="portal-nav-group">
                 <div class="portal-nav-label">{{t "customer-portal.ui.nav.workspace"}}</div>
                 <Layout::Sidebar::Item @route="customer-portal.portal.home" @icon="home">{{t "customer-portal.ui.nav.dashboard"}}</Layout::Sidebar::Item>
@@ -60,6 +79,9 @@
                 >{{menuItem.title}}</Layout::Sidebar::Item>
             </RegistryYield>
         </Portal::Sidebar>
+        {{#if this.gavetaAberta}}
+            <div class="portal-gaveta-fundo" role="presentation" {{on "click" this.fecharGaveta}}></div>
+        {{/if}}
         <Portal::Section>{{outlet}}</Portal::Section>
     </Portal::Main>
     <Portal::Footer />

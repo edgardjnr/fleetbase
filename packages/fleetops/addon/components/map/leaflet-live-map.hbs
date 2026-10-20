@@ -357,8 +357,8 @@
                                 />
                             </div>
                         </marker.popup>
-                        {{! Entregas: pedido já aceito, nome do motoboy fixo embaixo do alfinete (vermelho, para não confundir com o do capacete) }}
-                        {{#let (this.nomeNoAlfinete pedido) as |nome|}}
+                        {{! Entregas: pedido já aceito, número do pedido e nome do motoboy fixos embaixo do alfinete (vermelho, para não confundir com o do capacete) }}
+                        {{#let (this.rotuloNoAlfinete pedido) as |nome|}}
                             {{#if nome}}
                                 <marker.tooltip @permanent={{true}} @direction="bottom" @className="entregas-nome-no-alfinete">{{nome}}</marker.tooltip>
                             {{/if}}

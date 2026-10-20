@@ -631,6 +631,18 @@ customer-portal:
         label: Retail Goods
         description: General consumer or retail merchandise.
     entregas:
+      card:
+        portal: "Portal"
+        procurando-motoboy: "looking for a courier"
+      lista:
+        concluidos: "Completed and canceled"
+        ver-na-tabela: "see in Table"
+      menu:
+        titulo: "Menu"
+        abrir: "Open menu"
+        fechar: "Close menu"
+      nome-do-cliente: "Customer name"
+      nome-do-cliente-placeholder: "E.g.: Mariana"
       chat-title: "Chats"
       chat-new: "New chat"
       chat-back: "Back"

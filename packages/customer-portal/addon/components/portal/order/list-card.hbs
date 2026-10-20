@@ -1,53 +1,42 @@
+{{!-- Entregas: card do sketch 002 ("A compacto"); o LinkTo ganha a classe active com o pedido aberto no detalhe --}}
 <LinkTo @route="portal.orders.details" @model={{this.identifier}} class="portal-order-card" ...attributes>
     <div class="portal-order-card-main">
         <div class="portal-order-card-topline">
-            <div class="portal-order-card-title">
-                <div class="font-semibold truncate">{{this.trackingNumber}}</div>
-                <Portal::Order::SeloDeOrigem @notas={{this.order.notes}} @idInterno={{this.order.internal_id}} class="self-start" />
-                <div class="portal-order-card-subtitle">{{n-a (smart-humanize @order.type)}}</div>
-            </div>
-            <Badge @status={{@order.status}} />
-        </div>
-
-        <div class="portal-order-card-progress {{this.progressClass}}">
-            <span></span>
-        </div>
-
-        <div class="portal-order-card-route">
-            <div class="portal-order-card-stop">
-                <div class="portal-order-card-stop-marker pickup">1</div>
-                <div class="min-w-0">
-                    <div class="portal-order-card-stop-label">{{t "customer-portal.ui.order.pickup"}}</div>
-                    <div class="portal-order-card-stop-address">{{n-a this.originAddress}}</div>
-                </div>
-            </div>
-
-            {{#if this.isMultiStop}}
-                <div class="portal-order-card-stop compact">
-                    <div class="portal-order-card-stop-marker middle">+</div>
-                    <div class="min-w-0">
-                        <div class="portal-order-card-stop-label">{{t "customer-portal.ui.order.waypoints"}}</div>
-                        <div class="portal-order-card-stop-address">{{t "customer-portal.ui.order.additional-stops" count=this.middleStopCount}}</div>
-                    </div>
-                </div>
+            {{#if this.numero}}
+                <span class="portal-order-card-numero">#{{this.numero}}</span>
+            {{else}}
+                <span class="portal-order-card-numero sem-numero">{{this.trackingNumber}}</span>
             {{/if}}
-
-            <div class="portal-order-card-stop">
-                <div class="portal-order-card-stop-marker dropoff">{{this.stopCount}}</div>
-                <div class="min-w-0">
-                    <div class="portal-order-card-stop-label">{{if (eq this.destination.type "return") (t "customer-portal.ui.order.return") (t "customer-portal.ui.order.dropoff")}}</div>
-                    <div class="portal-order-card-stop-address">{{n-a this.destinationAddress}}</div>
-                </div>
-            </div>
+            {{#if this.origem}}
+                <span class="portal-order-card-selo {{if this.origem.ifood 'is-ifood' 'is-sistema'}}">{{this.origem.sistema}}</span>
+            {{else}}
+                <span class="portal-order-card-selo is-portal">{{t "customer-portal.ui.entregas.card.portal"}}</span>
+            {{/if}}
+            <span class="portal-order-card-situacao"><Badge @status={{@order.status}} /></span>
         </div>
 
-        <div class="portal-order-card-meta">
-            <span><FaIcon @icon="calendar" /> {{n-a (format-date-fns (or @order.scheduled_at @order.created_at) "MMM d, HH:mm")}}</span>
-            {{#if this.hasTrackingMeta}}
-                <span>
-                    <FaIcon @icon="route" />
-                    {{#if this.etaLabel}}{{this.etaLabel}}{{else}}{{this.distanceLabel}}{{/if}}
+        <div class="portal-order-card-linha">
+            <span class="portal-order-card-quem {{if this.procurandoMotoboy 'is-procurando'}}">
+                {{#if this.motoboy}}
+                    {{#if this.capacete}}
+                        <img src={{this.capacete}} alt="" class="portal-order-card-capacete" />
+                    {{else}}
+                        <FaIcon @icon="helmet-safety" class="portal-order-card-capacete-icone" />
+                    {{/if}}
+                {{else if this.procurandoMotoboy}}
+                    <FaIcon @icon="hourglass-half" />
+                {{/if}}
+                <span class="portal-order-card-quem-texto">
+                    {{#if this.motoboy}}
+                        <strong>{{this.motoboy.nome}}</strong> ·
+                    {{else if this.procurandoMotoboy}}
+                        <strong>{{t "customer-portal.ui.entregas.card.procurando-motoboy"}}</strong> ·
+                    {{/if}}
+                    {{#if this.cliente}}{{this.cliente}} · {{/if}}{{n-a (format-date-fns this.hora "HH:mm")}}
                 </span>
+            </span>
+            {{#if this.etaLabel}}
+                <span class="portal-order-card-eta"><FaIcon @icon="clock" /> {{this.etaLabel}}</span>
             {{/if}}
         </div>
     </div>

@@ -12,10 +12,13 @@ use Fleetbase\FleetOps\Models\Vendor;
  * - daCentral: todos os pedidos da empresa, com o nome da loja (MapaController@motoboys, mapa ao vivo do console);
  * - daLoja: só os pedidos dos donos informados (a loja da sessão e o contato do usuário), sem o nome da loja
  *   (PortalLojaController@motoboysNoMapa). A loja nunca recebe pedido, endereço ou cliente de outra loja (LGPD).
- * - doLider: os pedidos de daCentral para a aba Mapa do líder dos motoboys no app (LiderController), com o número do
- *   pedido (internal_id, o número do iFood), o public_id do motoboy (para a troca), a coleta e a hora da última
- *   atualização. É a exceção à regra do id do motoboy abaixo: o líder faz o papel da central (LiderDosMotoboys).
+ * - doLider: os pedidos de daCentral para a aba Mapa do líder dos motoboys no app (LiderController), com o public_id do
+ *   motoboy (para a troca), a coleta e a hora da última atualização. É a exceção à regra do id do motoboy abaixo: o líder faz o papel da central (LiderDosMotoboys).
  *   umDoLider: um pedido nesse formato (resposta da troca do motoboy).
+ *
+ * Número do pedido (nos três): o que o motoboy e a loja conhecem, o internal_id (número do iFood ou do sistema da loja);
+ * sem ele, o de rastreio; sem os dois, o public_id. Os mapas do console e do portal mostram "#4821 · Carlos" embaixo do
+ * alfinete do pedido aceito.
  *
  * Em andamento = status fora de StatusDoPedido::ENCERRADOS e atualizado nas últimas
  * SituacaoDoMotoboy::HORAS_PEDIDO_EM_ANDAMENTO horas, com ou sem motoboy (a mesma regra dos capacetes). Pedido sem destino
@@ -94,8 +97,6 @@ class PedidosNoMapa
         $longitude = $coleta?->location?->getLng();
 
         return [
-            // o número que o motoboy e a loja conhecem: o do iFood (internal_id); sem ele, o de rastreio
-            'numero'        => $pedido->internal_id ?: ($pedido->trackingNumber?->tracking_number ?: $pedido->public_id),
             'loja'          => static::nomeDaLoja($pedido, $lojas),
             'motoboy_id'    => $pedido->driverAssigned?->public_id,
             'atualizado_em' => $pedido->updated_at?->toIso8601String(),
@@ -125,7 +126,8 @@ class PedidosNoMapa
 
             $lista[] = array_merge([
                 'id'        => $pedido->public_id,
-                'numero'    => $pedido->trackingNumber?->tracking_number ?: $pedido->public_id,
+                // o número que o motoboy e a loja conhecem: o do iFood ou do sistema da loja (internal_id); sem ele, o de rastreio
+                'numero'    => $pedido->internal_id ?: ($pedido->trackingNumber?->tracking_number ?: $pedido->public_id),
                 'latitude'  => (float) $latitude,
                 'longitude' => (float) $longitude,
                 'endereco'  => $destino->address ?: $destino->name,

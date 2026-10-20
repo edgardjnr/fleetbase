@@ -52,6 +52,27 @@ export function nomeNoAlfinete(pedido) {
     return pedido?.aceito === true && nome !== '' ? nome : null;
 }
 
+/**
+ * Rótulo fixo embaixo do alfinete do pedido aceito: o número do pedido e o nome do motoboy ("#4821 · Carlos"). O número
+ * é o do iFood ou do sistema da loja (com #); sem ele, o código de rastreio (sem #). API antiga, sem número: só o nome.
+ * Sem aceite, null (a mesma regra do nomeNoAlfinete).
+ */
+export function rotuloNoAlfinete(pedido) {
+    const nome = nomeNoAlfinete(pedido);
+
+    if (!nome) {
+        return null;
+    }
+
+    const numero = typeof pedido.numero === 'number' || typeof pedido.numero === 'string' ? String(pedido.numero).trim() : '';
+
+    if (numero === '') {
+        return nome;
+    }
+
+    return `${/^\d+$/.test(numero) ? '#' : ''}${numero} · ${nome}`;
+}
+
 /** Mesma lista? Só troca (e redesenha os alfinetes) quando algo mudou. */
 export function mesmaLista(a, b) {
     return JSON.stringify(a ?? []) === JSON.stringify(b ?? []);

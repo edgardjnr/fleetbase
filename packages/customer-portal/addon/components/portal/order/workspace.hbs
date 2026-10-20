@@ -1,72 +1,83 @@
+{{!-- Entregas: desenho do sketch 001 (variante B). A lista de pedidos em andamento fica na coluna da esquerda, no lugar
+     do menu (que vira a gaveta do ☰ na tela Pedidos, ver templates/portal.hbs), e continua à vista com o detalhe ou o
+     novo pedido aberto. Na Tabela, a coluna sai e a tabela fica com a largura toda --}}
 <div class="portal-order-workspace {{if this.showTable 'is-table'}} {{if this.hasPanel 'has-panel'}} {{if this.isCreating 'is-creating'}}">
-    <div class="portal-section-header portal-order-workspace-header">
-        <div>
-            <div class="portal-section-eyebrow">{{t "customer-portal.ui.nav.orders"}}</div>
-            <h1>{{t "customer-portal.ui.nav.orders"}}</h1>
-            <p>{{t "customer-portal.ui.order.workspace-description"}}</p>
-        </div>
-        <div class="portal-order-workspace-actions">
-            <div class="portal-order-view-toggle" role="group" aria-label={{t "customer-portal.ui.order.order-view"}}>
-                <Button
-                    @icon="map"
-                    @text={{t "customer-portal.ui.order.map"}}
-                    @type={{unless this.showTable "primary"}}
-                    @size="sm"
-                    @onClick={{fn @onSwitchView "map"}}
-                    @wrapperClass="portal-order-view-toggle-item"
-                />
-                <Button
-                    @icon="table"
-                    @text={{t "customer-portal.ui.order.table"}}
-                    @type={{if this.showTable "primary"}}
-                    @size="sm"
-                    @onClick={{fn @onSwitchView "table"}}
-                    @wrapperClass="portal-order-view-toggle-item"
-                />
+    {{#unless this.showTable}}
+        <aside class="portal-order-list-panel">
+            <div class="portal-order-list-panel-header">
+                <div>
+                    <div class="portal-section-eyebrow">{{t "customer-portal.ui.order.order-list"}}</div>
+                    <h2>{{t "customer-portal.ui.entregas.orders-in-progress"}}</h2>
+                </div>
+                <span class="portal-order-list-panel-count">{{this.pedidosDaLista.length}}</span>
             </div>
-            {{!-- Entregas: chat da loja com os motoboys (gaveta Portal::Conversas), com o total de não lidas --}}
-            <span class="portal-conversas-toggle">
-                <Button @icon="comments" @text={{t "customer-portal.ui.entregas.chat-title"}} @type={{if this.entregasConversas.aberta "primary"}} @onClick={{this.entregasConversas.alternarGaveta}} />
-                {{#if this.entregasConversas.naoLidas}}
-                    <span class="portal-conversas-badge portal-conversas-toggle-badge">{{this.entregasConversas.naoLidas}}</span>
-                {{/if}}
-            </span>
-            <Button @icon="rotate" @onClick={{this.reloadOrders}} @isLoading={{@isReloading}} />
-            <Button @icon="plus" @type="primary" @text={{t "customer-portal.ui.order.new-order"}} @onClick={{this.createOrder}} />
-        </div>
-    </div>
+            <Input @value={{@query}} class="form-input w-full" placeholder={{t "customer-portal.ui.order.search-orders"}} {{on "input" this.search}} />
+            <div class="portal-order-list-panel-body">
+                {{!-- Entregas: só os pedidos em andamento (os concluídos e cancelados ficam na Tabela) --}}
+                {{#each this.pedidosDaLista as |order|}}
+                    <Portal::Order::ListCard @order={{order}} />
+                {{else}}
+                    <div class="portal-empty-state compact">
+                        <div class="portal-empty-state-title">{{t "customer-portal.ui.entregas.no-orders-in-progress"}}</div>
+                        <p>{{t "customer-portal.ui.entregas.no-orders-in-progress-text"}}</p>
+                    </div>
+                {{/each}}
+            </div>
+            <div class="portal-order-list-panel-footer">
+                <span>{{t "customer-portal.ui.entregas.lista.concluidos"}}</span>
+                <button type="button" class="portal-order-list-panel-link" {{on "click" (fn @onSwitchView "table")}}>{{t "customer-portal.ui.entregas.lista.ver-na-tabela"}} →</button>
+            </div>
+        </aside>
+    {{/unless}}
 
-    {{#if this.showTable}}
-        <Portal::Order::Workspace::Table @orders={{@orders}} @query={{@query}} @onSearch={{@onSearch}} />
-    {{else}}
-        <div class="portal-order-map-stage">
-            <Portal::Order::Workspace::Map @orders={{@orders}} @selectedOrder={{@selectedOrder}} @draft={{this.customerPortalOrderCreation.draft}} />
-            {{#unless this.isViewingDetails}}
-                <aside class="portal-order-list-panel">
-                    <div class="portal-order-list-panel-header">
-                        <div>
-                            <div class="portal-section-eyebrow">{{t "customer-portal.ui.order.order-list"}}</div>
-                            <h2>{{t "customer-portal.ui.entregas.orders-in-progress"}}</h2>
-                        </div>
-                    </div>
-                    <Input @value={{@query}} class="form-input w-full" placeholder={{t "customer-portal.ui.order.search-orders"}} {{on "input" this.search}} />
-                    <div class="portal-order-list-panel-body">
-                        {{!-- Entregas: só os pedidos em andamento (os concluídos e cancelados ficam na Tabela) --}}
-                        {{#each this.pedidosDaLista as |order|}}
-                            <Portal::Order::ListCard @order={{order}} />
-                        {{else}}
-                            <div class="portal-empty-state compact">
-                                <div class="portal-empty-state-title">{{t "customer-portal.ui.entregas.no-orders-in-progress"}}</div>
-                                <p>{{t "customer-portal.ui.entregas.no-orders-in-progress-text"}}</p>
-                            </div>
-                        {{/each}}
-                    </div>
-                </aside>
-            {{/unless}}
-            <div class="portal-order-route-panel {{unless this.hasPanel 'is-empty'}}">
-                {{yield}}
+    <Portal::ContentWrapper class="portal-page-card portal-order-page-card portal-order-workspace-card">
+        <div class="portal-section-header portal-order-workspace-header">
+            <div>
+                <div class="portal-section-eyebrow">{{t "customer-portal.ui.nav.orders"}}</div>
+                <h1>{{t "customer-portal.ui.nav.orders"}}</h1>
+                <p>{{t "customer-portal.ui.order.workspace-description"}}</p>
+            </div>
+            <div class="portal-order-workspace-actions">
+                <div class="portal-order-view-toggle" role="group" aria-label={{t "customer-portal.ui.order.order-view"}}>
+                    <Button
+                        @icon="map"
+                        @text={{t "customer-portal.ui.order.map"}}
+                        @type={{unless this.showTable "primary"}}
+                        @size="sm"
+                        @onClick={{fn @onSwitchView "map"}}
+                        @wrapperClass="portal-order-view-toggle-item"
+                    />
+                    <Button
+                        @icon="table"
+                        @text={{t "customer-portal.ui.order.table"}}
+                        @type={{if this.showTable "primary"}}
+                        @size="sm"
+                        @onClick={{fn @onSwitchView "table"}}
+                        @wrapperClass="portal-order-view-toggle-item"
+                    />
+                </div>
+                {{!-- Entregas: chat da loja com os motoboys (gaveta Portal::Conversas), com o total de não lidas --}}
+                <span class="portal-conversas-toggle">
+                    <Button @icon="comments" @text={{t "customer-portal.ui.entregas.chat-title"}} @type={{if this.entregasConversas.aberta "primary"}} @onClick={{this.entregasConversas.alternarGaveta}} />
+                    {{#if this.entregasConversas.naoLidas}}
+                        <span class="portal-conversas-badge portal-conversas-toggle-badge">{{this.entregasConversas.naoLidas}}</span>
+                    {{/if}}
+                </span>
+                <Button @icon="rotate" @onClick={{this.reloadOrders}} @isLoading={{@isReloading}} />
+                <Button @icon="plus" @type="primary" @text={{t "customer-portal.ui.order.new-order"}} @onClick={{this.createOrder}} />
             </div>
         </div>
-    {{/if}}
+
+        {{#if this.showTable}}
+            <Portal::Order::Workspace::Table @orders={{@orders}} @query={{@query}} @onSearch={{@onSearch}} />
+        {{else}}
+            <div class="portal-order-map-stage">
+                <Portal::Order::Workspace::Map @orders={{@orders}} @selectedOrder={{@selectedOrder}} @draft={{this.customerPortalOrderCreation.draft}} />
+                <div class="portal-order-route-panel {{unless this.hasPanel 'is-empty'}}">
+                    {{yield}}
+                </div>
+            </div>
+        {{/if}}
+    </Portal::ContentWrapper>
     <Portal::Conversas />
 </div>

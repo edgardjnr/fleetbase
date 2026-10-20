@@ -2,7 +2,7 @@
 // Uso, na raiz do repo: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/*.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALFINETE, nomeNoAlfinete, mesmaLista, pedidosValidos, semOPedidoAberto, tempoDesde } from '../../packages/customer-portal/addon/utils/pedidos-no-mapa.js';
+import { ALFINETE, nomeNoAlfinete, rotuloNoAlfinete, mesmaLista, pedidosValidos, semOPedidoAberto, tempoDesde } from '../../packages/customer-portal/addon/utils/pedidos-no-mapa.js';
 import { ALFINETE as ALFINETE_DO_CONSOLE } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
 
 test('o mesmo alfinete do console', () => {
@@ -45,4 +45,15 @@ test('nome fixo no alfinete: só com o pedido aceito por um motoboy', () => {
     assert.equal(nomeNoAlfinete({ motoboy: null, aceito: true }), null);
     assert.equal(nomeNoAlfinete({ motoboy: '   ', aceito: true }), null);
     assert.equal(nomeNoAlfinete(null), null);
+});
+
+test('rótulo fixo embaixo do alfinete: o número do pedido e o nome do motoboy que aceitou', () => {
+    assert.equal(rotuloNoAlfinete({ numero: '4821', motoboy: 'Carlos', aceito: true }), '#4821 · Carlos');
+    assert.equal(rotuloNoAlfinete({ numero: 'RP123ABC', motoboy: 'Carlos', aceito: true }), 'RP123ABC · Carlos', 'código de rastreio sem #');
+    assert.equal(rotuloNoAlfinete({ numero: ' 77 ', motoboy: ' Ana ', aceito: true }), '#77 · Ana');
+    assert.equal(rotuloNoAlfinete({ numero: null, motoboy: 'Carlos', aceito: true }), 'Carlos', 'API antiga, sem número');
+    assert.equal(rotuloNoAlfinete({ numero: 4821, motoboy: 'Carlos', aceito: true }), '#4821 · Carlos', 'número que chega como número');
+    assert.equal(rotuloNoAlfinete({ numero: '4821', motoboy: 'Carlos', aceito: false }), null, 'sem aceite, sem rótulo');
+    assert.equal(rotuloNoAlfinete({ numero: '4821', motoboy: null, aceito: true }), null);
+    assert.equal(rotuloNoAlfinete(null), null);
 });

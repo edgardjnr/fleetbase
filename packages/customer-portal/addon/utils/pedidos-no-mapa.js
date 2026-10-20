@@ -1,4 +1,4 @@
-import { coordenadaValida } from './motoboys-no-mapa';
+import { coordenadaValida, motoboyDoPedido } from './motoboys-no-mapa';
 
 /**
  * Entregas: os alfinetes dos pedidos em andamento da loja no mapa do portal (resposta.pedidos de
@@ -43,6 +43,27 @@ export function nomeNoAlfinete(pedido) {
     return pedido?.aceito === true && nome !== '' ? nome : null;
 }
 
+/**
+ * Rótulo fixo embaixo do alfinete do pedido aceito: o número do pedido e o nome do motoboy ("#4821 · Carlos"). O número
+ * é o do iFood ou do sistema da loja (com #); sem ele, o código de rastreio (sem #). API antiga, sem número: só o nome.
+ * Sem aceite, null (a mesma regra do nomeNoAlfinete).
+ */
+export function rotuloNoAlfinete(pedido) {
+    const nome = nomeNoAlfinete(pedido);
+
+    if (!nome) {
+        return null;
+    }
+
+    const numero = typeof pedido.numero === 'number' || typeof pedido.numero === 'string' ? String(pedido.numero).trim() : '';
+
+    if (numero === '') {
+        return nome;
+    }
+
+    return `${/^\d+$/.test(numero) ? '#' : ''}${numero} · ${nome}`;
+}
+
 /** Mesma lista? Só troca (e redesenha os alfinetes) quando algo mudou. */
 export function mesmaLista(a, b) {
     return JSON.stringify(a ?? []) === JSON.stringify(b ?? []);
@@ -63,4 +84,25 @@ export function tempoDesde(criadoEm, agora = Date.now()) {
     }
 
     return minutos < 60 ? { unidade: 'min', n: minutos } : { unidade: 'h', n: Math.floor(minutos / 60) };
+}
+
+/**
+ * O motoboy de cada pedido da loja, para o card da lista: { <public_id>: { nome, situacao } }, só com o pedido aceito
+ * (a mesma regra do nome no alfinete). A situação (livre, coleta ou entrega) é a do capacete no mapa, ou null quando o
+ * motoboy não está na lista de motoboys. Lê a mesma resposta de loja/motoboys do mapa, sem consulta a mais.
+ */
+export function motoboysDosPedidos(pedidos, motoboys) {
+    const resultado = {};
+
+    (Array.isArray(pedidos) ? pedidos : []).forEach((pedido) => {
+        const nome = nomeNoAlfinete(pedido);
+
+        if (!nome || typeof pedido.id !== 'string' || pedido.id === '') {
+            return;
+        }
+
+        resultado[pedido.id] = { nome, situacao: motoboyDoPedido(motoboys, pedido.id)?.situacao ?? null };
+    });
+
+    return resultado;
 }

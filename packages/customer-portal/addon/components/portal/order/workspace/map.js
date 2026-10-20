@@ -7,11 +7,12 @@ import { race, task, timeout, waitForEvent } from 'ember-concurrency';
 import CamadaDeMotoboys from '../../../../utils/camada-de-motoboys';
 import { motoboyDoPedido, motoboysValidos } from '../../../../utils/motoboys-no-mapa';
 import { INTERVALO_MAPA_MS, espera } from '../../../../utils/entregas-pedido';
-import { ALFINETE, mesmaLista, nomeNoAlfinete, pedidosValidos, semOPedidoAberto, tempoDesde } from '../../../../utils/pedidos-no-mapa';
+import { ALFINETE, mesmaLista, pedidosValidos, rotuloNoAlfinete, semOPedidoAberto, tempoDesde } from '../../../../utils/pedidos-no-mapa';
 import { PIN_DA_LOJA, lojaNoMapa, mostrarPinDaLoja } from '../../../../utils/loja-no-mapa';
 
 export default class PortalOrderWorkspaceMapComponent extends Component {
     @service customerPortalOrderRoutePreview;
+    @service entregasMapaDaLoja;
     @service fetch;
     @service intl;
 
@@ -23,7 +24,7 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
     @tracked pedidosNoMapa = [];
     @tracked relogio = Date.now();
     _iconeDoAlfinete = null;
-    nomeNoAlfinete = nomeNoAlfinete;
+    rotuloNoAlfinete = rotuloNoAlfinete;
 
     // Entregas: o pin da loja no Local dela (a coleta), lido uma vez de entregas/loja/minha-loja
     @tracked loja = null;
@@ -39,6 +40,7 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
         this.camadaDeMotoboys?.destruir();
         this.camadaDeMotoboys = null;
         this.customerPortalOrderRoutePreview.unregisterMap();
+        this.entregasMapaDaLoja.limpar();
     }
 
     get center() {
@@ -203,7 +205,7 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
         this.acompanharMotoboys.perform();
     }
 
-    // Entregas: botões + e − no canto inferior direito (o canto superior esquerdo fica sob a lista de pedidos), com as dicas
+    // Entregas: botões + e − no canto inferior direito (o canto superior esquerdo ficava sob a lista de pedidos), com as dicas
     // no idioma ativo. O CSS os afasta do painel do pedido quando ele está aberto
     adicionarZoom(map) {
         const L = globalThis.L;
@@ -298,6 +300,8 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
                     if (!mesmaLista(pedidos, this.pedidosNoMapa)) {
                         this.pedidosNoMapa = pedidos;
                     }
+                    // o motoboy de cada pedido nos cards da lista (inclusive pedido sem coordenada de entrega)
+                    this.entregasMapaDaLoja.atualizar(resposta.pedidos, this.ultimosMotoboys);
                     this.relogio = Date.now();
 
                     // erro ao desenhar não é falha da consulta: não aumenta a espera

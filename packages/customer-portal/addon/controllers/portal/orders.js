@@ -8,7 +8,6 @@ import { INTERVALO_LISTA_MS, espera } from '../../utils/entregas-pedido';
 
 export default class PortalOrdersController extends Controller {
     @service customerPortalOrderActions;
-    @service hostRouter;
     @service notifications;
 
     queryParams = ['view', 'query'];
@@ -68,9 +67,9 @@ export default class PortalOrdersController extends Controller {
         }
     }
 
-    // Entregas: a rota do detalhe chama isto ao fechá-lo. Com o detalhe aberto a atualização da lista fica pausada, e sem
-    // isto os pedidos novos só apareceriam na próxima volta, daqui a até 30 s. Com falhas seguidas (429 inclusive) vale a
-    // espera crescente: o ciclo segue como está, sem consulta imediata
+    // Entregas: a rota do detalhe chama isto ao fechá-lo, para a lista já refletir o que mudou no pedido sem esperar a
+    // próxima volta (até 30 s). Com falhas seguidas (429 inclusive) vale a espera crescente: o ciclo segue como está, sem
+    // consulta imediata
     @action atualizarListaAgora() {
         if (this.falhasLista === 0) {
             this.atualizarLista.perform({ imediata: true });
@@ -78,13 +77,12 @@ export default class PortalOrdersController extends Controller {
     }
 
     // Entregas: a lista se atualiza sozinha a cada 30 s, com a busca ativa (a rota inicia no setupController e para no
-    // resetController), numa task própria do serviço (o botão de recarregar não pisca). Pula a vez com a aba oculta,
-    // com o detalhe aberto (a lista nem aparece; o detalhe tem o ciclo dele) e durante uma busca. A busca do usuário
-    // vence: o resultado é descartado se a busca ou a lista mudaram durante a consulta. Erro não vira aviso: a espera
-    // dobra a cada falha seguida (429 inclusive), até 2 min, e volta a 30 s no primeiro sucesso.
+    // resetController), numa task própria do serviço (o botão de recarregar não pisca). Pula a vez com a aba oculta e
+    // durante uma busca. Com o detalhe aberto ela continua: desde o redesenho (sketch 001) a lista fica à vista ao lado do
+    // detalhe. A busca do usuário vence: o resultado é descartado se a busca ou a lista mudaram durante a consulta. Erro
+    // não vira aviso: a espera dobra a cada falha seguida (429 inclusive), até 2 min, e volta a 30 s no primeiro sucesso.
     // Reiniciada com imediata (ao fechar o detalhe), a primeira volta não espera os 30 s e passa pelas mesmas guardas
-    // (aba, detalhe, busca e query). Ela só espera um instante (timeout 0) para a transição terminar: no resetController
-    // o hostRouter ainda aponta para o detalhe, e a guarda do detalhe pularia a consulta
+    // (aba, busca e query). Ela só espera um instante (timeout 0) para a transição terminar
     @restartableTask *atualizarLista({ imediata = false } = {}) {
         let oculta = false;
         let primeira = imediata;
@@ -101,7 +99,7 @@ export default class PortalOrdersController extends Controller {
             yield oculta ? race([proxima, waitForEvent(document, 'visibilitychange')]) : proxima;
 
             oculta = document.hidden;
-            if (oculta || this.hostRouter.currentRouteName?.endsWith('.details') || this.customerPortalOrderActions.searchOrders.isRunning) {
+            if (oculta || this.customerPortalOrderActions.searchOrders.isRunning) {
                 continue;
             }
 

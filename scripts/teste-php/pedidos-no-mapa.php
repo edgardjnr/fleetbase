@@ -205,7 +205,7 @@ namespace {
     confere(array_keys($central[0] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'aceito', 'criado_em', 'loja'],
         'campos do console, com a loja');
     confere(($porId['order_sem_motoboy']['numero'] ?? null) === 'RP123' && ($porId['order_coleta']['numero'] ?? null) === 'order_coleta',
-        'número de rastreio; sem ele, o public_id');
+        'sem internal_id: o número de rastreio; sem ele, o public_id');
     confere(($porId['order_coleta']['latitude'] ?? null) === -21.19 && ($porId['order_coleta']['longitude'] ?? null) === -47.82, 'coordenadas do destino em número');
     confere(($porId['order_coleta']['endereco'] ?? null) === 'Rua B, 20' && ($porId['order_entrega']['endereco'] ?? null) === 'Casa do cliente',
         'endereço do destino; sem endereço, o nome do local');
@@ -264,6 +264,13 @@ namespace {
     $um = PedidosNoMapa::umDoLider(end(Order::$todos));
     confere($um === ($doLider['order_ifood'] ?? false), 'umDoLider: o mesmo item do doLider');
     confere(PedidosNoMapa::umDoLider(pedido('order_sem_destino_2', 'started', 'vendor-a', $recente, '2026-10-05 08:00:00', null)) === null, 'umDoLider sem destino com coordenada: null');
+
+    $centralComIfood = array_column(PedidosNoMapa::daCentral(EMPRESA), null, 'id');
+    $lojaComIfood    = array_column(PedidosNoMapa::daLoja(EMPRESA, ['vendor-a', 'contato-a']), null, 'id');
+    confere(($centralComIfood['order_ifood']['numero'] ?? null) === '4821' && ($lojaComIfood['order_ifood']['numero'] ?? null) === '4821',
+        'central e loja: o número do iFood (internal_id), o mesmo do líder, para o "#4821 · motoboy" do alfinete');
+    confere(array_keys($lojaComIfood['order_ifood'] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'aceito', 'criado_em'],
+        'loja: os mesmos campos, sem a loja');
 
     echo '== limite' . PHP_EOL;
     Order::$todos = array_map(fn ($n) => pedido("order_{$n}", 'created', 'vendor-a', $recente, '2026-10-05 08:00:00', $rua), range(1, 305));

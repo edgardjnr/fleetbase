@@ -2,6 +2,7 @@ import Component from '@glimmer/component';
 import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { nomeDoCliente } from '../../../utils/entregas-pedido';
 
 const ROUTE_COLOR = '#3485e2';
 
@@ -99,13 +100,21 @@ export default class PortalOrderRouteListComponent extends Component {
                 role === 'pickup'
                     ? this.intl.t('customer-portal.ui.order.pickup')
                     : role === 'dropoff'
-                      ? this.intl.t('customer-portal.ui.order.dropoff')
+                      ? this.tituloDaEntrega(place)
                       : role === 'return'
                         ? this.intl.t('customer-portal.ui.order.return')
                         : this.intl.t('customer-portal.ui.order.stop-n', { n: waypointNumber ?? sequence }),
             badgeStyle: `background-color: ${markerColor}; color: #ffffff;`,
             trackingNumberUuid: waypoint?.tracking_number_uuid ?? waypoint?.tracking_number?.uuid ?? null,
         };
+    }
+
+    // Entregas: "Entrega · <cliente>" com o nome do cliente (o nome do Local de entrega), como no card da lista
+    tituloDaEntrega(place) {
+        const titulo = this.intl.t('customer-portal.ui.order.dropoff');
+        const cliente = nomeDoCliente(place);
+
+        return cliente ? `${titulo} · ${cliente}` : titulo;
     }
 
     trackingStopFor(place) {

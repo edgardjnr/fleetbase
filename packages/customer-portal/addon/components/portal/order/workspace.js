@@ -33,11 +33,7 @@ export default class PortalOrderWorkspaceComponent extends Component {
         return this.currentRouteName.includes('.new');
     }
 
-    get isViewingDetails() {
-        return this.currentRouteName.includes('.details');
-    }
-
-    // Entregas: a lista ao lado do mapa mostra só os pedidos em andamento; os concluídos e cancelados ficam na Tabela
+    // Entregas: a lista da coluna da esquerda mostra só os pedidos em andamento; os concluídos e cancelados ficam na Tabela
     get pedidosDaLista() {
         return pedidosEmAndamento(arrayFor(this.args.orders), (pedido) => valueFor(pedido, 'status'));
     }

@@ -1,8 +1,9 @@
 <Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
     <div class="modal-body-container">
         <div class="grid grid-cols-3 gap-2 text-xs dark:text-gray-100 no-input-group-padding">
-            <InputGroup @name={{t "customer-portal.ui.common.name"}} @wrapperClass="col-span-3">
-                <Input @value={{this.place.name}} @type="text" class="w-full form-input" placeholder={{t "customer-portal.ui.common.name"}} />
+            {{!-- Entregas: o nome do Local de entrega é o nome do cliente (aparece no card e no detalhe do pedido, como o do iFood) --}}
+            <InputGroup @name={{t "customer-portal.ui.entregas.nome-do-cliente"}} @wrapperClass="col-span-3">
+                <Input @value={{this.place.name}} @type="text" class="w-full form-input" placeholder={{t "customer-portal.ui.entregas.nome-do-cliente-placeholder"}} />
             </InputGroup>
 
             <InputGroup @name={{t "customer-portal.ui.place.street1"}} @wrapperClass="col-span-3">
