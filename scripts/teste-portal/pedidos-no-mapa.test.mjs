@@ -2,8 +2,8 @@
 // Uso, na raiz do repo: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/*.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALFINETE, nomeNoAlfinete, rotuloNoAlfinete, mesmaLista, pedidosValidos, semOPedidoAberto, tempoDesde } from '../../packages/customer-portal/addon/utils/pedidos-no-mapa.js';
-import { ALFINETE as ALFINETE_DO_CONSOLE } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
+import { ALFINETE, classeDoRotulo, nomeNoAlfinete, rotuloNoAlfinete, mesmaLista, pedidosValidos, semOPedidoAberto, tempoDesde } from '../../packages/customer-portal/addon/utils/pedidos-no-mapa.js';
+import { ALFINETE as ALFINETE_DO_CONSOLE, classeDoRotulo as classeDoRotuloDoConsole } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
 
 test('o mesmo alfinete do console', () => {
     assert.deepEqual(ALFINETE, ALFINETE_DO_CONSOLE);
@@ -56,4 +56,21 @@ test('rótulo fixo embaixo do alfinete: o número do pedido e o nome do motoboy 
     assert.equal(rotuloNoAlfinete({ numero: '4821', motoboy: 'Carlos', aceito: false }), null, 'sem aceite, sem rótulo');
     assert.equal(rotuloNoAlfinete({ numero: '4821', motoboy: null, aceito: true }), null);
     assert.equal(rotuloNoAlfinete(null), null);
+});
+
+test('rótulo do alfinete: a mesma classe do console, pelo prazo', () => {
+    const prazo = '2026-10-20T19:57:51-03:00';
+    const t = Date.parse(prazo);
+    for (const [pedido, agora] of [
+        [{ prazo_em: prazo }, t - 32 * 60000],
+        [{ prazo_em: prazo }, t - 12 * 60000],
+        [{ prazo_em: prazo }, t + 7 * 60000],
+        [{ prazo_em: null }, t],
+        [{}, t],
+        [null, t],
+    ]) {
+        assert.equal(classeDoRotulo(pedido, agora), classeDoRotuloDoConsole(pedido, agora));
+    }
+    assert.equal(classeDoRotulo({ prazo_em: prazo }, t + 7 * 60000), 'entregas-nome-no-alfinete entregas-prazo-atrasado');
+    assert.equal(classeDoRotulo({}, t), 'entregas-nome-no-alfinete', 'sem prazo: só a de base (neutra, cinza-escuro)');
 });
