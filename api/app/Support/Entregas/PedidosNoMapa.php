@@ -20,6 +20,9 @@ use Fleetbase\FleetOps\Models\Vendor;
  * sem ele, o de rastreio; sem os dois, o public_id. Os mapas do console e do portal mostram "#4821 · Carlos" embaixo do
  * alfinete do pedido aceito.
  *
+ * Prazo (nos três): `prazo_em`, o prazo de entrega gravado no meta (PrazoDaEntrega::doPedido; null sem prazo legível).
+ * O rótulo "#4821 · Carlos" do alfinete ganha a cor do cronômetro (verde, amarelo, vermelho). Do meta, só o prazo sai.
+ *
  * Em andamento = status fora de StatusDoPedido::ENCERRADOS e atualizado nas últimas
  * SituacaoDoMotoboy::HORAS_PEDIDO_EM_ANDAMENTO horas, com ou sem motoboy (a mesma regra dos capacetes). Pedido sem destino
  * com coordenada válida fica de fora. Do motoboy sai só o nome: nunca o id (com ele, o canal driver.<id> do socket entrega
@@ -34,7 +37,7 @@ class PedidosNoMapa
     public const RELACOES_DO_LIDER = ['payload.pickup', 'payload.dropoff', 'driverAssigned.user', 'trackingNumber'];
 
     /**
-     * @return array<int, array{id: string, numero: string, latitude: float, longitude: float, endereco: ?string, status: ?string, motoboy: ?string, aceito: bool, criado_em: ?string, loja: ?string}>
+     * @return array<int, array{id: string, numero: string, latitude: float, longitude: float, endereco: ?string, status: ?string, motoboy: ?string, aceito: bool, criado_em: ?string, prazo_em: ?string, loja: ?string}>
      */
     public static function daCentral(string $companyUuid): array
     {
@@ -50,7 +53,7 @@ class PedidosNoMapa
     /**
      * @param array<int, string> $donos customer_uuid dos pedidos da loja: o Vendor e o contato do usuário
      *
-     * @return array<int, array{id: string, numero: string, latitude: float, longitude: float, endereco: ?string, status: ?string, motoboy: ?string, aceito: bool, criado_em: ?string}>
+     * @return array<int, array{id: string, numero: string, latitude: float, longitude: float, endereco: ?string, status: ?string, motoboy: ?string, aceito: bool, criado_em: ?string, prazo_em: ?string}>
      */
     public static function daLoja(string $companyUuid, array $donos): array
     {
@@ -67,7 +70,7 @@ class PedidosNoMapa
     }
 
     /**
-     * @return array<int, array{id: string, numero: string, latitude: float, longitude: float, endereco: ?string, status: ?string, motoboy: ?string, aceito: bool, criado_em: ?string, loja: ?string, motoboy_id: ?string, atualizado_em: ?string, coleta: ?array{latitude: float, longitude: float}}>
+     * @return array<int, array{id: string, numero: string, latitude: float, longitude: float, endereco: ?string, status: ?string, motoboy: ?string, aceito: bool, criado_em: ?string, prazo_em: ?string, loja: ?string, motoboy_id: ?string, atualizado_em: ?string, coleta: ?array{latitude: float, longitude: float}}>
      */
     public static function doLider(string $companyUuid): array
     {
@@ -136,6 +139,8 @@ class PedidosNoMapa
                 // o motoboy já aceitou (não só foi atribuído pela central): o alfinete ganha o nome dele fixo embaixo
                 'aceito'    => (bool) $pedido->started,
                 'criado_em' => $pedido->created_at?->toIso8601String(),
+                // prazo de entrega (cronômetro; ver PrazoDaEntrega): a cor do rótulo do alfinete; null sem prazo
+                'prazo_em'  => PrazoDaEntrega::doPedido($pedido),
             ], $extra ? $extra($pedido) : []);
         }
 
