@@ -268,4 +268,18 @@ confere((new IfoodPedidosController())->painel(new Request(), 'order_1')->status
 Banco::$tabelas['entregas_ifood_pedidos'] = [];
 confere((new IfoodPedidosController())->painel(new Request(), 'order_1')->dados === ['ifood' => false], 'pedido que não é do iFood: ifood falso');
 
+echo '== Produtos do pedido (itens) para o app' . PHP_EOL;
+$esperados = [['quantidade' => 1, 'nome' => 'Pizza grande', 'opcoes' => [['quantidade' => 1, 'nome' => 'Borda de catupiry']], 'observacao' => 'sem cebola']];
+pedidoIfood([], ['itens' => '[{"nome": "Pizza grande", "opcoes": [{"nome": "Borda de catupiry", "quantidade": 1}], "observacao": "sem cebola", "quantidade": 1}]']);
+confere((new MotoboyController())->ifood(doMotoboy(), 'order_1')->dados['itens'] === $esperados, 'motoboy do pedido: os itens, na ordem do contrato (o MySQL devolve as chaves em outra ordem)');
+$aberto = new Order(['uuid' => 'order-1', 'public_id' => 'order_1', 'status' => 'dispatched', 'driver_assigned_uuid' => null, 'adhoc' => true]);
+$dados  = DadosIfoodDoMotoboy::resposta(linha(), $aberto, 'driver-1', '2026-10-05 15:00:00');
+confere($dados['itens'] === $esperados && $dados['telefone'] === null, 'pedido ainda aberto: os itens vão, o 0800 não');
+pedidoIfood();
+confere((new MotoboyController())->ifood(doMotoboy(), 'order_1')->dados['itens'] === null, 'pedido antigo (sem itens): null');
+pedidoIfood([], ['itens' => '[{"nome": "Pizza grande"']);
+$dados = (new MotoboyController())->ifood(doMotoboy(), 'order_1')->dados;
+confere($dados['itens'] === null && $dados['numero'] === '4821' && $dados['telefone'] !== null, 'JSON quebrado: itens null e o resto da resposta igual');
+confere(logou('[entregas] itens do pedido ilegíveis no banco', 'warning') && logsSem(['Pizza grande']), 'warning só com o id do pedido');
+
 resumo();
