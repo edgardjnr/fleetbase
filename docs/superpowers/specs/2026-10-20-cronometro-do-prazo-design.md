@@ -50,8 +50,10 @@ Função pura em cada cliente, com a mesma regra:
 cronometro(prazoIso, agora) → null | { minutos, estado: 'no_prazo' | 'perto' | 'atrasado', texto }
 ```
 
-- `restante = prazo − agora`. Os minutos são arredondados para cima enquanto falta (59 s viram "1 min") e para baixo
-  depois do prazo ("Atrasado há 0 min" não existe: o primeiro minuto de atraso já mostra "Atrasado há 1 min").
+- `restante = prazo − agora`. Os minutos são arredondados **para cima**, antes e depois do prazo (59 s viram "1 min";
+  0 a 60 s de atraso viram "Atrasado há 1 min", 61 s viram 2; "Atrasado há 0 min" não existe). Ajuste da revisão de
+  2026-10-20: arredondando para baixo, o "1 min" de atraso ficava 2 minutos na tela.
+- O servidor grava o prazo em `Y-m-d\TH:i:sP` (sem microssegundos), para o Hermes do app ler sem surpresa.
 - `restante > 15 min` → `no_prazo`; `0 < restante ≤ 15 min` → `perto`; `restante ≤ 0` → `atrasado`.
 - Prazo ausente ou ilegível → `null`.
 - Atualização a cada 30 s, com o relógio do aparelho. Um relógio adiantado em segundos não muda os minutos o bastante
