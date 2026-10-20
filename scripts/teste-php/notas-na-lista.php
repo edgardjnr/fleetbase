@@ -110,8 +110,10 @@ rodar(CONSOLE . 'queryRecord', new JsonResponse(['orders' => []]));
 confere(consultas() === 0, 'lista vazia: não consulta');
 rodar(CONSOLE . 'queryRecord', new JsonResponse(['orders' => [['id' => 'x']]]));
 confere(consultas() === 0, 'itens sem uuid: não consulta');
-rodar(CONSOLE . 'queryRecord', new JsonResponse(['orders' => [item('order-1', '4821') + ['notes' => 'x']]]));
-confere(consultas() === 0, 'todos os itens já com notes: não consulta');
+$completo         = item('order-1', '4821') + ['notes' => 'x'];
+$completo['meta'] = ['_index_resource' => true, 'entregas_prazo_em' => '2026-10-05T15:40:00-03:00'];
+rodar(CONSOLE . 'queryRecord', new JsonResponse(['orders' => [$completo]]));
+confere(consultas() === 0, 'todos os itens já com notes e prazo: não consulta');
 session(['company' => null]);
 $resposta = rodar(CONSOLE . 'queryRecord', new JsonResponse(['orders' => [item('order-1', '4821')]]));
 confere(consultas() === 0 && !array_key_exists('notes', $resposta->getData(true)['orders'][0]), 'sem empresa na sessão: não consulta');
@@ -133,5 +135,31 @@ confere($resposta === $original && $resposta->getContent() === $antes, 'exceçã
 $avisos = array_values(array_filter(Log::$registros, fn ($r) => $r[0] === 'warning'));
 confere(count($avisos) === 1 && $avisos[0][1] === '[entregas] notas na lista de pedidos: RuntimeException', 'warning curto, só com a classe da exceção');
 confere(!str_contains(json_encode(Log::$registros), 'SELECT') && !str_contains(json_encode(Log::$registros), 'segredo'), 'o log não leva a mensagem da exceção');
+
+echo '== Prazo de entrega no meta do recurso enxuto' . PHP_EOL;
+cenario();
+Banco::inserir('orders', ['uuid' => 'order-p1', 'company_uuid' => 'empresa-1', 'internal_id' => '4822', 'notes' => 'iFood #4822', 'meta' => json_encode(['entregas_prazo_em' => '2026-10-05T15:40:00-03:00', 'entregas' => ['km_rota' => ['metros' => 1200]]])], false);
+Banco::inserir('orders', ['uuid' => 'order-p2', 'company_uuid' => 'empresa-1', 'internal_id' => null, 'notes' => null, 'meta' => json_encode(['entregas_prazo_em' => 'amanhã'])], false);
+Banco::inserir('orders', ['uuid' => 'order-p3', 'company_uuid' => 'empresa-2', 'internal_id' => null, 'notes' => null, 'meta' => json_encode(['entregas_prazo_em' => '2026-10-05T15:40:00-03:00'])], false);
+Banco::$consultadas = [];
+$resposta = rodar(CONSOLE . 'queryRecord', new JsonResponse(['orders' => [item('order-p1', '4822'), item('order-p2'), item('order-p3'), item('order-1', '4821')]]));
+$lista    = $resposta->getData(true)['orders'];
+confere($lista[0]['meta'] === ['_index_resource' => true, 'entregas_prazo_em' => '2026-10-05T15:40:00-03:00'], 'pedido com prazo: o prazo entra no meta do item (o resto do meta do banco não vai)');
+confere($lista[0]['notes'] === 'iFood #4822', 'as notas continuam chegando junto');
+confere($lista[1]['meta'] === ['_index_resource' => true], 'prazo ilegível no banco: o meta fica como veio');
+confere($lista[2]['meta'] === ['_index_resource' => true], 'pedido de OUTRA empresa: sem prazo');
+confere($lista[3]['meta'] === ['_index_resource' => true] && $lista[3]['notes'] === 'iFood #4821', 'pedido sem meta no banco: só as notas');
+confere(consultas() === 1, 'notas e prazo na MESMA consulta');
+$resposta = rodar(AO_VIVO, new JsonResponse(['data' => [item('order-p1', '4822')]]));
+confere(($resposta->getData(true)['data'][0]['meta']['entregas_prazo_em'] ?? null) === '2026-10-05T15:40:00-03:00', 'painel do mapa ({"data": [...]}): também recebe o prazo');
+$semMeta = item('order-p1', '4822');
+unset($semMeta['meta']);
+$resposta = rodar(CONSOLE . 'queryRecord', new JsonResponse(['orders' => [$semMeta]]));
+confere($resposta->getData(true)['orders'][0]['meta'] === ['entregas_prazo_em' => '2026-10-05T15:40:00-03:00'], 'item sem meta: ganha um, só com o prazo');
+$jaComPrazo                               = item('order-p1', '4822');
+$jaComPrazo['meta']['entregas_prazo_em'] = '2026-10-05T16:00:00-03:00';
+$resposta                                 = rodar(CONSOLE . 'queryRecord', new JsonResponse(['orders' => [$jaComPrazo]]));
+confere($resposta->getData(true)['orders'][0]['meta']['entregas_prazo_em'] === '2026-10-05T16:00:00-03:00' && $resposta->getData(true)['orders'][0]['notes'] === 'iFood #4822',
+    'item que já traz o prazo: fica como veio (as notas que faltam chegam)');
 
 resumo();
