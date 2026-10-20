@@ -11,12 +11,13 @@ Guardar os produtos dos pedidos do iFood e do RestaurantePro e entregá-los ao a
 [{ "quantidade": 1, "nome": "Pizza grande Calabresa", "opcoes": [{ "quantidade": 1, "nome": "Borda de catupiry" }], "observacao": "sem cebola" }]
 ```
 
-- `quantidade`: inteiro de 1 a 999.
-- `nome`: texto de 1 a 120 caracteres, sem espaços sobrando.
+- `quantidade`: inteiro de 1 a 999. Ausente ou inválida, vale 1 (o app soma as quantidades).
+- `nome`: texto sem espaços sobrando, cortado em 120 caracteres.
 - `opcoes`: lista de até 20 itens, cada um com `quantidade` (padrão 1) e `nome`.
-- `observacao`: texto de até 200 caracteres.
+- `observacao`: texto cortado em 200 caracteres.
 
-Esses campos são opcionais. Quando um deles vem vazio ou inválido, só ele cai. Item sem `nome` válido não entra.
+Texto longo é cortado, não descartado (decisão de 2026-10-19: descartar tiraria o produto da comanda). `opcoes` e
+`observacao` são opcionais; vazios ou inválidos, caem. Item sem `nome` válido não entra.
 
 A lista tem no máximo 50 itens. Lista vazia ou sem nenhum item válido grava `null`.
 
@@ -46,9 +47,11 @@ A lista tem no máximo 50 itens. Lista vazia ou sem nenhum item válido grava `n
 - **Gravação:** coluna nova `itens` (JSON, nula) em `entregas_integracao_pedidos`, gravada pelo
   `CriadorDoPedidoDaIntegracao`.
 - **Reenvio** (mesmo `pedido_externo_id`): devolve o pedido existente, como hoje, sem atualizar os itens.
-- **Lado do RestaurantePro** (`restaurantepro-main`, edge `supabase/functions/entregas-delivery`): monta `itens` com os
-  produtos do pedido do cardápio (quantidade, nome do produto, adicionais como `opcoes` e a observação do item, se
-  houver) e envia no `POST pedidos`. O deploy da edge segue o roteiro do plano 3 da integração.
+- **Lado do RestaurantePro** (`restaurantepro-main`): quem envia o `POST pedidos` é a edge `entregas-tick`, com o corpo
+  montado por `corpoDoPedido` em `supabase/functions/_shared/entregas.ts` (a `entregas-delivery` só cuida da conexão e
+  do "Tentar de novo"). Ela monta `itens` com `orders.items` (quantidade, `productName` e os adicionais e complementos
+  de `selectedAddons` como `opcoes`; o cardápio não tem observação por item, e a do pedido segue em `observacoes`).
+  O deploy da edge segue o roteiro do plano 3 da integração. Plano: `docs/superpowers/plans/2026-10-19-produtos-do-pedido-servidor.md`.
 
 ## 3. Entrega ao app
 
@@ -78,6 +81,6 @@ A lista tem no máximo 50 itens. Lista vazia ou sem nenhum item válido grava `n
 ## 6. Implantação
 
 1. `bash deploy/atualizar.sh api`, com as migrations. Sem variável nova.
-2. Deploy da edge `entregas-delivery` no Supabase do RestaurantePro.
+2. Deploy da edge `entregas-tick` no Supabase do RestaurantePro.
 3. Conferir no primeiro pedido de teste do iFood (Terraço) e do RestaurantePro se `itens` chega na rota do motoboy:
    `GET .../ifood` e `.../integracao` com o token de um motoboy.
