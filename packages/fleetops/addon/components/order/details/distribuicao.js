@@ -8,6 +8,7 @@ import {
     chaveDaFase,
     chaveDaResposta,
     chaveDoMotivo,
+    corridasHoje,
     emRodadas,
     horaCurta,
     inteiroPositivo,
@@ -116,15 +117,23 @@ export default class OrderDetailsDistribuicaoComponent extends Component {
     }
 
     get fila() {
-        return (this.painel?.fila ?? []).map((item, index) => ({
-            posicao: index + 1,
-            nome: item.nome || '—',
-            tempo: this.tempoTexto(item.tempo_s),
-            // com e sem rodadas (o servidor só limita o atraso: 5 min em rodadas, 10 min sem)
-            encaixe: item.encaixe === true,
-            aproximado: item.aproximado === true,
-            livre: item.livre === true,
-        }));
+        return (this.painel?.fila ?? []).map((item, index) => {
+            const corridas = corridasHoje(item);
+
+            return {
+                posicao: index + 1,
+                nome: item.nome || '—',
+                tempo: this.tempoTexto(item.tempo_s),
+                // com e sem rodadas (o servidor só limita o atraso: 5 min em rodadas, 10 min sem)
+                encaixe: item.encaixe === true,
+                aproximado: item.aproximado === true,
+                livre: item.livre === true,
+                // desempate por corridas do dia (2026-10-19); a fila gravada antes não traz as chaves
+                temCorridas: corridas !== null,
+                corridas,
+                desempate: item.desempate === true,
+            };
+        });
     }
 
     // sem rodadas: a lista corrida de antes

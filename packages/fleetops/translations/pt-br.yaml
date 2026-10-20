@@ -533,6 +533,8 @@ fleet-ops:
       aproximado: Estimativa pela distância em linha reta
       encaixe: no caminho
       ocupado: já leva pedido
+      corridas-hoje: '{n, plural, =0 {nenhuma corrida hoje} one {# corrida hoje} other {# corridas hoje}}'
+      desempate: desempate
       abrir: Abrir a todos agora
       abrir-titulo: Abrir o pedido a todos os motoboys?
       abrir-texto: O pedido deixa de ser oferecido um a um e o alarme vai a todos os motoboys online perto da loja. O primeiro que aceitar leva.
