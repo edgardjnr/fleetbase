@@ -10,6 +10,7 @@ import {
     chaveDaFase,
     chaveDoMotivo,
     chaveDaResposta,
+    corridasHoje,
     emRodadas,
     horaCurta,
     inteiroPositivo,
@@ -132,4 +133,15 @@ test('textos do botão: mostrar (rodadas) ou abrir', () => {
     assert.deepEqual(textosDoBotao({ rodadas: true }), { botao: 'mostrar', titulo: 'mostrar-titulo', texto: 'mostrar-texto', feito: 'mostrada', icone: 'list' });
     assert.deepEqual(textosDoBotao({ rodadas: false }), { botao: 'abrir', titulo: 'abrir-titulo', texto: 'abrir-texto', feito: 'aberto', icone: 'bullhorn' });
     assert.deepEqual(textosDoBotao(null), { botao: 'abrir', titulo: 'abrir-titulo', texto: 'abrir-texto', feito: 'aberto', icone: 'bullhorn' });
+});
+
+test('corridas de hoje de uma linha da fila: inteiro ≥ 0 ou null (fila de antes do desempate)', () => {
+    assert.equal(corridasHoje({ corridas_hoje: 3 }), 3);
+    assert.equal(corridasHoje({ corridas_hoje: 0 }), 0);
+    assert.equal(corridasHoje({ corridas_hoje: '2' }), 2);
+    assert.equal(corridasHoje({}), null);
+    assert.equal(corridasHoje({ corridas_hoje: null }), null);
+    assert.equal(corridasHoje({ corridas_hoje: -1 }), null);
+    assert.equal(corridasHoje({ corridas_hoje: 1.5 }), null);
+    assert.equal(corridasHoje(null), null);
 });

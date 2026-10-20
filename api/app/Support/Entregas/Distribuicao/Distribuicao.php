@@ -31,6 +31,11 @@ class Distribuicao
      * caminho). Nenhuma ordem cabe: "termina tudo e depois vai". Decisão do Edgard (2026-10-07).
      */
     public const ATRASO_MAXIMO_EM_RODADAS_S = 300;
+    /**
+     * Desempate por corridas do dia: quem entregaria o cliente em até isto acima do mais rápido da fila entra no grupo
+     * ordenado por menos corridas hoje (FilaDeCandidatos::ordenar). Decisão do Edgard (2026-10-19).
+     */
+    public const DESEMPATE_CORRIDAS_S = 180;
     public const PARADA_LOJA_S    = 180;
     public const PARADA_CLIENTE_S = 120;
     /** Reserva em linha reta quando o OSRM falha: metros × fator, a 25 km/h. */

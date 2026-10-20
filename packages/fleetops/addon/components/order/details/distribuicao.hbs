@@ -32,6 +32,8 @@
                                         {{#if item.aproximado}}<span class="text-gray-400 dark:text-gray-500" title={{t "fleet-ops.ui.distribuicao.aproximado"}}>≈</span>{{/if}}{{item.tempo}}
                                         {{#if item.encaixe}}· {{t "fleet-ops.ui.distribuicao.encaixe"}}{{/if}}
                                         {{#unless item.livre}}· {{t "fleet-ops.ui.distribuicao.ocupado"}}{{/unless}}
+                                        {{#if item.temCorridas}}· {{t "fleet-ops.ui.distribuicao.corridas-hoje" n=item.corridas}}{{/if}}
+                                        {{#if item.desempate}}· <span title={{t "fleet-ops.ui.distribuicao.desempate-titulo"}}>{{t "fleet-ops.ui.distribuicao.desempate"}}</span>{{/if}}
                                     </div>
                                 {{/each}}
                             </div>

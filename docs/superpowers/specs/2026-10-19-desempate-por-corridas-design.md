@@ -82,8 +82,8 @@ Sem as chaves (fila antiga), a linha fica como hoje. Funções puras em `utils/d
 No `entregas-navigator`, em `translations/pt.json` (e `en.json`), seção `SobreScreen`, uma frase nova depois da
 `oferta1`:
 
-> "Se dois ou mais motoboys chegariam ao cliente com até 3 minutos de diferença, a oferta vai primeiro para quem fez
-> menos corridas hoje."
+> "Quem chegaria ao cliente até 3 minutos depois do mais rápido entra no desempate: a oferta vai primeiro para quem fez
+> menos corridas hoje." (chave `ofertaDesempate`; a regra conta a partir do mais rápido, não entre pares.)
 
 É só texto. O motoboy só vê a frase depois que o próximo APK for instalado. A regra vale no servidor desde o deploy da API.
 

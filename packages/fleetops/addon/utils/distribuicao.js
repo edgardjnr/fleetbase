@@ -66,6 +66,17 @@ export function inteiroPositivo(bruto, padrao = 1) {
     return Number.isInteger(valor) && valor >= 1 ? valor : padrao;
 }
 
+/** Corridas de hoje de uma linha da fila (desempate): inteiro ≥ 0, ou null quando a fila é de antes do desempate. */
+export function corridasHoje(item) {
+    const bruto = item?.corridas_hoje;
+    if (bruto === null || bruto === undefined || bruto === '') {
+        return null;
+    }
+    const valor = Number(bruto);
+
+    return Number.isInteger(valor) && valor >= 0 ? valor : null;
+}
+
 /** Metros → km com até 1 casa, no idioma ativo ("6", "7,5"); null se não for um número positivo. */
 export function kmTexto(metros, locale = 'pt-BR') {
     if (metros === null || metros === undefined || metros === '') {

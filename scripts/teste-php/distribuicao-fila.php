@@ -6,9 +6,15 @@
 require __DIR__ . '/stubs-ifood.php';
 require __DIR__ . '/stubs-ifood-fleetbase.php';
 
+use App\Support\Entregas\Distribuicao\Candidatos;
 use App\Support\Entregas\Distribuicao\Distribuicao;
 use App\Support\Entregas\Distribuicao\EstimadorDeTempo;
+use App\Support\Entregas\Distribuicao\FilaDeCandidatos;
 use App\Support\Entregas\Distribuicao\Pontos;
+use Fleetbase\FleetOps\Models\Driver;
+use Fleetbase\FleetOps\Models\Order;
+use Illuminate\Support\Facades\DB;
+use Teste\Banco;
 use Teste\Config;
 use Teste\Http;
 
@@ -59,11 +65,6 @@ Http::responder(200, ['code' => 'TooBig']);
 confere(str_contains(json_encode(\Illuminate\Support\Facades\Log::$registros), 'TooBig'),'o code da resposta vai ao log');
 
 echo '== FilaDeCandidatos' . PHP_EOL;
-use App\Support\Entregas\Distribuicao\Candidatos;
-use App\Support\Entregas\Distribuicao\FilaDeCandidatos;
-use Fleetbase\FleetOps\Models\Driver;
-use Fleetbase\FleetOps\Models\Order;
-
 /** Um Point como o do Fleet-Ops (getLat/getLng). */
 function ponto(array $p): object
 {
@@ -185,5 +186,92 @@ Candidatos::elegiveis($pedido, []);
 confere($raioRecebido === null, 'sem raio: null (a busca usa o raio de pedido aberto)');
 Candidatos::$buscarMotoboys = null;
 Candidatos::$buscarParadas  = null;
+
+echo '== Desempate por corridas do dia (ordenar)' . PHP_EOL;
+/** Uma linha da fila como a do FilaDeCandidatos::para; $corridas null = sem a chave (fila de antes do desempate). */
+function linhaDaFila(string $id, int $tempo, ?int $corridas, bool $livre = true): array
+{
+    $linha = ['motoboy_uuid' => 'd-' . $id, 'public_id' => 'driver_' . $id, 'nome' => $id, 'tempo_s' => $tempo, 'encaixe' => false, 'aproximado' => false, 'livre' => $livre, 'distancia_m' => 0];
+    if ($corridas !== null) {
+        $linha['corridas_hoje'] = $corridas;
+    }
+
+    return $linha;
+}
+
+confere(Distribuicao::DESEMPATE_CORRIDAS_S === 180, 'limite do desempate: 3 min');
+
+// o exemplo da spec: Ana 10 min (4), Beto 12 min (1), Caio 13 min (2), Davi 14 min (0, fora: 4 min acima da Ana)
+$fila = FilaDeCandidatos::ordenar([linhaDaFila('davi', 840, 0), linhaDaFila('ana', 600, 4), linhaDaFila('caio', 780, 2), linhaDaFila('beto', 720, 1)]);
+confere(array_column($fila, 'public_id') === ['driver_beto', 'driver_caio', 'driver_ana', 'driver_davi'], 'até 3 min do mais rápido: menos corridas primeiro; o resto pelo tempo (' . json_encode(array_column($fila, 'public_id')) . ')');
+confere(array_column($fila, 'desempate') === [true, true, false, false], 'desempate marcado em quem passou à frente de alguém mais rápido (' . json_encode(array_column($fila, 'desempate')) . ')');
+
+// Beto recusou: o grupo é refeito a partir da Ana (até 13 min)
+$fila = FilaDeCandidatos::ordenar([linhaDaFila('ana', 600, 4), linhaDaFila('caio', 780, 2), linhaDaFila('davi', 840, 0)]);
+confere(array_column($fila, 'public_id') === ['driver_caio', 'driver_ana', 'driver_davi'], 'fila refeita sem o Beto: Caio, Ana, Davi (' . json_encode(array_column($fila, 'public_id')) . ')');
+
+$fila = FilaDeCandidatos::ordenar([linhaDaFila('a', 600, 5), linhaDaFila('b', 780, 0), linhaDaFila('c', 781, 0)]);
+confere(array_column($fila, 'public_id') === ['driver_b', 'driver_a', 'driver_c'], 'limite exato: 180 s entra no grupo, 181 s fica fora (' . json_encode(array_column($fila, 'public_id')) . ')');
+
+$fila = FilaDeCandidatos::ordenar([linhaDaFila('a', 700, 2), linhaDaFila('b', 650, 2)]);
+confere(array_column($fila, 'public_id') === ['driver_b', 'driver_a'] && array_column($fila, 'desempate') === [false, false], 'empate em corridas: o menor tempo, sem desempate');
+
+$fila = FilaDeCandidatos::ordenar([linhaDaFila('c', 650, 0), linhaDaFila('a', 600, 0, false), linhaDaFila('b', 600, 0)]);
+confere(array_column($fila, 'public_id') === ['driver_b', 'driver_a', 'driver_c'], 'todos com 0: a ordem de antes (tempo, o livre, o public_id) (' . json_encode(array_column($fila, 'public_id')) . ')');
+
+$fila = FilaDeCandidatos::ordenar([linhaDaFila('a', 600, null), linhaDaFila('b', 700, 1)]);
+confere(array_column($fila, 'public_id') === ['driver_a', 'driver_b'] && $fila[0]['corridas_hoje'] === 0, 'linha sem corridas_hoje vale 0');
+
+confere(FilaDeCandidatos::ordenar([]) === [], 'fila vazia: vazia');
+confere(FilaDeCandidatos::ordenar([linhaDaFila('a', 600, 9)])[0]['desempate'] === false, 'um só candidato: sem desempate');
+
+echo '== Corridas de hoje (Candidatos::corridasHoje)' . PHP_EOL;
+reiniciarIfood(); // banco em memória vazio; o relógio dos stubs está em 2026-10-05 15:00 (Brasília)
+$pedidoDoDia = fn (array $c) => DB::table('orders')->insert([$c + ['company_uuid' => 'empresa-1', 'deleted_at' => null, 'status' => 'completed', 'started_at' => null, 'dispatched_at' => null]]);
+$pedidoDoDia(['driver_assigned_uuid' => 'd-a', 'started_at' => '2026-10-05 09:00:00']);                           // conta
+$pedidoDoDia(['driver_assigned_uuid' => 'd-a', 'status' => 'dispatched', 'dispatched_at' => '2026-10-05 14:50:00']); // atribuído pela central: conta pelo despacho
+$pedidoDoDia(['driver_assigned_uuid' => 'd-a', 'started_at' => '2026-10-04 23:59:59', 'dispatched_at' => '2026-10-04 23:50:00']); // ontem
+$pedidoDoDia(['driver_assigned_uuid' => 'd-a', 'status' => 'canceled', 'started_at' => '2026-10-05 10:00:00']);
+$pedidoDoDia(['driver_assigned_uuid' => 'd-a', 'status' => 'expired', 'started_at' => '2026-10-05 10:00:00']);
+$pedidoDoDia(['driver_assigned_uuid' => 'd-a', 'started_at' => '2026-10-05 10:00:00', 'deleted_at' => '2026-10-05 11:00:00']);
+$pedidoDoDia(['driver_assigned_uuid' => 'd-b', 'status' => 'started', 'started_at' => '2026-10-05 00:00:00']);    // meia-noite em ponto: conta
+$pedidoDoDia(['driver_assigned_uuid' => 'd-b', 'company_uuid' => 'outra', 'started_at' => '2026-10-05 10:00:00']);
+$pedidoDoDia(['driver_assigned_uuid' => 'd-c', 'started_at' => '2026-10-05 10:00:00']);                           // não foi pedido
+$pedidoDoDia(['driver_assigned_uuid' => 'd-b']);                                                                    // sem started_at nem dispatched_at
+$pedidoDoDia(['driver_assigned_uuid' => 'd-r', 'started_at' => '2026-10-04 22:00:00', 'dispatched_at' => '2026-10-05 08:00:00']); // aceito ontem, redespachado hoje: o COALESCE usa o started_at, não conta
+$corridas = Candidatos::corridasHoje('empresa-1', ['d-a', 'd-b', 'd-r']);
+ksort($corridas);
+confere($corridas === ['d-a' => 2, 'd-b' => 1], 'hoje em Brasília, sem cancelados, expirados, apagados, outra empresa, outro motoboy e redespachado de ontem (' . json_encode($corridas) . ')');
+
+// 22:30 em Brasília já é 01:30 UTC do dia seguinte: o "hoje" continua o de Brasília
+\Teste\Relogio::$agora = '2026-10-05 22:30:00';
+$corridas = Candidatos::corridasHoje('empresa-1', ['d-a', 'd-b']);
+ksort($corridas);
+confere($corridas === ['d-a' => 2, 'd-b' => 1], 'às 22:30 de Brasília (01:30 UTC do dia 6) o dia ainda é o 5 (' . json_encode($corridas) . ')');
+\Teste\Relogio::$agora = '2026-10-05 15:00:00';
+confere(Candidatos::corridasHoje('empresa-1', []) === [], 'sem motoboys: vazio, sem consultar');
+
+Banco::$falharAoConsultar['orders'] = new \RuntimeException('banco fora');
+confere(Candidatos::corridasHoje('empresa-1', ['d-a']) === [], 'falha na consulta: vazio (todos com 0)');
+confere(logou('não deu para contar as corridas de hoje', 'warning'), 'falha fica no log');
+
+reiniciarIfood();
+Candidatos::$buscarCorridasHoje = fn () => throw new \RuntimeException('falhou');
+confere(Candidatos::corridasHoje('empresa-1', ['d-a']) === [] && logou('não deu para contar as corridas de hoje', 'warning'), 'falha da closure dos testes: vazio, com o log');
+
+// elegiveis põe corridas_hoje em cada candidato, e para() leva o número para a fila
+Candidatos::$buscarMotoboys = fn () => [
+    ['motoboy' => motoboy('a', 'Ana', $coleta), 'posicao' => $coleta, 'distancia' => 0.0],
+    ['motoboy' => motoboy('b', 'Bia', $coleta), 'posicao' => $coleta, 'distancia' => 0.0],
+];
+Candidatos::$buscarParadas      = fn () => [];
+Candidatos::$buscarCorridasHoje = fn (string $empresa, array $uuids) => ['d-a' => 3];
+$elegiveis = Candidatos::elegiveis($pedido, []);
+confere(array_column($elegiveis, 'corridas_hoje') === [3, 0], 'elegiveis: corridas_hoje de cada candidato, 0 para quem não aparece');
+$fila = (new FilaDeCandidatos($estimador))->para($pedido, $elegiveis);
+confere(array_column($fila, 'public_id') === ['driver_b', 'driver_a'] && array_column($fila, 'corridas_hoje') === [0, 3], 'para: mesmo tempo, Bia (0 hoje) antes de Ana (3)');
+Candidatos::$buscarMotoboys     = null;
+Candidatos::$buscarParadas      = null;
+Candidatos::$buscarCorridasHoje = null;
 
 resumo();
