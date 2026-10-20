@@ -1,6 +1,6 @@
 import Component from '@glimmer/component';
 import { inject as service } from '@ember/service';
-import { CANCELAVEIS, nomeDoCliente, origemDoPedido } from '../../../utils/entregas-pedido';
+import { CANCELAVEIS, nomeDoCliente, origemDoPedido, textoDoEta } from '../../../utils/entregas-pedido';
 import { capaceteDaSituacao } from '../../../utils/motoboys-no-mapa';
 
 /**
@@ -58,14 +58,15 @@ export default class PortalOrderListCardComponent extends Component {
         return tracking.summary ?? tracking;
     }
 
+    // o eta do Fleet-Ops é um objeto (segundos até a entrega): textoDoEta o põe em "N min" (antes saía "[object Object]")
     get etaLabel() {
-        return (
-            this.order.eta ??
-            this.order.eta_at ??
-            this.order.estimated_arrival_at ??
-            this.trackingSummary.eta ??
-            this.trackingSummary.estimated_arrival_at ??
-            this.trackingSummary.destination_eta
-        );
+        return textoDoEta([
+            this.order.eta,
+            this.order.eta_at,
+            this.order.estimated_arrival_at,
+            this.trackingSummary.eta,
+            this.trackingSummary.estimated_arrival_at,
+            this.trackingSummary.destination_eta,
+        ]);
     }
 }
