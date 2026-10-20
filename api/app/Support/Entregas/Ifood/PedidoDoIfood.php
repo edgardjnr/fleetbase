@@ -2,6 +2,7 @@
 
 namespace App\Support\Entregas\Ifood;
 
+use App\Support\Entregas\ItensDoPedido;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
@@ -40,6 +41,7 @@ use Illuminate\Support\Facades\Log;
  *   pago online. Valor acima de R$ 100 mil (CENTAVOS_MAXIMO) é implausível: a cobrança vira 0 (com o aviso de
  *   pagamento inconsistente) e o troco, nulo, para o insert não estourar a coluna.
  * - 0800 e localizador do cliente (`customer.phone`) com a expiração do localizador.
+ * - Produtos (`items`): `itens` no formato do app (ItensDoPedido), na ordem do `index`, e o JSON na linha (itens()).
  *
  * Datas em texto 'Y-m-d H:i:s' no fuso do app (o mesmo da sessão do MySQL: horário de Brasília; ver CLAUDE.md, "Fuso
  * (horário de Brasília)"). As contas são feitas em UTC e só a saída é convertida (paraOBanco). Data que não é ISO com
@@ -116,6 +118,7 @@ final class PedidoDoIfood
         $cep    = static::texto($endereco['postalCode'] ?? null, 20);
 
         $marcas = ($teste ? ' [TESTE]' : '') . ($semCoordenadas ? ' [SEM LOCALIZAÇÃO]' : '') . ($semJanela ? ' [AGENDADO SEM HORÁRIO]' : '');
+        $itens  = static::itens($pedido['items'] ?? null);
 
         return [
             'numero'          => $numero,
@@ -126,6 +129,7 @@ final class PedidoDoIfood
             'despachar_agora' => !$semDespacho && !$agendado,
             'scheduled_at'    => !$semDespacho && $agendado ? static::paraOBanco($despacharEm) : null,
             'notas'           => 'iFood #' . $numero . $marcas,
+            'itens'           => $itens,
             'entrega'         => [
                 'nome'         => static::texto($cliente['name'] ?? null, 120) ?? 'Cliente iFood',
                 'street1'      => $rua ?? 'Endereço do iFood',
@@ -153,8 +157,50 @@ final class PedidoDoIfood
                 'teste'               => $teste,
                 'agendado'            => $agendado,
                 'despachar_em'        => $semDespacho ? null : static::paraOBanco($despacharEm),
+                'itens'               => ItensDoPedido::paraOBanco($itens),
             ],
         ];
+    }
+
+    /**
+     * Os produtos do Logistics (`items[{index, name, quantity, options[{name, quantity}]}]`, formato da sonda) no
+     * formato do app (ItensDoPedido), na ordem do `index` (sem `index`, no fim, na ordem em que vieram). Item sem
+     * `name` não entra: a tabela da documentação (só index, quantity e weight) é de outra resposta; conferir no
+     * primeiro pedido de teste. O Logistics não traz observação do item; se vier `observations`, ela entra.
+     */
+    public static function itens($items): ?array
+    {
+        if (!is_array($items) || !array_is_list($items)) {
+            return null;
+        }
+
+        $ordem = [];
+        foreach ($items as $posicao => $item) {
+            if (is_array($item)) {
+                $ordem[] = [is_numeric($item['index'] ?? null) ? (float) $item['index'] : INF, $posicao, $item];
+            }
+        }
+        usort($ordem, fn (array $a, array $b) => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+
+        return ItensDoPedido::normalizar(array_map(fn (array $linha) => [
+            'quantidade' => $linha[2]['quantity'] ?? null,
+            'nome'       => $linha[2]['name'] ?? null,
+            'opcoes'     => static::opcoesDoIfood($linha[2]['options'] ?? null),
+            'observacao' => $linha[2]['observations'] ?? null,
+        ], $ordem));
+    }
+
+    /** `options[{name, quantity}]` com os nomes do contrato (o ItensDoPedido descarta o que não serve). */
+    protected static function opcoesDoIfood($opcoes): ?array
+    {
+        if (!is_array($opcoes)) {
+            return null;
+        }
+
+        return array_map(
+            fn ($opcao) => is_array($opcao) ? ['quantidade' => $opcao['quantity'] ?? null, 'nome' => $opcao['name'] ?? null] : null,
+            $opcoes
+        );
     }
 
     /**

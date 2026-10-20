@@ -83,3 +83,22 @@ function pedidoAgendado(string $inicio = '2026-10-05T20:00:00.000Z'): array
 
     return $pedido;
 }
+
+/**
+ * Pedido real com dois produtos no formato da sonda de 2026-10-05 (`items[{index, name, quantity, options[{name,
+ * quantity}]}]`), fora da ordem do `index` de propósito; o combo traz complementos.
+ */
+function pedidoComProdutos(): array
+{
+    $pedido          = pedidoEmDinheiroComTroco();
+    $pedido['id']    = 'pedido-produtos-1';
+    $pedido['items'] = [
+        ['index' => 2, 'name' => 'PRODUTO 2 (COMBO) - Primeiro Nível', 'quantity' => 1, 'options' => [
+            ['name' => 'Complemento 1 - Segundo Nível', 'quantity' => 1],
+            ['name' => 'Complemento 2 - Segundo Nível', 'quantity' => 2],
+        ]],
+        ['index' => 1, 'name' => 'PRODUTO 1 - Primeiro Nível', 'quantity' => 2, 'options' => []],
+    ];
+
+    return $pedido;
+}
