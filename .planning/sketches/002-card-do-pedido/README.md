@@ -35,4 +35,8 @@ Telas: 1 Lista (5 pedidos) · 2 Lista cheia (12) · 3 Pedido aberto · 4 Celular
 - iFood e RestaurantePro: o número já existe no selo de origem (`origemDoPedido(notas, internal_id)` em
   `addon/utils/entregas-pedido.js`, hoje mostrado como "iFood #4821").
 - Pedido criado no portal não tem número próprio: o sketch mostra o código de rastreio (o que o card mostra hoje).
-- O nome do cliente no card depende do dado chegar no pedido (a conferir na implementação).
+- Nome do cliente = nome do Local de entrega do pedido (`payload.dropoff.name`): o iFood manda `customer.name`
+  (`PedidoDoIfood.php`, sem nome vira "Cliente iFood"); a RestaurantePro manda `cliente.nome`, obrigatório
+  (`CriadorDoPedidoDaIntegracao.php`, em maiúsculas). Aparece no card (linha 2) e no detalhe ("Entrega · <nome>").
+- **Decisão (2026-10-19):** no novo pedido do portal, o campo "Nome do endereço" passa a se chamar **"Nome do
+  cliente"** (`customer-portal.ui.place.address-label` e o placeholder). Em branco, o card mostra só o motoboy e a hora.
