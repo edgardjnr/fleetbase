@@ -2,6 +2,8 @@
 
 namespace App\Support\Entregas\Integracao;
 
+use App\Support\Entregas\ItensDoPedido;
+
 /**
  * Entregas RestaurantePro: confere e normaliza o corpo do POST v1/entregas/integracao/pedidos (função pura). Devolve
  * ['erros' => [...], 'dados' => [...]|null], com todos os erros de uma vez; as mensagens citam o campo (quem lê é o
@@ -9,6 +11,9 @@ namespace App\Support\Entregas\Integracao;
  *
  * Normaliza: textos sem espaços sobrando (as observações mantêm a quebra de linha), telefone só com dígitos, UF em
  * maiúsculas, CEP "99999-999", valores em centavos (aceita "58,90"), troco 0 = sem troco, forma em minúsculas.
+ *
+ * `itens` (opcional, spec 2026-10-19-produtos-do-pedido-servidor-design.md) nunca gera erro: o que não serve cai
+ * (ItensDoPedido::normalizar) e o resto do pedido entra. Sem item válido, `itens` = null.
  */
 final class PedidoDaIntegracao
 {
@@ -65,6 +70,7 @@ final class PedidoDaIntegracao
             'cobranca_centavos'   => $centavos,
             'troco_para_centavos' => $troco,
             'observacoes'         => $observacoes,
+            'itens'               => ItensDoPedido::normalizar(static::campo($corpo, 'itens')),
         ]];
     }
 

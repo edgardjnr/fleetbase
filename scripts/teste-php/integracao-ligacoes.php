@@ -77,6 +77,16 @@ confere(DadosDaIntegracaoDoMotoboy::resposta($linha, (object) ['status' => 'disp
 confere(DadosDaIntegracaoDoMotoboy::resposta($linha, (object) ['status' => 'enroute', 'driver_assigned_uuid' => 'driver-2'], 'driver-1')['telefone'] === null, 'pedido de outro motoboy: sem telefone');
 confere(DadosDaIntegracaoDoMotoboy::resposta($linha, (object) ['status' => 'completed', 'driver_assigned_uuid' => 'driver-1'], 'driver-1')['telefone'] === null, 'encerrado: sem telefone');
 confere(DadosDaIntegracaoDoMotoboy::resposta(null, (object) ['status' => 'enroute', 'driver_assigned_uuid' => 'driver-1'], 'driver-1') === ['integracao' => false], 'não é da integração');
+confere(array_key_exists('itens', $dados) && $dados['itens'] === null, 'pedido antigo (linha sem itens): itens null');
+$comItens        = clone $linha;
+$comItens->itens = '[{"nome": "Pizza grande", "quantidade": 2}]';
+$aberto          = DadosDaIntegracaoDoMotoboy::resposta($comItens, (object) ['public_id' => 'order_1', 'status' => 'dispatched', 'driver_assigned_uuid' => null], 'driver-1');
+confere($aberto['itens'] === [['quantidade' => 2, 'nome' => 'Pizza grande']] && $aberto['telefone'] === null, 'pedido aberto: os itens vão (na ordem do contrato), o telefone não');
+$comItens->itens = '[{"nome": "Pizza grande"';
+\Illuminate\Support\Facades\Log::$registros = [];
+$quebrado = DadosDaIntegracaoDoMotoboy::resposta($comItens, (object) ['public_id' => 'order_1', 'status' => 'enroute', 'driver_assigned_uuid' => 'driver-1'], 'driver-1');
+confere($quebrado['itens'] === null && $quebrado['telefone'] === '16999990000' && $quebrado['numero'] === '4821', 'JSON quebrado: itens null e o resto da resposta igual');
+confere(logou('[entregas] itens do pedido ilegíveis no banco', 'warning') && \Illuminate\Support\Facades\Log::$registros[0][2]['pedido'] === 'order_1' && logsSem(['Pizza grande']), 'warning só com o id do pedido');
 
 echo '== Stack' . PHP_EOL;
 confere(str_contains($stack, 'ENTREGAS_INTEGRACAO: ${ENTREGAS_INTEGRACAO:-}') && str_contains($stack, 'ENTREGAS_CONSOLE_URL: ${ENTREGAS_CONSOLE_URL:-https://entregas.restaurantepro.com.br}'), 'as duas variáveis no x-api-env');

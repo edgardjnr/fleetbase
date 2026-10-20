@@ -15,6 +15,7 @@ use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Entregas RestaurantePro: a API dos sistemas de origem (v1/entregas/integracao/*), autenticada pela chave da loja no
@@ -64,6 +65,8 @@ class IntegracaoController extends Controller
             return response()->json(['errors' => $validacao['erros']], 422);
         }
 
+        static::avisarItensDescartados($loja, (array) $request->all(), $validacao['dados']);
+
         try {
             [$linha, $novo] = $criador->criar($loja, $validacao['dados']);
         } catch (ErroDaIntegracao $e) {
@@ -71,6 +74,29 @@ class IntegracaoController extends Controller
         }
 
         return response()->json(static::recurso($linha, $this->order($linha)), $novo ? 201 : 200);
+    }
+
+    /**
+     * Os `itens` são um extra e nunca recusam o pedido; se a origem mandou e a normalização aceitou menos do que veio
+     * (inclusive zero), fica um log só com as contagens (nunca o conteúdo) para a central achar o motivo.
+     */
+    protected static function avisarItensDescartados(object $loja, array $corpo, array $dados): void
+    {
+        $bruto = PedidoDaIntegracao::campo($corpo, 'itens');
+        if ($bruto === null) {
+            return;
+        }
+
+        $recebidos = is_array($bruto) ? count($bruto) : 1;
+        $aceitos   = count($dados['itens'] ?? []);
+        if ($aceitos < $recebidos) {
+            Log::info('[entregas] integração: itens descartados', [
+                'loja'           => $loja->vendor_uuid,
+                'pedido_externo' => $dados['pedido_externo_id'],
+                'recebidos'      => $recebidos,
+                'aceitos'        => $aceitos,
+            ]);
+        }
     }
 
     public function consultar(Request $request, string $id)

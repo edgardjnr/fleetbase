@@ -244,6 +244,48 @@ confere(PedidoDoIfood::mapear($longe, LAT_COLETA, LNG_COLETA, $agora)['linha']['
 $dados = PedidoDoIfood::mapear(pedidoAgendado('2099-01-01T00:00:00.000Z'), LAT_COLETA, LNG_COLETA, $agora);
 confere($dados['sem_janela'] === true && $dados['scheduled_at'] === null && $dados['linha']['despachar_em'] === null, 'janela do agendado em 2099: sem janela (nenhuma data fora da faixa chega ao banco)');
 
+echo '== Produtos do pedido (itens)' . PHP_EOL;
+$dados = PedidoDoIfood::mapear(pedidoEmDinheiroComTroco(), LAT_COLETA, LNG_COLETA, $agora);
+confere($dados['itens'] === [['quantidade' => 1, 'nome' => 'Pizza grande']], 'o produto do pedido no formato do app');
+confere($dados['linha']['itens'] === '[{"quantidade":1,"nome":"Pizza grande"}]', 'o JSON vai na linha (gravada pelo criador)');
+$dados = PedidoDoIfood::mapear(pedidoComProdutos(), LAT_COLETA, LNG_COLETA, $agora);
+confere($dados['itens'] === [
+    ['quantidade' => 2, 'nome' => 'PRODUTO 1 - Primeiro Nível'],
+    ['quantidade' => 1, 'nome' => 'PRODUTO 2 (COMBO) - Primeiro Nível', 'opcoes' => [
+        ['quantidade' => 1, 'nome' => 'Complemento 1 - Segundo Nível'],
+        ['quantidade' => 2, 'nome' => 'Complemento 2 - Segundo Nível'],
+    ]],
+], 'na ordem do index, com as opções (complementos)');
+$semItens = pedidoEmDinheiroComTroco();
+unset($semItens['items']);
+$dados = PedidoDoIfood::mapear($semItens, LAT_COLETA, LNG_COLETA, $agora);
+confere($dados['itens'] === null && $dados['linha']['itens'] === null, 'sem items: null');
+$semNome          = pedidoEmDinheiroComTroco();
+$semNome['items'] = [['index' => 1, 'quantity' => 2, 'weight' => ['unit' => 'GRAMS', 'value' => 500]]];
+confere(PedidoDoIfood::mapear($semNome, LAT_COLETA, LNG_COLETA, $agora)['itens'] === null, 'item sem name (a tabela da documentação): não entra');
+$semIndice          = pedidoEmDinheiroComTroco();
+$semIndice['items'] = [['name' => 'Lanche', 'quantity' => 1, 'observations' => 'sem cebola'], ['index' => 1, 'name' => 'Suco', 'quantity' => 1]];
+confere(PedidoDoIfood::mapear($semIndice, LAT_COLETA, LNG_COLETA, $agora)['itens'] === [
+    ['quantidade' => 1, 'nome' => 'Suco'],
+    ['quantidade' => 1, 'nome' => 'Lanche', 'observacao' => 'sem cebola'],
+], 'sem index vai para o fim; observations do item vira observacao');
+$estranho          = pedidoEmDinheiroComTroco();
+$estranho['items'] = ['a' => ['name' => 'Pizza']];
+confere(PedidoDoIfood::mapear($estranho, LAT_COLETA, LNG_COLETA, $agora)['itens'] === null, 'items que não é lista: null (o pedido nasce igual)');
+
+$repetido          = pedidoEmDinheiroComTroco();
+$repetido['items'] = [['index' => 1, 'name' => 'Primeiro', 'quantity' => 1], ['index' => 1, 'name' => 'Segundo', 'quantity' => 1], ['index' => 0, 'name' => 'Zero', 'quantity' => 1]];
+confere(array_column(PedidoDoIfood::mapear($repetido, LAT_COLETA, LNG_COLETA, $agora)['itens'], 'nome') === ['Zero', 'Primeiro', 'Segundo'], 'index repetido: mantém a ordem de chegada');
+$emTexto          = pedidoEmDinheiroComTroco();
+$emTexto['items'] = [['index' => '1', 'name' => 'B', 'quantity' => 1], ['index' => '0', 'name' => 'A', 'quantity' => 1]];
+confere(array_column(PedidoDoIfood::mapear($emTexto, LAT_COLETA, LNG_COLETA, $agora)['itens'], 'nome') === ['A', 'B'], 'index numérico em texto ("0"): ordena como número');
+$opcoesRuins          = pedidoEmDinheiroComTroco();
+$opcoesRuins['items'] = [['name' => 'Pizza', 'quantity' => 1, 'options' => 'Borda'], ['name' => 'Suco', 'quantity' => 1, 'options' => ['a' => ['name' => 'Gelo']]]];
+confere(PedidoDoIfood::mapear($opcoesRuins, LAT_COLETA, LNG_COLETA, $agora)['itens'] === [['quantidade' => 1, 'nome' => 'Pizza'], ['quantidade' => 1, 'nome' => 'Suco']], 'options que não é lista: o item entra sem opcoes');
+$entradas          = pedidoEmDinheiroComTroco();
+$entradas['items'] = [null, 'texto', 7, ['name' => 'Pizza', 'quantity' => 1]];
+confere(PedidoDoIfood::mapear($entradas, LAT_COLETA, LNG_COLETA, $agora)['itens'] === [['quantidade' => 1, 'nome' => 'Pizza']], 'null e texto dentro de items caem; o item válido fica');
+
 echo '== Docblocks de até 120 colunas' . PHP_EOL;
 $longas = [];
 foreach (file(dirname(__DIR__, 2) . '/api/app/Support/Entregas/Ifood/PedidoDoIfood.php') as $n => $linhaDoArquivo) {

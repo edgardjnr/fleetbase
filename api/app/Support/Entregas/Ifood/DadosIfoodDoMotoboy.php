@@ -2,18 +2,22 @@
 
 namespace App\Support\Entregas\Ifood;
 
+use App\Support\Entregas\ItensDoPedido;
 use App\Support\Entregas\StatusDoPedido;
 use Illuminate\Support\Carbon;
 
 /**
  * Entregas RestaurantePro: o que o app do motoboy recebe de um pedido iFood (GET v1/entregas/motoboy/pedidos/{id}/ifood:
- * card de aceitar e detalhes). Função pura sobre a linha da entregas_ifood_pedidos e o Order.
+ * card de aceitar e detalhes). Sobre a linha da entregas_ifood_pedidos e o Order, sem consultar o banco (só grava
+ * o warning dos itens ilegíveis, com ids).
  *
  * - Pedido que não é do iFood: {"ifood": false} (o app chama para todos e só mostra o bloco quando é).
  * - Número, cobrança (centavos, forma em pt-BR, troco e o texto da CobrancaIfood), observações, complemento,
  *   referência, se exige código, se a conclusão já foi liberada e se o iFood cancelou (com o pago mesmo cancelado).
  * - 0800 e localizador do cliente só para o motoboy do pedido, com o pedido em andamento e antes da expiração do
  *   localizador (telefone_expira_em, texto no fuso do app; sem data = vale). No pedido ainda aberto, não vão.
+ * - Produtos (`itens`, ItensDoPedido::doBanco): a todo motoboy que pode ler a rota, inclusive com o pedido aberto (o
+ *   app mostra a linha resumida antes do aceite). Pedido antigo = null; JSON quebrado = null e um warning.
  */
 final class DadosIfoodDoMotoboy
 {
@@ -57,6 +61,7 @@ final class DadosIfoodDoMotoboy
             'cancelado_pelo_ifood' => (bool) $linha->cancelado_pelo_ifood_em,
             'pago_mesmo_cancelado' => (bool) $linha->pago_mesmo_cancelado,
             'telefone'             => $telefone,
+            'itens'                => ItensDoPedido::doBanco($linha->itens ?? null, ['pedido' => $pedido->public_id ?? null]),
         ];
     }
 }

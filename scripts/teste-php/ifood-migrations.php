@@ -90,6 +90,21 @@ Schema::$alteradas = [];
 $indices = array_map(fn ($c) => [$c->tipo, $c->argumentos[0] ?? null], Schema::$alteradas['entregas_ifood_pedidos'][0]->colunas ?? []);
 confere($indices === [['index', ['created_at']]], 'índice em created_at (a janela usa despachado_em, já indexado, ou created_at)');
 
+echo '== entregas_ifood_pedidos: produtos do pedido (itens)' . PHP_EOL;
+Schema::$alteradas = [];
+$migracao = require '/repo/api/database/migrations/2026_10_19_120000_add_itens_to_entregas_ifood_pedidos_table.php';
+$migracao->up();
+$itens = Schema::$alteradas['entregas_ifood_pedidos'][0]->colunas ?? [];
+confere(count($itens) === 1 && tem(['itens' => $itens[0]], 'itens', 'json', ['nullable']) && $itens[0]->argumentos === ['itens'], 'itens: json nulo');
+confere(excecao(fn () => \Teste\Banco::exigirColuna('entregas_ifood_pedidos', 'itens')) === null, 'o banco em memória conhece a coluna itens');
+\Teste\Banco::limpar();
+\Teste\Banco::inserir('entregas_ifood_pedidos', ['pedido_ifood_id' => 'p-2', 'order_uuid' => 'o-2'], false);
+confere(\Teste\Banco::linhas('entregas_ifood_pedidos')[0]->itens === null, 'pedido sem itens: NULL');
+Schema::$alteradas = [];
+$migracao->down();
+$desfeito = Schema::$alteradas['entregas_ifood_pedidos'][0]->colunas[0] ?? null;
+confere($desfeito && $desfeito->tipo === 'dropColumn' && $desfeito->argumentos === ['itens'], 'down tira a coluna');
+
 echo '== down' . PHP_EOL;
 foreach (['2026_10_05_120000_create_entregas_ifood_lojas_table.php' => 'entregas_ifood_lojas', '2026_10_05_120100_create_entregas_ifood_eventos_table.php' => 'entregas_ifood_eventos', '2026_10_05_120200_create_entregas_ifood_pedidos_table.php' => 'entregas_ifood_pedidos'] as $arquivo => $tabela) {
     (require '/repo/api/database/migrations/' . $arquivo)->down();

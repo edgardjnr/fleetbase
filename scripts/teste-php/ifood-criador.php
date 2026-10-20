@@ -225,4 +225,20 @@ $pedido = pedidoNaFila();
 $velho  = copiaVelha($pedido, ['dispatched' => false]);
 confere((new CriadorDoPedidoIfood())->despachar($velho) && $pedido->chamadas === ['saveQuietly', 'firstDispatchWithActivity'] && $pedido->adhoc === true, 'adhoc + firstDispatchWithActivity no pedido relido');
 
+echo '== Produtos do pedido gravados na linha' . PHP_EOL;
+$vinculo = preparar();
+$linha   = (new CriadorDoPedidoIfood())->criar($vinculo, pedidoComProdutos());
+confere(is_string($linha->itens) && json_decode($linha->itens, true) === [
+    ['quantidade' => 2, 'nome' => 'PRODUTO 1 - Primeiro Nível'],
+    ['quantidade' => 1, 'nome' => 'PRODUTO 2 (COMBO) - Primeiro Nível', 'opcoes' => [
+        ['quantidade' => 1, 'nome' => 'Complemento 1 - Segundo Nível'],
+        ['quantidade' => 2, 'nome' => 'Complemento 2 - Segundo Nível'],
+    ]],
+], 'itens (JSON) na linha, na mesma transação do pedido');
+confere(logsSem(['PRODUTO 1', 'Complemento 1']), 'os produtos não vão para o log');
+$vinculo  = preparar();
+$semItens = pedidoEmDinheiroComTroco();
+unset($semItens['items']);
+confere((new CriadorDoPedidoIfood())->criar($vinculo, $semItens)->itens === null, 'sem items: itens nulo, o pedido nasce igual');
+
 resumo();

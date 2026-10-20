@@ -4,6 +4,7 @@ namespace App\Support\Entregas\Integracao;
 
 use App\Support\Entregas\Coordenada;
 use App\Support\Entregas\Ifood\PedidoDoIfood;
+use App\Support\Entregas\ItensDoPedido;
 use App\Support\Entregas\StatusDoPedido;
 use App\Support\Entregas\TravaDoPedido;
 use Fleetbase\FleetOps\Models\Order;
@@ -26,7 +27,8 @@ use Illuminate\Support\Facades\Log;
  *   (o telefone fica na entregas_integracao_pedidos: o app só o mostra ao motoboy do pedido em andamento);
  * - Order tipo transport, internal_id = número da origem, notas "RestaurantePro #4821" + as observações;
  * - a linha da entregas_integracao_pedidos na mesma transação: (vendor_uuid, pedido_externo_id) único impede um segundo
- *   pedido para o mesmo pedido da origem (o reenvio devolve o mesmo);
+ *   pedido para o mesmo pedido da origem (o reenvio devolve o mesmo, sem atualizar nada, nem os `itens`);
+ * - os produtos (`itens`, já normalizados pelo PedidoDaIntegracao) vão na linha em JSON (ItensDoPedido::paraOBanco);
  * - ponto ausente, inválido (0,0) ou a mais de 50 km da coleta: tenta o Google uma vez; se ele também não servir, nasce
  *   sem despacho, adhoc falso, "[SEM LOCALIZAÇÃO]" nas notas
  *   e a entrega ~1 km ao norte da loja (a regra do iFood); a central atribui;
@@ -201,6 +203,7 @@ class CriadorDoPedidoDaIntegracao
             'cobranca_forma'      => $dados['cobranca_forma'],
             'cobranca_centavos'   => $dados['cobranca_centavos'],
             'troco_para_centavos' => $dados['troco_para_centavos'],
+            'itens'               => ItensDoPedido::paraOBanco($dados['itens'] ?? null),
             'sem_localizacao'     => $semLocalizacao,
             'created_at'          => $agora,
             'updated_at'          => $agora,

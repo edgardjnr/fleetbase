@@ -82,6 +82,43 @@ lojaIntegradaA();
 \Fleetbase\FleetOps\Models\Vendor::$todos[0]->place_uuid = null;
 $r = criarPelaRota();
 confere($r->status === 409 && str_contains($r->dados['errors'][0], 'local de coleta'), 'loja sem coleta: 409');
+reiniciarIntegracao();
+lojaIntegradaA();
+$r = criarPelaRota(['itens' => 'não é lista']);
+confere($r->status === 201 && !array_key_exists('itens', $r->dados), 'itens inválido: 201 mesmo assim; a resposta à origem não muda');
+foreach (['objeto' => ['nome' => 'Pizza'], 'número' => 12] as $caso => $itens) {
+    reiniciarIntegracao();
+    lojaIntegradaA();
+    $r = criarPelaRota(['itens' => $itens]);
+    $linha = linhaDaIntegracao(Order::$criados[0]->uuid);
+    confere($r->status === 201 && $linha !== null && $linha->itens === null, "itens como {$caso}: 201 e coluna itens nula");
+}
+reiniciarIntegracao();
+lojaIntegradaA();
+$r     = criarPelaRota(['itens' => [['quantidade' => 2, 'nome' => 'Pão de queijo', 'opcoes' => [['nome' => 'Molho']]], ['nome' => '']]]);
+$linha = linhaDaIntegracao(Order::$criados[0]->uuid);
+confere($r->status === 201 && $linha !== null && $linha->itens === '[{"quantidade":2,"nome":"Pão de queijo","opcoes":[{"quantidade":1,"nome":"Molho"}]}]', 'itens válidos pela rota: coluna itens gravada normalizada');
+
+$descartados = function ($itens): array {
+    reiniciarIntegracao();
+    lojaIntegradaA();
+    \Illuminate\Support\Facades\Log::$registros = [];
+    criarPelaRota(['itens' => $itens]);
+
+    return array_values(array_filter(\Illuminate\Support\Facades\Log::$registros, fn ($registro) => str_contains($registro[1], 'itens descartados')));
+};
+$logs = $descartados([['nome' => 'Pizza Secreta'], ['nome' => ''], 'x']);
+confere(count($logs) === 1 && $logs[0][0] === 'info' && $logs[0][2] === ['loja' => 'vendor-a', 'pedido_externo' => 'ord-6f1c', 'recebidos' => 3, 'aceitos' => 1], 'itens descartados: log só com as contagens e os ids');
+confere(logsSem(['Pizza Secreta']), 'o log dos itens não traz o nome do produto');
+$logs = $descartados('Pizza Secreta');
+confere(count($logs) === 1 && $logs[0][2]['recebidos'] === 1 && $logs[0][2]['aceitos'] === 0 && logsSem(['Pizza Secreta']), 'itens que não é lista: log com 1 recebido e 0 aceito');
+confere($descartados([['nome' => 'Pizza'], ['nome' => 'Suco']]) === [], 'tudo aceito: sem log');
+confere($descartados([]) === [], 'lista vazia: nada foi descartado, sem log');
+reiniciarIntegracao();
+lojaIntegradaA();
+\Illuminate\Support\Facades\Log::$registros = [];
+criarPelaRota();
+confere(!logou('itens descartados'), 'sem a chave itens: sem log');
 
 echo '== Consultar' . PHP_EOL;
 reiniciarIntegracao();

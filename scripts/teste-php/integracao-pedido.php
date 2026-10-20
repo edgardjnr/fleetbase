@@ -107,6 +107,20 @@ confere(validar(['observacoes' => "Sem cebola 😅\nObrigado"])['dados']['observ
 confere(validar(['cliente' => ['nome' => '王小明']])['dados']['cliente_nome'] === '王小明', 'nome em CJK');
 confere(validar(['cliente' => ['nome' => 'José Ângelo Çãõ']])['dados']['cliente_nome'] === 'José Ângelo Çãõ', 'acentos variados');
 
+echo '== Itens (produtos do pedido)' . PHP_EOL;
+$r = validar();
+confere($r['erros'] === [] && $r['dados']['itens'] === null, 'sem itens: null (o sistema que não manda continua igual)');
+$r = validar(['itens' => [
+    ['quantidade' => 2, 'nome' => '  Pizza grande ', 'opcoes' => [['nome' => 'Borda de catupiry'], ['quantidade' => 1]], 'observacao' => 'sem cebola'],
+    ['quantidade' => 1, 'nome' => ''],
+]]);
+confere($r['erros'] === [] && $r['dados']['itens'] === [['quantidade' => 2, 'nome' => 'Pizza grande', 'opcoes' => [['quantidade' => 1, 'nome' => 'Borda de catupiry']], 'observacao' => 'sem cebola']], 'normalizados; o item e a opção sem nome caem');
+foreach (['texto' => 'Pizza', 'número' => 12, 'objeto' => ['nome' => 'Pizza'], 'lista sem item válido' => [null, 'x', ['quantidade' => 2]]] as $caso => $itens) {
+    $r = validar(['itens' => $itens]);
+    confere($r['erros'] === [] && $r['dados']['itens'] === null && $r['dados']['numero'] === '4821', "itens inválido ({$caso}): o pedido não é recusado");
+}
+confere(count(validar(['itens' => array_fill(0, 60, ['nome' => 'Esfiha'])])['dados']['itens']) === 50, 'até 50 itens');
+
 echo '== Cobrança' . PHP_EOL;
 confere(CobrancaDaIntegracao::texto('dinheiro', 5890, 10000) === 'Cobrar R$ 58,90 · dinheiro · troco p/ R$ 100', 'dinheiro com troco');
 confere(CobrancaDaIntegracao::texto('dinheiro', 5890, null) === 'Cobrar R$ 58,90 · dinheiro', 'dinheiro sem troco');
