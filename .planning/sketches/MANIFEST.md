@@ -14,3 +14,4 @@ andamento no lugar do menu. Nas outras telas o menu continua como hoje. O foco d
 | # | Name | Design Question | Winner | Tags |
 |---|------|----------------|--------|------|
 | 001 | menu-retratil-lista-na-coluna | Como o menu recolhe e a lista de pedidos assume a coluna da esquerda na tela Pedidos? | **B** (menu na gaveta ☰; lista no cartão do menu) | portal-da-loja, layout, menu, pedidos |
+| 002 | card-do-pedido | Card com o número do pedido em destaque e sem endereços de coleta e entrega | **S** (A compacto: número + origem + situação; motoboy, cliente, hora e tempo; sem barra e sem endereços) | portal-da-loja, card, pedidos |

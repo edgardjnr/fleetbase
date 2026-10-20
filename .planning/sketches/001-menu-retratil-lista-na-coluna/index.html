@@ -230,8 +230,8 @@ table.t td.r, table.t th.r { text-align: right; }
 .ph-tabs div { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 0 10px; font-size: 10px; color: var(--color-muted); cursor: pointer; }
 .ph-tabs div i { font-size: 16px; }
 .ph-tabs div.on { color: var(--color-primary); font-weight: 700; }
-.fab { text-transform: none; letter-spacing: normal; font-size: 14px; position: absolute; right: 14px; bottom: 76px; z-index: 8; height: 44px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--color-primary); color: #fff; font-weight: 700; box-shadow: var(--shadow-lg); display: flex; gap: 8px; align-items: center; cursor: pointer; }
-.fab.low { bottom: 18px; }
+.fab-novo { text-transform: none; letter-spacing: normal; font-size: 14px; position: absolute; right: 14px; bottom: 76px; z-index: 8; height: 44px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--color-primary); color: #fff; font-weight: 700; box-shadow: var(--shadow-lg); display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.fab-novo.low { bottom: 18px; }
 .pf.phone .pf-strip { background: var(--color-surface); }
 .pf.phone .pf-strip .pf-item:not(.on) { width: 40px; }
 .pf.phone .oc { padding: 10px; }
@@ -579,7 +579,7 @@ function framePhone(v) {
   }
   h += `<div class="ph-map">${mapHTML(scr, true)}</div>`;
   h += `<div class="ph-sheet" data-note="Lista na folha"><div class="ph-handle"></div>${listInner(scr, true)}</div>`;
-  h += `<button class="fab ${v === 'a' ? '' : 'low'}" data-act="toast" data-msg="No celular, o Novo pedido abre em tela cheia">${I('plus')} Novo pedido</button>`;
+  h += `<button class="fab-novo ${v === 'a' ? '' : 'low'}" data-act="toast" data-msg="No celular, o Novo pedido abre em tela cheia">${I('plus')} Novo pedido</button>`;
   if (v === 'a') {
     h += `<div class="ph-tabs" data-note="Trilho vira barra embaixo">${MENU.map(([k, ic, nome]) => `<div class="${k === 'pedidos' ? 'on' : ''}" data-act="nav" data-to="${k}">${I(ic)}${nome === 'Configurações' ? 'Config.' : nome}</div>`).join('')}</div>`;
   }
