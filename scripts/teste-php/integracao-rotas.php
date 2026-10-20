@@ -86,6 +86,18 @@ reiniciarIntegracao();
 lojaIntegradaA();
 $r = criarPelaRota(['itens' => 'não é lista']);
 confere($r->status === 201 && !array_key_exists('itens', $r->dados), 'itens inválido: 201 mesmo assim; a resposta à origem não muda');
+foreach (['objeto' => ['nome' => 'Pizza'], 'número' => 12] as $caso => $itens) {
+    reiniciarIntegracao();
+    lojaIntegradaA();
+    $r = criarPelaRota(['itens' => $itens]);
+    $linha = linhaDaIntegracao(Order::$criados[0]->uuid);
+    confere($r->status === 201 && $linha !== null && $linha->itens === null, "itens como {$caso}: 201 e coluna itens nula");
+}
+reiniciarIntegracao();
+lojaIntegradaA();
+$r     = criarPelaRota(['itens' => [['quantidade' => 2, 'nome' => 'Pão de queijo', 'opcoes' => [['nome' => 'Molho']]], ['nome' => '']]]);
+$linha = linhaDaIntegracao(Order::$criados[0]->uuid);
+confere($r->status === 201 && $linha !== null && $linha->itens === '[{"quantidade":2,"nome":"Pão de queijo","opcoes":[{"quantidade":1,"nome":"Molho"}]}]', 'itens válidos pela rota: coluna itens gravada normalizada');
 
 echo '== Consultar' . PHP_EOL;
 reiniciarIntegracao();

@@ -273,6 +273,19 @@ $estranho          = pedidoEmDinheiroComTroco();
 $estranho['items'] = ['a' => ['name' => 'Pizza']];
 confere(PedidoDoIfood::mapear($estranho, LAT_COLETA, LNG_COLETA, $agora)['itens'] === null, 'items que não é lista: null (o pedido nasce igual)');
 
+$repetido          = pedidoEmDinheiroComTroco();
+$repetido['items'] = [['index' => 1, 'name' => 'Primeiro', 'quantity' => 1], ['index' => 1, 'name' => 'Segundo', 'quantity' => 1], ['index' => 0, 'name' => 'Zero', 'quantity' => 1]];
+confere(array_column(PedidoDoIfood::mapear($repetido, LAT_COLETA, LNG_COLETA, $agora)['itens'], 'nome') === ['Zero', 'Primeiro', 'Segundo'], 'index repetido: mantém a ordem de chegada');
+$emTexto          = pedidoEmDinheiroComTroco();
+$emTexto['items'] = [['index' => '1', 'name' => 'B', 'quantity' => 1], ['index' => '0', 'name' => 'A', 'quantity' => 1]];
+confere(array_column(PedidoDoIfood::mapear($emTexto, LAT_COLETA, LNG_COLETA, $agora)['itens'], 'nome') === ['A', 'B'], 'index numérico em texto ("0"): ordena como número');
+$opcoesRuins          = pedidoEmDinheiroComTroco();
+$opcoesRuins['items'] = [['name' => 'Pizza', 'quantity' => 1, 'options' => 'Borda'], ['name' => 'Suco', 'quantity' => 1, 'options' => ['a' => ['name' => 'Gelo']]]];
+confere(PedidoDoIfood::mapear($opcoesRuins, LAT_COLETA, LNG_COLETA, $agora)['itens'] === [['quantidade' => 1, 'nome' => 'Pizza'], ['quantidade' => 1, 'nome' => 'Suco']], 'options que não é lista: o item entra sem opcoes');
+$entradas          = pedidoEmDinheiroComTroco();
+$entradas['items'] = [null, 'texto', 7, ['name' => 'Pizza', 'quantity' => 1]];
+confere(PedidoDoIfood::mapear($entradas, LAT_COLETA, LNG_COLETA, $agora)['itens'] === [['quantidade' => 1, 'nome' => 'Pizza']], 'null e texto dentro de items caem; o item válido fica');
+
 echo '== Docblocks de até 120 colunas' . PHP_EOL;
 $longas = [];
 foreach (file(dirname(__DIR__, 2) . '/api/app/Support/Entregas/Ifood/PedidoDoIfood.php') as $n => $linhaDoArquivo) {

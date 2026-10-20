@@ -34,6 +34,8 @@ confere(umItem(['nome' => 'Pizza 🍕 Çã'])['nome'] === 'Pizza 🍕 Çã', 'em
 confere(umItem(['nome' => "Pi\0zza\u{200B}"])['nome'] === 'Pizza', 'controle e invisível saem');
 confere(umItem(['nome' => 123])['nome'] === '123', 'número vira texto');
 confere(mb_strlen(umItem(['nome' => str_repeat('á', 130)])['nome']) === 120, 'nome longo cortado em 120 caracteres');
+$cortado = umItem(['nome' => str_repeat('a', 119) . '🍕🍕'])['nome'];
+confere($cortado === str_repeat('a', 119) . '🍕' && mb_check_encoding($cortado, 'UTF-8'), 'corte no limite de 120 não parte emoji de 4 bytes (UTF-8 válido)');
 confere(umItem(['nome' => str_repeat('a', 119) . ' b'])['nome'] === str_repeat('a', 119), 'corte não deixa espaço sobrando no fim');
 foreach (['vazio' => '', 'só espaço' => "  \u{00A0} ", 'lista' => ['x'], 'nulo' => null, 'booleano' => true, 'UTF-8 inválido' => "\xFFPizza"] as $caso => $nome) {
     confere(umItem(['quantidade' => 1, 'nome' => $nome]) === null, "item sem nome válido ({$caso}) não entra");
@@ -57,6 +59,7 @@ $sessenta = array_map(fn ($n) => ['nome' => "Item {$n}"], range(1, 60));
 $lista    = ItensDoPedido::normalizar($sessenta);
 confere(count($lista) === 50 && $lista[49]['nome'] === 'Item 50', 'até 50 itens, os primeiros');
 $comInvalidos = array_merge(array_fill(0, 10, ['nome' => '']), $sessenta);
+confere(array_column(ItensDoPedido::normalizar([['nome' => 'A'], ['nome' => 'B']]), 'nome') === ['A', 'B'], 'ordem de chegada mantida');
 confere(count(ItensDoPedido::normalizar($comInvalidos)) === 50 && ItensDoPedido::normalizar($comInvalidos)[0]['nome'] === 'Item 1', 'item que caiu não conta no limite');
 confere(ItensDoPedido::normalizar([['nome' => 'A'], 'texto', null, ['nome' => 'B']]) === [['quantidade' => 1, 'nome' => 'A'], ['quantidade' => 1, 'nome' => 'B']], 'entrada que não é objeto cai; a ordem fica');
 foreach (['nulo' => null, 'vazia' => [], 'texto' => 'Pizza', 'objeto' => ['a' => ['nome' => 'Pizza']], 'só inválidos' => [['nome' => ''], ['quantidade' => 2]]] as $caso => $entrada) {
@@ -67,6 +70,7 @@ echo '== Banco' . PHP_EOL;
 confere(ItensDoPedido::paraOBanco(null) === null && ItensDoPedido::paraOBanco([]) === null && ItensDoPedido::paraOBanco([['nome' => '']]) === null, 'nada a gravar: null');
 $json = ItensDoPedido::paraOBanco($completo);
 confere($json === '[{"quantidade":1,"nome":"Pizza grande Calabresa","opcoes":[{"quantidade":1,"nome":"Borda de catupiry"}],"observacao":"sem cebola"}]', 'JSON com acento sem escape');
+confere(ItensDoPedido::paraOBanco([['nome' => 'Pão de queijo / Açaí 🍕']]) === '[{"quantidade":1,"nome":"Pão de queijo / Açaí 🍕"}]', 'JSON exato: sem \uXXXX e sem \/ (JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)');
 confere(ItensDoPedido::doBanco($json, ['pedido' => 'order_1']) === $completo, 'ida e volta');
 $comoOMysql = '[{"nome": "Pizza", "opcoes": [{"nome": "Borda", "quantidade": 1}], "quantidade": 2}]';
 confere(ItensDoPedido::doBanco($comoOMysql) === [['quantidade' => 2, 'nome' => 'Pizza', 'opcoes' => [['quantidade' => 1, 'nome' => 'Borda']]]], 'JSON do MySQL (chaves em outra ordem): volta na ordem do contrato');
