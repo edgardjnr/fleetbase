@@ -8,7 +8,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * Entregas RestaurantePro: o que o app do motoboy recebe de um pedido iFood (GET v1/entregas/motoboy/pedidos/{id}/ifood:
- * card de aceitar e detalhes). Função pura sobre a linha da entregas_ifood_pedidos e o Order.
+ * card de aceitar e detalhes). Sobre a linha da entregas_ifood_pedidos e o Order, sem consultar o banco (só grava
+ * o warning dos itens ilegíveis, com ids).
  *
  * - Pedido que não é do iFood: {"ifood": false} (o app chama para todos e só mostra o bloco quando é).
  * - Número, cobrança (centavos, forma em pt-BR, troco e o texto da CobrancaIfood), observações, complemento,

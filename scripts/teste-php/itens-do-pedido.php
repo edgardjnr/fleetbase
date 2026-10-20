@@ -34,6 +34,7 @@ confere(umItem(['nome' => 'Pizza 🍕 Çã'])['nome'] === 'Pizza 🍕 Çã', 'em
 confere(umItem(['nome' => "Pi\0zza\u{200B}"])['nome'] === 'Pizza', 'controle e invisível saem');
 confere(umItem(['nome' => 123])['nome'] === '123', 'número vira texto');
 confere(mb_strlen(umItem(['nome' => str_repeat('á', 130)])['nome']) === 120, 'nome longo cortado em 120 caracteres');
+confere(mb_strlen(umItem(['nome' => str_repeat('á', 1000000)])['nome']) === 120 && umItem(['nome' => str_repeat('ab ', 400000)])['nome'] === rtrim(mb_substr(str_repeat('ab ', 60), 0, 120)), 'nome de 1 MB: normaliza para 120 caracteres (corte antes das regex)');
 $cortado = umItem(['nome' => str_repeat('a', 119) . '🍕🍕'])['nome'];
 confere($cortado === str_repeat('a', 119) . '🍕' && mb_check_encoding($cortado, 'UTF-8'), 'corte no limite de 120 não parte emoji de 4 bytes (UTF-8 válido)');
 confere(umItem(['nome' => str_repeat('a', 119) . ' b'])['nome'] === str_repeat('a', 119), 'corte não deixa espaço sobrando no fim');

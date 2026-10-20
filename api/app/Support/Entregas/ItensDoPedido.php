@@ -152,6 +152,11 @@ final class ItensDoPedido
         if (!is_string($valor) || !mb_check_encoding($valor, 'UTF-8')) {
             return null;
         }
+        // Texto gigante: reduz antes das regex (cada caractere cabe em até 4 bytes; a folga cobre os espaços que colapsam).
+        $teto = $maximo * 4 + 64;
+        if (strlen($valor) > $teto) {
+            $valor = mb_strcut($valor, 0, $teto, 'UTF-8');
+        }
 
         $limpo = preg_replace('/[\t\n\r\f\v\x{85}]/u', ' ', $valor);
         $limpo = $limpo === null ? null : preg_replace('/\p{Cc}|(?!\x{200D})\p{Cf}/u', '', $limpo);
