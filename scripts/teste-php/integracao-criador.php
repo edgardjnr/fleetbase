@@ -126,6 +126,17 @@ Trava::$ocupadas['entregas:pedido:order-uuid-1'] = true;
 [$linha] = criar();
 confere($linha->despachado_em === null && Order::$criados[0]->chamadas === [] && logou('trava do pedido ocupada', 'warning'), 'não despacha agora; despachado_em nulo');
 
+echo '== Produtos do pedido gravados na linha' . PHP_EOL;
+reiniciarIntegracao();
+[$linha] = criar(['itens' => [['quantidade' => 2, 'nome' => 'Pizza grande', 'opcoes' => [['nome' => 'Borda de catupiry']]], ['nome' => '']]]);
+confere($linha->itens === '[{"quantidade":2,"nome":"Pizza grande","opcoes":[{"quantidade":1,"nome":"Borda de catupiry"}]}]', 'itens normalizados (JSON) na linha');
+confere(logsSem(['Pizza grande', 'Borda de catupiry']), 'os produtos não vão para o log');
+[$repetida, $novo] = criar(['itens' => [['nome' => 'Outro produto']]]);
+confere($novo === false && $repetida->itens === $linha->itens, 'reenvio (mesmo pedido_externo_id): devolve o existente, sem atualizar os itens');
+reiniciarIntegracao();
+[$linha] = criar();
+confere($linha->itens === null, 'sem itens: null');
+
 echo '== PedidosDaIntegracao::daLoja' . PHP_EOL;
 reiniciarIntegracao();
 [$linha] = criar();
