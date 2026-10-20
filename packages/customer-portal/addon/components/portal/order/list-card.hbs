@@ -37,9 +37,9 @@
             </span>
             {{!-- Entregas: cronômetro do prazo de entrega (relógio com o fundo na cor do estado: verde, amarelo, vermelho) --}}
             {{#if this.cronometro}}
-                <span class="portal-order-card-prazo" title={{t "customer-portal.ui.entregas.card.prazo"}}>
+                <div class="portal-order-card-prazo" title={{t "customer-portal.ui.entregas.card.prazo"}}>
                     <Badge @type={{this.tipoDoPrazo}} @icon="clock">{{this.cronometro.texto}}</Badge>
-                </span>
+                </div>
             {{/if}}
         </div>
     </div>
