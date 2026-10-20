@@ -186,4 +186,41 @@ confere($raioRecebido === null, 'sem raio: null (a busca usa o raio de pedido ab
 Candidatos::$buscarMotoboys = null;
 Candidatos::$buscarParadas  = null;
 
+echo '== Desempate por corridas do dia (ordenar)' . PHP_EOL;
+/** Uma linha da fila como a do FilaDeCandidatos::para; $corridas null = sem a chave (fila de antes do desempate). */
+function linhaDaFila(string $id, int $tempo, ?int $corridas, bool $livre = true): array
+{
+    $linha = ['motoboy_uuid' => 'd-' . $id, 'public_id' => 'driver_' . $id, 'nome' => $id, 'tempo_s' => $tempo, 'encaixe' => false, 'aproximado' => false, 'livre' => $livre, 'distancia_m' => 0];
+    if ($corridas !== null) {
+        $linha['corridas_hoje'] = $corridas;
+    }
+
+    return $linha;
+}
+
+confere(Distribuicao::DESEMPATE_CORRIDAS_S === 180, 'limite do desempate: 3 min');
+
+// o exemplo da spec: Ana 10 min (4), Beto 12 min (1), Caio 13 min (2), Davi 14 min (0, fora: 4 min acima da Ana)
+$fila = FilaDeCandidatos::ordenar([linhaDaFila('davi', 840, 0), linhaDaFila('ana', 600, 4), linhaDaFila('caio', 780, 2), linhaDaFila('beto', 720, 1)]);
+confere(array_column($fila, 'public_id') === ['driver_beto', 'driver_caio', 'driver_ana', 'driver_davi'], 'até 3 min do mais rápido: menos corridas primeiro; o resto pelo tempo (' . json_encode(array_column($fila, 'public_id')) . ')');
+confere(array_column($fila, 'desempate') === [true, true, false, false], 'desempate marcado em quem passou à frente de alguém mais rápido (' . json_encode(array_column($fila, 'desempate')) . ')');
+
+// Beto recusou: o grupo é refeito a partir da Ana (até 13 min)
+$fila = FilaDeCandidatos::ordenar([linhaDaFila('ana', 600, 4), linhaDaFila('caio', 780, 2), linhaDaFila('davi', 840, 0)]);
+confere(array_column($fila, 'public_id') === ['driver_caio', 'driver_ana', 'driver_davi'], 'fila refeita sem o Beto: Caio, Ana, Davi (' . json_encode(array_column($fila, 'public_id')) . ')');
+
+$fila = FilaDeCandidatos::ordenar([linhaDaFila('a', 600, 5), linhaDaFila('b', 780, 0), linhaDaFila('c', 781, 0)]);
+confere(array_column($fila, 'public_id') === ['driver_b', 'driver_a', 'driver_c'], 'limite exato: 180 s entra no grupo, 181 s fica fora (' . json_encode(array_column($fila, 'public_id')) . ')');
+
+$fila = FilaDeCandidatos::ordenar([linhaDaFila('a', 700, 2), linhaDaFila('b', 650, 2)]);
+confere(array_column($fila, 'public_id') === ['driver_b', 'driver_a'] && array_column($fila, 'desempate') === [false, false], 'empate em corridas: o menor tempo, sem desempate');
+
+$fila = FilaDeCandidatos::ordenar([linhaDaFila('c', 650, 0), linhaDaFila('a', 600, 0, false), linhaDaFila('b', 600, 0)]);
+confere(array_column($fila, 'public_id') === ['driver_b', 'driver_a', 'driver_c'], 'todos com 0: a ordem de antes (tempo, o livre, o public_id) (' . json_encode(array_column($fila, 'public_id')) . ')');
+
+$fila = FilaDeCandidatos::ordenar([linhaDaFila('a', 600, null), linhaDaFila('b', 700, 1)]);
+confere(array_column($fila, 'public_id') === ['driver_a', 'driver_b'] && $fila[0]['corridas_hoje'] === 0, 'linha sem corridas_hoje vale 0');
+
+confere(FilaDeCandidatos::ordenar([]) === [], 'fila vazia: vazia');
+
 resumo();
