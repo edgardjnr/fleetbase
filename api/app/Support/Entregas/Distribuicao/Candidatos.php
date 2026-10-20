@@ -8,6 +8,8 @@ use App\Support\Entregas\StatusDoPedido;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Support\Utils;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Quem pode receber a oferta de um pedido aberto e o que cada um ainda tem para fazer.
@@ -18,8 +20,10 @@ use Fleetbase\FleetOps\Support\Utils;
  * Com a trava "Atualize o app" ligada, só quem usa o app na versão mínima ou acima (AppDoMotoboy::podeReceberOferta).
  * Paradas: os pedidos em andamento dele (a regra do capacete do mapa: SituacaoDoMotoboy), na ordem de aceite
  * (started_at, depois dispatched_at), com a coleta (se ainda não pegou) e a entrega.
+ * Corridas hoje (corridasHoje): pedidos dele aceitos desde as 00:00 de Brasília, sem cancelados e expirados, para o
+ * desempate da fila (FilaDeCandidatos::ordenar).
  *
- * As duas consultas ficam atrás de closures trocáveis para os testes (o banco em memória não simula distanceSphere).
+ * As três consultas ficam atrás de closures trocáveis para os testes (o banco em memória não simula distanceSphere).
  */
 class Candidatos
 {
@@ -27,12 +31,14 @@ class Candidatos
     public static ?\Closure $buscarMotoboys = null;
     /** @var null|\Closure(string, array<string>): array<string, array<int, array{0: float, 1: float, 2: string}>> */
     public static ?\Closure $buscarParadas = null;
+    /** @var null|\Closure(string, array<string>): array<string, int> */
+    public static ?\Closure $buscarCorridasHoje = null;
 
     /**
      * Os candidatos elegíveis à oferta, com as paradas: fora os uuids excluídos (quem já respondeu neste despacho ou
      * nesta volta, quem tem oferta pendente de outro pedido). $raio: o da rodada (em rodadas); null = raio de pedido aberto.
      *
-     * @return array<int, array{motoboy: Driver, posicao: array, distancia: float, paradas: array}>
+     * @return array<int, array{motoboy: Driver, posicao: array, distancia: float, paradas: array, corridas_hoje: int}>
      */
     public static function elegiveis(Order $pedido, array $excluidos, ?int $raio = null): array
     {
@@ -44,9 +50,12 @@ class Candidatos
         if ($motoboys === []) {
             return [];
         }
-        $paradas = static::paradas((string) $pedido->company_uuid, array_map(fn ($c) => (string) $c['motoboy']->uuid, $motoboys));
+        $uuids    = array_map(fn ($c) => (string) $c['motoboy']->uuid, $motoboys);
+        $paradas  = static::paradas((string) $pedido->company_uuid, $uuids);
+        $corridas = static::corridasHoje((string) $pedido->company_uuid, $uuids);
         foreach ($motoboys as &$candidato) {
-            $candidato['paradas'] = $paradas[(string) $candidato['motoboy']->uuid] ?? [];
+            $candidato['paradas']       = $paradas[(string) $candidato['motoboy']->uuid] ?? [];
+            $candidato['corridas_hoje'] = $corridas[(string) $candidato['motoboy']->uuid] ?? 0;
         }
 
         return $motoboys;
@@ -109,6 +118,51 @@ class Candidatos
             ->get();
 
         return static::paradasDosPedidos($pedidos);
+    }
+
+    /**
+     * Corridas de hoje por motoboy (só os que têm alguma): pedidos da empresa atribuídos a ele, não cancelados nem
+     * expirados, com o aceite (started_at; sem ele, dispatched_at: atribuído pela central e não iniciado) desde as
+     * 00:00 de hoje no fuso do app. As colunas são DATETIME em hora de Brasília: comparadas com o texto no fuso do app.
+     * Falha: vazio (todos com 0, a fila fica só por tempo) e o log; nunca lança.
+     *
+     * @return array<string, int> uuid do motoboy => corridas
+     */
+    public static function corridasHoje(string $empresa, array $motoboyUuids): array
+    {
+        if ($motoboyUuids === []) {
+            return [];
+        }
+
+        try {
+            if (static::$buscarCorridasHoje) {
+                return (static::$buscarCorridasHoje)($empresa, $motoboyUuids);
+            }
+
+            $inicio  = now()->format('Y-m-d') . ' 00:00:00';
+            $pedidos = DB::table('orders')
+                ->where('company_uuid', $empresa)
+                ->whereIn('driver_assigned_uuid', $motoboyUuids)
+                ->whereNull('deleted_at')
+                ->whereNotIn('status', [...StatusDoPedido::CANCELADOS, 'expired'])
+                ->where(fn ($q) => $q->where('started_at', '>=', $inicio)->orWhere('dispatched_at', '>=', $inicio))
+                ->get(['driver_assigned_uuid', 'started_at', 'dispatched_at']);
+
+            $corridas = [];
+            foreach ($pedidos as $p) {
+                // o COALESCE(started_at, dispatched_at): aceito ontem e redespachado hoje não conta
+                $aceite = substr((string) ($p->started_at ?? $p->dispatched_at ?? ''), 0, 19);
+                if ($aceite >= $inicio) {
+                    $corridas[$p->driver_assigned_uuid] = ($corridas[$p->driver_assigned_uuid] ?? 0) + 1;
+                }
+            }
+
+            return $corridas;
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] distribuição: não deu para contar as corridas de hoje; fila só por tempo', ['erro' => get_class($e)]);
+
+            return [];
+        }
     }
 
     /**

@@ -9,6 +9,7 @@ require __DIR__ . '/stubs-ifood-fleetbase.php';
 use App\Support\Entregas\Distribuicao\Distribuicao;
 use App\Support\Entregas\Distribuicao\EstimadorDeTempo;
 use App\Support\Entregas\Distribuicao\Pontos;
+use Teste\Banco;
 use Teste\Config;
 use Teste\Http;
 
@@ -222,5 +223,48 @@ $fila = FilaDeCandidatos::ordenar([linhaDaFila('a', 600, null), linhaDaFila('b',
 confere(array_column($fila, 'public_id') === ['driver_a', 'driver_b'] && $fila[0]['corridas_hoje'] === 0, 'linha sem corridas_hoje vale 0');
 
 confere(FilaDeCandidatos::ordenar([]) === [], 'fila vazia: vazia');
+
+echo '== Corridas de hoje (Candidatos::corridasHoje)' . PHP_EOL;
+use Illuminate\Support\Facades\DB;
+
+reiniciarIfood(); // banco em memória vazio; o relógio dos stubs está em 2026-10-05 15:00 (Brasília)
+$pedidoDoDia = fn (array $c) => DB::table('orders')->insert([$c + ['company_uuid' => 'empresa-1', 'deleted_at' => null, 'status' => 'completed', 'started_at' => null, 'dispatched_at' => null]]);
+$pedidoDoDia(['driver_assigned_uuid' => 'd-a', 'started_at' => '2026-10-05 09:00:00']);                           // conta
+$pedidoDoDia(['driver_assigned_uuid' => 'd-a', 'status' => 'dispatched', 'dispatched_at' => '2026-10-05 14:50:00']); // atribuído pela central: conta pelo despacho
+$pedidoDoDia(['driver_assigned_uuid' => 'd-a', 'started_at' => '2026-10-04 23:59:59', 'dispatched_at' => '2026-10-04 23:50:00']); // ontem
+$pedidoDoDia(['driver_assigned_uuid' => 'd-a', 'status' => 'canceled', 'started_at' => '2026-10-05 10:00:00']);
+$pedidoDoDia(['driver_assigned_uuid' => 'd-a', 'status' => 'expired', 'started_at' => '2026-10-05 10:00:00']);
+$pedidoDoDia(['driver_assigned_uuid' => 'd-a', 'started_at' => '2026-10-05 10:00:00', 'deleted_at' => '2026-10-05 11:00:00']);
+$pedidoDoDia(['driver_assigned_uuid' => 'd-b', 'status' => 'started', 'started_at' => '2026-10-05 00:00:00']);    // meia-noite em ponto: conta
+$pedidoDoDia(['driver_assigned_uuid' => 'd-b', 'company_uuid' => 'outra', 'started_at' => '2026-10-05 10:00:00']);
+$pedidoDoDia(['driver_assigned_uuid' => 'd-c', 'started_at' => '2026-10-05 10:00:00']);                           // não foi pedido
+$pedidoDoDia(['driver_assigned_uuid' => 'd-b']);                                                                    // sem started_at nem dispatched_at
+$corridas = Candidatos::corridasHoje('empresa-1', ['d-a', 'd-b']);
+ksort($corridas);
+confere($corridas === ['d-a' => 2, 'd-b' => 1], 'hoje em Brasília, sem cancelados, expirados, apagados, outra empresa e outro motoboy (' . json_encode($corridas) . ')');
+confere(Candidatos::corridasHoje('empresa-1', []) === [], 'sem motoboys: vazio, sem consultar');
+
+Banco::$falharAoConsultar['orders'] = new \RuntimeException('banco fora');
+confere(Candidatos::corridasHoje('empresa-1', ['d-a']) === [], 'falha na consulta: vazio (todos com 0)');
+confere(logou('não deu para contar as corridas de hoje', 'warning'), 'falha fica no log');
+
+reiniciarIfood();
+Candidatos::$buscarCorridasHoje = fn () => throw new \RuntimeException('falhou');
+confere(Candidatos::corridasHoje('empresa-1', ['d-a']) === [] && logou('não deu para contar as corridas de hoje', 'warning'), 'falha da closure dos testes: vazio, com o log');
+
+// elegiveis põe corridas_hoje em cada candidato, e para() leva o número para a fila
+Candidatos::$buscarMotoboys = fn () => [
+    ['motoboy' => motoboy('a', 'Ana', $coleta), 'posicao' => $coleta, 'distancia' => 0.0],
+    ['motoboy' => motoboy('b', 'Bia', $coleta), 'posicao' => $coleta, 'distancia' => 0.0],
+];
+Candidatos::$buscarParadas      = fn () => [];
+Candidatos::$buscarCorridasHoje = fn (string $empresa, array $uuids) => ['d-a' => 3];
+$elegiveis = Candidatos::elegiveis($pedido, []);
+confere(array_column($elegiveis, 'corridas_hoje') === [3, 0], 'elegiveis: corridas_hoje de cada candidato, 0 para quem não aparece');
+$fila = (new FilaDeCandidatos($estimador))->para($pedido, $elegiveis);
+confere(array_column($fila, 'public_id') === ['driver_b', 'driver_a'] && array_column($fila, 'corridas_hoje') === [0, 3], 'para: mesmo tempo, Bia (0 hoje) antes de Ana (3)');
+Candidatos::$buscarMotoboys     = null;
+Candidatos::$buscarParadas      = null;
+Candidatos::$buscarCorridasHoje = null;
 
 resumo();
