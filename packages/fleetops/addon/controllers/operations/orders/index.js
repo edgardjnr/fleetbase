@@ -318,6 +318,14 @@ export default class OperationsOrdersIndexController extends Controller {
                 fetchUri: 'orders/statuses',
             },
             {
+                // Entregas: cronômetro do prazo de entrega (verde; amarelo a 15 min; vermelho atrasado; some no encerrado).
+                // Sem ordenação: o prazo fica no meta (JSON) do pedido
+                label: this.intl.t('fleet-ops.ui.cronometro.coluna'),
+                valuePath: 'meta.entregas_prazo_em',
+                cellComponent: 'cell/prazo-do-pedido',
+                resizable: true,
+            },
+            {
                 label: this.intl.t('column.created-at'),
                 valuePath: 'createdAt',
                 sortParam: 'created_at',
