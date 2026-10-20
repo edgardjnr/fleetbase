@@ -2277,21 +2277,11 @@ body[data-theme='dark'].fleetbase-portal .portal-order-card-quem.is-procurando s
     color: #94a3b8;
 }
 
-.fleetbase-portal .portal-order-card-eta {
+/* Entregas: cronômetro do prazo de entrega no card (Badge do ember-ui com o relógio: success = verde no prazo, warning =
+   amarelo a 15 min ou menos, error = vermelho atrasado; fundo escuro e texto claro nos dois temas) */
+.fleetbase-portal .portal-order-card-prazo {
     flex: 0 0 auto;
-    color: #0f172a;
-    font-size: 0.8125rem;
-    font-weight: 700;
     white-space: nowrap;
-}
-
-.fleetbase-portal .portal-order-card-eta svg {
-    margin-right: 0.125rem;
-    color: #94a3b8;
-}
-
-body[data-theme='dark'].fleetbase-portal .portal-order-card-eta {
-    color: #f8fafc;
 }
 
 /* Entregas: ☰ do menu na barra superior. Na tela Pedidos (.is-pedidos) a coluna do menu sai do grid e o menu vira uma
@@ -4030,15 +4020,16 @@ body[data-theme='dark'].fleetbase-portal .portal-invoice-notes p {
 }
 /* stylelint-enable no-duplicate-selectors */
 
-/* Entregas: nome do motoboy fixo embaixo do alfinete do pedido aceito (Workspace::Map). Vermelho-escuro, como o alfinete,
-   para não confundir com o nome do capacete quando o motoboy está perto da entrega */
+/* Entregas: número do pedido e nome do motoboy fixos embaixo do alfinete do pedido aceito (Workspace::Map). O fundo segue
+   o prazo de entrega (classes entregas-prazo-*, abaixo); sem prazo (pedido de antes do deploy), neutro (cinza, slate-500
+   com texto branco, mais claro que o rótulo do capacete, slate-900), para não parecer atrasado (igual ao app) */
 .fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete {
     padding: 1px 6px;
     border: none;
     border-radius: 9999px;
-    background: rgb(153 27 27 / 92%);
+    background: rgb(100 116 139 / 95%);
     box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
-    color: #fef2f2;
+    color: #fff;
     font-size: 11px;
     font-weight: 600;
     line-height: 16px;
@@ -4046,7 +4037,38 @@ body[data-theme='dark'].fleetbase-portal .portal-invoice-notes p {
 }
 
 .fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-no-alfinete::before {
-    border-bottom-color: rgb(153 27 27 / 92%);
+    border-bottom-color: rgb(100 116 139 / 95%);
+}
+
+/* Entregas: o fundo do rótulo do alfinete segue o prazo de entrega (utils/entregas-cronometro.js, classeDoRotulo): verde
+   no prazo, amarelo a 15 min ou menos, vermelho atrasado. Sem prazo (pedido de antes do deploy), o neutro acima. O
+   tooltip tem classe fixa (o className do Leaflet só vale na criação); o estado vem no span de dentro, daí o :has. As
+   mesmas cores do console. */
+.fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete:has(.entregas-prazo-no_prazo) {
+    background: rgb(21 128 61 / 95%);
+    color: #f0fdf4;
+}
+
+.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-no-alfinete:has(.entregas-prazo-no_prazo)::before {
+    border-bottom-color: rgb(21 128 61 / 95%);
+}
+
+.fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete:has(.entregas-prazo-perto) {
+    background: rgb(250 204 21 / 95%);
+    color: #422006;
+}
+
+.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-no-alfinete:has(.entregas-prazo-perto)::before {
+    border-bottom-color: rgb(250 204 21 / 95%);
+}
+
+.fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete:has(.entregas-prazo-atrasado) {
+    background: rgb(185 28 28 / 95%);
+    color: #fef2f2;
+}
+
+.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-no-alfinete:has(.entregas-prazo-atrasado)::before {
+    border-bottom-color: rgb(185 28 28 / 95%);
 }
 
 /* Entregas: capacete e nome do motoboy no mapa de motoboys do portal (utils/camada-de-motoboys.js). O nome fica dentro do

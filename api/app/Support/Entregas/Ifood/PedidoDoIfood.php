@@ -3,6 +3,7 @@
 namespace App\Support\Entregas\Ifood;
 
 use App\Support\Entregas\ItensDoPedido;
+use App\Support\Entregas\PrazoDaEntrega;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
@@ -42,6 +43,8 @@ use Illuminate\Support\Facades\Log;
  *   pagamento inconsistente) e o troco, nulo, para o insert não estourar a coluna.
  * - 0800 e localizador do cliente (`customer.phone`) com a expiração do localizador.
  * - Produtos (`items`): `itens` no formato do app (ItensDoPedido), na ordem do `index`, e o JSON na linha (itens()).
+ * - Prazo de entrega (`prazo_em`, PrazoDaEntrega::doIfood: imediato = deliveryDateTime; agendado = fim da janela ou
+ *   início + 30 min; sem data legível, o padrão de 50 min): vai no meta do Order (CriadorDoPedidoIfood).
  *
  * Datas em texto 'Y-m-d H:i:s' no fuso do app (o mesmo da sessão do MySQL: horário de Brasília; ver CLAUDE.md, "Fuso
  * (horário de Brasília)"). As contas são feitas em UTC e só a saída é convertida (paraOBanco). Data que não é ISO com
@@ -129,6 +132,7 @@ final class PedidoDoIfood
             'despachar_agora' => !$semDespacho && !$agendado,
             'scheduled_at'    => !$semDespacho && $agendado ? static::paraOBanco($despacharEm) : null,
             'notas'           => 'iFood #' . $numero . $marcas,
+            'prazo_em'        => PrazoDaEntrega::doIfood($pedido) ?? PrazoDaEntrega::padrao($agora),
             'itens'           => $itens,
             'entrega'         => [
                 'nome'         => static::texto($cliente['name'] ?? null, 120) ?? 'Cliente iFood',
@@ -370,8 +374,11 @@ final class PedidoDoIfood
         return $data ? DateTimeImmutable::createFromInterface($data)->setTimezone(new DateTimeZone(date_default_timezone_get()))->format('Y-m-d H:i:s') : null;
     }
 
-    /** Data ISO (com hora) em UTC, ano de 2000 a 2037; null para o resto ("tomorrow", texto, lista, ano absurdo). */
-    protected static function data($valor): ?DateTimeImmutable
+    /**
+     * Data ISO (com hora) em UTC, ano de 2000 a 2037; null para o resto ("tomorrow", texto, lista, ano
+     * absurdo). Pública: o PrazoDaEntrega lê as datas do pedido do iFood com a mesma regra.
+     */
+    public static function data($valor): ?DateTimeImmutable
     {
         if (!is_string($valor) || !preg_match('/^\s*\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/', $valor)) {
             return null;

@@ -3,6 +3,7 @@
 namespace App\Support\Entregas\Ifood;
 
 use App\Support\Entregas\Coordenada;
+use App\Support\Entregas\PrazoDaEntrega;
 use App\Support\Entregas\StatusDoPedido;
 use App\Support\Entregas\TravaDoPedido;
 use Fleetbase\FleetOps\Models\Order;
@@ -23,7 +24,8 @@ use Illuminate\Support\Facades\Log;
  * - cliente = a Loja (Vendor) do vínculo; coleta = o Local da Loja (não o endereço do iFood);
  * - entrega = Place novo com as coordenadas do iFood (sem geocodificação) e sem dono (não entra nos endereços salvos
  *   da loja no portal);
- * - Order tipo transport, status created, internal_id = número do iFood, notas "iFood #4821";
+ * - Order tipo transport, status created, internal_id = número do iFood, notas "iFood #4821" e o prazo de entrega do
+ *   iFood no meta (PrazoDaEntrega::CHAVE), já no create: o hook do Order::creating (GravarPrazoDoPedido) não o sobrescreve;
  * - adhoc só no pedido que vai aos motoboys sozinho: o imediato e o agendado com janela (o fleetops:dispatch-orders
  *   despacha o agendado sem ligar o adhoc). O sem coordenadas e o agendado sem janela nascem com adhoc
  *   falso (o de teste segue a regra do real): a central atribui, e o despacho manual de um pedido adhoc avisaria todos os motoboys livres no raio (um
@@ -131,6 +133,8 @@ class CriadorDoPedidoIfood
                 'internal_id'       => $dados['numero'],
                 'scheduled_at'      => $dados['scheduled_at'],
                 'notes'             => $dados['notas'],
+                // o prazo do iFood (hora prometida ao cliente ou fim da janela) antes do save; ver PrazoDaEntrega
+                'meta'              => [PrazoDaEntrega::CHAVE => $dados['prazo_em']],
             ]);
 
             $agora = now()->toDateTimeString();

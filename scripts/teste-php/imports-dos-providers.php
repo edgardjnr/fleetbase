@@ -53,6 +53,12 @@ $arquivos = array_merge(
         $app . '/Http/Controllers/Entregas/ComprovantesController.php',
         $app . '/Notifications/Entregas/PagamentoRegistrado.php',
         $app . '/Notifications/Entregas/AvisosDoMotoboy.php',
+        // prazo de entrega (cronômetro); o GravarPrazoDoPedido entra pelo glob de Listeners/Entregas
+        $app . '/Support/Entregas/PrazoDaEntrega.php',
+        $app . '/Support/Entregas/PedidosNoMapa.php',
+        $app . '/Support/Entregas/Ifood/PedidoDoIfood.php',
+        $app . '/Support/Entregas/Ifood/CriadorDoPedidoIfood.php',
+        $app . '/Http/Middleware/IncluirNotasNaListaDePedidos.php',
     ]
 );
 

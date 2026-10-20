@@ -133,6 +133,7 @@ namespace {
     require '/repo/api/app/Support/Entregas/StatusDoPedido.php';
     require '/repo/api/app/Support/Entregas/SituacaoDoMotoboy.php';
     require '/repo/api/app/Support/Entregas/Coordenada.php';
+    require '/repo/api/app/Support/Entregas/PrazoDaEntrega.php';
     require '/repo/api/app/Support/Entregas/PedidosNoMapa.php';
 
     // como na produção: o PHP no fuso do app (America/Sao_Paulo), o mesmo da sessão do MySQL
@@ -177,8 +178,8 @@ namespace {
     ];
     Order::$todos = [
         pedido('order_sem_motoboy', 'created', 'vendor-a', $recente, '2026-10-05 08:00:00', $rua, ['trackingNumber' => (object) ['tracking_number' => 'RP123']]),
-        pedido('order_coleta', 'started', 'vendor-b', $recente, '2026-10-05 08:10:00', lugar(-21.19, -47.82, 'Rua B, 20'), ['driverAssigned' => $motoboy, 'started' => true]),
-        pedido('order_entrega', 'enroute', 'contato-a', $recente, '2026-10-05 08:20:00', lugar(-21.2, -47.83, null, 'Casa do cliente'), ['driverAssigned' => $motoboy, 'started' => true]),
+        pedido('order_coleta', 'started', 'vendor-b', $recente, '2026-10-05 08:10:00', lugar(-21.19, -47.82, 'Rua B, 20'), ['driverAssigned' => $motoboy, 'started' => true, 'meta' => ['entregas_prazo_em' => '2026-10-05T09:20:00-03:00']]),
+        pedido('order_entrega', 'enroute', 'contato-a', $recente, '2026-10-05 08:20:00', lugar(-21.2, -47.83, null, 'Casa do cliente'), ['driverAssigned' => $motoboy, 'started' => true, 'meta' => ['entregas_prazo_em' => 'amanhã']]),
         pedido('order_sem_loja', 'dispatched', 'contato-x', $recente, '2026-10-05 07:50:00', $rua, ['payload' => (object) ['dropoff' => $rua, 'pickup' => (object) ['name' => 'Pizzaria Sem Cadastro', 'location' => null]], 'driverAssigned' => $motoboy]),
         pedido('order_concluido', 'completed', 'vendor-a', $recente, '2026-10-05 08:05:00', $rua),
         pedido('order_cancelado', 'canceled', 'vendor-a', $recente, '2026-10-05 08:05:00', $rua),
@@ -202,8 +203,11 @@ namespace {
     confere(!isset($porId['order_sem_destino']) && !isset($porId['order_sem_local']) && !isset($porId['order_zero']),
         'sem destino, sem coordenada ou no (0, 0) fica fora');
     confere(!isset($porId['order_outra_empresa']), 'pedido de outra empresa fica fora');
-    confere(array_keys($central[0] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'aceito', 'criado_em', 'loja'],
-        'campos do console, com a loja');
+    confere(array_keys($central[0] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'aceito', 'criado_em', 'prazo_em', 'loja'],
+        'campos do console, com o prazo e a loja');
+    confere(($porId['order_coleta']['prazo_em'] ?? null) === '2026-10-05T09:20:00-03:00', 'prazo_em = o entregas_prazo_em do meta');
+    confere(array_key_exists('prazo_em', $porId['order_sem_motoboy'] ?? []) && $porId['order_sem_motoboy']['prazo_em'] === null && $porId['order_entrega']['prazo_em'] === null,
+        'sem prazo (pedido de antes do deploy) ou prazo ilegível: null');
     confere(($porId['order_sem_motoboy']['numero'] ?? null) === 'RP123' && ($porId['order_coleta']['numero'] ?? null) === 'order_coleta',
         'sem internal_id: o número de rastreio; sem ele, o public_id');
     confere(($porId['order_coleta']['latitude'] ?? null) === -21.19 && ($porId['order_coleta']['longitude'] ?? null) === -47.82, 'coordenadas do destino em número');
@@ -227,8 +231,9 @@ namespace {
     echo '== PedidosNoMapa::daLoja (portal da loja)' . PHP_EOL;
     $loja = PedidosNoMapa::daLoja(EMPRESA, ['vendor-a', 'contato-a']);
     confere(array_column($loja, 'id') === ['order_entrega', 'order_sem_motoboy'], 'só os pedidos da loja (Fornecedor e contato do usuário)');
-    confere(array_keys($loja[0] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'aceito', 'criado_em'],
-        'campos do portal, sem a loja');
+    confere(array_keys($loja[0] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'aceito', 'criado_em', 'prazo_em'],
+        'campos do portal, com o prazo e sem a loja');
+    confere(array_column($loja, 'prazo_em', 'id') === ['order_entrega' => null, 'order_sem_motoboy' => null], 'portal: prazo ilegível ou ausente = null');
     $json = json_encode($loja);
     confere(!str_contains($json, 'uuid-motoboy-1') && !str_contains($json, 'driver_m1') && !str_contains($json, '+5516'),
         'sem uuid, public_id nem telefone do motoboy');
@@ -239,14 +244,16 @@ namespace {
     Order::$todos[] = pedido('order_ifood', 'started', 'vendor-a', $recente, '2026-10-05 08:25:00', $rua, [
         'internal_id' => '4821', 'trackingNumber' => (object) ['tracking_number' => 'RP999'], 'driverAssigned' => $motoboy, 'started' => true,
         'payload' => (object) ['dropoff' => $rua, 'pickup' => $lojaA],
+        'meta' => ['entregas_prazo_em' => '2026-10-05T09:15:00-03:00', 'entregas' => ['km_rota' => ['metros' => 1200]]],
     ]);
     \Teste\Consulta::$registro = [];
     $lider    = PedidosNoMapa::doLider(EMPRESA);
     $doLider  = array_column($lider, null, 'id');
     confere(array_column($lider, 'id') === ['order_ifood', 'order_entrega', 'order_coleta', 'order_sem_motoboy', 'order_sem_loja'],
         'os mesmos pedidos da central (em andamento, com ou sem motoboy), dos mais novos para os mais antigos');
-    confere(array_keys($lider[0] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'aceito', 'criado_em', 'loja', 'motoboy_id', 'atualizado_em', 'coleta'],
+    confere(array_keys($lider[0] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'aceito', 'criado_em', 'prazo_em', 'loja', 'motoboy_id', 'atualizado_em', 'coleta'],
         'campos da central, mais motoboy_id, atualizado_em e coleta');
+    confere(($doLider['order_ifood']['prazo_em'] ?? null) === '2026-10-05T09:15:00-03:00', 'líder: o prazo do pedido (cor do rótulo no Mapa do líder do app)');
     confere(($doLider['order_ifood']['numero'] ?? null) === '4821' && ($doLider['order_sem_motoboy']['numero'] ?? null) === 'RP123' && ($doLider['order_coleta']['numero'] ?? null) === 'order_coleta',
         'número = internal_id (iFood); sem ele, o de rastreio; sem os dois, o public_id');
     confere(($doLider['order_ifood']['motoboy_id'] ?? null) === 'driver_m1' && array_key_exists('motoboy_id', $doLider['order_sem_motoboy'] ?? []) && $doLider['order_sem_motoboy']['motoboy_id'] === null,
@@ -269,8 +276,11 @@ namespace {
     $lojaComIfood    = array_column(PedidosNoMapa::daLoja(EMPRESA, ['vendor-a', 'contato-a']), null, 'id');
     confere(($centralComIfood['order_ifood']['numero'] ?? null) === '4821' && ($lojaComIfood['order_ifood']['numero'] ?? null) === '4821',
         'central e loja: o número do iFood (internal_id), o mesmo do líder, para o "#4821 · motoboy" do alfinete');
-    confere(array_keys($lojaComIfood['order_ifood'] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'aceito', 'criado_em'],
+    confere(array_keys($lojaComIfood['order_ifood'] ?? []) === ['id', 'numero', 'latitude', 'longitude', 'endereco', 'status', 'motoboy', 'aceito', 'criado_em', 'prazo_em'],
         'loja: os mesmos campos, sem a loja');
+    confere(($centralComIfood['order_ifood']['prazo_em'] ?? null) === '2026-10-05T09:15:00-03:00' && ($lojaComIfood['order_ifood']['prazo_em'] ?? null) === '2026-10-05T09:15:00-03:00',
+        'central e loja: o mesmo prazo (não é dado sensível); o resto do meta não sai');
+    confere(!str_contains(json_encode($lojaComIfood), 'km_rota'), 'do meta, só o prazo vai ao mapa');
 
     echo '== limite' . PHP_EOL;
     Order::$todos = array_map(fn ($n) => pedido("order_{$n}", 'created', 'vendor-a', $recente, '2026-10-05 08:00:00', $rua), range(1, 305));

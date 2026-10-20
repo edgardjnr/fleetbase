@@ -1,3 +1,5 @@
+import { cronometro } from './entregas-cronometro';
+
 /**
  * Entregas: os alfinetes dos pedidos em andamento no mapa ao vivo do console (resposta.pedidos de
  * GET int/v1/entregas/mapa/motoboys, montada pelo PedidosNoMapa::daCentral). Funções puras, testadas em
@@ -71,6 +73,18 @@ export function rotuloNoAlfinete(pedido) {
     }
 
     return `${/^\d+$/.test(numero) ? '#' : ''}${numero} · ${nome}`;
+}
+
+/**
+ * Classe do span dentro do rótulo fixo do alfinete ("#4821 · Carlos"; o tooltip tem a classe fixa
+ * entregas-nome-no-alfinete e o CSS pinta o fundo com :has): segue o cronômetro do prazo de entrega (prazo_em do
+ * PedidosNoMapa): entregas-prazo-no_prazo (verde), -perto (amarelo) ou -atrasado (vermelho). Sem prazo (pedido de antes
+ * do deploy ou API antiga), vazia: o rótulo fica no fundo neutro (cinza), para não parecer atrasado (igual ao app).
+ */
+export function classeDoRotulo(pedido, agora = Date.now()) {
+    const estado = cronometro(pedido?.prazo_em, agora)?.estado;
+
+    return estado ? `entregas-prazo-${estado}` : '';
 }
 
 /** Mesma lista? Só troca (e redesenha os alfinetes) quando algo mudou. */

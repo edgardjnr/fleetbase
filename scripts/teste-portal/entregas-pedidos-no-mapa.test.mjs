@@ -2,7 +2,7 @@
 // Uso, na raiz do repo: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/*.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALFINETE, nomeNoAlfinete, rotuloNoAlfinete, mesmaLista, pedidosValidos, tempoDesde } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
+import { ALFINETE, classeDoRotulo, nomeNoAlfinete, rotuloNoAlfinete, mesmaLista, pedidosValidos, tempoDesde } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
 
 test('alfinete vermelho em SVG, com a ponta embaixo no meio', () => {
     assert.match(ALFINETE.url, /^data:image\/svg\+xml;charset=UTF-8,/);
@@ -62,4 +62,22 @@ test('rótulo fixo embaixo do alfinete: o número do pedido e o nome do motoboy 
     assert.equal(rotuloNoAlfinete({ numero: '4821', motoboy: 'Carlos', aceito: false }), null, 'sem aceite, sem rótulo');
     assert.equal(rotuloNoAlfinete({ numero: '4821', motoboy: null, aceito: true }), null);
     assert.equal(rotuloNoAlfinete(null), null);
+});
+
+test('rótulo do alfinete: a classe do span segue o prazo (verde, amarelo, vermelho); sem prazo, vazia (fundo neutro, cinza)', () => {
+    const prazo = '2026-10-20T19:57:51-03:00';
+    const t = Date.parse(prazo);
+    assert.equal(classeDoRotulo({ prazo_em: prazo }, t - 32 * 60000), 'entregas-prazo-no_prazo');
+    assert.equal(classeDoRotulo({ prazo_em: prazo }, t - 12 * 60000), 'entregas-prazo-perto');
+    assert.equal(classeDoRotulo({ prazo_em: prazo }, t + 7 * 60000), 'entregas-prazo-atrasado');
+    assert.equal(classeDoRotulo({ prazo_em: null }, t), '', 'pedido de antes do deploy');
+    assert.equal(classeDoRotulo({ prazo_em: 'amanhã' }, t), '');
+    assert.equal(classeDoRotulo({}, t), '', 'API antiga, sem prazo_em');
+    assert.equal(classeDoRotulo(null, t), '');
+});
+
+test('pedidos válidos: o prazo_em passa junto', () => {
+    assert.deepEqual(pedidosValidos([{ id: 'order_a', latitude: -21.18, longitude: -47.81, prazo_em: '2026-10-20T19:57:51-03:00' }]), [
+        { id: 'order_a', latitude: -21.18, longitude: -47.81, prazo_em: '2026-10-20T19:57:51-03:00' },
+    ]);
 });

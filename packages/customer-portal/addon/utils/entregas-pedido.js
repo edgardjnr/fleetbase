@@ -116,34 +116,3 @@ export function nomeDoCliente(local) {
 
     return enderecos.some((endereco) => endereco === nomeComparavel || endereco.startsWith(nomeComparavel) || nomeComparavel.startsWith(endereco)) ? null : nome;
 }
-
-/**
- * Tempo até a entrega no card do pedido. O primeiro valor útil da lista vale: o `eta` do recurso do pedido é um objeto do
- * Fleet-Ops (TrackingIntelligenceService::eta: `completion_seconds`, até terminar a entrega, ou `active_stop_seconds`, até
- * a parada atual) e vira "N min"; número = segundos; data ISO vira a hora de chegada (HH:mm); outro texto fica como veio.
- * Sem nada útil, null (o card não mostra o relógio). Antes, o objeto aparecia como "[object Object]".
- */
-export function textoDoEta(valores) {
-    const minutos = (segundos) => (Number.isFinite(segundos) && segundos > 0 ? `${Math.max(1, Math.round(segundos / 60))} min` : null);
-
-    for (const valor of Array.isArray(valores) ? valores : []) {
-        if (typeof valor === 'number') {
-            const texto = minutos(valor);
-            if (texto) return texto;
-        } else if (typeof valor === 'string') {
-            const texto = valor.trim();
-            if (texto === '') continue;
-            if (/^\d{4}-\d{2}-\d{2}T/.test(texto)) {
-                const data = new Date(texto);
-                if (!Number.isNaN(data.getTime())) return `${String(data.getHours()).padStart(2, '0')}:${String(data.getMinutes()).padStart(2, '0')}`;
-                continue;
-            }
-            return texto;
-        } else if (valor && typeof valor === 'object' && !Array.isArray(valor)) {
-            const texto = minutos(valor.completion_seconds ?? valor.active_stop_seconds);
-            if (texto) return texto;
-        }
-    }
-
-    return null;
-}

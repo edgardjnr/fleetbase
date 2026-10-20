@@ -493,6 +493,11 @@ fleet-ops:
                 misto: mixed methods
         origem:
             coluna: Source
+        cronometro:
+            coluna: Deadline
+            titulo: Delivery deadline
+            faltam: '{n} min'
+            atrasado: 'Late by {n} min'
         integracao:
             selo: '{sistema} #{numero}'
             selo-titulo: 'Order received from {sistema}'

@@ -493,6 +493,11 @@ fleet-ops:
         misto: formas variadas
     origem:
       coluna: Origem
+    cronometro:
+      coluna: Prazo
+      titulo: Prazo de entrega
+      faltam: '{n} min'
+      atrasado: 'Atrasado há {n} min'
     integracao:
       selo: '{sistema} #{numero}'
       selo-titulo: 'Pedido recebido de {sistema}'

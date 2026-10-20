@@ -634,6 +634,9 @@ customer-portal:
       card:
         portal: "Portal"
         procurando-motoboy: "looking for a courier"
+        prazo: "Delivery deadline"
+        prazo-faltam: "{n} min"
+        prazo-atrasado: "Late by {n} min"
       lista:
         concluidos: "Completed and canceled"
         ver-na-tabela: "see in Table"
