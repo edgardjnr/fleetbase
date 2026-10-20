@@ -239,9 +239,17 @@ $pedidoDoDia(['driver_assigned_uuid' => 'd-b', 'status' => 'started', 'started_a
 $pedidoDoDia(['driver_assigned_uuid' => 'd-b', 'company_uuid' => 'outra', 'started_at' => '2026-10-05 10:00:00']);
 $pedidoDoDia(['driver_assigned_uuid' => 'd-c', 'started_at' => '2026-10-05 10:00:00']);                           // não foi pedido
 $pedidoDoDia(['driver_assigned_uuid' => 'd-b']);                                                                    // sem started_at nem dispatched_at
+$pedidoDoDia(['driver_assigned_uuid' => 'd-r', 'started_at' => '2026-10-04 22:00:00', 'dispatched_at' => '2026-10-05 08:00:00']); // aceito ontem, redespachado hoje: o COALESCE usa o started_at, não conta
+$corridas = Candidatos::corridasHoje('empresa-1', ['d-a', 'd-b', 'd-r']);
+ksort($corridas);
+confere($corridas === ['d-a' => 2, 'd-b' => 1], 'hoje em Brasília, sem cancelados, expirados, apagados, outra empresa, outro motoboy e redespachado de ontem (' . json_encode($corridas) . ')');
+
+// 22:30 em Brasília já é 01:30 UTC do dia seguinte: o "hoje" continua o de Brasília
+\Teste\Relogio::$agora = '2026-10-05 22:30:00';
 $corridas = Candidatos::corridasHoje('empresa-1', ['d-a', 'd-b']);
 ksort($corridas);
-confere($corridas === ['d-a' => 2, 'd-b' => 1], 'hoje em Brasília, sem cancelados, expirados, apagados, outra empresa e outro motoboy (' . json_encode($corridas) . ')');
+confere($corridas === ['d-a' => 2, 'd-b' => 1], 'às 22:30 de Brasília (01:30 UTC do dia 6) o dia ainda é o 5 (' . json_encode($corridas) . ')');
+\Teste\Relogio::$agora = '2026-10-05 15:00:00';
 confere(Candidatos::corridasHoje('empresa-1', []) === [], 'sem motoboys: vazio, sem consultar');
 
 Banco::$falharAoConsultar['orders'] = new \RuntimeException('banco fora');
