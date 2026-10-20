@@ -72,12 +72,16 @@ Só `https`, com host resolvido para IP público: recusa `localhost`, `127.0.0.0
     "longitude": -47.8122
   },
   "cobranca": { "forma": "dinheiro", "valor": 58.90, "troco_para": 100 },
-  "observacoes": "Sem cebola"
+  "observacoes": "Sem cebola",
+  "itens": [
+    { "quantidade": 1, "nome": "Pizza grande Calabresa", "opcoes": [{ "quantidade": 1, "nome": "Borda de catupiry" }], "observacao": "sem cebola" }
+  ]
 }
 ```
 
 - **Obrigatórios:** `pedido_externo_id` (até 100), `numero` (até 20), `cliente.nome`, `entrega.endereco`, `entrega.cidade`, `cobranca.forma`.
 - **`cobranca`:** `forma` ∈ `dinheiro | cartao | pix | pago`. `valor` obrigatório e > 0 fora de `pago`; até R$ 100 mil. `troco_para` só com `dinheiro` e ≥ `valor`.
+- **`itens`** (opcional; desde 2026-10-19, spec `2026-10-19-produtos-do-pedido-servidor-design.md`): os produtos do pedido, para a Comanda do app do motoboy. Cada item tem `quantidade` (inteiro de 1 a 999; fora disso vale 1), `nome` (sem ele o item não entra; cortado em 120 caracteres), `opcoes` (até 20, cada uma com `quantidade` e `nome`) e `observacao` (até 200). Até 50 itens. **Nunca gera 422:** item ou campo inválido cai e o resto do pedido entra; sem `itens`, nada muda. O reenvio do mesmo `pedido_externo_id` não atualiza os itens, e a resposta não os devolve.
 - **Idempotência:** `pedido_externo_id` é único por loja. Repetir devolve 200 com o mesmo pedido (corpo igual ao 201), sem criar outro, mesmo que o corpo novo seja diferente.
 - **Coordenadas:** opcionais. Sem elas, uma consulta ao Google Geocoding com a chave de Admin → Serviços (endereço, bairro, cidade, UF, CEP; `region=br`), com log `[entregas] integração: endereço geocodificado`. Ponto ausente, inválido (0, fora da faixa) ou a mais de 50 km da coleta: o pedido nasce **sem despacho**, com "[SEM LOCALIZAÇÃO]" nas notas e a entrega ~1 km ao norte da loja (regra do iFood), e a central atribui.
 - **Resposta 201:** `{id, codigo_rastreio, link_rastreio, status}`. `link_rastreio` = `https://entregas.restaurantepro.com.br/~/track-order?order=<codigo_rastreio>` (domínio do console por configuração, `ENTREGAS_CONSOLE_URL`).
@@ -91,7 +95,7 @@ Só `https`, com host resolvido para IP público: recusa `localhost`, `127.0.0.0
 - Place da entrega (sem dono) com endereço estruturado (`street1` = endereço, `street2` = complemento, `neighborhood`, `city`, `province`, `postal_code`, `country` BR) e as coordenadas. **Sem** `Place::createFromMixed` (ele geocodifica sempre).
 - Payload com a coleta no Local da loja.
 - Order: cliente = Vendor da loja, tipo `transport`, `internal_id` = `numero`, notas `"RestaurantePro #4821"` (o `sistema` da conexão + número) seguidas das observações.
-- Linha em **`entregas_integracao_pedidos`**: `integracao_loja_id`, `company_uuid`, `order_uuid` (único), `pedido_externo_id` (único com a loja), `numero`, `cliente_nome`, `cliente_telefone`, `complemento`, `referencia`, `cobranca_forma`, `cobranca_valor`, `cobranca_troco`, `observacoes`, `ultimo_aviso`, `cancelado_em`, `cancelado_por` (`loja | central | sistema`), `pago_mesmo_cancelado`, timestamps. Fora do `meta` de propósito (o `meta` sai na API v1 e no socket).
+- Linha em **`entregas_integracao_pedidos`**: `integracao_loja_id`, `company_uuid`, `order_uuid` (único), `pedido_externo_id` (único com a loja), `numero`, `cliente_nome`, `cliente_telefone`, `complemento`, `referencia`, `cobranca_forma`, `cobranca_valor`, `cobranca_troco`, `observacoes`, `itens` (JSON, desde 2026-10-19), `ultimo_aviso`, `cancelado_em`, `cancelado_por` (`loja | central | sistema`), `pago_mesmo_cancelado`, timestamps. Fora do `meta` de propósito (o `meta` sai na API v1 e no socket).
 - Despacho como o do iFood: adhoc + `firstDispatchWithActivity`, com a `TravaDoPedido` e o pedido relido. Com a distribuição ligada, entra na oferta um a um / rodadas.
 
 ### Cancelamento pela origem
