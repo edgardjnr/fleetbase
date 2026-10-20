@@ -4021,15 +4021,15 @@ body[data-theme='dark'].fleetbase-portal .portal-invoice-notes p {
 /* stylelint-enable no-duplicate-selectors */
 
 /* Entregas: número do pedido e nome do motoboy fixos embaixo do alfinete do pedido aceito (Workspace::Map). O fundo segue
-   o prazo de entrega (classes entregas-prazo-*, abaixo); sem prazo (pedido de antes do deploy), cinza-escuro neutro, para
-   não parecer atrasado (igual ao app) */
+   o prazo de entrega (classes entregas-prazo-*, abaixo); sem prazo (pedido de antes do deploy), neutro (cinza, slate-500
+   com texto branco, mais claro que o rótulo do capacete, slate-900), para não parecer atrasado (igual ao app) */
 .fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete {
     padding: 1px 6px;
     border: none;
     border-radius: 9999px;
-    background: rgb(55 65 81 / 92%);
+    background: rgb(100 116 139 / 95%);
     box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
-    color: #f9fafb;
+    color: #fff;
     font-size: 11px;
     font-weight: 600;
     line-height: 16px;
@@ -4037,7 +4037,7 @@ body[data-theme='dark'].fleetbase-portal .portal-invoice-notes p {
 }
 
 .fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-no-alfinete::before {
-    border-bottom-color: rgb(55 65 81 / 92%);
+    border-bottom-color: rgb(100 116 139 / 95%);
 }
 
 /* Entregas: o fundo do rótulo do alfinete segue o prazo de entrega (utils/entregas-cronometro.js, classeDoRotulo): verde
@@ -4063,12 +4063,12 @@ body[data-theme='dark'].fleetbase-portal .portal-invoice-notes p {
 }
 
 .fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete:has(.entregas-prazo-atrasado) {
-    background: rgb(220 38 38 / 95%);
+    background: rgb(185 28 28 / 95%);
     color: #fef2f2;
 }
 
 .fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-no-alfinete:has(.entregas-prazo-atrasado)::before {
-    border-bottom-color: rgb(220 38 38 / 95%);
+    border-bottom-color: rgb(185 28 28 / 95%);
 }
 
 /* Entregas: capacete e nome do motoboy no mapa de motoboys do portal (utils/camada-de-motoboys.js). O nome fica dentro do

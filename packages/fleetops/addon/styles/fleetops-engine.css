@@ -8906,16 +8906,16 @@ body[data-theme='dark'] .filter-multi-model > .clear-button {
 
 /**
  * Entregas: número do pedido e nome do motoboy fixos embaixo do alfinete do pedido aceito. O fundo segue o prazo de
- * entrega (classes entregas-prazo-*, abaixo); sem prazo (pedido de antes do deploy), cinza-escuro neutro, para não
- * parecer atrasado (igual ao app).
+ * entrega (classes entregas-prazo-*, abaixo); sem prazo (pedido de antes do deploy), neutro (cinza, slate-500 com texto
+ * branco, mais claro que o rótulo do capacete, slate-900), para não parecer atrasado (igual ao app).
  */
 .leaflet-tooltip.entregas-nome-no-alfinete {
     padding: 1px 6px;
     border: none;
     border-radius: 9999px;
-    background: rgba(55, 65, 81, 0.92);
+    background: rgba(100, 116, 139, 0.95);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-    color: #f9fafb;
+    color: #fff;
     font-size: 11px;
     font-weight: 600;
     line-height: 16px;
@@ -8923,7 +8923,7 @@ body[data-theme='dark'] .filter-multi-model > .clear-button {
 }
 
 .leaflet-tooltip-bottom.entregas-nome-no-alfinete::before {
-    border-bottom-color: rgba(55, 65, 81, 0.92);
+    border-bottom-color: rgba(100, 116, 139, 0.95);
 }
 
 /* Entregas: o fundo do rótulo do alfinete segue o prazo de entrega (utils/entregas-cronometro.js, classeDoRotulo): verde
@@ -8948,12 +8948,12 @@ body[data-theme='dark'] .filter-multi-model > .clear-button {
 }
 
 .leaflet-tooltip.entregas-nome-no-alfinete:has(.entregas-prazo-atrasado) {
-    background: rgba(220, 38, 38, 0.95);
+    background: rgba(185, 28, 28, 0.95);
     color: #fef2f2;
 }
 
 .leaflet-tooltip-bottom.entregas-nome-no-alfinete:has(.entregas-prazo-atrasado)::before {
-    border-bottom-color: rgba(220, 38, 38, 0.95);
+    border-bottom-color: rgba(185, 28, 28, 0.95);
 }
 
 /**
