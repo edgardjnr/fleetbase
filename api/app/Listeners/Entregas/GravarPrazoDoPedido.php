@@ -25,14 +25,39 @@ class GravarPrazoDoPedido
     {
         try {
             $meta = $pedido->meta ?? null;
+            if (is_object($meta)) {
+                $meta = (array) $meta;
+            } elseif (is_string($meta) && trim($meta) !== '') {
+                $meta = json_decode($meta, true);
+                if (!is_array($meta)) {
+                    return;
+                }
+            }
             if ($meta === null || $meta === '') {
                 $meta = [];
             }
-            if (!is_array($meta) || PrazoDaEntrega::daMeta($meta) !== null) {
+            if (!is_array($meta)) {
                 return;
             }
 
-            $meta[PrazoDaEntrega::CHAVE] = PrazoDaEntrega::padrao(now(), static::agendadoPara($pedido->scheduled_at ?? null));
+            $atual = PrazoDaEntrega::daMeta($meta);
+            if ($atual !== null) {
+                // Legível: fica como veio, só normalizado para o formato canônico (mesmo instante, Brasília).
+                $canonico = PrazoDaEntrega::formatar(new \DateTimeImmutable($atual));
+                if ($canonico !== $meta[PrazoDaEntrega::CHAVE]) {
+                    $meta[PrazoDaEntrega::CHAVE] = $canonico;
+                    $pedido->meta                = $meta;
+                }
+
+                return;
+            }
+
+            try {
+                $agendado = static::agendadoPara($pedido->scheduled_at ?? null);
+            } catch (\Throwable) {
+                $agendado = null;
+            }
+            $meta[PrazoDaEntrega::CHAVE] = PrazoDaEntrega::padrao(now(), $agendado);
             $pedido->meta                = $meta;
         } catch (\Throwable $e) {
             try {

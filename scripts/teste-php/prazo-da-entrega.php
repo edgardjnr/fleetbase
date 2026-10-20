@@ -143,6 +143,54 @@ $erro = excecao(fn () => GravarPrazoDoPedido::aoCriar(new PedidoQueFalhaAoLer())
 confere($erro === null, 'falha ao ler o pedido: não lança (roda dentro da criação)');
 confere(logou('[entregas] falha ao gravar o prazo do pedido', 'warning') && logsSem(['segredo', 'SELECT']), 'warning curto, só com a classe da exceção');
 
+#[AllowDynamicProperties]
+class PedidoComAgendamentoQueFalha
+{
+    public $meta = null;
+
+    public function __get($nome)
+    {
+        if ($nome === 'scheduled_at') {
+            throw new RuntimeException('segredo SELECT');
+        }
+
+        return null;
+    }
+}
+
+echo '== Hook: meta como objeto ou JSON, formato canônico, agendamento ilegível' . PHP_EOL;
+$pedido = new PedidoNovo((object) ['origem' => 'api']);
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta === ['origem' => 'api', PrazoDaEntrega::CHAVE => '2026-10-05T15:50:00-03:00'], 'meta stdClass: vira array, mantém as outras chaves e ganha o padrão');
+
+$pedido = new PedidoNovo('{"origem":"api","n":2}');
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta === ['origem' => 'api', 'n' => 2, PrazoDaEntrega::CHAVE => '2026-10-05T15:50:00-03:00'], 'meta em texto JSON: decodificado, mantém as outras chaves e ganha o padrão');
+
+$pedido = new PedidoNovo(['x' => 1, PrazoDaEntrega::CHAVE => '2026-10-05T18:40:00Z']);
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta === ['x' => 1, PrazoDaEntrega::CHAVE => '2026-10-05T15:40:00-03:00'], 'prazo em Z: regravado no formato canônico (mesmo instante, Brasília)');
+
+$pedido = new PedidoNovo([PrazoDaEntrega::CHAVE => '2026-10-05T18:40:00.123456Z']);
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta[PrazoDaEntrega::CHAVE] === '2026-10-05T15:40:00-03:00', 'prazo com microssegundos: regravado sem fração');
+
+$pedido = new PedidoNovo([PrazoDaEntrega::CHAVE => '2026-10-05T15:40-03:00']);
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta[PrazoDaEntrega::CHAVE] === '2026-10-05T15:40:00-03:00', 'prazo sem segundos: regravado com :00');
+
+$pedido = new PedidoNovo((object) [PrazoDaEntrega::CHAVE => '2026-10-05T18:40:00Z']);
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta === [PrazoDaEntrega::CHAVE => '2026-10-05T15:40:00-03:00'], 'meta objeto com prazo em Z: vira array canônico');
+
+$pedido = new PedidoNovo([PrazoDaEntrega::CHAVE => '2026-10-05T15:40:00-03:00']);
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta === [PrazoDaEntrega::CHAVE => '2026-10-05T15:40:00-03:00'], 'prazo já canônico: intacto');
+
+$pedido = new PedidoComAgendamentoQueFalha();
+$erro   = excecao(fn () => GravarPrazoDoPedido::aoCriar($pedido));
+confere($erro === null && $pedido->meta === [PrazoDaEntrega::CHAVE => '2026-10-05T15:50:00-03:00'], 'scheduled_at que lança: o pedido ganha o padrão a partir de agora, sem lançar');
+
 echo '== Ligação no AppServiceProvider' . PHP_EOL;
 $provider = file_get_contents('/repo/api/app/Providers/AppServiceProvider.php');
 confere(str_contains($provider, 'Order::creating(fn ($pedido) => GravarPrazoDoPedido::aoCriar($pedido));'), 'Order::creating → GravarPrazoDoPedido');
