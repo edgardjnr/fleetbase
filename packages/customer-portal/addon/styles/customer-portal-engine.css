@@ -4041,32 +4041,33 @@ body[data-theme='dark'].fleetbase-portal .portal-invoice-notes p {
 }
 
 /* Entregas: o fundo do rótulo do alfinete segue o prazo de entrega (utils/entregas-cronometro.js, classeDoRotulo): verde
-   no prazo, amarelo a 15 min ou menos, vermelho atrasado. Sem prazo (pedido de antes do deploy), o cinza-escuro acima.
-   As mesmas cores do console. */
-.fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete.entregas-prazo-no_prazo {
+   no prazo, amarelo a 15 min ou menos, vermelho atrasado. Sem prazo (pedido de antes do deploy), o neutro acima. O
+   tooltip tem classe fixa (o className do Leaflet só vale na criação); o estado vem no span de dentro, daí o :has. As
+   mesmas cores do console. */
+.fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete:has(.entregas-prazo-no_prazo) {
     background: rgb(21 128 61 / 95%);
     color: #f0fdf4;
 }
 
-.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-no-alfinete.entregas-prazo-no_prazo::before {
+.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-no-alfinete:has(.entregas-prazo-no_prazo)::before {
     border-bottom-color: rgb(21 128 61 / 95%);
 }
 
-.fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete.entregas-prazo-perto {
+.fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete:has(.entregas-prazo-perto) {
     background: rgb(250 204 21 / 95%);
     color: #422006;
 }
 
-.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-no-alfinete.entregas-prazo-perto::before {
+.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-no-alfinete:has(.entregas-prazo-perto)::before {
     border-bottom-color: rgb(250 204 21 / 95%);
 }
 
-.fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete.entregas-prazo-atrasado {
+.fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete:has(.entregas-prazo-atrasado) {
     background: rgb(220 38 38 / 95%);
     color: #fef2f2;
 }
 
-.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-no-alfinete.entregas-prazo-atrasado::before {
+.fleetbase-portal .leaflet-tooltip-bottom.entregas-nome-no-alfinete:has(.entregas-prazo-atrasado)::before {
     border-bottom-color: rgb(220 38 38 / 95%);
 }
 

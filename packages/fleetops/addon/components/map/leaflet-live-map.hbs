@@ -357,12 +357,10 @@
                                 />
                             </div>
                         </marker.popup>
-                        {{! Entregas: pedido já aceito, número do pedido e nome do motoboy fixos embaixo do alfinete; o fundo segue o prazo de entrega (verde, amarelo, vermelho; sem prazo, cinza-escuro neutro). O className do tooltip só vale na criação: o each com a classe como chave recria o rótulo quando o estado muda }}
+                        {{! Entregas: pedido já aceito, número do pedido e nome do motoboy fixos embaixo do alfinete; o fundo segue o prazo de entrega (verde, amarelo, vermelho; sem prazo, cinza neutro). Um tooltip só, com o className fixo (no Leaflet ele só vale na criação); o estado vai na classe do span, que é DOM do Glimmer dentro do tooltip e muda sozinho, e o CSS pinta o tooltip com :has(.entregas-prazo-*) }}
                         {{#let (this.rotuloNoAlfinete pedido) as |nome|}}
                             {{#if nome}}
-                                {{#each (array (this.classeDoRotulo pedido this.relogio)) key="@identity" as |classe|}}
-                                    <marker.tooltip @permanent={{true}} @direction="bottom" @className={{classe}}>{{nome}}</marker.tooltip>
-                                {{/each}}
+                                <marker.tooltip @permanent={{true}} @direction="bottom" @className="entregas-nome-no-alfinete"><span class={{this.classeDoRotulo pedido this.relogio}}>{{nome}}</span></marker.tooltip>
                             {{/if}}
                         {{/let}}
                     </layers.marker>

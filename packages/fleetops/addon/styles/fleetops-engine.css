@@ -8927,31 +8927,32 @@ body[data-theme='dark'] .filter-multi-model > .clear-button {
 }
 
 /* Entregas: o fundo do rótulo do alfinete segue o prazo de entrega (utils/entregas-cronometro.js, classeDoRotulo): verde
-   no prazo, amarelo a 15 min ou menos, vermelho atrasado. Sem prazo (pedido de antes do deploy), o cinza-escuro acima. */
-.leaflet-tooltip.entregas-nome-no-alfinete.entregas-prazo-no_prazo {
+   no prazo, amarelo a 15 min ou menos, vermelho atrasado. Sem prazo (pedido de antes do deploy), o neutro acima. O
+   tooltip tem classe fixa (o className do Leaflet só vale na criação); o estado vem no span de dentro, daí o :has. */
+.leaflet-tooltip.entregas-nome-no-alfinete:has(.entregas-prazo-no_prazo) {
     background: rgba(21, 128, 61, 0.95);
     color: #f0fdf4;
 }
 
-.leaflet-tooltip-bottom.entregas-nome-no-alfinete.entregas-prazo-no_prazo::before {
+.leaflet-tooltip-bottom.entregas-nome-no-alfinete:has(.entregas-prazo-no_prazo)::before {
     border-bottom-color: rgba(21, 128, 61, 0.95);
 }
 
-.leaflet-tooltip.entregas-nome-no-alfinete.entregas-prazo-perto {
+.leaflet-tooltip.entregas-nome-no-alfinete:has(.entregas-prazo-perto) {
     background: rgba(250, 204, 21, 0.95);
     color: #422006;
 }
 
-.leaflet-tooltip-bottom.entregas-nome-no-alfinete.entregas-prazo-perto::before {
+.leaflet-tooltip-bottom.entregas-nome-no-alfinete:has(.entregas-prazo-perto)::before {
     border-bottom-color: rgba(250, 204, 21, 0.95);
 }
 
-.leaflet-tooltip.entregas-nome-no-alfinete.entregas-prazo-atrasado {
+.leaflet-tooltip.entregas-nome-no-alfinete:has(.entregas-prazo-atrasado) {
     background: rgba(220, 38, 38, 0.95);
     color: #fef2f2;
 }
 
-.leaflet-tooltip-bottom.entregas-nome-no-alfinete.entregas-prazo-atrasado::before {
+.leaflet-tooltip-bottom.entregas-nome-no-alfinete:has(.entregas-prazo-atrasado)::before {
     border-bottom-color: rgba(220, 38, 38, 0.95);
 }
 

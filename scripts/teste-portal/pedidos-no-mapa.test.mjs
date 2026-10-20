@@ -71,6 +71,6 @@ test('rótulo do alfinete: a mesma classe do console, pelo prazo', () => {
     ]) {
         assert.equal(classeDoRotulo(pedido, agora), classeDoRotuloDoConsole(pedido, agora));
     }
-    assert.equal(classeDoRotulo({ prazo_em: prazo }, t + 7 * 60000), 'entregas-nome-no-alfinete entregas-prazo-atrasado');
-    assert.equal(classeDoRotulo({}, t), 'entregas-nome-no-alfinete', 'sem prazo: só a de base (neutra, cinza-escuro)');
+    assert.equal(classeDoRotulo({ prazo_em: prazo }, t + 7 * 60000), 'entregas-prazo-atrasado');
+    assert.equal(classeDoRotulo({}, t), '', 'sem prazo: vazia (fundo neutro, cinza)');
 });
