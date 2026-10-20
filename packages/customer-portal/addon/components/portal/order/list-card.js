@@ -1,4 +1,5 @@
 import Component from '@glimmer/component';
+import { cached } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { CANCELAVEIS, nomeDoCliente, origemDoPedido } from '../../../utils/entregas-pedido';
 import { TIPO_DO_BADGE, cronometroDoPedido } from '../../../utils/entregas-cronometro';
@@ -58,7 +59,9 @@ export default class PortalOrderListCardComponent extends Component {
         return !this.motoboy && CANCELAVEIS.includes(this.order.status);
     }
 
-    // cronômetro do prazo de entrega: o relógio (serviço entregas-relogio) anda a cada 30 s
+    // cronômetro do prazo de entrega: o relógio (serviço entregas-relogio) anda a cada 30 s. @cached: o template lê
+    // cronometro (no if e no texto) e tipoDoPrazo; a conta roda uma vez por tique do relógio
+    @cached
     get cronometro() {
         return cronometroDoPedido(this.order, this.entregasRelogio.agora, {
             faltam: (n) => this.intl.t('customer-portal.ui.entregas.card.prazo-faltam', { n }),
@@ -66,7 +69,8 @@ export default class PortalOrderListCardComponent extends Component {
         });
     }
 
+    // só é lido com o cronômetro presente (if no template), então o estado sempre tem tipo
     get tipoDoPrazo() {
-        return TIPO_DO_BADGE[this.cronometro?.estado] ?? 'info';
+        return TIPO_DO_BADGE[this.cronometro?.estado];
     }
 }

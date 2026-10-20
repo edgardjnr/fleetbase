@@ -1,4 +1,5 @@
 import Component from '@glimmer/component';
+import { cached } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { TIPO_DO_BADGE, cronometroDoPedido } from '../utils/entregas-cronometro';
 
@@ -13,6 +14,8 @@ export default class PrazoDoPedidoComponent extends Component {
     @service intl;
     @service entregasRelogio;
 
+    // @cached: o template lê cronometro (no if e no texto) e tipo; a conta roda uma vez por tique do relógio
+    @cached
     get cronometro() {
         return cronometroDoPedido(this.args.order, this.entregasRelogio.agora, {
             faltam: (n) => this.intl.t('fleet-ops.ui.cronometro.faltam', { n }),
@@ -20,7 +23,8 @@ export default class PrazoDoPedidoComponent extends Component {
         });
     }
 
+    // só é lido com o cronômetro presente (if no template), então o estado sempre tem tipo
     get tipo() {
-        return TIPO_DO_BADGE[this.cronometro?.estado] ?? 'info';
+        return TIPO_DO_BADGE[this.cronometro?.estado];
     }
 }
