@@ -82,6 +82,10 @@ lojaIntegradaA();
 \Fleetbase\FleetOps\Models\Vendor::$todos[0]->place_uuid = null;
 $r = criarPelaRota();
 confere($r->status === 409 && str_contains($r->dados['errors'][0], 'local de coleta'), 'loja sem coleta: 409');
+reiniciarIntegracao();
+lojaIntegradaA();
+$r = criarPelaRota(['itens' => 'não é lista']);
+confere($r->status === 201 && !array_key_exists('itens', $r->dados), 'itens inválido: 201 mesmo assim; a resposta à origem não muda');
 
 echo '== Consultar' . PHP_EOL;
 reiniciarIntegracao();
