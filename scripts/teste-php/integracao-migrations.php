@@ -27,6 +27,18 @@ $nova = (new Teste\Consulta('entregas_integracao_pedidos'))->where('order_uuid',
 confere($nova->cobranca_centavos === 0 && $nova->pago_mesmo_cancelado === false && $nova->sem_localizacao === false && $nova->ultimo_aviso === null && $nova->avisos_enviados === 0, 'padrões da migration');
 confere(Banco::tamanhoDe('entregas_integracao_pedidos', 'pedido_externo_id') === 100 && Banco::tamanhoDe('entregas_integracao_pedidos', 'numero') === 20, 'tamanhos');
 
+echo '== entregas_integracao_pedidos: produtos do pedido (itens)' . PHP_EOL;
+\Illuminate\Support\Facades\Schema::$alteradas = [];
+$migracao = require '/repo/api/database/migrations/2026_10_19_120100_add_itens_to_entregas_integracao_pedidos_table.php';
+$migracao->up();
+$coluna = \Illuminate\Support\Facades\Schema::$alteradas['entregas_integracao_pedidos'][0]->colunas[0] ?? null;
+confere($coluna && $coluna->tipo === 'json' && $coluna->argumentos === ['itens'] && array_key_exists('nullable', $coluna->modificadores), 'itens: json nulo');
+confere(property_exists($nova, 'itens') && $nova->itens === null, 'pedido sem itens: NULL (a coluna veio da migration)');
+\Illuminate\Support\Facades\Schema::$alteradas = [];
+$migracao->down();
+$desfeito = \Illuminate\Support\Facades\Schema::$alteradas['entregas_integracao_pedidos'][0]->colunas[0] ?? null;
+confere($desfeito && $desfeito->tipo === 'dropColumn' && $desfeito->argumentos === ['itens'], 'down tira a coluna');
+
 echo '== Config' . PHP_EOL;
 $config = file_get_contents('/repo/api/config/services.php');
 confere(str_contains($config, "'integracao' => env('ENTREGAS_INTEGRACAO')"), 'services.entregas.integracao');
