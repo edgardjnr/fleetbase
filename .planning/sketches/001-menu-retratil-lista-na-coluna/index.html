@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch 001: menu retrátil e lista na coluna</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link id="theme" rel="stylesheet" href="../themes/default.css">
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #e9edf2; font-family: var(--font-sans); color: #0f172a; }
+body.dark-chrome { background: #05080f; }
+button, input, select, textarea { font: inherit; color: inherit; }
+
+/* ---------- moldura do sketch (fora do portal) ---------- */
+#chrome { position: sticky; top: 0; z-index: 50; background: #0f172a; color: #e2e8f0; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; }
+#chrome .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#chrome .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; margin-right: 6px; font-weight: 700; }
+.chip { border: 1px solid #334155; background: #1e293b; color: #e2e8f0; border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; transition: all .15s ease; }
+.chip:hover { border-color: #60a5fa; }
+.chip.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+.chip.cmp { border-style: dashed; }
+.chip.cmp.on { border-style: solid; }
+#desc { font-size: 13px; color: #cbd5e1; max-width: 1100px; line-height: 1.45; }
+#desc b { color: #fff; }
+#stage { padding: 16px 24px 40px; }
+.single { display: flex; justify-content: center; }
+.cmpgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.cmpcol h3 { margin: 0 0 8px; font-size: 14px; color: #0f172a; display: flex; gap: 8px; align-items: center; }
+body.dark-chrome .cmpcol h3 { color: #e2e8f0; }
+.cmpcol h3 span { font-weight: 500; color: #64748b; font-size: 12px; }
+.scaler { position: relative; overflow: hidden; border-radius: 10px; box-shadow: 0 10px 40px rgb(15 23 42 / 25%); }
+.scaler > .pf { position: absolute; top: 0; left: 0; transform-origin: top left; }
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #0f172a; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 14px; opacity: 0; transition: all .2s ease; z-index: 99; pointer-events: none; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#sketch-tools { position: fixed; bottom: 12px; right: 12px; z-index: 9999; font-family: system-ui; font-size: 12px; background: rgba(0,0,0,.75); color: #fff; padding: 8px 12px; border-radius: 8px; opacity: .45; transition: opacity .2s; display: flex; gap: 8px; align-items: center; }
+#sketch-tools:hover { opacity: 1; }
+#sketch-tools select, #sketch-tools button { background: #1f2937; color: #fff; border: 1px solid #374151; border-radius: 6px; padding: 3px 6px; cursor: pointer; font-size: 12px; }
+#sketch-tools button.on { background: #2563eb; border-color: #2563eb; }
+
+/* anotações */
+body.annot .pf [data-note] { outline: 2px dashed #d946ef; outline-offset: -2px; position: relative; }
+body.annot .pf [data-note]::before { content: attr(data-note); position: absolute; top: 4px; left: 4px; z-index: 5000; background: #d946ef; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
+
+/* ---------- o portal ---------- */
+.pf { background: var(--color-bg); color: var(--color-text); font-family: var(--font-sans); font-size: 14px; display: flex; flex-direction: column; overflow: hidden; }
+.pf * { transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease; }
+.pf-top { flex: none; height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 20px; border-bottom: 1px solid var(--color-border); background: var(--topbar-bg); position: relative; z-index: 30; }
+.pf-acc { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pf-mark { width: 36px; height: 36px; flex: none; border-radius: 10px; display: grid; place-items: center; background: var(--color-primary-soft); color: var(--color-primary); }
+.pf-eyebrow { font-size: 11px; font-weight: 700; color: var(--color-muted); text-transform: uppercase; letter-spacing: .02em; }
+.pf-accname { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-user { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
+.pf-user:hover { background: var(--color-surface-2); }
+.pf-avatar { width: 32px; height: 32px; border-radius: 999px; background: #c7d2fe; color: #3730a3; display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; }
+.pf-uname { font-weight: 600; font-size: 13px; line-height: 1.2; }
+.pf-umail { font-size: 12px; color: var(--color-muted); }
+.pf-iconbtn { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-2); cursor: pointer; }
+.pf-iconbtn:hover { border-color: var(--color-primary-border); color: var(--color-primary); background: var(--color-primary-soft); }
+
+.pf-main { flex: 1; min-height: 0; display: grid; gap: 16px; padding: 16px; position: relative; }
+.pf-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); min-height: 0; }
+
+/* menu */
+.pf-menu { padding: 12px; align-self: start; }
+.pf-navlabel { padding: 0 8px 4px; font-size: 11px; font-weight: 700; color: var(--color-muted); text-transform: uppercase; display: flex; align-items: center; justify-content: space-between; }
+.pf-item { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 8px 10px; border: 1px solid transparent; border-radius: 8px; color: var(--color-text-2); cursor: pointer; white-space: nowrap; }
+.pf-item i { width: 18px; text-align: center; flex: none; }
+.pf-item:hover { border-color: var(--color-border); background: var(--color-surface-2); }
+.pf-item.on { border-color: var(--color-primary-border); color: var(--color-primary-strong); background: var(--color-primary-soft); }
+.pf-nav { display: flex; flex-direction: column; gap: 4px; }
+.pf-collapse { border: 0; background: transparent; color: var(--color-muted); cursor: pointer; width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; }
+.pf-collapse:hover { background: var(--color-surface-2); color: var(--color-primary); }
+
+/* A: trilho */
+.pf-rail { padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; align-self: start; }
+.pf-rail .pf-item { width: 42px; height: 40px; min-height: 0; padding: 0; justify-content: center; position: relative; }
+.pf-rail .sep { width: 28px; height: 1px; background: var(--color-border); margin: 4px 0; }
+[data-tip] { position: relative; }
+[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%); background: #0f172a; color: #fff; font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 6px; white-space: nowrap; z-index: 100; pointer-events: none; }
+.pf-overmenu { position: absolute; left: 16px; top: 16px; width: 248px; z-index: 25; box-shadow: var(--shadow-lg); animation: slideIn .18s ease; }
+.pf-scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 20; animation: fadeIn .18s ease; cursor: pointer; }
+@keyframes slideIn { from { transform: translateX(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dropIn { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* B: gaveta */
+.pf-drawer { position: absolute; left: 0; top: 0; bottom: 0; width: 288px; background: var(--color-surface); z-index: 60; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; animation: slideIn .2s ease; }
+.pf-drawer-head { height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid var(--color-border); }
+.pf-drawer .pf-nav { padding: 12px; }
+.pf-drawer-foot { margin-top: auto; padding: 12px 16px; border-top: 1px solid var(--color-border); display: flex; align-items: center; gap: 10px; }
+.pf-scrim.full { z-index: 55; }
+
+/* C: faixa de ícones no topo da coluna */
+.pf-strip { display: flex; align-items: center; gap: 4px; padding: 8px; border-bottom: 1px solid var(--color-border); }
+.pf-strip .pf-item { min-height: 34px; padding: 0 9px; }
+.pf-strip .pf-item:not(.on) { width: 36px; justify-content: center; }
+.pf-strip .pf-item:not(.on) span { display: none; }
+.pf-strip .grow { flex: 1; }
+.pf-strip [data-tip]:hover::after { left: 50%; top: calc(100% + 8px); transform: translateX(-50%); }
+.pf-unfold { padding: 8px 12px 12px; border-bottom: 1px solid var(--color-border); background: var(--color-surface-2); animation: dropIn .18s ease; }
+
+/* coluna da lista */
+.pf-list { display: flex; flex-direction: column; overflow: hidden; }
+.pf-list-head { padding: 14px 14px 0; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.pf-h2 { margin: 2px 0 0; font-size: 16px; font-weight: 800; }
+.pf-count { font-size: 12px; font-weight: 700; color: var(--color-primary-strong); background: var(--color-primary-soft); border: 1px solid var(--color-primary-border); border-radius: 999px; padding: 1px 8px; }
+.pf-search { margin: 10px 14px; position: relative; }
+.pf-search i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--color-muted); font-size: 12px; }
+.pf-input { width: 100%; height: 36px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); padding: 0 10px; outline: none; }
+.pf-search .pf-input { padding-left: 30px; }
+.pf-input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-soft); }
+.pf-list-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 12px; display: flex; flex-direction: column; gap: 10px; }
+.pf-list-foot { padding: 10px 14px; border-top: 1px solid var(--color-border); font-size: 12px; color: var(--color-muted); display: flex; justify-content: space-between; align-items: center; }
+.pf-link { color: var(--color-primary); font-weight: 600; cursor: pointer; }
+.pf-link:hover { text-decoration: underline; }
+.pf-empty { text-align: center; padding: 28px 12px; color: var(--color-muted); font-size: 13px; }
+.pf-empty b { display: block; color: var(--color-text); margin-bottom: 4px; }
+
+/* card do pedido (igual ao atual) */
+.oc { border: 1px solid var(--color-border); border-radius: 10px; padding: 12px; background: var(--color-surface); cursor: pointer; flex: none; }
+.oc:hover { border-color: var(--color-primary-border); box-shadow: var(--shadow-md); }
+.oc.sel { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-soft); }
+.oc-top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.oc-id { font-weight: 700; }
+.oc-sub { font-size: 12px; color: var(--color-muted); }
+.selo { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; letter-spacing: .03em; border-radius: 4px; padding: 1px 5px; margin-top: 3px; }
+.selo.ifood { background: var(--color-ifood); color: #fff; }
+.selo.portal { background: var(--color-surface-2); color: var(--color-text-2); border: 1px solid var(--color-border); }
+.badge { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.badge.dispatched { background: var(--color-warning-soft); color: var(--color-warning); }
+.badge.accepted { background: var(--color-primary-soft); color: var(--color-primary-strong); }
+.badge.route { background: var(--color-success-soft); color: var(--color-success); }
+.oc-prog { height: 4px; border-radius: 999px; background: var(--color-surface-2); margin: 10px 0; overflow: hidden; }
+.oc-prog span { display: block; height: 100%; background: var(--color-primary); border-radius: 999px; }
+.oc-stop { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; }
+.mk { width: 20px; height: 20px; flex: none; border-radius: 999px; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; }
+.mk.p { background: var(--color-loja); }
+.mk.d { background: var(--color-danger); }
+.oc-lbl { font-size: 11px; font-weight: 700; color: var(--color-muted); text-transform: uppercase; }
+.oc-addr { font-size: 13px; color: var(--color-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oc-meta { display: flex; gap: 12px; margin-top: 10px; font-size: 12px; color: var(--color-muted); }
+.oc-meta i { margin-right: 4px; }
+
+/* seção de pedidos */
+.pf-sec { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.pf-sec-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 18px; border-bottom: 1px solid var(--color-border); }
+.pf-h1 { margin: 2px 0 0; font-size: 20px; font-weight: 800; }
+.pf-p { margin: 2px 0 0; color: var(--color-muted); font-size: 13px; }
+.pf-actions { display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; }
+.btn { height: 34px; padding: 0 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); display: inline-flex; gap: 6px; align-items: center; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; color: var(--color-text-2); position: relative; }
+.btn:hover { border-color: var(--color-primary-border); color: var(--color-primary); }
+.btn.primary { background: var(--color-primary); border-color: transparent; color: #fff; }
+.btn.primary:hover { background: var(--color-primary-strong); color: #fff; }
+.btn.danger { color: var(--color-danger); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.btn.sm { height: 30px; font-size: 12px; }
+.seg { display: inline-flex; border: 1px solid var(--color-border); border-radius: 8px; overflow: hidden; }
+.seg .btn { border: 0; border-radius: 0; height: 32px; }
+.seg .btn.on { background: var(--color-primary); color: #fff; }
+.dot { position: absolute; top: -6px; right: -6px; background: var(--color-danger); color: #fff; font-size: 10px; font-weight: 800; border-radius: 999px; min-width: 18px; height: 18px; display: grid; place-items: center; padding: 0 4px; }
+.pf-stage { flex: 1; position: relative; min-height: 0; overflow: hidden; }
+
+/* mapa falso */
+.map { position: absolute; inset: 0; background: var(--map-land); overflow: hidden; }
+.map svg.bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.map svg.route { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.zoom { position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 6px; overflow: hidden; z-index: 3; }
+.zoom span { width: 30px; height: 30px; display: grid; place-items: center; cursor: pointer; font-weight: 700; color: var(--color-text-2); }
+.zoom span + span { border-top: 1px solid var(--color-border); }
+.attr { position: absolute; right: 0; bottom: 0; font-size: 10px; background: var(--color-surface); color: var(--color-muted); padding: 1px 6px; opacity: .8; }
+.pin { position: absolute; transform: translate(-50%, -100%); z-index: 2; }
+.pin-p { width: 30px; height: 30px; border-radius: 8px 8px 8px 2px; background: var(--color-loja); color: #fff; font-weight: 800; display: grid; place-items: center; box-shadow: var(--shadow-md); border: 2px solid #fff; transform: translate(-50%, -100%) rotate(0); }
+.pin-d { color: var(--color-danger); font-size: 22px; filter: drop-shadow(0 2px 2px rgb(0 0 0 / 25%)); }
+.pin-d.big { font-size: 30px; }
+.pin-d.big b { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); color: #fff; font-size: 11px; }
+.pin-d.draft { color: var(--color-primary); font-size: 32px; animation: bob 1.2s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translate(-50%, -110%); } }
+.helmet { position: absolute; transform: translate(-50%, -50%); z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.helmet .h { width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; color: #fff; font-size: 13px; border: 2px solid #fff; box-shadow: var(--shadow-md); }
+.helmet .h.g { background: #16a34a; } .helmet .h.y { background: #eab308; } .helmet .h.r { background: #dc2626; }
+.helmet .n { font-size: 10px; font-weight: 700; background: var(--color-surface); color: var(--color-text); border-radius: 4px; padding: 0 4px; box-shadow: var(--shadow-sm); }
+.helmet.mine .n { background: var(--color-primary); color: #fff; }
+.maptip { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: var(--color-text-2); box-shadow: var(--shadow-md); z-index: 3; white-space: nowrap; }
+
+/* painel do pedido (direita) */
+.panel { position: absolute; top: 0; right: 0; bottom: 0; width: 420px; background: var(--color-surface); border-left: 1px solid var(--color-border); box-shadow: -18px 0 42px rgb(15 23 42 / 14%); z-index: 10; display: flex; flex-direction: column; animation: panelIn .2s ease; }
+@keyframes panelIn { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.panel-head { padding: 14px 16px; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.panel-body { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+.box { border: 1px solid var(--color-border); border-radius: 10px; padding: 12px; }
+.box-t { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--color-muted); margin-bottom: 8px; }
+.moto { display: flex; gap: 10px; align-items: center; }
+.tl { display: flex; flex-direction: column; gap: 8px; }
+.tl div { display: flex; gap: 8px; font-size: 13px; align-items: center; }
+.tl i { color: var(--color-success); width: 14px; }
+.tl .off i { color: var(--color-border); }
+.tl .off { color: var(--color-muted); }
+.tl time { margin-left: auto; color: var(--color-muted); font-size: 12px; }
+.fld { display: flex; flex-direction: column; gap: 6px; }
+.fld label { font-size: 12px; font-weight: 600; color: var(--color-text-2); }
+.fixa { display: flex; gap: 8px; align-items: center; padding: 10px; border: 1px dashed var(--color-border); border-radius: 8px; background: var(--color-surface-2); font-size: 13px; }
+.saved { display: flex; flex-direction: column; gap: 6px; }
+.saved div { padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 13px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+.saved div:hover, .saved div.on { border-color: var(--color-primary); background: var(--color-primary-soft); }
+textarea.pf-input { height: 64px; padding: 8px 10px; resize: none; }
+
+/* extrato */
+.ext { padding: 18px; display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.kpi { border: 1px solid var(--color-border); border-radius: 10px; padding: 12px; }
+.kpi small { color: var(--color-muted); font-size: 12px; }
+.kpi b { display: block; font-size: 20px; margin-top: 4px; }
+table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.t th { text-align: left; font-size: 11px; text-transform: uppercase; color: var(--color-muted); padding: 8px; border-bottom: 1px solid var(--color-border); }
+table.t td { padding: 9px 8px; border-bottom: 1px solid var(--color-border); color: var(--color-text-2); }
+table.t td.r, table.t th.r { text-align: right; }
+
+/* celular */
+.pf.phone { border-radius: 28px; border: 8px solid #0f172a; }
+.pf.phone .pf-top { height: 56px; padding: 0 12px; }
+.ph-map { position: relative; height: 290px; flex: none; }
+.ph-sheet { flex: 1; min-height: 0; background: var(--color-surface); border-radius: 16px 16px 0 0; margin-top: -16px; position: relative; z-index: 4; box-shadow: 0 -8px 24px rgb(15 23 42 / 12%); display: flex; flex-direction: column; }
+.ph-handle { width: 40px; height: 4px; border-radius: 999px; background: var(--color-border); margin: 8px auto 2px; }
+.ph-sheet .pf-list-body { padding-top: 4px; }
+.ph-tabs { flex: none; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--color-border); background: var(--color-surface); }
+.ph-tabs div { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 0 10px; font-size: 10px; color: var(--color-muted); cursor: pointer; }
+.ph-tabs div i { font-size: 16px; }
+.ph-tabs div.on { color: var(--color-primary); font-weight: 700; }
+.fab { text-transform: none; letter-spacing: normal; font-size: 14px; position: absolute; right: 14px; bottom: 76px; z-index: 8; height: 44px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--color-primary); color: #fff; font-weight: 700; box-shadow: var(--shadow-lg); display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.fab.low { bottom: 18px; }
+.pf.phone .pf-strip { background: var(--color-surface); }
+.pf.phone .pf-strip .pf-item:not(.on) { width: 40px; }
+.pf.phone .oc { padding: 10px; }
+.pf.phone .pf-unfold { position: absolute; left: 0; right: 0; top: 0; z-index: 9; box-shadow: var(--shadow-lg); }
+</style>
+</head>
+<body>
+
+<div id="chrome">
+  <div class="row" id="vtabs"></div>
+  <div class="row" id="stabs"></div>
+  <div id="desc"></div>
+</div>
+<div id="stage"></div>
+<div id="toast"></div>
+
+<div id="sketch-tools">
+  <span>Tema</span>
+  <select id="theme-switcher">
+    <option value="default">Claro</option>
+    <option value="escuro">Escuro</option>
+  </select>
+  <span>Tela</span>
+  <button data-vp="1366" class="on">Notebook 1366</button>
+  <button data-vp="1920">Monitor 1920</button>
+  <button id="annot-btn">Anotações</button>
+</div>
+
+<script>
+/* ======================= estado ======================= */
+const S = {
+  variant: 'b',      // a | b | c | cmp (B foi a escolhida)
+  screen: 1,         // 1 pedidos, 2 menu aberto, 3 detalhe, 4 novo pedido, 5 extrato, 6 celular
+  sel: '1042',
+  query: '',
+  vp: 1366,
+  extColl: false,    // no Extrato, menu recolhido
+  phoneMenu: false,
+  phoneScreen: 'pedidos',
+  dark: false,
+};
+
+const VARIANTS = {
+  a: { nome: 'A: Trilho de ícones', desc: '<b>A: Trilho de ícones.</b> Em Pedidos, o menu recolhe para uma faixa de 56 px só com ícones (o nome aparece ao passar o mouse). A lista de pedidos ocupa a coluna logo ao lado. O botão <i class="fa-solid fa-bars"></i> no topo do trilho abre o menu completo por cima da lista. No Extrato, o menu volta aberto e o « recolhe para o trilho.' },
+  b: { nome: 'B: Menu na gaveta ☰ ★ Escolhida', desc: '<b>B: Menu na gaveta.</b> Em Pedidos, o menu sai da tela e vira o botão <i class="fa-solid fa-bars"></i> na barra superior. A lista ocupa exatamente o cartão onde ficava o menu, e o mapa ganha mais espaço. O ☰ abre o menu como gaveta por cima de tudo. No Extrato, o menu volta na coluna e o ☰ esconde ou mostra.' },
+  c: { nome: 'C: Menu dobrável na coluna', desc: '<b>C: Menu dobrável na coluna.</b> A coluna da esquerda continua sendo do menu, mas em Pedidos ele fica dobrado numa faixa de ícones no topo (o item atual com nome) e a lista ocupa o resto da coluna. A seta <i class="fa-solid fa-chevron-down"></i> desdobra o menu dentro da coluna, empurrando a lista para baixo. No Extrato, o menu fica desdobrado e não há lista.' },
+};
+const SCREENS = [
+  [1, '1 · Pedidos (menu recolhido)'],
+  [2, '2 · Menu aberto'],
+  [3, '3 · Detalhe do pedido'],
+  [4, '4 · Novo pedido'],
+  [5, '5 · Extrato (outra tela)'],
+  [6, '6 · Celular'],
+];
+
+/* ======================= dados ======================= */
+const LOJA = { nome: 'Terraço Pizza Bar', end: 'R. Augusta, 2203 · Cerqueira César', x: 44, y: 56 };
+let ORDERS = [
+  { id: '1042', origem: 'ifood', st: 'route', status: 'Em rota', dest: 'R. Haddock Lobo, 595 · Cerqueira César', cliente: 'Mariana S.', hora: '19:42', eta: '8 min', moto: 'Carlos', prog: 78, x: 66, y: 28 },
+  { id: '1043', origem: 'ifood', st: 'accepted', status: 'Aceito', dest: 'Al. Santos, 1800 · Jardim Paulista', cliente: 'Rafael T.', hora: '19:48', eta: '24 min', moto: 'Juliana', prog: 42, x: 27, y: 30 },
+  { id: '1044', origem: 'portal', st: 'dispatched', status: 'Despachado', dest: 'R. Oscar Freire, 900 · Jardins', cliente: 'Beatriz L.', hora: '19:51', eta: '', moto: null, prog: 14, x: 72, y: 74 },
+  { id: '1045', origem: 'ifood', st: 'dispatched', status: 'Despachado', dest: 'R. Bela Cintra, 1450 · Consolação', cliente: 'João P.', hora: '19:55', eta: '', moto: null, prog: 14, x: 24, y: 76 },
+  { id: '1046', origem: 'portal', st: 'route', status: 'Em rota', dest: 'R. da Consolação, 2300 · Consolação', cliente: 'Fernanda A.', hora: '19:37', eta: '4 min', moto: 'Pedro', prog: 88, x: 56, y: 86 },
+];
+const MOTOS = [
+  { n: 'Carlos', x: 58, y: 36, c: 'r' },
+  { n: 'Juliana', x: 40, y: 50, c: 'y' },
+  { n: 'Pedro', x: 52, y: 78, c: 'r' },
+  { n: 'Marcos', x: 80, y: 46, c: 'g' },
+  { n: 'Ana', x: 16, y: 50, c: 'g' },
+];
+const MENU = [
+  ['home', 'house', 'Início'],
+  ['pedidos', 'boxes-packing', 'Pedidos'],
+  ['extrato', 'file-invoice-dollar', 'Extrato'],
+  ['financeiro', 'file-invoice', 'Financeiro'],
+  ['config', 'gear', 'Configurações'],
+];
+
+/* ======================= peças ======================= */
+const I = (n, extra = '') => `<i class="fa-solid fa-${n}" ${extra}></i>`;
+const atual = (scr) => (scr === 5 ? 'extrato' : 'pedidos');
+
+function topbar(v, scr, phone = false) {
+  const burger = (v === 'b') ? `<button class="pf-iconbtn" data-act="menu" data-tip-off title="Menu">${I('bars')}</button>` : '';
+  return `<div class="pf-top">
+    <div class="pf-acc">${burger}
+      <div class="pf-mark">${I('building-user')}</div>
+      <div style="min-width:0"><div class="pf-eyebrow">Área do cliente</div><div class="pf-accname">${LOJA.nome}</div></div>
+    </div>
+    <div class="pf-user" data-act="toast" data-msg="Menu do usuário: Configurações da conta, tema e Sair (igual a hoje)">
+      <div class="pf-avatar">TP</div>
+      ${phone ? '' : `<div><div class="pf-uname">Terraço Pizza Bar</div><div class="pf-umail">loja@terraco.com.br</div></div>`}
+      ${I('caret-down', 'style="color:var(--color-muted);font-size:11px"')}
+    </div>
+  </div>`;
+}
+
+function navItems(scr, opts = {}) {
+  return MENU.map(([k, ic, nome]) => {
+    const on = k === atual(scr) ? 'on' : '';
+    const tip = opts.tips ? `data-tip="${nome}"` : '';
+    const label = opts.icons ? `<span>${nome}</span>` : `<span>${nome}</span>`;
+    return `<div class="pf-item ${on}" data-act="nav" data-to="${k}" data-name="${nome}" ${tip}>${I(ic)}${opts.only ? '' : label}</div>`;
+  }).join('');
+}
+
+function fullMenu(scr, collapseBtn) {
+  return `<div class="pf-card pf-menu" data-note="Menu 248 px (como hoje)">
+    <div class="pf-navlabel"><span>Área de trabalho</span>${collapseBtn || ''}</div>
+    <div class="pf-nav">${navItems(scr)}</div>
+  </div>`;
+}
+
+function rail(scr) {
+  return `<div class="pf-card pf-rail" data-note="Trilho 56 px">
+    <div class="pf-item" data-act="menu" data-tip="Abrir menu">${I('bars')}</div>
+    <div class="sep"></div>
+    ${navItems(scr, { tips: true, only: true })}
+  </div>`;
+}
+
+function orderCard(o, scr) {
+  const sel = (scr === 3 && S.sel === o.id) ? 'sel' : '';
+  const selo = o.origem === 'ifood' ? `<span class="selo ifood">iFood</span>` : `<span class="selo portal">Portal</span>`;
+  const meta2 = o.eta ? `<span>${I('route')}${o.eta}</span>` : `<span>${I('hourglass-half')}procurando motoboy</span>`;
+  return `<div class="oc ${sel}" data-act="card" data-id="${o.id}" data-text="${(o.id + ' ' + o.dest + ' ' + o.cliente + ' ' + o.status).toLowerCase()}">
+    <div class="oc-top">
+      <div><div class="oc-id">#${o.id}</div>${selo}</div>
+      <span class="badge ${o.st}">${o.status}</span>
+    </div>
+    <div class="oc-prog"><span style="width:${o.prog}%"></span></div>
+    <div class="oc-stop"><div class="mk p">1</div><div style="min-width:0"><div class="oc-lbl">Coleta</div><div class="oc-addr">${LOJA.nome}</div></div></div>
+    <div class="oc-stop"><div class="mk d">2</div><div style="min-width:0"><div class="oc-lbl">Entrega</div><div class="oc-addr">${o.dest}</div></div></div>
+    <div class="oc-meta"><span>${I('calendar')}19 out, ${o.hora}</span>${meta2}</div>
+  </div>`;
+}
+
+function filtered() {
+  const q = S.query.trim().toLowerCase();
+  return ORDERS.filter(o => !q || (o.id + ' ' + o.dest + ' ' + o.cliente + ' ' + o.status).toLowerCase().includes(q));
+}
+
+function listInner(scr, phone = false) {
+  const lista = filtered();
+  const cards = lista.length ? lista.map(o => orderCard(o, scr)).join('')
+    : `<div class="pf-empty"><b>Nenhum pedido em andamento</b>Os pedidos concluídos e cancelados ficam na Tabela.</div>`;
+  return `<div class="pf-list-head">
+      <div><div class="pf-eyebrow">Lista de pedidos</div><h2 class="pf-h2">Pedidos em andamento</h2></div>
+      <span class="pf-count">${ORDERS.length}</span>
+    </div>
+    <div class="pf-search">${I('magnifying-glass')}<input class="pf-input" data-act="search" placeholder="Buscar pedidos" value="${S.query}"></div>
+    <div class="pf-list-body">${cards}</div>
+    ${phone ? '' : `<div class="pf-list-foot"><span>Concluídos e cancelados</span><span class="pf-link" data-act="toast" data-msg="Abre a Tabela com todos os pedidos">ver na Tabela →</span></div>`}`;
+}
+
+function listCol(scr) {
+  return `<div class="pf-card pf-list" data-note="Lista 340 px (no lugar do menu)">${listInner(scr)}</div>`;
+}
+
+function strip(scr, aberto) {
+  const chev = `<button class="pf-collapse" data-act="menu" title="${aberto ? 'Dobrar menu' : 'Desdobrar menu'}">${I(aberto ? 'chevron-up' : 'chevron-down')}</button>`;
+  return `<div class="pf-strip" data-note="Menu dobrado">${navItems(scr, { tips: true })}<div class="grow"></div>${chev}</div>`;
+}
+
+function colC(scr) {
+  const aberto = scr === 2;
+  const unfold = aberto ? `<div class="pf-unfold"><div class="pf-navlabel" style="padding-top:4px"><span>Área de trabalho</span></div><div class="pf-nav">${navItems(scr)}</div></div>` : '';
+  return `<div class="pf-card pf-list" data-note="Coluna 340 px: menu dobrado + lista">${strip(scr, aberto)}${unfold}${listInner(scr)}</div>`;
+}
+
+/* mapa */
+let MAPSVG = null;
+function mapSvg() {
+  if (MAPSVG) return MAPSVG;
+  let s = `<svg class="bg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice">
+    <rect width="1000" height="700" fill="var(--map-land)"/>
+    <rect x="720" y="430" width="200" height="140" rx="18" fill="var(--map-park)"/>
+    <rect x="90" y="120" width="120" height="90" rx="14" fill="var(--map-park)"/>
+    <path d="M-20 640 C 200 600, 320 690, 520 650 S 860 600, 1020 660 L1020 720 L-20 720Z" fill="var(--map-water)"/>`;
+  const roads = [];
+  for (let i = 0; i < 8; i++) { const y = 40 + i * 90; roads.push(`M-10 ${y} L1010 ${y + 30}`); }
+  for (let i = 0; i < 10; i++) { const x = 30 + i * 110; roads.push(`M${x} -10 L${x - 60} 710`); }
+  s += roads.map(d => `<path d="${d}" stroke="var(--map-road-edge)" stroke-width="13" fill="none"/>`).join('');
+  s += roads.map(d => `<path d="${d}" stroke="var(--map-road)" stroke-width="9" fill="none"/>`).join('');
+  s += `<path d="M-10 520 L1010 180" stroke="var(--map-road-edge)" stroke-width="24" fill="none"/><path d="M-10 520 L1010 180" stroke="var(--map-road)" stroke-width="18" fill="none"/>
+    <text x="610" y="300" fill="var(--map-label)" font-size="15" font-weight="600" transform="rotate(-18 610 300)" font-family="Inter">Av. Paulista</text>
+    <text x="356" y="330" fill="var(--map-label)" font-size="12" transform="rotate(82 356 330)" font-family="Inter">R. Augusta</text>
+    <text x="760" y="505" fill="var(--map-label)" font-size="12" font-family="Inter">Parque Trianon</text>
+  </svg>`;
+  return (MAPSVG = s);
+}
+
+function mapHTML(scr, phone = false) {
+  const det = scr === 3 ? ORDERS.find(o => o.id === S.sel) : null;
+  let h = `<div class="map" data-note="Mapa">${mapSvg()}`;
+  // no detalhe, o mapa enquadra P e D na área livre à esquerda do painel (como o fitBounds com padding)
+  const D = det ? { x: det.x > 46 ? Math.max(14, det.x - 38) : det.x, y: det.y } : null;
+  if (det) {
+    h += `<svg class="route" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${LOJA.x},${LOJA.y - 2} ${(LOJA.x + D.x) / 2 + 4},${(LOJA.y + D.y) / 2} ${D.x},${D.y - 2}" fill="none" stroke="var(--color-primary)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" opacity=".85"/></svg>`;
+  }
+  if (!phone) h += `<div class="zoom"><span data-act="toast" data-msg="Zoom +">+</span><span data-act="toast" data-msg="Zoom −">−</span></div>`;
+  h += `<div class="pin pin-p" style="left:${LOJA.x}%;top:${LOJA.y}%" title="${LOJA.nome}">P</div>`;
+  ORDERS.forEach(o => {
+    if (det && o.id === det.id) h += `<div class="pin pin-d big" style="left:${D.x}%;top:${D.y}%">${I('location-pin')}<b>D</b></div>`;
+    else if (!det) h += `<div class="pin pin-d" style="left:${o.x}%;top:${o.y}%" data-act="card" data-id="${o.id}" title="#${o.id}">${I('location-pin')}</div>`;
+  });
+  if (scr === 4) h += `<div class="pin pin-d draft" style="left:62%;top:40%">${I('location-pin')}</div><div class="maptip">${I('hand-pointer')} Arraste o alfinete azul até o endereço de entrega</div>`;
+  MOTOS.forEach(m => {
+    const mine = det && det.moto === m.n ? 'mine' : '';
+    const pos = mine ? { x: (LOJA.x + D.x) / 2 + 3, y: (LOJA.y + D.y) / 2 } : m;
+    h += `<div class="helmet ${mine}" style="left:${pos.x}%;top:${pos.y}%"><div class="h ${m.c}">${I('helmet-safety')}</div><div class="n">${m.n}</div></div>`;
+  });
+  h += `<div class="attr">© OpenStreetMap</div></div>`;
+  return h;
+}
+
+function detailPanel() {
+  const o = ORDERS.find(o => o.id === S.sel) || ORDERS[0];
+  const selo = o.origem === 'ifood' ? `<span class="selo ifood">iFood</span>` : `<span class="selo portal">Portal</span>`;
+  const moto = o.moto
+    ? `<div class="moto"><div class="pf-avatar" style="background:#fee2e2;color:#991b1b">${o.moto[0]}</div><div><div style="font-weight:700">${o.moto}</div><div class="oc-sub">Aceitou às 19:44</div></div></div>
+       <button class="btn sm" style="margin-top:10px" data-act="toast" data-msg="Abre a conversa com o motoboy (gaveta Conversas)">${I('comments')} Conversar com o motoboy</button>`
+    : `<div class="moto"><div class="pf-avatar" style="background:var(--color-warning-soft);color:var(--color-warning)">${I('hourglass-half')}</div><div><div style="font-weight:700">Procurando motoboy…</div><div class="oc-sub">Oferecido aos motoboys próximos</div></div></div>`;
+  const passos = [['Criado', o.hora, true], ['Aceito pelo motoboy', o.moto ? '19:44' : '', !!o.moto], ['Coletado na loja', o.st === 'route' ? '19:58' : '', o.st === 'route'], ['Entregue', '', false]];
+  return `<div class="panel" data-note="Painel do pedido 420 px">
+    <div class="panel-head">
+      <div><div class="pf-eyebrow">Pedido</div><div style="display:flex;gap:8px;align-items:center"><span class="pf-h2" style="margin:0">#${o.id}</span>${selo}<span class="badge ${o.st}">${o.status}</span></div></div>
+      <button class="pf-iconbtn" data-act="close-panel" title="Fechar">${I('xmark')}</button>
+    </div>
+    <div class="panel-body">
+      <div class="box"><div class="box-t">Motoboy</div>${moto}</div>
+      <div class="box"><div class="box-t">Rota</div>
+        <div class="oc-stop"><div class="mk p">P</div><div><div class="oc-lbl">Coleta</div><div class="oc-addr">${LOJA.nome} · ${LOJA.end}</div></div></div>
+        <div class="oc-stop"><div class="mk d">D</div><div><div class="oc-lbl">Entrega · ${o.cliente}</div><div class="oc-addr">${o.dest}</div></div></div>
+      </div>
+      <div class="box"><div class="box-t">Andamento</div><div class="tl">
+        ${passos.map(([t, h, ok]) => `<div class="${ok ? '' : 'off'}">${I(ok ? 'circle-check' : 'circle')}${t}<time>${h}</time></div>`).join('')}
+      </div></div>
+      <div>
+        <button class="btn danger" ${o.moto ? 'disabled' : ''} data-act="toast" data-msg="Pedido #${o.id} cancelado">${I('ban')} Cancelar pedido</button>
+        <div class="oc-sub" style="margin-top:6px">${o.moto ? 'Só dá para cancelar antes do aceite do motoboy.' : 'Ainda dá para cancelar: nenhum motoboy aceitou.'}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function newPanel() {
+  return `<div class="panel" data-note="Painel do novo pedido 420 px">
+    <div class="panel-head">
+      <div><div class="pf-eyebrow">Pedidos</div><span class="pf-h2" style="margin:0">Novo pedido</span></div>
+      <button class="pf-iconbtn" data-act="close-panel" title="Fechar">${I('xmark')}</button>
+    </div>
+    <div class="panel-body">
+      <div class="fld"><label>Coleta</label><div class="fixa"><div class="mk p">P</div>${LOJA.nome} · ${LOJA.end}<span class="oc-sub" style="margin-left:auto">fixa</span></div></div>
+      <div class="fld"><label>Endereço de entrega</label>
+        <div class="saved">
+          <div data-act="pick">${I('location-dot')} R. Haddock Lobo, 595 · Cerqueira César</div>
+          <div data-act="pick">${I('location-dot')} Al. Santos, 1800 · Jardim Paulista</div>
+          <div data-act="pick" class="on">${I('crosshairs')} Marcado no mapa (arraste o alfinete)</div>
+        </div>
+      </div>
+      <div class="fld"><label>Nome do cliente</label><input class="pf-input" placeholder="Ex.: Mariana" value=""></div>
+      <div class="fld"><label>Observações para o motoboy</label><textarea class="pf-input" placeholder="Ex.: portaria, bloco B"></textarea></div>
+      <button class="btn primary" style="justify-content:center;height:40px" data-act="create">${I('paper-plane')} Criar pedido</button>
+    </div>
+  </div>`;
+}
+
+function section(scr) {
+  const panel = scr === 3 ? detailPanel() : scr === 4 ? newPanel() : '';
+  return `<div class="pf-card pf-sec" data-note="Seção de pedidos">
+    <div class="pf-sec-head">
+      <div><div class="pf-eyebrow">Pedidos</div><h1 class="pf-h1">Pedidos</h1><p class="pf-p">Acompanhe entregas, veja a atividade das rotas e crie novas solicitações de entrega.</p></div>
+      <div class="pf-actions">
+        <div class="seg"><button class="btn on">${I('map')} Mapa</button><button class="btn" data-act="toast" data-msg="Tabela: todos os pedidos (igual a hoje)">${I('table')} Tabela</button></div>
+        <button class="btn" data-act="toast" data-msg="Abre a gaveta Conversas">${I('comments')} Conversas<span class="dot">2</span></button>
+        <button class="btn" data-act="toast" data-msg="Pedidos atualizados">${I('rotate')}</button>
+        <button class="btn primary" data-act="new">${I('plus')} Novo pedido</button>
+      </div>
+    </div>
+    <div class="pf-stage">${mapHTML(scr)}${panel}</div>
+  </div>`;
+}
+
+function extrato(scr) {
+  const rows = [['19/10 19:12', '#1038', 'R. Haddock Lobo, 595', '2,8', 'R$ 8,50'], ['19/10 18:40', '#1036', 'Al. Santos, 1800', '3,4', 'R$ 9,50'], ['19/10 18:05', '#1033', 'R. Oscar Freire, 900', '4,1', 'R$ 10,50'], ['18/10 22:31', '#1029', 'R. Bela Cintra, 1450', '1,9', 'R$ 7,00'], ['18/10 21:57', '#1027', 'R. da Consolação, 2300', '2,2', 'R$ 7,50'], ['18/10 21:10', '#1024', 'Al. Lorena, 1200', '3,0', 'R$ 9,00']];
+  return `<div class="pf-card pf-sec" data-note="Extrato (sem mudança)"><div class="pf-sec-head">
+      <div><div class="pf-eyebrow">Loja</div><h1 class="pf-h1">Extrato</h1><p class="pf-p">Entregas concluídas e valores, até 3 meses.</p></div>
+      <div class="pf-actions"><div class="seg"><button class="btn on">Este mês</button><button class="btn" data-act="toast" data-msg="Filtro do mês anterior">Mês anterior</button></div><button class="btn" data-act="toast" data-msg="CSV baixado">${I('download')} CSV</button></div>
+    </div>
+    <div class="ext">
+      <div class="kpis"><div class="kpi"><small>Entregas</small><b>42</b></div><div class="kpi"><small>Km rodados</small><b>118,6</b></div><div class="kpi"><small>Total</small><b>R$ 315,00</b></div></div>
+      <table class="t"><thead><tr><th>Data</th><th>Pedido</th><th>Destino</th><th class="r">Km</th><th class="r">Valor</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="r">${r[3]}</td><td class="r">${r[4]}</td></tr>`).join('')}</tbody></table>
+    </div></div>`;
+}
+
+/* ======================= quadros ======================= */
+function frameDesktop(v, scr, w, h) {
+  let main = '', extra = '';
+  const ped = scr !== 5;
+  if (v === 'a') {
+    if (ped) {
+      main = `<div class="pf-main" style="grid-template-columns:56px 340px minmax(0,1fr)">${rail(scr)}${listCol(scr)}${section(scr)}
+        ${scr === 2 ? `<div class="pf-scrim" data-act="close-menu"></div><div class="pf-card pf-menu pf-overmenu"><div class="pf-navlabel"><span>Área de trabalho</span><button class="pf-collapse" data-act="close-menu" title="Recolher">${I('angles-left')}</button></div><div class="pf-nav">${navItems(scr)}</div></div>` : ''}</div>`;
+    } else {
+      main = S.extColl
+        ? `<div class="pf-main" style="grid-template-columns:56px minmax(0,1fr)">${rail(scr)}${extrato(scr)}</div>`
+        : `<div class="pf-main" style="grid-template-columns:248px minmax(0,1fr)">${fullMenu(scr, `<button class="pf-collapse" data-act="menu" title="Recolher">${I('angles-left')}</button>`)}${extrato(scr)}</div>`;
+    }
+  } else if (v === 'b') {
+    if (ped) {
+      main = `<div class="pf-main" style="grid-template-columns:340px minmax(0,1fr)">${listCol(scr)}${section(scr)}</div>`;
+      if (scr === 2) extra = drawer(scr);
+    } else {
+      main = S.extColl
+        ? `<div class="pf-main" style="grid-template-columns:minmax(0,1fr)">${extrato(scr)}</div>`
+        : `<div class="pf-main" style="grid-template-columns:248px minmax(0,1fr)">${fullMenu(scr)}${extrato(scr)}</div>`;
+    }
+  } else {
+    if (ped) main = `<div class="pf-main" style="grid-template-columns:340px minmax(0,1fr)">${colC(scr)}${section(scr)}</div>`;
+    else main = `<div class="pf-main" style="grid-template-columns:248px minmax(0,1fr)">${fullMenu(scr)}${extrato(scr)}</div>`;
+  }
+  return `<div class="pf" data-v="${v}" style="width:${w}px;height:${h}px">${topbar(v, scr)}${main}${extra}</div>`;
+}
+
+function drawer(scr, phone = false) {
+  return `<div class="pf-scrim full" data-act="close-menu"></div>
+  <div class="pf-drawer" data-note="Gaveta 288 px">
+    <div class="pf-drawer-head"><div class="pf-acc"><div class="pf-mark">${I('building-user')}</div><div><div class="pf-eyebrow">Área do cliente</div><div class="pf-accname">${LOJA.nome}</div></div></div>
+      <button class="pf-iconbtn" data-act="close-menu" title="Fechar">${I('xmark')}</button></div>
+    <div class="pf-nav">${navItems(scr)}</div>
+    <div class="pf-drawer-foot"><div class="pf-avatar">TP</div><div><div class="pf-uname">Terraço Pizza Bar</div><div class="pf-umail">loja@terraco.com.br</div></div></div>
+  </div>`;
+}
+
+function framePhone(v) {
+  const scr = 1;
+  const menuOpen = S.phoneMenu;
+  let h = topbar(v, scr, true);
+  if (v === 'c') {
+    h += `<div style="position:relative;z-index:9">${strip(scr, menuOpen)}${menuOpen ? `<div class="pf-unfold"><div class="pf-nav">${navItems(scr)}</div></div>` : ''}</div>`;
+  }
+  h += `<div class="ph-map">${mapHTML(scr, true)}</div>`;
+  h += `<div class="ph-sheet" data-note="Lista na folha"><div class="ph-handle"></div>${listInner(scr, true)}</div>`;
+  h += `<button class="fab ${v === 'a' ? '' : 'low'}" data-act="toast" data-msg="No celular, o Novo pedido abre em tela cheia">${I('plus')} Novo pedido</button>`;
+  if (v === 'a') {
+    h += `<div class="ph-tabs" data-note="Trilho vira barra embaixo">${MENU.map(([k, ic, nome]) => `<div class="${k === 'pedidos' ? 'on' : ''}" data-act="nav" data-to="${k}">${I(ic)}${nome === 'Configurações' ? 'Config.' : nome}</div>`).join('')}</div>`;
+  }
+  let extra = (v === 'b' && menuOpen) ? drawer(scr, true) : '';
+  return `<div class="pf phone" data-v="${v}" style="width:375px;height:780px">${h}${extra}</div>`;
+}
+
+function frame(v, scr) {
+  if (scr === 6) return { html: framePhone(v), w: 375, h: 780 };
+  const w = S.vp, hh = S.vp === 1920 ? 1000 : 768;
+  return { html: frameDesktop(v, scr, w, hh), w, h: hh };
+}
+
+/* ======================= render ======================= */
+function scaled(f, availW, availH) {
+  const s = Math.min(1, availW / f.w, availH ? availH / f.h : 1);
+  return `<div class="scaler" style="width:${Math.floor(f.w * s)}px;height:${Math.floor(f.h * s)}px">${f.html.replace('style="width:', `style="transform:scale(${s});width:`)}</div>`;
+}
+
+function render() {
+  // abas
+  document.getElementById('vtabs').innerHTML = `<span class="lbl">Variante</span>` +
+    Object.entries(VARIANTS).map(([k, v]) => `<button class="chip ${S.variant === k ? 'on' : ''}" data-v="${k}">${v.nome}</button>`).join('') +
+    `<button class="chip cmp ${S.variant === 'cmp' ? 'on' : ''}" data-v="cmp">${I('table-columns')} Comparar por tela</button>`;
+  document.getElementById('stabs').innerHTML = `<span class="lbl">Tela</span>` +
+    SCREENS.map(([n, t]) => `<button class="chip ${S.screen === n ? 'on' : ''}" data-s="${n}">${t}</button>`).join('');
+  document.getElementById('desc').innerHTML = S.variant === 'cmp'
+    ? '<b>Comparar por tela:</b> A, B e C lado a lado na mesma tela. Os cliques valem para as três (abrir o menu, abrir um pedido, buscar).'
+    : VARIANTS[S.variant].desc;
+
+  const stage = document.getElementById('stage');
+  const chromeH = document.getElementById('chrome').offsetHeight;
+  const availW = window.innerWidth - 48;
+  const availH = window.innerHeight - chromeH - 56;
+  if (S.variant === 'cmp') {
+    const colW = (availW - 32) / 3;
+    stage.className = 'cmpgrid';
+    stage.innerHTML = ['a', 'b', 'c'].map(v => {
+      const f = frame(v, S.screen);
+      return `<div class="cmpcol"><h3>${VARIANTS[v].nome}</h3>${scaled(f, colW)}</div>`;
+    }).join('');
+  } else {
+    stage.className = 'single';
+    stage.innerHTML = scaled(frame(S.variant, S.screen), availW, Math.max(availH, 420));
+  }
+}
+
+/* ======================= interação ======================= */
+let toastT;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+document.addEventListener('click', (e) => {
+  const vt = e.target.closest('#vtabs [data-v]');
+  if (vt) { S.variant = vt.dataset.v; S.phoneMenu = false; render(); return; }
+  const st = e.target.closest('#stabs [data-s]');
+  if (st) { S.screen = +st.dataset.s; S.phoneMenu = false; S.extColl = false; render(); return; }
+
+  const el = e.target.closest('.pf [data-act]');
+  if (!el) return;
+  const act = el.dataset.act;
+  const phone = !!el.closest('.pf.phone');
+  if (act === 'search') return;
+  if (act === 'menu') {
+    if (phone) S.phoneMenu = !S.phoneMenu;
+    else if (S.screen === 5) S.extColl = !S.extColl;
+    else S.screen = S.screen === 2 ? 1 : 2;
+    render(); return;
+  }
+  if (act === 'close-menu') { if (phone) S.phoneMenu = false; else S.screen = 1; render(); return; }
+  if (act === 'nav') {
+    const to = el.dataset.to;
+    if (phone) { S.phoneMenu = false; if (to !== 'pedidos') toast(`${el.dataset.name || el.textContent.trim()}: fora deste sketch`); render(); return; }
+    if (to === 'pedidos') { S.screen = 1; S.extColl = false; }
+    else if (to === 'extrato') { S.screen = 5; S.extColl = false; }
+    else { toast(`${el.dataset.name}: fora deste sketch (o menu funciona igual)`); if (S.screen === 2) S.screen = 1; }
+    render(); return;
+  }
+  if (act === 'card') {
+    if (phone) { toast(`No celular, o pedido #${el.dataset.id} abre em tela cheia`); return; }
+    S.sel = el.dataset.id; S.screen = 3; render(); return;
+  }
+  if (act === 'close-panel') { S.screen = 1; render(); return; }
+  if (act === 'new') { S.screen = 4; render(); return; }
+  if (act === 'pick') { el.parentElement.querySelectorAll('div').forEach(d => d.classList.remove('on')); el.classList.add('on'); return; }
+  if (act === 'create') {
+    el.disabled = true; el.innerHTML = `${I('spinner', 'class="fa-solid fa-spinner fa-spin"')} Criando…`;
+    setTimeout(() => {
+      const n = String(1047 + ORDERS.length - 5);
+      ORDERS.unshift({ id: n, origem: 'portal', st: 'dispatched', status: 'Despachado', dest: 'R. Pamplona, 1100 · Jardim Paulista', cliente: 'Novo cliente', hora: '20:01', eta: '', moto: null, prog: 10, x: 62, y: 40 });
+      S.screen = 1; render(); toast(`Pedido #${n} criado e oferecido aos motoboys`);
+    }, 700);
+    return;
+  }
+  if (act === 'toast') { toast(el.dataset.msg); return; }
+});
+
+document.addEventListener('input', (e) => {
+  if (e.target.dataset.act !== 'search') return;
+  S.query = e.target.value;
+  const q = S.query.trim().toLowerCase();
+  // filtra no lugar (sem redesenhar) para não perder o foco; vale para todos os quadros
+  document.querySelectorAll('.pf .pf-list-body, .pf .ph-sheet .pf-list-body').forEach(body => {
+    let vis = 0;
+    body.querySelectorAll('.oc').forEach(c => { const ok = !q || c.dataset.text.includes(q); c.style.display = ok ? '' : 'none'; if (ok) vis++; });
+    let empty = body.querySelector('.pf-empty.busca');
+    if (!vis && !empty) { body.insertAdjacentHTML('beforeend', `<div class="pf-empty busca"><b>Nenhum pedido encontrado</b>Tente o número do pedido, a rua ou o cliente.</div>`); }
+    if (vis && empty) empty.remove();
+  });
+  document.querySelectorAll('.pf [data-act="search"]').forEach(inp => { if (inp !== e.target) inp.value = S.query; });
+});
+
+document.getElementById('theme-switcher').addEventListener('change', (e) => {
+  document.getElementById('theme').href = '../themes/' + e.target.value + '.css';
+  document.body.classList.toggle('dark-chrome', e.target.value === 'escuro');
+});
+document.querySelectorAll('#sketch-tools [data-vp]').forEach(b => b.addEventListener('click', () => {
+  S.vp = +b.dataset.vp;
+  document.querySelectorAll('#sketch-tools [data-vp]').forEach(x => x.classList.toggle('on', x === b));
+  render();
+}));
+document.getElementById('annot-btn').addEventListener('click', (e) => {
+  document.body.classList.toggle('annot');
+  e.target.classList.toggle('on');
+});
+window.addEventListener('resize', render);
+render();
+</script>
+</body>
+</html>

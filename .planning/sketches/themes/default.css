@@ -1,0 +1,42 @@
+/* Portal da loja (Entregas): tema claro, copiado das cores atuais do customer-portal-engine.css */
+:root {
+  --color-bg: #f4f6f8;
+  --color-surface: #ffffff;
+  --color-surface-2: #f8fafc;
+  --color-border: #e5e7eb;
+  --color-text: #111827;
+  --color-text-2: #374151;
+  --color-muted: #64748b;
+  --color-primary: #2563eb;
+  --color-primary-strong: #1d4ed8;
+  --color-primary-soft: #eff6ff;
+  --color-primary-border: #bfdbfe;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+  --color-success: #16a34a;
+  --color-success-soft: #f0fdf4;
+  --color-warning: #d97706;
+  --color-warning-soft: #fffbeb;
+  --color-ifood: #ea1d2c;
+  --color-loja: #f97316;
+  --topbar-bg: rgb(255 255 255 / 92%);
+  --scrim: rgb(15 23 42 / 30%);
+
+  --map-land: #eef1ec;
+  --map-road: #ffffff;
+  --map-road-edge: #d6dbe2;
+  --map-water: #cfe3f5;
+  --map-park: #d6ead0;
+  --map-label: #7b8794;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 6%);
+  --shadow-md: 0 4px 12px rgb(15 23 42 / 8%);
+  --shadow-lg: 0 12px 32px rgb(15 23 42 / 14%);
+}
