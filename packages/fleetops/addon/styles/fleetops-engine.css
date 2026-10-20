@@ -8905,16 +8905,17 @@ body[data-theme='dark'] .filter-multi-model > .clear-button {
 }
 
 /**
- * Entregas: nome do motoboy fixo embaixo do alfinete do pedido aceito. Vermelho-escuro, como o alfinete, para não
- * confundir com o nome do capacete quando o motoboy está perto da entrega.
+ * Entregas: número do pedido e nome do motoboy fixos embaixo do alfinete do pedido aceito. O fundo segue o prazo de
+ * entrega (classes entregas-prazo-*, abaixo); sem prazo (pedido de antes do deploy), cinza-escuro neutro, para não
+ * parecer atrasado (igual ao app).
  */
 .leaflet-tooltip.entregas-nome-no-alfinete {
     padding: 1px 6px;
     border: none;
     border-radius: 9999px;
-    background: rgba(153, 27, 27, 0.92);
+    background: rgba(55, 65, 81, 0.92);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-    color: #fef2f2;
+    color: #f9fafb;
     font-size: 11px;
     font-weight: 600;
     line-height: 16px;
@@ -8922,7 +8923,36 @@ body[data-theme='dark'] .filter-multi-model > .clear-button {
 }
 
 .leaflet-tooltip-bottom.entregas-nome-no-alfinete::before {
-    border-bottom-color: rgba(153, 27, 27, 0.92);
+    border-bottom-color: rgba(55, 65, 81, 0.92);
+}
+
+/* Entregas: o fundo do rótulo do alfinete segue o prazo de entrega (utils/entregas-cronometro.js, classeDoRotulo): verde
+   no prazo, amarelo a 15 min ou menos, vermelho atrasado. Sem prazo (pedido de antes do deploy), o cinza-escuro acima. */
+.leaflet-tooltip.entregas-nome-no-alfinete.entregas-prazo-no_prazo {
+    background: rgba(21, 128, 61, 0.95);
+    color: #f0fdf4;
+}
+
+.leaflet-tooltip-bottom.entregas-nome-no-alfinete.entregas-prazo-no_prazo::before {
+    border-bottom-color: rgba(21, 128, 61, 0.95);
+}
+
+.leaflet-tooltip.entregas-nome-no-alfinete.entregas-prazo-perto {
+    background: rgba(250, 204, 21, 0.95);
+    color: #422006;
+}
+
+.leaflet-tooltip-bottom.entregas-nome-no-alfinete.entregas-prazo-perto::before {
+    border-bottom-color: rgba(250, 204, 21, 0.95);
+}
+
+.leaflet-tooltip.entregas-nome-no-alfinete.entregas-prazo-atrasado {
+    background: rgba(220, 38, 38, 0.95);
+    color: #fef2f2;
+}
+
+.leaflet-tooltip-bottom.entregas-nome-no-alfinete.entregas-prazo-atrasado::before {
+    border-bottom-color: rgba(220, 38, 38, 0.95);
 }
 
 /**

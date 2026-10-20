@@ -15,7 +15,7 @@ import ensureLeafletPluginsReady, { hasLeafletPluginsReady } from '../../utils/l
 import capaceteDoMotoboy, { indexarSituacoes } from '../../utils/entregas-capacete';
 import iconeDoLocal from '../../utils/entregas-icone-da-loja';
 import aplicarOnlineDoMotoboy from '../../utils/entregas-online-do-motoboy';
-import { ALFINETE, mesmaLista, pedidosValidos, rotuloNoAlfinete, tempoDesde } from '../../utils/entregas-pedidos-no-mapa';
+import { ALFINETE, classeDoRotulo, mesmaLista, pedidosValidos, rotuloNoAlfinete, tempoDesde } from '../../utils/entregas-pedidos-no-mapa';
 
 /** Entregas: de quanto em quanto tempo o mapa relê a situação dos motoboys (cor do capacete), como reserva do socket. */
 const INTERVALO_SITUACOES_MS = 20000;
@@ -76,11 +76,15 @@ export default class MapLeafletLiveMapComponent extends Component {
     @tracked vehicles = [];
     @tracked places = [];
     @tracked situacoesDosMotoboys = {};
-    /** Entregas: os pedidos em andamento (alfinete vermelho no endereço de entrega) e o relógio do "há X min". */
+    /**
+     * Entregas: os pedidos em andamento (alfinete vermelho no endereço de entrega) e o relógio do "há X min" e da cor do
+     * rótulo pelo prazo de entrega (o relogio anda a cada releitura, ~20 s, e a cada evento do socket).
+     */
     @tracked pedidosNoMapa = [];
     @tracked relogio = Date.now();
     alfinete = ALFINETE;
     rotuloNoAlfinete = rotuloNoAlfinete;
+    classeDoRotulo = classeDoRotulo;
     @tracked leafletPluginsReady = hasLeafletPluginsReady();
     _viewportReloadLocks = new Set();
 
