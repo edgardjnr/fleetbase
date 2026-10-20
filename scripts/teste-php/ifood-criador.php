@@ -47,6 +47,7 @@ confere($pedido->travadoNoDespacho === [true] && Trava::$ocupadas === [], 'despa
 confere($linha->despachado_em === '2026-10-05 15:00:00', 'despachado_em marcado');
 confere(!logou('coleta diverge'), 'coleta a menos de 300 m do endereço do iFood: sem aviso');
 confere(logou('[entregas] ifood: pedido criado', 'info') && logsSem(['Cliente Ficticio', 'CLIENTE FICTICIO', '0800 000 0002', 'Rua Ficticia', '33334444']), 'log sem nome, telefone, endereço nem localizador');
+confere($pedido->meta === ['entregas_prazo_em' => '2026-10-05T15:40:00-03:00'], 'prazo do iFood no meta, já no create (o hook do creating não sobrescreve)');
 
 echo '== Pedido de teste: vai aos motoboys como o real' . PHP_EOL;
 $vinculo = preparar();
@@ -65,6 +66,7 @@ $pedido  = Order::$criados[0];
 confere($pedido->scheduled_at === '2026-10-05 16:20:00' && $pedido->chamadas === [], 'scheduled_at 40 min antes da janela, sem despacho');
 confere($linha->agendado === true && $linha->despachar_em === '2026-10-05 16:20:00' && ($linha->despachado_em ?? null) === null, 'na fila do entregas:ifood-agendados');
 confere($pedido->adhocAoCriar === true, 'nasce adhoc: o fleetops:dispatch-orders despacha o agendado sem ligar o adhoc');
+confere($pedido->meta === ['entregas_prazo_em' => '2026-10-05T17:30:00-03:00'], 'agendado: prazo = fim da janela');
 
 echo '== Agendado sem janela: não nasce adhoc' . PHP_EOL;
 $vinculo  = preparar();
@@ -74,6 +76,7 @@ $linha  = (new CriadorDoPedidoIfood())->criar($vinculo, $semJanela);
 $pedido = Order::$criados[0];
 confere($pedido->scheduled_at === null && $pedido->chamadas === [] && $linha->despachar_em === null, 'sem scheduled_at, sem despacho');
 confere($pedido->adhocAoCriar === false && $pedido->adhoc === false, 'adhoc falso: a central atribui');
+confere($pedido->meta === ['entregas_prazo_em' => '2026-10-05T15:50:00-03:00'], 'agendado sem janela: o prazo padrão (agora + 50 min)');
 
 echo '== Sem coordenadas de entrega: não nasce adhoc' . PHP_EOL;
 $vinculo                                                     = preparar();

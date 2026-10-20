@@ -295,4 +295,14 @@ foreach (file(dirname(__DIR__, 2) . '/api/app/Support/Entregas/Ifood/PedidoDoIfo
 }
 confere($longas === [], 'nenhuma linha de docblock com mais de 120 colunas' . ($longas ? ' (' . implode(', ', $longas) . ')' : ''));
 
+echo '== Prazo de entrega (PrazoDaEntrega, vai no meta do pedido)' . PHP_EOL;
+confere(PedidoDoIfood::mapear(pedidoEmDinheiroComTroco(), LAT_COLETA, LNG_COLETA, $agora)['prazo_em'] === '2026-10-05T15:40:00-03:00', 'imediato: o deliveryDateTime do iFood, em hora de Brasília');
+confere(PedidoDoIfood::mapear(pedidoAgendado(), LAT_COLETA, LNG_COLETA, $agora)['prazo_em'] === '2026-10-05T17:30:00-03:00', 'agendado: o fim da janela');
+$prazoSemData = pedidoEmDinheiroComTroco();
+unset($prazoSemData['delivery']['deliveryDateTime']);
+confere(PedidoDoIfood::mapear($prazoSemData, LAT_COLETA, LNG_COLETA, $agora)['prazo_em'] === '2026-10-05T15:50:00-03:00', 'sem data legível: o padrão (agora + 50 min)');
+$prazoSemJanela = pedidoAgendado();
+unset($prazoSemJanela['schedule']);
+confere(PedidoDoIfood::mapear($prazoSemJanela, LAT_COLETA, LNG_COLETA, $agora)['prazo_em'] === '2026-10-05T15:50:00-03:00', 'agendado sem janela: o padrão');
+
 resumo();
