@@ -8,6 +8,7 @@ require __DIR__ . '/stubs-ifood.php';
 require __DIR__ . '/fixtures-ifood.php';
 
 use App\Support\Entregas\PrazoDaEntrega;
+use App\Listeners\Entregas\GravarPrazoDoPedido;
 use Illuminate\Support\Carbon;
 
 $brasilia = new DateTimeZone('America/Sao_Paulo');
@@ -87,5 +88,64 @@ class PedidoQueFalhaAoLer
     public function __get($chave) { throw new \RuntimeException('banco: SELECT segredo'); }
 }
 confere(PrazoDaEntrega::doPedido(new PedidoQueFalhaAoLer()) === null, 'falha ao ler o meta: null, sem lançar');
+
+echo '== Hook Order::creating (GravarPrazoDoPedido)' . PHP_EOL;
+reiniciarIfood(); // relógio em 2026-10-05 15:00 (Brasília) e log vazio
+
+#[\AllowDynamicProperties]
+class PedidoNovo
+{
+    public function __construct(public $meta = null, public $scheduled_at = null) {}
+}
+
+$pedido = new PedidoNovo();
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta === [PrazoDaEntrega::CHAVE => '2026-10-05T15:50:00-03:00'], 'pedido sem meta: ganha o padrão (agora + 50 min)');
+confere(preg_match(FORMATO_GRAVADO, $pedido->meta[PrazoDaEntrega::CHAVE]) === 1, 'gravado em Y-m-d\TH:i:sP, sem microssegundos');
+
+$pedido = new PedidoNovo(['origem' => 'portal']);
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta === ['origem' => 'portal', PrazoDaEntrega::CHAVE => '2026-10-05T15:50:00-03:00'], 'as outras chaves do meta ficam');
+
+$pedido = new PedidoNovo(null, Carbon::parse('2026-10-05 16:20:00'));
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta[PrazoDaEntrega::CHAVE] === '2026-10-05T17:10:00-03:00', 'agendado (Carbon do cast): conta do horário agendado');
+
+$pedido = new PedidoNovo(null, '2026-10-05 16:20:00');
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta[PrazoDaEntrega::CHAVE] === '2026-10-05T17:10:00-03:00', 'agendado em texto (hora de Brasília): conta do horário agendado');
+
+$pedido = new PedidoNovo(null, '2026-10-05 14:00:00');
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta[PrazoDaEntrega::CHAVE] === '2026-10-05T15:50:00-03:00', 'agendado no passado: conta de agora');
+
+$pedido = new PedidoNovo(null, 'qualquer coisa');
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta[PrazoDaEntrega::CHAVE] === '2026-10-05T15:50:00-03:00', 'scheduled_at ilegível: conta de agora');
+
+$pedido = new PedidoNovo([PrazoDaEntrega::CHAVE => '2026-10-05T15:40:00-03:00']);
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta === [PrazoDaEntrega::CHAVE => '2026-10-05T15:40:00-03:00'], 'meta já com o prazo do iFood: não sobrescreve');
+
+$pedido = new PedidoNovo([PrazoDaEntrega::CHAVE => 'amanhã', 'x' => 1]);
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta === [PrazoDaEntrega::CHAVE => '2026-10-05T15:50:00-03:00', 'x' => 1], 'prazo ilegível (cliente da API): troca pelo padrão');
+
+$pedido = new PedidoNovo('');
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta === [PrazoDaEntrega::CHAVE => '2026-10-05T15:50:00-03:00'], 'meta texto vazio: ganha o padrão');
+
+$pedido = new PedidoNovo('meta solto');
+GravarPrazoDoPedido::aoCriar($pedido);
+confere($pedido->meta === 'meta solto', 'meta em texto solto (não JSON): fica como está, sem prazo');
+
+$erro = excecao(fn () => GravarPrazoDoPedido::aoCriar(new PedidoQueFalhaAoLer()));
+confere($erro === null, 'falha ao ler o pedido: não lança (roda dentro da criação)');
+confere(logou('[entregas] falha ao gravar o prazo do pedido', 'warning') && logsSem(['segredo', 'SELECT']), 'warning curto, só com a classe da exceção');
+
+echo '== Ligação no AppServiceProvider' . PHP_EOL;
+$provider = file_get_contents('/repo/api/app/Providers/AppServiceProvider.php');
+confere(str_contains($provider, 'Order::creating(fn ($pedido) => GravarPrazoDoPedido::aoCriar($pedido));'), 'Order::creating → GravarPrazoDoPedido');
+confere(str_contains($provider, '$this->gravarPrazoDosPedidos();') && str_contains($provider, 'use App\Listeners\Entregas\GravarPrazoDoPedido;'), 'chamado no boot, com o import');
 
 resumo();

@@ -8,6 +8,7 @@ use App\Console\Commands\Entregas\Fuso\EnviarLembretesDeManutencao;
 use App\Console\Commands\Entregas\Fuso\ProcessarGatilhosDeManutencao;
 use App\Console\Commands\Entregas\ReenviarPedidosAbertos;
 use App\Http\Controllers\Entregas\DriverControllerSemGeocodificacao;
+use App\Listeners\Entregas\GravarPrazoDoPedido;
 use App\Listeners\Entregas\ManterPayloadDoPedido;
 use App\Listeners\Entregas\ObservadorDaDistribuicao;
 use App\Listeners\Entregas\ObservadorDosPedidosDaIntegracao;
@@ -111,6 +112,17 @@ class AppServiceProvider extends ServiceProvider
         $this->distribuirPedidosAbertos();
         $this->manterPayloadDosPedidos();
         $this->lancarCorridasNoFinanceiro();
+        $this->gravarPrazoDosPedidos();
+    }
+
+    /**
+     * Entregas: todo pedido novo nasce com o prazo de entrega no meta (entregas_prazo_em; 50 min depois da criação ou do
+     * horário agendado). O do iFood já chega com o prazo do iFood e fica como veio (ver GravarPrazoDoPedido e
+     * PrazoDaEntrega). O creating não dispara o updated: os observadores dos pedidos não percebem.
+     */
+    protected function gravarPrazoDosPedidos(): void
+    {
+        Order::creating(fn ($pedido) => GravarPrazoDoPedido::aoCriar($pedido));
     }
 
     /**
