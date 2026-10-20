@@ -3,7 +3,7 @@
 // Uso, na raiz do repo: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/card-do-pedido.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nomeDoCliente, textoDoEta } from '../../packages/customer-portal/addon/utils/entregas-pedido.js';
+import { nomeDoCliente } from '../../packages/customer-portal/addon/utils/entregas-pedido.js';
 import { motoboysDosPedidos } from '../../packages/customer-portal/addon/utils/pedidos-no-mapa.js';
 
 test('nome do cliente: o nome do Local de entrega (iFood, RestaurantePro ou digitado no portal)', () => {
@@ -50,23 +50,4 @@ test('motoboy de cada pedido: resposta vazia ou estranha', () => {
     assert.deepEqual(motoboysDosPedidos(undefined, undefined), {});
     assert.deepEqual(motoboysDosPedidos([null, { motoboy: 'Sem id', aceito: true }, { id: '', motoboy: 'X', aceito: true }], motoboys), {});
     assert.deepEqual(motoboysDosPedidos([{ id: 'order_a', motoboy: '  ', aceito: true }], motoboys), {});
-});
-
-test('tempo até a entrega no card: o eta do Fleet-Ops é um objeto (segundos), nunca "[object Object]"', () => {
-    // o recurso v1 do pedido traz o eta do TrackingIntelligenceService: { completion_seconds, active_stop_seconds, ... }
-    assert.equal(textoDoEta([{ completion_seconds: 1500, active_stop_seconds: 300 }]), '25 min');
-    assert.equal(textoDoEta([{ completion_seconds: null, active_stop_seconds: 90 }]), '2 min');
-    assert.equal(textoDoEta([{ completion_seconds: 20 }]), '1 min');
-    assert.equal(textoDoEta([{ completion_seconds: null, active_stop_seconds: null, provider: 'osrm' }]), null);
-    assert.equal(textoDoEta([{ completion_seconds: 0 }]), null);
-    // o primeiro valor útil da lista vale; objeto sem segundos passa ao próximo
-    assert.equal(textoDoEta([{ provider: 'osrm' }, undefined, { completion_seconds: 600 }]), '10 min');
-    // número = segundos; texto livre fica como veio; vazio, NaN e negativos não aparecem
-    assert.equal(textoDoEta([480]), '8 min');
-    assert.equal(textoDoEta(['12 min']), '12 min');
-    // data ISO (eta_at, estimated_arrival_at): vira a hora de chegada, HH:mm no fuso do navegador
-    assert.match(textoDoEta(['2026-10-20T05:10:00-03:00']), /^\d{2}:\d{2}$/);
-    assert.equal(textoDoEta(['', NaN, -5, null, undefined, [], {}]), null);
-    assert.equal(textoDoEta([]), null);
-    assert.equal(textoDoEta(undefined), null);
 });

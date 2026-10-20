@@ -35,8 +35,11 @@
                     {{#if this.cliente}}{{this.cliente}} · {{/if}}{{n-a (format-date-fns this.hora "HH:mm")}}
                 </span>
             </span>
-            {{#if this.etaLabel}}
-                <span class="portal-order-card-eta"><FaIcon @icon="clock" /> {{this.etaLabel}}</span>
+            {{!-- Entregas: cronômetro do prazo de entrega (relógio com o fundo na cor do estado: verde, amarelo, vermelho) --}}
+            {{#if this.cronometro}}
+                <span class="portal-order-card-prazo" title={{t "customer-portal.ui.entregas.card.prazo"}}>
+                    <Badge @type={{this.tipoDoPrazo}} @icon="clock">{{this.cronometro.texto}}</Badge>
+                </span>
             {{/if}}
         </div>
     </div>

@@ -2277,21 +2277,11 @@ body[data-theme='dark'].fleetbase-portal .portal-order-card-quem.is-procurando s
     color: #94a3b8;
 }
 
-.fleetbase-portal .portal-order-card-eta {
+/* Entregas: cronômetro do prazo de entrega no card (Badge do ember-ui com o relógio: success = verde no prazo, warning =
+   amarelo a 15 min ou menos, error = vermelho atrasado; fundo escuro e texto claro nos dois temas) */
+.fleetbase-portal .portal-order-card-prazo {
     flex: 0 0 auto;
-    color: #0f172a;
-    font-size: 0.8125rem;
-    font-weight: 700;
     white-space: nowrap;
-}
-
-.fleetbase-portal .portal-order-card-eta svg {
-    margin-right: 0.125rem;
-    color: #94a3b8;
-}
-
-body[data-theme='dark'].fleetbase-portal .portal-order-card-eta {
-    color: #f8fafc;
 }
 
 /* Entregas: ☰ do menu na barra superior. Na tela Pedidos (.is-pedidos) a coluna do menu sai do grid e o menu vira uma

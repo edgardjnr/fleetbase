@@ -634,6 +634,9 @@ customer-portal:
       card:
         portal: "Portal"
         procurando-motoboy: "procurando motoboy"
+        prazo: "Prazo de entrega"
+        prazo-faltam: "{n} min"
+        prazo-atrasado: "Atrasado há {n} min"
       lista:
         concluidos: "Concluídos e cancelados"
         ver-na-tabela: "ver na Tabela"

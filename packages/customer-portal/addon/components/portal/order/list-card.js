@@ -1,16 +1,21 @@
 import Component from '@glimmer/component';
 import { inject as service } from '@ember/service';
-import { CANCELAVEIS, nomeDoCliente, origemDoPedido, textoDoEta } from '../../../utils/entregas-pedido';
+import { CANCELAVEIS, nomeDoCliente, origemDoPedido } from '../../../utils/entregas-pedido';
+import { TIPO_DO_BADGE, cronometroDoPedido } from '../../../utils/entregas-cronometro';
 import { capaceteDaSituacao } from '../../../utils/motoboys-no-mapa';
 
 /**
  * Entregas: card do pedido na lista da tela Pedidos (coluna da esquerda), no desenho do sketch 002 ("A compacto"):
  * linha 1 com o número do pedido (o do iFood ou do sistema da loja; pedido feito no portal, o código de rastreio), a
  * origem e a situação; linha 2 com o motoboy (capacete na cor da situação) ou "procurando motoboy", o cliente, a hora e o
- * tempo até a entrega. Sem os endereços: a entrega fica no detalhe e no alfinete do mapa.
+ * cronômetro do prazo de entrega (relógio com fundo verde no prazo, amarelo a 15 min ou menos, vermelho "Atrasado há
+ * N min"; meta.entregas_prazo_em, gravado pelo servidor; some no encerrado e sem prazo). Sem os endereços: a entrega
+ * fica no detalhe e no alfinete do mapa.
  */
 export default class PortalOrderListCardComponent extends Component {
     @service entregasMapaDaLoja;
+    @service entregasRelogio;
+    @service intl;
 
     get order() {
         return this.args.order ?? {};
@@ -53,20 +58,15 @@ export default class PortalOrderListCardComponent extends Component {
         return !this.motoboy && CANCELAVEIS.includes(this.order.status);
     }
 
-    get trackingSummary() {
-        const tracking = this.order.tracker_data ?? this.order.tracking_data ?? this.order.tracking ?? {};
-        return tracking.summary ?? tracking;
+    // cronômetro do prazo de entrega: o relógio (serviço entregas-relogio) anda a cada 30 s
+    get cronometro() {
+        return cronometroDoPedido(this.order, this.entregasRelogio.agora, {
+            faltam: (n) => this.intl.t('customer-portal.ui.entregas.card.prazo-faltam', { n }),
+            atrasado: (n) => this.intl.t('customer-portal.ui.entregas.card.prazo-atrasado', { n }),
+        });
     }
 
-    // o eta do Fleet-Ops é um objeto (segundos até a entrega): textoDoEta o põe em "N min" (antes saía "[object Object]")
-    get etaLabel() {
-        return textoDoEta([
-            this.order.eta,
-            this.order.eta_at,
-            this.order.estimated_arrival_at,
-            this.trackingSummary.eta,
-            this.trackingSummary.estimated_arrival_at,
-            this.trackingSummary.destination_eta,
-        ]);
+    get tipoDoPrazo() {
+        return TIPO_DO_BADGE[this.cronometro?.estado] ?? 'info';
     }
 }
