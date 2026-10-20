@@ -2,13 +2,15 @@
 
 namespace App\Support\Entregas\Integracao;
 
+use App\Support\Entregas\ItensDoPedido;
 use App\Support\Entregas\StatusDoPedido;
 
 /**
  * Entregas RestaurantePro: o que o app do motoboy recebe de um pedido de outro sistema (GET
  * v1/entregas/motoboy/pedidos/{id}/integracao: card de aceitar e detalhes). Função pura sobre a linha da
  * entregas_integracao_pedidos e o Order. Pedido que não é da integração: {"integracao": false}. O telefone do cliente
- * só vai ao motoboy do pedido, com o pedido em andamento (a regra do 0800 do iFood).
+ * só vai ao motoboy do pedido, com o pedido em andamento (a regra do 0800 do iFood). Os produtos (`itens`,
+ * ItensDoPedido::doBanco) vão a todo motoboy que pode ler a rota, inclusive com o pedido aberto; sem eles, null.
  */
 final class DadosDaIntegracaoDoMotoboy
 {
@@ -39,6 +41,7 @@ final class DadosDaIntegracaoDoMotoboy
             'cancelado'            => (bool) $linha->cancelado_em,
             'pago_mesmo_cancelado' => (bool) $linha->pago_mesmo_cancelado,
             'telefone'             => $doMotoboy && !$encerrado && $linha->cliente_telefone ? (string) $linha->cliente_telefone : null,
+            'itens'                => ItensDoPedido::doBanco($linha->itens ?? null, ['pedido' => $pedido->public_id ?? null]),
         ];
     }
 }
