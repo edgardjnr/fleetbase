@@ -370,8 +370,11 @@ final class PedidoDoIfood
         return $data ? DateTimeImmutable::createFromInterface($data)->setTimezone(new DateTimeZone(date_default_timezone_get()))->format('Y-m-d H:i:s') : null;
     }
 
-    /** Data ISO (com hora) em UTC, ano de 2000 a 2037; null para o resto ("tomorrow", texto, lista, ano absurdo). */
-    protected static function data($valor): ?DateTimeImmutable
+    /**
+     * Data ISO (com hora) em UTC, ano de 2000 a 2037; null para o resto ("tomorrow", texto, lista, ano
+     * absurdo). Pública: o PrazoDaEntrega lê as datas do pedido do iFood com a mesma regra.
+     */
+    public static function data($valor): ?DateTimeImmutable
     {
         if (!is_string($valor) || !preg_match('/^\s*\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/', $valor)) {
             return null;
