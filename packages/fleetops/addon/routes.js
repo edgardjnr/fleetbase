@@ -44,6 +44,7 @@ export default buildRoutes(function () {
         this.route('loja', { path: '/lojas/:id' });
         this.route('fatura', { path: '/faturas/:id' });
         this.route('relatorio');
+        this.route('multiplicadores');
         this.route('configuracoes');
     });
     this.route('management', { path: '/manage' }, function () {

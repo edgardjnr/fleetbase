@@ -1,0 +1,92 @@
+<Layout::Section::Header @title={{t "fleet-ops.ui.financeiro.multiplicadores.titulo"}}>
+    <div class="flex items-center space-x-2">
+        <Button @icon="refresh" @size="sm" @helpText={{t "common.reload"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
+        <Button @icon="bolt" @size="sm" @text={{t "fleet-ops.ui.financeiro.multiplicadores.comecar-agora"}} @disabled={{this.separados.emAndamento}} @onClick={{this.comecarAgora}} />
+        <Button @type="primary" @icon="plus" @size="sm" @text={{t "fleet-ops.ui.financeiro.multiplicadores.novo"}} @onClick={{this.novo}} />
+    </div>
+</Layout::Section::Header>
+
+<Layout::Section::Body class="overflow-y-scroll-i h-full">
+    <div class="max-w-4xl mx-auto px-4 py-6 space-y-5">
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.multiplicadores.ajuda"}}</p>
+
+        {{#if this.carregado}}
+            <ContentPanel @title={{t "fleet-ops.ui.financeiro.multiplicadores.em-andamento"}} @open={{true}} @wrapperClass="bordered-classic">
+                {{#let this.separados.emAndamento as |periodo|}}
+                    {{#if periodo}}
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <div class="text-lg font-semibold dark:text-white">{{periodo.nome}}</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-300">
+                                    {{t "fleet-ops.ui.financeiro.multiplicadores.mult-motoboy"}} {{this.fator periodo.mult_motoboy}} ·
+                                    {{t "fleet-ops.ui.financeiro.multiplicadores.mult-loja"}} {{this.fator periodo.mult_loja}} ·
+                                    {{t "fleet-ops.ui.financeiro.multiplicadores.ate" fim=(this.instante periodo.fim)}}
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <Button @size="sm" @icon="clock" @text={{t "fleet-ops.ui.financeiro.multiplicadores.prorrogar"}} @onClick={{fn this.editar periodo}} />
+                                <Button @size="sm" @type="danger" @icon="stop" @text={{t "fleet-ops.ui.financeiro.multiplicadores.encerrar-agora"}} @onClick={{fn this.encerrar periodo}} />
+                            </div>
+                        </div>
+                    {{else}}
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.multiplicadores.nenhum-em-andamento"}}</p>
+                    {{/if}}
+                {{/let}}
+            </ContentPanel>
+
+            <ContentPanel @title={{t "fleet-ops.ui.financeiro.multiplicadores.agendados"}} @open={{true}} @wrapperClass="bordered-classic">
+                {{#if this.separados.agendados.length}}
+                    <table class="table w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-500 dark:text-gray-400">
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.multiplicadores.nome"}}</th>
+                                <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro.multiplicadores.mult-motoboy"}}</th>
+                                <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro.multiplicadores.mult-loja"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.multiplicadores.inicio"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.multiplicadores.fim"}}</th>
+                                <th class="py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each this.separados.agendados key="id" as |periodo|}}
+                                <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100">
+                                    <td class="py-2 font-medium">{{periodo.nome}}</td>
+                                    <td class="py-2 text-right">{{this.fator periodo.mult_motoboy}}</td>
+                                    <td class="py-2 text-right">{{this.fator periodo.mult_loja}}</td>
+                                    <td class="py-2 whitespace-nowrap">{{this.instante periodo.inicio}}</td>
+                                    <td class="py-2 whitespace-nowrap">{{this.instante periodo.fim}}</td>
+                                    <td class="py-2 text-right whitespace-nowrap">
+                                        <Button @size="xs" @icon="pencil" @text={{t "fleet-ops.ui.financeiro.multiplicadores.editar"}} @onClick={{fn this.editar periodo}} />
+                                        <Button @size="xs" @icon="trash" @text={{t "fleet-ops.ui.financeiro.multiplicadores.apagar"}} @onClick={{fn this.apagar periodo}} />
+                                    </td>
+                                </tr>
+                            {{/each}}
+                        </tbody>
+                    </table>
+                {{else}}
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.multiplicadores.vazio"}}</p>
+                {{/if}}
+            </ContentPanel>
+
+            {{#if this.separados.encerrados.length}}
+                <ContentPanel @title={{t "fleet-ops.ui.financeiro.multiplicadores.encerrados"}} @open={{false}} @wrapperClass="bordered-classic">
+                    <table class="table w-full text-sm">
+                        <tbody>
+                            {{#each this.separados.encerrados key="id" as |periodo|}}
+                                <tr class="border-t border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400">
+                                    <td class="py-2">{{periodo.nome}}</td>
+                                    <td class="py-2 text-right">{{this.fator periodo.mult_motoboy}} / {{this.fator periodo.mult_loja}}</td>
+                                    <td class="py-2 whitespace-nowrap">{{this.instante periodo.inicio}} – {{this.instante periodo.fim}}</td>
+                                    <td class="py-2"><span class="text-xs font-medium rounded px-2 py-0.5 {{this.corDaSituacao periodo}}">{{this.situacao periodo}}</span></td>
+                                </tr>
+                            {{/each}}
+                        </tbody>
+                    </table>
+                </ContentPanel>
+            {{/if}}
+        {{else if this.carregar.isRunning}}
+            <Spinner />
+        {{/if}}
+    </div>
+    <Spacer @height="300px" />
+</Layout::Section::Body>

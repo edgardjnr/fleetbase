@@ -186,6 +186,7 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
             item('fleet-ops.ui.financeiro.menu.motoboys', 'motorcycle', 'financeiro.motoboys', ['extrato', 'pagamento', 'diária', 'pix']),
             item('fleet-ops.ui.financeiro.menu.lojas', 'file-invoice-dollar', 'financeiro.lojas', ['fatura', 'loja', 'cobrança', 'recebimento']),
             item('fleet-ops.ui.financeiro.menu.relatorio', 'table', 'financeiro.relatorio', ['faixas', 'km', 'relatório', 'payout']),
+            item('fleet-ops.ui.financeiro.menu.multiplicadores', 'cloud-rain', 'financeiro.multiplicadores', ['chuva', 'multiplicador', 'intempérie', 'adicional']),
             item('fleet-ops.ui.financeiro.menu.configuracoes', 'gear', 'financeiro.configuracoes', ['data de corte', 'ciclo']),
         ]);
     }
@@ -388,7 +389,8 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
             'financeiro.motoboys': 1,
             'financeiro.lojas': 2,
             'financeiro.relatorio': 3,
-            'financeiro.configuracoes': 4,
+            'financeiro.multiplicadores': 4,
+            'financeiro.configuracoes': 5,
             'management.vehicles': 2,
             'management.trailers': 3,
             'management.fleets': 4,

@@ -1,0 +1,32 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="px-4 space-y-4 text-gray-900 dark:text-gray-50">
+        {{#if this.soFim}}
+            <p class="text-sm rounded-md px-3 py-2 bg-blue-50 text-blue-800 dark:bg-blue-900 dark:text-blue-100">{{t "fleet-ops.ui.financeiro.multiplicadores.modal-so-fim"}}</p>
+        {{/if}}
+        <InputGroup @name={{t "fleet-ops.ui.financeiro.multiplicadores.nome"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+            <input id={{id}} type="text" maxlength="40" class="form-input w-full" placeholder={{t "fleet-ops.ui.financeiro.multiplicadores.nome-exemplo"}} value={{this.nome}} disabled={{this.soFim}} {{on "input" (fn this.setCampo "nome")}} />
+        </InputGroup>
+        <div class="grid grid-cols-2 gap-4">
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.multiplicadores.mult-motoboy"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="text" inputmode="decimal" class="form-input w-full" value={{this.multMotoboy}} disabled={{this.soFim}} {{on "input" (fn this.setCampo "multMotoboy")}} />
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{this.fatorMotoboy}}</span>
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.multiplicadores.mult-loja"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="text" inputmode="decimal" class="form-input w-full" value={{this.multLoja}} disabled={{this.soFim}} {{on "input" (fn this.setCampo "multLoja")}} />
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{this.fatorLoja}}</span>
+            </InputGroup>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.multiplicadores.modal-ajuda-fator"}}</p>
+        <div class="grid grid-cols-2 gap-4">
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.multiplicadores.inicio"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="datetime-local" class="form-input w-full" value={{this.inicio}} disabled={{this.soFim}} {{on "change" (fn this.setCampo "inicio")}} />
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.multiplicadores.fim"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="datetime-local" class="form-input w-full" value={{this.fim}} min={{this.inicio}} {{on "change" (fn this.setCampo "fim")}} />
+            </InputGroup>
+        </div>
+        {{#each this.erros as |erro|}}
+            <p class="text-xs text-yellow-700 dark:text-yellow-300">{{erro}}</p>
+        {{/each}}
+    </div>
+</Modal::Default>
