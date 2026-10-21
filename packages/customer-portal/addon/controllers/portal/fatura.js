@@ -5,7 +5,7 @@ import { action } from '@ember/object';
 import { restartableTask } from 'ember-concurrency';
 import { format, isValid, parseISO } from 'date-fns';
 import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
-import { situacaoDaFatura, chaveDaSituacao, classeDoSelo, descricaoDoItem, numeroDoPedido, linhasCsvDaFatura, csvDeLinhas } from '../../utils/entregas-financeiro';
+import { situacaoDaFatura, chaveDaSituacao, classeDoSelo, descricaoDoItem, numeroDoPedido, linhasCsvDaFatura, csvDeLinhas, selosDaCorrida } from '../../utils/entregas-financeiro';
 
 const SEM_VALOR = '—';
 
@@ -150,6 +150,11 @@ export default class PortalFaturaController extends Controller {
         const rotulo = chave ? this.intl.t(`customer-portal.ui.entregas.${chave}`) : null;
 
         return [rotulo, motivo].filter(Boolean).join(': ');
+    }
+
+    /** Entregas: selos "2ª entrega" e "Chuva ×1,1" (só quando o valor da loja mudou). */
+    @action selos(dados) {
+        return selosDaCorrida(dados, this.intl.primaryLocale);
     }
 
     // CSV para o Excel brasileiro (BOM, ";" e vírgula decimal): os itens e os totais da fatura

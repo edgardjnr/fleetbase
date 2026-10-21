@@ -13,6 +13,7 @@ import {
     decimalCsv,
     linhasCsvDaFatura,
     csvDeLinhas,
+    selosDaCorrida,
 } from '../../packages/customer-portal/addon/utils/entregas-financeiro.js';
 
 const fatura = (campos = {}) => ({ situacao: 'emitida', pagamento: 'aberta', vencida: false, ...campos });
@@ -160,4 +161,13 @@ test('CSV: BOM, ponto e vírgula, aspas dobradas e proteção contra fórmula s�
         `"'-cuidado";"'+1"`,
         '',
     ]);
+});
+
+test('selos da corrida no portal: 2ª entrega e o multiplicador da loja', () => {
+    assert.deepEqual(selosDaCorrida({ junto: 2, multiplicador: { nome: 'Chuva', fator: 1.1 } }), [
+        { chave: 'junto', params: { posicao: 2 } },
+        { chave: 'multiplicador', params: { nome: 'Chuva', fator: '×1,1' } },
+    ]);
+    assert.deepEqual(selosDaCorrida({ junto: null, multiplicador: null }), []);
+    assert.deepEqual(selosDaCorrida(undefined), []);
 });

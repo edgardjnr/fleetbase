@@ -163,3 +163,22 @@ const celulaCsv = (valor) => {
 export function csvDeLinhas(linhas) {
     return BOM_UTF8 + Array.from(linhas ?? []).map((linha) => linha.map(celulaCsv).join(';')).join('\r\n');
 }
+
+/**
+ * Selos da corrida (extrato: a própria entrega; fatura: item.detalhes): "2ª entrega" (entrega junto) e "Chuva ×1,1" (o
+ * multiplicador da loja; a API só manda quando o valor da loja mudou). [{chave, params}] em customer-portal.ui.entregas.selos.*.
+ * Cópia da regra do console (packages/fleetops/addon/utils/financeiro-multiplicadores.js): os pacotes não importam um do outro.
+ */
+export function selosDaCorrida(dados, locale = 'pt-BR') {
+    const selos = [];
+    if (Number(dados?.junto) >= 2) {
+        selos.push({ chave: 'junto', params: { posicao: Number(dados.junto) } });
+    }
+    const bruto = dados?.multiplicador?.fator;
+    const fator = Number(bruto);
+    if (dados?.multiplicador && bruto !== null && bruto !== undefined && bruto !== '' && Number.isFinite(fator)) {
+        selos.push({ chave: 'multiplicador', params: { nome: dados.multiplicador.nome || '', fator: `×${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(fator)}` } });
+    }
+
+    return selos;
+}

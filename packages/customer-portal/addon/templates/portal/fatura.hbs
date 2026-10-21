@@ -68,7 +68,14 @@
                                 <td class="font-semibold whitespace-nowrap">{{this.pedido item}}</td>
                                 <td class="text-right whitespace-nowrap tabular-nums">{{this.distancia item.detalhes.km}}</td>
                                 <td><div class="max-w-sm">{{n-a item.detalhes.destino "—"}}</div></td>
-                                <td><div class="max-w-sm">{{this.descricao item}}</div></td>
+                                <td>
+                                    <div class="max-w-sm">
+                                        {{this.descricao item}}
+                                        {{#each (this.selos item.detalhes) as |selo|}}
+                                            <span class="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold" style="background-color: #DBEAFE; color: #1E40AF;">{{t (concat "customer-portal.ui.entregas.selos." selo.chave) posicao=selo.params.posicao nome=selo.params.nome fator=selo.params.fator}}</span>
+                                        {{/each}}
+                                    </div>
+                                </td>
                                 <td class="text-right whitespace-nowrap font-semibold tabular-nums">{{this.dinheiro item.valor}}</td>
                             </tr>
                         {{else}}

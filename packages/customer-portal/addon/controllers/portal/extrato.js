@@ -6,6 +6,7 @@ import { restartableTask, timeout } from 'ember-concurrency';
 import { differenceInCalendarDays, format, isValid, parseISO, startOfMonth } from 'date-fns';
 import dateFnsLocaleOptions from '@fleetbase/ember-core/utils/date-fns-locale';
 import { chaveDoCanceladoCobrado } from '../../utils/entregas-pedido';
+import { selosDaCorrida } from '../../utils/entregas-financeiro';
 
 // Entregas: o navegador dispara o `change` do campo de data a cada data válida durante a digitação (o ano 2026 passa por
 // 0002, 0020 e 0202). A consulta só sai depois deste tempo sem novas alterações
@@ -271,6 +272,11 @@ export default class PortalExtratoController extends Controller {
     /** Entregas: "Cancelado pelo iFood (cobrado)" ou "Cancelado pela loja (cobrado)" (pedido do sistema da loja), pelo cancelado_origem. */
     @action rotuloDoCancelado(entrega) {
         return this.intl.t(`customer-portal.ui.entregas.${chaveDoCanceladoCobrado(entrega?.cancelado_origem)}`);
+    }
+
+    /** Entregas: selos "2ª entrega" e "Chuva ×1,1" (só quando o valor da loja mudou). */
+    @action selos(dados) {
+        return selosDaCorrida(dados, this.intl.primaryLocale);
     }
 
     // CSV para o Excel brasileiro: separador ";", vírgula decimal e BOM do UTF-8 (sem ele os acentos saem errados)

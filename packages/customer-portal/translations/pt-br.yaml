@@ -730,6 +730,9 @@ customer-portal:
       canceled-ifood-charged: "Cancelado pelo iFood (cobrado)"
       canceled-store-charged: "Cancelado pela loja (cobrado)"
       canceled-charged-column: "Cancelado (cobrado)"
+      selos:
+        junto: "{posicao}ª entrega"
+        multiplicador: "{nome} {fator}"
       statement-status: Situação
       members-managed-by-central: Para adicionar ou remover usuários da loja, fale com a central.
       login-managed-by-central: O e-mail e o telefone de acesso só podem ser alterados pela central.

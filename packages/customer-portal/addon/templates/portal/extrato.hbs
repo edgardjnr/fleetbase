@@ -98,6 +98,9 @@
                                         {{! Entregas: estilo em linha, como o selo de origem nas listas: as regras do portal não o sobrescrevem }}
                                         <span class="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold" style="background-color: #FEF3C7; color: #92400E;">{{this.rotuloDoCancelado entrega}}</span>
                                     {{/if}}
+                                    {{#each (this.selos entrega) as |selo|}}
+                                        <span class="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold" style="background-color: #DBEAFE; color: #1E40AF;">{{t (concat "customer-portal.ui.entregas.selos." selo.chave) posicao=selo.params.posicao nome=selo.params.nome fator=selo.params.fator}}</span>
+                                    {{/each}}
                                 </td>
                             </tr>
                         {{else}}
