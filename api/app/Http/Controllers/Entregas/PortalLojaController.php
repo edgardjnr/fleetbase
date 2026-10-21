@@ -11,6 +11,7 @@ use App\Support\Entregas\Financeiro\Lancamentos;
 use App\Support\Entregas\LojaDoUsuario;
 use App\Support\Entregas\MotoboysNoMapaDaLoja;
 use App\Support\Entregas\PedidosNoMapa;
+use App\Support\Entregas\ResumoDoDiaDaLoja;
 use App\Support\Entregas\StatusDoPedido;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
@@ -158,6 +159,14 @@ class PortalLojaController extends Controller
             'motoboys' => MotoboysNoMapaDaLoja::listar(session('company'), $donos),
             'pedidos'  => PedidosNoMapa::daLoja(session('company'), $donos),
         ]);
+    }
+
+    /** Resumo do dia na gaveta do menu: pedidos em andamento e entregues hoje da loja, e os motoboys online (só números). */
+    public function resumoDoDia()
+    {
+        $vendor = $this->lojaDaSessao();
+
+        return response()->json(ResumoDoDiaDaLoja::contar(session('company'), $this->donosDosPedidos($vendor)));
     }
 
     /**

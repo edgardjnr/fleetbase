@@ -2284,9 +2284,8 @@ body[data-theme='dark'].fleetbase-portal .portal-order-card-quem.is-procurando s
     white-space: nowrap;
 }
 
-/* Entregas: ☰ do menu na barra superior. Na tela Pedidos (.is-pedidos) a coluna do menu sai do grid e o menu vira uma
-   gaveta fixa à esquerda, por cima de tudo (a barra superior fica em 1200; a gaveta, como a das Conversas, em 1250+);
-   nas outras telas o ☰ esconde ou mostra a coluna (.menu-escondido) */
+/* Entregas: ☰ do menu na barra superior. Na tela Pedidos (.is-pedidos) a coluna do menu sai do grid e o ☰ abre a gaveta
+   Portal::Gaveta (abaixo); nas outras telas o ☰ esconde ou mostra a coluna (.menu-escondido) */
 .fleetbase-portal .portal-menu-toggle {
     display: inline-flex;
     flex: 0 0 auto;
@@ -2319,10 +2318,6 @@ body[data-theme='dark'].fleetbase-portal .portal-menu-toggle:hover {
     color: #93c5fd;
 }
 
-.fleetbase-portal .portal-gaveta-topo {
-    display: none;
-}
-
 .fleetbase-portal .portal-container > .portal-main.is-pedidos,
 .fleetbase-portal .portal-container > .portal-main.menu-escondido {
     grid-template-columns: minmax(0, 1fr);
@@ -2333,30 +2328,71 @@ body[data-theme='dark'].fleetbase-portal .portal-menu-toggle:hover {
     display: none;
 }
 
-.fleetbase-portal .portal-container > .portal-main.is-pedidos.gaveta-aberta > .portal-sidebar {
+/* Entregas: a gaveta do menu da tela Pedidos (Portal::Gaveta; sketch 003, variante B "Marca da loja"). Sempre opaca: a
+   antiga era a coluna do menu, translúcida (92% no claro, 80% no escuro), e o mapa aparecia por trás. O fundo atrás
+   escurece com um leve desfoque. Acima da barra superior (1200), como a gaveta das Conversas (1250) */
+.fleetbase-portal .portal-gaveta-fundo {
+    position: fixed;
+    inset: 0;
+    z-index: 1255;
+    background: rgb(15 23 42 / 38%);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    animation: portal-gaveta-fundo 0.18s ease-out;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-fundo {
+    background: rgb(0 0 0 / 55%);
+}
+
+.fleetbase-portal .portal-gaveta {
     position: fixed;
     top: 0;
     bottom: 0;
     left: 0;
     z-index: 1260;
-    display: block;
-    width: min(18rem, 85vw);
+    display: flex;
+    flex-direction: column;
+    width: min(19.5rem, 88vw);
     overflow-y: auto;
-    border-width: 0 1px 0 0;
-    border-radius: 0;
-    box-shadow: 0 12px 32px rgb(15 23 42 / 18%);
-    animation: portal-gaveta-entra 0.18s ease-out;
+    overscroll-behavior: contain;
+    background: #fff;
+    color: #111827;
+    box-shadow: 0 18px 48px rgb(15 23 42 / 22%);
+    animation: portal-gaveta-entra 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.fleetbase-portal .portal-main.is-pedidos.gaveta-aberta .portal-gaveta-topo {
+body[data-theme='dark'].fleetbase-portal .portal-gaveta {
+    background: #111827;
+    color: #f3f4f6;
+    box-shadow: 0 18px 48px rgb(0 0 0 / 55%);
+}
+
+/* topo na cor da loja */
+.fleetbase-portal .portal-gaveta-topo {
+    flex: none;
+    padding: 1rem 1.125rem 2.875rem;
+    color: #fff;
+    background: radial-gradient(120% 140% at 0% 0%, #fdba74 0%, #f97316 38%, #c2410c 100%);
+}
+
+.fleetbase-portal .portal-gaveta-linha {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: 0 0 0.75rem;
 }
 
-.fleetbase-portal .portal-main.is-pedidos.gaveta-aberta .portal-gaveta-topo .portal-nav-label {
-    padding: 0 0.5rem;
+.fleetbase-portal .portal-gaveta-logo {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 9999px;
+    background: #fff;
+    color: #ea580c;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    box-shadow: 0 6px 16px rgb(124 45 18 / 35%);
 }
 
 .fleetbase-portal .portal-gaveta-fechar {
@@ -2365,29 +2401,396 @@ body[data-theme='dark'].fleetbase-portal .portal-menu-toggle:hover {
     justify-content: center;
     width: 2rem;
     height: 2rem;
-    border: 0;
+    border: 1px solid rgb(255 255 255 / 35%);
     border-radius: 0.5rem;
-    background: transparent;
-    color: #64748b;
+    background: rgb(255 255 255 / 18%);
+    color: #fff;
     cursor: pointer;
+    transition: background-color 0.15s ease;
 }
 
 .fleetbase-portal .portal-gaveta-fechar:hover {
-    background: #f1f5f9;
-    color: #1d4ed8;
+    background: rgb(255 255 255 / 32%);
 }
 
-body[data-theme='dark'].fleetbase-portal .portal-gaveta-fechar:hover {
-    background: rgb(55 65 81 / 55%);
+.fleetbase-portal .portal-gaveta-nome {
+    margin-top: 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.fleetbase-portal .portal-gaveta-endereco {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    opacity: 0.92;
+}
+
+/* resumo de hoje: três cartões sobrepostos ao topo */
+.fleetbase-portal .portal-gaveta-hoje {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-top: -2rem;
+    padding: 0 0.875rem;
+}
+
+.fleetbase-portal .portal-gaveta-numero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.625rem 0.375rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.875rem;
+    background: #fff;
+    text-align: center;
+    box-shadow: 0 4px 12px rgb(15 23 42 / 8%);
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-numero {
+    border-color: #243041;
+    background: #1f2937;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 35%);
+}
+
+.fleetbase-portal .portal-gaveta-numero b {
+    font-size: 1.125rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.fleetbase-portal .portal-gaveta-numero > span:last-child {
+    font-size: 0.6875rem;
+    line-height: 1.2;
+    color: #64748b;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-numero > span:last-child {
+    color: #9ca3af;
+}
+
+.fleetbase-portal .portal-gaveta-numero-icone {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin-bottom: 0.125rem;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+}
+
+.fleetbase-portal .portal-gaveta-numero-icone.is-azul {
+    color: #2563eb;
+    background: #dbeafe;
+}
+
+.fleetbase-portal .portal-gaveta-numero-icone.is-verde {
+    color: #16a34a;
+    background: #dcfce7;
+}
+
+.fleetbase-portal .portal-gaveta-numero-icone.is-laranja {
+    color: #ea580c;
+    background: #ffedd5;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-numero-icone.is-azul {
     color: #93c5fd;
+    background: rgb(37 99 235 / 22%);
 }
 
-.fleetbase-portal .portal-gaveta-fundo {
-    position: fixed;
-    inset: 0;
-    z-index: 1255;
-    background: rgb(15 23 42 / 35%);
-    animation: portal-gaveta-fundo 0.18s ease-out;
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-numero-icone.is-verde {
+    color: #86efac;
+    background: rgb(22 163 74 / 22%);
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-numero-icone.is-laranja {
+    color: #fdba74;
+    background: rgb(234 88 12 / 22%);
+}
+
+/* Novo pedido */
+.fleetbase-portal .portal-gaveta-acao {
+    padding: 0.875rem 1rem 0.375rem;
+}
+
+.fleetbase-portal .portal-gaveta-novo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 2.875rem;
+    border-radius: 0.875rem;
+    background: #0f172a;
+    color: #fff;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+
+.fleetbase-portal .portal-gaveta-novo:hover {
+    background: #1e293b;
+    color: #fff;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-novo {
+    background: #f97316;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-novo:hover {
+    background: #ea580c;
+}
+
+/* menu: ícone em círculo com a cor de cada item */
+.fleetbase-portal .portal-gaveta-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.375rem 0.625rem;
+}
+
+.fleetbase-portal .portal-gaveta-item {
+    --cor: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    height: 3rem;
+    padding: 0 0.625rem;
+    border-radius: 0.75rem;
+    color: #374151;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+
+.fleetbase-portal .portal-gaveta-item.is-inicio {
+    --cor: #6366f1;
+}
+
+.fleetbase-portal .portal-gaveta-item.is-pedidos {
+    --cor: #2563eb;
+}
+
+.fleetbase-portal .portal-gaveta-item.is-extrato {
+    --cor: #16a34a;
+}
+
+.fleetbase-portal .portal-gaveta-item.is-financeiro {
+    --cor: #d97706;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-item {
+    color: #d1d5db;
+}
+
+.fleetbase-portal .portal-gaveta-item:hover,
+.fleetbase-portal .portal-gaveta-item.active {
+    background: #f1f5f9;
+    color: #111827;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-item:hover,
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-item.active {
+    background: #1f2937;
+    color: #f3f4f6;
+}
+
+.fleetbase-portal .portal-gaveta-item-icone {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2.125rem;
+    height: 2.125rem;
+    border-radius: 9999px;
+    color: var(--cor);
+    background: color-mix(in srgb, var(--cor) 14%, transparent);
+}
+
+.fleetbase-portal .portal-gaveta-item.active .portal-gaveta-item-icone {
+    color: #fff;
+    background: var(--cor);
+}
+
+.fleetbase-portal .portal-gaveta-item-texto {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fleetbase-portal .portal-gaveta-seta {
+    font-size: 0.6875rem;
+    color: #94a3b8;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.fleetbase-portal .portal-gaveta-item:hover .portal-gaveta-seta {
+    opacity: 1;
+}
+
+.fleetbase-portal .portal-gaveta-contagem {
+    display: grid;
+    place-items: center;
+    min-width: 1.375rem;
+    height: 1.25rem;
+    padding: 0 0.4375rem;
+    border-radius: 9999px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 0.6875rem;
+    font-weight: 700;
+}
+
+/* conta: tema escuro e sair */
+.fleetbase-portal .portal-gaveta-conta {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-top: auto;
+    padding: 0.75rem 0.875rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-conta {
+    border-top-color: #243041;
+}
+
+.fleetbase-portal .portal-gaveta-avatar {
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;
+    object-fit: cover;
+}
+
+.fleetbase-portal .portal-gaveta-conta-texto {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.fleetbase-portal .portal-gaveta-conta-nome,
+.fleetbase-portal .portal-gaveta-conta-email {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fleetbase-portal .portal-gaveta-conta-nome {
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.fleetbase-portal .portal-gaveta-conta-email {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-conta-email {
+    color: #9ca3af;
+}
+
+.fleetbase-portal .portal-gaveta-tema {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    cursor: pointer;
+}
+
+.fleetbase-portal .portal-gaveta-tema input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+}
+
+.fleetbase-portal .portal-gaveta-tema-trilho {
+    position: relative;
+    width: 2.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    background: #e5e7eb;
+    transition: background-color 0.15s ease;
+}
+
+.fleetbase-portal .portal-gaveta-tema-trilho::after {
+    content: '';
+    position: absolute;
+    top: 0.1875rem;
+    left: 0.1875rem;
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: 9999px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 20%);
+    transition: transform 0.18s ease;
+}
+
+.fleetbase-portal .portal-gaveta-tema input:checked + .portal-gaveta-tema-trilho {
+    background: #f97316;
+}
+
+.fleetbase-portal .portal-gaveta-tema input:checked + .portal-gaveta-tema-trilho::after {
+    transform: translateX(1rem);
+}
+
+.fleetbase-portal .portal-gaveta-tema input:focus-visible + .portal-gaveta-tema-trilho {
+    outline: 2px solid #f97316;
+    outline-offset: 2px;
+}
+
+.fleetbase-portal .portal-gaveta-tema-lua {
+    position: absolute;
+    left: 0.4375rem;
+    font-size: 0.5625rem;
+    color: #fff;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.fleetbase-portal .portal-gaveta-tema input:checked ~ .portal-gaveta-tema-lua {
+    opacity: 1;
+}
+
+.fleetbase-portal .portal-gaveta-sair {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: #fff;
+    color: #374151;
+    cursor: pointer;
+}
+
+.fleetbase-portal .portal-gaveta-sair:hover {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-sair {
+    border-color: #374151;
+    background: #1f2937;
+    color: #d1d5db;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-gaveta-sair:hover {
+    border-color: rgb(248 113 113 / 40%);
+    background: rgb(220 38 38 / 14%);
+    color: #f87171;
 }
 
 @keyframes portal-gaveta-entra {
@@ -2404,7 +2807,7 @@ body[data-theme='dark'].fleetbase-portal .portal-gaveta-fechar:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .fleetbase-portal .portal-container > .portal-main.is-pedidos.gaveta-aberta > .portal-sidebar,
+    .fleetbase-portal .portal-gaveta,
     .fleetbase-portal .portal-gaveta-fundo {
         animation: none;
     }
