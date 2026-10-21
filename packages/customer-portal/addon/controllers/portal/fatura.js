@@ -152,9 +152,12 @@ export default class PortalFaturaController extends Controller {
         return [rotulo, motivo].filter(Boolean).join(': ');
     }
 
-    /** Entregas: selos "2ª entrega" e "Chuva ×1,1" (só quando o valor da loja mudou). */
-    @action selos(dados) {
-        return selosDaCorrida(dados, this.intl.primaryLocale);
+    /**
+     * Entregas: selos "2ª entrega" e "Chuva ×1,1" (só quando o valor da loja mudou). Só no item corrida: o estorno copia os
+     * detalhes da corrida original e não pode ganhar os selos.
+     */
+    @action selos(item) {
+        return item?.tipo && item.tipo !== 'corrida' ? [] : selosDaCorrida(item?.detalhes, this.intl.primaryLocale);
     }
 
     // CSV para o Excel brasileiro (BOM, ";" e vírgula decimal): os itens e os totais da fatura

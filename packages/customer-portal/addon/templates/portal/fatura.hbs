@@ -71,7 +71,7 @@
                                 <td>
                                     <div class="max-w-sm">
                                         {{this.descricao item}}
-                                        {{#each (this.selos item.detalhes) as |selo|}}
+                                        {{#each (this.selos item) as |selo|}}
                                             <span class="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-bold" style="background-color: #DBEAFE; color: #1E40AF;">{{t (concat "customer-portal.ui.entregas.selos." selo.chave) posicao=selo.params.posicao nome=selo.params.nome fator=selo.params.fator}}</span>
                                         {{/each}}
                                     </div>

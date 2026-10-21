@@ -157,9 +157,11 @@
                                                 {{#if lancamento.detalhes.cancelado_pago}}
                                                     <Badge @status="warning" @hideStatusDot={{true}}>{{t "fleet-ops.ui.financeiro.extrato.cancelado-pago"}}</Badge>
                                                 {{/if}}
-                                                {{#each (this.selos lancamento.detalhes) as |selo|}}
-                                                    <Badge @status="info" @hideStatusDot={{true}}>{{t (concat "fleet-ops.ui.financeiro.selos." selo.chave) posicao=selo.params.posicao nome=selo.params.nome fator=selo.params.fator}}</Badge>
-                                                {{/each}}
+                                                {{#if (eq lancamento.tipo "corrida")}}
+                                                    {{#each (this.selos lancamento.detalhes) as |selo|}}
+                                                        <Badge @status="info" @hideStatusDot={{true}}>{{t (concat "fleet-ops.ui.financeiro.selos." selo.chave) posicao=selo.params.posicao nome=selo.params.nome fator=selo.params.fator}}</Badge>
+                                                    {{/each}}
+                                                {{/if}}
                                                 {{#if lancamento.pagamento}}
                                                     <span class="text-gray-500 dark:text-gray-400">· {{t (concat "fleet-ops.ui.financeiro.formas." lancamento.pagamento.forma)}}</span>
                                                     {{#if lancamento.pagamento.comprovante_url}}
