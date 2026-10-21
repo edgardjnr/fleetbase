@@ -3,6 +3,8 @@ import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
+// Entregas: a regra de "mensagem lida" (o 100% visível do Fleetbase falhava por fração de pixel)
+import mensagemFoiVista, { LIMIARES } from '../../utils/chat-mensagem-vista';
 
 export default class ChatWindowMessageComponent extends Component {
     @service store;
@@ -25,7 +27,8 @@ export default class ChatWindowMessageComponent extends Component {
         super.willDestroy();
     }
 
-    @task *createReadReceipt() {
+    // Entregas: drop + recibo guardado na mensagem, porque o observer agora avisa a cada 5% (sem POST repetido)
+    @task({ drop: true }) *createReadReceipt() {
         // if the chat participant is the message sender no read receipt is required
         if (this.chatParticipant && this.chatMessage.sender_uuid === this.chatParticipant.id) {
             return;
@@ -38,6 +41,9 @@ export default class ChatWindowMessageComponent extends Component {
             });
 
             yield newReadReceipt.save();
+            if (!this.chatMessage.receipts.includes(newReadReceipt)) {
+                this.chatMessage.receipts.pushObject(newReadReceipt);
+            }
         }
     }
 
@@ -45,7 +51,7 @@ export default class ChatWindowMessageComponent extends Component {
         this.observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
+                    if (mensagemFoiVista(entry)) {
                         this.createReadReceipt.perform();
                     }
                 });
@@ -53,7 +59,7 @@ export default class ChatWindowMessageComponent extends Component {
             {
                 root: this.getChannelFeedContainerElement(),
                 rootMargin: '0px',
-                threshold: 1.0,
+                threshold: LIMIARES,
             }
         );
 
