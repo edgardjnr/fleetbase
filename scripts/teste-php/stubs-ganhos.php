@@ -542,7 +542,22 @@ namespace {
             return null;
         }
 
-        return $chave === null ? $GLOBALS['sessao'] : ($GLOBALS['sessao'][$chave] ?? null);
+        if ($chave !== null) {
+            return $GLOBALS['sessao'][$chave] ?? null;
+        }
+
+        // session() sem argumento: a sessão, com o forget do Laravel (e lida como arranjo, como antes)
+        return new class implements \ArrayAccess {
+            public function get($chave, $padrao = null) { return $GLOBALS['sessao'][$chave] ?? $padrao; }
+            public function has($chave) { return isset($GLOBALS['sessao'][$chave]); }
+            public function put($chave, $valor = null) { $GLOBALS['sessao'][$chave] = $valor; }
+            public function forget($chaves) { foreach ((array) $chaves as $chave) { unset($GLOBALS['sessao'][$chave]); } }
+            public function all() { return $GLOBALS['sessao']; }
+            public function offsetExists($chave): bool { return isset($GLOBALS['sessao'][$chave]); }
+            public function offsetGet($chave): mixed { return $GLOBALS['sessao'][$chave] ?? null; }
+            public function offsetSet($chave, $valor): void { $GLOBALS['sessao'][$chave] = $valor; }
+            public function offsetUnset($chave): void { unset($GLOBALS['sessao'][$chave]); }
+        };
     }
 
     function response()

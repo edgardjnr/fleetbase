@@ -112,8 +112,9 @@ class AppServiceProvider extends ServiceProvider
         $this->acompanharPedidosDaIntegracao();
         $this->distribuirPedidosAbertos();
         $this->manterPayloadDosPedidos();
-        $this->lancarCorridasNoFinanceiro();
+        // a atribuição primeiro: o valor congelado fica gravado antes de o lançamento da corrida ir para a fila
         $this->congelarValorNaAtribuicao();
+        $this->lancarCorridasNoFinanceiro();
         $this->gravarPrazoDosPedidos();
     }
 

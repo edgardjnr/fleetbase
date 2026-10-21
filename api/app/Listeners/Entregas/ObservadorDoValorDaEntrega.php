@@ -45,7 +45,9 @@ class ObservadorDoValorDaEntrega
             try {
                 $calculo->registrarAtribuicao($fresco);
             } finally {
-                session(['company' => $anterior]);
+                // sem empresa antes (fila, comando): tira a chave; com null nela, o Setting::lookupFromCompany monta
+                // 'company..'
+                $anterior === null ? session()->forget('company') : session(['company' => $anterior]);
             }
         } catch (\Throwable $e) {
             Log::warning('[entregas] valor: falha ao gravar a atribuição do pedido', ['pedido' => $pedido->public_id ?? null, 'erro' => get_class($e)]);
