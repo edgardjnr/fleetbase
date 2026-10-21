@@ -11,6 +11,7 @@ use App\Http\Controllers\Entregas\DriverControllerSemGeocodificacao;
 use App\Listeners\Entregas\GravarPrazoDoPedido;
 use App\Listeners\Entregas\ManterPayloadDoPedido;
 use App\Listeners\Entregas\ObservadorDaDistribuicao;
+use App\Listeners\Entregas\ObservadorDoValorDaEntrega;
 use App\Listeners\Entregas\ObservadorDosPedidosDaIntegracao;
 use App\Listeners\Entregas\ObservadorDosPedidosIfood;
 use App\Listeners\Entregas\ObservadorFinanceiroDosPedidos;
@@ -112,6 +113,7 @@ class AppServiceProvider extends ServiceProvider
         $this->distribuirPedidosAbertos();
         $this->manterPayloadDosPedidos();
         $this->lancarCorridasNoFinanceiro();
+        $this->congelarValorNaAtribuicao();
         $this->gravarPrazoDosPedidos();
     }
 
@@ -132,6 +134,15 @@ class AppServiceProvider extends ServiceProvider
     protected function lancarCorridasNoFinanceiro(): void
     {
         Order::updated(fn ($pedido) => ObservadorFinanceiroDosPedidos::aoAtualizar($pedido));
+    }
+
+    /**
+     * Entregas: o motoboy do pedido mudou → grava a posição dele (entrega junto) e o multiplicador do período no valor
+     * congelado (ver ObservadorDoValorDaEntrega e CalculoEntregas::registrarAtribuicao).
+     */
+    protected function congelarValorNaAtribuicao(): void
+    {
+        Order::updated(fn ($pedido) => ObservadorDoValorDaEntrega::aoAtualizar($pedido));
     }
 
     /**

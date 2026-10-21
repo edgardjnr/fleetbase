@@ -8,6 +8,7 @@
 
 require __DIR__ . '/stubs-ganhos.php';
 
+use App\Listeners\Entregas\ObservadorDoValorDaEntrega;
 use App\Support\Entregas\AtribuicaoDoValor;
 use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\ValorDaEntrega;
@@ -70,6 +71,23 @@ class AtribuicaoFalsa extends AtribuicaoDoValor
         $this->chamadas[] = ['posicoesPorHorarios', $pedidos];
 
         return $this->posicoes;
+    }
+}
+
+/** O cálculo do observador: registra quem foi chamado e com qual empresa na sessão. */
+class CalculoQueRegistra extends CalculoEntregas
+{
+    public array $registrados = [];
+    public array $sessoes     = [];
+    public bool $falhar       = false;
+
+    public function registrarAtribuicao(Order $pedido): void
+    {
+        if ($this->falhar) {
+            throw new \RuntimeException('banco fora do ar');
+        }
+        $this->registrados[] = $pedido->uuid;
+        $this->sessoes[]     = session('company');
     }
 }
 
@@ -315,5 +333,30 @@ $atribuicao->periodos = [periodoDeChuva()];
 [$entregas] = $calculo->entregas(new Collection([$q]), 'America/Sao_Paulo');
 confere($entregas[0]['valor_motoboy'] === 8.0 && (linhaDe('order_q')['motoboy_uuid'] ?? null) === null, 'aceite fora do período e sem segunda tabela: nada muda, nada gravado');
 confere(!array_filter($atribuicao->chamadas, fn ($c) => $c[0] === 'posicoesPorHorarios'), 'nem consulta as posições');
+
+echo '== Observador (Order::updated)' . PHP_EOL;
+reiniciar();
+$registra = new CalculoQueRegistra(null, new AtribuicaoFalsa());
+ObservadorDoValorDaEntrega::$calculo = fn () => $registra;
+Order::$todos = [comKm(pedido('order_o', ['company_uuid' => 'empresa-o']), 3210.4)];
+$evento = fn (array $mudou, string $uuid = 'uuid-order_o') => new class($mudou, $uuid) {
+    public $public_id    = 'order_o';
+    public $company_uuid = 'empresa-o';
+    public function __construct(private array $mudou, public string $uuid) {}
+    public function wasChanged($campo) { return in_array($campo, $this->mudou, true); }
+};
+ObservadorDoValorDaEntrega::aoAtualizar($evento(['status']));
+confere($registra->registrados === [], 'sem troca de motoboy: nada');
+ObservadorDoValorDaEntrega::aoAtualizar($evento(['driver_assigned_uuid', 'status']));
+confere($registra->registrados === ['uuid-order_o'] && $registra->sessoes === ['empresa-o'], 'motoboy mudou: registra o pedido relido, com a empresa dele na sessão');
+confere(session('company') === 'empresa', 'e devolve a sessão como estava');
+ObservadorDoValorDaEntrega::aoAtualizar($evento(['driver_assigned_uuid'], 'uuid-sumiu'));
+confere(count($registra->registrados) === 1, 'pedido que não se acha mais: nada');
+$registra->falhar = true;
+ObservadorDoValorDaEntrega::aoAtualizar($evento(['driver_assigned_uuid']));
+confere(logou('falha ao gravar a atribuição') && session('company') === 'empresa', 'falha: só o log, nunca lança, e a sessão volta');
+ObservadorDoValorDaEntrega::$calculo = null;
+$app = str_replace("\r\n", "\n", file_get_contents('/repo/api/app/Providers/AppServiceProvider.php'));
+confere(str_contains($app, 'Order::updated(fn ($pedido) => ObservadorDoValorDaEntrega::aoAtualizar($pedido));') && str_contains($app, '$this->congelarValorNaAtribuicao();') && str_contains($app, 'use App\Listeners\Entregas\ObservadorDoValorDaEntrega;'), 'AppServiceProvider: Order::updated → observador da atribuição');
 
 resumo();
