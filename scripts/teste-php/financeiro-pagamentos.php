@@ -21,7 +21,9 @@ use Teste\Relogio;
 
 echo '== Migration' . PHP_EOL;
 $arquivos = glob('/repo/api/database/migrations/*_entregas_financeiro_*.php');
-confere(count($arquivos) === 1 && str_ends_with($arquivos[0], '2026_10_13_100000_create_entregas_financeiro_tables.php'), 'uma migration, com o nome do contrato');
+// a dos multiplicadores (2026_10_21) também casa com o glob, de propósito: entra no banco em memória dos testes
+$contrato = array_filter($arquivos, fn ($arquivo) => str_ends_with($arquivo, '2026_10_13_100000_create_entregas_financeiro_tables.php'));
+confere(count($contrato) === 1, 'a migration das tabelas do financeiro, com o nome do contrato');
 $migration       = require '/repo/api/database/migrations/2026_10_13_100000_create_entregas_financeiro_tables.php';
 Schema::$criadas = [];
 $migration->up();

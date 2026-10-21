@@ -109,6 +109,15 @@ namespace Illuminate\Support\Facades {
         }
 
         public static function dropIfExists(string $tabela): void { unset(self::$criadas[$tabela]); }
+
+        public static array $alteradas = [];
+
+        public static function table(string $tabela, \Closure $definicao): void
+        {
+            $blueprint = new \Illuminate\Database\Schema\Blueprint();
+            $definicao($blueprint);
+            self::$alteradas[$tabela][] = $blueprint;
+        }
     }
 }
 
@@ -268,6 +277,8 @@ namespace Fleetbase\FleetOps\Models {
         public $entregas_concluido_em = '2026-10-03 19:42:00'; // texto do banco, em hora de Brasília
         public $entregas_cancelado_pago;   // colunas do select do pedidosConcluidos (null = concluído)
         public $entregas_cancelado_origem;
+        public $started_at            = null; // DATETIME em hora de Brasília (aceite)
+        public $dispatched_at         = null;
         public $updated_at            = null;
         public $timestamps            = true;
         public array $meta            = [];
@@ -381,6 +392,15 @@ namespace Teste {
                 $linha[$coluna] = number_format((float) $linha[$coluna], 2, '.', '');
             }
             $linha['acima'] = (int) !empty($linha['acima']);
+            // colunas da entrega junto e do multiplicador (nulas nas linhas antigas)
+            foreach (['junto_de_km', 'junto_ate_km', 'junto_motoboy', 'junto_loja', 'mult_motoboy', 'mult_loja'] as $coluna) {
+                if (isset($linha[$coluna])) {
+                    $linha[$coluna] = number_format((float) $linha[$coluna], 2, '.', '');
+                }
+            }
+            if (isset($linha['junto_acima'])) {
+                $linha['junto_acima'] = (int) !empty($linha['junto_acima']);
+            }
 
             return $linha;
         }
@@ -515,6 +535,13 @@ namespace Teste {
 namespace {
     function session($chave = null)
     {
+        // session(['company' => x]) grava, como no Laravel
+        if (is_array($chave)) {
+            $GLOBALS['sessao'] = array_merge($GLOBALS['sessao'], $chave);
+
+            return null;
+        }
+
         return $chave === null ? $GLOBALS['sessao'] : ($GLOBALS['sessao'][$chave] ?? null);
     }
 

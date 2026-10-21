@@ -18,6 +18,7 @@ namespace Fleetbase\Models {
             public static function lookup(string $chave, $padrao = null) { return array_key_exists($chave, self::$valores) ? self::$valores[$chave] : $padrao; }
             public static function lookupCompany(string $chave, $padrao = null) { return session('company') ? self::lookup('company.' . session('company') . '.' . $chave, $padrao) : $padrao; }
             public static function configure(string $chave, $valor = null) { self::$valores[$chave] = $valor; return null; }
+            public static function configureCompany(string $chave, $valor = null) { self::$valores['company.' . session('company') . '.' . $chave] = $valor; return null; }
         }
     }
 
