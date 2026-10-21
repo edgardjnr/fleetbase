@@ -3,6 +3,7 @@
 namespace App\Support\Entregas;
 
 use App\Support\Entregas\Financeiro\Lancamentos;
+use App\Support\Entregas\Financeiro\Multiplicadores;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Place;
 use Fleetbase\FleetOps\Models\Vendor;
@@ -46,6 +47,12 @@ use Illuminate\Support\Facades\Log;
  * alterado, estimativa trocada pela rota do OSRM), o valor é recalculado com a tabela vigente, a não ser que o pedido já
  * tenha a corrida lançada no financeiro (entregas_lancamentos, App\Support\Entregas\Financeiro): depois de lançado, o
  * valor não muda mais (correção só por ajuste).
+ *
+ * Entrega junto e multiplicador (spec docs/superpowers/specs/2026-10-21-entrega-junto-e-multiplicador-design.md): a linha
+ * congelada guarda também a faixa da segunda tabela (`entregas.faixas_juntas`, "a partir da 2ª entrega junto") e, quando o
+ * pedido ganha motoboy (registrarAtribuicao, pelo ObservadorDoValorDaEntrega), a posição dele (2ª ou mais = segunda tabela)
+ * e o multiplicador do período ativo. O valor final sai do ValorDaEntrega::final. Pedido concluído sem atribuição gravada
+ * (escapou do observador) é reconstituído pelos horários (aplicarReserva).
  */
 class CalculoEntregas
 {
@@ -82,9 +89,12 @@ class CalculoEntregas
 
     protected ValoresCongelados $congelados;
 
-    public function __construct(?ValoresCongelados $congelados = null)
+    protected AtribuicaoDoValor $atribuicao;
+
+    public function __construct(?ValoresCongelados $congelados = null, ?AtribuicaoDoValor $atribuicao = null)
     {
         $this->congelados = $congelados ?? new ValoresCongelados();
+        $this->atribuicao = $atribuicao ?? new AtribuicaoDoValor();
     }
 
     /**
@@ -134,14 +144,16 @@ class CalculoEntregas
     {
         $this->osrmFalhou = false;
 
-        $pendentes  = 0;
-        $entregas   = [];
-        $gravar     = [];
-        $faixas     = $this->faixas();
-        $lojas      = $this->lojasDosPedidos($pedidos);
-        $comCota    = $this->pedidosComCota($pedidos, $limiteCalculos);
-        $congelados = $this->congelados->carregar($pedidos->pluck('uuid')->all());
-        $lancados   = $this->pedidosLancados($pedidos->pluck('uuid')->all());
+        $pendentes    = 0;
+        $entregas     = [];
+        $gravar       = [];
+        $reserva      = [];
+        $faixas       = $this->faixas();
+        $faixasJuntas = $this->faixasJuntas();
+        $lojas        = $this->lojasDosPedidos($pedidos);
+        $comCota      = $this->pedidosComCota($pedidos, $limiteCalculos);
+        $congelados   = $this->congelados->carregar($pedidos->pluck('uuid')->all());
+        $lancados     = $this->pedidosLancados($pedidos->pluck('uuid')->all());
 
         foreach ($pedidos as $i => $pedido) {
             $rota = $this->rotaDoPedido($pedido, isset($comCota[$i]));
@@ -152,8 +164,19 @@ class CalculoEntregas
             $motoboy           = $pedido->driverAssigned;
             $coleta            = $pedido->payload?->getPickupOrFirstWaypoint();
             $km                = $rota ? round($rota['metros'] / 1000, 2) : null;
-            $valor             = $rota ? $this->valorCongelado($pedido, $rota, $faixas, $congelados[$pedido->uuid] ?? null, $gravar, isset($lancados[$pedido->uuid])) : null;
+            $usada             = null;
+            $lancado           = isset($lancados[$pedido->uuid]);
+            $valor             = $rota ? $this->valorCongelado($pedido, $rota, $faixas, $faixasJuntas, $congelados[$pedido->uuid] ?? null, $gravar, $lancado, $usada) : null;
             [$loja, $lojaNome] = $this->lojaDoPedido($pedido, $coleta, $lojas);
+
+            // pedido que escapou do observador (sem a atribuição deste motoboy): reconstituído pelos horários no fim
+            $motoboyUuid = (string) ($pedido->driver_assigned_uuid ?: $motoboy?->uuid);
+            if ($usada !== null && !$lancado && $motoboyUuid !== '' && (string) ($usada['motoboy_uuid'] ?? '') !== $motoboyUuid) {
+                $instante = $this->instanteDoAceite($pedido);
+                if ($instante !== null) {
+                    $reserva[count($entregas)] = ['uuid' => (string) $pedido->uuid, 'motoboy' => $motoboyUuid, 'instante' => $instante, 'linha' => $usada];
+                }
+            }
 
             $entregas[] = [
                 'loja'          => $loja,
@@ -179,63 +202,220 @@ class CalculoEntregas
                 'order_uuid'    => $pedido->uuid,
                 'motoboy_uuid'  => $pedido->driver_assigned_uuid ?: $motoboy?->uuid,
                 'loja_uuid'     => $lojas->get($pedido->customer_uuid)?->uuid,
+                // entrega junto e multiplicador (ValorDaEntrega): a posição, a tabela usada e os fatores (só para a central:
+                // o app e o portal recebem o fator da própria conta)
+                'posicao'       => $valor['posicao'] ?? null,
+                'tabela'        => $valor['tabela'] ?? null,
+                'multiplicador' => $valor['multiplicador'] ?? null,
             ];
         }
 
         $this->congelados->gravar($gravar);
+        $this->aplicarReserva((string) ($pedidos->first()?->company_uuid ?? ''), $reserva, $entregas);
 
         return [$entregas, $pendentes];
     }
 
     /**
      * Km e valor de um pedido para o app do motoboy (card de aceitar e detalhes): calcula a rota agora, se faltar, e
-     * congela o valor como em entregas().
+     * congela o valor como em entregas(). Antes da atribuição, a prévia (comPrevia): a posição que o pedido teria para
+     * $motoboyUuid (sem ele, a 1ª) e o multiplicador de agora; nada da prévia é gravado.
      *
-     * @return array{km: ?float, fonte: ?string, faixa: ?array, valor_motoboy: ?float}
+     * @return array{km: ?float, fonte: ?string, faixa: ?array, valor_motoboy: ?float, posicao: ?int, tabela: ?string, multiplicador: ?array}
      */
-    public function valorDoPedido(Order $pedido): array
+    public function valorDoPedido(Order $pedido, ?string $motoboyUuid = null): array
     {
         $this->osrmFalhou = false;
 
         $rota = $this->rotaDoPedido($pedido, true);
         if ($rota === null) {
-            return ['km' => null, 'fonte' => null, 'faixa' => null, 'valor_motoboy' => null];
+            return ['km' => null, 'fonte' => null, 'faixa' => null, 'valor_motoboy' => null, 'posicao' => null, 'tabela' => null, 'multiplicador' => null];
         }
 
         $gravar = [];
+        $usada  = null;
         $linha  = $this->congelados->carregar([$pedido->uuid])[$pedido->uuid] ?? null;
         // a consulta ao financeiro só quando o km mudou (o card de aceitar chama a cada exibição)
         $mudou  = $linha !== null && (int) $linha['metros'] !== (int) round((float) $rota['metros']);
-        $valor  = $this->valorCongelado($pedido, $rota, $this->faixas(), $linha, $gravar, $mudou && isset($this->pedidosLancados([$pedido->uuid])[$pedido->uuid]));
+        $valor  = $this->valorCongelado($pedido, $rota, $this->faixas(), $this->faixasJuntas(), $linha, $gravar, $mudou && isset($this->pedidosLancados([$pedido->uuid])[$pedido->uuid]), $usada);
         $this->congelados->gravar($gravar);
+
+        if ($usada !== null && empty($usada['motoboy_uuid'])) {
+            $valor = $this->comPrevia($pedido, $usada, $motoboyUuid) ?? $valor;
+        }
 
         return [
             'km'            => round($rota['metros'] / 1000, 2),
             'fonte'         => $rota['fonte'] ?? null,
             'faixa'         => $valor['faixa'] ?? null,
             'valor_motoboy' => $valor['motoboy'] ?? null,
+            'posicao'       => $valor['posicao'] ?? null,
+            'tabela'        => $valor['tabela'] ?? null,
+            'multiplicador' => $valor['multiplicador'] ?? null,
         ];
     }
 
     /**
-     * Valor da entrega para esta rota: o congelado, se foi calculado com o mesmo km (metros); senão, a faixa da tabela
-     * vigente, que entra em $gravar (congela, ou recongela quando o km mudou). Pedido com a corrida lançada no financeiro
-     * ($lancado) fica com o congelado, mesmo com outro km. Sem faixas cadastradas e sem valor congelado para este km, null.
-     *
-     * @return array{faixa: array, motoboy: float, loja: float}|null
+     * O pedido ganhou (ou perdeu) motoboy: grava a parte da atribuição do valor congelado (motoboy, agora, posição e o
+     * multiplicador do período ativo), congelando o km antes se faltar. Pedido com a corrida lançada no financeiro não
+     * muda. Sem km (sem endereço) não grava: a reserva do entregas() reconstitui pelos horários quando ele concluir.
+     * Chamado pelo ObservadorDoValorDaEntrega, com a empresa do pedido na sessão (as faixas são da empresa da sessão).
      */
-    protected function valorCongelado(Order $pedido, array $rota, array $faixas, ?array $linha, array &$gravar, bool $lancado = false): ?array
+    public function registrarAtribuicao(Order $pedido): void
     {
+        $this->osrmFalhou = false;
+
+        $uuid = (string) $pedido->uuid;
+        if (isset($this->pedidosLancados([$uuid])[$uuid])) {
+            return;
+        }
+
+        $motoboy = (string) ($pedido->driver_assigned_uuid ?? '');
+        $linha   = $this->congelados->carregar([$uuid])[$uuid] ?? null;
+
+        if ($motoboy === '') {
+            if ($linha !== null && !empty($linha['motoboy_uuid'])) {
+                $this->congelados->gravarAtribuicoes([array_fill_keys(ValorDaEntrega::COLUNAS_DA_ATRIBUICAO, null) + $linha]);
+            }
+
+            return;
+        }
+
+        $rota = $this->rotaDoPedido($pedido, true);
+        if ($rota === null) {
+            Log::info('[entregas] valor: pedido sem km na atribuição; fica para a reserva por horários', ['pedido' => $pedido->public_id]);
+
+            return;
+        }
+
+        $gravar = [];
+        $usada  = null;
+        $this->valorCongelado($pedido, $rota, $this->faixas(), $this->faixasJuntas(), $linha, $gravar, false, $usada);
+        $this->congelados->gravar($gravar);
+        if ($usada === null) {
+            return; // sem faixas cadastradas: não há valor para atribuir
+        }
+
+        $empresa    = (string) $pedido->company_uuid;
+        $agora      = now()->format('Y-m-d H:i:s');
+        $atribuicao = $this->atribuicaoNova($motoboy, $agora, 1 + $this->atribuicao->emAberto($empresa, $motoboy, $uuid), $this->atribuicao->multiplicadorEm($empresa, $agora));
+        $this->congelados->gravarAtribuicoes([$atribuicao + $usada]);
+    }
+
+    /** A prévia antes da atribuição (não grava). Falha na consulta: null (vale o valor sem a prévia), e o log. */
+    protected function comPrevia(Order $pedido, array $linha, ?string $motoboyUuid): ?array
+    {
+        try {
+            $empresa = (string) $pedido->company_uuid;
+            $agora   = now()->format('Y-m-d H:i:s');
+            $posicao = $motoboyUuid ? 1 + $this->atribuicao->emAberto($empresa, $motoboyUuid, (string) $pedido->uuid) : 1;
+            $periodo = $this->atribuicao->multiplicadorEm($empresa, $agora);
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] valor: não deu para montar a prévia do pedido; vale o valor sem ela', ['pedido' => $pedido->public_id, 'erro' => get_class($e)]);
+
+            return null;
+        }
+
+        return ValorDaEntrega::final($this->atribuicaoNova((string) $motoboyUuid, $agora, $posicao, $periodo) + $linha);
+    }
+
+    /** A parte da atribuição de uma linha (ValorDaEntrega::COLUNAS_DA_ATRIBUICAO), com as cópias do período. */
+    protected function atribuicaoNova(string $motoboyUuid, string $instante, int $posicao, ?object $periodo): array
+    {
+        return [
+            'motoboy_uuid'       => $motoboyUuid !== '' ? $motoboyUuid : null,
+            'atribuido_em'       => $instante,
+            'posicao'            => max(1, min(255, $posicao)),
+            'multiplicador_uuid' => $periodo ? (string) $periodo->uuid : null,
+            'multiplicador_nome' => $periodo ? (string) $periodo->nome : null,
+            'mult_motoboy'       => $periodo ? round((float) $periodo->mult_motoboy, 2) : null,
+            'mult_loja'          => $periodo ? round((float) $periodo->mult_loja, 2) : null,
+        ];
+    }
+
+    /**
+     * Reconstitui a atribuição dos pedidos concluídos que escaparam do observador (atribuição pelo query builder,
+     * saveQuietly, pedido de antes do deploy), pelo horário do aceite. Só quando muda o valor: havia segunda tabela no
+     * cálculo ou um período no instante. Uma consulta de períodos e uma de posições para a lista toda.
+     *
+     * @param array<int, array{uuid: string, motoboy: string, instante: string, linha: array}> $reserva índice em $entregas => pedido
+     */
+    protected function aplicarReserva(string $empresa, array $reserva, array &$entregas): void
+    {
+        if (!$reserva || $empresa === '') {
+            return;
+        }
+
+        $instantes = array_column($reserva, 'instante');
+        $periodos  = $this->atribuicao->multiplicadoresDoPeriodo($empresa, min($instantes), max($instantes));
+
+        $precisa = [];
+        foreach ($reserva as $indice => $item) {
+            $periodo = Multiplicadores::noInstante($periodos, $item['instante']);
+            if ($periodo !== null || ($item['linha']['junto_motoboy'] ?? null) !== null) {
+                $precisa[$indice] = $item + ['periodo' => $periodo];
+            }
+        }
+        if (!$precisa) {
+            return;
+        }
+
+        $posicoes = $this->atribuicao->posicoesPorHorarios($empresa, array_values(array_map(fn ($item) => ['uuid' => $item['uuid'], 'motoboy' => $item['motoboy'], 'instante' => $item['instante']], $precisa)));
+
+        $gravar = [];
+        foreach ($precisa as $indice => $item) {
+            $linha    = $this->atribuicaoNova($item['motoboy'], $item['instante'], $posicoes[$item['uuid']] ?? 1, $item['periodo']) + $item['linha'];
+            $gravar[] = $linha;
+            $valor    = ValorDaEntrega::final($linha);
+
+            $entregas[$indice]['faixa']         = $valor['faixa'];
+            $entregas[$indice]['valor_motoboy'] = $valor['motoboy'];
+            $entregas[$indice]['valor_loja']    = $valor['loja'];
+            $entregas[$indice]['posicao']       = $valor['posicao'];
+            $entregas[$indice]['tabela']        = $valor['tabela'];
+            $entregas[$indice]['multiplicador'] = $valor['multiplicador'];
+        }
+
+        $this->congelados->gravarAtribuicoes($gravar);
+    }
+
+    /** Aceite do pedido em Brasília ('Y-m-d H:i:s'): started_at, ou o dispatched_at (atribuído pela central); null sem eles. */
+    protected function instanteDoAceite(Order $pedido): ?string
+    {
+        $valor = $pedido->started_at ?: $pedido->dispatched_at;
+        if (!$valor) {
+            return null;
+        }
+
+        return $valor instanceof \DateTimeInterface ? $valor->format('Y-m-d H:i:s') : substr((string) $valor, 0, 19);
+    }
+
+    /**
+     * Valor da entrega para esta rota: o da linha congelada, se foi calculada com o mesmo km (metros); senão, as faixas
+     * das duas tabelas vigentes, que entram em $gravar (congela, ou recongela quando o km mudou; a atribuição já gravada
+     * continua valendo). Pedido com a corrida lançada no financeiro ($lancado) fica com o congelado, mesmo com outro km.
+     * Sem faixas cadastradas e sem valor congelado para este km, null. $usada recebe a linha que deu o valor (para a
+     * prévia, a atribuição e a reserva).
+     *
+     * @return array{faixa: array, motoboy: float, loja: float, tabela: string, posicao: ?int, multiplicador: ?array}|null
+     */
+    protected function valorCongelado(Order $pedido, array $rota, array $faixas, array $faixasJuntas, ?array $linha, array &$gravar, bool $lancado = false, ?array &$usada = null): ?array
+    {
+        $usada  = null;
         $metros = (int) round((float) $rota['metros']);
         if ($linha !== null && ($lancado || (int) $linha['metros'] === $metros)) {
-            return $this->valorDaLinha($linha);
+            $usada = $linha;
+
+            return ValorDaEntrega::final($linha);
         }
 
         // a faixa sai do mesmo km exibido (metros reais); os metros inteiros só identificam o km da linha congelada
-        $faixa = $this->faixaDoKm($faixas, round((float) $rota['metros'] / 1000, 2));
+        $km    = round((float) $rota['metros'] / 1000, 2);
+        $faixa = $this->faixaDoKm($faixas, $km);
         if ($faixa === null) {
             return null;
         }
+        $junto = $this->faixaDoKm($faixasJuntas, $km);
 
         $nova = [
             'company_uuid'  => $pedido->company_uuid,
@@ -248,10 +428,16 @@ class CalculoEntregas
             'acima'         => !empty($faixa['acima']),
             'valor_motoboy' => $faixa['motoboy'],
             'valor_loja'    => $faixa['loja'],
+            'junto_de_km'   => $junto['de_km'] ?? null,
+            'junto_ate_km'  => $junto['ate_km'] ?? null,
+            'junto_acima'   => $junto !== null ? !empty($junto['acima']) : null,
+            'junto_motoboy' => $junto['motoboy'] ?? null,
+            'junto_loja'    => $junto['loja'] ?? null,
         ];
         $gravar[] = $nova;
+        $usada    = $nova + array_intersect_key($linha ?? [], array_flip(ValorDaEntrega::COLUNAS_DA_ATRIBUICAO));
 
-        return $this->valorDaLinha($nova);
+        return ValorDaEntrega::final($usada);
     }
 
     /**
@@ -276,22 +462,6 @@ class CalculoEntregas
         }
 
         return $lancados;
-    }
-
-    /** Linha congelada no formato do relatório: a faixa (com os dois valores) e os valores soltos, em números. */
-    protected function valorDaLinha(array $linha): array
-    {
-        $faixa = [
-            'de_km'   => (float) $linha['de_km'],
-            'ate_km'  => (float) $linha['ate_km'],
-            'motoboy' => (float) $linha['valor_motoboy'],
-            'loja'    => (float) $linha['valor_loja'],
-        ];
-        if (!empty($linha['acima'])) {
-            $faixa['acima'] = true;
-        }
-
-        return ['faixa' => $faixa, 'motoboy' => $faixa['motoboy'], 'loja' => $faixa['loja']];
     }
 
     /**

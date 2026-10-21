@@ -25,6 +25,13 @@ use Teste\Banco;
 use Teste\ConsultaRegistrada;
 use Teste\Ponto;
 
+/** Sem pedidos em aberto e sem período: a prévia vale como hoje. */
+class AtribuicaoSemNada extends \App\Support\Entregas\AtribuicaoDoValor
+{
+    public function emAberto(string $empresa, string $motoboyUuid, string $exceto): int { return 0; }
+    public function multiplicadorEm(string $empresa, string $instante): ?object { return null; }
+}
+
 echo '== Migration da tabela entregas_valores_pedido' . PHP_EOL;
 $migration = require '/repo/api/database/migrations/2026_10_03_120000_create_entregas_valores_pedido_table.php';
 $migration->up();
@@ -90,7 +97,8 @@ function comKm(Order $pedido, float $metros, string $fonte = 'osrm'): Order
     return $pedido;
 }
 
-$calculo       = new CalculoEntregas();
+// sem pedidos em aberto e sem período (a prévia do valorDoPedido não vai ao banco de pedidos nem à tabela de períodos)
+$calculo       = new CalculoEntregas(null, new AtribuicaoSemNada());
 Vendor::$lojas = [new Vendor(['uuid' => 'uuid-vendor_centro', 'public_id' => 'vendor_centro', 'name' => 'Loja Centro'])];
 
 reiniciar();
@@ -101,7 +109,9 @@ $linha = Banco::$tabelas['entregas_valores_pedido']['uuid-order_a'] ?? [];
 confere(($linha['metros'] ?? null) === 3210 && ($linha['fonte'] ?? null) === 'osrm' && ($linha['valor_motoboy'] ?? null) === 8.0 && ($linha['valor_loja'] ?? null) === 11.37, 'a linha congelada guarda o km e os dois valores');
 confere(($linha['company_uuid'] ?? null) === 'empresa' && ($linha['de_km'] ?? null) === 2.0 && ($linha['ate_km'] ?? null) === 4.0 && ($linha['acima'] ?? null) === false, 'e a empresa e os limites da faixa');
 confere(Banco::$upserts === 1 && $pendentes === 0 && OSRM::$chamadas === 0, 'uma gravação só; com o km guardado, o OSRM não é chamado');
-$faltando = array_diff(array_keys($linha), array_keys($colunas), ['created_at', 'updated_at']);
+$alteracao = require '/repo/api/database/migrations/2026_10_21_100100_add_junto_e_multiplicador_to_entregas_valores_pedido_table.php';
+$colunasDaMigration = array_merge(array_keys($colunas), $alteracao::COLUNAS);
+$faltando = array_diff(array_keys($linha), $colunasDaMigration, ['created_at', 'updated_at']);
 confere($linha && !$faltando, 'toda coluna gravada existe na migration' . ($faltando ? ' (faltam: ' . implode(', ', $faltando) . ')' : ''));
 
 Setting::$valores['entregas.faixas'] = [['ate_km' => 4, 'motoboy' => 9, 'loja' => 12], ['ate_km' => 6, 'motoboy' => 12, 'loja' => 16]];
@@ -139,7 +149,7 @@ confere($pendentes === 1 && $entregas[0]['km'] === null && $entregas[0]['valor_m
 
 reiniciar();
 [$entregas] = $calculo->entregas(new Collection([comKm(pedido('order_d'), 3210.4)]), 'America/Sao_Paulo');
-confere(array_keys($entregas[0]) === ['loja', 'loja_nome', 'pedido', 'id_interno', 'motoboy', 'motoboy_nome', 'concluido_em', 'origem', 'destino', 'km', 'fonte', 'faixa', 'valor_motoboy', 'valor_loja', 'cancelado_pago', 'cancelado_origem', 'order_uuid', 'motoboy_uuid', 'loja_uuid'], 'o formato do relatório e do extrato (cancelado_pago: etapa 3 do iFood; cancelado_origem: integração; uuids: financeiro)');
+confere(array_keys($entregas[0]) === ['loja', 'loja_nome', 'pedido', 'id_interno', 'motoboy', 'motoboy_nome', 'concluido_em', 'origem', 'destino', 'km', 'fonte', 'faixa', 'valor_motoboy', 'valor_loja', 'cancelado_pago', 'cancelado_origem', 'order_uuid', 'motoboy_uuid', 'loja_uuid', 'posicao', 'tabela', 'multiplicador'], 'o formato do relatório e do extrato (cancelado_pago: etapa 3 do iFood; cancelado_origem: integração; uuids: financeiro; posicao/tabela/multiplicador: entrega junto)');
 confere($entregas[0]['order_uuid'] === 'uuid-order_d' && $entregas[0]['motoboy_uuid'] === 'uuid-driver_motoca' && $entregas[0]['loja_uuid'] === 'uuid-vendor_centro', 'uuids do pedido, do motoboy e da loja (para o lançador do financeiro)');
 [$semLoja] = $calculo->entregas(new Collection([comKm(pedido('order_sl', ['customer_uuid' => 'uuid-contato']), 3210.4)]), 'America/Sao_Paulo');
 confere($semLoja[0]['loja_uuid'] === null && $semLoja[0]['motoboy_uuid'] === 'uuid-driver_motoca', 'pedido sem loja (cliente não é Vendor): loja_uuid nulo');
@@ -181,7 +191,7 @@ echo '== Valor de um pedido (card de aceitar e detalhes)' . PHP_EOL;
 reiniciar();
 $aberto = pedido('order_e', ['status' => 'dispatched', 'adhoc' => true, 'driver_assigned_uuid' => null, 'driverAssigned' => null]);
 $valor  = $calculo->valorDoPedido($aberto);
-confere($valor === ['km' => 3.21, 'fonte' => 'osrm', 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'motoboy' => 8.0, 'loja' => 11.37], 'valor_motoboy' => 8.0], 'sem km guardado: calcula a rota na hora (3,21 km → 8,00)');
+confere($valor === ['km' => 3.21, 'fonte' => 'osrm', 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'motoboy' => 8.0, 'loja' => 11.37], 'valor_motoboy' => 8.0, 'posicao' => 1, 'tabela' => 'normal', 'multiplicador' => null], 'sem km guardado: calcula a rota na hora (3,21 km → 8,00; prévia sem motoboy: 1ª, tabela normal)');
 confere(OSRM::$chamadas === 1 && ($aberto->meta['entregas']['km_rota']['metros'] ?? null) === 3210.4 && isset(Banco::$tabelas['entregas_valores_pedido']['uuid-order_e']), 'chama o OSRM uma vez, guarda o km no pedido e congela o valor');
 $valor = $calculo->valorDoPedido($aberto);
 confere(OSRM::$chamadas === 1 && Banco::$upserts === 1 && $valor['valor_motoboy'] === 8.0, 'a segunda consulta não chama o OSRM nem regrava');
@@ -193,7 +203,7 @@ confere($valor['fonte'] === 'estimativa' && $valor['km'] === 2.6 && $valor['valo
 
 reiniciar();
 $valor = $calculo->valorDoPedido(pedido('order_g', ['payload' => new Payload(lugar('place_loja', -21.17, -47.81, 'Loja Centro'), lugar('place_y', null, null, 'Cliente'))]));
-confere($valor === ['km' => null, 'fonte' => null, 'faixa' => null, 'valor_motoboy' => null] && OSRM::$chamadas === 0, 'destino sem posição: km e valor nulos');
+confere($valor === ['km' => null, 'fonte' => null, 'faixa' => null, 'valor_motoboy' => null, 'posicao' => null, 'tabela' => null, 'multiplicador' => null] && OSRM::$chamadas === 0, 'destino sem posição: km e valor nulos');
 
 echo '== O que o app recebe (GanhosDoMotoboy)' . PHP_EOL;
 $entrega = [
@@ -289,14 +299,14 @@ Order::$todos = [
     pedido('order_aberto', ['status' => 'dispatched', 'adhoc' => true, 'driver_assigned_uuid' => null, 'driverAssigned' => null]),
     pedido('order_outra-empresa', ['company_uuid' => 'outra']),
 ];
-$resposta = $controller->valor(new Request([], '12|abc'), 'order_meu', new CalculoEntregas());
+$resposta = $controller->valor(new Request([], '12|abc'), 'order_meu', new CalculoEntregas(null, new AtribuicaoSemNada()));
 confere($resposta->status === 200 && $resposta->dados === ['pedido' => 'order_meu', 'km' => 3.21, 'aproximado' => false, 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'valor' => 8.0], 'pedido dele: km, faixa e valor dele');
-$resposta = $controller->valor(new Request([], '12|abc'), 'uuid-order_aberto', new CalculoEntregas());
+$resposta = $controller->valor(new Request([], '12|abc'), 'uuid-order_aberto', new CalculoEntregas(null, new AtribuicaoSemNada()));
 confere($resposta->status === 200 && $resposta->dados['pedido'] === 'order_aberto', 'pedido aberto, achado também pelo uuid');
-confere($controller->valor(new Request([], '12|abc'), 'order_de-outro', new CalculoEntregas())->status === 404, 'pedido de outro motoboy: 404');
-confere($controller->valor(new Request([], '12|abc'), 'order_outra-empresa', new CalculoEntregas())->status === 404, 'pedido de outra empresa: 404');
-confere($controller->valor(new Request([], '12|abc'), 'uuid-order_outra-empresa', new CalculoEntregas())->status === 404, 'pedido de outra empresa, nem pelo uuid: 404 (a empresa não escapa pelo "ou")');
-confere($controller->valor(new Request([], '12|abc'), 'order_nao-existe', new CalculoEntregas())->status === 404, 'pedido que não existe: 404');
-confere($controller->valor(new Request([], 'flb_live_abc'), 'order_meu', new CalculoEntregas())->status === 403, 'chave de API: 403');
+confere($controller->valor(new Request([], '12|abc'), 'order_de-outro', new CalculoEntregas(null, new AtribuicaoSemNada()))->status === 404, 'pedido de outro motoboy: 404');
+confere($controller->valor(new Request([], '12|abc'), 'order_outra-empresa', new CalculoEntregas(null, new AtribuicaoSemNada()))->status === 404, 'pedido de outra empresa: 404');
+confere($controller->valor(new Request([], '12|abc'), 'uuid-order_outra-empresa', new CalculoEntregas(null, new AtribuicaoSemNada()))->status === 404, 'pedido de outra empresa, nem pelo uuid: 404 (a empresa não escapa pelo "ou")');
+confere($controller->valor(new Request([], '12|abc'), 'order_nao-existe', new CalculoEntregas(null, new AtribuicaoSemNada()))->status === 404, 'pedido que não existe: 404');
+confere($controller->valor(new Request([], 'flb_live_abc'), 'order_meu', new CalculoEntregas(null, new AtribuicaoSemNada()))->status === 403, 'chave de API: 403');
 
 resumo();

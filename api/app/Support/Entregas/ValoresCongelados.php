@@ -15,8 +15,8 @@ class ValoresCongelados
 {
     public const TABELA = 'entregas_valores_pedido';
 
-    /** Colunas regravadas quando o pedido já tem valor e o km mudou. */
-    public const COLUNAS_ATUALIZADAS = ['chave', 'metros', 'fonte', 'de_km', 'ate_km', 'acima', 'valor_motoboy', 'valor_loja', 'updated_at'];
+    /** Colunas regravadas quando o pedido já tem valor e o km mudou (a parte do km, com a segunda tabela). */
+    public const COLUNAS_ATUALIZADAS = ['chave', 'metros', 'fonte', 'de_km', 'ate_km', 'acima', 'valor_motoboy', 'valor_loja', 'junto_de_km', 'junto_ate_km', 'junto_acima', 'junto_motoboy', 'junto_loja', 'updated_at'];
 
     /**
      * Linhas dos pedidos, indexadas pelo order_uuid (arrays, com os decimais como o banco devolve: texto).
