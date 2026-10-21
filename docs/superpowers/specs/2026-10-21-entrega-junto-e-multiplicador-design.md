@@ -82,7 +82,8 @@ O valor final sai sempre da fórmula acima, a partir da linha. **Depois de lanç
 - **Observador novo** `ObservadorDoValorDaEntrega`, em `Order::updated` no `AppServiceProvider`, ao lado dos outros:
   quando `driver_assigned_uuid` muda, calcula a posição e o multiplicador e grava a parte da atribuição (e a parte do km,
   se o pedido ainda não tem). Independe da distribuição estar ligada. Nunca lança (vai para o log), como o
-  `ObservadorDaDistribuicao`.
+  `ObservadorDaDistribuicao`. É registrado **antes** do lançador de corridas, para o valor congelado estar gravado
+  antes de o lançamento ir para a fila.
 - **Reserva para o que escapar do observador** (`saveQuietly`, bulk-assign pelo query builder): o `CalculoEntregas`, ao
   montar a entrega de um pedido concluído que tem motoboy mas não tem atribuição gravada para ele, reconstitui a partir
   dos horários. Instante = `started_at` (sem ele, `dispatched_at`). Posição = 1 + outros pedidos do mesmo motoboy aceitos
@@ -91,12 +92,17 @@ O valor final sai sempre da fórmula acima, a partir da linha. **Depois de lanç
 
 ## Prévia antes do aceite
 
-- `CalculoEntregas::valorDoPedido($pedido, ?Driver $motoboy)`: com o motoboy e o pedido ainda sem atribuição, devolve a
-  **prévia para ele** (posição pelos pedidos em aberto dele agora, multiplicador do período ativo agora), sem gravar a
-  parte da atribuição. A parte do km continua congelando como hoje.
-- A rota do valor do app (`MotoboyController@valor`) passa o motoboy da sessão.
-- **Push de alarme** (`CartaoDoAlarme::doPedido`): ganha o motoboy quando o push é para um motoboy só (oferta da
-  distribuição); no aviso aberto a vários, prévia sem posição (tabela normal × multiplicador ativo).
+- `CalculoEntregas::valorDoPedido($pedido, ?string $motoboyUuid)`: no pedido **ainda sem motoboy**
+  (`driver_assigned_uuid` vazio: o card de aceitar, inclusive a oferta da distribuição, que não preenche o motoboy),
+  devolve a **prévia para quem pergunta** (posição pelos pedidos em aberto dele agora, sem ele a 1ª; multiplicador do
+  período ativo agora), sem gravar a parte da atribuição. A parte do km continua congelando como hoje.
+- **A prévia vale só no pedido sem motoboy.** O pedido com motoboy usa a atribuição gravada; se ela faltar (escapou do
+  observador), fica com o valor **sem prévia** (tabela normal × 1), para um pedido antigo, concluído ou lançado, não
+  ganhar o multiplicador de agora nos detalhes. A reserva por horários do `entregas()` corrige quando o pedido é concluído.
+- A rota do valor do app (`MotoboyController@valor`) passa o uuid do motoboy da sessão.
+- **Push de alarme** (`CartaoDoAlarme::doPedido`): o `AvisosDoMotoboy` não recebe o destinatário, então o cartão do
+  alarme mostra a prévia sem posição (tabela normal × multiplicador ativo). O card de aceitar do app mostra a prévia
+  com a posição do motoboy.
 - A prévia pode diferir do valor gravado se algo mudar entre ver e aceitar (ele concluiu o outro pedido, o período
   começou ou acabou). Vale o da atribuição.
 
@@ -124,7 +130,8 @@ entram no `COLUNAS_ATUALIZADAS` (recongelar); as da atribuição são gravadas p
 ### Migration: `entregas_multiplicadores` (tabela nova)
 
 `id`, `uuid` (único), `company_uuid` (índice com `inicio`), `nome`, `mult_motoboy` decimal(4,2), `mult_loja`
-decimal(4,2), `inicio` datetime, `fim` datetime, `criado_por_uuid`, `encerrado_por_uuid` (nullable), `created_at`,
+decimal(4,2), `inicio` datetime, `fim` datetime, `criado_por`, `encerrado_por` (uuid do usuário, nullable, como
+`entregas_lancamentos.criado_por`), `created_at`,
 `updated_at`, `deleted_at` (só agendado é apagado).
 
 O `deploy.sh` roda as duas no banco principal e no sandbox, como as outras `entregas_*`.
@@ -139,6 +146,9 @@ Os `detalhes` da corrida ganham, na conta do motoboy e na da loja:
 
 A `faixa` dos detalhes passa a ser a da tabela usada.
 
+**Os selos aparecem só nas linhas de corrida** (extrato do motoboy e da loja, fatura no console e no portal): o estorno
+de uma corrida copia os detalhes da original e não pode ganhar os selos.
+
 ## Servidor (`api/app`)
 
 - `App\Support\Entregas\Financeiro\Multiplicadores` (novo): CRUD dos períodos, validação de sobreposição, `ativoEm($empresa, $instante)`.
@@ -150,12 +160,14 @@ A `faixa` dos detalhes passa a ser a da tabela usada.
 - `ObservadorDoValorDaEntrega` (novo) registrado no `AppServiceProvider`.
 - `PagamentoMotoboysController`: `GET` devolve também `faixas_juntas`; `PUT .../faixas-juntas` substitui a segunda tabela
   (mesma validação; lista vazia desliga).
-- `FinanceiroController` (ou controller novo `MultiplicadoresController`): `GET/POST financeiro/multiplicadores`,
-  `PATCH financeiro/multiplicadores/{uuid}` (fim, ou tudo no agendado), `POST .../{uuid}/encerrar`, `DELETE .../{uuid}`
-  (só agendado). Só admin (`negarSeNaoAdmin`), como o resto do Financeiro.
+- `MultiplicadoresController` (novo): `GET/POST financeiro/multiplicadores`,
+  `PUT financeiro/multiplicadores/{uuid}` (fim, ou tudo no agendado; o console usa `fetch.put` em todo o Financeiro),
+  `POST .../{uuid}/encerrar`, `DELETE .../{uuid}` (só agendado). Só admin (`negarSeNaoAdmin`), como o resto do Financeiro.
 - `LancadorDeCorridas::detalhes`: `junto` e `multiplicador` por conta.
-- `GanhosDoMotoboy::linha` e `::valor`: `junto` (bool) e `multiplicador` (`{nome, fator}` do motoboy, ou null). Campos
-  novos e opcionais: o APK antigo ignora.
+- `GanhosDoMotoboy::linha` e `::valor`: `junto` (a posição (2, 3…) quando pagou pela segunda tabela, senão null) e
+  `multiplicador` (`{nome, fator}` do motoboy, ou null). Campos novos e opcionais: o APK antigo ignora.
+- O extrato do portal (`PortalLojaController::entregaDoExtrato`) traz `junto` (mesma regra) e `multiplicador` só com o
+  fator da loja ≠ 1; nunca o do motoboy.
 
 ## Console (Fleet-Ops → Financeiro)
 
@@ -173,7 +185,8 @@ A `faixa` dos detalhes passa a ser a da tabela usada.
 ## Portal da loja
 
 No extrato e nos itens da fatura (console, portal e impressão), a corrida mostra o selo só quando o valor da loja mudou:
-"2ª entrega" quando a segunda tabela foi usada, e "Chuva ×1,1" quando o ×loja ≠ 1.
+"2ª entrega" quando a segunda tabela foi usada, e "Chuva ×1,1" quando o ×loja ≠ 1. Só nas linhas de corrida (o
+estorno copia os detalhes da corrida e fica sem selo).
 
 ## App do motoboy (`entregas-navigator`, APK novo)
 
@@ -198,11 +211,12 @@ No extrato e nos itens da fatura (console, portal e impressão), a corrida mostr
 
 ## Testes
 
-- php-wasm (`scripts/teste-php/`): `valor-da-entrega.php` (posição, fórmula, arredondamento, segunda tabela vazia,
-  reconstituição por horários), `multiplicadores.php` (sobreposição, edição por situação, `ativoEm` nas bordas
-  início/fim), casos novos em `financeiro-*.php` (detalhes por conta, sem vazar o ×loja ao motoboy, corrida lançada não
-  muda) e no teste do congelamento (recongelar km não apaga a atribuição; troca de motoboy recalcula).
-- `scripts/teste-portal/financeiro-multiplicadores.test.mjs` para as funções da tela.
+- php-wasm (`scripts/teste-php/`): `entrega-junto.php` (posição, fórmula, arredondamento, segunda tabela vazia,
+  reconstituição por horários, prévia, observador, recongelar km não apaga a atribuição, troca de motoboy recalcula),
+  `financeiro-multiplicadores.php` (sobreposição, edição por situação, `ativoEm` nas bordas início/fim), casos novos em
+  `financeiro-*.php` (detalhes por conta, sem vazar o ×loja ao motoboy, corrida lançada não muda, extrato do portal) e
+  em `ganhos-motoboy.php` (o valor do card passa o motoboy da sessão).
+- `scripts/teste-portal/financeiro-multiplicadores.test.mjs` e `entregas-financeiro.test.mjs` para as funções das telas.
 - Conferência manual em produção: criar um período curto de ×1,01 e uma segunda tabela, fazer dois pedidos com o mesmo
   motoboy numa loja de teste (o Terraço é loja real: não usar sem combinar) e conferir card, extrato, relatório e fatura.
 
