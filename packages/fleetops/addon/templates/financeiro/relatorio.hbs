@@ -43,10 +43,10 @@
                         {{#each this.linhasFaixas key="@index" as |faixa|}}
                             <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100">
                                 <td class="py-1 whitespace-nowrap">{{faixa.de_km}} km</td>
-                                <td class="py-1"><input type="text" inputmode="decimal" class="form-input form-input-sm w-24" value={{faixa.ate_km}} {{on "input" (fn this.setFaixa faixa.indice "ate_km")}} /></td>
-                                <td class="py-1"><input type="text" inputmode="decimal" class="form-input form-input-sm w-28" value={{faixa.motoboy}} {{on "input" (fn this.setFaixa faixa.indice "motoboy")}} /></td>
-                                <td class="py-1"><input type="text" inputmode="decimal" class="form-input form-input-sm w-28" value={{faixa.loja}} {{on "input" (fn this.setFaixa faixa.indice "loja")}} /></td>
-                                <td class="py-1 text-right"><Button @size="xs" @icon="trash" @helpText={{t "fleet-ops.ui.driver-payouts.remove-band"}} @onClick={{fn this.removerFaixa faixa.indice}} /></td>
+                                <td class="py-1"><input type="text" inputmode="decimal" class="form-input form-input-sm w-24" value={{faixa.ate_km}} {{on "input" (fn this.setFaixa "normal" faixa.indice "ate_km")}} /></td>
+                                <td class="py-1"><input type="text" inputmode="decimal" class="form-input form-input-sm w-28" value={{faixa.motoboy}} {{on "input" (fn this.setFaixa "normal" faixa.indice "motoboy")}} /></td>
+                                <td class="py-1"><input type="text" inputmode="decimal" class="form-input form-input-sm w-28" value={{faixa.loja}} {{on "input" (fn this.setFaixa "normal" faixa.indice "loja")}} /></td>
+                                <td class="py-1 text-right"><Button @size="xs" @icon="trash" @helpText={{t "fleet-ops.ui.driver-payouts.remove-band"}} @onClick={{fn this.removerFaixa "normal" faixa.indice}} /></td>
                             </tr>
                         {{/each}}
                     </tbody>
@@ -55,8 +55,45 @@
                 <p class="text-sm text-yellow-700 dark:text-yellow-300 mb-2">{{t "fleet-ops.ui.driver-payouts.no-bands"}}</p>
             {{/if}}
             <div class="flex items-center gap-2 mt-3">
-                <Button @size="sm" @icon="plus" @text={{t "fleet-ops.ui.driver-payouts.add-band"}} @onClick={{this.adicionarFaixa}} />
-                <Button @size="sm" @type="primary" @icon="save" @text={{t "fleet-ops.ui.driver-payouts.save-bands"}} @isLoading={{this.salvarFaixas.isRunning}} @onClick={{perform this.salvarFaixas}} />
+                <Button @size="sm" @icon="plus" @text={{t "fleet-ops.ui.driver-payouts.add-band"}} @onClick={{fn this.adicionarFaixa "normal"}} />
+                <Button @size="sm" @type="primary" @icon="save" @text={{t "fleet-ops.ui.driver-payouts.save-bands"}} @isLoading={{this.salvarFaixas.isRunning}} @onClick={{perform this.salvarFaixas "normal"}} />
+            </div>
+        </ContentPanel>
+
+        <ContentPanel @title={{t "fleet-ops.ui.driver-payouts.bands-junto-title"}} @open={{true}} @wrapperClass="bordered-classic">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{t "fleet-ops.ui.driver-payouts.bands-junto-help"}}</p>
+            {{#if this.faixasJuntas.length}}
+                <table class="table w-full text-sm max-w-2xl">
+                    <thead>
+                        <tr class="text-left text-gray-500 dark:text-gray-400">
+                            <th class="py-2">{{t "fleet-ops.ui.driver-payouts.band-from"}}</th>
+                            <th class="py-2">{{t "fleet-ops.ui.driver-payouts.band-to"}}</th>
+                            <th class="py-2">{{t "fleet-ops.ui.driver-payouts.band-driver"}}</th>
+                            <th class="py-2">{{t "fleet-ops.ui.driver-payouts.band-store"}}</th>
+                            <th class="py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each this.linhasFaixasJuntas key="@index" as |faixa|}}
+                            <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100">
+                                <td class="py-1 whitespace-nowrap">{{faixa.de_km}} km</td>
+                                <td class="py-1"><input type="text" inputmode="decimal" class="form-input form-input-sm w-24" value={{faixa.ate_km}} {{on "input" (fn this.setFaixa "juntas" faixa.indice "ate_km")}} /></td>
+                                <td class="py-1"><input type="text" inputmode="decimal" class="form-input form-input-sm w-28" value={{faixa.motoboy}} {{on "input" (fn this.setFaixa "juntas" faixa.indice "motoboy")}} /></td>
+                                <td class="py-1"><input type="text" inputmode="decimal" class="form-input form-input-sm w-28" value={{faixa.loja}} {{on "input" (fn this.setFaixa "juntas" faixa.indice "loja")}} /></td>
+                                <td class="py-1 text-right"><Button @size="xs" @icon="trash" @helpText={{t "fleet-ops.ui.driver-payouts.remove-band"}} @onClick={{fn this.removerFaixa "juntas" faixa.indice}} /></td>
+                            </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            {{else}}
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">{{t "fleet-ops.ui.driver-payouts.no-bands-junto"}}</p>
+            {{/if}}
+            <div class="flex items-center gap-2 mt-3">
+                <Button @size="sm" @icon="plus" @text={{t "fleet-ops.ui.driver-payouts.add-band"}} @onClick={{fn this.adicionarFaixa "juntas"}} />
+                <Button @size="sm" @type="primary" @icon="save" @text={{t "fleet-ops.ui.driver-payouts.save-bands-junto"}} @isLoading={{this.salvarFaixas.isRunning}} @onClick={{perform this.salvarFaixas "juntas"}} />
+                {{#if this.relatorio.faixas_juntas.length}}
+                    <Button @size="sm" @icon="power-off" @text={{t "fleet-ops.ui.driver-payouts.clear-bands-junto"}} @isLoading={{this.salvarFaixas.isRunning}} @onClick={{perform this.salvarFaixas "juntas" true}} />
+                {{/if}}
             </div>
         </ContentPanel>
 
@@ -209,6 +246,9 @@
                                     {{#if entrega.cancelado_pago}}
                                         <Badge @status="warning" @hideStatusDot={{true}}>{{this.rotuloCanceladoPago entrega.cancelado_origem}}</Badge>
                                     {{/if}}
+                                    {{#each (this.selos entrega) as |selo|}}
+                                        <Badge @status="info" @hideStatusDot={{true}} title={{if selo.params.loja (t "fleet-ops.ui.financeiro.selos.multiplicador-relatorio-ajuda" motoboy=selo.params.motoboy loja=selo.params.loja)}}>{{t (concat "fleet-ops.ui.financeiro.selos." selo.chave) posicao=selo.params.posicao nome=selo.params.nome motoboy=selo.params.motoboy loja=selo.params.loja}}</Badge>
+                                    {{/each}}
                                 </td>
                                 {{#unless this.lojaSelecionada}}
                                     <td class="py-2">{{or entrega.loja_nome (t "fleet-ops.ui.driver-payouts.without-store")}}</td>

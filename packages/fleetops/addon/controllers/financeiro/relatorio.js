@@ -5,12 +5,16 @@ import { action } from '@ember/object';
 import { task, timeout } from 'ember-concurrency';
 import { chaveDoCanceladoPago } from '../../utils/pedido-de-origem';
 import { formatadores } from '../../utils/financeiro';
+import { comNovaFaixa, faixaParaEdicao, faixasParaEnviar, faixasValidas, linhasDeFaixas, selosDoRelatorio, textoDoFator } from '../../utils/financeiro-multiplicadores';
 
 const ENDPOINT = 'entregas/pagamento-motoboys';
 const pad = (n) => String(n).padStart(2, '0');
 const isoDate = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-const numero = (valor) => Number(String(valor ?? '').trim().replace(',', '.'));
-const faixaParaEdicao = (faixa) => ({ ate_km: String(faixa.ate_km), motoboy: String(faixa.motoboy), loja: String(faixa.loja) });
+// as duas tabelas da tela: a normal e a segunda ("a partir da 2ª entrega junto"), cada uma com a lista em edição e a marca de alterada
+const TABELAS = {
+    normal: { lista: 'faixas', alterada: 'faixasAlteradas', caminho: 'faixas', salvo: 'bands-saved' },
+    juntas: { lista: 'faixasJuntas', alterada: 'faixasJuntasAlteradas', caminho: 'faixas-juntas', salvo: 'bands-junto-saved' },
+};
 
 /**
  * Entregas RestaurantePro: Financeiro → Tabela de km e relatório (a antiga tela "Pagamento e cobrança", movida de
@@ -26,6 +30,9 @@ export default class FinanceiroRelatorioController extends Controller {
     // faixas de km em edição (strings, como digitadas); a mesma tabela vale para motoboy e loja
     @tracked faixas = [];
     @tracked faixasAlteradas = false;
+    // segunda tabela ("a partir da 2ª entrega junto"); vazia = todas as entregas pela tabela normal
+    @tracked faixasJuntas = [];
+    @tracked faixasJuntasAlteradas = false;
     @tracked relatorio = null;
     @tracked motoboySelecionado = null;
     @tracked lojaSelecionada = null;
@@ -87,6 +94,11 @@ export default class FinanceiroRelatorioController extends Controller {
         return this.intl.t(`fleet-ops.ui.driver-payouts.${chaveDoCanceladoPago(origem)}`);
     }
 
+    /** Selos da linha: "2ª entrega" (segunda tabela) e "Chuva ×1,2 / ×1,1" (motoboy / loja). */
+    @action selos(entrega) {
+        return selosDoRelatorio(entrega, this.intl.primaryLocale);
+    }
+
     @action formatar(tipo, valor) {
         if (tipo === 'valor') return this.formatarValor(valor);
         if (tipo === 'km') return this.formatarKm(valor);
@@ -114,36 +126,29 @@ export default class FinanceiroRelatorioController extends Controller {
 
     /** Faixas com o "de km" (limite da faixa anterior) para exibir. */
     get linhasFaixas() {
-        return this.faixas.map((faixa, indice) => ({ ...faixa, indice, de_km: indice === 0 ? '0' : this.faixas[indice - 1].ate_km || '?' }));
+        return linhasDeFaixas(this.faixas);
     }
 
-    get faixasValidas() {
-        let anterior = 0;
-        for (const faixa of this.faixas) {
-            const ate = numero(faixa.ate_km);
-            if (!(ate > anterior) || !(numero(faixa.motoboy) >= 0) || !(numero(faixa.loja) >= 0)) {
-                return false;
-            }
-            anterior = ate;
-        }
-        return true;
+    get linhasFaixasJuntas() {
+        return linhasDeFaixas(this.faixasJuntas);
     }
 
-    @action setFaixa(indice, campo, event) {
-        this.faixas = this.faixas.map((faixa, i) => (i === indice ? { ...faixa, [campo]: event.target.value } : faixa));
-        this.faixasAlteradas = true;
+    @action setFaixa(qual, indice, campo, event) {
+        const { lista, alterada } = TABELAS[qual];
+        this[lista] = this[lista].map((faixa, i) => (i === indice ? { ...faixa, [campo]: event.target.value } : faixa));
+        this[alterada] = true;
     }
 
-    @action adicionarFaixa() {
-        const ultima = this.faixas[this.faixas.length - 1];
-        const proximoAte = ultima ? (numero(ultima.ate_km) || 0) + 1 : 1;
-        this.faixas = [...this.faixas, { ate_km: String(proximoAte), motoboy: ultima?.motoboy ?? '', loja: ultima?.loja ?? '' }];
-        this.faixasAlteradas = true;
+    @action adicionarFaixa(qual) {
+        const { lista, alterada } = TABELAS[qual];
+        this[lista] = comNovaFaixa(this[lista]);
+        this[alterada] = true;
     }
 
-    @action removerFaixa(indice) {
-        this.faixas = this.faixas.filter((_, i) => i !== indice);
-        this.faixasAlteradas = true;
+    @action removerFaixa(qual, indice) {
+        const { lista, alterada } = TABELAS[qual];
+        this[lista] = this[lista].filter((_, i) => i !== indice);
+        this[alterada] = true;
     }
 
     @action selecionarMotoboy(motoboy) {
@@ -173,6 +178,9 @@ export default class FinanceiroRelatorioController extends Controller {
                 if (!this.faixasAlteradas) {
                     this.faixas = (relatorio.faixas ?? []).map(faixaParaEdicao);
                 }
+                if (!this.faixasJuntasAlteradas) {
+                    this.faixasJuntas = (relatorio.faixas_juntas ?? []).map(faixaParaEdicao);
+                }
 
                 if (this.motoboySelecionado && !relatorio.motoboys.some((m) => m.motoboy === this.motoboySelecionado.motoboy)) {
                     this.motoboySelecionado = null;
@@ -192,18 +200,25 @@ export default class FinanceiroRelatorioController extends Controller {
         }
     }
 
-    @task *salvarFaixas() {
-        if (!this.faixasValidas) {
+    /**
+     * Salva uma das tabelas (normal ou juntas). `apagar`: grava a segunda tabela vazia (desliga o recurso).
+     * O helper `perform` acrescenta o evento do clique aos argumentos: só `true` literal, e só na segunda tabela,
+     * apaga (senão o clique em "Salvar faixas" gravaria a tabela normal vazia).
+     */
+    @task *salvarFaixas(qual = 'normal', apagar = false) {
+        const { lista, alterada, caminho, salvo } = TABELAS[qual];
+        const desligar = apagar === true && qual === 'juntas';
+        const faixas = desligar ? [] : this[lista];
+        if (!faixasValidas(faixas)) {
             this.notifications.warning(this.intl.t('fleet-ops.ui.driver-payouts.invalid-bands'));
             return;
         }
 
         try {
-            const faixas = this.faixas.map((faixa) => ({ ate_km: numero(faixa.ate_km), motoboy: numero(faixa.motoboy), loja: numero(faixa.loja) }));
-            const resposta = yield this.fetch.put(`${ENDPOINT}/faixas`, { faixas });
-            this.faixas = (resposta.faixas ?? []).map(faixaParaEdicao);
-            this.faixasAlteradas = false;
-            this.notifications.success(this.intl.t('fleet-ops.ui.driver-payouts.bands-saved'));
+            const resposta = yield this.fetch.put(`${ENDPOINT}/${caminho}`, { faixas: faixasParaEnviar(faixas) });
+            this[lista] = (resposta.faixas ?? []).map(faixaParaEdicao);
+            this[alterada] = false;
+            this.notifications.success(this.intl.t(`fleet-ops.ui.driver-payouts.${desligar ? 'bands-junto-cleared' : salvo}`));
             yield this.load.perform();
         } catch (error) {
             this.notifications.serverError(error);
@@ -235,7 +250,7 @@ export default class FinanceiroRelatorioController extends Controller {
         linhas.push([celula(t('total')), this.totais.entregas, num(this.totais.km), num(this.totais.cobrar)].join(';'));
         linhas.push([celula(t('margin')), '', '', num(this.totais.margem)].join(';'));
         linhas.push('');
-        linhas.push([t('store'), t('driver'), t('order'), t('completed-at'), t('pickup'), t('dropoff'), t('km'), t('source'), t('band'), t('driver-amount'), t('store-amount'), t('cancelado-pago-coluna')].map(celula).join(';'));
+        linhas.push([t('store'), t('driver'), t('order'), t('completed-at'), t('pickup'), t('dropoff'), t('km'), t('source'), t('band'), t('driver-amount'), t('store-amount'), t('cancelado-pago-coluna'), t('junto-column'), t('multiplier-column')].map(celula).join(';'));
         for (const entrega of this.relatorio?.entregas ?? []) {
             linhas.push(
                 [
@@ -251,11 +266,13 @@ export default class FinanceiroRelatorioController extends Controller {
                     entrega.valor_motoboy === null ? '' : num(entrega.valor_motoboy),
                     entrega.valor_loja === null ? '' : num(entrega.valor_loja),
                     celula(entrega.cancelado_pago ? this.rotuloCanceladoPago(entrega.cancelado_origem) : ''),
+                    celula(entrega.tabela === 'junto' && entrega.posicao ? `${entrega.posicao}ª` : ''),
+                    celula(entrega.multiplicador ? `${entrega.multiplicador.nome} (${t('driver')} ${textoDoFator(entrega.multiplicador.motoboy, this.intl.primaryLocale)}; ${t('store')} ${textoDoFator(entrega.multiplicador.loja, this.intl.primaryLocale)})` : ''),
                 ].join(';')
             );
         }
 
-        const blob = new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        const blob = new Blob(['\uFEFF' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
