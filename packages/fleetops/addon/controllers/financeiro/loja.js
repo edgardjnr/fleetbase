@@ -5,6 +5,7 @@ import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
 import { formatadores, periodoAoAbrir, periodoDoAtalho } from '../../utils/financeiro';
 import { agruparLancamentosPorDia, corDaSituacao, dataBr, linhasCsvDoExtratoDaLoja, podeEstornarNaLoja } from '../../utils/financeiro-faturas';
+import { selosDaCorrida } from '../../utils/financeiro-multiplicadores';
 
 const ENDPOINT = 'entregas/financeiro';
 const PREFIXO = 'fleet-ops.ui.financeiro-lojas';
@@ -98,6 +99,11 @@ export default class FinanceiroLojaController extends Controller {
 
     @action podeEstornar(lancamento) {
         return podeEstornarNaLoja(lancamento);
+    }
+
+    /** Selos da corrida: "2ª entrega" e "Chuva ×1,2" (o fator desta conta, dos detalhes do lançamento). */
+    @action selos(detalhes) {
+        return selosDaCorrida(detalhes, this.intl.primaryLocale);
     }
 
     @action voltar() {

@@ -5,6 +5,7 @@ import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
 import { formatadores } from '../../utils/financeiro';
 import { chaveDoNaoEnvio, corDaFatura, dataBr, jaNaoCobrado, linhasCsvDaFatura, numeroOuRascunho, podeNaoCobrar, rotuloDaFatura } from '../../utils/financeiro-faturas';
+import { selosDaCorrida } from '../../utils/financeiro-multiplicadores';
 
 const ENDPOINT = 'entregas/financeiro/faturas';
 const PREFIXO = 'fleet-ops.ui.financeiro-lojas';
@@ -114,6 +115,11 @@ export default class FinanceiroFaturaController extends Controller {
 
     @action naoCobrado(item) {
         return item?.tipo === 'corrida' && jaNaoCobrado(item, this.itens);
+    }
+
+    /** Selos da corrida: "2ª entrega" e "Chuva ×1,2" (o fator desta conta, dos detalhes do item). */
+    @action selos(detalhes) {
+        return selosDaCorrida(detalhes, this.intl.primaryLocale);
     }
 
     @action voltar() {

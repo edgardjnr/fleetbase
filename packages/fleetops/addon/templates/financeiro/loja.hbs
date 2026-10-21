@@ -95,6 +95,9 @@
                                                 {{#if lancamento.detalhes.km}}
                                                     · {{this.km lancamento.detalhes.km}}
                                                 {{/if}}
+                                                {{#each (this.selos lancamento.detalhes) as |selo|}}
+                                                    <Badge @status="info" @hideStatusDot={{true}} @wrapperClass="inline-block align-middle">{{t (concat "fleet-ops.ui.financeiro.selos." selo.chave) posicao=selo.params.posicao nome=selo.params.nome fator=selo.params.fator}}</Badge>
+                                                {{/each}}
                                                 {{#if lancamento.detalhes.destino}}
                                                     <div class="text-xs text-gray-500 dark:text-gray-400">{{lancamento.detalhes.destino}}</div>
                                                 {{/if}}

@@ -124,6 +124,9 @@
                                                 {{#if (this.naoCobrado item)}}
                                                     <span class="text-xs font-medium rounded px-2 py-0.5 bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{t "fleet-ops.ui.financeiro-lojas.nao-cobrado-selo"}}</span>
                                                 {{/if}}
+                                                {{#each (this.selos item.detalhes) as |selo|}}
+                                                    <Badge @status="info" @hideStatusDot={{true}} @wrapperClass="inline-block align-middle">{{t (concat "fleet-ops.ui.financeiro.selos." selo.chave) posicao=selo.params.posicao nome=selo.params.nome fator=selo.params.fator}}</Badge>
+                                                {{/each}}
                                             {{else}}
                                                 <span class="text-xs text-gray-500 dark:text-gray-400">{{this.tipo item}}</span>
                                                 {{item.motivo}}

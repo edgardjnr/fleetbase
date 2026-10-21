@@ -17,6 +17,7 @@ import {
     rotuloDoTipo,
     validarPix,
 } from '../../utils/financeiro';
+import { selosDaCorrida } from '../../utils/financeiro-multiplicadores';
 
 const ENDPOINT = 'entregas/financeiro/motoboys';
 // tipos que aparecem na conta do motoboy (o filtro "tipo" do extrato)
@@ -140,6 +141,11 @@ export default class FinanceiroMotoboyController extends Controller {
 
     @action podeEstornar(lancamento) {
         return podeEstornar(lancamento);
+    }
+
+    /** Selos da corrida: "2ª entrega" e "Chuva ×1,2" (o fator desta conta, dos detalhes do lançamento). */
+    @action selos(detalhes) {
+        return selosDaCorrida(detalhes, this.intl.primaryLocale);
     }
 
     @action setData(campo, event) {
