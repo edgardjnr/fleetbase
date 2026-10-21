@@ -52,4 +52,28 @@ class ValoresCongelados
             DB::table(static::TABELA)->upsert($lote, ['order_uuid'], static::COLUNAS_ATUALIZADAS);
         }
     }
+
+    /**
+     * Grava a parte da atribuição (ValorDaEntrega::COLUNAS_DA_ATRIBUICAO) de linhas completas (a parte do km junto, para o
+     * caso de a linha ainda não existir). Numa linha que já existe, só a atribuição muda: o km fica como está.
+     */
+    public function gravarAtribuicoes(array $linhas): void
+    {
+        if (!$linhas) {
+            return;
+        }
+
+        $agora  = now();
+        $linhas = array_map(function (array $linha) use ($agora) {
+            // linhas lidas do banco trazem o id e as datas: o upsert não regrava o id, e o updated_at é o de agora
+            unset($linha['id'], $linha['created_at']);
+            $linha['updated_at'] = $agora;
+
+            return ['created_at' => $agora] + $linha;
+        }, array_values($linhas));
+
+        foreach (array_chunk($linhas, 500) as $lote) {
+            DB::table(static::TABELA)->upsert($lote, ['order_uuid'], array_merge(ValorDaEntrega::COLUNAS_DA_ATRIBUICAO, ['updated_at']));
+        }
+    }
 }
