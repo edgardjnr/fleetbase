@@ -504,7 +504,7 @@ namespace {
     confere(is_array($m) && $m['nome'] === 'Chuva' && $m['mult_motoboy'] === 1.2 && $m['mult_loja'] === 1.0, 'cria com os fatores em número (1,2 e 1)');
     confere(is_array($m) && $m['inicio'] === '2026-10-21T18:00:00-03:00' && $m['fim'] === '2026-10-21T22:00:00-03:00' && $m['situacao'] === 'agendado', 'horários em ISO com o fuso de Brasília; ainda não começou');
     $linha = linhasDe('entregas_multiplicadores')[0] ?? [];
-    confere(($linha['company_uuid'] ?? null) === 'empresa-1' && ($linha['criado_por'] ?? null) === 'user-admin' && ($linha['inicio'] ?? null) === '2026-10-21 18:00:00' && ($linha['deleted_at'] ?? 'x') === null, 'grava a empresa, quem criou e o início em Brasília, sem fuso');
+    confere(($linha['company_uuid'] ?? null) === 'empresa-1' && ($linha['criado_por'] ?? null) === 'user-admin' && ($linha['inicio'] ?? null) === '2026-10-21 18:00:00' && array_key_exists('deleted_at', $linha) && $linha['deleted_at'] === null, 'grava a empresa, quem criou e o início em Brasília, sem fuso');
 
     foreach ([
         'sem nome'            => chuva(['nome' => '  ']),

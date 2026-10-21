@@ -557,7 +557,7 @@ namespace Teste {
                 glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_ifood_*_table.php') ?: [],
                 glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_distribuicao_*.php') ?: [],
                 glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_integracao_*_table.php') ?: [],
-                // o financeiro (entregas_lancamentos, entregas_pagamentos, entregas_faturas...): uma migration com as cinco
+                // as do financeiro: a das cinco tabelas (entregas_lancamentos, entregas_pagamentos, entregas_faturas...) e a dos multiplicadores (entregas_multiplicadores)
                 glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_financeiro_*.php') ?: []
             );
             foreach ($arquivos as $arquivo) {
