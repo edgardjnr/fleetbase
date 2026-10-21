@@ -19,6 +19,18 @@ class ValoresCongelados
     public const COLUNAS_ATUALIZADAS = ['chave', 'metros', 'fonte', 'de_km', 'ate_km', 'acima', 'valor_motoboy', 'valor_loja', 'junto_de_km', 'junto_ate_km', 'junto_acima', 'junto_motoboy', 'junto_loja', 'updated_at'];
 
     /**
+     * As colunas da linha (sem o id) que o gravarAtribuicoes envia. O lote mistura linhas lidas do banco e linhas montadas
+     * pelo CalculoEntregas, e o upsert usa as colunas da primeira linha para todas: uma coluna nova na tabela (que só as
+     * lidas do banco trariam) desalinharia os valores.
+     */
+    public const COLUNAS_DA_LINHA = [
+        'company_uuid', 'order_uuid', 'chave', 'metros', 'fonte', 'de_km', 'ate_km', 'acima', 'valor_motoboy', 'valor_loja',
+        'junto_de_km', 'junto_ate_km', 'junto_acima', 'junto_motoboy', 'junto_loja',
+        ...ValorDaEntrega::COLUNAS_DA_ATRIBUICAO,
+        'created_at', 'updated_at',
+    ];
+
+    /**
      * Linhas dos pedidos, indexadas pelo order_uuid (arrays, com os decimais como o banco devolve: texto).
      *
      * @param array<int, string|null> $orderUuids
@@ -64,12 +76,14 @@ class ValoresCongelados
         }
 
         $agora  = now();
-        $linhas = array_map(function (array $linha) use ($agora) {
-            // linhas lidas do banco trazem o id e as datas: o upsert não regrava o id, e o updated_at é o de agora
-            unset($linha['id'], $linha['created_at']);
+        $colunas = array_flip(static::COLUNAS_DA_LINHA);
+        $linhas  = array_map(function (array $linha) use ($agora, $colunas) {
+            // linhas lidas do banco trazem o id, as datas e qualquer coluna futura: só as COLUNAS_DA_LINHA vão, o
+            // created_at só vale para a linha nova e o updated_at é o de agora
+            $linha['created_at'] = $agora;
             $linha['updated_at'] = $agora;
 
-            return ['created_at' => $agora] + $linha;
+            return array_intersect_key($linha, $colunas);
         }, array_values($linhas));
 
         foreach (array_chunk($linhas, 500) as $lote) {

@@ -12,6 +12,7 @@ use App\Listeners\Entregas\ObservadorDoValorDaEntrega;
 use App\Support\Entregas\AtribuicaoDoValor;
 use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\ValorDaEntrega;
+use App\Support\Entregas\ValoresCongelados;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Payload;
@@ -252,6 +253,19 @@ $atribuicao->periodo  = null;
 $atribuicao->emAberto = 0;
 $v = $calculo->valorDoPedido($aberto, 'uuid-driver_motoca');
 confere($v['valor_motoboy'] === 8.0 && $v['tabela'] === 'normal' && $v['multiplicador'] === null, 'livre e sem período: como hoje');
+$atribuicao->emAberto = 1;
+$atribuicao->periodo  = periodoDeChuva();
+$v = $calculo->valorDoPedido($aberto, 'uuid-driver_motoca');
+confere($v['valor_motoboy'] === 7.2 && $v['tabela'] === 'junto', 'o pedido sem motoboy continua com a prévia (7,20)');
+$antigo = comKm(pedido('order_antigo', ['status' => 'completed']), 3210.4);
+$v      = $calculo->valorDoPedido($antigo, 'uuid-driver_motoca');
+confere($v['valor_motoboy'] === 8.0 && $v['tabela'] === 'normal' && $v['multiplicador'] === null && $v['posicao'] === null, 'pedido com motoboy sem atribuição gravada (antigo, lançado a 8,00), com chuva agora: 8,00, sem a prévia');
+
+echo '== Gravação da atribuição (ValoresCongelados::gravarAtribuicoes)' . PHP_EOL;
+reiniciar();
+(new ValoresCongelados())->gravarAtribuicoes([['id' => 7, 'coluna_futura' => 'x', 'company_uuid' => 'empresa', 'order_uuid' => 'uuid-order_n', 'chave' => null, 'metros' => 3210, 'fonte' => 'osrm', 'de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false, 'valor_motoboy' => 8.0, 'valor_loja' => 11.37, 'junto_de_km' => null, 'junto_ate_km' => null, 'junto_acima' => null, 'junto_motoboy' => null, 'junto_loja' => null] + array_fill_keys(ValorDaEntrega::COLUNAS_DA_ATRIBUICAO, null)]);
+$n = linhaDe('order_n');
+confere(!array_key_exists('id', $n) && !array_key_exists('coluna_futura', $n) && !array_diff(array_keys($n), ValoresCongelados::COLUNAS_DA_LINHA) && !array_diff(ValoresCongelados::COLUNAS_DA_LINHA, array_keys($n)), 'só as colunas da linha vão ao upsert (sem o id e sem coluna desconhecida)');
 
 echo '== Atribuição (registrarAtribuicao)' . PHP_EOL;
 reiniciar();
@@ -358,5 +372,16 @@ confere(logou('falha ao gravar a atribuição') && session('company') === 'empre
 ObservadorDoValorDaEntrega::$calculo = null;
 $app = str_replace("\r\n", "\n", file_get_contents('/repo/api/app/Providers/AppServiceProvider.php'));
 confere(str_contains($app, 'Order::updated(fn ($pedido) => ObservadorDoValorDaEntrega::aoAtualizar($pedido));') && str_contains($app, '$this->congelarValorNaAtribuicao();') && str_contains($app, 'use App\Listeners\Entregas\ObservadorDoValorDaEntrega;'), 'AppServiceProvider: Order::updated → observador da atribuição');
+
+// sem empresa na sessão (fila, comando): põe a do pedido e depois tira a chave (com null, o Setting monta 'company..')
+$registra->falhar = false;
+ObservadorDoValorDaEntrega::$calculo = fn () => $registra;
+unset($GLOBALS['sessao']['company']);
+ObservadorDoValorDaEntrega::aoAtualizar($evento(['driver_assigned_uuid']));
+confere(end($registra->sessoes) === 'empresa-o' && !array_key_exists('company', $GLOBALS['sessao']), 'sem empresa na sessão antes: usa a do pedido e tira a chave depois');
+$GLOBALS['sessao']['company'] = 'empresa';
+ObservadorDoValorDaEntrega::$calculo = null;
+$boot = substr($app, strpos($app, 'public function boot()'));
+confere(strpos($boot, '$this->congelarValorNaAtribuicao();') < strpos($boot, '$this->lancarCorridasNoFinanceiro();'), 'AppServiceProvider: a atribuição é gravada antes do lançamento da corrida ir para a fila');
 
 resumo();

@@ -218,8 +218,11 @@ class CalculoEntregas
 
     /**
      * Km e valor de um pedido para o app do motoboy (card de aceitar e detalhes): calcula a rota agora, se faltar, e
-     * congela o valor como em entregas(). Antes da atribuição, a prévia (comPrevia): a posição que o pedido teria para
-     * $motoboyUuid (sem ele, a 1ª) e o multiplicador de agora; nada da prévia é gravado.
+     * congela o valor como em entregas(). Pedido ainda sem motoboy (o card de aceitar, inclusive a oferta da distribuição,
+     * que não preenche o driver_assigned_uuid): a prévia (comPrevia), com a posição que o pedido teria para $motoboyUuid
+     * (sem ele, a 1ª) e o multiplicador de agora; nada da prévia é gravado. Pedido com motoboy fica com a atribuição
+     * gravada; se ela faltar (escapou do observador), com o valor sem a prévia: um pedido antigo, concluído ou lançado,
+     * não ganha o multiplicador de agora nos detalhes, e a reserva do entregas() reconstitui pelos horários.
      *
      * @return array{km: ?float, fonte: ?string, faixa: ?array, valor_motoboy: ?float, posicao: ?int, tabela: ?string, multiplicador: ?array}
      */
@@ -240,7 +243,7 @@ class CalculoEntregas
         $valor  = $this->valorCongelado($pedido, $rota, $this->faixas(), $this->faixasJuntas(), $linha, $gravar, $mudou && isset($this->pedidosLancados([$pedido->uuid])[$pedido->uuid]), $usada);
         $this->congelados->gravar($gravar);
 
-        if ($usada !== null && empty($usada['motoboy_uuid'])) {
+        if ($usada !== null && empty($usada['motoboy_uuid']) && empty($pedido->driver_assigned_uuid)) {
             $valor = $this->comPrevia($pedido, $usada, $motoboyUuid) ?? $valor;
         }
 
