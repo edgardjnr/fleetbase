@@ -157,6 +157,15 @@ fleet-ops:
             band: Band
             driver-amount: Driver
             store-amount: Store
+            bands-junto-title: From the 2nd delivery carried together
+            bands-junto-help: 'Applies when the driver takes an order while still carrying another (2nd, 3rd, 4th delivery onward, all by the same table). Leave empty to pay every delivery by the table above. Changes apply to deliveries calculated from now on.'
+            no-bands-junto: 'No second table: every delivery is paid by the table above.'
+            save-bands-junto: Save second table
+            clear-bands-junto: Turn off (clear the table)
+            bands-junto-saved: Second table saved.
+            bands-junto-cleared: Second table cleared. Every delivery goes back to the table above.
+            junto-column: Carried together
+            multiplier-column: Multiplier
         lojas:
             title: Stores
             menu-description: Served restaurants and their portal access
@@ -592,6 +601,7 @@ fleet-ops:
                 motoboys: Drivers
                 lojas: Stores and invoices
                 relatorio: Km table and report
+                multiplicadores: Multipliers
                 configuracoes: Settings
             relatorio:
                 titulo: Km table and report
@@ -786,6 +796,56 @@ fleet-ops:
                 motivo: Reason
                 valor: Amount
                 situacao: Status
+            selos:
+                junto: 'Delivery #{posicao} together'
+                multiplicador: '{nome} {fator}'
+                multiplicador-relatorio: '{nome} {motoboy} / {loja}'
+                multiplicador-relatorio-ajuda: 'Driver {motoboy}, store {loja}'
+            multiplicadores:
+                titulo: Multipliers
+                ajuda: 'On rainy days or other bad weather, create a period: deliveries accepted within it are worth the band amount times the multiplier. One multiplier for the driver and another for the store (1 = the store pays the usual). What counts is when the driver takes the order.'
+                novo: New period
+                comecar-agora: Start now
+                encerrar-agora: End now
+                prorrogar: Change the end
+                editar: Edit
+                apagar: Delete
+                em-andamento: Running now
+                nenhum-em-andamento: No multiplier running now.
+                agendados: Scheduled
+                encerrados: Ended
+                vazio: No periods yet.
+                nome: Name
+                nome-exemplo: Rain
+                mult-motoboy: Driver (×)
+                mult-loja: Store (×)
+                inicio: Start
+                fim: End
+                ate: 'until {fim}'
+                situacao:
+                    em_andamento: Running
+                    agendado: Scheduled
+                    encerrado: Ended
+                modal-novo: New multiplier period
+                modal-editar: 'Edit "{nome}"'
+                modal-so-fim: 'Running: only the end can change. To change the multiplier, end it and create another.'
+                modal-ajuda-fator: 'From 1 to 5, with up to two decimals (e.g. 1.2 = 20% more).'
+                salvar: Save
+                cancelar: Cancel
+                salvo: Period saved.
+                encerrar-titulo: 'End "{nome}" now?'
+                encerrar-texto: Deliveries accepted from now on go back to the usual amount. Those already accepted keep the multiplier.
+                encerrado-ok: Period ended.
+                apagar-titulo: 'Delete "{nome}"?'
+                apagar-texto: The period has not started and no delivery was affected.
+                apagado-ok: Period deleted.
+                erros:
+                    nome: Name the period (e.g. Rain).
+                    nome-longo: The name can have up to 40 characters.
+                    fator: The multiplier goes from 1 to 5, with up to two decimals (e.g. 1.2).
+                    datas: Fill in the start and the end.
+                    fim: The end must be after the start and after now.
+                    duracao: The period can last up to 7 days.
             ciclos:
                 semanal: Weekly
                 quinzenal: Biweekly

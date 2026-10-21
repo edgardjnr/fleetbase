@@ -157,6 +157,15 @@ fleet-ops:
       band: Faixa
       driver-amount: Motoboy
       store-amount: Loja
+      bands-junto-title: A partir da 2ª entrega junto
+      bands-junto-help: 'Vale quando o motoboy pega o pedido enquanto ainda leva outro (2ª, 3ª, 4ª entrega em diante, todas pela mesma tabela). Deixe vazia para pagar todas as entregas pela tabela acima. Mudanças valem para as entregas calculadas a partir de agora.'
+      no-bands-junto: 'Sem segunda tabela: todas as entregas pagam pela tabela acima.'
+      save-bands-junto: Salvar segunda tabela
+      clear-bands-junto: Desligar (apagar a tabela)
+      bands-junto-saved: Segunda tabela salva.
+      bands-junto-cleared: Segunda tabela apagada. Todas as entregas voltam para a tabela acima.
+      junto-column: Entrega junto
+      multiplier-column: Multiplicador
     lojas:
       title: Lojas
       menu-description: Restaurantes atendidos e o acesso deles ao portal
@@ -592,6 +601,7 @@ fleet-ops:
         motoboys: Motoboys
         lojas: Lojas e faturas
         relatorio: Tabela de km e relatório
+        multiplicadores: Multiplicadores
         configuracoes: Configurações
       relatorio:
         titulo: Tabela de km e relatório
@@ -786,6 +796,56 @@ fleet-ops:
         motivo: Motivo
         valor: Valor
         situacao: Situação
+      selos:
+        junto: '{posicao}ª entrega'
+        multiplicador: '{nome} {fator}'
+        multiplicador-relatorio: '{nome} {motoboy} / {loja}'
+        multiplicador-relatorio-ajuda: 'Motoboy {motoboy}, loja {loja}'
+      multiplicadores:
+        titulo: Multiplicadores
+        ajuda: 'Em dia de chuva ou outra intempérie, crie um período: as entregas aceitas dentro dele valem o valor da faixa vezes o multiplicador. Um multiplicador para o motoboy e outro para a loja (1 = a loja paga o normal). Vale a hora em que o motoboy pega o pedido.'
+        novo: Novo período
+        comecar-agora: Começar agora
+        encerrar-agora: Encerrar agora
+        prorrogar: Mudar o fim
+        editar: Editar
+        apagar: Apagar
+        em-andamento: Em andamento agora
+        nenhum-em-andamento: Nenhum multiplicador valendo agora.
+        agendados: Agendados
+        encerrados: Encerrados
+        vazio: Nenhum período ainda.
+        nome: Nome
+        nome-exemplo: Chuva
+        mult-motoboy: Motoboy (×)
+        mult-loja: Loja (×)
+        inicio: Início
+        fim: Fim
+        ate: 'até {fim}'
+        situacao:
+          em_andamento: Em andamento
+          agendado: Agendado
+          encerrado: Encerrado
+        modal-novo: Novo período de multiplicador
+        modal-editar: 'Editar "{nome}"'
+        modal-so-fim: 'Em andamento: só dá para mudar o fim. Para mudar o multiplicador, encerre e crie outro.'
+        modal-ajuda-fator: 'De 1 a 5, com até duas casas (ex.: 1,2 = 20% a mais).'
+        salvar: Salvar
+        cancelar: Cancelar
+        salvo: Período salvo.
+        encerrar-titulo: 'Encerrar "{nome}" agora?'
+        encerrar-texto: As entregas aceitas a partir de agora voltam ao valor normal. As já aceitas mantêm o multiplicador.
+        encerrado-ok: Período encerrado.
+        apagar-titulo: 'Apagar "{nome}"?'
+        apagar-texto: O período ainda não começou e nenhuma entrega foi afetada.
+        apagado-ok: Período apagado.
+        erros:
+          nome: 'Dê um nome ao período (ex.: Chuva).'
+          nome-longo: O nome pode ter até 40 caracteres.
+          fator: 'O multiplicador vai de 1 a 5, com até duas casas (ex.: 1,2).'
+          datas: Informe o início e o fim.
+          fim: O fim precisa ser depois do início e de agora.
+          duracao: O período pode durar até 7 dias.
       ciclos:
         semanal: Semanal
         quinzenal: Quinzenal
