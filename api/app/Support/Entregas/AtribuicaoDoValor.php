@@ -92,7 +92,7 @@ class AtribuicaoDoValor
         $posicoes = [];
         foreach ($pedidos as $pedido) {
             $outros = array_values(array_filter($porMotoboy[$pedido['motoboy']] ?? [], fn ($outro) => $outro['uuid'] !== $pedido['uuid']));
-            $posicoes[$pedido['uuid']] = ValorDaEntrega::posicaoPorHorarios($pedido['instante'], $outros);
+            $posicoes[$pedido['uuid']] = ValorDaEntrega::posicaoPorHorarios($pedido['instante'], $outros, SituacaoDoMotoboy::HORAS_PEDIDO_EM_ANDAMENTO);
         }
 
         return $posicoes;

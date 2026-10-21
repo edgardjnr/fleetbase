@@ -58,16 +58,19 @@ final class ValorDaEntrega
     }
 
     /**
-     * Posição do pedido aceito em $instante: 1 + os outros pedidos do mesmo motoboy aceitos antes e ainda não
-     * encerrados nele. $outros: [['aceite' => 'Y-m-d H:i:s'|null, 'fim' => 'Y-m-d H:i:s'|null], ...] em Brasília.
+     * Posição do pedido aceito em $instante: 1 + os outros pedidos do mesmo motoboy aceitos antes (no máximo
+     * $horasMaximas antes) e ainda não encerrados nele. O limite é o mesmo do emAberto da atribuição
+     * (SituacaoDoMotoboy::HORAS_PEDIDO_EM_ANDAMENTO): um pedido esquecido aberto não faz todos os seguintes do motoboy
+     * virarem 2ª entrega. $outros: [['aceite' => 'Y-m-d H:i:s'|null, 'fim' => 'Y-m-d H:i:s'|null], ...] em Brasília.
      */
-    public static function posicaoPorHorarios(string $instante, array $outros): int
+    public static function posicaoPorHorarios(string $instante, array $outros, int $horasMaximas = 12): int
     {
+        $desde   = (new \DateTimeImmutable($instante))->modify('-' . $horasMaximas . ' hours')->format('Y-m-d H:i:s');
         $levando = 0;
         foreach ($outros as $outro) {
             $aceite = $outro['aceite'] ?? null;
             $fim    = $outro['fim'] ?? null;
-            if ($aceite !== null && $aceite < $instante && ($fim === null || $fim > $instante)) {
+            if ($aceite !== null && $aceite >= $desde && $aceite < $instante && ($fim === null || $fim > $instante)) {
                 $levando++;
             }
         }

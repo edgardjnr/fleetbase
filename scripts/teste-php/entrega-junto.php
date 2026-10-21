@@ -196,6 +196,11 @@ $outros = [
 ];
 confere(ValorDaEntrega::posicaoPorHorarios('2026-10-21 19:00:00', $outros) === 3, 'dois pedidos em mãos às 19:00: 3ª entrega');
 confere(ValorDaEntrega::posicaoPorHorarios('2026-10-21 19:00:00', []) === 1, 'sem outros: 1ª');
+// pedido esquecido aberto (como o emAberto do observador: só conta o aceito nas últimas 12 h)
+$esquecido = [['aceite' => '2026-10-21 05:59:59', 'fim' => null]];
+confere(ValorDaEntrega::posicaoPorHorarios('2026-10-21 19:00:00', $esquecido) === 1, 'pedido aceito 13 h antes e nunca encerrado: não conta (1ª)');
+confere(ValorDaEntrega::posicaoPorHorarios('2026-10-21 19:00:00', array_merge($outros, $esquecido)) === 3, 'junto dos outros: continua 3ª');
+confere(ValorDaEntrega::posicaoPorHorarios('2026-10-21 19:00:00', [['aceite' => '2026-10-21 07:00:00', 'fim' => null]]) === 2, 'aceito exatamente 12 h antes: ainda conta (2ª)');
 
 echo '== Fator visível a cada conta' . PHP_EOL;
 $m = ['nome' => 'Chuva', 'motoboy' => 1.2, 'loja' => 1.0];
