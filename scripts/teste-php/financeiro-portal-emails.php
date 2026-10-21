@@ -561,6 +561,31 @@ namespace {
 
     confere(str_contains(file_get_contents('/repo/api/app/Console/Commands/Entregas/FinanceiroAvisos.php'), "'entregas:financeiro-avisos'"), 'assinatura do comando');
 
+    echo '== Portal: entrega do extrato (entrega junto e multiplicador)' . PHP_EOL;
+    $linhaDoCalculo = fn (array $extra) => array_merge([
+        'pedido' => 'order_1', 'id_interno' => '4821', 'concluido_em' => '2026-10-21 12:00', 'destino' => 'Rua B, 20',
+        'km' => 3.2, 'faixa' => ['de_km' => 3.0, 'ate_km' => 4.0], 'valor' => 9.6, 'valor_loja' => 11.0,
+        'motoboy' => 'João Silva', 'tabela' => 'normal', 'posicao' => 1, 'multiplicador' => null,
+    ], $extra);
+
+    $junto = PortalLojaController::entregaDoExtrato($linhaDoCalculo(['tabela' => 'junto', 'posicao' => 2, 'multiplicador' => ['nome' => 'Chuva', 'motoboy' => 1.2, 'loja' => 1.0]]));
+    confere($junto['junto'] === 2, 'tabela junto na posição 2: junto = 2: ' . json_encode($junto['junto']));
+    confere($junto['multiplicador'] === null, 'fator da loja 1 (motoboy ×1,2): multiplicador null, a loja não vê o fator do motoboy');
+    $jsonJunto = json_encode($junto, JSON_UNESCAPED_UNICODE);
+    confere(!str_contains($jsonJunto, 'Chuva') && !str_contains($jsonJunto, '1.2') && !str_contains($jsonJunto, 'João') && !str_contains($jsonJunto, '9.6'),
+        'nada do motoboy na entrega: nem o fator, nem o nome, nem o valor dele: ' . $jsonJunto);
+    confere($junto['valor'] === 11.0 && array_keys($junto) === ['pedido', 'id_interno', 'concluido_em', 'destino', 'km', 'faixa', 'valor', 'cancelado_pago', 'cancelado_origem', 'junto', 'multiplicador'],
+        'campos da entrega da loja (valor = valor_loja)');
+
+    $normal = PortalLojaController::entregaDoExtrato($linhaDoCalculo(['tabela' => 'normal', 'posicao' => 2]));
+    confere($normal['junto'] === null, 'tabela normal (mesmo na posição 2): junto null');
+
+    $chuva = PortalLojaController::entregaDoExtrato($linhaDoCalculo(['multiplicador' => ['nome' => 'Chuva', 'motoboy' => 1.2, 'loja' => 1.1]]));
+    confere($chuva['multiplicador'] === ['nome' => 'Chuva', 'fator' => 1.1], 'loja ×1,1: multiplicador = { nome, fator 1.1 } (o da loja): ' . json_encode($chuva['multiplicador'], JSON_UNESCAPED_UNICODE));
+
+    $controllerFonte = file_get_contents('/repo/api/app/Http/Controllers/Entregas/PortalLojaController.php');
+    confere(str_contains($controllerFonte, 'array_map(fn ($e) => static::entregaDoExtrato($e), $entregas)'), 'o extrato usa o entregaDoExtrato');
+
     echo '== Rotas' . PHP_EOL;
     $rotas = file_get_contents('/repo/api/app/Providers/RouteServiceProvider.php');
     confere(str_contains($rotas, "Route::get('loja/financeiro', [PortalLojaController::class, 'financeiro'])->middleware('throttle:60,1');")

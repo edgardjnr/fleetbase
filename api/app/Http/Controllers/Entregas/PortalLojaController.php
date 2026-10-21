@@ -91,8 +91,28 @@ class PortalLojaController extends Controller
         });
         [$entregas, $pendentes] = $calculo->entregas($pedidos, $fuso, static::LIMITE_CALCULOS_PORTAL);
 
-        // a loja não vê o valor pago ao motoboy nem quem levou
-        $entregas = array_map(fn ($e) => [
+        $entregas = array_map(fn ($e) => static::entregaDoExtrato($e), $entregas);
+
+        return response()->json([
+            'inicio'    => $request->input('inicio'),
+            'fim'       => $request->input('fim'),
+            'pendentes' => $pendentes,
+            'totais'    => [
+                'entregas' => count($entregas),
+                'km'       => round(collect($entregas)->sum(fn ($e) => $e['km'] ?? 0), 2),
+                'valor'    => round(collect($entregas)->sum(fn ($e) => $e['valor'] ?? 0), 2),
+            ],
+            'entregas'  => $entregas,
+        ]);
+    }
+
+    /**
+     * Uma entrega do extrato como a loja vê: sem o valor pago ao motoboy nem quem levou. Recebe uma linha de
+     * CalculoEntregas::entregas().
+     */
+    public static function entregaDoExtrato(array $e): array
+    {
+        return [
             'pedido'       => $e['pedido'],
             'id_interno'   => $e['id_interno'],
             'concluido_em' => $e['concluido_em'],
@@ -107,19 +127,7 @@ class PortalLojaController extends Controller
             // entrega junto e multiplicador: o selo da loja só quando o valor dela mudou (fator ≠ 1); nunca o do motoboy
             'junto'         => ($e['tabela'] ?? null) === 'junto' && !empty($e['posicao']) ? (int) $e['posicao'] : null,
             'multiplicador' => ValorDaEntrega::daLoja($e['multiplicador'] ?? null),
-        ], $entregas);
-
-        return response()->json([
-            'inicio'    => $request->input('inicio'),
-            'fim'       => $request->input('fim'),
-            'pendentes' => $pendentes,
-            'totais'    => [
-                'entregas' => count($entregas),
-                'km'       => round(collect($entregas)->sum(fn ($e) => $e['km'] ?? 0), 2),
-                'valor'    => round(collect($entregas)->sum(fn ($e) => $e['valor'] ?? 0), 2),
-            ],
-            'entregas'  => $entregas,
-        ]);
+        ];
     }
 
     /** Motoboy do pedido em andamento (nome, foto e aceite). Só pedido que o portal mostra a este usuário. */

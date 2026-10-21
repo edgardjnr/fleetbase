@@ -309,4 +309,23 @@ confere($controller->valor(new Request([], '12|abc'), 'uuid-order_outra-empresa'
 confere($controller->valor(new Request([], '12|abc'), 'order_nao-existe', new CalculoEntregas(null, new AtribuicaoSemNada()))->status === 404, 'pedido que não existe: 404');
 confere($controller->valor(new Request([], 'flb_live_abc'), 'order_meu', new CalculoEntregas(null, new AtribuicaoSemNada()))->status === 403, 'chave de API: 403');
 
+// a prévia do pedido aberto é para o motoboy da sessão: o uuid dele vai ao valorDoPedido (posição e multiplicador dele)
+class CalculoQueRegistraOMotoboy extends CalculoEntregas
+{
+    public array $motoboys = [];
+
+    public function valorDoPedido(Order $pedido, ?string $motoboyUuid = null): array
+    {
+        $this->motoboys[] = $motoboyUuid;
+
+        return parent::valorDoPedido($pedido, $motoboyUuid);
+    }
+}
+
+$calculoRegistra = new CalculoQueRegistraOMotoboy(null, new AtribuicaoSemNada());
+$resposta        = $controller->valor(new Request([], '12|abc'), 'uuid-order_aberto', $calculoRegistra);
+confere($resposta->status === 200 && $calculoRegistra->motoboys === ['uuid-driver_motoca'], 'o valor passa o uuid do motoboy da sessão ao valorDoPedido: ' . json_encode($calculoRegistra->motoboys));
+$controller->valor(new Request([], '12|abc'), 'order_meu', $calculoRegistra);
+confere($calculoRegistra->motoboys === ['uuid-driver_motoca', 'uuid-driver_motoca'], 'também no pedido dele');
+
 resumo();
