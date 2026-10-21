@@ -223,7 +223,7 @@ $entrega = [
     'valor_loja'    => 11.37,
 ];
 $linha = GanhosDoMotoboy::linha($entrega);
-confere(array_keys($linha) === ['pedido', 'concluido_em', 'loja', 'destino', 'km', 'aproximado', 'faixa', 'valor', 'cancelado_pago', 'cancelado_origem'], 'só os campos do app');
+confere(array_keys($linha) === ['pedido', 'concluido_em', 'loja', 'destino', 'km', 'aproximado', 'faixa', 'valor', 'cancelado_pago', 'cancelado_origem', 'junto', 'multiplicador'], 'só os campos do app');
 confere($linha['cancelado_pago'] === false && GanhosDoMotoboy::linha(['cancelado_pago' => true] + $entrega)['cancelado_pago'] === true, 'cancelado_pago repassado ao app');
 confere($linha['cancelado_origem'] === null && GanhosDoMotoboy::linha(['cancelado_pago' => true, 'cancelado_origem' => 'integracao'] + $entrega)['cancelado_origem'] === 'integracao' && GanhosDoMotoboy::linha(['cancelado_pago' => true, 'cancelado_origem' => 'ifood'] + $entrega)['cancelado_origem'] === 'ifood', 'cancelado_origem repassado ao app (integracao e ifood)');
 confere($linha['valor'] === 8.0 && $linha['loja'] === 'Loja Centro' && $linha['aproximado'] === true, 'valor do motoboy, nome da loja e km estimado marcado como aproximado');
@@ -233,7 +233,7 @@ $resumo = GanhosDoMotoboy::resumo([$entrega, $semKm], '2026-10-01', '2026-10-03'
 confere($resumo['totais'] === ['entregas' => 2, 'km' => 3.21, 'valor' => 8.0] && $resumo['pendentes'] === 1 && $resumo['inicio'] === '2026-10-01', 'totais: corridas, km e valor (só o que tem valor)');
 confere(!str_contains(json_encode($resumo), '11.37'), 'o valor cobrado da loja (11,37) não aparece');
 $valor = GanhosDoMotoboy::valor(new Order(['public_id' => 'order_e']), ['km' => 3.21, 'fonte' => 'osrm', 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'motoboy' => 8.0, 'loja' => 11.37], 'valor_motoboy' => 8.0]);
-confere($valor === ['pedido' => 'order_e', 'km' => 3.21, 'aproximado' => false, 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'valor' => 8.0], 'valor de um pedido no formato do app, sem o valor da loja');
+confere($valor === ['pedido' => 'order_e', 'km' => 3.21, 'aproximado' => false, 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'valor' => 8.0, 'junto' => null, 'multiplicador' => null], 'valor de um pedido no formato do app, sem o valor da loja');
 
 $motoca = new Driver(['uuid' => 'uuid-driver_motoca', 'user_uuid' => 'usuario-motoca', 'public_id' => 'driver_motoca']);
 confere(GanhosDoMotoboy::podeVer(new Order(['driver_assigned_uuid' => 'uuid-driver_motoca']), $motoca), 'vê o pedido dele');
@@ -300,7 +300,7 @@ Order::$todos = [
     pedido('order_outra-empresa', ['company_uuid' => 'outra']),
 ];
 $resposta = $controller->valor(new Request([], '12|abc'), 'order_meu', new CalculoEntregas(null, new AtribuicaoSemNada()));
-confere($resposta->status === 200 && $resposta->dados === ['pedido' => 'order_meu', 'km' => 3.21, 'aproximado' => false, 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'valor' => 8.0], 'pedido dele: km, faixa e valor dele');
+confere($resposta->status === 200 && $resposta->dados === ['pedido' => 'order_meu', 'km' => 3.21, 'aproximado' => false, 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'valor' => 8.0, 'junto' => null, 'multiplicador' => null], 'pedido dele: km, faixa e valor dele');
 $resposta = $controller->valor(new Request([], '12|abc'), 'uuid-order_aberto', new CalculoEntregas(null, new AtribuicaoSemNada()));
 confere($resposta->status === 200 && $resposta->dados['pedido'] === 'order_aberto', 'pedido aberto, achado também pelo uuid');
 confere($controller->valor(new Request([], '12|abc'), 'order_de-outro', new CalculoEntregas(null, new AtribuicaoSemNada()))->status === 404, 'pedido de outro motoboy: 404');

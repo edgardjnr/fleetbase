@@ -23,7 +23,7 @@ final class ExtratoDaConta
     public const TIPOS = ['corrida', 'diaria', 'bonus', 'ajuste', 'saldo_inicial', 'pagamento', 'recebimento', 'estorno'];
 
     /** Campos dos detalhes da corrida que saem no extrato (nunca um valor). */
-    private const CAMPOS_DOS_DETALHES = ['km', 'faixa', 'loja_nome', 'destino', 'cancelado_pago', 'cancelado_origem'];
+    private const CAMPOS_DOS_DETALHES = ['km', 'faixa', 'loja_nome', 'destino', 'cancelado_pago', 'cancelado_origem', 'junto', 'multiplicador'];
 
     /**
      * Extrato pronto para o console (completo) ou para o app/portal ($publico = true: sem observacao_interna, sem
@@ -312,7 +312,10 @@ final class ExtratoDaConta
         return ['id' => (string) $uuid, 'numero' => Financeiro::numeroDaFatura($numero !== null ? (int) $numero : null)];
     }
 
-    /** Os detalhes do contrato (km, faixa, loja, destino, cancelado pago), ou null se o lançamento não tem nenhum. */
+    /**
+     * Os detalhes do contrato (km, faixa, loja, destino, cancelado pago, entrega junto e multiplicador), ou null se o
+     * lançamento não tem nenhum.
+     */
     private static function detalhes(object $lancamento): ?array
     {
         $crus = static::detalhesCrus($lancamento);
@@ -332,6 +335,12 @@ final class ExtratoDaConta
             'destino'          => isset($crus['destino']) ? (string) $crus['destino'] : null,
             'cancelado_pago'   => !empty($crus['cancelado_pago']),
             'cancelado_origem' => isset($crus['cancelado_origem']) ? (string) $crus['cancelado_origem'] : null,
+            // entrega junto (a posição, quando a segunda tabela foi usada) e o multiplicador desta conta ({nome, fator})
+            'junto'            => isset($crus['junto']) && is_numeric($crus['junto']) ? (int) $crus['junto'] : null,
+            'multiplicador'    => is_array($crus['multiplicador'] ?? null) ? [
+                'nome'  => (string) ($crus['multiplicador']['nome'] ?? ''),
+                'fator' => round((float) ($crus['multiplicador']['fator'] ?? 1), 2),
+            ] : null,
         ];
     }
 

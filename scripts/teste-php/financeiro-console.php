@@ -106,7 +106,16 @@ confere(array_column($extrato['lancamentos'] ?? [], 'id') === [$ids['ajuste'], $
 $corrida2 = linhaDoExtrato($extrato, $ids['corrida2']);
 confere(($corrida2['tipo'] ?? null) === 'corrida' && ($corrida2['valor'] ?? null) === 10.0 && ($corrida2['data'] ?? null) === '2026-10-03', 'corrida: tipo, valor e data');
 confere(($corrida2['pedido'] ?? null) === ['id' => 'order_2', 'numero' => 'RP2'], 'corrida: pedido (public_id e número) dos detalhes');
-confere(($corrida2['detalhes'] ?? null) === ['km' => 3.21, 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'loja_nome' => 'Pizzaria Ficticia', 'destino' => 'Rua X, 10', 'cancelado_pago' => false, 'cancelado_origem' => null], 'corrida: detalhes no formato do contrato: ' . json_encode($corrida2['detalhes'] ?? null, JSON_UNESCAPED_UNICODE));
+confere(($corrida2['detalhes'] ?? null) === ['km' => 3.21, 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'loja_nome' => 'Pizzaria Ficticia', 'destino' => 'Rua X, 10', 'cancelado_pago' => false, 'cancelado_origem' => null, 'junto' => null, 'multiplicador' => null], 'corrida: detalhes no formato do contrato: ' . json_encode($corrida2['detalhes'] ?? null, JSON_UNESCAPED_UNICODE));
+// entrega junto e chuva nos detalhes: lançamento montado à mão (fora do banco, para não mexer nos saldos dos casos abaixo),
+// com os detalhes em texto como o MySQL devolve
+$comSelos   = (object) ['id' => 9999, 'company_uuid' => 'empresa-1', 'conta_tipo' => 'motoboy', 'conta_uuid' => 'driver-1', 'tipo' => 'corrida', 'valor' => 7.2,
+    'data_referencia' => '2026-10-03', 'order_uuid' => 'order-selos', 'created_at' => '2026-10-12 10:00:00',
+    'detalhes' => json_encode(['pedido' => 'order_selos', 'numero' => 'RP9', 'km' => 3.21, 'faixa' => ['de_km' => 3, 'ate_km' => 6, 'acima' => false],
+        'loja_nome' => 'Pizzaria Ficticia', 'destino' => 'Rua X, 10', 'cancelado_pago' => false, 'cancelado_origem' => null,
+        'junto' => 2, 'multiplicador' => ['nome' => 'Chuva', 'fator' => 1.2]])];
+$linhaSelos = ExtratoDaConta::linhas([$comSelos], [], true, [])[0] ?? [];
+confere(($linhaSelos['detalhes']['junto'] ?? null) === 2 && ($linhaSelos['detalhes']['multiplicador'] ?? null) === ['nome' => 'Chuva', 'fator' => 1.2], 'extrato: 2ª entrega e a chuva saem nos detalhes: ' . json_encode($linhaSelos['detalhes'] ?? null, JSON_UNESCAPED_UNICODE));
 // a situação usa a conta inteira: o pagamento de 15 quita a corrida de 01/10 (fora do período) e 6,50 desta (o ajuste −2 do pedido abate 2)
 confere(($corrida2['situacao'] ?? null) === 'parcial' && ($corrida2['valor_pago'] ?? null) === 6.5, 'situação calculada com a conta inteira: corrida de 03/10 paga em parte (6,50): ' . json_encode([$corrida2['situacao'] ?? null, $corrida2['valor_pago'] ?? null]));
 confere(($corrida2['estornado'] ?? null) === false && array_key_exists('estorno_de', $corrida2) && $corrida2['estorno_de'] === null, 'corrida: não estornada, sem estorno_de');

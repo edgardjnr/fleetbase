@@ -125,6 +125,9 @@ class CalculoFalso extends CalculoEntregas
                 'order_uuid'       => $p->uuid,
                 'motoboy_uuid'     => $p->driver_assigned_uuid,
                 'loja_uuid'        => $p->customer_uuid,
+                'posicao'          => $p->posicao ?? null,
+                'tabela'           => $p->tabela ?? null,
+                'multiplicador'    => $p->multiplicador ?? null,
             ];
         }
 
@@ -213,6 +216,21 @@ confere($r['lancados'] === 2 && ($det['cancelado_pago'] ?? null) === true && ($d
 Setting::$valores = [];
 $f                = pedidoConcluido('order_f', '2026-10-04 13:00:00');
 confere($lancador->lancar('empresa-1', new Collection([$f])) === ['lancados' => 0, 'sem_valor' => 0] && !lancamentosDo('order_f'), 'empresa sem data de corte: nada é lançado');
+
+echo '== Entrega junto e multiplicador nos detalhes' . PHP_EOL;
+reiniciarFinanceiro();
+$calculo  = new CalculoFalso();
+$lancador = new LancadorDeCorridas($calculo);
+$j        = pedidoConcluido('order_j', '2026-10-21 19:30:00', ['posicao' => 2, 'tabela' => 'junto', 'multiplicador' => ['nome' => 'Chuva', 'motoboy' => 1.2, 'loja' => 1.0]]);
+$lancador->lancar('empresa-1', new Collection([$j]));
+$dm = json_decode((string) (daConta(lancamentosDo('order_j'), 'motoboy')['detalhes'] ?? ''), true);
+$dl = json_decode((string) (daConta(lancamentosDo('order_j'), 'loja')['detalhes'] ?? ''), true);
+confere(($dm['junto'] ?? null) === 2 && ($dl['junto'] ?? null) === 2, '2ª entrega nas duas contas');
+confere(($dm['multiplicador'] ?? null) === ['nome' => 'Chuva', 'fator' => 1.2] && !array_key_exists('multiplicador', $dl ?? []), 'chuva só na conta cujo fator mudou (motoboy ×1,2; loja ×1)');
+$n = pedidoConcluido('order_n', '2026-10-21 19:40:00', ['posicao' => 2, 'tabela' => 'normal']);
+$lancador->lancar('empresa-1', new Collection([$n]));
+$dn = json_decode((string) (daConta(lancamentosDo('order_n'), 'motoboy')['detalhes'] ?? ''), true);
+confere(!array_key_exists('junto', $dn ?? []) && !array_key_exists('multiplicador', $dn ?? []), 'posição 2 pela tabela normal (segunda tabela vazia) e sem período: detalhes como antes');
 
 echo '== conferir' . PHP_EOL;
 reiniciarFinanceiro();

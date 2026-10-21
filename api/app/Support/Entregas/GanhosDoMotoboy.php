@@ -44,6 +44,10 @@ class GanhosDoMotoboy
             'cancelado_pago' => (bool) ($entrega['cancelado_pago'] ?? false),
             // quem cancelou: 'ifood' ou 'integracao' (o sistema de origem); null no concluído
             'cancelado_origem' => $entrega['cancelado_origem'] ?? null,
+            // entrega junto (a posição, quando pagou pela segunda tabela; senão null) e o multiplicador dele ({nome, fator};
+            // nunca o da loja). Mesmo formato dos detalhes do extrato (junto = posição)
+            'junto'         => static::junto($entrega),
+            'multiplicador' => ValorDaEntrega::doMotoboy($entrega['multiplicador'] ?? null),
         ];
     }
 
@@ -74,6 +78,8 @@ class GanhosDoMotoboy
             'aproximado' => ($valor['fonte'] ?? null) === 'estimativa',
             'faixa'      => static::limitesDaFaixa($valor['faixa'] ?? null),
             'valor'      => $valor['valor_motoboy'],
+            'junto'         => static::junto($valor),
+            'multiplicador' => ValorDaEntrega::doMotoboy($valor['multiplicador'] ?? null),
         ];
     }
 
@@ -91,5 +97,11 @@ class GanhosDoMotoboy
     protected static function limitesDaFaixa(?array $faixa): ?array
     {
         return $faixa ? ['de_km' => $faixa['de_km'], 'ate_km' => $faixa['ate_km'], 'acima' => !empty($faixa['acima'])] : null;
+    }
+
+    /** A posição da entrega junto (2, 3…) quando ela pagou pela segunda tabela; senão null. */
+    protected static function junto(array $valor): ?int
+    {
+        return ($valor['tabela'] ?? null) === 'junto' && !empty($valor['posicao']) ? (int) $valor['posicao'] : null;
     }
 }

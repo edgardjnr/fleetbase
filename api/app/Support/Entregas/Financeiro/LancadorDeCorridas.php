@@ -4,6 +4,7 @@ namespace App\Support\Entregas\Financeiro;
 
 use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\StatusDoPedido;
+use App\Support\Entregas\ValorDaEntrega;
 use Fleetbase\FleetOps\Models\Order;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -75,7 +76,6 @@ final class LancadorDeCorridas
                 'tipo'            => 'corrida',
                 'data_referencia' => $data,
                 'order_uuid'      => $entrega['order_uuid'],
-                'detalhes'        => static::detalhes($entrega),
             ];
 
             // os dois numa transação: a corrida do motoboy não fica sem a da loja por uma falha no meio (a conferência só
@@ -85,6 +85,7 @@ final class LancadorDeCorridas
                     'conta_tipo'  => Financeiro::CONTA_MOTOBOY,
                     'conta_uuid'  => $entrega['motoboy_uuid'],
                     'valor'       => (float) $entrega['valor_motoboy'],
+                    'detalhes'    => static::detalhes($entrega, Financeiro::CONTA_MOTOBOY),
                     'chave_unica' => 'corrida:' . Financeiro::CONTA_MOTOBOY . ':' . $entrega['order_uuid'],
                 ]);
 
@@ -94,6 +95,7 @@ final class LancadorDeCorridas
                         'conta_tipo'  => Financeiro::CONTA_LOJA,
                         'conta_uuid'  => $entrega['loja_uuid'],
                         'valor'       => (float) $entrega['valor_loja'],
+                        'detalhes'    => static::detalhes($entrega, Financeiro::CONTA_LOJA),
                         'chave_unica' => 'corrida:' . Financeiro::CONTA_LOJA . ':' . $entrega['order_uuid'],
                     ]);
                 }
@@ -437,12 +439,15 @@ final class LancadorDeCorridas
         }
     }
 
-    /** Detalhes da corrida (iguais nas duas contas: nenhum valor, só a faixa com os limites). */
-    private static function detalhes(array $entrega): array
+    /**
+     * Detalhes da corrida da conta (nenhum valor, só a faixa com os limites). Entrega junto (`junto`: a posição, quando a
+     * segunda tabela foi usada) nas duas contas; o multiplicador ({nome, fator}) só na conta cujo fator mudou: o motoboy
+     * nunca vê o fator da loja, nem a loja o do motoboy.
+     */
+    private static function detalhes(array $entrega, string $conta): array
     {
-        $faixa = $entrega['faixa'] ?? null;
-
-        return [
+        $faixa    = $entrega['faixa'] ?? null;
+        $detalhes = [
             'pedido'           => $entrega['pedido'] ?? null,
             'numero'           => $entrega['id_interno'] ?? null,
             'km'               => $entrega['km'] ?? null,
@@ -456,5 +461,15 @@ final class LancadorDeCorridas
             'cancelado_pago'   => (bool) ($entrega['cancelado_pago'] ?? false),
             'cancelado_origem' => $entrega['cancelado_origem'] ?? null,
         ];
+
+        if (($entrega['tabela'] ?? null) === 'junto' && !empty($entrega['posicao'])) {
+            $detalhes['junto'] = (int) $entrega['posicao'];
+        }
+        $multiplicador = $conta === Financeiro::CONTA_LOJA ? ValorDaEntrega::daLoja($entrega['multiplicador'] ?? null) : ValorDaEntrega::doMotoboy($entrega['multiplicador'] ?? null);
+        if ($multiplicador !== null) {
+            $detalhes['multiplicador'] = $multiplicador;
+        }
+
+        return $detalhes;
     }
 }

@@ -11,6 +11,7 @@ require __DIR__ . '/stubs-ganhos.php';
 use App\Listeners\Entregas\ObservadorDoValorDaEntrega;
 use App\Support\Entregas\AtribuicaoDoValor;
 use App\Support\Entregas\CalculoEntregas;
+use App\Support\Entregas\GanhosDoMotoboy;
 use App\Support\Entregas\ValorDaEntrega;
 use App\Support\Entregas\ValoresCongelados;
 use Fleetbase\FleetOps\Models\Driver;
@@ -383,5 +384,14 @@ $GLOBALS['sessao']['company'] = 'empresa';
 ObservadorDoValorDaEntrega::$calculo = null;
 $boot = substr($app, strpos($app, 'public function boot()'));
 confere(strpos($boot, '$this->congelarValorNaAtribuicao();') < strpos($boot, '$this->lancarCorridasNoFinanceiro();'), 'AppServiceProvider: a atribuição é gravada antes do lançamento da corrida ir para a fila');
+
+echo '== O que o app recebe (GanhosDoMotoboy)' . PHP_EOL;
+$entrega = ['pedido' => 'order_e', 'concluido_em' => '2026-10-03T19:42:00-03:00', 'loja_nome' => 'Loja', 'destino' => 'Rua', 'km' => 3.21, 'fonte' => 'osrm', 'faixa' => ['de_km' => 3.0, 'ate_km' => 6.0, 'motoboy' => 6.0, 'loja' => 9.0], 'valor_motoboy' => 7.2, 'cancelado_pago' => false, 'cancelado_origem' => null, 'posicao' => 2, 'tabela' => 'junto', 'multiplicador' => ['nome' => 'Chuva', 'motoboy' => 1.2, 'loja' => 1.1]];
+$linha   = GanhosDoMotoboy::linha($entrega);
+confere($linha['junto'] === 2 && $linha['multiplicador'] === ['nome' => 'Chuva', 'fator' => 1.2], 'linha dos ganhos: a posição (selo "2ª entrega") e a chuva dele');
+confere(!str_contains(json_encode($linha), '1.1') && !str_contains(json_encode($linha), '9.0'), 'nunca o fator nem o valor da loja');
+$valor = GanhosDoMotoboy::valor(new Order(['public_id' => 'order_e']), ['km' => 3.21, 'fonte' => 'osrm', 'faixa' => $entrega['faixa'], 'valor_motoboy' => 7.2, 'posicao' => 2, 'tabela' => 'junto', 'multiplicador' => ['nome' => 'Chuva', 'motoboy' => 1.0, 'loja' => 1.1]]);
+confere($valor['junto'] === 2 && $valor['multiplicador'] === null, 'card: 2ª entrega; fator do motoboy ×1, sem selo de chuva');
+confere(GanhosDoMotoboy::valor(new Order(['public_id' => 'order_e']), ['km' => 3.21, 'fonte' => 'osrm', 'faixa' => $entrega['faixa'], 'valor_motoboy' => 8.0, 'posicao' => 2, 'tabela' => 'normal', 'multiplicador' => null])['junto'] === null, 'posição 2 pela tabela normal (sem segunda tabela): sem selo');
 
 resumo();

@@ -146,6 +146,7 @@ class MotoboyController extends Controller
         return response()->json(ExtratoDaConta::pagamento($pagamento));
     }
 
+    /** O valor do pedido para o motoboy da sessão: no pedido sem motoboy, a prévia para ele (posição e multiplicador). */
     public function valor(Request $request, string $id, CalculoEntregas $calculo)
     {
         $motoboy = MotoboyDaSessao::motoboy($request);
@@ -158,7 +159,7 @@ class MotoboyController extends Controller
             return response()->json(['errors' => ['Pedido não encontrado.']], 404);
         }
 
-        return response()->json(GanhosDoMotoboy::valor($pedido, $calculo->valorDoPedido($pedido)));
+        return response()->json(GanhosDoMotoboy::valor($pedido, $calculo->valorDoPedido($pedido, (string) $motoboy->uuid)));
     }
 
     public function rota(Request $request, string $id, RotaDoPedido $rotas)

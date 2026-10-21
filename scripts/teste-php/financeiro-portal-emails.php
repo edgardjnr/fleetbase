@@ -341,7 +341,7 @@ namespace {
     confere($item['valor'] === 60.0 && $item['data'] === '2026-09-22' && $item['pedido'] === ['id' => 'order_1', 'numero' => 'RP0001'] && $item['fatura'] === ['id' => 'fat-1', 'numero' => 'FAT-0001'] && $item['estornado'] === false && $item['criado_em'] === '2026-10-14T10:00:00-03:00',
         'item: valor, data, pedido dos detalhes, fatura, criado_em em ISO');
     // faixa em números com casas (o ExtratoDaConta converte; no JSON, 2.0 e 2 são o mesmo número para a tela)
-    confere($item['detalhes'] === ['km' => 3.21, 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'loja_nome' => 'Pizzaria do Zé', 'destino' => 'Rua X, 10', 'cancelado_pago' => false, 'cancelado_origem' => null],
+    confere($item['detalhes'] === ['km' => 3.21, 'faixa' => ['de_km' => 2.0, 'ate_km' => 4.0, 'acima' => false], 'loja_nome' => 'Pizzaria do Zé', 'destino' => 'Rua X, 10', 'cancelado_pago' => false, 'cancelado_origem' => null, 'junto' => null, 'multiplicador' => null],
         'item: só os detalhes públicos');
     confere($dados['itens'][1]['pedido'] === ['id' => 'order_2', 'numero' => 'RP0002'] && $dados['itens'][1]['motivo'] === 'Taxa de espera' && $dados['itens'][1]['detalhes'] === null,
         'ajuste com pedido sem detalhes: o pedido vem da tabela orders; o motivo aparece');

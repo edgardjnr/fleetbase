@@ -13,6 +13,7 @@ use App\Support\Entregas\MotoboysNoMapaDaLoja;
 use App\Support\Entregas\PedidosNoMapa;
 use App\Support\Entregas\ResumoDoDiaDaLoja;
 use App\Support\Entregas\StatusDoPedido;
+use App\Support\Entregas\ValorDaEntrega;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
 use Fleetbase\Models\Company;
@@ -103,6 +104,9 @@ class PortalLojaController extends Controller
             'cancelado_pago' => (bool) ($e['cancelado_pago'] ?? false),
             // quem cancelou: 'ifood' ou 'integracao' (o sistema de origem); null no concluído
             'cancelado_origem' => $e['cancelado_origem'] ?? null,
+            // entrega junto e multiplicador: o selo da loja só quando o valor dela mudou (fator ≠ 1); nunca o do motoboy
+            'junto'         => ($e['tabela'] ?? null) === 'junto' && !empty($e['posicao']) ? (int) $e['posicao'] : null,
+            'multiplicador' => ValorDaEntrega::daLoja($e['multiplicador'] ?? null),
         ], $entregas);
 
         return response()->json([
