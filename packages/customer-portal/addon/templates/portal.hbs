@@ -1,14 +1,13 @@
 <Portal::Container>
     <div class="portal-topbar">
         <div class="portal-topbar-account">
-            {{!-- Entregas: ☰ do menu. Na tela Pedidos abre a gaveta Portal::Gaveta (a coluna do menu fica com a lista de
-                 pedidos); nas outras, esconde ou mostra a coluna do menu --}}
+            {{!-- Entregas: ☰ do menu: abre a gaveta Portal::Gaveta, o único menu do portal (em todas as telas) --}}
             <button
                 type="button"
                 class="portal-menu-toggle"
                 aria-label={{t "customer-portal.ui.entregas.menu.abrir"}}
-                aria-expanded={{if this.menuVisivel "true" "false"}}
-                aria-controls={{if this.naTelaPedidos "portal-gaveta" "portal-sidebar"}}
+                aria-expanded={{if this.gavetaAberta "true" "false"}}
+                aria-controls="portal-gaveta"
                 {{on "click" this.alternarMenu}}
             >
                 <FaIcon @icon="bars" />
@@ -51,28 +50,9 @@
             </BasicDropdown>
         </div>
     </div>
-    <Portal::Main class="{{if this.naTelaPedidos 'is-pedidos'}} {{if this.gavetaAberta 'gaveta-aberta'}} {{if this.menuEscondido 'menu-escondido'}}">
-        <Portal::Sidebar>
-            <div class="portal-nav-group">
-                <div class="portal-nav-label">{{t "customer-portal.ui.nav.workspace"}}</div>
-                <Layout::Sidebar::Item @route="customer-portal.portal.home" @icon="home">{{t "customer-portal.ui.nav.dashboard"}}</Layout::Sidebar::Item>
-                <Layout::Sidebar::Item @route="customer-portal.portal.orders" @icon="boxes-packing">{{t "customer-portal.ui.nav.orders"}}</Layout::Sidebar::Item>
-                <Layout::Sidebar::Item @route="customer-portal.portal.extrato" @icon="file-invoice-dollar">{{t "customer-portal.ui.entregas.statement"}}</Layout::Sidebar::Item>
-                {{!-- Entregas: faturas da loja; o detalhe (financeiro/:id) é outra rota e não acende este item --}}
-                <Layout::Sidebar::Item @route="customer-portal.portal.financeiro" @icon="file-invoice">{{t "customer-portal.ui.entregas.financeiro.menu"}}</Layout::Sidebar::Item>
-                {{!-- Entregas: rota-pai para o item acender nas duas abas (Sidebar::Item compara com startsWith); settings.index redireciona para a aba da conta --}}
-                <Layout::Sidebar::Item @route="customer-portal.portal.settings" @icon="gear">{{t "customer-portal.ui.nav.account-settings"}}</Layout::Sidebar::Item>
-            </div>
-            <RegistryYield @type="menu" @registry="customer-portal:sidebar" as |menuItem|>
-                <Layout::Sidebar::Item
-                    @onClick={{fn this.universe.transitionMenuItem "customer-portal.portal.virtual" menuItem}}
-                    @item={{menuItem}}
-                    @icon={{menuItem.icon}}
-                    @permission={{menuItem.permission}}
-                >{{menuItem.title}}</Layout::Sidebar::Item>
-            </RegistryYield>
-        </Portal::Sidebar>
-        {{!-- Entregas: na tela Pedidos o menu é esta gaveta (sketch 003, B), opaca e por cima do mapa --}}
+    {{!-- Entregas: sem a coluna do menu (Portal::Sidebar); o menu é a gaveta abaixo --}}
+    <Portal::Main>
+        {{!-- Entregas: o menu do portal (sketch 003, B), opaco e por cima da tela --}}
         {{#if this.gavetaAberta}}
             <Portal::Gaveta @nomeDaConta={{this.accountName}} @email={{this.accountEmail}} @onFechar={{this.fecharGaveta}} @onSair={{this.invalidateSession}} />
         {{/if}}

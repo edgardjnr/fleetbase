@@ -440,7 +440,8 @@ body[data-theme='dark'].fleetbase-portal .portal-user-email {
 
 .fleetbase-portal .portal-container > .portal-main {
     display: grid;
-    grid-template-columns: 15.5rem minmax(0, 1fr);
+    /* Entregas: uma coluna só; o menu é a gaveta do ☰ (Portal::Gaveta), não mais uma coluna à esquerda */
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
     min-height: calc(100vh - 4rem);
     height: auto;
@@ -2284,8 +2285,7 @@ body[data-theme='dark'].fleetbase-portal .portal-order-card-quem.is-procurando s
     white-space: nowrap;
 }
 
-/* Entregas: ☰ do menu na barra superior. Na tela Pedidos (.is-pedidos) a coluna do menu sai do grid e o ☰ abre a gaveta
-   Portal::Gaveta (abaixo); nas outras telas o ☰ esconde ou mostra a coluna (.menu-escondido) */
+/* Entregas: ☰ do menu na barra superior: abre a gaveta Portal::Gaveta (abaixo), o único menu do portal */
 .fleetbase-portal .portal-menu-toggle {
     display: inline-flex;
     flex: 0 0 auto;
@@ -2318,19 +2318,9 @@ body[data-theme='dark'].fleetbase-portal .portal-menu-toggle:hover {
     color: #93c5fd;
 }
 
-.fleetbase-portal .portal-container > .portal-main.is-pedidos,
-.fleetbase-portal .portal-container > .portal-main.menu-escondido {
-    grid-template-columns: minmax(0, 1fr);
-}
-
-.fleetbase-portal .portal-container > .portal-main.is-pedidos > .portal-sidebar,
-.fleetbase-portal .portal-container > .portal-main.menu-escondido:not(.is-pedidos) > .portal-sidebar {
-    display: none;
-}
-
-/* Entregas: a gaveta do menu da tela Pedidos (Portal::Gaveta; sketch 003, variante B "Marca da loja"). Sempre opaca: a
-   antiga era a coluna do menu, translúcida (92% no claro, 80% no escuro), e o mapa aparecia por trás. O fundo atrás
-   escurece com um leve desfoque. Acima da barra superior (1200), como a gaveta das Conversas (1250) */
+/* Entregas: a gaveta do menu (Portal::Gaveta; sketch 003, variante B "Marca da loja"), em todas as telas. Sempre opaca:
+   na tela Pedidos a antiga era a coluna do menu, translúcida (92% no claro, 80% no escuro), e o mapa aparecia por trás.
+   O fundo atrás escurece com um leve desfoque. Acima da barra superior (1200), como a gaveta das Conversas (1250) */
 .fleetbase-portal .portal-gaveta-fundo {
     position: fixed;
     inset: 0;

@@ -11,33 +11,20 @@ export default class PortalController extends Controller {
     @service intl;
     @service hostRouter;
 
-    // Entregas: na tela Pedidos a coluna do menu fica com a lista de pedidos e o menu vira uma gaveta (☰); nas outras telas
-    // o ☰ esconde ou mostra a coluna do menu. Sketch 001, variante B
+    // Entregas: um menu só, em todas as telas: a gaveta Portal::Gaveta, aberta pelo ☰ da barra superior (sketch 003, B).
+    // A coluna fixa do menu saiu (2026-10-21)
     @tracked gavetaAberta = false;
-    @tracked menuEscondido = false;
 
     constructor() {
         super(...arguments);
-        // a gaveta fecha ao trocar de tela (clique num item do menu, inclusive o da própria tela Pedidos)
+        // a gaveta fecha ao trocar de tela (clique num item do menu, inclusive o da própria tela)
         this.hostRouter.on('routeDidChange', () => {
             this.gavetaAberta = false;
         });
     }
 
-    get naTelaPedidos() {
-        return (this.hostRouter.currentRouteName ?? '').startsWith('customer-portal.portal.orders');
-    }
-
-    get menuVisivel() {
-        return this.naTelaPedidos ? this.gavetaAberta : !this.menuEscondido;
-    }
-
     @action alternarMenu() {
-        if (this.naTelaPedidos) {
-            this.gavetaAberta = !this.gavetaAberta;
-        } else {
-            this.menuEscondido = !this.menuEscondido;
-        }
+        this.gavetaAberta = !this.gavetaAberta;
     }
 
     @action fecharGaveta() {
