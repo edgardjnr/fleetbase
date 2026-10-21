@@ -52,6 +52,9 @@ class CalculoEntregas
     /** Chave da tabela de faixas nas configurações da organização. */
     public const CHAVE_FAIXAS = 'entregas.faixas';
 
+    /** Segunda tabela ("a partir da 2ª entrega junto"), no mesmo formato. Vazia = recurso desligado. */
+    public const CHAVE_FAIXAS_JUNTAS = 'entregas.faixas_juntas';
+
     public const MAX_FAIXAS = 50;
 
     /** Quantas rotas novas calcular por chamada, por padrão (a tela repete enquanto houver pendentes). */
@@ -330,6 +333,14 @@ class CalculoEntregas
     public function faixas(): array
     {
         $faixas = Setting::lookupCompany(static::CHAVE_FAIXAS, []);
+
+        return $this->normalizarFaixas(is_array($faixas) ? $faixas : []);
+    }
+
+    /** Faixas da segunda tabela, em ordem crescente de km (vazia = todas as entregas pela tabela normal). */
+    public function faixasJuntas(): array
+    {
+        $faixas = Setting::lookupCompany(static::CHAVE_FAIXAS_JUNTAS, []);
 
         return $this->normalizarFaixas(is_array($faixas) ? $faixas : []);
     }

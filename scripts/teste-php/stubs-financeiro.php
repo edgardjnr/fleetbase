@@ -141,6 +141,24 @@ namespace {
         \Teste\Config::$valores['services.entregas.financeiro']   = '1';
     }
 
+    // o data_get do Laravel (CalculoEntregas::normalizarFaixas). Com guarda: o financeiro-portal-emails.php declara o seu
+    if (!function_exists('data_get')) {
+        function data_get($alvo, $chave, $padrao = null)
+        {
+            foreach (explode('.', (string) $chave) as $parte) {
+                if (is_array($alvo) && array_key_exists($parte, $alvo)) {
+                    $alvo = $alvo[$parte];
+                } elseif (is_object($alvo) && isset($alvo->$parte)) {
+                    $alvo = $alvo->$parte;
+                } else {
+                    return $padrao;
+                }
+            }
+
+            return $alvo;
+        }
+    }
+
     /** As linhas de uma tabela em memória (arrays, na ordem do id). */
     function linhasDe(string $tabela): array
     {

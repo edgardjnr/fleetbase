@@ -16,6 +16,7 @@ use App\Http\Controllers\Entregas\LiderController;
 use App\Http\Controllers\Entregas\LojasController;
 use App\Http\Controllers\Entregas\MapaController;
 use App\Http\Controllers\Entregas\MotoboyController;
+use App\Http\Controllers\Entregas\MultiplicadoresController;
 use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use App\Http\Controllers\Entregas\PortalLojaController;
 use App\Http\Middleware\AvisarOnlineDoMotoboy;
@@ -148,6 +149,7 @@ class RouteServiceProvider extends ServiceProvider
                     ->group(function () {
                         Route::get('pagamento-motoboys', [PagamentoMotoboysController::class, 'relatorio']);
                         Route::put('pagamento-motoboys/faixas', [PagamentoMotoboysController::class, 'salvarFaixas']);
+                        Route::put('pagamento-motoboys/faixas-juntas', [PagamentoMotoboysController::class, 'salvarFaixasJuntas']);
 
                         // Financeiro (console → Fleet-Ops → Financeiro, só admin: FinanceiroController): painel, motoboys (lista,
                         // extrato, Pix), lançamentos manuais e estornos, pagamentos com comprovante (multipart) e configurações
@@ -161,6 +163,13 @@ class RouteServiceProvider extends ServiceProvider
                         Route::post('financeiro/pagamentos/{id}/estornar', [FinanceiroController::class, 'estornarPagamento']);
                         Route::get('financeiro/configuracoes', [FinanceiroController::class, 'configuracoes']);
                         Route::put('financeiro/configuracoes', [FinanceiroController::class, 'salvarConfiguracoes']);
+
+                        // multiplicadores por período (chuva): MultiplicadoresController, só admin
+                        Route::get('financeiro/multiplicadores', [MultiplicadoresController::class, 'lista']);
+                        Route::post('financeiro/multiplicadores', [MultiplicadoresController::class, 'criar']);
+                        Route::put('financeiro/multiplicadores/{id}', [MultiplicadoresController::class, 'alterar']);
+                        Route::post('financeiro/multiplicadores/{id}/encerrar', [MultiplicadoresController::class, 'encerrar']);
+                        Route::delete('financeiro/multiplicadores/{id}', [MultiplicadoresController::class, 'apagar']);
 
                         // cadastro das lojas e dos usuários do portal (Fleet-Ops → Recursos → Lojas)
                         Route::get('lojas', [LojasController::class, 'index']);

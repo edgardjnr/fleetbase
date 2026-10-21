@@ -51,6 +51,7 @@ class PagamentoMotoboysController extends Controller
             'fim'       => $request->input('fim'),
             'fuso'      => $fuso,
             'faixas'    => $calculo->faixas(),
+            'faixas_juntas' => $calculo->faixasJuntas(),
             'pendentes' => $pendentes,
             'totais'    => [
                 'entregas' => count($entregas),
@@ -66,6 +67,17 @@ class PagamentoMotoboysController extends Controller
     }
 
     public function salvarFaixas(Request $request, CalculoEntregas $calculo)
+    {
+        return $this->salvarTabela($request, $calculo, CalculoEntregas::CHAVE_FAIXAS);
+    }
+
+    /** PUT pagamento-motoboys/faixas-juntas: a segunda tabela ("a partir da 2ª entrega junto"); lista vazia desliga. */
+    public function salvarFaixasJuntas(Request $request, CalculoEntregas $calculo)
+    {
+        return $this->salvarTabela($request, $calculo, CalculoEntregas::CHAVE_FAIXAS_JUNTAS);
+    }
+
+    protected function salvarTabela(Request $request, CalculoEntregas $calculo, string $chave)
     {
         if ($erro = $this->negarSeNaoAdmin($request)) {
             return $erro;
@@ -84,7 +96,7 @@ class PagamentoMotoboysController extends Controller
             return response()->json(['errors' => ['Há duas faixas com o mesmo "até km".']], 422);
         }
 
-        Setting::configureCompany(CalculoEntregas::CHAVE_FAIXAS, $faixas);
+        Setting::configureCompany($chave, $faixas);
 
         return response()->json(['faixas' => $faixas]);
     }
