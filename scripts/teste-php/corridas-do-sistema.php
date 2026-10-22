@@ -414,6 +414,42 @@ namespace {
     confere(str_contains($provedor, 'use App\Listeners\Entregas\ObservadorDasCorridasDoSistema;') && str_contains($provedor, 'Order::updated(fn ($pedido) => ObservadorDasCorridasDoSistema::aoAtualizar($pedido));'), 'AppServiceProvider: Order::updated → observador das corridas do sistema');
     confere(str_contains(substr($boot, 0, (int) strpos($boot, '}')), '$this->registrarCorridasDoSistema();'), 'ligado no boot()');
 
+    echo '== Comando entregas:corridas-conferir' . PHP_EOL;
+    preparar();
+    cadastros();
+    pedido(['public_id' => 'order_velho', 'updated_at' => '2026-09-01 12:00:00']);
+    pedido(['public_id' => 'order_ontem', 'updated_at' => '2026-10-21 18:00:00']);
+    $comando = new CorridasConferir();
+    confere($comando->handle() === 0, 'sai com SUCCESS');
+    confere(pedidosRegistrados() === ['order_ontem', 'order_velho'] && array_values(array_unique(array_column(linhasDe('entregas_corridas_finalizadas'), 'origem'))) === ['historico'], 'tabela vazia (primeira rodada depois do deploy): importa o histórico inteiro');
+    confere(logou('[entregas] sistema: histórico das corridas importado', 'info'), 'avisa no log quantas o histórico trouxe');
+    pedido(['public_id' => 'order_agora', 'updated_at' => '2026-10-22 09:55:00']);
+    pedido(['public_id' => 'order_esquecido', 'updated_at' => '2026-09-15 12:00:00']);
+    $comando->handle();
+    confere((linhaDoPedido('order_agora')['origem'] ?? null) === 'conferencia' && linhaDoPedido('order_esquecido') === [], 'com a tabela cheia: só os últimos 2 dias');
+    $comando->opcoes = ['historico' => true];
+    $comando->handle();
+    confere((linhaDoPedido('order_esquecido')['origem'] ?? null) === 'historico' && count(linhasDe('entregas_corridas_finalizadas')) === 4, '--historico: importa tudo de novo, sem repetir');
+    $comando->opcoes = [];
+    Banco::$falharAoConsultar['orders'] = new \RuntimeException('banco fora do ar');
+    confere($comando->handle() === 1 && logou('[entregas] sistema: conferência das corridas falhou', 'warning'), 'banco fora do ar: avisa e sai com FAILURE (a próxima rodada tenta de novo)');
+    unset(Banco::$falharAoConsultar['orders']);
+
+    echo '== Agenda (Kernel)' . PHP_EOL;
+    $schedule = new Schedule();
+    $metodo   = new ReflectionMethod(Kernel::class, 'schedule');
+    $metodo->setAccessible(true);
+    $metodo->invoke((new ReflectionClass(Kernel::class))->newInstanceWithoutConstructor(), $schedule);
+    $evento = null;
+    foreach ($schedule->eventos as $agendado) {
+        if ($agendado->comando === 'entregas:corridas-conferir') {
+            $evento = $agendado->chamadas;
+        }
+    }
+    confere($evento !== null && isset($evento['everyFiveMinutes']) && ($evento['withoutOverlapping'][0] ?? null) === 30 && isset($evento['runInBackground']) && ($evento['appendOutputTo'] ?? null) === ['/proc/1/fd/1'], 'a cada 5 min, withoutOverlapping(30), em segundo plano, saída no container');
+    confere($evento !== null && !isset($evento['when']), 'sem when(): não depende da ENTREGAS_FINANCEIRO');
+    confere(str_contains(file_get_contents('/repo/api/app/Console/Commands/Entregas/CorridasConferir.php'), "'entregas:corridas-conferir {--historico"), 'assinatura com --historico');
+
 
     resumo();
 }

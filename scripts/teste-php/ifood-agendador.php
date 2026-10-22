@@ -249,6 +249,10 @@ $avisosFin = $porComando['entregas:financeiro-avisos'] ?? null;
 unset($porComando['entregas:financeiro-avisos']);
 $rascunhos = $porComando['entregas:financeiro-rascunhos'] ?? null;
 unset($porComando['entregas:financeiro-rascunhos']);
+// as corridas do sistema não dependem de chave (sem when): conferidas no corridas-do-sistema.php
+$corridasDoSistema = $porComando['entregas:corridas-conferir'] ?? null;
+unset($porComando['entregas:corridas-conferir']);
+confere($corridasDoSistema !== null, 'entregas:corridas-conferir agendado (detalhes no corridas-do-sistema.php)');
 confere(array_keys($porComando) === ['entregas:ifood-polling', 'entregas:ifood-agendados', 'entregas:ifood-acompanhar', 'entregas:ifood-tokens'], 'os quatro comandos agendados');
 confere(isset($porComando['entregas:ifood-polling']['everyThirtySeconds']) && isset($porComando['entregas:ifood-agendados']['everyMinute']) && isset($porComando['entregas:ifood-acompanhar']['everyThirtySeconds']) && isset($porComando['entregas:ifood-tokens']['everyThirtyMinutes']), 'a cada 30 s, a cada minuto, a cada 30 s e a cada 30 min');
 foreach ($porComando as $comando => $chamadas) {
