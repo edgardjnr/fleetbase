@@ -15,6 +15,7 @@ $arquivos = array_merge(
     glob($app . '/Listeners/Entregas/*.php'),
     glob($app . '/Support/Entregas/Integracao/*.php'),
     glob($app . '/Support/Entregas/Financeiro/*.php'),
+    glob($app . '/Support/Entregas/Sistema/*.php'),
     [
         $app . '/Jobs/Entregas/AvancarOferta.php',
         $app . '/Jobs/Entregas/AvancarDistribuicao.php',
@@ -59,6 +60,9 @@ $arquivos = array_merge(
         $app . '/Support/Entregas/Ifood/PedidoDoIfood.php',
         $app . '/Support/Entregas/Ifood/CriadorDoPedidoIfood.php',
         $app . '/Http/Middleware/IncluirNotasNaListaDePedidos.php',
+        // corridas do sistema (relatório do dono); as classes de Support/Entregas/Sistema entram pelo glob acima
+        $app . '/Http/Controllers/Entregas/CorridasDoSistemaController.php',
+        $app . '/Console/Commands/Entregas/CorridasConferir.php',
     ]
 );
 

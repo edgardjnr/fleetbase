@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Http\Controllers\Entregas\ComprovantesController;
 use App\Http\Controllers\Entregas\ConversasDaLojaController;
+use App\Http\Controllers\Entregas\CorridasDoSistemaController;
 use App\Http\Controllers\Entregas\DistribuicaoController;
 use App\Http\Controllers\Entregas\EnderecosController;
 use App\Http\Controllers\Entregas\FinanceiroLojasController;
@@ -170,6 +171,13 @@ class RouteServiceProvider extends ServiceProvider
                         Route::put('financeiro/multiplicadores/{id}', [MultiplicadoresController::class, 'alterar']);
                         Route::post('financeiro/multiplicadores/{id}/encerrar', [MultiplicadoresController::class, 'encerrar']);
                         Route::delete('financeiro/multiplicadores/{id}', [MultiplicadoresController::class, 'apagar']);
+
+                        // corridas do sistema (relatório do dono, todas as organizações): CorridasDoSistemaController, só o
+                        // administrador do sistema (negarSeNaoDonoDoSistema)
+                        Route::get('sistema/corridas', [CorridasDoSistemaController::class, 'corridas']);
+                        Route::get('sistema/precos', [CorridasDoSistemaController::class, 'precos']);
+                        Route::post('sistema/precos', [CorridasDoSistemaController::class, 'criarPreco']);
+                        Route::delete('sistema/precos/{id}', [CorridasDoSistemaController::class, 'apagarPreco']);
 
                         // cadastro das lojas e dos usuários do portal (Fleet-Ops → Recursos → Lojas)
                         Route::get('lojas', [LojasController::class, 'index']);

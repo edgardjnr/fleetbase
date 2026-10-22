@@ -492,6 +492,53 @@ namespace {
     confere($evento !== null && !isset($evento['when']), 'sem when(): não depende da ENTREGAS_FINANCEIRO');
     confere(str_contains(file_get_contents('/repo/api/app/Console/Commands/Entregas/CorridasConferir.php'), "'entregas:corridas-conferir {--historico"), 'assinatura com --historico');
 
+    echo '== Controller (CorridasDoSistemaController)' . PHP_EOL;
+    preparar();
+    cadastros();
+    corrida('order_a1', 'central-a', '2026-10-05 09:31:00');
+    preco('central-a', '2.50', '2026-10-01');
+    foreach (['usuário comum (Administrator de organização)' => usuario('user'), 'sem sessão' => null] as $quem => $daSessao) {
+        Auth::$usuario = $daSessao;
+        foreach ([
+            'corridas'    => fn () => api()->corridas(req(['inicio' => '2026-10-01', 'fim' => '2026-10-31'])),
+            'precos'      => fn () => api()->precos(req()),
+            'criarPreco'  => fn () => api()->criarPreco(req(['company' => 'central-b', 'valor' => '3', 'vale_a_partir_de' => '2026-10-01'])),
+            'apagarPreco' => fn () => api()->apagarPreco(req(), '1'),
+        ] as $metodo => $chamar) {
+            $r = $chamar();
+            confere($r->status === 403 && erroDe($r) === 'Somente o administrador do sistema pode ver esta tela.', "{$metodo}: {$quem} → 403");
+        }
+    }
+    confere(count(linhasDe('entregas_precos_centrais')) === 1, '403: nada gravado nem apagado');
+
+    Auth::$usuario = usuario('admin');
+    $r = api()->corridas(req(['inicio' => '2026-10-01', 'fim' => '2026-10-31']));
+    confere($r->status === 200 && $r->dados['total'] === ['corridas' => 1, 'a_cobrar' => 2.5, 'sem_preco' => 0] && $r->dados['centrais'][0]['nome'] === 'Central Norte' && $r->dados['corridas'][0]['finalizada_em'] === '2026-10-05T09:31:00-03:00' && $r->dados['inicio'] === '2026-10-01' && $r->dados['lista_cortada'] === false, 'GET corridas: o relatório do período');
+    $r = api()->corridas(req(['inicio' => '2026-10-31', 'fim' => '2026-10-01']));
+    confere($r->status === 422 && erroDe($r) !== '', 'GET corridas com o fim antes do início: 422');
+    confere(api()->corridas(req())->status === 422, 'GET corridas sem período: 422');
+    $r = api()->precos(req());
+    confere($r->status === 200 && array_column($r->dados['centrais'], 'nome') === ['Central Norte', 'Central Sul'] && $r->dados['centrais'][0]['precos'][0]['valor'] === 2.5, 'GET precos: as organizações ativas, mesmo sem corrida');
+    $r = api()->criarPreco(req(['company' => 'central-b', 'valor' => '3,00', 'vale_a_partir_de' => '2026-10-01']));
+    $novo = linhasDe('entregas_precos_centrais')[1] ?? [];
+    confere($r->status === 200 && $r->dados['preco']['valor'] === 3.0 && $r->dados['preco']['company'] === 'central-b' && ($novo['criado_por'] ?? null) === 'user-edgard' && ($novo['created_at'] ?? null) === '2026-10-22 10:00:00', 'POST precos: grava com quem criou e a hora de Brasília');
+    $repetido = api()->criarPreco(req(['company' => 'central-b', 'valor' => '4', 'vale_a_partir_de' => '2026-10-01']));
+    confere($repetido->status === 422 && str_contains(erroDe($repetido), '01/10/2026'), 'POST com data repetida para a central: 422');
+    confere(api()->criarPreco(req(['company' => 'central-b', 'valor' => '1000,01', 'vale_a_partir_de' => '2026-10-02']))->status === 422, 'POST com valor fora da faixa: 422');
+    confere(api()->criarPreco(req(['company' => 'central-x', 'valor' => '2', 'vale_a_partir_de' => '2026-10-02']))->status === 422, 'POST para organização excluída: 422');
+    $id = (string) $r->dados['preco']['id'];
+    confere(api()->apagarPreco(req(), $id)->dados === ['apagado' => true] && api()->apagarPreco(req(), $id)->status === 404 && api()->apagarPreco(req(), 'abc')->status === 404, 'DELETE: apaga; de novo ou id inválido: 404');
+    Auth::$usuario = null;
+
+    echo '== Rotas' . PHP_EOL;
+    $rotas = file_get_contents('/repo/api/app/Providers/RouteServiceProvider.php');
+    confere(str_contains($rotas, 'use App\\Http\\Controllers\\Entregas\\CorridasDoSistemaController;'), 'RouteServiceProvider importa o controller');
+    $grupo = substr($rotas, (int) strpos($rotas, "Route::prefix('int/v1/entregas')"), max(0, (int) strpos($rotas, "Route::prefix('v1/entregas/motoboy')") - (int) strpos($rotas, "Route::prefix('int/v1/entregas')")));
+    foreach ([['get', 'sistema/corridas', 'corridas'], ['get', 'sistema/precos', 'precos'], ['post', 'sistema/precos', 'criarPreco'], ['delete', 'sistema/precos/{id}', 'apagarPreco']] as [$verbo, $caminho, $metodo]) {
+        confere(str_contains($grupo, "Route::{$verbo}('{$caminho}', [CorridasDoSistemaController::class, '{$metodo}'])") && method_exists(CorridasDoSistemaController::class, $metodo), strtoupper($verbo) . " {$caminho} → {$metodo} (grupo int/v1/entregas, fleetbase.protected)");
+    }
+    confere(!str_contains((string) file_get_contents('/repo/api/app/Http/Controllers/Entregas/CorridasDoSistemaController.php'), 'negarSeNaoAdmin('), 'o controller não usa o negarSeNaoAdmin do Financeiro');
+
 
     resumo();
 }
