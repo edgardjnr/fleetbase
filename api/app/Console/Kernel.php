@@ -58,7 +58,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('entregas:financeiro-rascunhos')->dailyAt('00:30')->when(fn () => Financeiro::ligada())->withoutOverlapping(30)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
 
         // corridas do sistema (relatório do dono, todas as organizações): grava as que o observador não gravou e, na
-        // primeira vez (tabela vazia), o histórico (CorridasConferir). Sem when(): não depende da chave do financeiro.
+        // primeira vez (até a importação terminar inteira), o histórico (CorridasConferir). Sem when(): não depende da chave
+        // do financeiro.
         // withoutOverlapping(30): a importação do histórico pode passar de 10 min
         $schedule->command('entregas:corridas-conferir')->everyFiveMinutes()->withoutOverlapping(30)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
     }

@@ -206,10 +206,10 @@ namespace {
     pedido(['public_id' => 'order_h_cancelado', 'status' => 'canceled', 'tracking_number_uuid' => 'rastreio-h', 'updated_at' => '2026-01-01 12:00:00']);
     concluidoNoRastreio('rastreio-h', '2025-12-31 23:50:00');
     pedido(['public_id' => 'order_h_aberto', 'status' => 'created', 'updated_at' => '2026-01-01 12:00:00']);
-    confere(CorridasFinalizadas::vazia(), 'tabela vazia antes');
+    confere(linhasDe('entregas_corridas_finalizadas') === [], 'tabela vazia antes');
     confere(CorridasFinalizadas::importarHistorico(2) === 6, 'importa tudo, em lotes de 2, sem limite de data');
     confere(array_values(array_unique(array_column(linhasDe('entregas_corridas_finalizadas'), 'origem'))) === ['historico'] && linhaDoPedido('order_h_cancelado')['finalizada_em'] === '2025-12-31 23:50:00' && linhaDoPedido('order_h_aberto') === [], 'origem historico; o cancelado depois de finalizado entra; o aberto não');
-    confere(CorridasFinalizadas::importarHistorico(2) === 0 && count(linhasDe('entregas_corridas_finalizadas')) === 6 && !CorridasFinalizadas::vazia(), 'de novo: nada (idempotente)');
+    confere(CorridasFinalizadas::importarHistorico(2) === 0 && count(linhasDe('entregas_corridas_finalizadas')) === 6, 'de novo: nada (idempotente)');
 
     echo '== Histórico: vários lotes de COMPLETED no rastreio' . PHP_EOL;
     preparar();
@@ -374,6 +374,9 @@ namespace {
     echo '== Observador (Order::updated)' . PHP_EOL;
     preparar();
     cadastros();
+    // a chave do financeiro desligada: o registro do dono não depende dela
+    \Teste\Config::$valores['services.entregas.financeiro'] = false;
+    confere(!\App\Support\Entregas\Financeiro\Financeiro::ligada(), 'ENTREGAS_FINANCEIRO desligada nos testes do observador');
     $concluido = function (string $publicId, string $status, array $alterados = ['status']) {
         $pedido            = new Order(['uuid' => 'uuid-' . $publicId, 'public_id' => $publicId, 'company_uuid' => 'central-a', 'status' => $status, 'internal_id' => '77', 'customer_uuid' => 'loja-1', 'driver_assigned_uuid' => 'motoboy-1', 'tracking_number_uuid' => null]);
         $pedido->alterados = $alterados;
@@ -419,14 +422,17 @@ namespace {
     cadastros();
     pedido(['public_id' => 'order_velho', 'updated_at' => '2026-09-01 12:00:00']);
     pedido(['public_id' => 'order_ontem', 'updated_at' => '2026-10-21 18:00:00']);
+    $marca   = fn () => \Fleetbase\Models\Setting::$valores[CorridasConferir::MARCA_DO_HISTORICO] ?? null;
     $comando = new CorridasConferir();
+    confere(CorridasConferir::MARCA_DO_HISTORICO === 'entregas.sistema.historico_importado' && $marca() === null, 'sem a marca antes da primeira rodada');
     confere($comando->handle() === 0, 'sai com SUCCESS');
-    confere(pedidosRegistrados() === ['order_ontem', 'order_velho'] && array_values(array_unique(array_column(linhasDe('entregas_corridas_finalizadas'), 'origem'))) === ['historico'], 'tabela vazia (primeira rodada depois do deploy): importa o histórico inteiro');
+    confere(pedidosRegistrados() === ['order_ontem', 'order_velho'] && array_values(array_unique(array_column(linhasDe('entregas_corridas_finalizadas'), 'origem'))) === ['historico'], 'sem a marca (primeira rodada depois do deploy): importa o histórico inteiro');
+    confere($marca() === '2026-10-22 10:00:00', 'grava a marca com a hora de Brasília do fim da importação');
     confere(logou('[entregas] sistema: histórico das corridas importado', 'info'), 'avisa no log quantas o histórico trouxe');
     pedido(['public_id' => 'order_agora', 'updated_at' => '2026-10-22 09:55:00']);
     pedido(['public_id' => 'order_esquecido', 'updated_at' => '2026-09-15 12:00:00']);
     $comando->handle();
-    confere((linhaDoPedido('order_agora')['origem'] ?? null) === 'conferencia' && linhaDoPedido('order_esquecido') === [], 'com a tabela cheia: só os últimos 2 dias');
+    confere((linhaDoPedido('order_agora')['origem'] ?? null) === 'conferencia' && linhaDoPedido('order_esquecido') === [], 'com a marca: só os últimos 2 dias');
     $comando->opcoes = ['historico' => true];
     $comando->handle();
     confere((linhaDoPedido('order_esquecido')['origem'] ?? null) === 'historico' && count(linhasDe('entregas_corridas_finalizadas')) === 4, '--historico: importa tudo de novo, sem repetir');
@@ -434,6 +440,42 @@ namespace {
     Banco::$falharAoConsultar['orders'] = new \RuntimeException('banco fora do ar');
     confere($comando->handle() === 1 && logou('[entregas] sistema: conferência das corridas falhou', 'warning'), 'banco fora do ar: avisa e sai com FAILURE (a próxima rodada tenta de novo)');
     unset(Banco::$falharAoConsultar['orders']);
+
+    echo '== Comando: com a marca, sem reimportar' . PHP_EOL;
+    pedido(['public_id' => 'order_depois_da_marca', 'updated_at' => '2026-09-20 12:00:00']);
+    confere($comando->handle() === 0 && linhaDoPedido('order_depois_da_marca') === [], 'com a marca gravada e sem --historico: não reimporta');
+    Relogio::$agora  = '2026-10-22 11:00:00';
+    $comando->opcoes = ['historico' => true];
+    confere($comando->handle() === 0 && (linhaDoPedido('order_depois_da_marca')['origem'] ?? null) === 'historico' && $marca() === '2026-10-22 11:00:00', '--historico com a marca: importa de novo e regrava a marca');
+    $comando->opcoes = [];
+
+    echo '== Comando: observador grava antes da primeira rodada' . PHP_EOL;
+    preparar();
+    cadastros();
+    pedido(['public_id' => 'order_antigo', 'updated_at' => '2026-08-01 12:00:00']);
+    CorridasFinalizadas::registrarPedido(pedido(['public_id' => 'order_recem_concluido', 'updated_at' => '2026-10-22 09:59:00']), CorridasFinalizadas::CONCLUSAO, '2026-10-22 09:59:00');
+    confere(count(linhasDe('entregas_corridas_finalizadas')) === 1, 'tabela já com a linha conclusao do observador');
+    confere($comando->handle() === 0 && (linhaDoPedido('order_antigo')['origem'] ?? null) === 'historico' && linhaDoPedido('order_recem_concluido')['origem'] === 'conclusao' && $marca() === '2026-10-22 10:00:00', 'mesmo assim importa o histórico e grava a marca');
+
+    echo '== Comando: falha no meio do histórico' . PHP_EOL;
+    preparar();
+    cadastros();
+    pedido(['public_id' => 'order_h_concluido', 'updated_at' => '2026-08-01 12:00:00']);
+    pedido(['public_id' => 'order_h_antigo', 'status' => 'canceled', 'tracking_number_uuid' => 'rastreio-antigo', 'updated_at' => '2026-08-02 12:00:00']);
+    concluidoNoRastreio('rastreio-antigo', '2026-08-02 11:00:00');
+    pedido(['public_id' => 'order_h_recente', 'status' => 'canceled', 'tracking_number_uuid' => 'rastreio-recente', 'updated_at' => '2026-10-22 09:30:00']);
+    concluidoNoRastreio('rastreio-recente', '2026-10-22 09:20:00');
+    // o 1º insert (fase dos pedidos concluídos) passa; o 2º (fase do rastreio) falha como banco fora do ar, uma vez
+    Banco::$antesDeInserir['entregas_corridas_finalizadas'] = function () {
+        Banco::$antesDeInserir['entregas_corridas_finalizadas'] = function () {
+            Banco::$falharComo['entregas_corridas_finalizadas'] = ['HY000', 2006];
+        };
+    };
+    confere($comando->handle() === 1 && logou('[entregas] sistema: conferência das corridas falhou', 'warning'), 'falha no histórico: avisa e sai com FAILURE');
+    confere(linhaDoPedido('order_h_concluido')['origem'] === 'historico' && linhaDoPedido('order_h_antigo') === [] && $marca() === null, 'histórico parou no meio: a marca NÃO é gravada');
+    confere((linhaDoPedido('order_h_recente')['origem'] ?? null) === 'conferencia', 'a conferência dos 2 dias roda mesmo assim');
+    Relogio::$agora = '2026-10-22 10:05:00';
+    confere($comando->handle() === 0 && (linhaDoPedido('order_h_antigo')['origem'] ?? null) === 'historico' && $marca() === '2026-10-22 10:05:00' && count(linhasDe('entregas_corridas_finalizadas')) === 3, 'a rodada seguinte completa o histórico e grava a marca');
 
     echo '== Agenda (Kernel)' . PHP_EOL;
     $schedule = new Schedule();

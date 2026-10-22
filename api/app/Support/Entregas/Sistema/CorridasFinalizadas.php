@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\DB;
  * (cancelar, excluir o pedido ou o deploy/zerar-pedidos não tiram). Nomes da loja e do motoboy gravados na hora.
  *
  * Quem grava: o ObservadorDasCorridasDoSistema (Order::updated, origem `conclusao`, hora = agora), o
- * entregas:corridas-conferir a cada 5 min (últimos 2 dias, origem `conferencia`) e, com a tabela vazia ou --historico,
- * tudo o que está no banco (origem `historico`). Gravar é idempotente (insertOrIgnore pelo order_uuid): fica a primeira.
+ * entregas:corridas-conferir a cada 5 min (últimos 2 dias, origem `conferencia`) e, enquanto a marca
+ * `entregas.sistema.historico_importado` não existir (ou com --historico), tudo o que está no banco (origem `historico`). Gravar é idempotente (insertOrIgnore pelo order_uuid): fica a primeira.
  *
  * Lê pelo DB::table (sem os escopos do Eloquent): o pedido excluído (deleted_at) também entra. Horários em Brasília,
  * texto 'Y-m-d H:i:s' (ver "Fuso" em api/CLAUDE.md). Spec: docs/superpowers/specs/2026-10-22-corridas-do-sistema-design.md.
@@ -34,11 +34,6 @@ final class CorridasFinalizadas
 
     /** As colunas de orders que o registro lê (o id pagina o histórico); o resto do pedido não vem do banco. */
     public const COLUNAS_DO_PEDIDO = ['id', 'uuid', 'company_uuid', 'public_id', 'internal_id', 'customer_uuid', 'driver_assigned_uuid', 'tracking_number_uuid', 'updated_at'];
-
-    public static function vazia(): bool
-    {
-        return !DB::table(static::TABELA)->exists();
-    }
 
     /** Grava a corrida de um pedido (o observador passa a hora da conclusão). true se gravou agora. */
     public static function registrarPedido(object $pedido, string $origem, ?string $finalizadaEm = null): bool
