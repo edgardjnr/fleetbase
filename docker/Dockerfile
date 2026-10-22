@@ -1,6 +1,8 @@
 # syntax = docker/dockerfile:1.2
 # Base stage
-FROM dunglas/frankenphp:1.12.4-php8.2-bookworm AS base
+# A tag fixa congela o PHP (1.12.4 = PHP 8.2.32): rebuild não atualiza. 1.13.2 = PHP 8.2.35, corrige o PHP2Shell
+# (CVE-2026-109618/109619, RCE sem login). Ao trocar, confira o PHP_VERSION da tag nova (arm64) e as notas do FrankenPHP.
+FROM dunglas/frankenphp:1.13.2-php8.2-bookworm AS base
 
 # Install packages
 RUN apt-get update && apt-get install -y git bind9-utils mycli nodejs npm nano uuid-runtime \
@@ -53,7 +55,8 @@ RUN curl -fsSL -o php-geos.zip \
 # Update PHP configurations
 RUN sed -e 's/^expose_php.*/expose_php = Off/' "$PHP_INI_DIR/php.ini-production" > "$PHP_INI_DIR/php.ini" \
   && sed -i -e 's/^upload_max_filesize.*/upload_max_filesize = 600M/' -e 's/^post_max_size.*/post_max_size = 0/' \
-  -e 's/^memory_limit.*/memory_limit = 600M/' "$PHP_INI_DIR/php.ini"
+  -e 's/^memory_limit.*/memory_limit = 600M/' "$PHP_INI_DIR/php.ini" \
+  && echo 'session.upload_progress.enabled = 0' > "$PHP_INI_DIR/conf.d/zz-entregas-seguranca.ini"
 
 # Install global node modules
 RUN npm install -g chokidar pnpm ember-cli npm-cli-login
