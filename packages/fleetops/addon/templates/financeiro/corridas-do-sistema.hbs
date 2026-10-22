@@ -2,7 +2,7 @@
     <div class="flex items-center space-x-2">
         <Button @icon="refresh" @size="sm" @helpText={{t "common.reload"}} @isLoading={{this.carregar.isRunning}} @onClick={{this.recarregar}} />
         <Button @icon="file-export" @size="sm" @text={{t "fleet-ops.ui.financeiro.corridas-do-sistema.exportar"}} @disabled={{not this.relatorio}} @onClick={{this.exportarCsv}} />
-        <Button @type="primary" @icon="plus" @size="sm" @text={{t "fleet-ops.ui.financeiro.corridas-do-sistema.novo-preco"}} @onClick={{this.novoPreco}} />
+        <Button @type="primary" @icon="plus" @size="sm" @text={{t "fleet-ops.ui.financeiro.corridas-do-sistema.novo-preco"}} @disabled={{or this.carregarPrecos.isRunning (not this.centraisDosPrecos.length)}} @onClick={{this.novoPreco}} />
     </div>
 </Layout::Section::Header>
 
