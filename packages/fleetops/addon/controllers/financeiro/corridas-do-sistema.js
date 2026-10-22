@@ -54,6 +54,7 @@ export default class FinanceiroCorridasDoSistemaController extends Controller {
         this.carregar.cancelAll();
         this.carregarPrecos.cancelAll();
         this.relatorio = null;
+        this.centraisDosPrecos = [];
     }
 
     @action valor(numero) {
@@ -105,6 +106,8 @@ export default class FinanceiroCorridasDoSistemaController extends Controller {
         try {
             this.relatorio = yield this.fetch.get(`${ENDPOINT}/corridas`, { inicio: this.inicio, fim: this.fim });
         } catch (error) {
+            // sem os dados de outro período na tela
+            this.relatorio = null;
             this.notifications.serverError(error);
         }
     }
@@ -162,7 +165,7 @@ export default class FinanceiroCorridasDoSistemaController extends Controller {
         if (!this.relatorio) {
             return;
         }
-        const linhas = linhasCsvDasCorridas(this.relatorio, (chave) => this.intl.t(chave));
+        const linhas = linhasCsvDasCorridas(this.relatorio, (chave, opcoes) => this.intl.t(chave, opcoes));
         const blob = new Blob(['\uFEFF' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');

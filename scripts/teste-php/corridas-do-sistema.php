@@ -504,6 +504,12 @@ namespace {
             'precos'      => fn () => api()->precos(req()),
             'criarPreco'  => fn () => api()->criarPreco(req(['company' => 'central-b', 'valor' => '3', 'vale_a_partir_de' => '2026-10-01'])),
             'apagarPreco' => fn () => api()->apagarPreco(req(), '1'),
+            // entrada inválida também dá 403 (a trava vem antes da validação; nada de 422 ou 404 para quem não é admin)
+            'corridas sem período'           => fn () => api()->corridas(req()),
+            'corridas com o fim antes'       => fn () => api()->corridas(req(['inicio' => '2026-10-31', 'fim' => '2026-10-01'])),
+            'criarPreco sem campos'          => fn () => api()->criarPreco(req()),
+            "apagarPreco('abc')"             => fn () => api()->apagarPreco(req(), 'abc'),
+            'apagarPreco de id que não existe' => fn () => api()->apagarPreco(req(), '999999'),
         ] as $metodo => $chamar) {
             $r = $chamar();
             confere($r->status === 403 && erroDe($r) === 'Somente o administrador do sistema pode ver esta tela.', "{$metodo}: {$quem} → 403");

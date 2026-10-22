@@ -25,7 +25,7 @@ const TEXTOS_PADRAO = {
     corridas: 'Corridas',
     preco: 'Preço',
     'a-cobrar': 'A cobrar',
-    'sem-preco': 'Sem preço',
+    'csv-sem-preco': 'Sem preço',
     variado: 'variado',
     total: 'Total',
     'data-hora': 'Data e hora',
@@ -38,6 +38,7 @@ const TEXTOS_PADRAO = {
     'origens.conferencia': 'Na conferência',
     'origens.historico': 'Histórico',
     'origens.outra': 'Outra',
+    'lista-cortada': 'A lista mostra as primeiras {count} corridas; os totais contam todas. Diminua o período para ver o resto.',
 };
 
 const valorCsv = (valor) => (Number(valor) || 0).toFixed(2).replace('.', ',');
@@ -70,15 +71,19 @@ export function dataHoraDoIso(iso) {
 }
 
 /**
- * Linhas do CSV (sem o BOM; quem baixa junta com \r\n e põe o ﻿ na frente): por central (Central; Corridas; Preço;
+ * Linhas do CSV (sem o BOM; quem baixa junta com \r\n e põe o BOM na frente): por central (Central; Corridas; Preço;
  * A cobrar; Sem preço) com a linha do total, uma linha em branco e as corridas (Data e hora; Central; Pedido; Nº; Loja;
- * Motoboy; Preço; Origem). Valores com vírgula; preço "variado" ou vazio (sem preço). `t(chave)` traduz (chaves
+ * Motoboy; Preço; Origem). Valores com vírgula; preço "variado" ou vazio (sem preço). Com `lista_cortada`, uma linha
+ * final com o aviso (o arquivo não parece completo). `t(chave, opcoes)` traduz (chaves
  * fleet-ops.ui.financeiro.corridas-do-sistema.*); sem ele, pt-BR.
  */
 export function linhasCsvDasCorridas(relatorio, t = null) {
-    const texto = (chave) => (typeof t === 'function' ? t(`${PREFIXO}.${chave}`) : (TEXTOS_PADRAO[chave] ?? chave));
+    const texto = (chave, opcoes = {}) =>
+        typeof t === 'function'
+            ? t(`${PREFIXO}.${chave}`, opcoes)
+            : String(TEXTOS_PADRAO[chave] ?? chave).replace(/\{(\w+)\}/g, (inteiro, nome) => (nome in opcoes ? String(opcoes[nome]) : inteiro));
     const cabecalho = (chaves) => chaves.map((chave) => celulaCsv(texto(chave))).join(';');
-    const linhas = [cabecalho(['central', 'corridas', 'preco', 'a-cobrar', 'sem-preco'])];
+    const linhas = [cabecalho(['central', 'corridas', 'preco', 'a-cobrar', 'csv-sem-preco'])];
 
     for (const central of relatorio?.centrais ?? []) {
         const preco = precoDaCentral(central.precos);
@@ -103,6 +108,10 @@ export function linhasCsvDasCorridas(relatorio, t = null) {
                 celulaCsv(texto(origemCurta(corrida.origem))),
             ].join(';')
         );
+    }
+    if (relatorio?.lista_cortada === true) {
+        linhas.push('');
+        linhas.push(celulaCsv(texto('lista-cortada', { count: (relatorio?.corridas ?? []).length })));
     }
 
     return linhas;

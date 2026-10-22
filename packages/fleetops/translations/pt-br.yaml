@@ -860,6 +860,7 @@ fleet-ops:
         preco: Preço
         variado: variado
         sem-preco: sem preço
+        csv-sem-preco: Sem preço
         selo-sem-preco: '{count} sem preço'
         total: Total
         vazio: Nenhuma corrida finalizada no período.

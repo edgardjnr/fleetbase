@@ -63,7 +63,28 @@ test('CSV com tradutor: as chaves de fleet-ops.ui.financeiro.corridas-do-sistema
     const linhas = linhasCsvDasCorridas(relatorio, (chave) => chave);
     assert.equal(linhas[0].split(';')[0], `"${PREFIXO}.central"`);
     assert.equal(linhas[1].split(';')[2], `"${PREFIXO}.variado"`);
+    assert.equal(linhas[0].split(';').at(-1), `"${PREFIXO}.csv-sem-preco"`);
     assert.equal(linhas[6].split(';').at(-1), `"${PREFIXO}.origens.conclusao"`);
+});
+
+test('CSV com a lista cortada: linha final com o aviso (o arquivo não parece completo)', () => {
+    const cortado = { ...relatorio, lista_cortada: true };
+    const linhas = linhasCsvDasCorridas(cortado);
+    assert.equal(linhas.length, 10);
+    assert.equal(linhas.at(-2), '');
+    assert.equal(linhas.at(-1), '"A lista mostra as primeiras 2 corridas; os totais contam todas. Diminua o período para ver o resto."');
+
+    const chamadas = [];
+    const traduzidas = linhasCsvDasCorridas(cortado, (chave, opcoes) => {
+        chamadas.push([chave, opcoes]);
+        return chave;
+    });
+    assert.equal(traduzidas.at(-1), `"${PREFIXO}.lista-cortada"`);
+    assert.deepEqual(chamadas.at(-1), [`${PREFIXO}.lista-cortada`, { count: 2 }]);
+
+    // sem lista_cortada (ou com outro valor que não true): sem a linha
+    assert.equal(linhasCsvDasCorridas(relatorio).length, 8);
+    assert.equal(linhasCsvDasCorridas({ ...relatorio, lista_cortada: 'sim' }).length, 8);
 });
 
 test('CSV sem relatório: cabeçalhos e o total zerado', () => {

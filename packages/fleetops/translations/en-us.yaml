@@ -860,6 +860,7 @@ fleet-ops:
                 preco: Price
                 variado: varied
                 sem-preco: no price
+                csv-sem-preco: No price
                 selo-sem-preco: '{count} without price'
                 total: Total
                 vazio: No ride finished in the period.
