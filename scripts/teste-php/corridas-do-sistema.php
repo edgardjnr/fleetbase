@@ -167,6 +167,11 @@ namespace {
     confere((linhaDoPedido('order_a5')['finalizada_em'] ?? null) === '2026-10-22 09:00:00', 'updated_at em Carbon UTC: gravado na hora de Brasília');
     confere(CorridasFinalizadas::registrarLote([(object) ['uuid' => 'sem-empresa', 'public_id' => 'order_x']], CorridasFinalizadas::CONFERENCIA) === 0, 'pedido sem organização: ignorado');
     confere(CorridasFinalizadas::iso('2026-10-22 09:31:00') === '2026-10-22T09:31:00-03:00', 'iso: o instante com o fuso de Brasília');
+    $completo = pedido(['public_id' => 'order_a6', 'internal_id' => '77', 'customer_uuid' => 'loja-1', 'driver_assigned_uuid' => 'motoboy-1', 'tracking_number_uuid' => 'rastreio-a6', 'updated_at' => '2026-10-22 09:45:00']);
+    concluidoNoRastreio('rastreio-a6', '2026-10-22 09:44:00');
+    $soAsColunas = (object) array_intersect_key((array) $completo, array_flip(CorridasFinalizadas::COLUNAS_DO_PEDIDO));
+    $l6 = CorridasFinalizadas::registrarLote([$soAsColunas], CorridasFinalizadas::CONFERENCIA) === 1 ? linhaDoPedido('order_a6') : [];
+    confere(($l6['numero'] ?? null) === '77' && $l6['loja_nome'] === 'Pizzaria Boa' && $l6['motoboy_nome'] === 'Carlos Silva' && $l6['finalizada_em'] === '2026-10-22 09:44:00', 'só com COLUNAS_DO_PEDIDO (o select das consultas de orders): a linha sai completa');
 
     echo '== Conferência (CorridasFinalizadas::conferir)' . PHP_EOL;
     preparar();
@@ -188,6 +193,9 @@ namespace {
     confere(linhaDoPedido('order_cancelado_depois')['finalizada_em'] === '2026-10-22 09:30:00' && linhaDoPedido('order_cancelado_depois')['origem'] === 'conferencia', 'o cancelado depois de finalizado: pela hora do COMPLETED');
     confere(linhaDoPedido('order_ja_tem')['origem'] === 'conclusao', 'o que já tinha linha fica como estava');
     confere(CorridasFinalizadas::conferir('2026-10-20 10:00:00') === 0, 'de novo: nada');
+    pedido(['public_id' => 'order_excluido_inteiro', 'status' => 'canceled', 'tracking_number_uuid' => 'rastreio-ei', 'updated_at' => '2026-10-22 09:55:00', 'deleted_at' => '2026-10-22 09:56:00']);
+    Banco::inserir('tracking_statuses', ['tracking_number_uuid' => 'rastreio-ei', 'code' => 'COMPLETED', 'company_uuid' => 'central-a', 'created_at' => '2026-10-22 09:40:00', 'deleted_at' => '2026-10-22 09:56:00'], false);
+    confere(CorridasFinalizadas::conferir('2026-10-20 10:00:00') === 1 && linhaDoPedido('order_excluido_inteiro')['finalizada_em'] === '2026-10-22 09:40:00', 'pedido excluído com o COMPLETED do rastreio também excluído: conta, pela hora do COMPLETED');
 
     echo '== Histórico (CorridasFinalizadas::importarHistorico)' . PHP_EOL;
     preparar();
@@ -202,6 +210,18 @@ namespace {
     confere(CorridasFinalizadas::importarHistorico(2) === 6, 'importa tudo, em lotes de 2, sem limite de data');
     confere(array_values(array_unique(array_column(linhasDe('entregas_corridas_finalizadas'), 'origem'))) === ['historico'] && linhaDoPedido('order_h_cancelado')['finalizada_em'] === '2025-12-31 23:50:00' && linhaDoPedido('order_h_aberto') === [], 'origem historico; o cancelado depois de finalizado entra; o aberto não');
     confere(CorridasFinalizadas::importarHistorico(2) === 0 && count(linhasDe('entregas_corridas_finalizadas')) === 6 && !CorridasFinalizadas::vazia(), 'de novo: nada (idempotente)');
+
+    echo '== Histórico: vários lotes de COMPLETED no rastreio' . PHP_EOL;
+    preparar();
+    cadastros();
+    foreach ([1, 2, 3, 4, 5] as $i) {
+        pedido(['public_id' => "order_r{$i}", 'status' => 'canceled', 'tracking_number_uuid' => "rastreio-r{$i}", 'updated_at' => '2026-01-10 12:00:00']);
+        concluidoNoRastreio("rastreio-r{$i}", "2026-01-0{$i} 20:00:00");
+    }
+    concluidoNoRastreio('rastreio-r5', '2026-01-09 20:00:00');
+    confere(CorridasFinalizadas::importarHistorico(2) === 5, 'só pelo rastreio: 6 COMPLETED em lotes de 2 (2 + 2 + 2 + vazio), os 5 pedidos');
+    confere(pedidosRegistrados() === ['order_r1', 'order_r2', 'order_r3', 'order_r4', 'order_r5'] && linhaDoPedido('order_r1')['finalizada_em'] === '2026-01-01 20:00:00' && linhaDoPedido('order_r5')['finalizada_em'] === '2026-01-05 20:00:00', 'cada um pelo primeiro COMPLETED do seu rastreio');
+    confere(CorridasFinalizadas::importarHistorico(2) === 0, 'de novo: nada');
 
     resumo();
 }

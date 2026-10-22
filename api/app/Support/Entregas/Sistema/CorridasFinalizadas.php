@@ -32,6 +32,9 @@ final class CorridasFinalizadas
     /** Pedidos por consulta (whereIn e insertOrIgnore) e por lote do histórico. */
     public const LOTE = 500;
 
+    /** As colunas de orders que o registro lê (o id pagina o histórico); o resto do pedido não vem do banco. */
+    public const COLUNAS_DO_PEDIDO = ['id', 'uuid', 'company_uuid', 'public_id', 'internal_id', 'customer_uuid', 'driver_assigned_uuid', 'tracking_number_uuid', 'updated_at'];
+
     public static function vazia(): bool
     {
         return !DB::table(static::TABELA)->exists();
@@ -101,11 +104,11 @@ final class CorridasFinalizadas
      */
     public static function conferir(string $desde): int
     {
-        $pedidos = DB::table('orders')->whereIn('status', static::CONCLUIDOS)->where('updated_at', '>=', $desde)->get()->all();
+        $pedidos = DB::table('orders')->select(static::COLUNAS_DO_PEDIDO)->whereIn('status', static::CONCLUIDOS)->where('updated_at', '>=', $desde)->get()->all();
 
         $rastreios = DB::table('tracking_statuses')->where('code', 'COMPLETED')->where('created_at', '>=', $desde)->pluck('tracking_number_uuid')->all();
         foreach (array_chunk(static::distintos($rastreios), static::LOTE) as $lote) {
-            array_push($pedidos, ...DB::table('orders')->whereIn('tracking_number_uuid', $lote)->get()->all());
+            array_push($pedidos, ...DB::table('orders')->select(static::COLUNAS_DO_PEDIDO)->whereIn('tracking_number_uuid', $lote)->get()->all());
         }
 
         return static::registrarLote($pedidos, static::CONFERENCIA);
@@ -121,7 +124,7 @@ final class CorridasFinalizadas
 
         $ultimo = 0;
         do {
-            $pedidos = DB::table('orders')->whereIn('status', static::CONCLUIDOS)->where('id', '>', $ultimo)->orderBy('id')->limit($lote)->get()->all();
+            $pedidos = DB::table('orders')->select(static::COLUNAS_DO_PEDIDO)->whereIn('status', static::CONCLUIDOS)->where('id', '>', $ultimo)->orderBy('id')->limit($lote)->get()->all();
             if ($pedidos !== []) {
                 $ultimo = (int) $pedidos[count($pedidos) - 1]->id;
                 $gravadas += static::registrarLote($pedidos, static::HISTORICO);
@@ -130,12 +133,12 @@ final class CorridasFinalizadas
 
         $ultimo = 0;
         do {
-            $status = DB::table('tracking_statuses')->where('code', 'COMPLETED')->where('id', '>', $ultimo)->orderBy('id')->limit($lote)->get()->all();
+            $status = DB::table('tracking_statuses')->select(['id', 'tracking_number_uuid'])->where('code', 'COMPLETED')->where('id', '>', $ultimo)->orderBy('id')->limit($lote)->get()->all();
             if ($status !== []) {
                 $ultimo    = (int) $status[count($status) - 1]->id;
                 $rastreios = static::distintos(array_map(fn ($linha) => $linha->tracking_number_uuid ?? null, $status));
                 if ($rastreios !== []) {
-                    $gravadas += static::registrarLote(DB::table('orders')->whereIn('tracking_number_uuid', $rastreios)->get()->all(), static::HISTORICO);
+                    $gravadas += static::registrarLote(DB::table('orders')->select(static::COLUNAS_DO_PEDIDO)->whereIn('tracking_number_uuid', $rastreios)->get()->all(), static::HISTORICO);
                 }
             }
         } while (count($status) === $lote);
@@ -177,7 +180,7 @@ final class CorridasFinalizadas
         }
 
         $primeiras = [];
-        foreach (DB::table('tracking_statuses')->where('code', 'COMPLETED')->whereIn('tracking_number_uuid', $rastreios)->get() as $status) {
+        foreach (DB::table('tracking_statuses')->select(['tracking_number_uuid', 'created_at'])->where('code', 'COMPLETED')->whereIn('tracking_number_uuid', $rastreios)->get() as $status) {
             $rastreio = (string) $status->tracking_number_uuid;
             $quando   = static::texto($status->created_at ?? null);
             if ($quando !== null && (!isset($primeiras[$rastreio]) || $quando < $primeiras[$rastreio])) {
