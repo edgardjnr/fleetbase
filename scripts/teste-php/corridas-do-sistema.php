@@ -371,6 +371,49 @@ namespace {
     }
     confere(is_array(RelatorioDasCorridas::montar('2024-01-01', '2024-12-31')), '366 dias (ano bissexto inteiro): pode');
 
+    echo '== Observador (Order::updated)' . PHP_EOL;
+    preparar();
+    cadastros();
+    $concluido = function (string $publicId, string $status, array $alterados = ['status']) {
+        $pedido            = new Order(['uuid' => 'uuid-' . $publicId, 'public_id' => $publicId, 'company_uuid' => 'central-a', 'status' => $status, 'internal_id' => '77', 'customer_uuid' => 'loja-1', 'driver_assigned_uuid' => 'motoboy-1', 'tracking_number_uuid' => null]);
+        $pedido->alterados = $alterados;
+
+        return $pedido;
+    };
+    Relogio::$agora = '2026-10-22 10:07:00';
+    ObservadorDasCorridasDoSistema::aoAtualizar($concluido('order_obs', 'completed'));
+    $l = linhaDoPedido('order_obs');
+    confere(($l['origem'] ?? null) === 'conclusao' && $l['finalizada_em'] === '2026-10-22 10:07:00' && $l['motoboy_nome'] === 'Carlos Silva' && $l['loja_nome'] === 'Pizzaria Boa', 'concluído: grava com a hora de agora (Brasília) e origem conclusao');
+    ObservadorDasCorridasDoSistema::aoAtualizar($concluido('order_obs_done', 'DONE'));
+    confere(linhaDoPedido('order_obs_done') !== [], 'done (com maiúsculas, da API v1): grava');
+    ObservadorDasCorridasDoSistema::aoAtualizar($concluido('order_obs_andamento', 'enroute'));
+    ObservadorDasCorridasDoSistema::aoAtualizar($concluido('order_obs_cancelado', 'canceled'));
+    ObservadorDasCorridasDoSistema::aoAtualizar($concluido('order_obs_outro_campo', 'completed', ['meta']));
+    confere(linhaDoPedido('order_obs_andamento') === [] && linhaDoPedido('order_obs_cancelado') === [] && linhaDoPedido('order_obs_outro_campo') === [], 'outro status, cancelado ou status que não mudou: nada');
+    ObservadorDasCorridasDoSistema::aoAtualizar($concluido('order_obs', 'completed'));
+    confere(count(array_filter(linhasDe('entregas_corridas_finalizadas'), fn ($linha) => $linha['pedido'] === 'order_obs')) === 1, 'concluído de novo (reaberto): continua uma linha só');
+
+    pedido(['public_id' => 'order_obs_relido', 'internal_id' => '88', 'customer_uuid' => 'loja-1', 'driver_assigned_uuid' => 'motoboy-1', 'tracking_number_uuid' => 'rastreio-relido', 'updated_at' => '2026-10-22 10:07:00']);
+    concluidoNoRastreio('rastreio-relido', '2026-10-22 09:01:00');
+    $parcial            = new Order(['uuid' => 'uuid-order_obs_relido', 'status' => 'completed']); // carregado com select parcial
+    $parcial->alterados = ['status'];
+    ObservadorDasCorridasDoSistema::aoAtualizar($parcial);
+    $l = linhaDoPedido('order_obs_relido');
+    confere(($l['company_uuid'] ?? null) === 'central-a' && $l['numero'] === '88' && $l['loja_nome'] === 'Pizzaria Boa' && $l['motoboy_nome'] === 'Carlos Silva' && $l['finalizada_em'] === '2026-10-22 10:07:00', 'model só com uuid e status: relê o pedido do banco e grava completo, com a hora de agora');
+
+    Banco::$falhar['entregas_corridas_finalizadas'] = 'banco fora do ar';
+    confere(excecao(fn () => ObservadorDasCorridasDoSistema::aoAtualizar($concluido('order_obs_falha', 'completed'))) === null && logou('[entregas] sistema: falha ao registrar a corrida finalizada', 'warning'), 'banco fora do ar: não lança (a conclusão segue), só avisa no log');
+    confere(logsSem(['Carlos Silva', 'Pizzaria Boa']), 'o log não leva nomes');
+    unset(Banco::$falhar['entregas_corridas_finalizadas']);
+    Banco::$falharAoConsultar['orders'] = new \RuntimeException('banco fora do ar');
+    confere(excecao(fn () => ObservadorDasCorridasDoSistema::aoAtualizar($concluido('order_obs_sem_leitura', 'completed'))) === null, 'falha ao reler o pedido: não lança');
+    unset(Banco::$falharAoConsultar['orders']);
+
+    $provedor = file_get_contents('/repo/api/app/Providers/AppServiceProvider.php');
+    $boot     = substr($provedor, (int) strpos($provedor, 'public function boot()'));
+    confere(str_contains($provedor, 'use App\Listeners\Entregas\ObservadorDasCorridasDoSistema;') && str_contains($provedor, 'Order::updated(fn ($pedido) => ObservadorDasCorridasDoSistema::aoAtualizar($pedido));'), 'AppServiceProvider: Order::updated → observador das corridas do sistema');
+    confere(str_contains(substr($boot, 0, (int) strpos($boot, '}')), '$this->registrarCorridasDoSistema();'), 'ligado no boot()');
+
 
     resumo();
 }

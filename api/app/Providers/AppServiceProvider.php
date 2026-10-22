@@ -11,6 +11,7 @@ use App\Http\Controllers\Entregas\DriverControllerSemGeocodificacao;
 use App\Listeners\Entregas\GravarPrazoDoPedido;
 use App\Listeners\Entregas\ManterPayloadDoPedido;
 use App\Listeners\Entregas\ObservadorDaDistribuicao;
+use App\Listeners\Entregas\ObservadorDasCorridasDoSistema;
 use App\Listeners\Entregas\ObservadorDoValorDaEntrega;
 use App\Listeners\Entregas\ObservadorDosPedidosDaIntegracao;
 use App\Listeners\Entregas\ObservadorDosPedidosIfood;
@@ -115,6 +116,7 @@ class AppServiceProvider extends ServiceProvider
         // a atribuição primeiro: o valor congelado fica gravado antes de o lançamento da corrida ir para a fila
         $this->congelarValorNaAtribuicao();
         $this->lancarCorridasNoFinanceiro();
+        $this->registrarCorridasDoSistema();
         $this->gravarPrazoDosPedidos();
     }
 
@@ -135,6 +137,16 @@ class AppServiceProvider extends ServiceProvider
     protected function lancarCorridasNoFinanceiro(): void
     {
         Order::updated(fn ($pedido) => ObservadorFinanceiroDosPedidos::aoAtualizar($pedido));
+    }
+
+    /**
+     * Entregas: pedido concluído → corrida no registro permanente do dono do sistema (relatório "Corridas do sistema",
+     * todas as organizações; ver ObservadorDasCorridasDoSistema e CorridasFinalizadas). Sem chave: vale sempre. O resto,
+     * o entregas:corridas-conferir grava em até 5 min.
+     */
+    protected function registrarCorridasDoSistema(): void
+    {
+        Order::updated(fn ($pedido) => ObservadorDasCorridasDoSistema::aoAtualizar($pedido));
     }
 
     /**
