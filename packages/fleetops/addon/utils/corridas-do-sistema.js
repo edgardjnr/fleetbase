@@ -5,7 +5,7 @@
  * Sem imports do Ember: testado no Node (scripts/teste-portal/corridas-do-sistema.test.mjs).
  * Spec: docs/superpowers/specs/2026-10-22-corridas-do-sistema-design.md.
  */
-import { celulaCsv, numeroDigitado, valorParaEnviar } from './financeiro';
+import { celulaCsv, formatadores, numeroDigitado, valorParaEnviar } from './financeiro';
 
 const PREFIXO = 'fleet-ops.ui.financeiro.corridas-do-sistema';
 
@@ -115,6 +115,72 @@ export function linhasCsvDasCorridas(relatorio, t = null) {
     }
 
     return linhas;
+}
+
+/** Dinheiro do extrato: 'R$ 1.234,56' (sempre 2 casas; o espaço especial do Intl vira espaço comum). */
+export function reais(valor, locale = 'pt-BR') {
+    return formatadores(locale).valor(valor).replace(/\s/g, ' ');
+}
+
+/** Centavos de um preço (2.5 e '2.50' dão 250); null quando não há preço. */
+function centavosDoPreco(preco) {
+    if (preco === null || preco === undefined || preco === '' || !Number.isFinite(Number(preco))) {
+        return null;
+    }
+
+    return Math.round(Number(preco) * 100);
+}
+
+/** 'dd/mm/aaaa' de um dia 'Y-m-d' ('' se não for). */
+function diaDoExtrato(dia) {
+    const partes = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dia ?? ''));
+    return partes ? `${partes[3]}/${partes[2]}/${partes[1]}` : '';
+}
+
+/**
+ * Dados do extrato de uma central (PDF para o cliente; spec 2026-10-22-extrato-da-central-design.md): resumo da linha
+ * da central em relatorio.centrais (total completo, mesmo com a lista cortada), preços distintos das corridas com preço
+ * (em ordem crescente, com a quantidade) e as linhas das corridas da central na ordem recebida. Data e hora pela hora
+ * escrita no ISO (Brasília), sem converter fuso. Central que não está no relatório: null.
+ */
+export function extratoDaCentral(relatorio, company) {
+    const linhaDaCentral = (relatorio?.centrais ?? []).find((central) => central?.company === company);
+    if (!linhaDaCentral) {
+        return null;
+    }
+    const corridas = (relatorio?.corridas ?? []).filter((corrida) => corrida?.company === company);
+
+    const porPreco = new Map();
+    const linhas = corridas.map((corrida) => {
+        const centavos = centavosDoPreco(corrida.preco);
+        if (centavos !== null) {
+            porPreco.set(centavos, (porPreco.get(centavos) ?? 0) + 1);
+        }
+        const [data = '', hora = ''] = dataHoraDoIso(corrida.finalizada_em).split(' ');
+
+        return {
+            data,
+            hora,
+            numero: String(corrida.numero || corrida.pedido || ''),
+            loja: corrida.loja_nome ?? '',
+            motoboy: corrida.motoboy_nome ?? '',
+            valor: centavos === null ? null : centavos / 100,
+        };
+    });
+    const precos = [...porPreco.entries()].sort(([a], [b]) => a - b).map(([centavos, quantidade]) => ({ valor: centavos / 100, quantidade }));
+
+    return {
+        central: linhaDaCentral.nome || corridas.find((corrida) => corrida.central)?.central || '',
+        inicio: diaDoExtrato(relatorio?.inicio),
+        fim: diaDoExtrato(relatorio?.fim),
+        corridas: Number(linhaDaCentral.corridas) || 0,
+        total: Math.round((Number(linhaDaCentral.a_cobrar) || 0) * 100) / 100,
+        semPreco: Number(linhaDaCentral.sem_preco) || 0,
+        listaCortada: relatorio?.lista_cortada === true,
+        precoVariou: precos.length > 1,
+        precos,
+        linhas,
+    };
 }
 
 /** Nome do arquivo do CSV. */
