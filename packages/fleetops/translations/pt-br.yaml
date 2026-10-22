@@ -603,6 +603,7 @@ fleet-ops:
         relatorio: Tabela de km e relatório
         multiplicadores: Multiplicadores
         configuracoes: Configurações
+        corridas-do-sistema: Corridas do sistema
       relatorio:
         titulo: Tabela de km e relatório
       periodo:
@@ -846,6 +847,58 @@ fleet-ops:
           datas: Informe o início e o fim.
           fim: O fim precisa ser depois do início e de agora.
           duracao: O período pode durar até 7 dias.
+      corridas-do-sistema:
+        titulo: Corridas do sistema
+        ajuda: 'Todas as corridas finalizadas em todas as organizações (centrais), para cobrar de cada central o preço por corrida. A corrida entra quando o motoboy finaliza e não sai mais, mesmo se o pedido for cancelado ou excluído depois. O histórico é importado automaticamente depois do deploy.'
+        so-admin: Somente o administrador do sistema pode ver esta tela.
+        periodo: Período
+        corridas: Corridas
+        a-cobrar: A cobrar
+        sem-preco-aviso: '{count, plural, one {# corrida sem preço no período: cadastre o preço da central com uma data igual ou anterior à corrida.} other {# corridas sem preço no período: cadastre o preço da central com uma data igual ou anterior à corrida.}}'
+        por-central: Por central
+        central: Central
+        preco: Preço
+        variado: variado
+        sem-preco: sem preço
+        selo-sem-preco: '{count} sem preço'
+        total: Total
+        vazio: Nenhuma corrida finalizada no período.
+        precos: Preços por central
+        precos-ajuda: 'O preço vale para as corridas finalizadas a partir da data, até o próximo preço da central. Para mudar, cadastre outro com a data nova; o que veio antes não muda.'
+        preco-desde: '{valor} a partir de {data}'
+        nenhum-preco: Sem preço cadastrado.
+        novo-preco: Adicionar preço
+        apagar: Apagar
+        apagar-titulo: 'Apagar o preço de {valor} da {central}?'
+        apagar-texto: 'As corridas a partir de {data} passam a usar o preço anterior (ou ficam sem preço) até o próximo preço da central.'
+        apagado-ok: Preço apagado.
+        lista: Corridas finalizadas
+        lista-cortada: 'A lista mostra as primeiras {count} corridas; os totais contam todas. Diminua o período para ver o resto.'
+        data-hora: Data e hora
+        pedido: Pedido
+        numero: Nº
+        loja: Loja
+        motoboy: Motoboy
+        origem: Origem
+        origens:
+          conclusao: Na conclusão
+          conferencia: Na conferência
+          historico: Histórico
+          outra: Outra
+        exportar: Exportar CSV
+        modal-titulo: Novo preço por corrida
+        modal-ajuda: 'O preço vale para as corridas finalizadas a partir do dia escolhido. Data antiga também vale: é assim que se dá preço ao histórico.'
+        modal-central: Central
+        modal-escolha: Escolha a central
+        modal-valor: Preço por corrida (R$)
+        modal-data: Vale a partir de
+        salvar: Salvar
+        cancelar: Cancelar
+        salvo: Preço salvo.
+        erros:
+          central: Escolha a central.
+          valor: 'O preço vai de R$ 0,00 a R$ 1.000,00, com até duas casas.'
+          data: Informe a data a partir da qual o preço vale.
       ciclos:
         semanal: Semanal
         quinzenal: Quinzenal

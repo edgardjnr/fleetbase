@@ -603,6 +603,7 @@ fleet-ops:
                 relatorio: Km table and report
                 multiplicadores: Multipliers
                 configuracoes: Settings
+                corridas-do-sistema: System rides
             relatorio:
                 titulo: Km table and report
             periodo:
@@ -846,6 +847,58 @@ fleet-ops:
                     datas: Fill in the start and the end.
                     fim: The end must be after the start and after now.
                     duracao: The period can last up to 7 days.
+            corridas-do-sistema:
+                titulo: System rides
+                ajuda: 'Every ride finished in every organization (dispatch center), to bill each center its price per ride. A ride enters when the driver finishes it and never leaves, even if the order is canceled or deleted later. The history is imported automatically after the deploy.'
+                so-admin: Only the system administrator can see this screen.
+                periodo: Period
+                corridas: Rides
+                a-cobrar: To bill
+                sem-preco-aviso: '{count, plural, one {# ride without a price in the period: add the center price with a date on or before the ride.} other {# rides without a price in the period: add the center price with a date on or before the ride.}}'
+                por-central: By center
+                central: Center
+                preco: Price
+                variado: varied
+                sem-preco: no price
+                selo-sem-preco: '{count} without price'
+                total: Total
+                vazio: No ride finished in the period.
+                precos: Prices by center
+                precos-ajuda: 'The price applies to rides finished from the date on, until the next price of the center. To change it, add another one with the new date; what came before does not change.'
+                preco-desde: '{valor} from {data}'
+                nenhum-preco: No price yet.
+                novo-preco: Add price
+                apagar: Delete
+                apagar-titulo: 'Delete the {valor} price of {central}?'
+                apagar-texto: 'Rides from {data} on go back to the previous price (or no price) until the next price of the center.'
+                apagado-ok: Price deleted.
+                lista: Finished rides
+                lista-cortada: 'The list shows the first {count} rides; the totals count all of them. Shorten the period to see the rest.'
+                data-hora: Date and time
+                pedido: Order
+                numero: No.
+                loja: Store
+                motoboy: Driver
+                origem: Source
+                origens:
+                    conclusao: On completion
+                    conferencia: On check
+                    historico: History
+                    outra: Other
+                exportar: Export CSV
+                modal-titulo: New price per ride
+                modal-ajuda: 'The price applies to rides finished from the chosen day on. An old date also works: that is how the history gets a price.'
+                modal-central: Center
+                modal-escolha: Choose the center
+                modal-valor: Price per ride (R$)
+                modal-data: Valid from
+                salvar: Save
+                cancelar: Cancel
+                salvo: Price saved.
+                erros:
+                    central: Choose the center.
+                    valor: 'The price goes from R$ 0.00 to R$ 1,000.00, with up to two decimals.'
+                    data: Fill in the date the price is valid from.
             ciclos:
                 semanal: Weekly
                 quinzenal: Biweekly
