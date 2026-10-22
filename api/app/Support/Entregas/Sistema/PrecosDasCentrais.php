@@ -2,7 +2,9 @@
 
 namespace App\Support\Entregas\Sistema;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Entregas RestaurantePro: preço fixo por corrida que o dono do sistema cobra de cada central (organização). Tabela
@@ -16,6 +18,10 @@ final class PrecosDasCentrais
     public const TABELA = 'entregas_precos_centrais';
 
     public const MAXIMO = 1000.0;
+
+    /** Anos aceitos no "vale a partir de" (e nas datas do período do relatório). */
+    public const PRIMEIRO_ANO = 2020;
+    public const ULTIMO_ANO   = 2100;
 
     /**
      * Todas as organizações não excluídas, mais as excluídas que têm preço (para poder apagá-lo), por nome:
@@ -39,7 +45,7 @@ final class PrecosDasCentrais
             usort($lista, fn ($a, $b) => strcmp($b['vale_a_partir_de'], $a['vale_a_partir_de']));
             $centrais[] = ['company' => $uuid, 'nome' => $nomes[$uuid], 'precos' => $lista];
         }
-        usort($centrais, fn ($a, $b) => strcasecmp($a['nome'], $b['nome']));
+        usort($centrais, fn ($a, $b) => static::compararNomes($a['nome'], $b['nome']));
 
         return $centrais;
     }
@@ -57,7 +63,8 @@ final class PrecosDasCentrais
     /** Cadastra {company, valor, vale_a_partir_de}. Devolve {company, id, valor, vale_a_partir_de} ou a mensagem de erro. */
     public static function criar(array $dados, ?string $usuario, string $agora): array|string
     {
-        $company = trim((string) ($dados['company'] ?? ''));
+        // company que não é texto (array, número...): organização inexistente, sem "Array to string conversion"
+        $company = is_string($dados['company'] ?? null) ? trim($dados['company']) : '';
         if ($company === '' || !DB::table('companies')->where('uuid', $company)->whereNull('deleted_at')->exists()) {
             return 'Organização não encontrada.';
         }
@@ -72,17 +79,27 @@ final class PrecosDasCentrais
             return 'Informe a data a partir da qual o preço vale.';
         }
 
+        $repetida = sprintf('Esta central já tem um preço a partir de %s. Apague o antigo para trocar.', implode('/', array_reverse(explode('-', $data))));
         if (DB::table(static::TABELA)->where('company_uuid', $company)->where('vale_a_partir_de', $data)->exists()) {
-            return sprintf('Esta central já tem um preço a partir de %s. Apague o antigo para trocar.', implode('/', array_reverse(explode('-', $data))));
+            return $repetida;
         }
 
-        $id = DB::table(static::TABELA)->insertGetId([
-            'company_uuid'     => $company,
-            'valor'            => number_format($valor, 2, '.', ''),
-            'vale_a_partir_de' => $data,
-            'criado_por'       => $usuario,
-            'created_at'       => $agora,
-        ]);
+        try {
+            $id = DB::table(static::TABELA)->insertGetId([
+                'company_uuid'     => $company,
+                'valor'            => number_format($valor, 2, '.', ''),
+                'vale_a_partir_de' => $data,
+                'criado_por'       => $usuario,
+                'created_at'       => $agora,
+            ]);
+        } catch (QueryException $e) {
+            // dois cadastros iguais ao mesmo tempo: o índice único (company_uuid, vale_a_partir_de) barra o segundo
+            if (($e->errorInfo[0] ?? null) === '23000' || (string) $e->getCode() === '23000') {
+                return $repetida;
+            }
+
+            throw $e;
+        }
 
         return ['company' => $company] + static::formatar((object) ['id' => $id, 'valor' => $valor, 'vale_a_partir_de' => $data]);
     }
@@ -93,13 +110,19 @@ final class PrecosDasCentrais
         return $id > 0 && DB::table(static::TABELA)->where('id', $id)->delete() > 0;
     }
 
-    /** Valor de 0,00 a 1000,00 com até duas casas ("2,50", "2.5", 2.5), ou null. O console manda "1000.00". */
+    /**
+     * Valor de 0,00 a 1000,00 com até duas casas ("2,50", "2.5", 2.5), ou null. O console manda "1000.00". Texto: só
+     * dígitos, com vírgula ou ponto decimal (sem notação científica como "1e2" nem milhar como "1.000,00").
+     */
     public static function valor($valor): ?float
     {
         if (is_string($valor)) {
-            $valor = str_replace(',', '.', trim($valor));
-        }
-        if (!is_numeric($valor)) {
+            $valor = trim($valor);
+            if (!preg_match('/^-?\d+(?:[.,]\d+)?$/', $valor)) {
+                return null;
+            }
+            $valor = str_replace(',', '.', $valor);
+        } elseif (!is_int($valor) && !is_float($valor)) {
             return null;
         }
 
@@ -113,7 +136,7 @@ final class PrecosDasCentrais
         return $numero >= 0 && $numero <= static::MAXIMO ? $numero : null;
     }
 
-    /** 'Y-m-d' de um dia que existe, ou null. */
+    /** 'Y-m-d' de um dia que existe, de PRIMEIRO_ANO a ULTIMO_ANO, ou null. */
     public static function data($valor): ?string
     {
         if (!is_string($valor) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($valor))) {
@@ -121,9 +144,21 @@ final class PrecosDasCentrais
         }
 
         $texto = trim($valor);
-        $data  = \DateTime::createFromFormat('!Y-m-d', $texto);
+        $ano   = (int) substr($texto, 0, 4);
+        if ($ano < static::PRIMEIRO_ANO || $ano > static::ULTIMO_ANO) {
+            return null;
+        }
+        $data = \DateTime::createFromFormat('!Y-m-d', $texto);
 
         return $data && $data->format('Y-m-d') === $texto ? $texto : null;
+    }
+
+    /** Ordem dos nomes das centrais sem olhar acento nem caixa ("Área Sul" antes de "Zeta"); no empate, o texto original. */
+    public static function compararNomes(string $a, string $b): int
+    {
+        $chave = fn (string $nome) => Str::ascii(mb_strtolower($nome));
+
+        return strcmp($chave($a), $chave($b)) ?: strcmp($a, $b);
     }
 
     /** [company_uuid => [['vale' => 'Y-m-d', 'valor' => float], ...]] das centrais pedidas, em ordem de data. */

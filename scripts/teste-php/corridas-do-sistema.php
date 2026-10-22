@@ -227,12 +227,13 @@ namespace {
     foreach ([['2,50', 2.5], ['2.5', 2.5], ['0', 0.0], ['1000', 1000.0], ['12,34', 12.34]] as [$digitado, $esperado]) {
         confere(PrecosDasCentrais::valor($digitado) === $esperado, "valor \"{$digitado}\" = {$esperado}");
     }
-    foreach (['-1', '1000,01', '1,234', 'abc', '', '1.000,00'] as $digitado) {
+    foreach (['-1', '1000,01', '1,234', 'abc', '', '1.000,00', '1e2', '1E2', '2,5e1', '1e-2', '0x1A', '.5', '2,', ' 2 5'] as $digitado) {
         confere(PrecosDasCentrais::valor($digitado) === null, "valor \"{$digitado}\": inválido");
     }
     confere(PrecosDasCentrais::valor(null) === null && PrecosDasCentrais::valor(2.5) === 2.5, 'null é inválido; número vale');
     confere(number_format(PrecosDasCentrais::valor('-0'), 2, '.', '') === '0.00', '"-0" vira 0,00 (sem o sinal)');
     confere(PrecosDasCentrais::data('2026-10-01') === '2026-10-01' && PrecosDasCentrais::data('2026-02-30') === null && PrecosDasCentrais::data('01/10/2026') === null && PrecosDasCentrais::data(null) === null, 'data: só Y-m-d que existe');
+    confere(PrecosDasCentrais::data('2020-01-01') === '2020-01-01' && PrecosDasCentrais::data('2100-12-31') === '2100-12-31' && PrecosDasCentrais::data('2019-12-31') === null && PrecosDasCentrais::data('2101-01-01') === null && PrecosDasCentrais::data('0001-01-01') === null, 'data: só anos de 2020 a 2100');
 
     $vigencia = [['vale' => '2026-10-01', 'valor' => 2.0], ['vale' => '2026-10-15', 'valor' => 2.5]];
     confere(PrecosDasCentrais::precoNoDia($vigencia, '2026-09-30') === null, 'antes do primeiro preço: sem preço');
@@ -248,17 +249,32 @@ namespace {
     confere(($linha['valor'] ?? null) === '2.50' && $linha['criado_por'] === 'user-edgard' && $linha['created_at'] === '2026-10-22 10:00:00', 'grava o valor com 2 casas, quem criou e a hora de Brasília');
     $r = PrecosDasCentrais::criar(['company' => 'central-a', 'valor' => '3', 'vale_a_partir_de' => '2026-10-01'], null, '2026-10-22 10:00:00');
     confere($r === 'Esta central já tem um preço a partir de 01/10/2026. Apague o antigo para trocar.', 'mesma central e data: erro');
+    $semOrganizacao = 'Organização não encontrada.';
+    $valorInvalido  = 'O preço por corrida vai de R$ 0,00 a R$ 1.000,00, com até duas casas.';
+    $semData        = 'Informe a data a partir da qual o preço vale.';
+    $avisos         = [];
+    set_error_handler(function ($numero, $mensagem) use (&$avisos) { $avisos[] = $mensagem; return true; });
     foreach ([
-        'central excluída'       => ['company' => 'central-x', 'valor' => '2', 'vale_a_partir_de' => '2026-10-01'],
-        'central que não existe' => ['company' => 'nao-existe', 'valor' => '2', 'vale_a_partir_de' => '2026-10-01'],
-        'sem central'            => ['valor' => '2', 'vale_a_partir_de' => '2026-10-01'],
-        'valor acima de 1000'    => ['company' => 'central-b', 'valor' => '1000,01', 'vale_a_partir_de' => '2026-10-01'],
-        'valor negativo'         => ['company' => 'central-b', 'valor' => '-2', 'vale_a_partir_de' => '2026-10-01'],
-        'data inválida'          => ['company' => 'central-b', 'valor' => '2', 'vale_a_partir_de' => '2026-13-01'],
-    ] as $caso => $dados) {
+        'central excluída'       => [['company' => 'central-x', 'valor' => '2', 'vale_a_partir_de' => '2026-10-01'], $semOrganizacao],
+        'central que não existe' => [['company' => 'nao-existe', 'valor' => '2', 'vale_a_partir_de' => '2026-10-01'], $semOrganizacao],
+        'sem central'            => [['valor' => '2', 'vale_a_partir_de' => '2026-10-01'], $semOrganizacao],
+        'central em array'       => [['company' => ['central-a'], 'valor' => '2', 'vale_a_partir_de' => '2026-10-01'], $semOrganizacao],
+        'central em número'      => [['company' => 123, 'valor' => '2', 'vale_a_partir_de' => '2026-10-01'], $semOrganizacao],
+        'valor acima de 1000'    => [['company' => 'central-b', 'valor' => '1000,01', 'vale_a_partir_de' => '2026-10-01'], $valorInvalido],
+        'valor negativo'         => [['company' => 'central-b', 'valor' => '-2', 'vale_a_partir_de' => '2026-10-01'], $valorInvalido],
+        'valor "1e2"'            => [['company' => 'central-b', 'valor' => '1e2', 'vale_a_partir_de' => '2026-10-01'], $valorInvalido],
+        'valor em array'         => [['company' => 'central-b', 'valor' => ['2'], 'vale_a_partir_de' => '2026-10-01'], $valorInvalido],
+        'sem valor'              => [['company' => 'central-b', 'vale_a_partir_de' => '2026-10-01'], $valorInvalido],
+        'data inválida'          => [['company' => 'central-b', 'valor' => '2', 'vale_a_partir_de' => '2026-13-01'], $semData],
+        'ano antes de 2020'      => [['company' => 'central-b', 'valor' => '2', 'vale_a_partir_de' => '2019-12-31'], $semData],
+        'ano depois de 2100'     => [['company' => 'central-b', 'valor' => '2', 'vale_a_partir_de' => '2101-01-01'], $semData],
+        'data em array'          => [['company' => 'central-b', 'valor' => '2', 'vale_a_partir_de' => ['2026-10-01']], $semData],
+    ] as $caso => [$dados, $mensagem]) {
         $erro = PrecosDasCentrais::criar($dados, null, '2026-10-22 10:00:00');
-        confere(is_string($erro) && $erro !== '', "{$caso}: erro (" . (is_string($erro) ? $erro : 'criou') . ')');
+        confere($erro === $mensagem, "{$caso}: \"{$mensagem}\" (" . (is_string($erro) ? $erro : 'criou') . ')');
     }
+    restore_error_handler();
+    confere($avisos === [], 'nos erros, nenhum aviso do PHP (sem "Array to string conversion")' . ($avisos ? ': ' . implode(' | ', $avisos) : ''));
     confere(count(linhasDe('entregas_precos_centrais')) === 1, 'nos erros, nada gravado');
 
     PrecosDasCentrais::criar(['company' => 'central-a', 'valor' => '3', 'vale_a_partir_de' => '2026-10-15'], null, '2026-10-22 10:00:00');
@@ -270,6 +286,23 @@ namespace {
     confere(PrecosDasCentrais::apagar($id) === true && PrecosDasCentrais::apagar($id) === false && PrecosDasCentrais::apagar(0) === false, 'apagar: true uma vez; de novo (e id 0): false');
     confere(PrecosDasCentrais::nomes(['central-a', '9f3b2c1d-0000-4000-8000-000000000000']) === ['central-a' => 'Central Norte', '9f3b2c1d-0000-4000-8000-000000000000' => '9f3b2c1d'], 'nome da central; a que não existe mais vira o uuid curto');
     confere(PrecosDasCentrais::porCentral(['central-a']) === ['central-a' => [['vale' => '2026-10-01', 'valor' => 2.5]]], 'porCentral: vigência em ordem de data');
+
+    // dois cadastros iguais ao mesmo tempo: o outro grava entre o exists() e o insert; o índice único barra (23000)
+    Banco::$antesDeInserir['entregas_precos_centrais'] = fn () => preco('central-b', '9.00', '2026-11-01');
+    $r = PrecosDasCentrais::criar(['company' => 'central-b', 'valor' => '2', 'vale_a_partir_de' => '2026-11-01'], null, '2026-10-22 10:00:00');
+    confere($r === 'Esta central já tem um preço a partir de 01/11/2026. Apague o antigo para trocar.', 'corrida entre o exists e o insert (23000): a mesma mensagem da data repetida');
+    confere(PrecosDasCentrais::porCentral(['central-b']) === ['central-b' => [['vale' => '2026-11-01', 'valor' => 9.0]]], 'fica só o que gravou primeiro');
+    Banco::$falharComo['entregas_precos_centrais'] = ['HY000', 2006];
+    $falha = excecao(fn () => PrecosDasCentrais::criar(['company' => 'central-b', 'valor' => '2', 'vale_a_partir_de' => '2026-11-02'], null, '2026-10-22 10:00:00'));
+    confere($falha instanceof \Illuminate\Database\QueryException && $falha->getCode() === 'HY000', 'outro erro do banco: sobe (não vira mensagem)');
+
+    preparar();
+    Banco::inserir('companies', ['uuid' => 'c-zeta', 'name' => 'Zeta', 'deleted_at' => null], false);
+    Banco::inserir('companies', ['uuid' => 'c-area', 'name' => 'Área Sul', 'deleted_at' => null], false);
+    Banco::inserir('companies', ['uuid' => 'c-avenida', 'name' => 'avenida', 'deleted_at' => null], false);
+    Banco::inserir('companies', ['uuid' => 'c-bairro', 'name' => 'Bairro', 'deleted_at' => null], false);
+    confere(array_column(PrecosDasCentrais::lista(), 'nome') === ['Área Sul', 'avenida', 'Bairro', 'Zeta'], 'lista por nome sem olhar acento nem caixa ("Área Sul" antes de "Zeta")');
+    confere(PrecosDasCentrais::compararNomes('Área Sul', 'Zeta') < 0 && PrecosDasCentrais::compararNomes('central', 'Central') !== 0, 'compararNomes: acento e caixa não pesam; empate pelo texto');
 
     echo '== Relatório (RelatorioDasCorridas)' . PHP_EOL;
     $precos = ['central-a' => [['vale' => '2026-10-01', 'valor' => 2.0], ['vale' => '2026-10-15', 'valor' => 2.5]], 'central-b' => [['vale' => '2026-10-10', 'valor' => 3.0]]];
@@ -293,6 +326,21 @@ namespace {
     confere($r['lista_cortada'] === false && count($r['corridas']) === 5, 'lista inteira');
     $cortado = RelatorioDasCorridas::agregar($doPeriodo, $precos, $nomes, 2);
     confere(count($cortado['corridas']) === 2 && $cortado['lista_cortada'] === true && $cortado['total']['corridas'] === 5 && $cortado['total']['a_cobrar'] === 10.0, 'acima do limite: lista cortada, totais completos');
+    confere(array_keys((array) $doPeriodo[0]) === RelatorioDasCorridas::COLUNAS, 'COLUNAS: as colunas que o agregar lê');
+    $gerador = (function () use ($doPeriodo) { yield from $doPeriodo; })();
+    confere(RelatorioDasCorridas::agregar($gerador, $precos, $nomes)['total'] === $r['total'], 'agregar aceita um iterável (o cursor do banco)');
+
+    $centavos = ['c-dez' => [['vale' => '2026-10-01', 'valor' => 0.1]], 'c-sete' => [['vale' => '2026-10-01', 'valor' => 0.07]]];
+    $linhas   = array_map(fn ($i) => $linhaDoRelatorio("d{$i}", 'c-dez', '2026-10-02 10:00:00'), range(1, 3));
+    foreach (range(1, 100) as $i) {
+        $linhas[] = $linhaDoRelatorio("s{$i}", 'c-sete', '2026-10-02 11:00:00');
+    }
+    $somas = RelatorioDasCorridas::agregar($linhas, $centavos, ['c-dez' => 'Dez', 'c-sete' => 'Sete']);
+    $porNome = array_column($somas['centrais'], null, 'nome');
+    confere($porNome['Dez']['a_cobrar'] === 0.3 && $porNome['Sete']['a_cobrar'] === 7.0 && $somas['total']['a_cobrar'] === 7.3, 'soma em centavos: 0,10 × 3 = 0,30; 0,07 × 100 = 7,00; total 7,30');
+
+    $acentos = RelatorioDasCorridas::agregar([$linhaDoRelatorio('z1', 'c-zeta', '2026-10-02 10:00:00'), $linhaDoRelatorio('a1', 'c-area', '2026-10-02 11:00:00')], [], ['c-zeta' => 'Zeta', 'c-area' => 'Área Sul']);
+    confere(array_column($acentos['centrais'], 'nome') === ['Área Sul', 'Zeta'] && $acentos['total']['sem_preco'] === 2 && $acentos['total']['a_cobrar'] === 0.0, 'centrais por nome sem olhar acento; sem preço: R$ 0,00 e contadas');
 
     preparar();
     cadastros();
@@ -305,8 +353,21 @@ namespace {
     $r = RelatorioDasCorridas::montar('2026-10-01', '2026-10-31');
     confere(is_array($r) && $r['inicio'] === '2026-10-01' && $r['fim'] === '2026-10-31' && array_column($r['corridas'], 'pedido') === ['order_out_01', 'order_sumida', 'order_out_31'], 'o período inteiro em Brasília (00:00:00 a 23:59:59), em ordem de finalização');
     confere(is_array($r) && in_array('9f3b2c1d', array_column($r['centrais'], 'nome'), true) && $r['total']['a_cobrar'] === 2.0, 'central que não existe mais: o uuid curto; só a Norte tem preço');
-    foreach (['data inválida' => ['2026-10-01', '31/10/2026'], 'fim antes do início' => ['2026-10-31', '2026-10-01'], '367 dias' => ['2025-01-01', '2026-01-02'], 'sem datas' => [null, null]] as $caso => [$de, $ate]) {
-        confere(is_string(RelatorioDasCorridas::montar($de, $ate)), "{$caso}: erro");
+    $porCentral = is_array($r) ? array_column($r['centrais'], null, 'company') : [];
+    confere(is_array($r) && $r['total'] === ['corridas' => 3, 'a_cobrar' => 2.0, 'sem_preco' => 2] && $porCentral['central-b']['sem_preco'] === 1 && $porCentral['central-a']['sem_preco'] === 0 && $r['lista_cortada'] === false, 'montar: sem preço contado por central e no total; lista inteira');
+    $r = RelatorioDasCorridas::montar('2026-10-01', '2026-10-31', 2);
+    confere(is_array($r) && array_column($r['corridas'], 'pedido') === ['order_out_01', 'order_sumida'] && $r['lista_cortada'] === true && $r['total'] === ['corridas' => 3, 'a_cobrar' => 2.0, 'sem_preco' => 2], 'montar com limite 2: lista cortada, totais de todas');
+    corrida('order_mesma_hora', 'central-a', '2026-10-01 00:00:00');
+    $r = RelatorioDasCorridas::montar('2026-10-01', '2026-10-01');
+    confere(is_array($r) && array_column($r['corridas'], 'pedido') === ['order_out_01', 'order_mesma_hora'], 'mesma hora: pela ordem de gravação (id)');
+    foreach ([
+        'data inválida'       => [['2026-10-01', '31/10/2026'], 'Informe o início e o fim do período.'],
+        'ano antes de 2020'   => [['2019-12-31', '2020-01-05'], 'Informe o início e o fim do período.'],
+        'fim antes do início' => [['2026-10-31', '2026-10-01'], 'O fim do período precisa ser igual ou depois do início.'],
+        '367 dias'            => [['2025-01-01', '2026-01-02'], 'O período pode ter até 366 dias.'],
+        'sem datas'           => [[null, null], 'Informe o início e o fim do período.'],
+    ] as $caso => [[$de, $ate], $mensagem]) {
+        confere(RelatorioDasCorridas::montar($de, $ate) === $mensagem, "{$caso}: \"{$mensagem}\"");
     }
     confere(is_array(RelatorioDasCorridas::montar('2024-01-01', '2024-12-31')), '366 dias (ano bissexto inteiro): pode');
 

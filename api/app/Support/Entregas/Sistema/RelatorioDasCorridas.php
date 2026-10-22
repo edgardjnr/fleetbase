@@ -15,8 +15,11 @@ final class RelatorioDasCorridas
 
     public const LIMITE_DA_LISTA = 20000;
 
+    /** As colunas do registro que o relatório lê. */
+    public const COLUNAS = ['id', 'company_uuid', 'pedido', 'numero', 'loja_nome', 'motoboy_nome', 'finalizada_em', 'origem'];
+
     /** {inicio, fim, total, centrais, corridas, lista_cortada} ou a mensagem de erro do período. */
-    public static function montar($inicio, $fim): array|string
+    public static function montar($inicio, $fim, int $limite = self::LIMITE_DA_LISTA): array|string
     {
         $de  = PrecosDasCentrais::data($inicio);
         $ate = PrecosDasCentrais::data($fim);
@@ -30,16 +33,16 @@ final class RelatorioDasCorridas
             return 'O período pode ter até 366 dias.';
         }
 
-        $corridas = DB::table(CorridasFinalizadas::TABELA)
+        $doPeriodo = fn () => DB::table(CorridasFinalizadas::TABELA)
             ->where('finalizada_em', '>=', $de . ' 00:00:00')
-            ->where('finalizada_em', '<=', $ate . ' 23:59:59')
-            ->orderBy('finalizada_em')
-            ->orderBy('id')
-            ->get()
-            ->all();
-        $centrais = CorridasFinalizadas::distintos(array_map(fn ($corrida) => $corrida->company_uuid, $corridas));
+            ->where('finalizada_em', '<=', $ate . ' 23:59:59');
 
-        return ['inicio' => $de, 'fim' => $ate] + static::agregar($corridas, PrecosDasCentrais::porCentral($centrais), PrecosDasCentrais::nomes($centrais));
+        // primeiro só as centrais do período (para os preços e os nomes); depois as corridas uma a uma (cursor), sem
+        // montar todas as linhas do período em memória
+        $centrais = CorridasFinalizadas::distintos($doPeriodo()->distinct()->pluck('company_uuid')->all());
+        $corridas = $doPeriodo()->select(static::COLUNAS)->orderBy('finalizada_em')->orderBy('id')->cursor();
+
+        return ['inicio' => $de, 'fim' => $ate] + static::agregar($corridas, PrecosDasCentrais::porCentral($centrais), PrecosDasCentrais::nomes($centrais), $limite);
     }
 
     /**
@@ -48,7 +51,7 @@ final class RelatorioDasCorridas
      * precos (valores distintos usados, em ordem)}], corridas: [{finalizada_em (ISO), company, central, pedido, numero,
      * loja_nome, motoboy_nome, preco|null, origem}], lista_cortada}. Contas em centavos.
      */
-    public static function agregar(array $corridas, array $precos, array $nomes, int $limite = self::LIMITE_DA_LISTA): array
+    public static function agregar(iterable $corridas, array $precos, array $nomes, int $limite = self::LIMITE_DA_LISTA): array
     {
         $total      = ['corridas' => 0, 'a_cobrar' => 0, 'sem_preco' => 0];
         $porCentral = [];
@@ -96,7 +99,7 @@ final class RelatorioDasCorridas
 
             return $central;
         }, array_values($porCentral));
-        usort($centrais, fn ($a, $b) => strcasecmp($a['nome'], $b['nome']));
+        usort($centrais, fn ($a, $b) => PrecosDasCentrais::compararNomes($a['nome'], $b['nome']));
         $total['a_cobrar'] = round($total['a_cobrar'] / 100, 2);
 
         return ['total' => $total, 'centrais' => $centrais, 'corridas' => $lista, 'lista_cortada' => $total['corridas'] > count($lista)];

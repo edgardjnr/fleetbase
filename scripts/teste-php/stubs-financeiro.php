@@ -39,6 +39,8 @@ namespace Illuminate\Support {
             public static int $gerados = 0;
             // uuid previsível nos testes: 00000000-0000-4000-8000-<sequencial>
             public static function uuid() { return sprintf('00000000-0000-4000-8000-%012d', ++self::$gerados); }
+            // ascii(): como o de verdade (voku/portable-ascii) para os acentos do português; o resto passa como está
+            public static function ascii($texto) { return strtr((string) $texto, ['á' => 'a', 'à' => 'a', 'â' => 'a', 'ã' => 'a', 'ä' => 'a', 'é' => 'e', 'ê' => 'e', 'è' => 'e', 'ë' => 'e', 'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i', 'ó' => 'o', 'ò' => 'o', 'ô' => 'o', 'õ' => 'o', 'ö' => 'o', 'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u', 'ç' => 'c', 'ñ' => 'n', 'Á' => 'A', 'À' => 'A', 'Â' => 'A', 'Ã' => 'A', 'É' => 'E', 'Ê' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ô' => 'O', 'Õ' => 'O', 'Ú' => 'U', 'Ü' => 'U', 'Ç' => 'C', 'Ñ' => 'N']); }
         }
     }
 }

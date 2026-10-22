@@ -954,6 +954,8 @@ namespace Teste {
 
             return new \Illuminate\Support\Collection(array_values(array_map(fn ($linha) => (object) $linha, $this->selecionadas())));
         }
+        // cursor(): as mesmas linhas do get(), uma a uma (o de verdade devolve uma LazyCollection; aqui um Generator)
+        public function cursor(): \Generator { foreach ($this->selecionadas() as $linha) { yield (object) $linha; } }
         public function first() { $linhas = $this->selecionadas(); return $linhas ? (object) reset($linhas) : null; }
         public function distinct() { $this->distinta = true; return $this; }
 
