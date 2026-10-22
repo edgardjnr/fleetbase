@@ -900,6 +900,28 @@ fleet-ops:
           central: Escolha a central.
           valor: 'O preço vai de R$ 0,00 a R$ 1.000,00, com até duas casas.'
           data: Informe a data a partir da qual o preço vale.
+        extrato:
+          botao: Extrato
+          botao-ajuda: 'Imprimir o extrato de uso da {central} no período (salve como PDF para enviar)'
+          lista-cortada: 'A lista de corridas do período está incompleta (passou do limite da tela). Escolha um período menor para imprimir o extrato.'
+          sem-preco-titulo: 'A {central} tem corridas sem preço no período'
+          sem-preco-texto: '{count, plural, one {# corrida sem preço aparece na lista, mas não soma no total a pagar.} other {# corridas sem preço aparecem na lista, mas não somam no total a pagar.}} Cadastre o preço da central antes ou imprima mesmo assim.'
+          imprimir-mesmo-assim: Imprimir mesmo assim
+          cabecalho: Entregas · RestaurantePro
+          titulo: 'Extrato de uso — {central}'
+          periodo: 'Período: {inicio} a {fim}'
+          emitido-em: 'Emitido em {data}'
+          corridas-finalizadas: Corridas finalizadas
+          valor-por-corrida: Valor por corrida
+          preco-vezes: '{valor} × {count}'
+          total-a-pagar: Total a pagar
+          data: Data
+          hora: Hora
+          numero: Nº do pedido
+          loja: Loja
+          motoboy: Motoboy
+          valor: Valor
+          rodape: 'Total: {count, plural, one {# corrida} other {# corridas}} · {total}'
       ciclos:
         semanal: Semanal
         quinzenal: Quinzenal

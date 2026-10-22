@@ -900,6 +900,28 @@ fleet-ops:
                     central: Choose the center.
                     valor: 'The price goes from R$ 0.00 to R$ 1,000.00, with up to two decimals.'
                     data: Fill in the date the price is valid from.
+                extrato:
+                    botao: Statement
+                    botao-ajuda: 'Print the usage statement of {central} for the period (save as PDF to send)'
+                    lista-cortada: 'The ride list for the period is incomplete (it went over the screen limit). Choose a shorter period to print the statement.'
+                    sem-preco-titulo: '{central} has rides without a price in the period'
+                    sem-preco-texto: '{count, plural, one {# ride without a price is listed but does not add to the total due.} other {# rides without a price are listed but do not add to the total due.}} Add the center price first or print anyway.'
+                    imprimir-mesmo-assim: Print anyway
+                    cabecalho: Entregas · RestaurantePro
+                    titulo: 'Usage statement — {central}'
+                    periodo: 'Period: {inicio} to {fim}'
+                    emitido-em: 'Issued on {data}'
+                    corridas-finalizadas: Finished rides
+                    valor-por-corrida: Price per ride
+                    preco-vezes: '{valor} × {count}'
+                    total-a-pagar: Total due
+                    data: Date
+                    hora: Time
+                    numero: Order no.
+                    loja: Store
+                    motoboy: Rider
+                    valor: Amount
+                    rodape: 'Total: {count, plural, one {# ride} other {# rides}} · {total}'
             ciclos:
                 semanal: Weekly
                 quinzenal: Biweekly

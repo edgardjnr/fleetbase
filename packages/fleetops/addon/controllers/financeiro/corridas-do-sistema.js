@@ -2,9 +2,10 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
+import { schedule } from '@ember/runloop';
 import { task } from 'ember-concurrency';
-import { formatadores, periodoAoAbrir, periodoDoAtalho } from '../../utils/financeiro';
-import { chaveDaOrigem, dataHoraDoIso, linhasCsvDasCorridas, nomeDoCsv, precoDaCentral } from '../../utils/corridas-do-sistema';
+import { formatadores, isoDate, periodoAoAbrir, periodoDoAtalho } from '../../utils/financeiro';
+import { chaveDaOrigem, dataHoraDoIso, extratoDaCentral, linhasCsvDasCorridas, nomeDoCsv, precoDaCentral, reais } from '../../utils/corridas-do-sistema';
 
 const ENDPOINT = 'entregas/sistema';
 const PREFIXO = 'fleet-ops.ui.financeiro.corridas-do-sistema';
@@ -24,6 +25,8 @@ export default class FinanceiroCorridasDoSistemaController extends Controller {
     @tracked fim = periodoDoAtalho('this-month').fim;
     @tracked relatorio = null;
     @tracked centraisDosPrecos = [];
+    // extrato de uma central sendo impresso (o bloco [data-extrato-impressao] só existe enquanto preenchido)
+    @tracked extrato = null;
     // atalho do período em uso (recalculado ao voltar à tela); null = datas escolhidas à mão
     atalho = 'this-month';
 
@@ -55,6 +58,7 @@ export default class FinanceiroCorridasDoSistemaController extends Controller {
         this.carregarPrecos.cancelAll();
         this.relatorio = null;
         this.centraisDosPrecos = [];
+        this.extrato = null;
     }
 
     @action valor(numero) {
@@ -158,6 +162,95 @@ export default class FinanceiroCorridasDoSistemaController extends Controller {
                     modal.stopLoading();
                 }
             },
+        });
+    }
+
+    /**
+     * Extrato de uso de uma central (para enviar a ela; o navegador oferece "Salvar como PDF"), no período da tela.
+     * Do botão vem o uuid da central (`fn this.imprimirExtrato central.company`); o `fn` acrescenta o evento como último
+     * argumento, então só texto conta. Lista cortada: não imprime (pede um período menor). Corridas sem preço: confirma
+     * antes. Dados montados por extratoDaCentral (utils/corridas-do-sistema.js).
+     */
+    @action imprimirExtrato(company) {
+        const extrato = typeof company === 'string' ? extratoDaCentral(this.relatorio, company) : null;
+        if (!extrato) {
+            return;
+        }
+
+        if (extrato.listaCortada) {
+            this.notifications.warning(this.intl.t(`${PREFIXO}.extrato.lista-cortada`));
+            return;
+        }
+
+        if (extrato.semPreco > 0) {
+            this.modalsManager.confirm({
+                title: this.intl.t(`${PREFIXO}.extrato.sem-preco-titulo`, { central: extrato.central }),
+                body: this.intl.t(`${PREFIXO}.extrato.sem-preco-texto`, { count: extrato.semPreco }),
+                acceptButtonText: this.intl.t(`${PREFIXO}.extrato.imprimir-mesmo-assim`),
+                acceptButtonIcon: 'print',
+                confirm: (modal) => {
+                    modal.done();
+                    this.mostrarEImprimir(extrato);
+                },
+            });
+            return;
+        }
+
+        this.mostrarEImprimir(extrato);
+    }
+
+    /** Textos prontos do extrato (dinheiro sempre 'R$ 1.234,56') e a data de emissão (hoje, no fuso do navegador). */
+    paraImpressao(extrato) {
+        const [ano, mes, dia] = isoDate(new Date()).split('-');
+        const precos = Array.isArray(extrato.precos) ? extrato.precos : [];
+        let valorPorCorrida = ['—'];
+        if (extrato.precoVariou) {
+            valorPorCorrida = precos.map((preco) => this.intl.t(`${PREFIXO}.extrato.preco-vezes`, { valor: reais(preco.valor), count: preco.quantidade }));
+        } else if (precos.length) {
+            valorPorCorrida = [reais(precos[0].valor)];
+        }
+
+        return {
+            ...extrato,
+            emitidoEm: `${dia}/${mes}/${ano}`,
+            valorPorCorrida,
+            totalReais: reais(extrato.total),
+            linhas: (extrato.linhas ?? []).map((linha) => ({ ...linha, valorReais: linha.valor === null || linha.valor === undefined ? '—' : reais(linha.valor) })),
+        };
+    }
+
+    /**
+     * Renderiza o bloco [data-extrato-impressao] (escondido na tela) e imprime pelo mesmo mecanismo da fatura: cópia do
+     * bloco no <body> (.entregas-impressao-copia) e o CSS "entregas-imprimindo" (fleetops-engine.css) esconde o resto
+     * do console. No afterprint a cópia sai e o bloco deixa de existir.
+     */
+    mostrarEImprimir(extrato) {
+        this.extrato = this.paraImpressao(extrato);
+        schedule('afterRender', () => {
+            const original = document.querySelector('[data-extrato-impressao]');
+            if (!original) {
+                this.extrato = null;
+                return;
+            }
+
+            // cópia de uma impressão anterior sem afterprint (fica escondida na tela, mas não pode sair duas vezes no papel)
+            document.querySelectorAll('.entregas-impressao-copia').forEach((velha) => velha.remove());
+
+            const copia = original.cloneNode(true);
+            copia.classList.remove('hidden');
+            copia.classList.add('entregas-impressao-copia');
+            document.body.appendChild(copia);
+            document.body.classList.add('entregas-imprimindo');
+
+            const limpar = () => {
+                copia.remove();
+                document.body.classList.remove('entregas-imprimindo');
+                window.removeEventListener('afterprint', limpar);
+                this.extrato = null;
+            };
+            // o afterprint vem depois do diálogo, bloqueante ou não; a cópia fica com display:none fora da impressão
+            window.addEventListener('afterprint', limpar);
+            window.print();
         });
     }
 

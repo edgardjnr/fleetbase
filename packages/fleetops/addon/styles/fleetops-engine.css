@@ -9002,3 +9002,22 @@ body[data-theme='dark'] .filter-multi-model > .clear-button {
         text-decoration: none !important;
     }
 }
+
+/**
+ * Entregas: extrato de uso da central (Financeiro → Corridas do sistema → Extrato). Mesmo mecanismo da fatura; o bloco
+ * [data-extrato-impressao] fica escondido na tela (.hidden, tirado da cópia) e no papel repete o cabeçalho da lista
+ * em cada página, sem quebrar uma corrida ao meio.
+ */
+@media print {
+    .entregas-impressao-copia.entregas-extrato-impressao {
+        font-size: 10.5pt;
+    }
+
+    .entregas-extrato-impressao thead {
+        display: table-header-group;
+    }
+
+    .entregas-extrato-impressao tr {
+        break-inside: avoid;
+    }
+}
