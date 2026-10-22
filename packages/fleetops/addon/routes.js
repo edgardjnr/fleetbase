@@ -46,6 +46,8 @@ export default buildRoutes(function () {
         this.route('relatorio');
         this.route('multiplicadores');
         this.route('configuracoes');
+        // relatório do dono do sistema (todas as organizações): guarda própria em routes/financeiro/corridas-do-sistema.js
+        this.route('corridas-do-sistema');
     });
     this.route('management', { path: '/manage' }, function () {
         // Entregas: a antiga "Pagamento e cobrança"; só redireciona para financeiro.relatorio (links salvos)

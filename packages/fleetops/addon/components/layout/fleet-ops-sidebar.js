@@ -188,6 +188,12 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
             item('fleet-ops.ui.financeiro.menu.relatorio', 'table', 'financeiro.relatorio', ['faixas', 'km', 'relatório', 'payout']),
             item('fleet-ops.ui.financeiro.menu.multiplicadores', 'cloud-rain', 'financeiro.multiplicadores', ['chuva', 'multiplicador', 'intempérie', 'adicional']),
             item('fleet-ops.ui.financeiro.menu.configuracoes', 'gear', 'financeiro.configuracoes', ['data de corte', 'ciclo']),
+            // relatório do dono do sistema (todas as organizações): regra própria, independente da dos itens acima, que vai
+            // passar a ser o administrador da organização
+            {
+                ...item('fleet-ops.ui.financeiro.menu.corridas-do-sistema', 'building', 'financeiro.corridas-do-sistema', ['corridas', 'centrais', 'organizações', 'sistema']),
+                visible: this.currentUser.isAdmin === true,
+            },
         ]);
     }
 
@@ -391,6 +397,7 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
             'financeiro.relatorio': 3,
             'financeiro.multiplicadores': 4,
             'financeiro.configuracoes': 5,
+            'financeiro.corridas-do-sistema': 6,
             'management.vehicles': 2,
             'management.trailers': 3,
             'management.fleets': 4,

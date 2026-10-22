@@ -1,0 +1,27 @@
+<Modal::Default @modalIsOpened={{@modalIsOpened}} @options={{@options}} @confirm={{@onConfirm}} @decline={{@onDecline}}>
+    <div class="px-4 space-y-4 text-gray-900 dark:text-gray-50">
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.modal-ajuda"}}</p>
+        <InputGroup @name={{t "fleet-ops.ui.financeiro.corridas-do-sistema.modal-central"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+            <select id={{id}} class="form-select w-full text-sm" {{on "change" (fn this.setCampo "company")}}>
+                <option value="" selected={{not this.company}}>{{t "fleet-ops.ui.financeiro.corridas-do-sistema.modal-escolha"}}</option>
+                {{#each this.centrais as |central|}}
+                    <option value={{central.company}} selected={{eq central.company this.company}}>{{central.nome}}</option>
+                {{/each}}
+            </select>
+        </InputGroup>
+        <div class="grid grid-cols-2 gap-4">
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.corridas-do-sistema.modal-valor"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="text" inputmode="decimal" class="form-input w-full" value={{this.valor}} {{on "input" (fn this.setCampo "valor")}} />
+                {{#if this.valorInterpretado}}
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.valor-interpretado" valor=this.valorInterpretado}}</span>
+                {{/if}}
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.corridas-do-sistema.modal-data"}} @required={{true}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="date" class="form-input w-full" value={{this.data}} {{on "change" (fn this.setCampo "data")}} />
+            </InputGroup>
+        </div>
+        {{#each this.erros as |erro|}}
+            <p class="text-xs text-yellow-700 dark:text-yellow-300">{{erro}}</p>
+        {{/each}}
+    </div>
+</Modal::Default>

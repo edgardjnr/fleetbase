@@ -1,0 +1,154 @@
+<Layout::Section::Header @title={{t "fleet-ops.ui.financeiro.corridas-do-sistema.titulo"}}>
+    <div class="flex items-center space-x-2">
+        <Button @icon="refresh" @size="sm" @helpText={{t "common.reload"}} @isLoading={{this.carregar.isRunning}} @onClick={{this.recarregar}} />
+        <Button @icon="file-export" @size="sm" @text={{t "fleet-ops.ui.financeiro.corridas-do-sistema.exportar"}} @disabled={{not this.relatorio}} @onClick={{this.exportarCsv}} />
+        <Button @type="primary" @icon="plus" @size="sm" @text={{t "fleet-ops.ui.financeiro.corridas-do-sistema.novo-preco"}} @onClick={{this.novoPreco}} />
+    </div>
+</Layout::Section::Header>
+
+<Layout::Section::Body class="overflow-y-scroll-i h-full">
+    <div class="max-w-6xl mx-auto px-4 py-6 space-y-5">
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.ajuda"}}</p>
+
+        <ContentPanel @title={{t "fleet-ops.ui.financeiro.corridas-do-sistema.periodo"}} @open={{true}} @wrapperClass="bordered-classic">
+            <div class="flex flex-wrap items-end gap-4">
+                <InputGroup @name={{t "fleet-ops.ui.financeiro.periodo.inicio"}} @wrapperClass="mb-0">
+                    <input type="date" class="form-input form-input-sm" value={{this.inicio}} max={{this.fim}} {{on "change" (fn this.setData "inicio")}} />
+                </InputGroup>
+                <InputGroup @name={{t "fleet-ops.ui.financeiro.periodo.fim"}} @wrapperClass="mb-0">
+                    <input type="date" class="form-input form-input-sm" value={{this.fim}} min={{this.inicio}} {{on "change" (fn this.setData "fim")}} />
+                </InputGroup>
+                <Button @type="primary" @size="sm" @icon="magnifying-glass" @text={{t "fleet-ops.ui.financeiro.periodo.aplicar"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
+                <div class="flex items-center gap-2">
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro.periodo.este-mes"}} @onClick={{fn this.setPeriodo "this-month"}} />
+                    <Button @size="xs" @text={{t "fleet-ops.ui.financeiro.periodo.mes-passado"}} @onClick={{fn this.setPeriodo "last-month"}} />
+                </div>
+            </div>
+        </ContentPanel>
+
+        {{#if this.relatorio}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.corridas"}}</div>
+                    <div class="text-2xl font-semibold dark:text-white">{{this.total.corridas}}</div>
+                </div>
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.a-cobrar"}}</div>
+                    <div class="text-2xl font-semibold text-green-700 dark:text-green-400">{{this.valor this.total.a_cobrar}}</div>
+                </div>
+            </div>
+            {{#if this.total.sem_preco}}
+                <p class="text-sm rounded-md px-3 py-2 bg-yellow-50 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.sem-preco-aviso" count=this.total.sem_preco}}</p>
+            {{/if}}
+
+            <ContentPanel @title={{t "fleet-ops.ui.financeiro.corridas-do-sistema.por-central"}} @open={{true}} @wrapperClass="bordered-classic">
+                {{#if this.centrais.length}}
+                    <table class="table w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-500 dark:text-gray-400">
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.central"}}</th>
+                                <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.corridas"}}</th>
+                                <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.preco"}}</th>
+                                <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.a-cobrar"}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each this.centrais key="company" as |central|}}
+                                <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100">
+                                    <td class="py-2 font-medium">
+                                        {{central.nome}}
+                                        {{#if central.sem_preco}}
+                                            <span class="ml-2 text-xs font-medium rounded px-2 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.selo-sem-preco" count=central.sem_preco}}</span>
+                                        {{/if}}
+                                    </td>
+                                    <td class="py-2 text-right">{{central.corridas}}</td>
+                                    <td class="py-2 text-right">{{this.precoDaCentral central}}</td>
+                                    <td class="py-2 text-right font-medium">{{this.valor central.a_cobrar}}</td>
+                                </tr>
+                            {{/each}}
+                        </tbody>
+                        <tfoot>
+                            <tr class="border-t-2 border-gray-200 dark:border-gray-700 font-semibold dark:text-white">
+                                <td class="py-2">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.total"}}</td>
+                                <td class="py-2 text-right">{{this.total.corridas}}</td>
+                                <td class="py-2"></td>
+                                <td class="py-2 text-right">{{this.valor this.total.a_cobrar}}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                {{else}}
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.vazio"}}</p>
+                {{/if}}
+            </ContentPanel>
+        {{else if this.carregar.isRunning}}
+            <Spinner />
+        {{/if}}
+
+        <ContentPanel @title={{t "fleet-ops.ui.financeiro.corridas-do-sistema.precos"}} @open={{true}} @wrapperClass="bordered-classic">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.precos-ajuda"}}</p>
+            {{#each this.centraisDosPrecos key="company" as |central|}}
+                <div class="flex flex-wrap items-start justify-between gap-3 py-3 border-t border-gray-100 dark:border-gray-800">
+                    <div>
+                        <div class="font-medium dark:text-white">{{central.nome}}</div>
+                        {{#if central.precos.length}}
+                            <ul class="mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-300">
+                                {{#each central.precos key="id" as |preco|}}
+                                    <li class="flex items-center gap-2">
+                                        <span>{{t "fleet-ops.ui.financeiro.corridas-do-sistema.preco-desde" valor=(this.valor preco.valor) data=(this.dia preco.vale_a_partir_de)}}</span>
+                                        <Button @size="xs" @icon="trash" @helpText={{t "fleet-ops.ui.financeiro.corridas-do-sistema.apagar"}} @onClick={{fn this.apagarPreco central preco}} />
+                                    </li>
+                                {{/each}}
+                            </ul>
+                        {{else}}
+                            <p class="mt-1 text-sm text-yellow-700 dark:text-yellow-300">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.nenhum-preco"}}</p>
+                        {{/if}}
+                    </div>
+                    <Button @size="xs" @icon="plus" @text={{t "fleet-ops.ui.financeiro.corridas-do-sistema.novo-preco"}} @onClick={{fn this.novoPreco central.company}} />
+                </div>
+            {{else}}
+                {{#if this.carregarPrecos.isRunning}}
+                    <Spinner />
+                {{/if}}
+            {{/each}}
+        </ContentPanel>
+
+        {{#if this.corridas.length}}
+            <ContentPanel @title={{t "fleet-ops.ui.financeiro.corridas-do-sistema.lista"}} @open={{true}} @wrapperClass="bordered-classic">
+                {{#if this.relatorio.lista_cortada}}
+                    <p class="text-xs rounded-md px-3 py-2 mb-3 bg-yellow-50 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.lista-cortada" count=this.corridas.length}}</p>
+                {{/if}}
+                <div class="overflow-x-auto">
+                    <table class="table w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-500 dark:text-gray-400">
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.data-hora"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.central"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.pedido"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.numero"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.loja"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.motoboy"}}</th>
+                                <th class="py-2 text-right">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.preco"}}</th>
+                                <th class="py-2">{{t "fleet-ops.ui.financeiro.corridas-do-sistema.origem"}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each this.corridas as |corrida|}}
+                                <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100">
+                                    <td class="py-2 whitespace-nowrap">{{this.dataHora corrida.finalizada_em}}</td>
+                                    <td class="py-2">{{corrida.central}}</td>
+                                    <td class="py-2 whitespace-nowrap">{{corrida.pedido}}</td>
+                                    <td class="py-2">{{corrida.numero}}</td>
+                                    <td class="py-2">{{corrida.loja_nome}}</td>
+                                    <td class="py-2">{{corrida.motoboy_nome}}</td>
+                                    <td class="py-2 text-right whitespace-nowrap">{{this.precoDaCorrida corrida}}</td>
+                                    <td class="py-2 text-xs text-gray-500 dark:text-gray-400">{{this.origem corrida}}</td>
+                                </tr>
+                            {{/each}}
+                        </tbody>
+                    </table>
+                </div>
+            </ContentPanel>
+        {{/if}}
+    </div>
+    <Spacer @height="300px" />
+</Layout::Section::Body>
