@@ -40,6 +40,10 @@ SELECT 'entregas_pagamentos' AS tabela, COUNT(*) AS linhas, SUM(comprovante_path
 UNION ALL SELECT 'entregas_faturas', COUNT(*), NULL FROM entregas_faturas
 UNION ALL SELECT 'entregas_cobranca_lojas (fica)', COUNT(*), NULL FROM entregas_cobranca_lojas
 UNION ALL SELECT 'entregas_motoboys_financeiro (fica)', COUNT(*), NULL FROM entregas_motoboys_financeiro;
+-- corridas do sistema (relatório do dono) e preços das centrais: ficam. Consulta separada: antes do deploy da API com a
+-- migration as tabelas não existem, e o erro (o --force segue) não leva junto a contagem acima.
+SELECT 'entregas_corridas_finalizadas (fica)' AS tabela, COUNT(*) AS linhas FROM entregas_corridas_finalizadas
+UNION ALL SELECT 'entregas_precos_centrais (fica)', COUNT(*) FROM entregas_precos_centrais;
 
 -- 5) tipos gravados nas tabelas polimórficas: os de pedido (Order, Waypoint, Entity, Proof, Payload, TrackingNumber,
 --    TrackingStatus, Route do Fleet-Ops) saem; os outros ficam

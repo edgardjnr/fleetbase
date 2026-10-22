@@ -8,7 +8,8 @@ conversas.
 
 **Fica:** lojas e logins do portal, motoboys, conversas, vínculos iFood e da integração RestaurantePro, faixas de km,
 usuários da central, ciclo de cobrança das lojas, chave Pix dos motoboys e as configurações do Financeiro (data de
-corte, ciclo padrão). O Local de cada loja (coleta) fica.
+corte, ciclo padrão). O Local de cada loja (coleta) fica. As **corridas do sistema** (`entregas_corridas_finalizadas`,
+relatório do dono) e os preços das centrais também ficam: a corrida finalizada nunca sai do relatório.
 
 **Atenção:** é um DELETE de verdade. O console não tem lixeira; Pedidos, mapa, relatório de pagamento, ganhos, extratos,
 faturas e o painel do Financeiro zeram. A única volta é o backup do passo 4.
