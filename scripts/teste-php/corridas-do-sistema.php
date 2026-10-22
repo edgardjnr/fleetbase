@@ -135,5 +135,73 @@ namespace {
     Banco::inserir('entregas_precos_centrais', ['company_uuid' => 'central-a', 'valor' => '2.00', 'vale_a_partir_de' => '2026-10-01'], false);
     confere(excecao(fn () => Banco::inserir('entregas_precos_centrais', ['company_uuid' => 'central-a', 'valor' => '3.00', 'vale_a_partir_de' => '2026-10-01'], false)) instanceof \Illuminate\Database\QueryException, 'preços: uma linha por central e data');
 
+    echo '== Registro (CorridasFinalizadas)' . PHP_EOL;
+    preparar();
+    cadastros();
+    $p1 = pedido(['public_id' => 'order_a1', 'internal_id' => '4821', 'customer_uuid' => 'loja-1', 'driver_assigned_uuid' => 'motoboy-1', 'tracking_number_uuid' => 'rastreio-a1', 'updated_at' => '2026-10-22 09:40:00']);
+    concluidoNoRastreio('rastreio-a1', '2026-10-22 09:35:00');
+    concluidoNoRastreio('rastreio-a1', '2026-10-22 09:31:00');
+    confere(CorridasFinalizadas::registrarLote([$p1], CorridasFinalizadas::CONFERENCIA) === 1, 'grava o pedido concluído');
+    $linha = linhaDoPedido('order_a1');
+    confere(($linha['company_uuid'] ?? null) === 'central-a' && ($linha['order_uuid'] ?? null) === 'uuid-order_a1' && ($linha['numero'] ?? null) === '4821', 'central, pedido e número');
+    confere(($linha['loja_uuid'] ?? null) === 'loja-1' && $linha['loja_nome'] === 'Pizzaria Boa' && $linha['motoboy_uuid'] === 'motoboy-1' && $linha['motoboy_nome'] === 'Carlos Silva', 'nomes da loja e do motoboy gravados na hora');
+    confere(($linha['finalizada_em'] ?? null) === '2026-10-22 09:31:00' && $linha['origem'] === 'conferencia' && $linha['created_at'] === '2026-10-22 10:00:00', 'finalizada_em = o primeiro COMPLETED do rastreio (Brasília)');
+    confere(CorridasFinalizadas::registrarLote([$p1], CorridasFinalizadas::HISTORICO) === 0 && CorridasFinalizadas::registrarPedido($p1, CorridasFinalizadas::CONCLUSAO, '2026-10-22 11:00:00') === false, 'o mesmo pedido de novo: não grava');
+    confere(count(linhasDe('entregas_corridas_finalizadas')) === 1 && linhaDoPedido('order_a1')['origem'] === 'conferencia' && linhaDoPedido('order_a1')['finalizada_em'] === '2026-10-22 09:31:00', 'idempotente: fica a primeira linha, sem mudar');
+
+    $semRastreio = pedido(['public_id' => 'order_a2', 'customer_uuid' => 'contato-1', 'updated_at' => '2026-10-22 08:00:00']);
+    $motoboySumido = pedido(['public_id' => 'order_a3', 'driver_assigned_uuid' => 'motoboy-apagado', 'updated_at' => '2026-10-22 08:10:00']);
+    confere(CorridasFinalizadas::registrarLote([$semRastreio, $motoboySumido, $semRastreio], CorridasFinalizadas::CONFERENCIA) === 2, 'lote com repetido: uma linha por pedido');
+    $l2 = linhaDoPedido('order_a2');
+    confere(($l2['finalizada_em'] ?? null) === '2026-10-22 08:00:00', 'sem COMPLETED no rastreio: o updated_at do pedido');
+    confere($l2['loja_uuid'] === null && $l2['loja_nome'] === null && $l2['motoboy_uuid'] === null && $l2['motoboy_nome'] === null && $l2['numero'] === null, 'cliente que não é loja e sem motoboy: campos vazios');
+    $l3 = linhaDoPedido('order_a3');
+    confere(($l3['motoboy_uuid'] ?? null) === 'motoboy-apagado' && $l3['motoboy_nome'] === null, 'motoboy que não existe mais: fica o uuid, sem nome');
+
+    $doObservador = pedido(['public_id' => 'order_a4', 'tracking_number_uuid' => 'rastreio-a4']);
+    concluidoNoRastreio('rastreio-a4', '2026-10-22 09:00:00');
+    confere(CorridasFinalizadas::registrarPedido($doObservador, CorridasFinalizadas::CONCLUSAO, '2026-10-22 10:00:00') === true && linhaDoPedido('order_a4')['finalizada_em'] === '2026-10-22 10:00:00' && linhaDoPedido('order_a4')['origem'] === 'conclusao', 'a hora passada pelo observador vale');
+
+    $comCarbon = (object) ['uuid' => 'uuid-order_a5', 'company_uuid' => 'central-a', 'public_id' => 'order_a5', 'updated_at' => \Illuminate\Support\Carbon::parse('2026-10-22T12:00:00Z')];
+    CorridasFinalizadas::registrarLote([$comCarbon], CorridasFinalizadas::CONFERENCIA);
+    confere((linhaDoPedido('order_a5')['finalizada_em'] ?? null) === '2026-10-22 09:00:00', 'updated_at em Carbon UTC: gravado na hora de Brasília');
+    confere(CorridasFinalizadas::registrarLote([(object) ['uuid' => 'sem-empresa', 'public_id' => 'order_x']], CorridasFinalizadas::CONFERENCIA) === 0, 'pedido sem organização: ignorado');
+    confere(CorridasFinalizadas::iso('2026-10-22 09:31:00') === '2026-10-22T09:31:00-03:00', 'iso: o instante com o fuso de Brasília');
+
+    echo '== Conferência (CorridasFinalizadas::conferir)' . PHP_EOL;
+    preparar();
+    cadastros();
+    pedido(['public_id' => 'order_ok', 'updated_at' => '2026-10-21 20:00:00']);
+    pedido(['public_id' => 'order_done', 'status' => 'done', 'updated_at' => '2026-10-22 09:00:00']);
+    pedido(['public_id' => 'order_excluido', 'updated_at' => '2026-10-22 09:10:00', 'deleted_at' => '2026-10-22 09:20:00']);
+    pedido(['public_id' => 'order_cancelado_depois', 'status' => 'canceled', 'tracking_number_uuid' => 'rastreio-cd', 'updated_at' => '2026-10-22 09:50:00']);
+    concluidoNoRastreio('rastreio-cd', '2026-10-22 09:30:00');
+    pedido(['public_id' => 'order_cancelado', 'status' => 'canceled', 'updated_at' => '2026-10-22 09:00:00']);
+    pedido(['public_id' => 'order_andamento', 'status' => 'started', 'updated_at' => '2026-10-22 09:00:00']);
+    pedido(['public_id' => 'order_antigo', 'updated_at' => '2026-10-10 09:00:00']);
+    pedido(['public_id' => 'order_outra_central', 'company_uuid' => 'central-b', 'updated_at' => '2026-10-22 09:00:00']);
+    pedido(['public_id' => 'order_ja_tem', 'updated_at' => '2026-10-22 09:00:00']);
+    corrida('order_ja_tem', 'central-a', '2026-10-22 08:59:00');
+    $n = CorridasFinalizadas::conferir('2026-10-20 10:00:00');
+    confere($n === 5, "grava as 5 que faltavam ({$n})");
+    confere(pedidosRegistrados() === ['order_cancelado_depois', 'order_done', 'order_excluido', 'order_ja_tem', 'order_ok', 'order_outra_central'], 'concluído, done, excluído, cancelado depois do COMPLETED e de outra central entram; cancelado sem conclusão, em andamento e antigo não');
+    confere(linhaDoPedido('order_cancelado_depois')['finalizada_em'] === '2026-10-22 09:30:00' && linhaDoPedido('order_cancelado_depois')['origem'] === 'conferencia', 'o cancelado depois de finalizado: pela hora do COMPLETED');
+    confere(linhaDoPedido('order_ja_tem')['origem'] === 'conclusao', 'o que já tinha linha fica como estava');
+    confere(CorridasFinalizadas::conferir('2026-10-20 10:00:00') === 0, 'de novo: nada');
+
+    echo '== Histórico (CorridasFinalizadas::importarHistorico)' . PHP_EOL;
+    preparar();
+    cadastros();
+    foreach ([1, 2, 3, 4, 5] as $i) {
+        pedido(['public_id' => "order_h{$i}", 'updated_at' => "2025-12-0{$i} 12:00:00"]);
+    }
+    pedido(['public_id' => 'order_h_cancelado', 'status' => 'canceled', 'tracking_number_uuid' => 'rastreio-h', 'updated_at' => '2026-01-01 12:00:00']);
+    concluidoNoRastreio('rastreio-h', '2025-12-31 23:50:00');
+    pedido(['public_id' => 'order_h_aberto', 'status' => 'created', 'updated_at' => '2026-01-01 12:00:00']);
+    confere(CorridasFinalizadas::vazia(), 'tabela vazia antes');
+    confere(CorridasFinalizadas::importarHistorico(2) === 6, 'importa tudo, em lotes de 2, sem limite de data');
+    confere(array_values(array_unique(array_column(linhasDe('entregas_corridas_finalizadas'), 'origem'))) === ['historico'] && linhaDoPedido('order_h_cancelado')['finalizada_em'] === '2025-12-31 23:50:00' && linhaDoPedido('order_h_aberto') === [], 'origem historico; o cancelado depois de finalizado entra; o aberto não');
+    confere(CorridasFinalizadas::importarHistorico(2) === 0 && count(linhasDe('entregas_corridas_finalizadas')) === 6 && !CorridasFinalizadas::vazia(), 'de novo: nada (idempotente)');
+
     resumo();
 }
