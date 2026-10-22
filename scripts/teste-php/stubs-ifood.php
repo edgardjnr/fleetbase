@@ -558,7 +558,9 @@ namespace Teste {
                 glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_distribuicao_*.php') ?: [],
                 glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_integracao_*_table.php') ?: [],
                 // as do financeiro: a das cinco tabelas (entregas_lancamentos, entregas_pagamentos, entregas_faturas...) e a dos multiplicadores (entregas_multiplicadores)
-                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_financeiro_*.php') ?: []
+                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_financeiro_*.php') ?: [],
+                // as das corridas do sistema (entregas_corridas_finalizadas e entregas_precos_centrais)
+                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_sistema_*.php') ?: []
             );
             foreach ($arquivos as $arquivo) {
                 \Illuminate\Support\Facades\Schema::$criadas   = [];
