@@ -27,6 +27,8 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\RegrasPortalLoja::class,
         // chave pública do app do motoboy só para o login (desligado enquanto ENTREGAS_CHAVE_APP_MOTOBOY estiver vazia)
         \App\Http\Middleware\RestringirChaveDoApp::class,
+        // motoboy (líder incluído) fora do console e do portal (int/v1): 403 no login e com token; papel Administrator passa
+        \App\Http\Middleware\BarrarMotoboyNoConsole::class,
     ];
 
     /**
