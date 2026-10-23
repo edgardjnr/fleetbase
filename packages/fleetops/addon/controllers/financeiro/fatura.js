@@ -14,7 +14,8 @@ const TIPOS = ['corrida', 'diaria', 'bonus', 'ajuste', 'saldo_inicial', 'pagamen
 /**
  * Entregas RestaurantePro: uma fatura de loja (Financeiro → Lojas e faturas → fatura).
  * - Rascunho: "Não cobrar" por corrida (ajuste negativo do valor inteiro, na própria fatura), "+ Ajuste" (desconto, taxa,
- *   mensalidade), vencimento editável e Emitir (número, total gravado, portal e e-mail da loja).
+ *   mensalidade), vencimento editável, Emitir (número, total gravado, portal e e-mail da loja) e Apagar (as entregas voltam
+ *   para a próxima fatura e os ajustes deste rascunho somem; volta para a lista).
  * - Emitida: Registrar recebimento (modal da tela de motoboys, conta da loja), Reenviar e-mail, Imprimir e Cancelar (os
  *   lançamentos voltam para a próxima fatura; o número não é reaproveitado).
  * Itens = lançamentos da conta da loja ligados à fatura, mais antigos primeiro.
@@ -200,6 +201,26 @@ export default class FinanceiroFaturaController extends Controller {
                     await this.fetch.post(`${ENDPOINT}/${this.id}/emitir`);
                     this.notifications.success(this.intl.t(`${PREFIXO}.emitida`));
                     await this.carregar.perform();
+                } catch (error) {
+                    this.notifications.serverError(error);
+                }
+            },
+        });
+    }
+
+    @action apagar() {
+        this.modalsManager.confirm({
+            title: this.intl.t(`${PREFIXO}.apagar-rascunho-titulo`, { loja: this.fatura?.loja?.nome ?? '' }),
+            body: this.intl.t(`${PREFIXO}.apagar-rascunho-texto`, { inicio: dataBr(this.fatura?.periodo_inicio), fim: dataBr(this.fatura?.periodo_fim) }),
+            acceptButtonText: this.intl.t(`${PREFIXO}.apagar-rascunho`),
+            acceptButtonScheme: 'danger',
+            acceptButtonIcon: 'trash',
+            confirm: async (modal) => {
+                modal.startLoading();
+                try {
+                    await this.fetch.delete(`${ENDPOINT}/${this.id}`);
+                    this.notifications.success(this.intl.t(`${PREFIXO}.rascunho-apagado`));
+                    this.hostRouter.transitionTo('console.fleet-ops.financeiro.lojas');
                 } catch (error) {
                     this.notifications.serverError(error);
                 }

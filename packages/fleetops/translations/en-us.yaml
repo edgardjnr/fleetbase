@@ -343,6 +343,10 @@ fleet-ops:
             cancelar-fatura-texto: 'The entries go back to the next invoice. The number is not reused and the store no longer sees this invoice as outstanding.'
             cancelar-fatura-recebido: 'What was already received stays in the store balance and pays the next invoice.'
             fatura-cancelada: Invoice cancelled.
+            apagar-rascunho: Delete
+            apagar-rascunho-titulo: 'Delete the draft of {loja}?'
+            apagar-rascunho-texto: 'The draft from {inicio} to {fim} will be deleted. The deliveries go back to the next invoice, and the adjustments and "Do not charge" made in it are deleted too. You can generate the invoice again afterwards.'
+            rascunho-apagado: Draft deleted.
             total: Total
             rascunho-ajuda: 'Draft: the store does not see this invoice yet. Review the items, mark what should not be charged, add adjustments and issue it.'
             itens: Items

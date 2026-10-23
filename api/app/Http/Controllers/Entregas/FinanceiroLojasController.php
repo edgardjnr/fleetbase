@@ -239,6 +239,26 @@ class FinanceiroLojasController extends Controller
         return $this->naFatura($id, fn ($fatura) => Faturas::cancelar($fatura, $this->usuarioUuid($request)));
     }
 
+    /** Apaga o rascunho (feito errado ou de teste); a emitida se cancela. 200 {apagada: true}. */
+    public function apagar(Request $request, string $id)
+    {
+        if ($erro = $this->negarSeNaoAdmin($request)) {
+            return $erro;
+        }
+        $fatura = Faturas::porUuid((string) session('company'), $id);
+        if (!$fatura) {
+            return $this->erro('Fatura não encontrada.', 404);
+        }
+
+        try {
+            Faturas::apagar($fatura);
+        } catch (\InvalidArgumentException|\DomainException $e) {
+            return $this->erro($e->getMessage(), 422);
+        }
+
+        return response()->json(['apagada' => true]);
+    }
+
     public function reenviar(Request $request, string $id)
     {
         if ($erro = $this->negarSeNaoAdmin($request)) {

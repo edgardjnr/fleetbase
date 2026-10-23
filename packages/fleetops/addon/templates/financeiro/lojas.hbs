@@ -66,6 +66,7 @@
                                         <td class="py-2 text-right whitespace-nowrap">
                                             {{#if (eq fatura.situacao "rascunho")}}
                                                 <Button @size="xs" @type="primary" @icon="list-check" @text={{t "fleet-ops.ui.financeiro-lojas.conferir-e-emitir"}} @onClick={{fn this.abrirFatura fatura}} />
+                                                <Button @size="xs" @type="danger" @icon="trash" @wrapperClass="ml-1" @text={{t "fleet-ops.ui.financeiro-lojas.apagar-rascunho"}} @onClick={{fn this.apagarRascunho fatura}} />
                                             {{else if (this.emAberto fatura)}}
                                                 <Button @size="xs" @icon="hand-holding-dollar" @text={{t "fleet-ops.ui.financeiro-lojas.registrar-recebimento"}} @onClick={{fn this.registrarRecebimento fatura}} />
                                             {{/if}}

@@ -111,6 +111,7 @@ namespace {
         'naoCobrar'       => fn () => api()->naoCobrar(req(['lancamento_id' => 1]), 'x'),
         'emitir'          => fn () => api()->emitir(req(), 'x'),
         'cancelar'        => fn () => api()->cancelar(req(), 'x'),
+        'apagar'          => fn () => api()->apagar(req(), 'x'),
         'reenviar'        => fn () => api()->reenviar(req(), 'x'),
     ];
     foreach ($chamadas as $metodo => $chamar) {
@@ -322,6 +323,25 @@ namespace {
     $loja = array_column(api()->lojas(req())->dados['lojas'], null, 'id')['vendor_a'];
     confere($loja['nao_faturado'] === 20.0 && $loja['em_aberto'] === 0.0, 'na lista de lojas, os lançamentos soltos voltam ao não faturado');
 
+    echo '== Apagar rascunho' . PHP_EOL;
+    $r = api()->apagar(req(), $id);
+    confere($r->status === 422 && erroDe($r) === 'A fatura foi cancelada.', 'cancelada: não apaga (422)');
+    preparar();
+    $a1        = corridaDaLoja('vendor-a', 10, '2026-10-02', 'r1');
+    $rascunhoA = Faturas::gerarRascunho('empresa-1', 'vendor-a', '2026-09-28', '2026-10-04', null);
+    Relogio::$agora = '2026-10-12 10:05:00';
+    api()->ajuste(req(['valor' => '-2', 'motivo' => 'Teste']), $rascunhoA->uuid);
+    $r = api()->apagar(req(), $rascunhoA->uuid);
+    confere($r->status === 200 && $r->dados === ['apagada' => true] && linhasDe('entregas_faturas') === [], 'apaga o rascunho: 200 {apagada: true}');
+    confere(array_column(linhasDe('entregas_lancamentos'), 'id') === [$a1] && linhasDe('entregas_lancamentos')[$a1]['fatura_uuid'] === null, 'a corrida volta a ficar sem fatura; o ajuste do rascunho some');
+    confere(api()->apagar(req(), $rascunhoA->uuid)->status === 404, 'apagar de novo: 404');
+    $emitidaA = Faturas::emitir(Faturas::gerarRascunho('empresa-1', 'vendor-a', '2026-09-28', '2026-10-04', null), null);
+    $r = api()->apagar(req(), $emitidaA->uuid);
+    confere($r->status === 422 && erroDe($r) === 'A fatura já foi emitida: cancele em vez de apagar.' && count(linhasDe('entregas_faturas')) === 1, 'emitida: não apaga (422, cancele)');
+    corridaDaLoja('vendor-z', 50, '2026-10-02', 'r9', 'empresa-2');
+    $outra = Faturas::gerarRascunho('empresa-2', 'vendor-z', '2026-09-28', '2026-10-04', null);
+    confere($outra !== null && api()->apagar(req(), $outra->uuid)->status === 404 && Faturas::porUuid('empresa-2', $outra->uuid) !== null, 'rascunho de outra empresa: 404 (fica)');
+
     echo '== Comando entregas:financeiro-rascunhos' . PHP_EOL;
     preparar();
     Faturas::salvarConfig('empresa-1', 'vendor-b', ['ciclo' => 'mensal', 'dia_fechamento' => 5, 'prazo_dias' => 10]);
@@ -385,6 +405,7 @@ namespace {
         ['post', 'financeiro/faturas', 'gerarRascunho'],
         ['get', 'financeiro/faturas/{id}', 'fatura'],
         ['put', 'financeiro/faturas/{id}', 'mudarVencimento'],
+        ['delete', 'financeiro/faturas/{id}', 'apagar'],
         ['post', 'financeiro/faturas/{id}/ajustes', 'ajuste'],
         ['post', 'financeiro/faturas/{id}/nao-cobrar', 'naoCobrar'],
         ['post', 'financeiro/faturas/{id}/emitir', 'emitir'],

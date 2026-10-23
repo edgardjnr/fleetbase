@@ -343,6 +343,10 @@ fleet-ops:
       cancelar-fatura-texto: 'Os lançamentos voltam para a próxima fatura. O número não é reaproveitado e a loja deixa de ver esta fatura como em aberto.'
       cancelar-fatura-recebido: 'O que já foi recebido continua no saldo da loja e quita a próxima fatura.'
       fatura-cancelada: Fatura cancelada.
+      apagar-rascunho: Apagar
+      apagar-rascunho-titulo: 'Apagar o rascunho de {loja}?'
+      apagar-rascunho-texto: 'O rascunho de {inicio} a {fim} será apagado. As entregas voltam para a próxima fatura, e os ajustes e "Não cobrar" feitos nele são apagados junto. Depois, dá para gerar a fatura de novo.'
+      rascunho-apagado: Rascunho apagado.
       total: Total
       rascunho-ajuda: 'Rascunho: a loja ainda não vê esta fatura. Confira os itens, marque o que não deve ser cobrado, inclua ajustes e emita.'
       itens: Itens

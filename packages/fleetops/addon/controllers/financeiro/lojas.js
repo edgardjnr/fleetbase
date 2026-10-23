@@ -126,6 +126,27 @@ export default class FinanceiroLojasController extends Controller {
         return this.hostRouter.transitionTo('console.fleet-ops.financeiro.fatura', fatura.id);
     }
 
+    /** Apaga o rascunho (feito errado ou de teste): as entregas voltam para a próxima fatura; dá para gerar de novo. */
+    @action apagarRascunho(fatura) {
+        this.modalsManager.confirm({
+            title: this.intl.t(`${PREFIXO}.apagar-rascunho-titulo`, { loja: fatura.loja?.nome ?? '' }),
+            body: this.intl.t(`${PREFIXO}.apagar-rascunho-texto`, { inicio: dataBr(fatura.periodo_inicio), fim: dataBr(fatura.periodo_fim) }),
+            acceptButtonText: this.intl.t(`${PREFIXO}.apagar-rascunho`),
+            acceptButtonScheme: 'danger',
+            acceptButtonIcon: 'trash',
+            confirm: async (modal) => {
+                modal.startLoading();
+                try {
+                    await this.fetch.delete(`${ENDPOINT}/faturas/${fatura.id}`);
+                    this.notifications.success(this.intl.t(`${PREFIXO}.rascunho-apagado`));
+                    await this.carregar.perform();
+                } catch (error) {
+                    this.notifications.serverError(error);
+                }
+            },
+        });
+    }
+
     @action abrirLoja(loja) {
         return this.hostRouter.transitionTo('console.fleet-ops.financeiro.loja', loja.id);
     }

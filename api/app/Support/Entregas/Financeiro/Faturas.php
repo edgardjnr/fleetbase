@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
  *   e vencimento.
  * - Emitir: número sequencial por empresa (FAT-0001, nunca reaproveitado) e total gravado.
  * - Cancelar (rascunho ou emitida): solta os lançamentos, que entram no próximo rascunho; o número fica.
+ * - Apagar (só rascunho, para gerar de novo): solta os lançamentos e apaga os ajustes feitos na conferência dele.
  * - Situação da emitida (aberta, parcial, paga, vencida) calculada na hora pelos recebimentos da loja (Quitacao::faturas).
  *
  * Erros de entrada lançam \InvalidArgumentException; operação que a situação da fatura não permite (ex.: ajuste em fatura
@@ -193,6 +194,43 @@ final class Faturas
                 ->where('company_uuid', $atual->company_uuid)
                 ->where('fatura_uuid', $atual->uuid)
                 ->update(['fatura_uuid' => null, 'updated_at' => $agora]);
+        });
+    }
+
+    /**
+     * Apaga o rascunho (feito errado ou de teste) para gerar de novo. Os lançamentos que ele juntou voltam a ficar sem
+     * fatura (entram no próximo rascunho); os ajustes feitos na conferência dele (avulso e "Não cobrar": criados depois
+     * do segundo em que o rascunho nasceu e já com ele) e os estornos desses ajustes são apagados junto. O ajuste lançado
+     * no extrato antes do rascunho (mesmo no mesmo segundo) fica. Só rascunho: a emitida a loja já viu
+     * (cancela-se). A única exceção ao "nada se apaga" do Financeiro: o rascunho nunca saiu do console.
+     */
+    public static function apagar(object $fatura): void
+    {
+        DB::transaction(function () use ($fatura) {
+            $atual   = static::rascunhoTravado($fatura, 'A fatura já foi emitida: cancele em vez de apagar.');
+            $ajustes = array_map('intval', DB::table(Lancamentos::TABELA)
+                ->where('company_uuid', $atual->company_uuid)
+                ->where('fatura_uuid', $atual->uuid)
+                ->where('tipo', 'ajuste')
+                ->where('created_at', '>', $atual->created_at)
+                ->lockForUpdate()
+                ->pluck('id')
+                ->all());
+            if ($ajustes) {
+                DB::table(Lancamentos::TABELA)
+                    ->where('company_uuid', $atual->company_uuid)
+                    ->whereIn('estorno_de', $ajustes)
+                    ->delete();
+                DB::table(Lancamentos::TABELA)
+                    ->where('company_uuid', $atual->company_uuid)
+                    ->whereIn('id', $ajustes)
+                    ->delete();
+            }
+            DB::table(Lancamentos::TABELA)
+                ->where('company_uuid', $atual->company_uuid)
+                ->where('fatura_uuid', $atual->uuid)
+                ->update(['fatura_uuid' => null, 'updated_at' => now()->format('Y-m-d H:i:s')]);
+            DB::table(static::TABELA)->where('id', $atual->id)->delete();
         });
     }
 

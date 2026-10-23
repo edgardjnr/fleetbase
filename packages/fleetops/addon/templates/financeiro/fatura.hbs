@@ -44,6 +44,7 @@
                             {{#if this.rascunho}}
                                 <Button @size="sm" @icon="plus" @text={{t "fleet-ops.ui.financeiro-lojas.mais-ajuste"}} @onClick={{this.adicionarAjuste}} />
                                 <Button @size="sm" @type="primary" @icon="paper-plane" @text={{t "fleet-ops.ui.financeiro-lojas.emitir"}} @disabled={{not this.temItens}} @onClick={{this.emitir}} />
+                                <Button @size="sm" @type="danger" @icon="trash" @text={{t "fleet-ops.ui.financeiro-lojas.apagar-rascunho"}} @onClick={{this.apagar}} />
                             {{else if this.emitida}}
                                 {{#if this.emAberto}}
                                     <Button @size="sm" @type="primary" @icon="hand-holding-dollar" @text={{t "fleet-ops.ui.financeiro-lojas.registrar-recebimento"}} @onClick={{this.registrarRecebimento}} />

@@ -208,7 +208,7 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('mapa/motoboys', [MapaController::class, 'motoboys']);
 
                         // financeiro: lojas e faturas (FinanceiroLojasController, só admin): ciclo de cobrança, extrato da loja,
-                        // rascunho, conferência, emissão, cancelamento e reenvio do e-mail da fatura
+                        // rascunho (gerar e apagar), conferência, emissão, cancelamento e reenvio do e-mail da fatura
                         Route::get('financeiro/lojas', [FinanceiroLojasController::class, 'lojas']);
                         Route::put('financeiro/lojas/{id}/ciclo', [FinanceiroLojasController::class, 'salvarCiclo']);
                         Route::get('financeiro/lojas/{id}/extrato', [FinanceiroLojasController::class, 'extratoDaLoja']);
@@ -216,6 +216,7 @@ class RouteServiceProvider extends ServiceProvider
                         Route::post('financeiro/faturas', [FinanceiroLojasController::class, 'gerarRascunho']);
                         Route::get('financeiro/faturas/{id}', [FinanceiroLojasController::class, 'fatura']);
                         Route::put('financeiro/faturas/{id}', [FinanceiroLojasController::class, 'mudarVencimento']);
+                        Route::delete('financeiro/faturas/{id}', [FinanceiroLojasController::class, 'apagar']);
                         Route::post('financeiro/faturas/{id}/ajustes', [FinanceiroLojasController::class, 'ajuste']);
                         Route::post('financeiro/faturas/{id}/nao-cobrar', [FinanceiroLojasController::class, 'naoCobrar']);
                         Route::post('financeiro/faturas/{id}/emitir', [FinanceiroLojasController::class, 'emitir']);
