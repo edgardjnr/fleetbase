@@ -5,8 +5,9 @@
 -- dados iFood e da integração do pedido (e os eventos iFood dele), distribuição e ofertas, o Financeiro DO PEDIDO
 -- (corridas do motoboy e da loja e os estornos delas), atividades, comentários, campos extras, arquivos (só o registro;
 -- o arquivo no disco fica), avisos gravados e eventos de webhook que citam o pedido, transações do pedido e os locais de
--- entrega que só esse pedido usava. Fica: o Local da loja, lojas, motoboys, contatos e qualquer local usado por outro
--- registro.
+-- entrega que só esse pedido usava. Também sai a corrida do relatório do dono (entregas_corridas_finalizadas, desde
+-- 2026-10-23): com o pedido apagado do banco, a conferência não a grava de novo. Fica: o Local da loja, lojas, motoboys,
+-- contatos e qualquer local usado por outro registro. Para escolher pelo motoboy: inventario-motoboy.sql.
 --
 -- Para (sem apagar nada) se um lançamento do pedido já estiver numa fatura ou num pagamento: aí o acerto é pelo
 -- Financeiro, não por aqui.
@@ -135,6 +136,7 @@ BEGIN
   CALL ap_rodar('drivers', 'current_job_uuid', 'UPDATE drivers SET current_job_uuid = NULL WHERE current_job_uuid IN (SELECT uuid FROM ap_pedidos)');
   CALL ap_rodar('entregas_ofertas', 'pedido_uuid', 'DELETE FROM entregas_ofertas WHERE pedido_uuid IN (SELECT uuid FROM ap_pedidos)');
   CALL ap_rodar('entregas_distribuicoes', 'pedido_uuid', 'DELETE FROM entregas_distribuicoes WHERE pedido_uuid IN (SELECT uuid FROM ap_pedidos)');
+  CALL ap_rodar('entregas_corridas_finalizadas', 'order_uuid', 'DELETE FROM entregas_corridas_finalizadas WHERE order_uuid IN (SELECT uuid FROM ap_pedidos)');
   CALL ap_rodar('entregas_valores_pedido', 'order_uuid', 'DELETE FROM entregas_valores_pedido WHERE order_uuid IN (SELECT uuid FROM ap_pedidos)');
   CALL ap_rodar('entregas_ifood_eventos', 'pedido_ifood_id', 'DELETE FROM entregas_ifood_eventos WHERE pedido_ifood_id IN (SELECT pedido_ifood_id FROM ap_pedidos_ifood)');
   CALL ap_rodar('entregas_ifood_pedidos', 'order_uuid', 'DELETE FROM entregas_ifood_pedidos WHERE order_uuid IN (SELECT uuid FROM ap_pedidos)');
@@ -189,9 +191,10 @@ SELECT public_id, uuid FROM ap_pedidos;
 CALL ap_executar(IFNULL(@executar, 0));
 SELECT passo, tabela, linhas, comando FROM ap_resumo ORDER BY passo;
 
--- conferência: depois do COMMIT, 0 nos dois
+-- conferência: depois do COMMIT, 0 nos três
 SELECT (SELECT COUNT(*) FROM orders WHERE FIND_IN_SET(public_id, @pedidos) > 0) AS pedidos_restantes,
-       (SELECT COUNT(*) FROM entregas_lancamentos l WHERE l.order_uuid IN (SELECT uuid FROM ap_pedidos)) AS lancamentos_restantes;
+       (SELECT COUNT(*) FROM entregas_lancamentos l WHERE l.order_uuid IN (SELECT uuid FROM ap_pedidos)) AS lancamentos_restantes,
+       (SELECT COUNT(*) FROM entregas_corridas_finalizadas c WHERE c.order_uuid IN (SELECT uuid FROM ap_pedidos)) AS corridas_restantes;
 
 DROP PROCEDURE IF EXISTS ap_rodar;
 DROP PROCEDURE IF EXISTS ap_executar;
