@@ -193,8 +193,9 @@ SELECT passo, tabela, linhas, comando FROM ap_resumo ORDER BY passo;
 
 -- conferência: depois do COMMIT, 0 nos três
 SELECT (SELECT COUNT(*) FROM orders WHERE FIND_IN_SET(public_id, @pedidos) > 0) AS pedidos_restantes,
-       (SELECT COUNT(*) FROM entregas_lancamentos l WHERE l.order_uuid IN (SELECT uuid FROM ap_pedidos)) AS lancamentos_restantes,
-       (SELECT COUNT(*) FROM entregas_corridas_finalizadas c WHERE c.order_uuid IN (SELECT uuid FROM ap_pedidos)) AS corridas_restantes;
+       (SELECT COUNT(*) FROM entregas_lancamentos l WHERE l.order_uuid IN (SELECT uuid FROM ap_pedidos)) AS lancamentos_restantes;
+-- separado: o MySQL não deixa citar a mesma tabela temporária duas vezes no mesmo comando
+SELECT COUNT(*) AS corridas_restantes FROM entregas_corridas_finalizadas WHERE order_uuid IN (SELECT uuid FROM ap_pedidos);
 
 DROP PROCEDURE IF EXISTS ap_rodar;
 DROP PROCEDURE IF EXISTS ap_executar;
