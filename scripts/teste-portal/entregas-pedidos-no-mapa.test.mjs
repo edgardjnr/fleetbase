@@ -2,7 +2,7 @@
 // Uso, na raiz do repo: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/*.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALFINETE, classeDoRotulo, nomeNoAlfinete, rotuloNoAlfinete, mesmaLista, pedidosValidos, tempoDesde } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
+import { ALFINETE, classeDoRotulo, emEntrega, nomeNoAlfinete, rotuloNoAlfinete, mesmaLista, pedidosValidos, tempoDesde } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
 
 test('alfinete vermelho em SVG, com a ponta embaixo no meio', () => {
     assert.match(ALFINETE.url, /^data:image\/svg\+xml;charset=UTF-8,/);
@@ -80,4 +80,15 @@ test('pedidos válidos: o prazo_em passa junto', () => {
     assert.deepEqual(pedidosValidos([{ id: 'order_a', latitude: -21.18, longitude: -47.81, prazo_em: '2026-10-20T19:57:51-03:00' }]), [
         { id: 'order_a', latitude: -21.18, longitude: -47.81, prazo_em: '2026-10-20T19:57:51-03:00' },
     ]);
+});
+
+test('motinha no rótulo: só com o pedido já a caminho do cliente (o mesmo STATUS_EM_ENTREGA do capacete vermelho)', () => {
+    for (const status of ['enroute', 'picked_up', 'dropping_off', 'in_progress', 'ENROUTE']) {
+        assert.equal(emEntrega({ status }), true, status);
+    }
+    for (const status of ['created', 'dispatched', 'started', 'driver_enroute', 'completed', '', null, undefined]) {
+        assert.equal(emEntrega({ status }), false, String(status));
+    }
+    assert.equal(emEntrega(null), false);
+    assert.equal(emEntrega(undefined), false);
 });

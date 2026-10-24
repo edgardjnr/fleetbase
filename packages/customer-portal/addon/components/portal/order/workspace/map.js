@@ -7,7 +7,7 @@ import { race, task, timeout, waitForEvent } from 'ember-concurrency';
 import CamadaDeMotoboys from '../../../../utils/camada-de-motoboys';
 import { motoboyDoPedido, motoboysValidos } from '../../../../utils/motoboys-no-mapa';
 import { INTERVALO_MAPA_MS, espera } from '../../../../utils/entregas-pedido';
-import { ALFINETE, classeDoRotulo, mesmaLista, pedidosValidos, rotuloNoAlfinete, semOPedidoAberto, tempoDesde } from '../../../../utils/pedidos-no-mapa';
+import { ALFINETE, classeDoRotulo, emEntrega, mesmaLista, pedidosValidos, rotuloNoAlfinete, semOPedidoAberto, tempoDesde } from '../../../../utils/pedidos-no-mapa';
 import { PIN_DA_LOJA, lojaNoMapa, mostrarPinDaLoja } from '../../../../utils/loja-no-mapa';
 
 export default class PortalOrderWorkspaceMapComponent extends Component {
@@ -27,6 +27,8 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
     rotuloNoAlfinete = rotuloNoAlfinete;
     // a cor do rótulo do alfinete pelo prazo de entrega; o relogio anda a cada consulta (5 s)
     classeDoRotulo = classeDoRotulo;
+    // a motinha na frente do rótulo do pedido que já saiu para a entrega
+    emEntrega = emEntrega;
 
     // Entregas: o pin da loja no Local dela (a coleta), lido uma vez de entregas/loja/minha-loja
     @tracked loja = null;

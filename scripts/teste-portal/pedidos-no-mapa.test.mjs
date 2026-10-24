@@ -2,8 +2,8 @@
 // Uso, na raiz do repo: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/*.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALFINETE, classeDoRotulo, nomeNoAlfinete, rotuloNoAlfinete, mesmaLista, pedidosValidos, semOPedidoAberto, tempoDesde } from '../../packages/customer-portal/addon/utils/pedidos-no-mapa.js';
-import { ALFINETE as ALFINETE_DO_CONSOLE, classeDoRotulo as classeDoRotuloDoConsole } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
+import { ALFINETE, classeDoRotulo, emEntrega, nomeNoAlfinete, rotuloNoAlfinete, mesmaLista, pedidosValidos, semOPedidoAberto, tempoDesde } from '../../packages/customer-portal/addon/utils/pedidos-no-mapa.js';
+import { ALFINETE as ALFINETE_DO_CONSOLE, classeDoRotulo as classeDoRotuloDoConsole, emEntrega as emEntregaDoConsole } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
 
 test('o mesmo alfinete do console', () => {
     assert.deepEqual(ALFINETE, ALFINETE_DO_CONSOLE);
@@ -73,4 +73,12 @@ test('rótulo do alfinete: a mesma classe do console, pelo prazo', () => {
     }
     assert.equal(classeDoRotulo({ prazo_em: prazo }, t + 7 * 60000), 'entregas-prazo-atrasado');
     assert.equal(classeDoRotulo({}, t), '', 'sem prazo: vazia (fundo neutro, cinza)');
+});
+
+test('motinha no rótulo: a mesma regra do console', () => {
+    for (const status of ['enroute', 'picked_up', 'dropping_off', 'in_progress', 'created', 'dispatched', 'started', 'driver_enroute', null]) {
+        assert.equal(emEntrega({ status }), emEntregaDoConsole({ status }), String(status));
+    }
+    assert.equal(emEntrega({ status: 'enroute' }), true);
+    assert.equal(emEntrega({ status: 'started' }), false);
 });

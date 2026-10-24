@@ -87,6 +87,17 @@ export function classeDoRotulo(pedido, agora = Date.now()) {
     return estado ? `entregas-prazo-${estado}` : '';
 }
 
+/** Status do pedido que já saiu da loja: o SituacaoDoMotoboy::STATUS_EM_ENTREGA do servidor (o capacete vermelho). */
+const STATUS_EM_ENTREGA = ['enroute', 'picked_up', 'dropping_off', 'in_progress'];
+
+/**
+ * Pedido a caminho do cliente: o rótulo do alfinete ("#4821 · Carlos") ganha uma motinha na frente, para a central e a
+ * loja verem que o motoboy já saiu com ele. Lê o status que já vem no PedidosNoMapa.
+ */
+export function emEntrega(pedido) {
+    return STATUS_EM_ENTREGA.includes(String(pedido?.status ?? '').toLowerCase());
+}
+
 /** Mesma lista? Só troca (e redesenha os alfinetes) quando algo mudou. */
 export function mesmaLista(a, b) {
     return JSON.stringify(a ?? []) === JSON.stringify(b ?? []);
