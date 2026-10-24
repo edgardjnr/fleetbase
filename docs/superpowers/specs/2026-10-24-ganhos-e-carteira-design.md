@@ -19,12 +19,14 @@ não faz sentido.
 - Ao lado do valor, o botão **"Minha carteira"**, que abre uma folha com o que tem a receber, o que já recebeu e os
   últimos pagamentos (opção "Com pagamentos": precisa de rota nova na API).
 - A lista detalhada do Início **não muda**, pagamentos incluídos.
+- Visual: **sketch 008 B "Cartão da carteira"** (`entregas-navigator/.planning/sketches/008-ganhos-e-carteira/`).
 
 ## Cabeçalho do Início (`MeusGanhosScreen`)
 
 ```
-Ganhos · Hoje
-R$ 60,00            [carteira] Minha carteira
+GANHOS · HOJE
+R$ 60,00                 [carteira]
+                       Minha carteira
 ```
 
 - Rótulo `Ganhos · <período>` (o mesmo `rotuloDoPeriodo` de hoje); acompanha o filtro (Hoje, 7 dias, Este mês, Mês
@@ -33,7 +35,10 @@ R$ 60,00            [carteira] Minha carteira
   (saem, com os textos `aReceberNoPeriodo`, `recebidoAMais`, `recebidoAMaisDica`, `semPagamento`, `ultimoPagamento` e a
   linha de ganhos/recebido, se nada mais os usar).
 - A barra compacta (cabeçalho recolhido) mostra o mesmo valor, sem o botão.
-- Botão "Minha carteira": ícone de carteira (`faWallet`) e o texto, à direita do valor; abre a folha da carteira.
+- Botão "Minha carteira" (sketch 008 B), à direita do valor: um quadrado de 56 px com cantos de 18 px, fundo `$textPrimary`
+  (escuro), ícone de carteira (`faWallet`) em `$primary` (laranja), e o texto "Minha carteira" (12 px, negrito, `$sobrePrimario`)
+  embaixo. Abre a folha da carteira.
+- O valor diminui um pouco (de 56 para ~46 px, com `adjustsFontSizeToFit`) para caber "R$ 1.270,00" ao lado do botão.
 - Carregando: "—", como hoje.
 
 ### `ganhosDoPeriodo`
@@ -54,24 +59,30 @@ toque fora). Não depende do filtro do Início: mostra a conta inteira.
 
 ```
 Minha carteira                       ✕
-A receber
-R$ 70,00
-Recebido em outubro
-R$ 850,00
-───────────────
-Últimos pagamentos
+┌ cartão escuro ───────────────────┐
+│ [carteira]              ENTREGAS │
+│ A RECEBER                        │
+│ R$ 70,00                         │
+│ Tudo o que a central ainda vai   │
+│ te pagar.                        │
+│ ──────────────────────────────── │
+│ RECEBIDO EM OUTUBRO    Chave Pix │
+│ R$ 850,00          (11) 9876-... │
+└──────────────────────────────────┘
+ÚLTIMOS PAGAMENTOS
 24/10  Pix       R$ 200,00  >
 17/10  Pix       R$ 350,00  >
-───────────────
-Sua chave Pix: 11 9...
 ```
 
+- **Cartão da carteira** (sketch 008 B): fundo `$textPrimary` (escuro), texto `$background`, cantos de 20 px, dois círculos
+  laranja (`$primary`) no canto de cima à direita, o ícone de carteira em laranja e "ENTREGAS" à direita. Dentro do cartão: A
+  receber (grande), a dica, e no rodapé (separado por um fio) o Recebido no mês à esquerda e a chave Pix à direita.
 - **A receber:** `a_receber` (o saldo da conta). Negativo vira **"Adiantamento"** com o valor positivo, sem vermelho.
 - **Recebido em <mês>:** `recebido_no_mes`, com o nome do mês de `mes` (`AAAA-MM`) em pt-BR, minúsculo.
 - **Últimos pagamentos:** até 5, mais novo primeiro: data (`DD/MM`), forma (`rotuloDaForma`) e valor. O estornado sai
   riscado com o selo "Estornado". Toque: fecha a folha e abre o Recibo (`navigate('Recibo', { id })`). Sem pagamentos:
   "Nenhum pagamento ainda".
-- **Sua chave Pix:** `pix` (só leitura); sem chave, a linha não aparece.
+- **Chave Pix:** `pix` (só leitura), no rodapé do cartão; sem chave, some.
 - Carrega ao abrir (uma leitura por abertura). Carregando: indicador no lugar dos valores. Erro (rede, 404 da API antiga):
   "Não foi possível carregar a carteira" e o botão "Tentar de novo".
 
