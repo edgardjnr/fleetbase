@@ -728,6 +728,14 @@ Pagamentos::registrar('empresa-1', 'motoboy', 'driver-1', 30.0, 'pix', '2026-10-
 confere(reais(Carteira::doMotoboy('empresa-1', 'driver-1')['a_receber']) === -24.5, 'pagou a mais: a receber negativo (o app mostra "Adiantamento")');
 confere(Carteira::doMotoboy('empresa-1', 'driver-sem-conta') === ['a_receber' => 0.0, 'mes' => '2026-10', 'recebido_no_mes' => 0.0, 'pagamentos' => [], 'pix' => null], 'motoboy sem lançamentos: zeros, lista vazia e sem Pix');
 
+echo '== App do motoboy: carteira (MotoboyController@carteira)' . PHP_EOL;
+$app = new App\Http\Controllers\Entregas\MotoboyController();
+confere($app->carteira(doApp([], 'user-m1', 'flb_live_chave'))->status === 403, 'carteira com chave de API (sem "|") → 403');
+confere($app->carteira(doApp([], 'user-loja'))->status === 403, 'usuário sem cadastro de motoboy → 403');
+$resposta = $app->carteira(doApp());
+confere($resposta->status === 200 && reais($resposta->dados['a_receber'] ?? null) === -24.5 && count($resposta->dados['pagamentos'] ?? []) === 5, 'a carteira do motoboy do token');
+confere(reais($app->carteira(doApp([], 'user-m2'))->dados['a_receber'] ?? null) === -74.0, 'outro motoboy vê só a dele (Maria: diária 25 − pagamento 99)');
+
 echo '== Rotas (RouteServiceProvider)' . PHP_EOL;
 $rotas = file_get_contents('/repo/api/app/Providers/RouteServiceProvider.php');
 
@@ -761,7 +769,7 @@ foreach ([
 confere(str_contains($console, "->middleware(['fleetbase.protected'])"), 'o grupo das rotas do console é o fleetbase.protected');
 
 $doApp = grupoDasRotas($rotas, "->middleware(['fleetbase.api', 'throttle:entregas-motoboy'])");
-confere(str_contains($doApp, "Route::get('extrato', [MotoboyController::class, 'extrato'])") && str_contains($doApp, "Route::get('pagamentos/{id}', [MotoboyController::class, 'pagamento'])"), 'app: extrato e pagamentos/{id} no grupo v1/entregas/motoboy (fleetbase.api, throttle:entregas-motoboy)');
+confere(str_contains($doApp, "Route::get('extrato', [MotoboyController::class, 'extrato'])") && str_contains($doApp, "Route::get('pagamentos/{id}', [MotoboyController::class, 'pagamento'])") && str_contains($doApp, "Route::get('carteira', [MotoboyController::class, 'carteira'])"), 'app: extrato, pagamentos/{id} e carteira no grupo v1/entregas/motoboy (fleetbase.api, throttle:entregas-motoboy)');
 
 $doComprovante = grupoDasRotas($rotas, "Route::prefix('v1/entregas/comprovantes')");
 confere(str_contains($doComprovante, "->middleware(['signed', 'throttle:60,1'])"), 'comprovante: grupo próprio com signed e throttle:60,1 (sem token)');

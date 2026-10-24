@@ -8,6 +8,7 @@ use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\ChatComACentral;
 use App\Support\Entregas\ConversasDaLoja;
 use App\Support\Entregas\Distribuicao\Distribuidor;
+use App\Support\Entregas\Financeiro\Carteira;
 use App\Support\Entregas\Financeiro\ExtratoDaConta;
 use App\Support\Entregas\Financeiro\Financeiro;
 use App\Support\Entregas\Financeiro\Pagamentos;
@@ -144,6 +145,20 @@ class MotoboyController extends Controller
         }
 
         return response()->json(ExtratoDaConta::pagamento($pagamento));
+    }
+
+    /**
+     * GET v1/entregas/motoboy/carteira: a "Minha carteira" do motoboy da sessão (Carteira::doMotoboy): {a_receber, mes,
+     * recebido_no_mes, pagamentos (os 5 mais recentes), pix}. Não depende do período do Início.
+     */
+    public function carteira(Request $request)
+    {
+        $motoboy = MotoboyDaSessao::motoboy($request);
+        if (!$motoboy) {
+            return $this->soParaMotoboy();
+        }
+
+        return response()->json(Carteira::doMotoboy((string) session('company'), (string) $motoboy->uuid));
     }
 
     /** O valor do pedido para o motoboy da sessão: no pedido sem motoboy, a prévia para ele (posição e multiplicador). */

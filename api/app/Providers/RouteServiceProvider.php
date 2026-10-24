@@ -257,8 +257,9 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('app', [MotoboyController::class, 'app']);
                         Route::get('ganhos', [MotoboyController::class, 'ganhos']);
                         Route::get('pedidos/{id}/valor', [MotoboyController::class, 'valor']);
-                        // Financeiro no app: o extrato (Início) e o recibo de um pagamento
+                        // Financeiro no app: o extrato (Início), a "Minha carteira" e o recibo de um pagamento
                         Route::get('extrato', [MotoboyController::class, 'extrato']);
+                        Route::get('carteira', [MotoboyController::class, 'carteira']);
                         Route::get('pagamentos/{id}', [MotoboyController::class, 'pagamento']);
                         // conversa do motoboy com a central (botão "Chat" do cliente nos detalhes do pedido)
                         Route::post('chat-central', [MotoboyController::class, 'chatComACentral']);
