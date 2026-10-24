@@ -7,6 +7,9 @@ namespace App\Support\Entregas\Distribuicao;
  * tempo ele leva até D. Funções puras: a matriz vem de fora ($dur(i, j) em segundos entre dois índices de ponto).
  *
  * - Chegada numa parada = saída da anterior + rota; saída = chegada + parada fixa (PARADA_LOJA_S ou PARADA_CLIENTE_S).
+ * - Coleta logo depois de outra coleta no mesmo ponto (rota de 0 s: a mesma loja) sai na mesma parada, sem somar outros
+ *   3 min (decisão do Edgard de 2026-10-24: o pedido 9888 não foi ao Roger, que pegaria os dois na loja, porque a parada
+ *   dobrada atrasava o cliente dele em mais de 5 min).
  * - Testa todas as inserções com P antes de D (inclusive P e D no fim = "termina tudo e depois vai").
  * - Uma inserção cabe se nenhuma entrega já aceita chega mais que o atraso máximo depois do que chegaria sem o pedido
  *   novo: Distribuicao::ATRASO_MAXIMO_S (10 min) no ciclo sem rodadas, ATRASO_MAXIMO_EM_RODADAS_S (5 min) em rodadas.
@@ -68,14 +71,23 @@ class Encaixe
     /** Segundos de chegada em cada parada da sequência, a partir do ponto de partida. */
     public static function chegadas(int $partida, array $sequencia, callable $dur): array
     {
-        $chegadas = [];
-        $saida    = 0;
-        $anterior = $partida;
+        $chegadas     = [];
+        $saida        = 0;
+        $anterior     = $partida;
+        $tipoAnterior = null;
         foreach ($sequencia as $parada) {
-            $chegada    = $saida + (int) round((float) $dur($anterior, $parada['indice']));
-            $chegadas[] = $chegada;
-            $saida      = $chegada + ($parada['tipo'] === 'coleta' ? Distribuicao::PARADA_LOJA_S : Distribuicao::PARADA_CLIENTE_S);
-            $anterior   = $parada['indice'];
+            $rota = (int) round((float) $dur($anterior, $parada['indice']));
+            if ($parada['tipo'] === 'coleta' && $tipoAnterior === 'coleta' && $rota === 0) {
+                // a mesma loja: coleta na mesma parada da anterior (mesma chegada e mesma saída)
+                $chegadas[] = end($chegadas);
+                $anterior   = $parada['indice'];
+                continue;
+            }
+            $chegada      = $saida + $rota;
+            $chegadas[]   = $chegada;
+            $saida        = $chegada + ($parada['tipo'] === 'coleta' ? Distribuicao::PARADA_LOJA_S : Distribuicao::PARADA_CLIENTE_S);
+            $anterior     = $parada['indice'];
+            $tipoAnterior = $parada['tipo'];
         }
 
         return $chegadas;

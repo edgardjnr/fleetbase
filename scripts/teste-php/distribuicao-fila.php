@@ -170,10 +170,10 @@ Candidatos::$buscarMotoboys = fn (Order $p, bool $gpsRecente) => [
 ];
 Candidatos::$buscarParadas = fn (string $empresa, array $uuids) => ['d-edgard' => [[-21.1700, -47.8100, 'coleta'], [-21.1790, -47.8100, 'entrega']]];
 $fila = (new FilaDeCandidatos($estimador))->para($pedido, Candidatos::elegiveis($pedido, []), Distribuicao::ATRASO_MAXIMO_EM_RODADAS_S);
-confere(array_column($fila, 'public_id') === ['driver_edgard', 'driver_edmar'] && array_column($fila, 'tempo_s') === [1076, 1381], 'caso real em rodadas: Edgard coleta junto na mesma loja (17,9 min) e fica à frente de Edmar livre (23,0 min) (' . json_encode(array_column($fila, 'tempo_s')) . ')');
+confere(array_column($fila, 'public_id') === ['driver_edgard', 'driver_edmar'] && array_column($fila, 'tempo_s') === [776, 1381], 'caso real em rodadas: Edgard coleta junto na mesma loja, numa parada só, e entrega o cliente novo antes de A (12,9 min; A atrasa 162 s), à frente de Edmar livre (23,0 min) (' . json_encode(array_column($fila, 'tempo_s')) . ')');
 confere($fila[0]['encaixe'] === true && $fila[0]['livre'] === false, 'caso real: Edgard com encaixe');
 $fila = (new FilaDeCandidatos($estimador))->para($pedido, Candidatos::elegiveis($pedido, []));
-confere(array_column($fila, 'tempo_s') === [956, 1381], 'caso real no ciclo antigo (10 min): entrega o cliente novo antes de A (A atrasa 342 s, acima do limite das rodadas) (' . json_encode(array_column($fila, 'tempo_s')) . ')');
+confere(array_column($fila, 'tempo_s') === [776, 1381], 'caso real no ciclo antigo (10 min): o mesmo das rodadas (com a parada dobrada, eram 956 s e A atrasava 342 s) (' . json_encode(array_column($fila, 'tempo_s')) . ')');
 $raioRecebido = 'nenhum';
 Candidatos::$buscarMotoboys = function (Order $p, bool $gpsRecente, ?int $raio = null) use (&$raioRecebido) {
     $raioRecebido = $raio;

@@ -175,9 +175,9 @@ $dist = cenarioRodadas([motoboyA('edmar', 'Edmar', 5.3), motoboyA('edgard', 'Edg
 Candidatos::$buscarParadas = fn (string $empresa, array $uuids) => ['d-edgard' => [[-21.1700, -47.8100, 'coleta'], [-21.1790, -47.8100, 'entrega']]];
 $dist->iniciar(pedidoDoCenario());
 $o = ofertas()[0];
-confere($o->motoboy_uuid === 'd-edgard' && $o->encaixe === true && $o->tempo_estimado_s === 1076, 'oferta a Edgard, com encaixe (coleta junto): 1076 s até o cliente novo (' . json_encode($o) . ')');
+confere($o->motoboy_uuid === 'd-edgard' && $o->encaixe === true && $o->tempo_estimado_s === 776, 'oferta a Edgard, com encaixe (coleta junto numa parada só, o cliente novo antes de A): 776 s até o cliente novo (' . json_encode($o) . ')');
 $fila = json_decode(distribuicao()->fila, true);
-confere(array_column($fila, 'public_id') === ['driver_edgard', 'driver_edmar'] && array_column($fila, 'tempo_s') === [1076, 1381] && $fila[0]['encaixe'] === true && $fila[1]['encaixe'] === false, 'fila gravada: Edgard (17,9 min, no caminho) e Edmar livre (23,0 min) (' . json_encode($fila) . ')');
+confere(array_column($fila, 'public_id') === ['driver_edgard', 'driver_edmar'] && array_column($fila, 'tempo_s') === [776, 1381] && $fila[0]['encaixe'] === true && $fila[1]['encaixe'] === false, 'fila gravada: Edgard (12,9 min, no caminho) e Edmar livre (23,0 min) (' . json_encode($fila) . ')');
 Candidatos::$buscarParadas = fn () => [];
 
 echo '== Rodadas: um motoboy só (1 min entre voltas)' . PHP_EOL;

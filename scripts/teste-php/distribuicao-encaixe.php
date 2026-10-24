@@ -39,8 +39,9 @@ confere($livre === ['tempo_s' => 300 + $loja + 900, 'encaixe' => false, 'atraso_
 // ocupado ainda na coleta de A, e a loja nova é a mesma (dur 1→3 = 0): pega os dois juntos e entrega A antes (mais perto)
 $base = [['indice' => 1, 'tipo' => 'coleta'], ['indice' => 2, 'tipo' => 'entrega']];
 $r    = Encaixe::calcular(0, $base, 3, 4, $dur);
-// melhor: 0→1 (300) +loja, 1→3 (0) +loja, 3→2 (600) +cliente, 2→4 (300) = 300+180+0+180+600+120+300 = 1680; A chega em 1260 em vez de 300+180+600 = 1080: atraso 180 ≤ 600
-confere($r['tempo_s'] === 1680 && $r['encaixe'] === true && $r['atraso_s'] === 180, 'mesma loja: coleta junto, entrega A primeiro, D depois (' . json_encode($r) . ')');
+// melhor: 0→1 (300) +loja, 1→3 (0, a mesma parada: sem outra loja), 3→2 (600) +cliente, 2→4 (300) = 300+180+0+600+120+300 = 1500;
+// A chega em 1080, como sem o pedido novo: atraso 0 (D antes de A atrasaria A em 720 > 600)
+confere($r['tempo_s'] === 1500 && $r['encaixe'] === true && $r['atraso_s'] === 0, 'mesma loja: coleta junto numa parada só, entrega A primeiro, D depois (' . json_encode($r) . ')');
 
 // atraso acima do limite: a entrega nova fica a 2 h de tudo; encaixar D antes de A atrasaria A demais → "termina e vai"
 $longe = $m;
@@ -48,7 +49,7 @@ foreach ([0, 1, 2, 3] as $i) { $longe[$i][4] = 7200; $longe[4][$i] = 7200; }
 $durLonge = fn (int $i, int $j) => (float) $longe[$i][$j];
 $r = Encaixe::calcular(0, $base, 3, 4, $durLonge);
 confere($r['atraso_s'] <= Distribuicao::ATRASO_MAXIMO_S, 'nunca atrasa uma entrega já aceita mais que o limite');
-confere($r['encaixe'] === true && $r['tempo_s'] === 300 + $loja + 0 + $loja + 600 + $cliente + 7200, 'coleta no caminho (mesma loja) e D por último: encaixe só na coleta (' . json_encode($r) . ')');
+confere($r['encaixe'] === true && $r['tempo_s'] === 300 + $loja + 0 + 600 + $cliente + 7200, 'coleta no caminho (mesma loja) e D por último: encaixe só na coleta (' . json_encode($r) . ')');
 
 // ocupado já em entrega (só a entrega A falta) e nada no caminho: termina A e vai
 $soEntrega = [['indice' => 2, 'tipo' => 'entrega']];
@@ -73,7 +74,7 @@ confere($rodadas === 300 && Distribuicao::ATRASO_MAXIMO_S === 600, 'limites: 300
 confere(Encaixe::calcular(0, [], 3, 4, $dur, $rodadas) === $livre, 'livre: igual ao ciclo antigo');
 // mesmo pedido da mesma loja ainda não coletado: coleta junto (o cliente de A espera só a parada de 3 min na loja)
 $r = Encaixe::calcular(0, $base, 3, 4, $dur, $rodadas);
-confere($r === ['tempo_s' => 1680, 'encaixe' => true, 'atraso_s' => 180], 'mesma loja: coleta junto, atraso 180 s ≤ 300 (' . json_encode($r) . ')');
+confere($r === ['tempo_s' => 1500, 'encaixe' => true, 'atraso_s' => 0], 'mesma loja: coleta junto numa parada só, sem atraso para A (' . json_encode($r) . ')');
 // segunda loja no caminho da entrega A: passa, coleta e sai com os dois (A atrasa 300 + 180 + 600 − 900 = 180 s)
 $r = Encaixe::calcular(0, $soEntrega, 3, 4, $dur, $rodadas);
 confere($r === ['tempo_s' => $pegaAntes, 'encaixe' => true, 'atraso_s' => 180], 'loja no caminho: passa na loja antes de entregar A (' . json_encode($r) . ')');
@@ -86,9 +87,13 @@ $r = Encaixe::calcular(0, $soEntrega, 3, 4, $limite(721));
 confere($r === ['tempo_s' => 300 + $loja + 721 + $cliente + 300, 'encaixe' => true, 'atraso_s' => 301], 'o mesmo desvio cabe no ciclo antigo (10 min) (' . json_encode($r) . ')');
 $r = Encaixe::calcular(0, $soEntrega, 3, 4, $limite(1020), $rodadas);
 confere($r['encaixe'] === false && $r['tempo_s'] === $terminaEVai, 'atraso de 600 s: só o ciclo antigo encaixa');
-// nada cabe além do fim: o resultado é sempre "termina tudo e depois vai" (atraso 0), mesmo com limite 0
+// limite 0: só cabe o que não atrasa ninguém. Coletar junto na mesma loja não custa nada (uma parada só); D vai depois de A
 $r = Encaixe::calcular(0, $base, 3, 4, $dur, 0);
-confere($r === ['tempo_s' => 300 + $loja + 600 + $cliente + 600 + $loja + 900, 'encaixe' => false, 'atraso_s' => 0], 'limite 0: termina tudo (coleta e entrega de A) e depois vai (' . json_encode($r) . ')');
+confere($r === ['tempo_s' => 300 + $loja + 0 + 600 + $cliente + 300, 'encaixe' => true, 'atraso_s' => 0], 'limite 0: coleta junto na mesma loja (sem atraso) e D depois de A (' . json_encode($r) . ')');
+// lojas diferentes com limite 0: termina tudo e depois vai (atraso 0)
+$duasLojasM = fn (int $i, int $j) => (float) ((($i === 1 && $j === 3) || ($i === 3 && $j === 1)) ? 60 : $m[$i][$j]);
+$r = Encaixe::calcular(0, [['indice' => 2, 'tipo' => 'entrega']], 3, 4, $duasLojasM, 0);
+confere($r['atraso_s'] === 0 && $r['encaixe'] === false, 'limite 0, nada no caminho sem atraso: termina tudo e depois vai (' . json_encode($r) . ')');
 
 echo '== ligada()' . PHP_EOL;
 foreach (['1' => true, 'true' => true, 'on' => true, 'yes' => true, '0' => false, '' => false, 'no' => false, 'nao' => false, 'off' => false] as $v => $esperado) {
@@ -116,5 +121,28 @@ echo '== Pontos (texto e não finito)' . PHP_EOL;
 confere(Pontos::de(new class { public function getLat() { return '-21.17'; } public function getLng() { return '-47.81'; } }) === [-21.17, -47.81], 'texto numérico vale');
 confere(Pontos::de(new class { public function getLat() { return 'abc'; } public function getLng() { return '10'; } }) === null, 'texto não numérico: null');
 confere(Pontos::de(new class { public function getLat() { return NAN; } public function getLng() { return 10; } }) === null, 'NAN: null');
+
+echo '== Coletas na mesma loja: uma parada só (pedido 9888 do Roger, 2026-10-24)' . PHP_EOL;
+// tempos da fila gravada (linha reta × 1,3 a 25 km/h): 0 = Roger, 1 = coleta do 2962 (Terraço), 2 = entrega do 2962,
+// 3 = coleta do 9888 (o mesmo Terraço), 4 = entrega do 9888 (no caminho do 2962)
+$t = [
+    0 => [0 => 0, 1 => 499, 2 => 1100, 3 => 499, 4 => 900],
+    1 => [0 => 499, 1 => 0, 2 => 877, 3 => 0, 4 => 529],
+    2 => [0 => 1100, 1 => 877, 2 => 0, 3 => 877, 4 => 451],
+    3 => [0 => 499, 1 => 0, 2 => 877, 3 => 0, 4 => 529],
+    4 => [0 => 900, 1 => 529, 2 => 451, 3 => 529, 4 => 0],
+];
+$durRoger = fn (int $i, int $j) => (float) $t[$i][$j];
+$rogerBase = [['indice' => 1, 'tipo' => 'coleta'], ['indice' => 2, 'tipo' => 'entrega']];
+confere(Encaixe::chegadas(0, [['indice' => 1, 'tipo' => 'coleta'], ['indice' => 3, 'tipo' => 'coleta'], ['indice' => 4, 'tipo' => 'entrega']], $durRoger) === [499, 499, 499 + $loja + 529],
+    'duas coletas no mesmo ponto: mesma chegada e uma parada só na loja');
+$r = Encaixe::calcular(0, $rogerBase, 3, 4, $durRoger, $rodadas);
+// pega os dois, entrega o 9888 primeiro: 499 + 180 + 529 = 1208 s; o 2962 chega em 1208 + 120 + 451 = 1779 em vez de 1556: atraso 223 ≤ 300
+confere($r === ['tempo_s' => 1208, 'encaixe' => true, 'atraso_s' => 223], 'Roger: ~20 min, entregando o novo no caminho (antes eram ~38 min, parada dobrada) (' . json_encode($r) . ')');
+// lojas diferentes (rota de 1 s entre as coletas) continuam com uma parada cada
+$duasLojas = fn (int $i, int $j) => (float) ((($i === 1 && $j === 3) || ($i === 3 && $j === 1)) ? 1 : $t[$i][$j]);
+confere(Encaixe::chegadas(0, [['indice' => 1, 'tipo' => 'coleta'], ['indice' => 3, 'tipo' => 'coleta']], $duasLojas) === [499, 499 + $loja + 1], 'lojas diferentes: uma parada em cada');
+// coleta no ponto de uma entrega (rota 0, mas a anterior não é coleta): a parada da loja conta
+confere(Encaixe::chegadas(0, [['indice' => 2, 'tipo' => 'entrega'], ['indice' => 2, 'tipo' => 'coleta']], $durRoger) === [1100, 1100 + $cliente], 'coleta depois de uma entrega no mesmo ponto: com a parada da loja');
 
 resumo();
