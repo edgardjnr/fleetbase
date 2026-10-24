@@ -79,6 +79,8 @@ x-api-env: &api-env
   # distribuição em rodadas (30 s, raio R/1,5R/2R, voltas até aceitar, sem alarme a todos): 1 liga; vazio = ciclo de 30 s
   # que abre a todos. Só vale com ENTREGAS_DISTRIBUICAO=1; ligar só com o APK 30 em todos os celulares
   ENTREGAS_DISTRIBUICAO_RODADAS: ${ENTREGAS_DISTRIBUICAO_RODADAS:-}
+  # raio base R da distribuição em metros (rodadas R, 1,5R, 2R): vazio = o adhoc_distance do pedido (6000)
+  ENTREGAS_DISTRIBUICAO_RAIO_M: ${ENTREGAS_DISTRIBUICAO_RAIO_M:-}
   # integração de pedidos de outros sistemas (RestaurantePro): 1 liga as rotas v1/entregas/integracao/*, os avisos por
   # webhook e o entregas:integracao-acompanhar; vazio = as rotas respondem 409 (o RestaurantePro grava o erro no pedido)
   ENTREGAS_INTEGRACAO: ${ENTREGAS_INTEGRACAO:-}

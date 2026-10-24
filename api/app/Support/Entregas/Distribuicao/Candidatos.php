@@ -63,7 +63,7 @@ class Candidatos
     }
 
     /**
-     * $raio em metros (o da rodada); null = o raio de pedido aberto (Order::getAdhocDistance).
+     * $raio em metros (o da rodada); null = o raio base (Distribuicao::raioBase).
      *
      * @return array<int, array{motoboy: Driver, posicao: array, distancia: float}>
      */
@@ -84,7 +84,7 @@ class Candidatos
             ->whereNotNull('location')
             ->whereRaw('ST_Y(location) BETWEEN -90 AND 90 AND ST_X(location) BETWEEN -180 AND 180 AND NOT (ST_X(location) = 0 AND ST_Y(location) = 0)')
             ->when($gpsRecente, fn ($q) => $q->where('updated_at', '>=', now()->subMinutes(Distribuicao::GPS_MINUTOS)))
-            ->distanceSphere('location', $coleta, $raio ?? $pedido->getAdhocDistance())
+            ->distanceSphere('location', $coleta, $raio ?? Distribuicao::raioBase($pedido))
             ->distanceSphereValue('location', $coleta)
             ->withoutGlobalScopes()
             ->get();

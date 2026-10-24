@@ -67,6 +67,9 @@ return [
         // 1 = distribuição em rodadas (30 s, raio crescente, voltas até aceitar, sem alarme a todos); só vale com a
         // distribuição ligada. Vazio = o ciclo de 30 s que abre a todos. Ligar só com o APK 30 em todos os celulares
         'distribuicao_rodadas' => env('ENTREGAS_DISTRIBUICAO_RODADAS'),
+        // raio base R da distribuição em metros (rodadas R, 1,5R e 2R; lista aberta até 2R). Vazio = o raio de pedido
+        // aberto do pedido (adhoc_distance, 6000 por padrão)
+        'distribuicao_raio_m' => env('ENTREGAS_DISTRIBUICAO_RAIO_M'),
         // trava "Atualize o app" (AppDoMotoboy): 1 liga. Ligar só com o APK da trava (35+) em todos os celulares
         'app_trava' => env('ENTREGAS_APP_TRAVA'),
         // JSON {versao, url} que o GitHub Actions do entregas-navigator publica no MinIO a cada build

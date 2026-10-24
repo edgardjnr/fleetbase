@@ -229,7 +229,7 @@ class FiltrarPedidosAbertosDoMotoboy
             }
             if (!$semLimite) {
                 $coleta = $this->coletaDe($pedido);
-                if (!$coleta || Pontos::metros($posicao, $coleta) > Distribuicao::MULTIPLICADOR_DA_LISTA * max(1, (int) $pedido->getAdhocDistance())) {
+                if (!$coleta || Pontos::metros($posicao, $coleta) > Distribuicao::MULTIPLICADOR_DA_LISTA * Distribuicao::raioBase($pedido)) {
                     continue;
                 }
             }

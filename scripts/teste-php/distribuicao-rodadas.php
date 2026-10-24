@@ -493,4 +493,21 @@ Relogio::$agora = '2026-10-07 10:00:30';
 $dist->vencer(1);
 confere(ofertas()[1]->motoboy_uuid === 'd-bruno' && logsDoLimite() === 0, 'rodadas desligadas: nada muda');
 
+// Raio base pela variável ENTREGAS_DISTRIBUICAO_RAIO_M (decisão do Edgard de 2026-10-24: 8 km)
+$dist = cenarioRodadas([$caio, $davi]);
+confere(Distribuicao::raioBase(pedidoDoCenario()) === 6000, 'raio base sem a variável: o adhoc_distance do pedido (6000)');
+foreach (['0', '-100', 'abc', '8 km'] as $invalido) {
+    Config::$valores['services.entregas.distribuicao_raio_m'] = $invalido;
+    confere(Distribuicao::raioBase(pedidoDoCenario()) === 6000, "raio base com a variável inválida ('{$invalido}'): o do pedido");
+}
+Config::$valores['services.entregas.distribuicao_raio_m'] = '8000';
+confere(Distribuicao::raioBase(pedidoDoCenario()) === 8000, 'raio base com a variável: 8000');
+$dist->iniciar(pedidoDoCenario());
+$o = ofertas()[0];
+confere($o->motoboy_uuid === 'd-caio' && $o->rodada === 1 && $o->raio_m === 8000, 'com 8 km, Caio (7 km) entra na rodada 1 (' . json_encode($o) . ')');
+Relogio::$agora = '2026-10-07 10:00:30';
+$dist->vencer(1);
+confere(ofertas()[1]->motoboy_uuid === 'd-davi' && ofertas()[1]->rodada === 2 && ofertas()[1]->raio_m === 12000, 'com 8 km, a rodada 2 vai até 12 km: Davi (11 km)');
+Config::$valores['services.entregas.distribuicao_raio_m'] = '';
+
 resumo();

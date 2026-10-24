@@ -2,6 +2,8 @@
 
 namespace App\Support\Entregas\Distribuicao;
 
+use Fleetbase\FleetOps\Models\Order;
+
 /**
  * Entregas RestaurantePro: distribuição de pedidos abertos. Em vez do alarme a todos os motoboys do raio
  * (HandleOrderDispatched do Fleet-Ops), o pedido é oferecido a um motoboy por vez, por SEGUNDOS_DA_OFERTA, na ordem do
@@ -72,7 +74,7 @@ class Distribuicao
 
     /** Em rodadas: cada oferta dura isto (era 20 s; 30 s por decisão do Edgard em 2026-10-08, igual ao ciclo sem rodadas). */
     public const SEGUNDOS_DA_OFERTA_EM_RODADAS = 30;
-    /** Raio de cada rodada em múltiplos do raio de pedido aberto (R = Order::getAdhocDistance()). */
+    /** Raio de cada rodada em múltiplos do raio base (R = raioBase()). */
     public const MULTIPLICADOR_DA_RODADA = [1 => 1.0, 2 => 1.5, 3 => 2.0];
     public const ULTIMA_RODADA           = 3;
     /** A volta nova só começa este tempo depois do início da anterior. */
@@ -104,7 +106,23 @@ class Distribuicao
         return static::emRodadas() ? static::SEGUNDOS_DA_OFERTA_EM_RODADAS : static::SEGUNDOS_DA_OFERTA;
     }
 
-    /** Raio (m) da rodada 1 a ULTIMA_RODADA a partir do raio de pedido aberto; fora da faixa, a mais próxima. */
+    /**
+     * Raio base R (m) da distribuição: ENTREGAS_DISTRIBUICAO_RAIO_M (services.entregas.distribuicao_raio_m) quando é um
+     * número positivo; vazio ou inválido, o raio de pedido aberto do pedido (Order::getAdhocDistance, 6000 por padrão).
+     * Decisão do Edgard de 2026-10-24 (8 km): o Roger, livre a ~7,3 km, ficou fora da rodada 1 de 6 km, e o pedido foi ao
+     * Davi, que já levava dois (~48 min até o cliente).
+     */
+    public static function raioBase(Order $pedido): int
+    {
+        $configurado = filter_var(config('services.entregas.distribuicao_raio_m'), FILTER_VALIDATE_INT);
+        if (is_int($configurado) && $configurado > 0) {
+            return $configurado;
+        }
+
+        return max(1, (int) $pedido->getAdhocDistance());
+    }
+
+    /** Raio (m) da rodada 1 a ULTIMA_RODADA a partir do raio base; fora da faixa, a mais próxima. */
     public static function raioDaRodada(int $raio, int $rodada): int
     {
         $rodada = max(1, min(static::ULTIMA_RODADA, $rodada));

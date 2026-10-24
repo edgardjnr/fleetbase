@@ -212,7 +212,7 @@ class Distribuidor
         }
         $volta = (int) ($distribuicao->volta ?? 1);
         if (!in_array((string) $motoboy->uuid, Distribuicoes::motoboysQueDispensaramNaVolta((int) $distribuicao->id, $volta), true)) {
-            $raio = Distribuicao::raioDaRodada(max(1, (int) $pedido->getAdhocDistance()), (int) ($distribuicao->rodada ?? 1));
+            $raio = Distribuicao::raioDaRodada(Distribuicao::raioBase($pedido), (int) ($distribuicao->rodada ?? 1));
             Distribuicoes::registrarResposta($distribuicao, (string) $motoboy->uuid, Distribuicao::DISPENSADA, $raio);
             Log::info('[entregas] distribuição: oferta dispensada', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id, 'motoboy' => $motoboy->public_id, 'volta' => $volta]);
         }
@@ -409,7 +409,7 @@ class Distribuidor
 
             return;
         }
-        $raioBase  = max(1, (int) $pedido->getAdhocDistance());
+        $raioBase  = Distribuicao::raioBase($pedido);
         $volta     = max(1, (int) ($distribuicao->volta ?? 1));
         $rodada    = max(1, min(Distribuicao::ULTIMA_RODADA, (int) ($distribuicao->rodada ?? 1)));
         $voltaNova = false;

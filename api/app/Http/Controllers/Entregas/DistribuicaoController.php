@@ -61,7 +61,7 @@ class DistribuicaoController extends Controller
 
     /**
      * O painel: a distribuição não encerrada do pedido ou, sem ela, a última (para o histórico); `distribuicao: false` se
-     * nunca houve. Com o pedido, `raio_m` = o raio da rodada atual (R pelo getAdhocDistance).
+     * nunca houve. Com o pedido, `raio_m` = o raio da rodada atual (R pelo Distribuicao::raioBase).
      */
     public static function resposta(string $pedidoUuid, ?Order $pedido = null): array
     {
@@ -98,7 +98,7 @@ class DistribuicaoController extends Controller
             'rodadas'         => Distribuicao::emRodadas(),
             'volta'           => (int) ($distribuicao->volta ?? 1),
             'rodada'          => (int) ($distribuicao->rodada ?? 1),
-            'raio_m'          => $pedido ? Distribuicao::raioDaRodada(max(1, (int) $pedido->getAdhocDistance()), (int) ($distribuicao->rodada ?? 1)) : null,
+            'raio_m'          => $pedido ? Distribuicao::raioDaRodada(Distribuicao::raioBase($pedido), (int) ($distribuicao->rodada ?? 1)) : null,
             'lista_aberta_em' => Distribuicoes::data($distribuicao->lista_aberta_em ?? null)?->toIso8601String(),
             'fase'          => $distribuicao->fase,
             'motivo'        => $distribuicao->motivo,
