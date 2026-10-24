@@ -82,7 +82,7 @@ Minha carteira                       ✕
 - **Últimos pagamentos:** até 5, mais novo primeiro: data (`DD/MM`), forma (`rotuloDaForma`) e valor. O estornado sai
   riscado com o selo "Estornado". Toque: fecha a folha e abre o Recibo (`navigate('Recibo', { id })`). Sem pagamentos:
   "Nenhum pagamento ainda".
-- **Chave Pix:** `pix` (só leitura), no rodapé do cartão; sem chave, some.
+- **Chave Pix:** `pix.chave` (só leitura), no rodapé do cartão; sem chave, some.
 - Carrega ao abrir (uma leitura por abertura). Carregando: indicador no lugar dos valores. Erro (rede, 404 da API antiga):
   "Não foi possível carregar a carteira" e o botão "Tentar de novo".
 
@@ -101,15 +101,15 @@ Minha carteira                       ✕
   "pagamentos": [
     { "id": "<uuid>", "valor": 200.0, "data": "2026-10-24", "forma": "pix", "estornado": false }
   ],
-  "pix": "11 9..."
+  "pix": { "chave": "11999994321", "tipo": "telefone" }
 }
 ```
 
 - `a_receber`: a soma de todos os lançamentos da conta (a mesma do `saldo` do `ExtratoDaConta`).
-- `mes`: o mês atual no horário de Brasília (`now()`, sem UTC).
+- `mes`: o mês atual no fuso da empresa (`Financeiro::hoje`, sem UTC).
 - `recebido_no_mes`: soma dos pagamentos da conta com `data` no mês atual e `estornado_em` nulo.
 - `pagamentos`: os 5 mais recentes da conta (`data` desc, `id` desc), **estornados incluídos** com `estornado: true`.
-- `pix`: `ChavePix::doMotoboy` (ou `null`).
+- `pix`: `ChavePix::doMotoboy` (`{chave, tipo}`, o mesmo formato do `conta.pix` do extrato) ou `null`.
 - Valores com `round((float) …, 2)`. Motoboy sem conta no Financeiro: zeros, lista vazia.
 
 ## Implantação
