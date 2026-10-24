@@ -727,6 +727,24 @@ confere(reais($carteira['a_receber']) === 5.5, 'a receber = saldo (31,50 − 20 
 Pagamentos::registrar('empresa-1', 'motoboy', 'driver-1', 30.0, 'pix', '2026-10-12', null, null, 'user-admin');
 confere(reais(Carteira::doMotoboy('empresa-1', 'driver-1')['a_receber']) === -24.5, 'pagou a mais: a receber negativo (o app mostra "Adiantamento")');
 confere(Carteira::doMotoboy('empresa-1', 'driver-sem-conta') === ['a_receber' => 0.0, 'mes' => '2026-10', 'recebido_no_mes' => 0.0, 'pagamentos' => [], 'pix' => null], 'motoboy sem lançamentos: zeros, lista vazia e sem Pix');
+// isolamento: o pagamento ao mesmo driver-1 noutra empresa e um recebimento de loja com o mesmo uuid de conta ficam de fora
+$antes      = Carteira::doMotoboy('empresa-1', 'driver-1');
+$outraEmpr  = Pagamentos::registrar('empresa-2', 'motoboy', 'driver-1', 50.0, 'pix', '2026-10-12', null, null, 'user-admin');
+$deLoja     = Pagamentos::registrar('empresa-1', 'loja', 'driver-1', 40.0, 'pix', '2026-10-12', null, null, 'user-admin');
+$carteira   = Carteira::doMotoboy('empresa-1', 'driver-1');
+confere(reais($carteira['recebido_no_mes']) === 51.0 && reais($carteira['a_receber']) === -24.5 && $carteira === $antes, 'pagamento de outra empresa e recebimento de loja não entram no total nem no saldo: ' . json_encode([$carteira['recebido_no_mes'], $carteira['a_receber']]));
+confere(!in_array($outraEmpr->uuid, array_column($carteira['pagamentos'], 'id'), true) && !in_array($deLoja->uuid, array_column($carteira['pagamentos'], 'id'), true), 'nem na lista dos últimos pagamentos');
+// virada do mês no fuso da empresa: 31/10 23:30 em Brasília já é 01/11 00:30 em Noronha
+Pagamentos::registrar('empresa-1', 'motoboy', 'driver-virada', 10.0, 'pix', '2026-10-31', null, null, 'user-admin');
+Pagamentos::registrar('empresa-1', 'motoboy', 'driver-virada', 4.0, 'pix', '2026-11-01', null, null, 'user-admin');
+\Teste\Relogio::$agora = '2026-10-31 23:30:00';
+$carteira = Carteira::doMotoboy('empresa-1', 'driver-virada');
+confere($carteira['mes'] === '2026-10' && reais($carteira['recebido_no_mes']) === 10.0, 'empresa em Brasília às 23:30 de 31/10: ainda outubro (só o de 31/10): ' . json_encode([$carteira['mes'], $carteira['recebido_no_mes']]));
+\Fleetbase\Models\Company::$fusos['empresa-1'] = 'America/Noronha';
+$carteira = Carteira::doMotoboy('empresa-1', 'driver-virada');
+confere($carteira['mes'] === '2026-11' && reais($carteira['recebido_no_mes']) === 4.0, 'empresa em Noronha na mesma hora: já novembro, o de 31/10 fica de fora: ' . json_encode([$carteira['mes'], $carteira['recebido_no_mes']]));
+\Fleetbase\Models\Company::$fusos['empresa-1'] = 'America/Sao_Paulo';
+\Teste\Relogio::$agora = '2026-10-12 10:00:00';
 
 echo '== App do motoboy: carteira (MotoboyController@carteira)' . PHP_EOL;
 $app = new App\Http\Controllers\Entregas\MotoboyController();

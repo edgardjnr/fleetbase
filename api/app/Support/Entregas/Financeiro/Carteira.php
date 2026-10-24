@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
  * Entregas RestaurantePro: a "Minha carteira" do app do motoboy (GET v1/entregas/motoboy/carteira; desenho em
  * docs/superpowers/specs/2026-10-24-ganhos-e-carteira-design.md). Não depende do período do Início: é a conta inteira.
  *
- * - a_receber: o saldo da conta (a soma de todos os lançamentos, o mesmo `saldo` do ExtratoDaConta); negativo = adiantamento;
+ * - a_receber: o saldo da conta (ExtratoDaConta::saldo: SUM dos lançamentos, em reais com 2 casas); negativo = adiantamento;
  * - mes / recebido_no_mes: o mês de hoje no fuso da empresa ('AAAA-MM') e a soma dos pagamentos não estornados com `data`
  *   nesse mês;
  * - pagamentos: os 5 mais recentes (data, depois a ordem de registro), estornados incluídos (`estornado: true`), sem
@@ -21,13 +21,10 @@ final class Carteira
 
     public static function doMotoboy(string $companyUuid, string $motoboyUuid): array
     {
-        $saldo = 0;
-        foreach (Lancamentos::daConta($companyUuid, Financeiro::CONTA_MOTOBOY, $motoboyUuid) as $lancamento) {
-            $saldo += static::centavos($lancamento->valor);
-        }
-
-        // poucos por motoboy: a soma do mês e o corte dos 5 ficam aqui, sem SQL de data
+        // poucos por motoboy: a soma do mês e o corte dos 5 ficam aqui, sem SQL de data; só as colunas da resposta
+        // (nunca a observação interna nem o caminho do comprovante)
         $pagamentos = DB::table(Pagamentos::TABELA)
+            ->select(['id', 'uuid', 'valor', 'data', 'forma', 'estornado_em'])
             ->where('company_uuid', $companyUuid)
             ->where('conta_tipo', Financeiro::CONTA_MOTOBOY)
             ->where('conta_uuid', $motoboyUuid)
@@ -45,7 +42,7 @@ final class Carteira
         }
 
         return [
-            'a_receber'       => round($saldo / 100, 2),
+            'a_receber'       => ExtratoDaConta::saldo($companyUuid, Financeiro::CONTA_MOTOBOY, $motoboyUuid),
             'mes'             => $mes,
             'recebido_no_mes' => round($recebido / 100, 2),
             'pagamentos'      => array_map(fn ($pagamento) => [
