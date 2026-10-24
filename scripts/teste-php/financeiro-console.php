@@ -12,6 +12,7 @@ if (!class_exists(\Illuminate\Notifications\Notification::class, false)) {
     eval('namespace Illuminate\Notifications; class Notification {}');
 }
 
+use App\Support\Entregas\Financeiro\Carteira;
 use App\Support\Entregas\Financeiro\ChavePix;
 use App\Support\Entregas\Financeiro\ExtratoDaConta;
 use App\Support\Entregas\Financeiro\Lancamentos;
@@ -699,6 +700,33 @@ confere($comprovantes->mostrar(pedidoFeito(), 'nao-existe')->status === 404, 'pa
 confere($comprovantes->mostrar(pedidoFeito(), $semArquivo->uuid)->status === 404, 'pagamento sem comprovante → 404');
 \Teste\Disco::$arquivos = [];
 confere($comprovantes->mostrar(pedidoFeito(), $pagamento->uuid)->status === 404, 'arquivo que sumiu do disco → 404');
+
+echo '== App do motoboy: carteira (Carteira::doMotoboy)' . PHP_EOL;
+// o cenário: João (driver-1) com saldo 31,50 e o pagamento de 15,00 (Pix) em 06/10; hoje = 12/10/2026
+['pagamento' => $pagamento] = cenario();
+ChavePix::salvar('empresa-1', 'driver-1', '11999994321', 'telefone');
+$carteira = Carteira::doMotoboy('empresa-1', 'driver-1');
+confere(array_keys($carteira) === ['a_receber', 'mes', 'recebido_no_mes', 'pagamentos', 'pix'], 'só os campos do contrato: ' . json_encode(array_keys($carteira)));
+confere(reais($carteira['a_receber']) === 31.5 && $carteira['mes'] === '2026-10' && reais($carteira['recebido_no_mes']) === 15.0, 'a receber = saldo da conta; recebido no mês = o pagamento de 06/10: ' . json_encode($carteira));
+confere($carteira['pagamentos'] === [['id' => $pagamento->uuid, 'valor' => 15.0, 'data' => '2026-10-06', 'forma' => 'pix', 'estornado' => false]], 'o pagamento dele, sem comprovante nem observação interna');
+confere($carteira['pix'] === ['chave' => '11999994321', 'tipo' => 'telefone'], 'a chave Pix dele ({chave, tipo})');
+
+Pagamentos::registrar('empresa-1', 'motoboy', 'driver-1', 20.0, 'dinheiro', '2026-09-28', null, null, 'user-admin'); // mês passado
+$estornado = Pagamentos::registrar('empresa-1', 'motoboy', 'driver-1', 7.0, 'pix', '2026-10-09', null, null, 'user-admin');
+Pagamentos::estornar($estornado, 'user-admin');
+Pagamentos::registrar('empresa-1', 'motoboy', 'driver-1', 1.0, 'pix', '2026-10-10', null, null, 'user-admin');
+Pagamentos::registrar('empresa-1', 'motoboy', 'driver-1', 2.0, 'pix', '2026-10-11', null, null, 'user-admin');
+Pagamentos::registrar('empresa-1', 'motoboy', 'driver-1', 3.0, 'transferencia', '2026-10-11', null, null, 'user-admin');
+Pagamentos::registrar('empresa-1', 'motoboy', 'driver-2', 99.0, 'pix', '2026-10-11', null, null, 'user-admin'); // da Maria
+$carteira = Carteira::doMotoboy('empresa-1', 'driver-1');
+confere(reais($carteira['recebido_no_mes']) === 21.0, 'recebido no mês sem o de setembro, sem o estornado e sem o da Maria (15 + 1 + 2 + 3): ' . json_encode($carteira['recebido_no_mes']));
+confere(array_column($carteira['pagamentos'], 'data') === ['2026-10-11', '2026-10-11', '2026-10-10', '2026-10-09', '2026-10-06'], 'os 5 mais recentes, mais novo primeiro (o de setembro fica de fora): ' . json_encode(array_column($carteira['pagamentos'], 'data')));
+confere(array_column($carteira['pagamentos'], 'valor') === [3.0, 2.0, 1.0, 7.0, 15.0] && array_column($carteira['pagamentos'], 'forma')[0] === 'transferencia', 'no mesmo dia, o lançado por último primeiro');
+confere(array_column($carteira['pagamentos'], 'estornado') === [false, false, false, true, false], 'o estornado vem na lista, marcado');
+confere(reais($carteira['a_receber']) === 5.5, 'a receber = saldo (31,50 − 20 − 1 − 2 − 3; o estornado se anula): ' . json_encode($carteira['a_receber']));
+Pagamentos::registrar('empresa-1', 'motoboy', 'driver-1', 30.0, 'pix', '2026-10-12', null, null, 'user-admin');
+confere(reais(Carteira::doMotoboy('empresa-1', 'driver-1')['a_receber']) === -24.5, 'pagou a mais: a receber negativo (o app mostra "Adiantamento")');
+confere(Carteira::doMotoboy('empresa-1', 'driver-sem-conta') === ['a_receber' => 0.0, 'mes' => '2026-10', 'recebido_no_mes' => 0.0, 'pagamentos' => [], 'pix' => null], 'motoboy sem lançamentos: zeros, lista vazia e sem Pix');
 
 echo '== Rotas (RouteServiceProvider)' . PHP_EOL;
 $rotas = file_get_contents('/repo/api/app/Providers/RouteServiceProvider.php');
