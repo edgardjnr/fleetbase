@@ -6,6 +6,7 @@
 
 require __DIR__ . '/stubs-ifood.php';
 require __DIR__ . '/stubs-ifood-fleetbase.php';
+require __DIR__ . '/stubs-lider.php';
 
 use App\Http\Controllers\Entregas\IfoodPedidosController;
 use App\Http\Controllers\Entregas\MotoboyController;
@@ -281,5 +282,19 @@ pedidoIfood([], ['itens' => '[{"nome": "Pizza grande"']);
 $dados = (new MotoboyController())->ifood(doMotoboy(), 'order_1')->dados;
 confere($dados['itens'] === null && $dados['numero'] === '4821' && $dados['telefone'] !== null, 'JSON quebrado: itens null e o resto da resposta igual');
 confere(logou('[entregas] itens do pedido ilegíveis no banco', 'warning') && logsSem(['Pizza grande']), 'warning só com o id do pedido');
+
+echo '== Líder: os dados (com os itens) de pedido de outro motoboy' . PHP_EOL;
+pedidoIfood(['driver_assigned_uuid' => 'outro-motoboy'], ['itens' => '[{"nome": "Pizza grande", "quantidade": 1}]']);
+confere((new MotoboyController())->ifood(doMotoboy(), 'order_1')->status === 404, 'motoboy comum, pedido de outro: 404');
+Teste\Lider::$lider = true;
+$dados = (new MotoboyController())->ifood(doMotoboy(), 'order_1')->dados;
+confere($dados['ifood'] === true && $dados['itens'] === [['quantidade' => 1, 'nome' => 'Pizza grande']] && $dados['telefone'] === null, 'líder: os itens do pedido de outro motoboy, sem o 0800');
+Order::$todos[0]->status = 'completed';
+confere((new MotoboyController())->ifood(doMotoboy(), 'order_1')->dados['itens'] !== null, 'líder: também no pedido encerrado');
+confere((new MotoboyController())->ifood(doMotoboy(), 'order_inexistente')->status === 404, 'líder, pedido que não existe: 404');
+$outra = new Order(['uuid' => 'order-9', 'public_id' => 'order_9', 'company_uuid' => 'empresa-2', 'status' => 'enroute', 'driver_assigned_uuid' => 'outro-motoboy']);
+Order::$todos[] = $outra;
+confere((new MotoboyController())->ifood(doMotoboy(), 'order_9')->status === 404, 'líder, pedido de outra empresa: 404');
+Teste\Lider::$lider = false;
 
 resumo();

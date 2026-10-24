@@ -719,6 +719,12 @@ customer-portal:
       map-location-at-store: O ponto marcado está na loja. Arraste o mapa até o local da entrega.
       map-location-help: O km e o valor da entrega saem do ponto marcado no mapa.
       street-required: Informe a rua e o número do endereço de entrega.
+      itens:
+        titulo: Itens do pedido
+        titulo-com-total: "Itens do pedido ({total})"
+        observacao: "Observação do cliente: {texto}"
+        obs-do-item: "Obs.: {texto}"
+        erro: Não foi possível carregar os itens agora.
       courier: Motoboy
       courier-waiting: Aguardando um motoboy aceitar.
       courier-accepted: "{name} está com o pedido."

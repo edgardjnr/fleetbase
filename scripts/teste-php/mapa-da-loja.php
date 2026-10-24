@@ -168,6 +168,19 @@ namespace App\Http\Controllers {
     class Controller {}
 }
 
+namespace Illuminate\Support\Facades {
+    class Log { public static array $avisos = []; public static function warning($msg, $ctx = []) { static::$avisos[] = $msg; } }
+}
+
+// dublês das linhas do iFood e da integração (por order_uuid), para a rota loja/pedidos/{id}/itens
+namespace App\Support\Entregas\Ifood {
+    class PedidosIfood { public static array $linhas = []; public static function doPedido(?string $uuid): ?object { return static::$linhas[$uuid] ?? null; } }
+}
+
+namespace App\Support\Entregas\Integracao {
+    class PedidosDaIntegracao { public static array $linhas = []; public static function doPedido(?string $uuid): ?object { return static::$linhas[$uuid] ?? null; } }
+}
+
 namespace App\Support\Entregas {
     // dublê: a lista real tem teste próprio (pedidos-no-mapa.php)
     class PedidosNoMapa
@@ -401,6 +414,25 @@ namespace {
         confere(true, 'pedido de outra loja: 404');
     }
     confere(!defined(PortalLojaController::class . '::HORAS_POSICAO'), 'sem a regra das 4 h (HORAS_POSICAO)');
+
+    echo '== PortalLojaController (rota loja/pedidos/{id}/itens)' . PHP_EOL;
+    require '/repo/api/app/Support/Entregas/ItensDoPedido.php';
+    \App\Support\Entregas\Ifood\PedidosIfood::$linhas = [
+        'uuid-a1' => (object) ['itens' => '[{"nome": "Pizza", "quantidade": 2, "opcoes": [{"nome": "Borda"}]}]', 'observacoes' => '  Sem cebola  '],
+        'uuid-b1' => (object) ['itens' => '[{"nome": "Segredo da loja B"}]', 'observacoes' => null],
+    ];
+    \App\Support\Entregas\Integracao\PedidosDaIntegracao::$linhas = ['uuid-a9' => (object) ['itens' => '[{"nome": "Lanche"}]', 'observacoes' => '']];
+    confere($controller->itens('order_a1')->dados === ['itens' => [['quantidade' => 2, 'nome' => 'Pizza', 'opcoes' => [['quantidade' => 1, 'nome' => 'Borda']]]], 'observacao' => 'Sem cebola'],
+        'pedido iFood da loja: os itens no formato do app e a observação');
+    confere($controller->itens('uuid-a9')->dados === ['itens' => [['quantidade' => 1, 'nome' => 'Lanche']], 'observacao' => null], 'pedido do sistema da loja (pelo uuid, encerrado também): os itens, sem observação vazia');
+    Order::$todos[] = (object) ['company_uuid' => EMPRESA, 'customer_uuid' => 'contato-a', 'public_id' => 'order_a2', 'uuid' => 'uuid-a2', 'status' => 'created'];
+    confere($controller->itens('order_a2')->dados === ['itens' => null, 'observacao' => null], 'pedido feito no portal (sem linha): itens null');
+    try {
+        $controller->itens('order_b1');
+        confere(false, 'itens de pedido de outra loja: 404');
+    } catch (NaoEncontrado) {
+        confere(true, 'itens de pedido de outra loja: 404');
+    }
 
     echo PHP_EOL . "FALHAS: {$falhas}" . PHP_EOL;
 }

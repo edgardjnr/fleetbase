@@ -228,6 +228,7 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('loja/resumo-do-dia', [PortalLojaController::class, 'resumoDoDia'])->middleware('throttle:60,1');
                         Route::get('loja/extrato', [PortalLojaController::class, 'extrato'])->middleware('throttle:60,1');
                         Route::get('loja/pedidos/{id}/motoboy', [PortalLojaController::class, 'motoboy'])->middleware('throttle:60,1');
+                        Route::get('loja/pedidos/{id}/itens', [PortalLojaController::class, 'itens'])->middleware('throttle:60,1');
                         Route::get('loja/motoboys', [PortalLojaController::class, 'motoboysNoMapa'])->middleware('throttle:entregas-loja-mapa');
                         // Financeiro da loja: ciclo em andamento e faturas emitidas e canceladas; o detalhe de uma fatura (uuid)
                         Route::get('loja/financeiro', [PortalLojaController::class, 'financeiro'])->middleware('throttle:60,1');

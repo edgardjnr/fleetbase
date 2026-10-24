@@ -719,6 +719,12 @@ customer-portal:
       map-location-at-store: The marked spot is at the store. Drag the map to the delivery location.
       map-location-help: The delivery's km and price come from the spot marked on the map.
       street-required: Enter the street and number of the delivery address.
+      itens:
+        titulo: Order items
+        titulo-com-total: "Order items ({total})"
+        observacao: "Customer note: {texto}"
+        obs-do-item: "Note: {texto}"
+        erro: Couldn't load the items right now.
       courier: Courier
       courier-waiting: Waiting for a courier to accept.
       courier-accepted: "{name} has the order."

@@ -4770,3 +4770,85 @@ body[data-theme='dark'].fleetbase-portal .fatura-total-principal {
         display: block;
     }
 }
+
+/* Entregas: itens do pedido no detalhe (Portal::Order::Details::Itens), como na comanda do motoboy */
+.fleetbase-portal .portal-itens-lista {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.fleetbase-portal .portal-itens-linha {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.fleetbase-portal .portal-itens-linha:last-child {
+    border-bottom: 0;
+}
+
+.fleetbase-portal .portal-itens-quantidade {
+    min-width: 2rem;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #ea580c;
+}
+
+.fleetbase-portal .portal-itens-texto {
+    flex: 1;
+    min-width: 0;
+}
+
+.fleetbase-portal .portal-itens-nome {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.fleetbase-portal .portal-itens-opcoes {
+    margin-top: 0.125rem;
+    font-size: 0.8125rem;
+    color: #6b7280;
+}
+
+.fleetbase-portal .portal-itens-obs,
+.fleetbase-portal .portal-itens-observacao {
+    display: inline-block;
+    margin-top: 0.25rem;
+    padding: 0.0625rem 0.4375rem;
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #92400e;
+    background: #fef3c7;
+}
+
+.fleetbase-portal .portal-itens-observacao {
+    margin: 0 0 0.5rem;
+    padding: 0.375rem 0.625rem;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-itens-linha {
+    border-bottom-color: #374151;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-itens-quantidade {
+    color: #fb923c;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-itens-nome {
+    color: #f3f4f6;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-itens-opcoes {
+    color: #9ca3af;
+}
+
+body[data-theme='dark'].fleetbase-portal .portal-itens-obs,
+body[data-theme='dark'].fleetbase-portal .portal-itens-observacao {
+    color: #fde68a;
+    background: #78350f;
+}

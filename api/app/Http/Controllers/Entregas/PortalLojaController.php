@@ -8,6 +8,9 @@ use App\Support\Entregas\Financeiro\Faturas;
 use App\Support\Entregas\Financeiro\FaturasDaLoja;
 use App\Support\Entregas\Financeiro\Financeiro;
 use App\Support\Entregas\Financeiro\Lancamentos;
+use App\Support\Entregas\Ifood\PedidosIfood;
+use App\Support\Entregas\Integracao\PedidosDaIntegracao;
+use App\Support\Entregas\ItensDoPedido;
 use App\Support\Entregas\LojaDoUsuario;
 use App\Support\Entregas\MotoboysNoMapaDaLoja;
 use App\Support\Entregas\PedidosNoMapa;
@@ -154,6 +157,29 @@ class PortalLojaController extends Controller
                 'foto'    => $motoboy->photo_url,
                 'aceitou' => (bool) $pedido->started,
             ],
+        ]);
+    }
+
+    /**
+     * Os produtos do pedido (iFood ou sistema da loja), os mesmos que o motoboy vê na comanda (ItensDoPedido), e a
+     * observação do cliente. Só pedido da loja da sessão; pedido feito no portal (sem itens) ou antigo: itens null.
+     * Decisão do Edgard de 2026-10-24.
+     */
+    public function itens(string $id)
+    {
+        $vendor = $this->lojaDaSessao();
+
+        $pedido = Order::where('company_uuid', session('company'))
+            ->whereIn('customer_uuid', $this->donosDosPedidos($vendor))
+            ->where(fn ($q) => $q->where('public_id', $id)->orWhere('uuid', $id))
+            ->firstOrFail();
+
+        $linha = PedidosIfood::doPedido((string) $pedido->uuid) ?? PedidosDaIntegracao::doPedido((string) $pedido->uuid);
+        $observacao = $linha ? trim((string) ($linha->observacoes ?? '')) : '';
+
+        return response()->json([
+            'itens'      => $linha ? ItensDoPedido::doBanco($linha->itens ?? null, ['pedido' => $pedido->public_id]) : null,
+            'observacao' => $observacao !== '' ? $observacao : null,
         ]);
     }
 

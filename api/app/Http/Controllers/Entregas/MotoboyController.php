@@ -18,6 +18,7 @@ use App\Support\Entregas\Ifood\DadosIfoodDoMotoboy;
 use App\Support\Entregas\Ifood\PedidosIfood;
 use App\Support\Entregas\Integracao\DadosDaIntegracaoDoMotoboy;
 use App\Support\Entregas\Integracao\PedidosDaIntegracao;
+use App\Support\Entregas\LiderDosMotoboys;
 use App\Support\Entregas\MotoboyDaSessao;
 use App\Support\Entregas\RotaDoPedido;
 use App\Support\Entregas\SituacaoDoMotoboy;
@@ -253,7 +254,7 @@ class MotoboyController extends Controller
             return $this->soParaMotoboy();
         }
 
-        $pedido = $this->pedidoQuePodeVer($id, $motoboy);
+        $pedido = $this->pedidoQuePodeVerOuLider($request, $id, $motoboy);
         if (!$pedido) {
             return response()->json(['errors' => ['Pedido não encontrado.']], 404);
         }
@@ -268,7 +269,7 @@ class MotoboyController extends Controller
             return $this->soParaMotoboy();
         }
 
-        $pedido = $this->pedidoQuePodeVer($id, $motoboy);
+        $pedido = $this->pedidoQuePodeVerOuLider($request, $id, $motoboy);
         if (!$pedido) {
             return response()->json(['errors' => ['Pedido não encontrado.']], 404);
         }
@@ -351,7 +352,8 @@ class MotoboyController extends Controller
     }
 
     /** Pedido da empresa da sessão (pelo public_id ou uuid) que o motoboy pode ver: dele ou aberto. */
-    protected function pedidoQuePodeVer(string $id, Driver $motoboy): ?Order
+    /** $seNaoPuder: o pedido da empresa que existe mas não é dele (para a regra do líder); senão null. */
+    protected function pedidoQuePodeVer(string $id, Driver $motoboy, ?Order &$seNaoPuder = null): ?Order
     {
         // nenhum model registra o CompanyScope nesta versão: a empresa é filtrada aqui
         $pedido = Order::where('company_uuid', session('company'))
@@ -359,7 +361,27 @@ class MotoboyController extends Controller
             ->with(['payload.pickup', 'payload.dropoff', 'payload.waypoints'])
             ->first();
 
-        return $pedido && GanhosDoMotoboy::podeVer($pedido, $motoboy) ? $pedido : null;
+        if ($pedido && GanhosDoMotoboy::podeVer($pedido, $motoboy)) {
+            return $pedido;
+        }
+        $seNaoPuder = $pedido;
+
+        return null;
+    }
+
+    /**
+     * Dados do pedido iFood e da integração (produtos, cobrança, observações): o pedido que o motoboy pode ver ou, para o
+     * líder (LiderDosMotoboys), qualquer pedido da empresa, para os itens no cartão do Mapa (decisão do Edgard de
+     * 2026-10-24). O 0800 e o telefone do cliente continuam só com o motoboy do pedido (Dados*DoMotoboy).
+     */
+    protected function pedidoQuePodeVerOuLider(Request $request, string $id, Driver $motoboy): ?Order
+    {
+        $pedido = $this->pedidoQuePodeVer($id, $motoboy, $seNaoPuder);
+        if ($pedido || !$seNaoPuder || !LiderDosMotoboys::daSessao($request)) {
+            return $pedido;
+        }
+
+        return $seNaoPuder;
     }
 
     /** A situação do motoboy com a mesma regra do capacete do console (MapaController@motoboys). */

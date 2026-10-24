@@ -1,0 +1,35 @@
+{{!-- Entregas: os produtos do pedido, como na comanda do motoboy (quantidade, nome, opções e a observação do item), e a
+     observação do cliente. Sem itens nem observação (pedido feito no portal), o painel some --}}
+<div {{did-insert this.carregar}} {{did-update this.carregar @pedidoId}}>
+    {{#if this.mostrar}}
+        <ContentPanel @title={{if this.total (t "customer-portal.ui.entregas.itens.titulo-com-total" total=this.total) (t "customer-portal.ui.entregas.itens.titulo")}} @open={{true}} @wrapperClass="bordered-top">
+            {{#if (not this.carregado)}}
+                <Spinner />
+            {{else if this.falhou}}
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{t "customer-portal.ui.entregas.itens.erro"}}</p>
+            {{else}}
+                {{#if this.observacao}}
+                    <div class="portal-itens-observacao">
+                        <FaIcon @icon="comments" class="mr-1.5" />{{t "customer-portal.ui.entregas.itens.observacao" texto=this.observacao}}
+                    </div>
+                {{/if}}
+                <ul class="portal-itens-lista">
+                    {{#each this.itens as |item|}}
+                        <li class="portal-itens-linha">
+                            <span class="portal-itens-quantidade">{{item.quantidade}}×</span>
+                            <div class="portal-itens-texto">
+                                <div class="portal-itens-nome">{{item.nome}}</div>
+                                {{#if item.opcoes}}
+                                    <div class="portal-itens-opcoes">{{item.opcoes}}</div>
+                                {{/if}}
+                                {{#if item.observacao}}
+                                    <div class="portal-itens-obs">{{t "customer-portal.ui.entregas.itens.obs-do-item" texto=item.observacao}}</div>
+                                {{/if}}
+                            </div>
+                        </li>
+                    {{/each}}
+                </ul>
+            {{/if}}
+        </ContentPanel>
+    {{/if}}
+</div>
