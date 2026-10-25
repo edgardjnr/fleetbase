@@ -60,7 +60,7 @@ class CancelamentoPeloIfood
     {
         if (!$linha->order_uuid) {
             PedidosIfood::atualizar($linha, static::marcas($linha, $quando, $entregaParceira));
-            static::logSemOrder($linha);
+            static::logSemOrder($linha, $entregaParceira);
 
             return static::SEM_PEDIDO;
         }
@@ -77,9 +77,9 @@ class CancelamentoPeloIfood
         }
     }
 
-    protected static function logSemOrder(object $linha): void
+    protected static function logSemOrder(object $linha, bool $entregaParceira): void
     {
-        Log::info('[entregas] ifood: CAN de pedido sem Order no Entregas; só registrado', ['pedido_ifood' => $linha->pedido_ifood_id ?? null, 'numero' => $linha->numero ?? null]);
+        Log::info('[entregas] ifood: ' . ($entregaParceira ? 'RDS' : 'CAN') . ' de pedido sem Order no Entregas (ou apagado); só registrado', ['pedido_ifood' => $linha->pedido_ifood_id ?? null, 'numero' => $linha->numero ?? null]);
     }
 
     /**
@@ -122,7 +122,7 @@ class CancelamentoPeloIfood
 
         if (!$pedido) {
             PedidosIfood::atualizar($linha, $marcas);
-            static::logSemOrder($linha);
+            static::logSemOrder($linha, $entregaParceira);
 
             return static::SEM_PEDIDO;
         }
