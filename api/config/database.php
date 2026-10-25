@@ -96,11 +96,16 @@ return [
             'database' => $redis_database . '_sql_cache',
         ],
 
+        // Entregas RestaurantePro: o cache num banco do Redis só dele. O original ('cache_cache' com o CACHE_URL sem
+        // caminho) não é número, o phpredis faz (int) e cai no banco 0, o mesmo da fila (default): aí o cache:clear do
+        // deploy.sh, que é um FLUSHDB do banco do cache, apagava também os jobs da fila (ofertas e rodadas da distribuição).
+        // As travas (Cache::lock) seguem na `default` (lock_connection do config/cache.php). Teste:
+        // scripts/teste-php/cache-separado-da-fila.php
         'cache' => [
             'host' => $redis_host,
             'password' => $redis_password,
             'port' => env('REDIS_PORT', 6379),
-            'database' => $redis_database . '_cache',
+            'database' => env('REDIS_CACHE_DATABASE', '1'),
         ],
 
         'geocode-cache' => [
