@@ -595,6 +595,101 @@ fleet-ops:
         dispensada: dispensou pela lista
         aceita_pela_lista: aceitou pela lista
         desconhecida: desconhecida
+    painel-inicial:
+      saudacao:
+        bom-dia: Bom dia
+        boa-tarde: Boa tarde
+        boa-noite: Boa noite
+      periodo:
+        rotulo: Período
+        hoje: Hoje
+        semana: 7 dias
+        mes: 30 dias
+      novo-pedido: Novo pedido
+      cartoes:
+        corridas: Corridas
+        faturado: Faturado das lojas
+        a-pagar: A pagar aos motoboys
+        margem: Margem
+        no-prazo: No prazo
+        tempo-medio: Tempo médio
+        variacao: '{variacao}% sobre {base}'
+        base-hoje: o mesmo dia da semana passada
+        base-semana: os 7 dias anteriores
+        base-mes: os 30 dias anteriores
+        sem-comparacao: sem base para comparar
+        por-corrida: '{valor} por corrida'
+        km: '{km} km rodados'
+        do-faturado: '{pct}% do faturado'
+        meta: 'meta: 90%'
+        minutos: '{n} min'
+        do-aceite: do aceite à entrega
+      ao-vivo:
+        titulo: Ao vivo
+        agora: agora
+        online: '{online} motoboys online · {livres} livres'
+        pedidos: Pedidos em andamento
+        ver-operacoes: Ver em Operações →
+        mapa: Mapa
+        tela-cheia: Tela cheia →
+      filtros:
+        todos: Todos
+        oferta: Sem motoboy
+        loja: Indo à loja
+        rota: A caminho
+        atrasado: Atrasados
+      vazio:
+        todos: Nenhum pedido em andamento
+        oferta: Todos os pedidos têm motoboy
+        loja: Ninguém indo à loja agora
+        rota: Nenhum pedido a caminho
+        atrasado: Nenhum pedido atrasado
+      situacao:
+        loja: Indo à loja
+        rota: A caminho
+      oferta:
+        rodada: 'Oferta · rodada {rodada}/3 · {tempo}'
+        simples: 'Oferta · {tempo}'
+        aberta: Aberto a todos
+        aguardando: Aguardando a central
+      alerta:
+        titulo: '{oferta} sem motoboy · {atrasado} atrasados'
+        texto: '{livres} motoboys livres agora. A distribuição continua oferecendo; você pode atribuir na mão.'
+        ver: Ver agora
+      atribuir:
+        botao: Atribuir
+        enviar: Enviar
+        ninguem-livre: Nenhum motoboy livre agora.
+        nota: A distribuição continua oferecendo até você escolher.
+        enviado: Motoboy atribuído.
+        km: '{km} km da loja'
+        sem-local: sem posição da loja
+      legenda:
+        livre: livre
+        loja: indo à loja
+        rota: a caminho
+        cliente: cliente
+      grafico:
+        hora: Corridas por hora
+        dia: Corridas por dia
+        atual: no período
+        media: média das 4 semanas anteriores
+        dica: '{rotulo}: {total} corridas'
+      lojas:
+        titulo: Lojas
+        todas: Todas →
+        ifood-vinculada: iFood vinculado
+        ifood-perdido: Vínculo do iFood perdido
+        sem-ifood: Sem iFood
+      motoboys:
+        titulo: Motoboys
+        todos: Todos →
+      atencao:
+        titulo: Atenção
+        itens: '{n} itens'
+        nada: Nada pendente no Financeiro.
+        financeiro: Financeiro →
+      sem-corridas: Nenhuma corrida no período.
     financeiro:
       admin-only: Somente administradores podem ver o financeiro.
       valor-interpretado: '= {valor}'

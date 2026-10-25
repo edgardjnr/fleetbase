@@ -595,6 +595,101 @@ fleet-ops:
                 dispensada: dismissed from the list
                 aceita_pela_lista: accepted from the list
                 desconhecida: unknown
+        painel-inicial:
+          saudacao:
+            bom-dia: Good morning
+            boa-tarde: Good afternoon
+            boa-noite: Good evening
+          periodo:
+            rotulo: Period
+            hoje: Today
+            semana: 7 days
+            mes: 30 days
+          novo-pedido: New order
+          cartoes:
+            corridas: Deliveries
+            faturado: Billed to stores
+            a-pagar: Owed to drivers
+            margem: Margin
+            no-prazo: On time
+            tempo-medio: Average time
+            variacao: '{variacao}% vs {base}'
+            base-hoje: the same weekday last week
+            base-semana: the previous 7 days
+            base-mes: the previous 30 days
+            sem-comparacao: nothing to compare with
+            por-corrida: '{valor} per delivery'
+            km: '{km} km driven'
+            do-faturado: '{pct}% of billed'
+            meta: 'goal: 90%'
+            minutos: '{n} min'
+            do-aceite: from acceptance to delivery
+          ao-vivo:
+            titulo: Live
+            agora: now
+            online: '{online} drivers online · {livres} free'
+            pedidos: Orders in progress
+            ver-operacoes: See in Operations →
+            mapa: Map
+            tela-cheia: Full screen →
+          filtros:
+            todos: All
+            oferta: No driver
+            loja: Going to store
+            rota: On the way
+            atrasado: Late
+          vazio:
+            todos: No orders in progress
+            oferta: Every order has a driver
+            loja: Nobody going to a store now
+            rota: No orders on the way
+            atrasado: No late orders
+          situacao:
+            loja: Going to store
+            rota: On the way
+          oferta:
+            rodada: 'Offer · round {rodada}/3 · {tempo}'
+            simples: 'Offer · {tempo}'
+            aberta: Open to everyone
+            aguardando: Waiting for dispatch
+          alerta:
+            titulo: '{oferta} without driver · {atrasado} late'
+            texto: '{livres} drivers free now. Dispatch keeps offering; you can assign by hand.'
+            ver: See now
+          atribuir:
+            botao: Assign
+            enviar: Send
+            ninguem-livre: No free driver right now.
+            nota: Dispatch keeps offering until you choose.
+            enviado: Driver assigned.
+            km: '{km} km from the store'
+            sem-local: store location unknown
+          legenda:
+            livre: free
+            loja: going to store
+            rota: on the way
+            cliente: customer
+          grafico:
+            hora: Deliveries per hour
+            dia: Deliveries per day
+            atual: in the period
+            media: average of the previous 4 weeks
+            dica: '{rotulo}: {total} deliveries'
+          lojas:
+            titulo: Stores
+            todas: All →
+            ifood-vinculada: iFood linked
+            ifood-perdido: iFood link lost
+            sem-ifood: No iFood
+          motoboys:
+            titulo: Drivers
+            todos: All →
+          atencao:
+            titulo: Attention
+            itens: '{n} items'
+            nada: Nothing pending in Finance.
+            financeiro: Finance →
+          sem-corridas: No deliveries in the period.
         financeiro:
             admin-only: Only administrators can see the finances.
             valor-interpretado: '= {valor}'
