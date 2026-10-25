@@ -9,6 +9,7 @@ require __DIR__ . '/stubs-ifood-fleetbase.php';
 
 use App\Http\Middleware\FiltrarPedidosAbertosDoMotoboy;
 use App\Support\Entregas\Distribuicao\Distribuicoes;
+use App\Support\Entregas\Distribuicao\Distribuicao;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Illuminate\Http\JsonResponse;
@@ -188,7 +189,7 @@ cenarioRodadas();
 pedidoLonge(5, 10, true);
 Distribuicoes::criarOferta(Distribuicoes::doPedido('order-5'), ['motoboy_uuid' => 'd-a', 'tempo_s' => 900, 'encaixe' => false, 'aproximado' => true], 1, 1, 2, 9000);
 $item5 = item(itens(listar('12|token-do-motoboy-a')), 'order_5');
-confere(($item5['entregas_oferta']['segundos_restantes'] ?? null) === 30 && ($item5['entregas_distribuicao'] ?? null) === true, 'a oferta dele além de R (rodada 2) também vem, com entregas_oferta de 30 s');
+confere(($item5['entregas_oferta']['segundos_restantes'] ?? null) === Distribuicao::SEGUNDOS_DA_OFERTA_EM_RODADAS && ($item5['entregas_distribuicao'] ?? null) === true, 'a oferta dele além de R (rodada 2) também vem, com entregas_oferta do tempo das rodadas (' . json_encode($item5['entregas_oferta'] ?? null) . ')');
 
 cenarioRodadas();
 Driver::$todos[0]->location = null;
