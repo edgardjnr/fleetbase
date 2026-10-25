@@ -16,14 +16,8 @@
         <ResourceContextPanel />
         {{!-- Entregas RestaurantePro: sem o <DocsPanel /> (abria a documentação da Fleetbase; nenhum botão chama mais) --}}
     </Layout::Main>
-    <Layout::MobileNavbar
-        @brand={{@model}}
-        @user={{this.user}}
-        @organizations={{this.organizations}}
-        @menuItems={{this.menuItems}}
-        @extensions={{this.extensions}}
-        @onAction={{this.onAction}}
-    />
+    {{!-- Entregas RestaurantePro: rodapé do celular próprio (sketch 007 B), no lugar do <Layout::MobileNavbar> do Fleetbase --}}
+    <DocaCelular />
 </Layout::Container>
 <ChatContainer />
 <ConsoleWormhole />

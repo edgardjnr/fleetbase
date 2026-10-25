@@ -763,6 +763,42 @@ console:
     received: 'Recebido:'
     message: Nenhuma notificação para exibir.
   ui:
+    celular:
+      rodape: Navegação principal
+      novo-pedido: Novo pedido
+      abas:
+        inicio: Início
+        pedidos: Pedidos
+        mapa: Mapa
+        motoboys: Motoboys
+        mais: Mais
+      mais:
+        fechar: Fechar
+        menu-da-area: Menu desta área
+        operacao: Operação
+        pedidos: Pedidos
+        mapa: Mapa
+        recursos: Recursos
+        motoboys: Motoboys
+        lojas: Lojas
+        financeiro: Financeiro
+        painel: Painel
+        extrato-motoboys: Extrato dos motoboys
+        faturas-lojas: Faturas das lojas
+        relatorio: Relatório
+        multiplicadores: Multiplicadores
+        corridas-do-sistema: Corridas do sistema
+        configuracoes: Configurações
+        central: Central de configurações
+        app-motoboy: App do motoboy
+        mapa-config: Mapa
+        notificacoes: Notificações
+        outros: Outros módulos
+        conta: Conta
+        tema-claro: Tema claro
+        tema-escuro: Tema escuro
+        minha-conta: Minha conta
+        sair: Sair
     landing:
       brand-sub: RestaurantePro
       nav-consultor: Falar com um consultor

@@ -39,13 +39,36 @@ A moldura saiu do sketch 005 e do 006, variante C (`.planning/sketches/006-moldu
   - Os tokens `--pi-*` estão no `body` (`painel-inicial.css`).
 - **Fleet-Ops:**
   - O menu é um trilho de 72 px que abre por cima (256 px) ao passar o mouse ou ao focar. Vale só a partir de 768 px;
-    no celular, o comportamento do ember-ui não muda. O seletor é `body[class*='console-fleet-ops']`.
+    no celular, vale o "Console no celular" (abaixo). O seletor é `body[class*='console-fleet-ops']`.
   - A lista é direta, em seções com título: o `Layout::Sidebar::Navigator` do ember-ui ganhou `@plano`, ligado pelo
     `fleet-ops-sidebar.hbs` (getter `secoes` no `navigator.js`). Sem `@plano`, os outros módulos, como o IAM,
     continuam com o "entrar no grupo e voltar".
   - A lista "Operações ao vivo" (`OperationsMonitor`) saiu do menu. Os motoboys ao vivo ficam no painel Motoboys da
     tela de pedidos e no painel inicial.
 - **Para voltar:** tire o `@import 'moldura.css'` do `app.css` e o `@plano` do `fleet-ops-sidebar.hbs`.
+
+## Console no celular (2026-10-25)
+
+Saiu do sketch 007, variante B "Doca flutuante" (`.planning/sketches/007-console-no-celular/`). Vale abaixo de 768 px
+(o `isMobile` do ember-responsive, `(max-width: 767px)`).
+- **Rodapé:** `components/doca-celular.{js,hbs}`, no `templates/console.hbs` no lugar do `<Layout::MobileNavbar>` do
+  Fleetbase (que listava os 12 `headerMenuItems` rolando para o lado; o componente segue no ember-ui, sem uso).
+  - Cinco destinos fixos: Início (`console.home`), Pedidos (`operations.orders.index` com `layout=kanban`), Mapa (a
+    mesma rota com `layout=map`), Motoboys (`management.drivers.index`) e Mais.
+  - A aba ativa sai da rota e do `layout`. Tabela também conta como Pedidos.
+  - O "+" flutuante (novo pedido) aparece só no Início e em Pedidos, na tela em si. No Mapa fica o botão da barra.
+- **Mais:** uma folha de baixo com a conta, os atalhos em grade e o tema e o sair.
+  - Os atalhos repetem as telas do trilho do Fleet-Ops que ficaram (lista fixa no getter `grupos`; o Financeiro e
+    Lojas só para o admin). Os outros módulos vêm dos `universe.headerMenuItems`, pela permissão `<id> see extension`.
+  - **Tela nova no menu do Fleet-Ops? Ponha também no `grupos`.**
+- **Menu lateral:** fica escondido no celular por CSS. Fora do Início e do Fleet-Ops (IAM, Desenvolvedores, Conta,
+  Admin), o "Menu desta área" do Mais o abre (classe `ent-menu-lateral-aberto` no `body`), e ele fecha na troca de rota.
+- **Cabeçalho:** sem o botão do menu lateral, o idioma e o chat. Ficam o logo, os avisos, a organização e o avatar.
+- **Pedidos:** o Quadro vira uma lista de cartões empilhados por situação (Sem motoboy, Indo à loja, A caminho,
+  Concluídos). O Mapa continua com a folha de baixo da tela de pedidos.
+- **Estilo:** `console/app/styles/celular.css`, com os tokens `--pi-*`. **Textos:** `console.ui.celular.*`.
+- **Não ficou do sketch:** o título grande que encolhe ao rolar, porque cada tela tem o próprio cabeçalho.
+- **Para voltar:** volte o `<Layout::MobileNavbar …>` no `console.hbs` e tire o `@import 'celular.css'` do `app.css`.
 
 ## Marca Entregas RestaurantePro (sem Fleetbase na tela)
 

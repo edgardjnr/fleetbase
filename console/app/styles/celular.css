@@ -1,0 +1,199 @@
+/* Entregas: console no celular (sketch 007, variante B "Doca flutuante"). Componente em components/doca-celular.*.
+   - Rodapé: uma faixa em areia no pé do layout (no fluxo, como a barra antiga do Fleetbase, para nada ficar por baixo)
+     com a doca escura flutuando; a aba ativa vira pílula laranja com o nome. No escuro, a doca inverte (fica clara).
+   - "+" flutuante no Início e em Pedidos; "Mais" numa folha de baixo com atalhos em grade.
+   - Menu lateral fechado no celular; só abre pelo "Menu desta área" (classe ent-menu-lateral-aberto no body).
+   - Cabeçalho enxuto: sem o botão do menu lateral, o idioma e o chat.
+   - Pedidos: o quadro vira uma lista de cartões empilhados por situação.
+   Tokens --pi-* no body (painel-inicial.css). Os seletores começam com "html body" pelos mesmos motivos da moldura.css. */
+
+/* ---------- doca ---------- */
+.ent-doca-faixa {
+    position: relative;
+    flex: none;
+    height: calc(84px + env(safe-area-inset-bottom, 0px));
+    background: var(--pi-cartao-2);
+    z-index: 1100;
+    font-family: var(--pi-corpo);
+}
+.ent-doca {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    height: 60px;
+    border-radius: 22px;
+    background: var(--pi-tinta);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+    box-shadow: 0 12px 30px oklch(0.2 0.02 60 / 28%);
+}
+.ent-doca-aba {
+    height: 44px;
+    min-width: 46px;
+    border: 0;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 12px;
+    background: transparent;
+    color: color-mix(in oklch, var(--pi-fundo) 62%, transparent);
+    font-size: 17px;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+.ent-doca-aba span { display: none; font-weight: 700; font-size: 13.5px; white-space: nowrap; }
+.ent-doca-aba.ent-ativa { background: var(--pi-laranja); color: var(--pi-sobre-laranja); }
+.ent-doca-aba.ent-ativa span { display: inline; }
+.ent-doca-aba:focus-visible { outline: 2px solid var(--pi-laranja); outline-offset: 2px; }
+
+.ent-doca-novo {
+    position: absolute;
+    right: 18px;
+    bottom: calc(100% + 12px);
+    width: 56px;
+    height: 56px;
+    border: 0;
+    border-radius: 18px;
+    background: var(--pi-laranja);
+    color: var(--pi-sobre-laranja);
+    font-size: 22px;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 12px 30px oklch(0.2 0.02 60 / 28%);
+    cursor: pointer;
+}
+.ent-doca-novo:active { transform: scale(0.96); }
+
+/* ---------- folha "Mais" ---------- */
+.ent-mais-fundo {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: oklch(0.2 0.02 60 / 45%);
+    animation: ent-aparece 0.2s ease;
+}
+.ent-mais {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2001;
+    max-height: 88dvh;
+    overflow-y: auto;
+    padding: 0 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    background: var(--pi-fundo);
+    color: var(--pi-tinta);
+    border-radius: 26px 26px 0 0;
+    font-family: var(--pi-corpo);
+    animation: ent-sobe 0.25s ease;
+}
+@keyframes ent-aparece { from { opacity: 0; } }
+@keyframes ent-sobe { from { transform: translateY(40%); opacity: 0.4; } }
+@media (prefers-reduced-motion: reduce) {
+    .ent-mais, .ent-mais-fundo { animation: none; }
+}
+.ent-mais-alca {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: calc(100% + 32px);
+    margin: 0 -16px;
+    padding: 10px 0 8px;
+    border: 0;
+    background: var(--pi-fundo);
+    cursor: pointer;
+}
+.ent-mais-alca i { display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--pi-linha); }
+.ent-mais-conta {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-top: 4px;
+    border: 1px solid var(--pi-linha);
+    border-radius: 16px;
+    background: var(--pi-cartao);
+    color: var(--pi-tinta);
+    text-align: left;
+    cursor: pointer;
+}
+.ent-mais-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex: none; }
+.ent-mais-conta-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ent-mais-conta-texto b { font-weight: 700; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ent-mais-conta-texto small { color: var(--pi-apagado); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ent-mais-seta { color: var(--pi-apagado); font-size: 12px; }
+.ent-mais-area {
+    width: 100%;
+    margin-top: 10px;
+    padding: 11px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--pi-tinta);
+    color: var(--pi-fundo);
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+}
+.ent-mais-secao {
+    padding: 16px 2px 8px;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--pi-apagado);
+}
+.ent-mais-grade { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.ent-mais-grade button {
+    min-height: 78px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 12px 3px 8px;
+    border: 1px solid var(--pi-linha);
+    border-radius: 16px;
+    background: var(--pi-cartao);
+    color: var(--pi-tinta-2);
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.15;
+    text-align: center;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+.ent-mais-grade button svg { font-size: 18px; height: 22px; color: var(--pi-tinta); }
+.ent-mais-grade button:active { border-color: var(--pi-laranja); }
+
+/* ---------- o resto do console no celular ---------- */
+@media (max-width: 767px) {
+    /* menu lateral: fechado; o "Mais" leva às telas, e o "Menu desta área" abre o menu dos outros módulos */
+    html body:not(.ent-menu-lateral-aberto) .next-view-container > nav.next-sidebar { display: none; }
+    html body.ent-menu-lateral-aberto .next-view-container > nav.next-sidebar { background: var(--pi-cartao-2); }
+    html body .next-view-container > nav.next-sidebar ~ .next-view-section { border-top-left-radius: 0; box-shadow: none; }
+
+    /* cabeçalho: logo, avisos, organização e avatar */
+    html body header.next-view-header .sidebar-toggle-button-wrapper,
+    html body header.next-view-header .locale-selector-tray,
+    html body header.next-view-header .chat-tray { display: none; }
+
+    /* o "+" flutuante substitui o "Novo pedido" do Início e o da barra de Pedidos (no Mapa, o da barra fica) */
+    html body .painel-inicial .pi-acoes .pi-botao-marca { display: none; }
+    html body .next-view-section:has(.tp-quadro) .tp-barra .tp-botao-marca { display: none; }
+
+    /* Pedidos: o quadro vira uma lista de cartões, um bloco por situação, com espaço para o "+" no fim */
+    html body .tela-pedidos.tp-quadro { flex-direction: column; align-items: stretch; scroll-snap-type: none; padding: 10px 12px 84px; gap: 10px; }
+    html body .tp-quadro .tp-coluna { width: auto; max-height: none; }
+    html body .tp-quadro .tp-coluna-corpo { overflow: visible; }
+}

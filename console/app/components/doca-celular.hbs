@@ -1,0 +1,60 @@
+{{! Entregas: rodapé do console no celular (sketch 007 B, "Doca flutuante"). Lógica e regras em doca-celular.js; estilo em styles/celular.css. }}
+{{#if (media "isMobile")}}
+    <div class="ent-doca-faixa" ...attributes>
+        {{#if this.mostrarNovo}}
+            <button type="button" class="ent-doca-novo" aria-label={{t "console.ui.celular.novo-pedido"}} {{on "click" this.novoPedido}}><FaIcon @icon="plus" /></button>
+        {{/if}}
+        <nav class="ent-doca" aria-label={{t "console.ui.celular.rodape"}}>
+            {{#each this.abas as |aba|}}
+                <button
+                    type="button"
+                    class="ent-doca-aba {{if aba.ativa 'ent-ativa'}}"
+                    aria-current={{if aba.ativa "page"}}
+                    aria-expanded={{if (eq aba.chave "mais") (if this.maisAberto "true" "false")}}
+                    aria-label={{aba.texto}}
+                    {{on "click" (fn this.irPara aba.chave)}}
+                ><FaIcon @icon={{aba.icone}} /><span>{{aba.texto}}</span></button>
+            {{/each}}
+        </nav>
+    </div>
+
+    {{#if this.maisAberto}}
+        {{! template-lint-disable no-invalid-interactive }}
+        <div class="ent-mais-fundo" {{on "click" this.fecharMais}}></div>
+        <section class="ent-mais" role="dialog" aria-modal="true" aria-label={{t "console.ui.celular.abas.mais"}}>
+            <button type="button" class="ent-mais-alca" aria-label={{t "console.ui.celular.mais.fechar"}} {{on "click" this.fecharMais}}><i></i></button>
+
+            <button type="button" class="ent-mais-conta" {{on "click" this.irParaConta}}>
+                <Image class="ent-mais-avatar" src={{this.currentUser.avatarUrl}} @fallbackSrc="/images/entregas/padrao/static/no-avatar.png" alt="" />
+                <span class="ent-mais-conta-texto"><b>{{this.currentUser.name}}</b><small>{{this.currentUser.companyName}}</small></span>
+                <FaIcon @icon="chevron-right" class="ent-mais-seta" />
+            </button>
+
+            {{#if this.temMenuDaArea}}
+                <button type="button" class="ent-mais-area" {{on "click" this.abrirMenuDaArea}}><FaIcon @icon="bars" /> {{t "console.ui.celular.mais.menu-da-area"}}</button>
+            {{/if}}
+
+            {{#each this.grupos as |grupo|}}
+                <h3 class="ent-mais-secao">{{grupo.titulo}}</h3>
+                <div class="ent-mais-grade">
+                    {{#each grupo.itens as |item|}}
+                        <button type="button" {{on "click" (fn this.abrir item)}}>
+                            <FaIcon @icon={{or item.icone "puzzle-piece"}} />
+                            <span>{{#if item.menuItem}}{{menu-text item.menuItem "title"}}{{else}}{{item.texto}}{{/if}}</span>
+                        </button>
+                    {{/each}}
+                </div>
+            {{/each}}
+
+            <h3 class="ent-mais-secao">{{t "console.ui.celular.mais.conta"}}</h3>
+            <div class="ent-mais-grade">
+                <button type="button" {{on "click" this.alternarTema}}>
+                    <FaIcon @icon={{if this.escuro "sun" "moon"}} />
+                    <span>{{if this.escuro (t "console.ui.celular.mais.tema-claro") (t "console.ui.celular.mais.tema-escuro")}}</span>
+                </button>
+                <button type="button" {{on "click" this.irParaConta}}><FaIcon @icon="user" /><span>{{t "console.ui.celular.mais.minha-conta"}}</span></button>
+                <button type="button" {{on "click" this.sair}}><FaIcon @icon="right-from-bracket" /><span>{{t "console.ui.celular.mais.sair"}}</span></button>
+            </div>
+        </section>
+    {{/if}}
+{{/if}}

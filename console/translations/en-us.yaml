@@ -788,6 +788,42 @@ console:
         Received:
     message: No notifications to display.
   ui:
+    celular:
+      rodape: Main navigation
+      novo-pedido: New order
+      abas:
+        inicio: Home
+        pedidos: Orders
+        mapa: Map
+        motoboys: Drivers
+        mais: More
+      mais:
+        fechar: Close
+        menu-da-area: Menu for this area
+        operacao: Operations
+        pedidos: Orders
+        mapa: Map
+        recursos: Resources
+        motoboys: Drivers
+        lojas: Stores
+        financeiro: Finance
+        painel: Dashboard
+        extrato-motoboys: Driver statements
+        faturas-lojas: Store invoices
+        relatorio: Report
+        multiplicadores: Multipliers
+        corridas-do-sistema: System rides
+        configuracoes: Settings
+        central: Settings hub
+        app-motoboy: Driver app
+        mapa-config: Map
+        notificacoes: Notifications
+        outros: Other modules
+        conta: Account
+        tema-claro: Light theme
+        tema-escuro: Dark theme
+        minha-conta: My account
+        sair: Log out
     landing:
       brand-sub: RestaurantePro
       nav-consultor: Talk to a consultant
