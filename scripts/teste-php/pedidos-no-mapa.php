@@ -271,6 +271,13 @@ namespace {
     $um = PedidosNoMapa::umDoLider(end(Order::$todos));
     confere($um === ($doLider['order_ifood'] ?? false), 'umDoLider: o mesmo item do doLider');
     confere(PedidosNoMapa::umDoLider(pedido('order_sem_destino_2', 'started', 'vendor-a', $recente, '2026-10-05 08:00:00', null)) === null, 'umDoLider sem destino com coordenada: null');
+    // a comanda do console (ComandaDaCentral): o mesmo formato, com latitude e longitude null
+    $semPosicao = PedidosNoMapa::umDoLider(pedido('order_sem_posicao', 'started', 'vendor-a', $recente, '2026-10-05 08:00:00', lugar(0.0, 0.0, 'Rua B, 20')), true);
+    confere(array_keys($semPosicao ?? []) === array_keys($um ?? []) && $semPosicao['latitude'] === null && $semPosicao['longitude'] === null && $semPosicao['endereco'] === 'Rua B, 20',
+        'umDoLider com mesmoSemDestino: destino sem coordenada vem no mesmo formato, com latitude e longitude null');
+    $semDestino = PedidosNoMapa::umDoLider(pedido('order_sem_destino_3', 'started', 'vendor-a', $recente, '2026-10-05 08:00:00', null), true);
+    confere(($semDestino['id'] ?? null) === 'order_sem_destino_3' && $semDestino['latitude'] === null && $semDestino['endereco'] === null, 'umDoLider com mesmoSemDestino e sem Local de entrega: endereço null');
+    confere(PedidosNoMapa::umDoLider(end(Order::$todos), true) === $um, 'umDoLider com mesmoSemDestino e destino válido: o mesmo item');
 
     $centralComIfood = array_column(PedidosNoMapa::daCentral(EMPRESA), null, 'id');
     $lojaComIfood    = array_column(PedidosNoMapa::daLoja(EMPRESA, ['vendor-a', 'contato-a']), null, 'id');

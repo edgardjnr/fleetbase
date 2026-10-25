@@ -63,6 +63,9 @@ $arquivos = array_merge(
         // corridas do sistema (relatório do dono); as classes de Support/Entregas/Sistema entram pelo glob acima
         $app . '/Http/Controllers/Entregas/CorridasDoSistemaController.php',
         $app . '/Console/Commands/Entregas/CorridasConferir.php',
+        // comanda do pedido na folha do console
+        $app . '/Http/Controllers/Entregas/PedidoAbertoController.php',
+        $app . '/Support/Entregas/Painel/ComandaDaCentral.php',
     ]
 );
 

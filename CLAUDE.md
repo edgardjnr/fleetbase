@@ -23,7 +23,7 @@ Este arquivo traz só o que vale em qualquer parte do repo. Os detalhes ficam nu
 | E-mails em pt-BR | `api/app/Notifications/Entregas/Email/CLAUDE.md` |
 | Financeiro: extrato e pagamento dos motoboys, faturas das lojas, painel | `api/app/Support/Entregas/Financeiro/CLAUDE.md` |
 | Corridas do sistema: relatório do dono (todas as organizações) e preço por central | `api/app/Support/Entregas/Sistema/CLAUDE.md` |
-| Painel inicial do console: números do período, Ao vivo e Atribuir | `api/app/Support/Entregas/Painel/CLAUDE.md` |
+| Painel inicial do console: números do período, Ao vivo, Atribuir e a comanda do pedido (folha do console) | `api/app/Support/Entregas/Painel/CLAUDE.md` |
 | Fleet-Ops: telas ocultas, pagamento e cobrança, mapa ao vivo, tela de pedidos (`/fleet-ops`) | `packages/fleetops/CLAUDE.md` |
 | Portal da loja (segurança, mapa de motoboys, chat, riscos conhecidos) | `packages/customer-portal/CLAUDE.md` |
 | Tradução pt-BR (convenções) | `packages/CLAUDE.md` |

@@ -264,6 +264,8 @@ namespace Teste {
 
         public static function where($coluna, $valor = null) { return (new ConsultaDeModelo(static::$todos))->where($coluna, $valor); }
         public static function whereIn($coluna, array $valores) { return (new ConsultaDeModelo(static::$todos))->whereIn($coluna, $valores); }
+        // without(): relações não importam aqui (o PedidosNoMapa lê o nome das lojas com Vendor::without('place'))
+        public static function without($relacoes) { return new ConsultaDeModelo(static::$todos); }
         public function refresh() { return $this; }
     }
 }

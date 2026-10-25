@@ -19,6 +19,7 @@ use App\Http\Controllers\Entregas\MapaController;
 use App\Http\Controllers\Entregas\MotoboyController;
 use App\Http\Controllers\Entregas\MultiplicadoresController;
 use App\Http\Controllers\Entregas\PagamentoMotoboysController;
+use App\Http\Controllers\Entregas\PedidoAbertoController;
 use App\Http\Controllers\Entregas\PainelInicialController;
 use App\Http\Controllers\Entregas\PortalLojaController;
 use App\Http\Middleware\AvisarOnlineDoMotoboy;
@@ -221,6 +222,9 @@ class RouteServiceProvider extends ServiceProvider
                         // painel "Distribuição" no detalhe do pedido e o "Abrir a todos agora"
                         Route::get('pedidos/{id}/distribuicao', [DistribuicaoController::class, 'painel']);
                         Route::post('pedidos/{id}/distribuicao/abrir', [DistribuicaoController::class, 'abrir']);
+                        // folha do pedido no console, no estilo da Comanda do app (cliente, cobrança, produtos, loja, linha do
+                        // tempo, rota e valores): qualquer usuário da central; os valores só para admin
+                        Route::get('pedidos/{id}/comanda', [PedidoAbertoController::class, 'comanda']);
 
                         // mapa ao vivo do console: só os locais de coleta (lojas) e a situação de cada motoboy (cor do capacete)
                         Route::get('mapa/locais-de-coleta', [MapaController::class, 'locaisDeColeta']);

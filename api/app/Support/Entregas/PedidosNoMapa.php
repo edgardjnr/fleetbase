@@ -25,7 +25,7 @@ use Fleetbase\FleetOps\Models\Vendor;
  *
  * Em andamento = status fora de StatusDoPedido::ENCERRADOS e atualizado nas últimas
  * SituacaoDoMotoboy::HORAS_PEDIDO_EM_ANDAMENTO horas, com ou sem motoboy (a mesma regra dos capacetes). Pedido sem destino
- * com coordenada válida fica de fora. Do motoboy sai só o nome: nunca o id (com ele, o canal driver.<id> do socket entrega
+ * com coordenada válida fica de fora (menos no umDoLider com $mesmoSemDestino, o da comanda do console). Do motoboy sai só o nome: nunca o id (com ele, o canal driver.<id> do socket entrega
  * a posição e o telefone), o telefone ou o e-mail.
  */
 class PedidosNoMapa
@@ -85,12 +85,16 @@ class PedidosNoMapa
         return static::itens($pedidos, fn ($pedido) => static::doLiderExtra($pedido, $lojas));
     }
 
-    /** Um pedido no formato do doLider (o pedido já vem com as RELACOES_DO_LIDER); null se o destino não tem coordenada. */
-    public static function umDoLider($pedido): ?array
+    /**
+     * Um pedido no formato do doLider (o pedido já vem com as RELACOES_DO_LIDER); null se o destino não tem coordenada.
+     * Com $mesmoSemDestino (a comanda do console, Painel\ComandaDaCentral), o pedido sem coordenada no destino vem com
+     * latitude e longitude null em vez de ficar de fora.
+     */
+    public static function umDoLider($pedido, bool $mesmoSemDestino = false): ?array
     {
         $lojas = static::nomesDasLojas([$pedido]);
 
-        return static::itens([$pedido], fn ($pedido) => static::doLiderExtra($pedido, $lojas))[0] ?? null;
+        return static::itens([$pedido], fn ($pedido) => static::doLiderExtra($pedido, $lojas), $mesmoSemDestino)[0] ?? null;
     }
 
     protected static function doLiderExtra($pedido, array $lojas): array
@@ -116,14 +120,15 @@ class PedidosNoMapa
             ->limit(static::LIMITE);
     }
 
-    protected static function itens(iterable $pedidos, ?\Closure $extra = null): array
+    protected static function itens(iterable $pedidos, ?\Closure $extra = null, bool $mesmoSemDestino = false): array
     {
         $lista = [];
         foreach ($pedidos as $pedido) {
             $destino   = $pedido->payload?->dropoff;
             $latitude  = $destino?->location?->getLat();
             $longitude = $destino?->location?->getLng();
-            if (!Coordenada::valida($latitude, $longitude)) {
+            $valida    = Coordenada::valida($latitude, $longitude);
+            if (!$valida && !$mesmoSemDestino) {
                 continue;
             }
 
@@ -131,9 +136,9 @@ class PedidosNoMapa
                 'id'        => $pedido->public_id,
                 // o número que o motoboy e a loja conhecem: o do iFood ou do sistema da loja (internal_id); sem ele, o de rastreio
                 'numero'    => $pedido->internal_id ?: ($pedido->trackingNumber?->tracking_number ?: $pedido->public_id),
-                'latitude'  => (float) $latitude,
-                'longitude' => (float) $longitude,
-                'endereco'  => $destino->address ?: $destino->name,
+                'latitude'  => $valida ? (float) $latitude : null,
+                'longitude' => $valida ? (float) $longitude : null,
+                'endereco'  => $destino?->address ?: $destino?->name,
                 'status'    => $pedido->status,
                 'motoboy'   => $pedido->driverAssigned?->name,
                 // o motoboy já aceitou (não só foi atribuído pela central): o alfinete ganha o nome dele fixo embaixo
