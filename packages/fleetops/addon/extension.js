@@ -102,8 +102,8 @@ export default {
         this.createRegistries(registryService);
         registryService.registerRenderableComponent('ai:action-preview:fleet-ops.create_order', new ExtensionComponent('@fleetbase/fleetops-engine', 'ai/create-order-preview'));
 
-        // // Register console home guidance
-        // this.registerHomeComponents(registryService);
+        // Entregas: o painel inicial do console (home/painel-inicial) no lugar dos widgets do Fleetbase
+        this.registerHomeComponents(registryService);
 
         // Setup customer portal
         const isCustomerPortalInstalled = universe.extensionManager.isInstalled('@fleetbase/customer-portal-engine');
@@ -331,7 +331,7 @@ export default {
     },
 
     registerHomeComponents(registryService) {
-        registryService.registerRenderableComponent('console:home:before-dashboard', new ExtensionComponent('@fleetbase/fleetops-engine', 'home/getting-started-guidance'));
+        registryService.registerRenderableComponent('console:home:before-dashboard', new ExtensionComponent('@fleetbase/fleetops-engine', 'home/painel-inicial'));
     },
 
     createRegistries(registryService) {
