@@ -64,7 +64,8 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
                 label: this.intl.t('menu.resources'),
                 icon: 'truck',
                 route: 'management',
-                defaultRoute: 'management.index',
+                // Entregas: o hub de Recursos (management.index) está oculto; o grupo abre em Motoristas
+                defaultRoute: 'management.drivers',
                 requiresVisibleChildren: true,
                 keywords: ['drivers', 'vehicles', 'fleets', 'contacts', 'places'],
                 children: this.resourcesItems,

@@ -20,13 +20,7 @@ export default {
                     icon: 'boxes-stacked',
                     route: 'console.fleet-ops.operations.orders',
                 },
-                {
-                    id: 'fleet-ops-sc-places',
-                    title: intlService.t('fleet-ops.ui.extension.shortcut-places.title'),
-                    description: intlService.t('fleet-ops.ui.extension.shortcut-places.description'),
-                    icon: 'location-dot',
-                    route: 'console.fleet-ops.management.places',
-                },
+                // Entregas: sem o atalho Lugares (tela oculta; os locais se abrem pelos modais)
                 {
                     id: 'fleet-ops-sc-drivers',
                     title: intlService.t('fleet-ops.ui.extension.shortcut-drivers.title'),
@@ -49,13 +43,7 @@ export default {
         menuService.registerAdminMenuPanel(
             intlService.t('fleet-ops.ui.extension.admin.panel-title'),
             [
-                new MenuItem({
-                    id: 'routing',
-                    slug: 'routing',
-                    title: intlService.t('fleet-ops.ui.extension.admin.routing'),
-                    icon: 'route',
-                    component: new ExtensionComponent('@fleetbase/fleetops-engine', 'admin/routing-settings'),
-                }),
+                // Entregas: sem "Roteamento" (admin/routing-settings); o km da cobrança usa o OSRM do servidor
                 new MenuItem({
                     id: 'map',
                     slug: 'map',
@@ -116,42 +104,12 @@ export default {
 
     registerWidgets(widgetService) {
         const widgets = [
-            // Legacy monolithic 13-tile widget — kept registered for one release as
-            // users have it pinned to existing dashboards. The new KPI tile widgets
-            // below supersede it. Scheduled for removal in the next major.
-            new Widget({
-                id: 'fleet-ops-key-metrics-widget',
-                name: 'fleet-ops.ui.widgets.key-metrics.name',
-                description: 'fleet-ops.ui.widgets.key-metrics.description',
-                icon: 'truck',
-                component: new ExtensionComponent('@fleetbase/fleetops-engine', 'widget/fleet-ops-key-metrics'),
-                grid_options: { w: 12, h: 8, minW: 8, minH: 6 },
-                category: 'Legacy',
-                default: false,
-            }),
+            // Entregas: sem os widgets fora do escopo (legado de 13 números, receita, ticket médio, ocorrências,
+            // combustível, manutenção e geocercas). Nada mais exibe widgets do Fleet-Ops: o início do console é o
+            // painel inicial e Análises está oculto (utils/entregas-hidden-routes).
 
             // Small KPI tile widgets — S-tier, each wraps <Widget::KpiTile> with a
             // fixed slug pointing at GET /fleet-ops/metrics/{slug}.
-            new Widget({
-                id: 'fleet-ops-kpi-earnings-widget',
-                name: 'fleet-ops.ui.widgets.kpi-earnings.name',
-                description: 'fleet-ops.ui.widgets.kpi-earnings.description',
-                icon: 'sack-dollar',
-                component: new ExtensionComponent('@fleetbase/fleetops-engine', 'widget/kpi-earnings'),
-                grid_options: { w: 3, h: 4, minW: 3, minH: 4 },
-                category: 'KPI Tiles',
-                default: true,
-            }),
-            new Widget({
-                id: 'fleet-ops-kpi-aov-widget',
-                name: 'fleet-ops.ui.widgets.kpi-aov.name',
-                description: 'fleet-ops.ui.widgets.kpi-aov.description',
-                icon: 'receipt',
-                component: new ExtensionComponent('@fleetbase/fleetops-engine', 'widget/kpi-aov'),
-                grid_options: { w: 3, h: 4, minW: 3, minH: 4 },
-                category: 'KPI Tiles',
-                default: true,
-            }),
             new Widget({
                 id: 'fleet-ops-kpi-distance-widget',
                 name: 'fleet-ops.ui.widgets.kpi-distance.name',
@@ -182,16 +140,6 @@ export default {
                 category: 'KPI Tiles',
                 default: true,
             }),
-            new Widget({
-                id: 'fleet-ops-kpi-open-issues-widget',
-                name: 'fleet-ops.ui.widgets.kpi-open-issues.name',
-                description: 'fleet-ops.ui.widgets.kpi-open-issues.description',
-                icon: 'triangle-exclamation',
-                component: new ExtensionComponent('@fleetbase/fleetops-engine', 'widget/kpi-open-issues'),
-                grid_options: { w: 3, h: 4, minW: 3, minH: 4 },
-                category: 'KPI Tiles',
-                default: false,
-            }),
 
             // Analytics widgets — composed visualizations powered by /fleet-ops/analytics/*.
             new Widget({
@@ -212,16 +160,6 @@ export default {
                 component: new ExtensionComponent('@fleetbase/fleetops-engine', 'widget/live-fleet'),
                 grid_options: { w: 8, h: 11, minW: 8, minH: 8 },
                 category: 'Maps',
-                default: true,
-            }),
-            new Widget({
-                id: 'fleet-ops-revenue-trend-widget',
-                name: 'fleet-ops.ui.widgets.revenue-trend.name',
-                description: 'fleet-ops.ui.widgets.revenue-trend.description',
-                icon: 'chart-line',
-                component: new ExtensionComponent('@fleetbase/fleetops-engine', 'widget/revenue-trend'),
-                grid_options: { w: 4, h: 11, minW: 4, minH: 8 },
-                category: 'Analytics',
                 default: true,
             }),
             new Widget({
@@ -253,56 +191,6 @@ export default {
                 grid_options: { w: 6, h: 6, minW: 5, minH: 5 },
                 category: 'Analytics',
                 default: true,
-            }),
-            new Widget({
-                id: 'fleet-ops-fuel-efficiency-widget',
-                name: 'fleet-ops.ui.widgets.fuel-efficiency.name',
-                description: 'fleet-ops.ui.widgets.fuel-efficiency.description',
-                icon: 'gas-pump',
-                component: new ExtensionComponent('@fleetbase/fleetops-engine', 'widget/fuel-efficiency'),
-                grid_options: { w: 6, h: 6, minW: 5, minH: 5 },
-                category: 'Analytics',
-                default: false,
-            }),
-            new Widget({
-                id: 'fleet-ops-fuel-providers-widget',
-                name: 'fleet-ops.ui.widgets.fuel-providers.name',
-                description: 'fleet-ops.ui.widgets.fuel-providers.description',
-                icon: 'gas-pump',
-                component: new ExtensionComponent('@fleetbase/fleetops-engine', 'widget/fuel-providers'),
-                grid_options: { w: 4, h: 5, minW: 4, minH: 5 },
-                category: 'Analytics',
-                default: false,
-            }),
-            new Widget({
-                id: 'fleet-ops-issues-insights-widget',
-                name: 'fleet-ops.ui.widgets.issues-insights.name',
-                description: 'fleet-ops.ui.widgets.issues-insights.description',
-                icon: 'triangle-exclamation',
-                component: new ExtensionComponent('@fleetbase/fleetops-engine', 'widget/issues-insights'),
-                grid_options: { w: 6, h: 6, minW: 5, minH: 5 },
-                category: 'Analytics',
-                default: false,
-            }),
-            new Widget({
-                id: 'fleet-ops-maintenance-overview-widget',
-                name: 'fleet-ops.ui.widgets.maintenance-overview.name',
-                description: 'fleet-ops.ui.widgets.maintenance-overview.description',
-                icon: 'wrench',
-                component: new ExtensionComponent('@fleetbase/fleetops-engine', 'widget/maintenance-overview'),
-                grid_options: { w: 6, h: 6, minW: 5, minH: 5 },
-                category: 'Analytics',
-                default: true,
-            }),
-            new Widget({
-                id: 'fleet-ops-geofence-violations-widget',
-                name: 'fleet-ops.ui.widgets.geofence-violations.name',
-                description: 'fleet-ops.ui.widgets.geofence-violations.description',
-                icon: 'location-crosshairs',
-                component: new ExtensionComponent('@fleetbase/fleetops-engine', 'widget/geofence-violations'),
-                grid_options: { w: 6, h: 6, minW: 5, minH: 5 },
-                category: 'Analytics',
-                default: false,
             }),
         ];
 

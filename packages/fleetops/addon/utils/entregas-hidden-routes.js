@@ -19,9 +19,16 @@ export const ENTREGAS_HIDDEN_ROUTES = [
     'management.fuel-reports',
     'management.fuel-transactions',
     'management.issues',
+    // hub de Recursos, Lugares e Contatos: os locais e clientes se abrem pelos modais e painéis (placeActions…)
+    'management.index',
+    'management.places',
+    'management.contacts',
+    // agenda do motorista (aba do detalhe)
+    'management.drivers.index.details.schedule',
     'maintenance',
     'connectivity',
-    'analytics.reports',
+    // Análises inteiro (painel de widgets e relatórios)
+    'analytics',
     'settings.payments',
     'settings.routing',
     'settings.orchestrator',
