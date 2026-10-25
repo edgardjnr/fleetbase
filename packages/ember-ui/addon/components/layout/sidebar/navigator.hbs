@@ -121,27 +121,105 @@
         {{/if}}
     </div>
 
-    <div
-        class="next-sidebar-navigator-viewport {{if this.isNested 'is-nested'}} {{if this.outgoingView 'is-transitioning'}} is-{{this.transitionDirection}}"
-        {{did-insert this.registerViewport}}
-    >
-        {{#if this.outgoingView as |outgoing|}}
-            <div class="next-sidebar-navigator-view next-sidebar-navigator-view-out">
-                {{#if outgoing.parent}}
-                    <div class="next-sidebar-navigator-nested-header">
+    {{#if @plano}}
+        {{! Entregas: lista direta em seções com título (fleet-ops-sidebar, moldura do sketch 006) }}
+        <div class="next-sidebar-navigator-plano">
+            {{#each this.secoes key="id" as |secao|}}
+                {{#if secao.titulo}}
+                    <div class="next-sidebar-navigator-secao">{{secao.titulo}}</div>
+                {{/if}}
+                {{#each secao.itens as |item|}}
+                    <button
+                        type="button"
+                        class="next-sidebar-navigator-item {{if (this.isActive item) 'is-active'}} {{if (this.isParentActive item) 'is-parent-active'}}"
+                        aria-current={{if (this.isActive item) "page"}}
+                        title={{menu-text item "label"}}
+                        {{on "click" (fn this.openItem item)}}
+                    >
+                        <span class="next-sidebar-navigator-item-icon">
+                            {{#if item.icon}}
+                                <FaIcon @icon={{item.icon}} @prefix={{item.iconPrefix}} @size="xs" />
+                            {{/if}}
+                        </span>
+                        <span class="next-sidebar-navigator-item-content">
+                            <span class="next-sidebar-navigator-item-label">{{menu-text item "label"}}</span>
+                        </span>
+                        {{#if item.badge}}
+                            <span class="next-sidebar-navigator-item-badge">{{item.badge}}</span>
+                        {{/if}}
+                        {{#if item.children.length}}
+                            <span class="next-sidebar-navigator-item-caret">
+                                <FaIcon @icon="chevron-right" @size="xs" />
+                            </span>
+                        {{/if}}
+                    </button>
+                {{/each}}
+            {{/each}}
+        </div>
+    {{else}}
+        <div
+            class="next-sidebar-navigator-viewport {{if this.isNested 'is-nested'}} {{if this.outgoingView 'is-transitioning'}} is-{{this.transitionDirection}}"
+            {{did-insert this.registerViewport}}
+        >
+            {{#if this.outgoingView as |outgoing|}}
+                <div class="next-sidebar-navigator-view next-sidebar-navigator-view-out">
+                    {{#if outgoing.parent}}
+                        <div class="next-sidebar-navigator-nested-header">
+                            <span class="next-sidebar-navigator-back-icon">
+                                <FaIcon @icon="chevron-left" @size="xs" />
+                            </span>
+                            <span>{{menu-text outgoing.parent "label"}}</span>
+                        </div>
+                    {{/if}}
+
+                    {{#each outgoing.items as |item|}}
+                        <button
+                            type="button"
+                            class="next-sidebar-navigator-item {{if (this.isActive item) 'is-active'}} {{if (this.isParentActive item) 'is-parent-active'}} {{if (this.itemDescriptionVisible item) 'has-description'}}"
+                            aria-current={{if (this.isActive item) "page"}}
+                            title={{this.tooltipFor item}}
+                        >
+                            <span class="next-sidebar-navigator-item-icon">
+                                {{#if item.icon}}
+                                    <FaIcon @icon={{item.icon}} @prefix={{item.iconPrefix}} @size="xs" />
+                                {{/if}}
+                            </span>
+                            <span class="next-sidebar-navigator-item-content">
+                                <span class="next-sidebar-navigator-item-label">{{menu-text item "label"}}</span>
+                                {{#if (this.itemDescriptionVisible item)}}
+                                    <span class="next-sidebar-navigator-item-description">{{menu-text item "description"}}</span>
+                                {{/if}}
+                            </span>
+                            {{#if item.badge}}
+                                <span class="next-sidebar-navigator-item-badge">{{item.badge}}</span>
+                            {{/if}}
+                            {{#if item.children.length}}
+                                <span class="next-sidebar-navigator-item-caret">
+                                    <FaIcon @icon="chevron-right" @size="xs" />
+                                </span>
+                            {{/if}}
+                        </button>
+                    {{/each}}
+                </div>
+            {{/if}}
+
+            <div class="next-sidebar-navigator-view next-sidebar-navigator-view-in">
+                {{#if this.isNested}}
+                    <button type="button" class="next-sidebar-navigator-back" {{on "click" this.back}}>
                         <span class="next-sidebar-navigator-back-icon">
                             <FaIcon @icon="chevron-left" @size="xs" />
                         </span>
-                        <span>{{menu-text outgoing.parent "label"}}</span>
-                    </div>
+                        <span>{{t-or this.title}}</span>
+                    </button>
                 {{/if}}
 
-                {{#each outgoing.items as |item|}}
+                {{#each this.currentItems as |item|}}
                     <button
                         type="button"
                         class="next-sidebar-navigator-item {{if (this.isActive item) 'is-active'}} {{if (this.isParentActive item) 'is-parent-active'}} {{if (this.itemDescriptionVisible item) 'has-description'}}"
                         aria-current={{if (this.isActive item) "page"}}
                         title={{this.tooltipFor item}}
+                        {{on "click" (fn this.openItem item)}}
                     >
                         <span class="next-sidebar-navigator-item-icon">
                             {{#if item.icon}}
@@ -165,49 +243,8 @@
                     </button>
                 {{/each}}
             </div>
-        {{/if}}
-
-        <div class="next-sidebar-navigator-view next-sidebar-navigator-view-in">
-            {{#if this.isNested}}
-                <button type="button" class="next-sidebar-navigator-back" {{on "click" this.back}}>
-                    <span class="next-sidebar-navigator-back-icon">
-                        <FaIcon @icon="chevron-left" @size="xs" />
-                    </span>
-                    <span>{{t-or this.title}}</span>
-                </button>
-            {{/if}}
-
-            {{#each this.currentItems as |item|}}
-                <button
-                    type="button"
-                    class="next-sidebar-navigator-item {{if (this.isActive item) 'is-active'}} {{if (this.isParentActive item) 'is-parent-active'}} {{if (this.itemDescriptionVisible item) 'has-description'}}"
-                    aria-current={{if (this.isActive item) "page"}}
-                    title={{this.tooltipFor item}}
-                    {{on "click" (fn this.openItem item)}}
-                >
-                    <span class="next-sidebar-navigator-item-icon">
-                        {{#if item.icon}}
-                            <FaIcon @icon={{item.icon}} @prefix={{item.iconPrefix}} @size="xs" />
-                        {{/if}}
-                    </span>
-                    <span class="next-sidebar-navigator-item-content">
-                        <span class="next-sidebar-navigator-item-label">{{menu-text item "label"}}</span>
-                        {{#if (this.itemDescriptionVisible item)}}
-                            <span class="next-sidebar-navigator-item-description">{{menu-text item "description"}}</span>
-                        {{/if}}
-                    </span>
-                    {{#if item.badge}}
-                        <span class="next-sidebar-navigator-item-badge">{{item.badge}}</span>
-                    {{/if}}
-                    {{#if item.children.length}}
-                        <span class="next-sidebar-navigator-item-caret">
-                            <FaIcon @icon="chevron-right" @size="xs" />
-                        </span>
-                    {{/if}}
-                </button>
-            {{/each}}
         </div>
-    </div>
+    {{/if}}
 
     {{yield this.footerState to="footer"}}
 </div>

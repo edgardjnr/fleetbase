@@ -143,12 +143,7 @@ A com os lados invertidos, `.planning/sketches/005-tela-de-pedidos/`). As vistas
   - No celular (< 768 px, `matchMedia`), uma folha de baixo com Pedidos e Motoboys (3 alturas).
   - **O mapa ao vivo antigo (`<Map>`: barra de ícones, gaveta, painel de pedidos) saiu da tela.** Os componentes
     `map/*` continuam no engine.
-- **Menu do Fleet-Ops nessa tela** (pedido do Edgard, igual ao sketch): o menu lateral vira um trilho de ícones de
-  60 px, que abre por cima (232 px) ao passar o mouse ou ao focar pelo teclado, sem a lista "Operações ao vivo" (o
-  painel Motoboys faz esse papel). É **só CSS**, no fim do `tela-de-pedidos.css`, preso a
-  `body[class*='console-fleet-ops-operations-orders-index']`. O `fleet-ops-sidebar.js` não mudou, e nas outras telas o
-  menu segue como era. O `::after` do `.next-sidebar` (a linha da direita) fica embaixo do conteúdo aberto
-  (`z-index: 3`).
+- **Menu do Fleet-Ops:** trilho de ícones em todo o Fleet-Ops. Ver "Moldura do console" em `console/CLAUDE.md`.
 - **Tabela:** continua o `Layout::Resource::Tabular` do Fleetbase (filtros, ações em massa, importar, exportar), com
   as abas por situação em cima (`tela-pedidos/abas`).
   - As abas viram query params: Em andamento = `status=active` (alias do `OrderFilter`), Sem motoboy = `unassigned=1`

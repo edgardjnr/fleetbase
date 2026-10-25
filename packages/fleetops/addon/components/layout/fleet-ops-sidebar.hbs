@@ -4,13 +4,12 @@
     @searchPlaceholder={{t "fleet-ops.ui.layout.fleet-ops-sidebar.search-fleet-ops"}}
     @searchProvider={{this.searchNavigation}}
     @shouldSyncInitialActiveParent={{this.shouldSyncInitialActiveParent}}
+    @plano={{true}}
     class="fleet-ops-sidebar-navigator"
 >
     <:footer as |state|>
-        {{#if (or (not state.isNested) (eq state.currentParent.id "operations"))}}
-            <Layout::FleetOpsSidebar::OperationsMonitor />
-        {{/if}}
-
+        {{! Entregas: a lista "Operações ao vivo" saiu do menu (trilho de ícones, sketch 006); os motoboys ao vivo ficam no
+            painel Motoboys da tela de pedidos e no painel inicial }}
         {{#each (get this.footerRegistryComponents (or state.currentParent.id "root")) as |menuItem|}}
             {{component menuItem.component}}
         {{/each}}

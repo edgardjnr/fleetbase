@@ -217,25 +217,3 @@
     .tela-pedidos.tp-quadro { scroll-snap-type: x mandatory; padding: 10px 12px; }
     .tp-quadro .tp-coluna { width: 86vw; scroll-snap-align: start; }
 }
-
-/* Menu do Fleet-Ops na tela de pedidos (sketch 005): trilho de ícones de 60 px que abre por cima (232 px) ao passar o
-   mouse ou ao focar pelo teclado; sem a lista "Operações ao vivo" (o painel Motoboys do mapa faz esse papel). Vale só
-   nas rotas operations.orders.index* (a classe da rota fica no body); nas outras telas o menu segue como era. */
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar { width: 60px !important; min-width: 60px !important; max-width: 60px !important; flex: none; z-index: 1200; overflow: visible; }
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar > .gutter { display: none; }
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar-content { position: absolute; top: 0; left: 0; bottom: 0; z-index: 3; width: 60px; background-color: inherit; overflow: hidden; transition: width 0.18s ease, box-shadow 0.18s ease; }
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar:hover .next-sidebar-content,
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar:focus-within .next-sidebar-content { width: 232px; box-shadow: 0 14px 36px rgb(0 0 0 / 35%); }
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar-content-inner { width: 232px; }
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar-content-inner > div { width: 216px; }
-body[class*='console-fleet-ops-operations-orders-index'] .fleet-ops-operations-monitor { display: none; }
-/* recolhido: só os ícones, centralizados no trilho */
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-content-inner > div { width: 44px; }
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-item-content,
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-item-caret,
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-primary-action > span,
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-search > :not(svg) { display: none; }
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-item,
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-primary-action,
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-search { justify-content: center; padding-left: 0; padding-right: 0; }
-body[class*='console-fleet-ops-operations-orders-index'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-item { height: 40px; }

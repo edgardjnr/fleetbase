@@ -1,0 +1,193 @@
+/* Entregas: moldura do console (sketch 006, variante C). Cabeçalho e menu lateral formam uma moldura só, em tom de areia
+   (--pi-cartao-2, que segue o claro e o escuro), e o conteúdo de cada tela fica numa folha com o canto de cima à esquerda
+   arredondado. Módulos do cabeçalho numa barra segmentada (ativo em laranja); no menu, cada ícone num quadradinho (ativo
+   em laranja, "Criar novo pedido" em tinta). No Fleet-Ops o menu é um trilho de ícones que abre por cima ao passar o
+   mouse, com a lista direta em seções (navigator com @plano). Tokens --pi-* no body (painel-inicial.css).
+   Os seletores começam com "html body" para passar na frente das regras do ember-ui (light-theme.css, next.css,
+   sidebar-navigator.css), que usam body[data-theme=…]. As sobreposições (detalhe do pedido etc.) também usam
+   .next-view-header-left/right: por isso tudo aqui é preso ao header.next-view-header ou ao .next-view-container. */
+
+/* ---------- cabeçalho ---------- */
+html body header.next-view-header {
+    background: var(--pi-cartao-2);
+    border-bottom-color: transparent;
+    box-shadow: none;
+    color: var(--pi-tinta);
+    font-family: var(--pi-corpo);
+}
+html body header.next-view-header .next-catalog-menu-items {
+    flex: none;
+    width: auto;
+    max-width: 100%;
+    gap: 2px;
+    padding: 3px;
+    background: var(--pi-cartao);
+    border: 1px solid var(--pi-linha);
+    border-radius: 12px;
+}
+html body header.next-view-header .next-view-header-item {
+    border-radius: 9px;
+    color: var(--pi-tinta-2);
+    font-weight: 600;
+    background: transparent;
+    box-shadow: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+html body header.next-view-header .next-catalog-menu-items .next-view-header-item { margin-right: 0; }
+html body header.next-view-header a.next-view-header-item:hover,
+html body header.next-view-header .next-view-header-item:hover,
+html body header.next-view-header .next-view-header-item.is-open {
+    background: var(--pi-cartao);
+    color: var(--pi-tinta);
+    box-shadow: none;
+}
+html body header.next-view-header .next-catalog-menu-items .next-view-header-item:hover { background: var(--pi-cartao-2); }
+html body header.next-view-header .next-view-header-item.active,
+html body header.next-view-header .next-view-header-item.active:hover {
+    background: var(--pi-laranja);
+    color: var(--pi-sobre-laranja);
+    box-shadow: none;
+}
+html body header.next-view-header .next-view-header-item svg,
+html body header.next-view-header .sidebar-toggle-button svg { color: inherit; }
+html body header.next-view-header .sidebar-toggle-button { color: var(--pi-tinta-2); border-radius: 9px; }
+html body header.next-view-header .sidebar-toggle-button:hover { background: var(--pi-cartao); color: var(--pi-tinta); }
+
+/* ---------- moldura e folha do conteúdo ---------- */
+html body .next-view-container { background: var(--pi-cartao-2); }
+html body .next-view-container > nav.next-sidebar {
+    background: var(--pi-cartao-2);
+    border-right: 0;
+}
+html body .next-view-container > nav.next-sidebar::after { display: none; }
+html body .next-view-container > nav.next-sidebar ~ .next-view-section {
+    background: var(--pi-fundo);
+    border-top-left-radius: 18px;
+    overflow: hidden;
+    box-shadow: -1px -1px 0 var(--pi-linha);
+}
+
+/* ---------- menu lateral (todos os módulos que usam o navigator: Fleet-Ops, IAM…) ---------- */
+html body .next-view-container .next-sidebar-navigator { font-family: var(--pi-corpo); }
+html body .next-view-container .next-sidebar-navigator-primary-action {
+    background: var(--pi-tinta);
+    color: var(--pi-fundo);
+    border-radius: 11px;
+    font-weight: 700;
+}
+html body .next-view-container .next-sidebar-navigator-primary-action:hover { background: var(--pi-tinta-2); }
+html body .next-view-container .next-sidebar-navigator-search {
+    background: var(--pi-cartao);
+    border-color: var(--pi-linha);
+    color: var(--pi-apagado);
+    border-radius: 11px;
+    box-shadow: none;
+}
+html body .next-view-container .next-sidebar-navigator-search input { color: var(--pi-tinta); }
+html body .next-view-container .next-sidebar-navigator-kbd { border-color: var(--pi-linha); color: var(--pi-apagado); background: transparent; }
+html body .next-view-container .next-sidebar-navigator-item {
+    min-height: 2.25rem;
+    gap: 10px;
+    border-radius: 11px;
+    border-color: transparent;
+    color: var(--pi-tinta-2);
+    background: transparent;
+    font-weight: 600;
+}
+html body .next-view-container .next-sidebar-navigator-item:hover,
+html body .next-view-container .next-sidebar-navigator-item.is-parent-active { background: var(--pi-cartao); color: var(--pi-tinta); }
+html body .next-view-container .next-sidebar-navigator-item.is-active { background: var(--pi-cartao); color: var(--pi-tinta); font-weight: 700; }
+html body .next-view-container .next-sidebar-navigator-item-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    background: var(--pi-cartao);
+    border: 1px solid var(--pi-linha);
+    color: var(--pi-tinta-2);
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+html body .next-view-container .next-sidebar-navigator-item:hover .next-sidebar-navigator-item-icon { border-color: var(--pi-laranja); }
+html body .next-view-container .next-sidebar-navigator-item.is-active .next-sidebar-navigator-item-icon,
+html body .next-view-container .next-sidebar-navigator-item.is-parent-active .next-sidebar-navigator-item-icon {
+    background: var(--pi-laranja);
+    border-color: var(--pi-laranja);
+    color: var(--pi-sobre-laranja);
+}
+html body .next-view-container .next-sidebar-navigator-item-label { font-size: 13.5px; }
+html body .next-view-container .next-sidebar-navigator-item-description { color: var(--pi-apagado); }
+html body .next-view-container .next-sidebar-navigator-item-caret,
+html body .next-view-container .next-sidebar-navigator-item:hover .next-sidebar-navigator-item-caret,
+html body .next-view-container .next-sidebar-navigator-item.is-active .next-sidebar-navigator-item-caret,
+html body .next-view-container .next-sidebar-navigator-item.is-parent-active .next-sidebar-navigator-item-caret { background: transparent; color: var(--pi-apagado); }
+html body .next-view-container .next-sidebar-navigator-back { color: var(--pi-laranja-texto); font-weight: 700; }
+html body .next-view-container .next-sidebar-navigator-secao {
+    padding: 12px 10px 4px;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--pi-apagado);
+    white-space: nowrap;
+    overflow: hidden;
+}
+html body .next-view-container .next-sidebar-navigator-plano { display: flex; flex-direction: column; gap: 2px; }
+
+/* ---------- Fleet-Ops: trilho de ícones (72 px) que abre por cima (256 px) ao passar o mouse ou ao focar ---------- */
+@media (min-width: 768px) {
+    html body[class*='console-fleet-ops'] .next-view-container > nav.next-sidebar {
+        width: 72px !important;
+        min-width: 72px !important;
+        max-width: 72px !important;
+        flex: none;
+        position: relative;
+        z-index: 1200;
+        overflow: visible;
+    }
+    html body[class*='console-fleet-ops'] .next-view-container > nav.next-sidebar > .gutter { display: none; }
+    html body[class*='console-fleet-ops'] .next-sidebar .next-sidebar-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 3;
+        width: 72px;
+        background: var(--pi-cartao-2);
+        overflow: hidden;
+        transition: width 0.18s ease, box-shadow 0.18s ease, border-radius 0.18s ease;
+    }
+    html body[class*='console-fleet-ops'] .next-sidebar:hover .next-sidebar-content,
+    html body[class*='console-fleet-ops'] .next-sidebar:focus-within .next-sidebar-content {
+        width: 256px;
+        border-radius: 0 18px 18px 0;
+        box-shadow: 0 14px 36px oklch(0.2 0.02 60 / 25%);
+    }
+    html body[class*='console-fleet-ops'] .next-sidebar .next-sidebar-content-inner { width: 256px; height: 100%; padding: 10px 12px 10px; display: flex; flex-direction: column; }
+    html body[class*='console-fleet-ops'] .next-sidebar .next-sidebar-content-inner > div { width: 232px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    html body[class*='console-fleet-ops'] .fleet-ops-sidebar-navigator { flex: 1; min-height: 0; }
+    html body[class*='console-fleet-ops'] .fleet-ops-sidebar-navigator .next-sidebar-navigator-plano { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
+    /* recolhido: só os quadradinhos, centralizados; os títulos das seções viram uma linha fina */
+    html body[class*='console-fleet-ops'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-content-inner > div { width: 48px; }
+    html body[class*='console-fleet-ops'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-item-content,
+    html body[class*='console-fleet-ops'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-item-caret,
+    html body[class*='console-fleet-ops'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-item-badge,
+    html body[class*='console-fleet-ops'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-primary-action > span,
+    html body[class*='console-fleet-ops'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-search > :not(svg) { display: none; }
+    html body[class*='console-fleet-ops'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-item,
+    html body[class*='console-fleet-ops'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-primary-action,
+    html body[class*='console-fleet-ops'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-search {
+        justify-content: center;
+        padding-left: 0;
+        padding-right: 0;
+        background: transparent;
+    }
+    html body[class*='console-fleet-ops'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-primary-action { background: var(--pi-tinta); min-height: 36px; }
+    html body[class*='console-fleet-ops'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-search { border-color: transparent; }
+    html body[class*='console-fleet-ops'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-plano { scrollbar-width: none; }
+    html body[class*='console-fleet-ops'] .next-sidebar:not(:hover):not(:focus-within) .next-sidebar-navigator-secao {
+        font-size: 0;
+        padding: 0;
+        margin: 6px 8px;
+        height: 1px;
+        background: var(--pi-linha);
+    }
+}

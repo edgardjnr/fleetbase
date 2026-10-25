@@ -24,6 +24,29 @@ Convenções de tradução pt-BR (valem também para `console/translations/`): `
 - Developers sem os atalhos Webhooks, Sockets e Events no menu do topo (as telas continuam dentro de Developers). IAM sem Grupos (rota fora do `routes.js`) e sem a aba Usuários → Clientes: logins de loja só pela tela Lojas.
 - `console/package.json` sem fleetbase-extensions-indexer, postcss-nth-list, postcss-custom-properties, normalize.css e fs. O lock se atualiza com `npx pnpm@11.0.9 install --lockfile-only` (o `packageManager` pede o 11.0.9).
 
+## Moldura do console (cabeçalho + menu lateral, 2026-10-25)
+
+A moldura saiu do sketch 005 e do 006, variante C (`.planning/sketches/006-moldura-do-console/`).
+- Cabeçalho e menu lateral formam uma moldura em tom de areia (`--pi-cartao-2`, que segue o claro e o escuro). O
+  conteúdo fica numa folha com o canto de cima à esquerda arredondado.
+- Os módulos do cabeçalho ficam numa barra segmentada, com o ativo em laranja.
+- No menu, cada ícone fica num quadradinho: o ativo em laranja e o "Criar novo pedido" em tinta.
+- **CSS:** `console/app/styles/moldura.css`.
+  - Os seletores começam com `html body` para vencer o `light-theme.css`, o `next.css` e o `sidebar-navigator.css` do
+    ember-ui.
+  - Tudo fica preso a `header.next-view-header` e a `.next-view-container`, porque as sobreposições também usam
+    `.next-view-header-left/right`.
+  - Os tokens `--pi-*` estão no `body` (`painel-inicial.css`).
+- **Fleet-Ops:**
+  - O menu é um trilho de 72 px que abre por cima (256 px) ao passar o mouse ou ao focar. Vale só a partir de 768 px;
+    no celular, o comportamento do ember-ui não muda. O seletor é `body[class*='console-fleet-ops']`.
+  - A lista é direta, em seções com título: o `Layout::Sidebar::Navigator` do ember-ui ganhou `@plano`, ligado pelo
+    `fleet-ops-sidebar.hbs` (getter `secoes` no `navigator.js`). Sem `@plano`, os outros módulos, como o IAM,
+    continuam com o "entrar no grupo e voltar".
+  - A lista "Operações ao vivo" (`OperationsMonitor`) saiu do menu. Os motoboys ao vivo ficam no painel Motoboys da
+    tela de pedidos e no painel inicial.
+- **Para voltar:** tire o `@import 'moldura.css'` do `app.css` e o `@plano` do `fleet-ops-sidebar.hbs`.
+
 ## Marca Entregas RestaurantePro (sem Fleetbase na tela)
 
 - Nome: `app.name` = "Entregas RestaurantePro" em todos os idiomas do console (título da aba e `{appName}`). Os textos de tradução não citam a Fleetbase (só os de licença `ember-ui.modals.legal-notice.*`, que não aparecem).

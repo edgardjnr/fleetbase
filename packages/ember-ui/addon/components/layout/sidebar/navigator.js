@@ -94,6 +94,28 @@ export default class LayoutSidebarNavigatorComponent extends Component {
         return ['next-sidebar-navigator-primary-action', this.primaryAction.class, this.primaryAction.buttonClass].filter(Boolean).join(' ');
     }
 
+    /**
+     * Entregas: com @plano, o menu mostra tudo de uma vez, em seções com título (cada grupo vira um título e os filhos
+     * vêm logo abaixo), sem o "entrar no grupo e voltar". Item da raiz sem filhos fica numa seção sem título.
+     */
+    get secoes() {
+        const secoes = [];
+        let soltos = null;
+        for (const item of this.items) {
+            if (item.children?.length) {
+                soltos = null;
+                secoes.push({ id: item.id ?? item.route ?? item.label, titulo: item.label ?? item.title, itens: item.children });
+                continue;
+            }
+            if (!soltos) {
+                soltos = { id: `soltos-${secoes.length}`, titulo: null, itens: [] };
+                secoes.push(soltos);
+            }
+            soltos.itens.push(item);
+        }
+        return secoes;
+    }
+
     get currentItems() {
         return this.currentParent?.children ?? this.items;
     }
