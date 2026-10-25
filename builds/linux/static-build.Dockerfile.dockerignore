@@ -1,7 +1,0 @@
-**
-!api/
-!api/**
-!builds/
-!builds/linux/
-!builds/linux/spc/
-!builds/linux/spc/**
