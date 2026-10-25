@@ -177,24 +177,12 @@ export default class ContactActionsService extends ResourceActionService {
                   },
         ];
 
-        if (this.isCustomerPortalInstalled()) {
-            actions.push(
-                {
-                    separator: true,
-                },
-                {
-                    text: this.intl.t('fleet-ops.ui.service.contact-actions.convert-to-vendor'),
-                    icon: 'building',
-                    fn: () => this.openConvertToVendorModal(contact, options),
-                }
-            );
-        }
+        // Entregas: sem "Converter em fornecedor" (a loja é cadastrada pela tela Lojas; Fornecedores está oculta)
 
         return actions;
     }
 
     accountRowActionItems(options = {}) {
-        const hasCustomerPortal = this.isCustomerPortalInstalled();
         const hasLinkedUser = (contact) => this.hasLinkedUser(contact);
 
         const actions = [
@@ -225,14 +213,7 @@ export default class ContactActionsService extends ResourceActionService {
             },
         ];
 
-        if (hasCustomerPortal) {
-            actions.push({
-                label: this.intl.t('fleet-ops.ui.service.contact-actions.convert-to-vendor'),
-                icon: 'building',
-                fn: (contact) => this.openConvertToVendorModal(contact, options),
-                isVisible: hasLinkedUser,
-            });
-        }
+        // Entregas: sem "Converter em fornecedor" (a loja é cadastrada pela tela Lojas; Fornecedores está oculta)
 
         return actions;
     }
