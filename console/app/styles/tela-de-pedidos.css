@@ -1,0 +1,216 @@
+/* Entregas: tela de pedidos do Fleet-Ops (/fleet-ops; componentes tela-pedidos/*; sketch 005, variante A invertida).
+   Barra própria, Mapa em tela cheia com os painéis Motoboys (esquerda) e Pedidos (direita) flutuando, abas da Tabela e
+   Quadro por situação. Tokens --pi-* da marca em painel-inicial.css (claro e escuro). No celular (< 768 px), o mapa
+   com a folha de baixo. As sobreposições do mapa ficam acima dos panes do Leaflet (z-index até 1000). */
+.tela-pedidos {
+    color: var(--pi-tinta);
+    font-family: var(--pi-corpo);
+    font-size: 14px;
+    line-height: 1.4;
+    box-sizing: border-box;
+}
+.tela-pedidos *,
+.tela-pedidos *::before,
+.tela-pedidos *::after { box-sizing: border-box; }
+.tela-pedidos h1,
+.tela-pedidos h3,
+.tela-pedidos p { margin: 0; }
+.tela-pedidos button { font: inherit; color: inherit; cursor: pointer; }
+
+/* peças comuns */
+.tela-pedidos .tp-ao-vivo { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--pi-verde); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; flex: none; }
+.tela-pedidos .tp-ao-vivo i { width: 8px; height: 8px; border-radius: 50%; background: var(--pi-verde); animation: pi-pulso 1.6s infinite; }
+.tela-pedidos .tp-seg { display: inline-flex; background: var(--pi-cartao-2); border: 1px solid var(--pi-linha); border-radius: 10px; padding: 3px; flex: none; }
+.tela-pedidos .tp-seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: 7px; font-weight: 600; color: var(--pi-tinta-2); font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; transition: background 0.15s ease; }
+.tela-pedidos .tp-seg button:hover { color: var(--pi-tinta); }
+.tela-pedidos .tp-seg button.tp-ativo { background: var(--pi-cartao); color: var(--pi-tinta); box-shadow: 0 1px 2px oklch(0.2 0.02 60 / 10%); }
+.tela-pedidos .tp-seg-cheio { display: flex; margin: 0 14px 10px; }
+.tela-pedidos .tp-seg-cheio button { flex: 1; padding: 5px 6px; }
+.tela-pedidos .tp-n { font-size: 11px; background: var(--pi-laranja); color: var(--pi-sobre-laranja); border-radius: 999px; padding: 0 6px; font-weight: 700; }
+.tela-pedidos .tp-botao { border: 0; border-radius: 10px; padding: 9px 14px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; flex: none; transition: background 0.15s ease, border-color 0.15s ease; background: var(--pi-cartao); color: var(--pi-tinta); }
+.tela-pedidos .tp-botao-marca { background: var(--pi-laranja); color: var(--pi-sobre-laranja); }
+.tela-pedidos .tp-botao-marca:hover { background: var(--pi-laranja-forte); }
+.tela-pedidos .tp-botao-contorno { background: transparent; border: 1px solid var(--pi-linha); }
+.tela-pedidos .tp-botao-contorno:hover { background: var(--pi-cartao-2); }
+.tela-pedidos .tp-botao:disabled { opacity: 0.6; cursor: wait; }
+.tela-pedidos .tp-pequeno { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
+.tela-pedidos .tp-icone { width: 30px; height: 30px; border-radius: 8px; border: 0; background: transparent; color: var(--pi-tinta-2); display: grid; place-items: center; flex: none; }
+.tela-pedidos .tp-icone:hover { background: var(--pi-cartao-2); color: var(--pi-tinta); }
+.tela-pedidos .tp-sub { color: var(--pi-apagado); font-size: 13px; }
+.tela-pedidos .tp-apagado { color: var(--pi-apagado); }
+.tela-pedidos .tp-cor-ok { color: var(--pi-verde); }
+.tela-pedidos .tp-cor-cliente { color: #dc2626; }
+.tela-pedidos .tp-selo { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; flex: none; }
+.tela-pedidos .tp-selo-ifood { background: #ea1d2c; color: #fff; }
+.tela-pedidos .tp-selo-alerta { background: var(--pi-vermelho); color: #fff; }
+.tela-pedidos .tp-numero { font-family: var(--pi-display); font-size: 17px; font-weight: 700; flex: none; }
+.tela-pedidos .tp-loja { color: var(--pi-apagado); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tela-pedidos .tp-prazo { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; flex: none; }
+.tela-pedidos .tp-prazo-no_prazo { background: var(--pi-verde-claro); color: var(--pi-verde); }
+.tela-pedidos .tp-prazo-perto { background: var(--pi-amarelo-claro); color: var(--pi-amarelo-texto); }
+.tela-pedidos .tp-prazo-atrasado { background: var(--pi-vermelho); color: #fff; }
+.tela-pedidos .tp-texto-oferta { color: var(--pi-vermelho); font-weight: 700; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tela-pedidos .tp-vazio { padding: 28px 16px; text-align: center; color: var(--pi-apagado); }
+.tela-pedidos .tp-nota { padding: 8px 12px; font-size: 12px; color: var(--pi-apagado); }
+.tela-pedidos .tp-filtros { display: flex; gap: 6px; padding: 0 14px 10px; overflow-x: auto; scrollbar-width: none; flex: none; }
+.tela-pedidos .tp-filtros button { flex: none; border: 1px solid var(--pi-linha); background: var(--pi-cartao); border-radius: 999px; padding: 4px 11px; font-size: 13px; font-weight: 600; color: var(--pi-tinta-2); display: inline-flex; gap: 6px; align-items: center; }
+.tela-pedidos .tp-filtros button b { font-family: var(--pi-display); font-size: 15px; }
+.tela-pedidos .tp-filtros button:hover { border-color: var(--pi-laranja); }
+.tela-pedidos .tp-filtros button.tp-ativo { background: var(--pi-tinta); color: var(--pi-fundo); border-color: var(--pi-tinta); }
+.tela-pedidos .tp-filtros button.tp-com-alerta { border-color: var(--pi-vermelho); color: var(--pi-vermelho); }
+.tela-pedidos .tp-filtros button.tp-com-alerta.tp-ativo { background: var(--pi-vermelho); color: #fff; }
+.tela-pedidos .tp-candidatos { margin-top: 10px; border: 1px solid var(--pi-linha); border-radius: 12px; background: var(--pi-cartao); overflow: hidden; }
+.tela-pedidos .tp-candidato { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--pi-linha); }
+.tela-pedidos .tp-candidato img { width: 24px; height: 24px; }
+.tela-pedidos .tp-candidato span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tela-pedidos .tp-candidato small { color: var(--pi-apagado); font-size: 12px; }
+
+/* barra */
+.tela-pedidos.tp-barra { flex: none; display: flex; align-items: center; gap: 14px; height: 54px; padding: 0 16px 0 20px; background: var(--pi-cartao); border-bottom: 1px solid var(--pi-linha); position: relative; z-index: 2; }
+.tp-barra h1 { font-family: var(--pi-display); font-size: 26px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.01em; line-height: 1; }
+.tp-barra .tp-cresce { flex: 1; }
+
+/* abas da Tabela */
+.tela-pedidos.tp-abas { flex: none; display: flex; gap: 2px; padding: 0 16px; background: var(--pi-cartao); border-bottom: 1px solid var(--pi-linha); overflow-x: auto; scrollbar-width: none; }
+.tp-abas button { border: 0; background: transparent; padding: 11px 12px 9px; font-weight: 600; color: var(--pi-tinta-2); border-bottom: 3px solid transparent; white-space: nowrap; transition: color 0.15s ease; }
+.tp-abas button:hover { color: var(--pi-tinta); }
+.tp-abas button.tp-ativo { color: var(--pi-tinta); border-bottom-color: var(--pi-laranja); font-weight: 700; }
+
+/* vista Mapa */
+.tela-pedidos.tp-mapa-tela { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; background: var(--pi-fundo); }
+.tp-mapa-tela .tp-mapa { position: absolute; inset: 0; }
+.tp-mapa-tela .tp-mapa-leaflet .leaflet-container { height: 100%; width: 100%; font-family: var(--pi-corpo); }
+.tp-mapa-tela .tp-painel { position: absolute; z-index: 1001; top: 14px; bottom: 14px; display: flex; flex-direction: column; background: var(--pi-cartao); border: 1px solid var(--pi-linha); border-radius: 14px; box-shadow: 0 14px 36px oklch(0.2 0.02 60 / 18%); overflow: hidden; }
+.tp-mapa-tela .tp-painel-motoboys { left: 14px; width: 280px; bottom: auto; max-height: calc(100% - 28px); }
+.tp-mapa-tela .tp-painel-pedidos { right: 14px; width: 370px; }
+.tp-mapa-tela .tp-painel-cabecalho { display: flex; align-items: center; gap: 8px; padding: 12px 14px 10px; flex: none; }
+.tp-mapa-tela .tp-painel-cabecalho h3 { font-family: var(--pi-display); font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; }
+.tp-mapa-tela .tp-painel-cabecalho .tp-icone { margin-left: auto; }
+.tela-pedidos .tp-rolagem { flex: 1; min-height: 0; overflow: auto; }
+
+/* linha de pedido */
+.tela-pedidos .tp-pedido { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 9px 14px; border-top: 1px solid var(--pi-linha); }
+.tela-pedidos .tp-pedido:hover { background: var(--pi-cartao-2); }
+.tela-pedidos .tp-pedido.tp-oferta { background: color-mix(in oklch, var(--pi-vermelho-claro) 70%, transparent); }
+.tela-pedidos .tp-pedido.tp-atrasado { box-shadow: inset 3px 0 0 var(--pi-vermelho); }
+.tela-pedidos .tp-pedido.tp-selecionado { background: color-mix(in oklch, var(--pi-laranja) 16%, var(--pi-cartao)); box-shadow: inset 3px 0 0 var(--pi-laranja); }
+.tela-pedidos .tp-pedido-principal { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; border: 0; background: transparent; padding: 0; text-align: left; }
+.tela-pedidos .tp-capacete { width: 28px; height: 28px; flex: none; }
+.tela-pedidos .tp-pedido-meio { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tela-pedidos .tp-pedido-topo { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.tela-pedidos .tp-pedido-baixo { color: var(--pi-apagado); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tela-pedidos .tp-pedido-situacao { text-align: right; font-size: 13px; font-weight: 600; line-height: 1.25; flex: none; display: flex; flex-direction: column; }
+.tela-pedidos .tp-pedido-situacao small { color: var(--pi-apagado); font-weight: 500; font-size: 12px; }
+.tela-pedidos .tp-pedido .tp-texto-oferta { order: 5; flex-basis: 100%; padding-left: 38px; }
+
+/* linha de motoboy */
+.tela-pedidos .tp-motoboy { display: flex; width: 100%; align-items: center; gap: 10px; padding: 8px 14px; border: 0; border-top: 1px solid var(--pi-linha); background: transparent; text-align: left; }
+.tela-pedidos .tp-motoboy:hover { background: var(--pi-cartao-2); }
+.tela-pedidos .tp-motoboy.tp-selecionado { background: color-mix(in oklch, var(--pi-laranja) 16%, var(--pi-cartao)); }
+.tela-pedidos .tp-motoboy img { width: 26px; height: 26px; flex: none; }
+.tela-pedidos .tp-motoboy-meio { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tela-pedidos .tp-motoboy-meio b { font-weight: 700; }
+.tela-pedidos .tp-motoboy-meio small { color: var(--pi-apagado); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tela-pedidos .tp-motoboy-corridas { text-align: right; font-size: 12px; color: var(--pi-apagado); line-height: 1.2; flex: none; display: flex; flex-direction: column; }
+.tela-pedidos .tp-motoboy-corridas b { font-family: var(--pi-display); font-size: 18px; color: var(--pi-tinta); }
+
+/* contagens no topo do mapa (entre os painéis) */
+.tp-mapa-tela .tp-contagens { position: absolute; z-index: 1001; top: 14px; left: 14px; right: 14px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; pointer-events: none; }
+.tp-mapa-tela.tp-com-motoboys .tp-contagens { left: 308px; }
+.tp-mapa-tela.tp-com-pedidos .tp-contagens { right: 398px; }
+.tp-mapa-tela:not(.tp-com-motoboys) .tp-contagens { left: 220px; }
+.tp-mapa-tela:not(.tp-com-pedidos) .tp-contagens { right: 200px; }
+.tp-mapa-tela .tp-chip { pointer-events: auto; display: flex; align-items: center; gap: 9px; padding: 6px 11px; border-radius: 12px; background: var(--pi-cartao); border: 1px solid var(--pi-linha); box-shadow: 0 4px 14px oklch(0.2 0.02 60 / 12%); flex: none; transition: border-color 0.15s ease; }
+.tp-mapa-tela .tp-chip:hover { border-color: var(--pi-laranja); }
+.tp-mapa-tela .tp-chip img { width: 22px; height: 22px; }
+.tp-mapa-tela .tp-chip b { font-family: var(--pi-display); font-size: 22px; line-height: 1; }
+.tp-mapa-tela .tp-chip span { font-size: 12px; color: var(--pi-apagado); font-weight: 600; line-height: 1.15; max-width: 76px; text-align: left; }
+.tp-mapa-tela .tp-chip.tp-ativo { outline: 2px solid var(--pi-tinta); }
+.tp-mapa-tela .tp-chip.tp-alerta { background: var(--pi-vermelho); border-color: var(--pi-vermelho); color: #fff; animation: tp-pulso-vermelho 1.6s infinite; }
+.tp-mapa-tela .tp-chip.tp-alerta span { color: #fff; opacity: 0.9; }
+@keyframes tp-pulso-vermelho { 0% { box-shadow: 0 0 0 0 oklch(0.57 0.2 27 / 55%); } 70% { box-shadow: 0 0 0 10px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+/* painéis recolhidos */
+.tp-mapa-tela .tp-pilula { position: absolute; z-index: 1001; top: 14px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--pi-linha); border-radius: 14px; background: var(--pi-cartao); box-shadow: 0 4px 14px oklch(0.2 0.02 60 / 12%); font-weight: 700; }
+.tp-mapa-tela .tp-pilula:hover { border-color: var(--pi-laranja); }
+.tp-mapa-tela .tp-pilula img { width: 22px; height: 22px; }
+.tp-mapa-tela .tp-pilula b { font-family: var(--pi-display); font-size: 18px; }
+.tp-mapa-tela .tp-pilula-esquerda { left: 14px; }
+.tp-mapa-tela .tp-pilula-direita { right: 14px; }
+
+/* detalhe do pedido (junto ao painel Pedidos) */
+.tp-mapa-tela .tp-detalhe { position: absolute; z-index: 1001; bottom: 14px; right: 398px; width: 400px; max-height: calc(100% - 100px); overflow: auto; background: var(--pi-cartao); border: 1px solid var(--pi-linha); border-radius: 14px; box-shadow: 0 14px 36px oklch(0.2 0.02 60 / 18%); }
+.tp-mapa-tela:not(.tp-com-pedidos) .tp-detalhe { right: 14px; }
+.tela-pedidos .tp-detalhe-conteudo { padding: 14px 16px; }
+.tela-pedidos .tp-detalhe-topo { display: flex; align-items: center; gap: 8px; }
+.tela-pedidos .tp-detalhe-numero { font-family: var(--pi-display); font-size: 26px; font-weight: 800; line-height: 1; }
+.tela-pedidos .tp-fechar { margin-left: auto; }
+.tela-pedidos .tp-detalhe-rota { display: grid; grid-template-columns: 18px 1fr; gap: 6px 10px; margin-top: 10px; font-size: 13px; align-items: start; }
+.tela-pedidos .tp-detalhe-rota svg { color: var(--pi-apagado); margin-top: 3px; justify-self: center; }
+.tela-pedidos .tp-detalhe-rota svg.tp-cor-cliente { color: #dc2626; }
+.tela-pedidos .tp-detalhe-conteudo > .tp-texto-oferta { margin-top: 10px; }
+.tela-pedidos .tp-detalhe-motoboy { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px; border-radius: 12px; background: var(--pi-cartao-2); }
+.tela-pedidos .tp-detalhe-motoboy img { width: 32px; height: 32px; flex: none; }
+.tela-pedidos .tp-detalhe-motoboy span { display: flex; flex-direction: column; min-width: 0; }
+.tela-pedidos .tp-detalhe-motoboy small { color: var(--pi-apagado); font-size: 12px; }
+.tela-pedidos .tp-detalhe-acoes { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+
+/* rótulo do capacete e da loja no mapa (os do painel inicial) também fora do .painel-inicial */
+.tp-mapa-leaflet .leaflet-control-zoom a { color: oklch(0.2 0.014 60); }
+
+/* vista Quadro */
+.tela-pedidos.tp-quadro { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; gap: 12px; padding: 14px 16px; align-items: flex-start; background: var(--pi-fundo); }
+.tp-quadro .tp-coluna { width: 300px; flex: none; background: var(--pi-cartao-2); border: 1px solid var(--pi-linha); border-radius: 14px; display: flex; flex-direction: column; max-height: 100%; }
+.tp-quadro .tp-coluna-cabecalho { display: flex; align-items: center; gap: 8px; padding: 12px 12px 8px; flex: none; }
+.tp-quadro .tp-coluna-cabecalho img { width: 26px; height: 26px; }
+.tp-quadro .tp-coluna-cabecalho h3 { font-family: var(--pi-display); font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; }
+.tp-quadro .tp-coluna-alerta .tp-coluna-cabecalho h3,
+.tp-quadro .tp-coluna-alerta .tp-coluna-cabecalho svg { color: var(--pi-vermelho); }
+.tp-quadro .tp-coluna-n { margin-left: auto; font-family: var(--pi-display); font-size: 18px; font-weight: 700; color: var(--pi-apagado); }
+.tp-quadro .tp-coluna-corpo { padding: 0 8px 8px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; overflow-x: hidden; min-height: 60px; }
+.tp-quadro .tp-cartao { padding: 11px 12px; border: 1px solid var(--pi-linha); border-radius: 12px; background: var(--pi-cartao); cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+.tp-quadro .tp-cartao:hover { border-color: var(--pi-laranja); box-shadow: 0 1px 2px oklch(0.2 0.02 60 / 10%); }
+.tp-quadro .tp-cartao.tp-oferta { border-color: var(--pi-vermelho); background: color-mix(in oklch, var(--pi-vermelho-claro) 70%, var(--pi-cartao)); }
+.tp-quadro .tp-cartao.tp-atrasado { border-color: var(--pi-vermelho); }
+.tp-quadro .tp-cartao.tp-concluido { opacity: 0.8; }
+.tp-quadro .tp-cartao-topo { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tp-quadro .tp-cartao-topo .tp-numero { font-size: 19px; }
+.tp-quadro .tp-cartao-topo .tp-prazo,
+.tp-quadro .tp-cartao-topo .tp-botao { margin-left: auto; }
+.tp-quadro .tp-cartao-meio { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; color: var(--pi-tinta-2); min-width: 0; }
+.tp-quadro .tp-cartao-meio img { width: 22px; height: 22px; flex: none; }
+.tp-quadro .tp-cartao-meio span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tp-quadro .tp-barra-prazo { height: 4px; border-radius: 4px; background: var(--pi-cartao-2); margin-top: 9px; overflow: hidden; }
+.tp-quadro .tp-barra-prazo i { display: block; height: 100%; border-radius: 4px; background: var(--pi-apagado); }
+.tp-quadro .tp-barra-prazo i.tp-prazo-fundo-no_prazo { background: var(--pi-verde); }
+.tp-quadro .tp-barra-prazo i.tp-prazo-fundo-perto { background: var(--pi-amarelo); }
+.tp-quadro .tp-barra-prazo i.tp-prazo-fundo-atrasado { background: var(--pi-vermelho); }
+.tp-quadro .tp-candidatos { cursor: default; }
+.tp-quadro .tp-ver-todos { justify-content: center; }
+.tp-quadro .tp-vazio { padding: 14px; }
+
+/* celular: mapa com a folha de baixo; barra só com ícones */
+.tp-mapa-tela .tp-folha { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1001; background: var(--pi-cartao); border-radius: 18px 18px 0 0; box-shadow: 0 -8px 30px oklch(0.2 0.02 60 / 22%); display: flex; flex-direction: column; transition: height 0.25s ease; overflow: hidden; }
+.tp-mapa-tela .tp-folha-baixa { height: 96px; }
+.tp-mapa-tela .tp-folha-meia { height: 50%; }
+.tp-mapa-tela .tp-folha-alta { height: calc(100% - 64px); }
+.tp-mapa-tela .tp-alca { border: 0; background: transparent; width: 100%; padding: 8px 14px 8px; display: block; text-align: left; flex: none; }
+.tp-mapa-tela .tp-alca-barra { display: block; width: 44px; height: 5px; border-radius: 5px; background: var(--pi-linha); margin: 0 auto 8px; }
+.tp-mapa-tela .tp-alca-linha { display: flex; align-items: center; gap: 8px; }
+.tp-mapa-tela .tp-alca-linha b { font-family: var(--pi-display); font-size: 20px; font-weight: 800; text-transform: uppercase; }
+.tp-mapa-tela .tp-alca-linha .tp-texto-oferta { margin-left: auto; }
+.tp-mapa-tela.tp-celular .tp-contagens { left: 10px; right: 10px; top: 10px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; justify-content: flex-start; pointer-events: auto; }
+.tp-mapa-tela.tp-celular .tp-chip { padding: 5px 9px; }
+.tp-mapa-tela.tp-celular .tp-chip b { font-size: 19px; }
+.tp-mapa-tela.tp-celular .leaflet-control-zoom { display: none; }
+
+@media (max-width: 767px) {
+    .tela-pedidos.tp-barra { padding: 0 10px; gap: 8px; height: 50px; }
+    .tp-barra h1 { font-size: 22px; }
+    .tp-barra .tp-ao-vivo-texto,
+    .tp-barra .tp-vistas button > span:not(.tp-n),
+    .tp-barra .tp-botao-marca > span { display: none; }
+    .tp-barra .tp-vistas button { padding: 5px 9px; }
+    .tela-pedidos.tp-quadro { scroll-snap-type: x mandatory; padding: 10px 12px; }
+    .tp-quadro .tp-coluna { width: 86vw; scroll-snap-align: start; }
+}

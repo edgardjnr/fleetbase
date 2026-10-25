@@ -1,0 +1,12 @@
+{{! Entregas: barra da tela de pedidos (/fleet-ops): título, ao vivo, as vistas Mapa / Tabela / Quadro e o Novo pedido. }}
+<div class="tela-pedidos tp-barra" ...attributes>
+    <h1>{{t "fleet-ops.ui.tela-pedidos.titulo"}}</h1>
+    <span class="tp-ao-vivo"><i></i><span class="tp-ao-vivo-texto">{{t "fleet-ops.ui.tela-pedidos.ao-vivo"}}</span></span>
+    <div class="tp-seg tp-vistas" role="group" aria-label={{t "fleet-ops.ui.tela-pedidos.vistas"}}>
+        <button type="button" id="ops-map-view-button" class={{if (eq @layout "map") "tp-ativo"}} aria-pressed={{if (eq @layout "map") "true" "false"}} {{on "click" (fn @aoTrocar "map")}}><FaIcon @icon="map" /><span>{{t "fleet-ops.ui.tela-pedidos.vista.mapa"}}</span></button>
+        <button type="button" id="ops-table-view-button" class={{if (eq @layout "table") "tp-ativo"}} aria-pressed={{if (eq @layout "table") "true" "false"}} {{on "click" (fn @aoTrocar "table")}}><FaIcon @icon="table-list" /><span>{{t "fleet-ops.ui.tela-pedidos.vista.tabela"}}</span>{{#if (eq @layout "table")}}<span class="tp-n">{{@total}}</span>{{/if}}</button>
+        <button type="button" id="ops-kanban-view-button" class={{if (eq @layout "kanban") "tp-ativo"}} aria-pressed={{if (eq @layout "kanban") "true" "false"}} {{on "click" (fn @aoTrocar "kanban")}}><FaIcon @icon="table-columns" /><span>{{t "fleet-ops.ui.tela-pedidos.vista.quadro"}}</span></button>
+    </div>
+    <span class="tp-cresce"></span>
+    <button type="button" class="tp-botao tp-botao-marca" {{on "click" @aoNovo}}><FaIcon @icon="plus" /> <span>{{t "fleet-ops.ui.tela-pedidos.novo-pedido"}}</span></button>
+</div>

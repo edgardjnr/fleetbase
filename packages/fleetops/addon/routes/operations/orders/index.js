@@ -25,6 +25,7 @@ export default class OperationsOrdersIndexRoute extends Route {
         updated_at: { refreshModel: true },
         scheduled_at: { refreshModel: true },
         without_driver: { refreshModel: true },
+        unassigned: { refreshModel: true },
         bulk_query: { refreshModel: true },
         after: { refreshModel: true },
         before: { refreshModel: true },

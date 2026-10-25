@@ -690,6 +690,63 @@ fleet-ops:
             nada: Nothing pending in Finance.
             financeiro: Finance →
           sem-corridas: No deliveries in the period.
+        tela-pedidos:
+          titulo: Orders
+          ao-vivo: Live
+          vistas: Views
+          vista:
+            mapa: Map
+            tabela: Table
+            quadro: Board
+          novo-pedido: New order
+          recolher: Collapse
+          corridas-hoje: '{n} rides today'
+          contagens:
+            oferta: no driver
+            atrasado: late
+            loja: going to store
+            rota: on the way
+            livres: 'free of {online} online'
+          pedidos:
+            titulo: Orders
+            em-andamento: '{n} in progress'
+          motoboys:
+            titulo: Drivers
+            online: '{n} online'
+            todos: All
+            livres: 'Free {n}'
+            ocupados: Delivering
+            vazio: No drivers here right now.
+          motoboy:
+            livre: free
+            offline: offline
+            indo: '{numero} · going to {loja}'
+            a-caminho: '{numero} · on the way to the customer'
+            hoje: today
+          detalhe:
+            fechar: Close
+            abrir: Open order
+            trocar: Change driver
+            nota-troca: The current driver is notified that they were removed from the order.
+          folha:
+            mexer: Raise or lower the list
+            pedidos: '{n} orders'
+            sem-motoboy: '{n} without driver'
+          quadro:
+            oferta: No driver
+            loja: Going to store
+            rota: On the way
+            concluidos: Completed
+            entregue: 'Delivered at {hora}'
+            nada: Nothing here right now.
+            nenhum-concluido: No orders completed today.
+            ver-todos: See all in Table →
+          abas:
+            todos: All
+            andamento: In progress
+            sem-motoboy: No driver
+            concluidos: Completed
+            cancelados: Canceled
         financeiro:
             admin-only: Only administrators can see the finances.
             valor-interpretado: '= {valor}'

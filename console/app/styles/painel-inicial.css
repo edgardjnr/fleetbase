@@ -1,7 +1,8 @@
 /* Entregas: painel inicial do console (home/painel-inicial do Fleet-Ops; variante A do sketch 004). Tokens da marca
    (landing.css) com versão escura; no celular, os mesmos blocos empilhados. Fica no console porque o CSS do engine só
-   carrega com o engine. */
-.painel-inicial {
+   carrega com o engine. Os tokens (--pi-*) valem também para a tela de pedidos (tela-de-pedidos.css). */
+.painel-inicial,
+.tela-pedidos {
     --pi-fundo: oklch(0.975 0.01 75);
     --pi-cartao: oklch(0.995 0.004 80);
     --pi-cartao-2: oklch(0.955 0.013 75);
@@ -22,7 +23,8 @@
     --pi-vermelho-claro: oklch(0.95 0.03 27);
     --pi-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
     --pi-corpo: 'Barlow', system-ui, sans-serif;
-
+}
+.painel-inicial {
     background: var(--pi-fundo);
     color: var(--pi-tinta);
     font-family: var(--pi-corpo);
@@ -38,7 +40,8 @@
     gap: 18px;
     min-height: 100%;
 }
-body[data-theme='dark'] .painel-inicial {
+body[data-theme='dark'] .painel-inicial,
+body[data-theme='dark'] .tela-pedidos {
     --pi-fundo: oklch(0.18 0.012 60);
     --pi-cartao: oklch(0.22 0.013 60);
     --pi-cartao-2: oklch(0.26 0.014 60);

@@ -1,0 +1,25 @@
+{{! Entregas: linha de pedido da tela de pedidos (painel Pedidos do Mapa e folha do celular). @pedido vem de linhaDoPedido. }}
+<div class="tp-pedido {{if @pedido.ehOferta 'tp-oferta'}} {{if @pedido.atrasado 'tp-atrasado'}} {{if @pedido.selecionado 'tp-selecionado'}}">
+    <button type="button" class="tp-pedido-principal" {{on "click" (fn @aoEscolher @pedido.id)}}>
+        <img class="tp-capacete" src={{@pedido.capacete}} alt="" />
+        <span class="tp-pedido-meio">
+            <span class="tp-pedido-topo">
+                <b class="tp-numero">{{@pedido.numeroTexto}}</b>
+                {{#if @pedido.ifood}}<span class="tp-selo tp-selo-ifood">iFood</span>{{/if}}
+                <span class="tp-loja">{{@pedido.loja}}</span>
+            </span>
+            <span class="tp-pedido-baixo">{{@pedido.endereco}}</span>
+        </span>
+        {{#unless @pedido.ehOferta}}
+            <span class="tp-pedido-situacao">{{@pedido.textoDaSituacao}}<small>{{@pedido.motoboy}}</small></span>
+        {{/unless}}
+    </button>
+    {{#if @pedido.ehOferta}}
+        {{#if @ehAdmin}}
+            <button type="button" class="tp-botao tp-botao-marca tp-pequeno" {{on "click" (fn @aoAtribuir @pedido.id)}}><FaIcon @icon="user-plus" /> {{t "fleet-ops.ui.painel-inicial.atribuir.botao"}}</button>
+        {{/if}}
+        <span class="tp-texto-oferta"><FaIcon @icon="tower-broadcast" /> {{@pedido.textoDaOferta}}</span>
+    {{else if @pedido.prazo}}
+        <span class="tp-prazo tp-prazo-{{@pedido.prazo.estado}}"><FaIcon @icon="clock" /> {{@pedido.prazo.texto}}</span>
+    {{/if}}
+</div>

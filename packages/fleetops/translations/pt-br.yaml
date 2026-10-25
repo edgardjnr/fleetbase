@@ -690,6 +690,63 @@ fleet-ops:
         nada: Nada pendente no Financeiro.
         financeiro: Financeiro →
       sem-corridas: Nenhuma corrida no período.
+    tela-pedidos:
+      titulo: Pedidos
+      ao-vivo: Ao vivo
+      vistas: Vistas
+      vista:
+        mapa: Mapa
+        tabela: Tabela
+        quadro: Quadro
+      novo-pedido: Novo pedido
+      recolher: Recolher
+      corridas-hoje: '{n} corridas hoje'
+      contagens:
+        oferta: sem motoboy
+        atrasado: atrasados
+        loja: indo à loja
+        rota: a caminho
+        livres: 'livres de {online} online'
+      pedidos:
+        titulo: Pedidos
+        em-andamento: '{n} em andamento'
+      motoboys:
+        titulo: Motoboys
+        online: '{n} online'
+        todos: Todos
+        livres: 'Livres {n}'
+        ocupados: Em entrega
+        vazio: Nenhum motoboy aqui agora.
+      motoboy:
+        livre: livre
+        offline: offline
+        indo: '{numero} · indo à {loja}'
+        a-caminho: '{numero} · a caminho do cliente'
+        hoje: hoje
+      detalhe:
+        fechar: Fechar
+        abrir: Abrir pedido
+        trocar: Trocar motoboy
+        nota-troca: O motoboy atual recebe o aviso de que saiu do pedido.
+      folha:
+        mexer: Subir ou descer a lista
+        pedidos: '{n} pedidos'
+        sem-motoboy: '{n} sem motoboy'
+      quadro:
+        oferta: Sem motoboy
+        loja: Indo à loja
+        rota: A caminho
+        concluidos: Concluídos
+        entregue: 'Entregue às {hora}'
+        nada: Nada aqui agora.
+        nenhum-concluido: Nenhum pedido concluído hoje.
+        ver-todos: Ver todos na Tabela →
+      abas:
+        todos: Todos
+        andamento: Em andamento
+        sem-motoboy: Sem motoboy
+        concluidos: Concluídos
+        cancelados: Cancelados
     financeiro:
       admin-only: Somente administradores podem ver o financeiro.
       valor-interpretado: '= {valor}'

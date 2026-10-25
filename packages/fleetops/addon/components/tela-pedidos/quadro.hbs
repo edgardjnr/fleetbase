@@ -1,0 +1,82 @@
+<div class="tela-pedidos tp-quadro" ...attributes>
+    {{#each this.colunas as |coluna|}}
+        <section class="tp-coluna {{if coluna.alerta 'tp-coluna-alerta'}}" aria-label={{coluna.titulo}}>
+            <div class="tp-coluna-cabecalho">
+                {{#if coluna.capacete}}<img src={{coluna.capacete}} alt="" />{{else}}<FaIcon @icon={{coluna.icone}} />{{/if}}
+                <h3>{{coluna.titulo}}</h3>
+                <span class="tp-coluna-n">{{coluna.pedidos.length}}</span>
+            </div>
+            <div class="tp-coluna-corpo">
+                {{#each coluna.pedidos key="id" as |pedido|}}
+                    <div class="tp-cartao {{if pedido.ehOferta 'tp-oferta'}} {{if pedido.atrasado 'tp-atrasado'}}" role="button" {{on "click" (fn this.abrirPedido pedido.id)}}>
+                        <div class="tp-cartao-topo">
+                            <b class="tp-numero">{{pedido.numeroTexto}}</b>
+                            {{#if pedido.ifood}}<span class="tp-selo tp-selo-ifood">iFood</span>{{/if}}
+                            <span class="tp-loja">{{pedido.loja}}</span>
+                            {{#if pedido.ehOferta}}
+                                {{#if this.ehAdmin}}
+                                    <button type="button" class="tp-botao tp-botao-marca tp-pequeno" aria-expanded={{if pedido.aberto "true" "false"}} {{on "click" (fn this.alternarAtribuir pedido.id)}}><FaIcon @icon="user-plus" /> {{t "fleet-ops.ui.painel-inicial.atribuir.botao"}}</button>
+                                {{/if}}
+                            {{else if pedido.prazo}}
+                                <span class="tp-prazo tp-prazo-{{pedido.prazo.estado}}"><FaIcon @icon="clock" /> {{pedido.prazo.texto}}</span>
+                            {{/if}}
+                        </div>
+                        <div class="tp-cartao-meio">
+                            <img src={{pedido.capacete}} alt="" />
+                            {{#if pedido.ehOferta}}
+                                <span class="tp-texto-oferta"><FaIcon @icon="tower-broadcast" /> {{pedido.textoDaOferta}}</span>
+                            {{else}}
+                                <span><b>{{pedido.motoboy}}</b> → {{pedido.endereco}}</span>
+                            {{/if}}
+                        </div>
+                        {{#if pedido.ehOferta}}
+                            <div class="tp-cartao-meio tp-apagado">{{pedido.endereco}}</div>
+                        {{else if pedido.progresso}}
+                            <div class="tp-barra-prazo"><i class="tp-prazo-fundo-{{pedido.prazo.estado}}" style={{html-safe (concat "width:" pedido.progresso "%")}}></i></div>
+                        {{/if}}
+                        {{#if pedido.aberto}}
+                            {{! template-lint-disable no-invalid-interactive }}
+                            <div class="tp-candidatos" {{on "click" this.pararClique}}>
+                                {{#each pedido.candidatos key="id" as |motoboy|}}
+                                    <div class="tp-candidato">
+                                        <img src={{this.capaceteLivre}} alt="" />
+                                        <span><b>{{motoboy.nome}}</b><small>{{motoboy.kmTexto}} · {{motoboy.corridasTexto}}</small></span>
+                                        <button type="button" class="tp-botao tp-botao-marca tp-pequeno" disabled={{this.aoVivo.enviando}} {{on "click" (fn this.enviar pedido.id motoboy.id)}}>{{t "fleet-ops.ui.painel-inicial.atribuir.enviar"}}</button>
+                                    </div>
+                                {{else}}
+                                    <p class="tp-nota">{{t "fleet-ops.ui.painel-inicial.atribuir.ninguem-livre"}}</p>
+                                {{/each}}
+                            </div>
+                        {{/if}}
+                    </div>
+                {{else}}
+                    <div class="tp-vazio"><FaIcon @icon="circle-check" /> {{t "fleet-ops.ui.tela-pedidos.quadro.nada"}}</div>
+                {{/each}}
+            </div>
+        </section>
+    {{/each}}
+
+    <section class="tp-coluna" aria-label={{t "fleet-ops.ui.tela-pedidos.quadro.concluidos"}}>
+        <div class="tp-coluna-cabecalho">
+            <FaIcon @icon="circle-check" class="tp-cor-ok" />
+            <h3>{{t "fleet-ops.ui.tela-pedidos.quadro.concluidos"}}</h3>
+            <span class="tp-coluna-n">{{this.concluidos.total}}</span>
+        </div>
+        <div class="tp-coluna-corpo">
+            {{#each this.concluidos.ultimos key="id" as |pedido|}}
+                <div class="tp-cartao tp-concluido" role="button" {{on "click" (fn this.abrirPedido pedido.id)}}>
+                    <div class="tp-cartao-topo">
+                        <b class="tp-numero">{{pedido.numeroTexto}}</b>
+                        <span class="tp-loja">{{pedido.loja}}</span>
+                    </div>
+                    <div class="tp-cartao-meio"><FaIcon @icon="flag-checkered" class="tp-cor-ok" /><span>{{pedido.texto}}{{#if pedido.motoboy}} · {{pedido.motoboy}}{{/if}}</span></div>
+                </div>
+            {{else}}
+                <div class="tp-vazio">{{t "fleet-ops.ui.tela-pedidos.quadro.nenhum-concluido"}}</div>
+            {{/each}}
+            {{#if this.concluidos.total}}
+                <button type="button" class="tp-botao tp-botao-contorno tp-pequeno tp-ver-todos" {{on "click" this.verConcluidos}}>{{t "fleet-ops.ui.tela-pedidos.quadro.ver-todos"}}</button>
+            {{/if}}
+        </div>
+    </section>
+</div>

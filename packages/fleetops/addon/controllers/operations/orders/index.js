@@ -3,6 +3,7 @@ import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { ehPedidoIfood } from '../../../utils/pedido-ifood';
+import { ABAS_DA_TABELA, abaDaTabela } from '../../../utils/tela-de-pedidos';
 
 export default class OperationsOrdersIndexController extends Controller {
     @service orderActions;
@@ -37,6 +38,7 @@ export default class OperationsOrdersIndexController extends Controller {
         'status',
         'type',
         'without_driver',
+        'unassigned',
         'bulk_query',
         'layout',
         'drawerOpen',
@@ -62,6 +64,7 @@ export default class OperationsOrdersIndexController extends Controller {
     @tracked updated_at;
     @tracked scheduled_at;
     @tracked without_driver;
+    @tracked unassigned;
     @tracked status;
     @tracked type;
     @tracked orderConfig;
@@ -454,6 +457,28 @@ export default class OperationsOrdersIndexController extends Controller {
         if (mode === 'table') {
             this.isSearchVisible = false;
         }
+    }
+
+    /** Entregas: aba da Tabela (Todos, Em andamento, Sem motoboy, Concluídos, Cancelados) pelos query params. */
+    get abaDaTabela() {
+        return abaDaTabela({ status: this.status, unassigned: this.unassigned });
+    }
+
+    @action escolherAba(chave) {
+        const params = ABAS_DA_TABELA[chave] ?? {};
+        this.status = params.status ?? null;
+        this.unassigned = params.unassigned ?? null;
+        this.page = 1;
+    }
+
+    /** Quadro → "Ver todos": a Tabela com os concluídos. */
+    @action verConcluidos() {
+        this.escolherAba('concluidos');
+        this.changeLayout('table');
+    }
+
+    @action novoPedido() {
+        return this.orderActions.transition.create();
     }
 
     @action importOrders() {

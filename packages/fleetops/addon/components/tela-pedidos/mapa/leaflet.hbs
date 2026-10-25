@@ -1,0 +1,57 @@
+<div class="tp-mapa-leaflet {{@class}}" ...attributes {{did-update this.enquadrar @motoboys @pedidos}} {{did-update this.focar @selecionado}}>
+    <LeafletMap
+        class="w-full h-full"
+        @lat={{this.centro.lat}}
+        @lng={{this.centro.lng}}
+        @zoom={{12}}
+        @zoomControl={{true}}
+        @onLoad={{this.aoCarregar}}
+        as |layers|
+    >
+        <layers.tile @url={{this.tileUrl}} />
+
+        {{#if this.rota}}
+            <layers.polyline @locations={{this.rota.pontos}} @color={{this.rota.cor}} @weight={{5}} @opacity={{0.9}} @dashArray="10 8" />
+        {{/if}}
+
+        {{#each @lojas key="id" as |loja|}}
+            <layers.marker
+                @location={{point-to-coordinates loja.location}}
+                @icon={{icon iconUrl=this.loja.url iconSize=this.loja.tamanho iconAnchor=this.loja.ponta}}
+                as |marker|
+            >
+                <marker.tooltip @permanent={{true}} @direction="bottom" @className="pi-rotulo pi-rotulo-loja">{{loja.name}}</marker.tooltip>
+            </layers.marker>
+        {{/each}}
+
+        {{#each this.pedidos key="id" as |pedido|}}
+            <layers.marker
+                @lat={{pedido.latitude}}
+                @lng={{pedido.longitude}}
+                @opacity={{pedido.opacidade}}
+                @zIndexOffset={{if pedido.selecionado 2000 0}}
+                @icon={{icon iconUrl=this.alfinete.url iconSize=pedido.tamanho iconAnchor=pedido.ponta}}
+                @onClick={{fn this.escolherPedido pedido.id}}
+                as |marker|
+            >
+                {{#if pedido.rotulo}}
+                    <marker.tooltip @permanent={{true}} @direction="bottom" @className="entregas-nome-no-alfinete"><span class={{pedido.classe}}>{{#if pedido.emEntrega}}<FaIcon @icon="motorcycle" class="entregas-moto-no-alfinete" />{{/if}}{{pedido.rotulo}}</span></marker.tooltip>
+                {{/if}}
+            </layers.marker>
+        {{/each}}
+
+        {{#each this.motoboys key="id" as |motoboy|}}
+            <layers.marker
+                @lat={{motoboy.latitude}}
+                @lng={{motoboy.longitude}}
+                @opacity={{motoboy.opacidade}}
+                @zIndexOffset={{if motoboy.selecionado 3000 1000}}
+                @icon={{icon iconUrl=motoboy.capacete iconSize=motoboy.tamanho tooltipAnchor=(array 0 12)}}
+                @onClick={{fn this.escolherMotoboy motoboy.id}}
+                as |marker|
+            >
+                <marker.tooltip @permanent={{true}} @direction="bottom" @className="pi-rotulo">{{motoboy.nome}}</marker.tooltip>
+            </layers.marker>
+        {{/each}}
+    </LeafletMap>
+</div>

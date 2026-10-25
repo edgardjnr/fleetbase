@@ -1,0 +1,6 @@
+{{! Entregas: abas por situação da vista Tabela (viram os query params status / unassigned da rota). }}
+<div class="tela-pedidos tp-abas" role="tablist" ...attributes>
+    {{#each this.abas as |aba|}}
+        <button type="button" role="tab" class={{if aba.ativa "tp-ativo"}} aria-selected={{if aba.ativa "true" "false"}} {{on "click" (fn @aoEscolher aba.chave)}}>{{aba.texto}}</button>
+    {{/each}}
+</div>

@@ -1,0 +1,135 @@
+<div class="tela-pedidos tp-mapa-tela {{if this.celular 'tp-celular'}} {{if this.painelMotoboys 'tp-com-motoboys'}} {{if this.painelPedidos 'tp-com-pedidos'}}" ...attributes>
+    <TelaPedidos::Mapa::Leaflet
+        class="tp-mapa"
+        @motoboys={{this.motoboysDoMapa}}
+        @pedidos={{this.pedidosDoMapa}}
+        @lojas={{this.lojas}}
+        @margens={{this.margens}}
+        @selecionado={{this.selecionado}}
+        @agora={{this.agora}}
+        @aoEscolherPedido={{this.escolherPedido}}
+        @aoEscolherMotoboy={{this.escolherMotoboy}}
+    />
+
+    <div class="tp-contagens">
+        {{#each this.chips as |chip|}}
+            <button type="button" class="tp-chip {{if chip.ativo 'tp-ativo'}} {{if chip.alerta 'tp-alerta'}}" aria-pressed={{if chip.ativo "true" "false"}} {{on "click" (fn this.escolherFiltro chip.chave)}}>
+                {{#if chip.capacete}}<img src={{chip.capacete}} alt="" />{{else}}<FaIcon @icon={{chip.icone}} />{{/if}}
+                <b>{{chip.n}}</b><span>{{chip.texto}}</span>
+            </button>
+        {{/each}}
+        <button type="button" class="tp-chip" {{on "click" (fn this.escolherFiltroDosMotoboys "livre")}}>
+            <img src={{this.capaceteLivre}} alt="" /><b>{{this.online.livres}}</b><span>{{this.textoDosLivres}}</span>
+        </button>
+    </div>
+
+    {{#if this.celular}}
+        <section class="tp-folha tp-folha-{{this.folha}}">
+            <button type="button" class="tp-alca" aria-label={{t "fleet-ops.ui.tela-pedidos.folha.mexer"}} {{on "click" this.mexerNaFolha}}>
+                <span class="tp-alca-barra"></span>
+                <span class="tp-alca-linha">
+                    <b>{{t "fleet-ops.ui.tela-pedidos.folha.pedidos" n=this.contagem.todos}}</b>
+                    {{#if this.contagem.oferta}}<span class="tp-texto-oferta"><FaIcon @icon="tower-broadcast" /> {{t "fleet-ops.ui.tela-pedidos.folha.sem-motoboy" n=this.contagem.oferta}}</span>{{/if}}
+                </span>
+            </button>
+            {{#if this.pedidoSelecionado}}
+                <div class="tp-rolagem">
+                    <TelaPedidos::Detalhe @pedido={{this.pedidoSelecionado}} @ehAdmin={{this.ehAdmin}} @capaceteLivre={{this.capaceteLivre}} @enviando={{this.aoVivo.enviando}} @aoFechar={{this.fecharDetalhe}} @aoAbrir={{this.abrirPedido}} @aoAlternarAtribuir={{this.alternarAtribuir}} @aoEnviar={{this.enviar}} />
+                </div>
+            {{else}}
+                <div class="tp-seg tp-seg-cheio">
+                    <button type="button" class={{if (eq this.abaDoCelular "pedidos") "tp-ativo"}} {{on "click" (fn this.escolherAba "pedidos")}}>{{t "fleet-ops.ui.tela-pedidos.pedidos.titulo"}} {{this.contagem.todos}}</button>
+                    <button type="button" class={{if (eq this.abaDoCelular "motoboys") "tp-ativo"}} {{on "click" (fn this.escolherAba "motoboys")}}>{{t "fleet-ops.ui.tela-pedidos.motoboys.titulo"}} {{this.aoVivo.motoboys.length}}</button>
+                </div>
+                <div class="tp-rolagem">
+                    {{#if (eq this.abaDoCelular "pedidos")}}
+                        <div class="tp-filtros">
+                            {{#each this.filtros as |filtro|}}
+                                <button type="button" class="{{if filtro.ativo 'tp-ativo'}} {{if filtro.alerta 'tp-com-alerta'}}" {{on "click" (fn this.escolherFiltro filtro.chave)}}>{{filtro.texto}} <b>{{filtro.n}}</b></button>
+                            {{/each}}
+                        </div>
+                        {{#each this.pedidos key="id" as |pedido|}}
+                            <TelaPedidos::LinhaDoPedido @pedido={{pedido}} @ehAdmin={{this.ehAdmin}} @aoEscolher={{this.escolherPedido}} @aoAtribuir={{this.atribuirPedido}} />
+                        {{else}}
+                            <div class="tp-vazio"><FaIcon @icon="circle-check" /> {{this.textoDoVazio}}</div>
+                        {{/each}}
+                    {{else}}
+                        {{#each this.motoboys key="id" as |motoboy|}}
+                            <button type="button" class="tp-motoboy {{if motoboy.selecionado 'tp-selecionado'}}" {{on "click" (fn this.escolherMotoboy motoboy.id)}}>
+                                <img src={{motoboy.capacete}} alt="" />
+                                <span class="tp-motoboy-meio"><b>{{motoboy.nome}}</b><small>{{motoboy.detalhe}}</small></span>
+                                <span class="tp-motoboy-corridas"><b>{{motoboy.corridas_hoje}}</b>{{t "fleet-ops.ui.tela-pedidos.motoboy.hoje"}}</span>
+                            </button>
+                        {{else}}
+                            <div class="tp-vazio">{{t "fleet-ops.ui.tela-pedidos.motoboys.vazio"}}</div>
+                        {{/each}}
+                    {{/if}}
+                </div>
+            {{/if}}
+        </section>
+    {{else}}
+        {{#if this.painelMotoboys}}
+            <section class="tp-painel tp-painel-motoboys" aria-label={{t "fleet-ops.ui.tela-pedidos.motoboys.titulo"}}>
+                <div class="tp-painel-cabecalho">
+                    <h3>{{t "fleet-ops.ui.tela-pedidos.motoboys.titulo"}}</h3>
+                    <span class="tp-sub">{{t "fleet-ops.ui.tela-pedidos.motoboys.online" n=this.online.online}}</span>
+                    <button type="button" class="tp-icone" title={{t "fleet-ops.ui.tela-pedidos.recolher"}} {{on "click" (fn this.alternarPainel "painelMotoboys")}}><FaIcon @icon="angles-left" /></button>
+                </div>
+                <div class="tp-seg tp-seg-cheio">
+                    {{#each this.filtrosDosMotoboys as |filtro|}}
+                        <button type="button" class={{if filtro.ativo "tp-ativo"}} {{on "click" (fn this.escolherFiltroDosMotoboys filtro.chave)}}>{{filtro.texto}}</button>
+                    {{/each}}
+                </div>
+                <div class="tp-rolagem">
+                    {{#each this.motoboys key="id" as |motoboy|}}
+                        <button type="button" class="tp-motoboy {{if motoboy.selecionado 'tp-selecionado'}}" {{on "click" (fn this.escolherMotoboy motoboy.id)}}>
+                            <img src={{motoboy.capacete}} alt="" />
+                            <span class="tp-motoboy-meio"><b>{{motoboy.nome}}</b><small>{{motoboy.detalhe}}</small></span>
+                            <span class="tp-motoboy-corridas"><b>{{motoboy.corridas_hoje}}</b>{{t "fleet-ops.ui.tela-pedidos.motoboy.hoje"}}</span>
+                        </button>
+                    {{else}}
+                        <div class="tp-vazio">{{t "fleet-ops.ui.tela-pedidos.motoboys.vazio"}}</div>
+                    {{/each}}
+                </div>
+            </section>
+        {{else}}
+            <button type="button" class="tp-pilula tp-pilula-esquerda" {{on "click" (fn this.alternarPainel "painelMotoboys")}}>
+                <img src={{this.capaceteLivre}} alt="" />{{t "fleet-ops.ui.tela-pedidos.motoboys.titulo"}} <b>{{this.online.livres}}/{{this.online.online}}</b>
+            </button>
+        {{/if}}
+
+        {{#if this.painelPedidos}}
+            <section class="tp-painel tp-painel-pedidos" aria-label={{t "fleet-ops.ui.tela-pedidos.pedidos.titulo"}}>
+                <div class="tp-painel-cabecalho">
+                    <h3>{{t "fleet-ops.ui.tela-pedidos.pedidos.titulo"}}</h3>
+                    <span class="tp-ao-vivo"><i></i></span>
+                    <span class="tp-sub">{{t "fleet-ops.ui.tela-pedidos.pedidos.em-andamento" n=this.contagem.todos}}</span>
+                    <button type="button" class="tp-icone" title={{t "fleet-ops.ui.tela-pedidos.recolher"}} {{on "click" (fn this.alternarPainel "painelPedidos")}}><FaIcon @icon="angles-right" /></button>
+                </div>
+                <div class="tp-filtros">
+                    {{#each this.filtros as |filtro|}}
+                        <button type="button" class="{{if filtro.ativo 'tp-ativo'}} {{if filtro.alerta 'tp-com-alerta'}}" {{on "click" (fn this.escolherFiltro filtro.chave)}}>{{filtro.texto}} <b>{{filtro.n}}</b></button>
+                    {{/each}}
+                </div>
+                <div class="tp-rolagem">
+                    {{#each this.pedidos key="id" as |pedido|}}
+                        <TelaPedidos::LinhaDoPedido @pedido={{pedido}} @ehAdmin={{this.ehAdmin}} @aoEscolher={{this.escolherPedido}} @aoAtribuir={{this.atribuirPedido}} />
+                    {{else}}
+                        <div class="tp-vazio"><FaIcon @icon="circle-check" /> {{this.textoDoVazio}}</div>
+                    {{/each}}
+                </div>
+            </section>
+        {{else}}
+            <button type="button" class="tp-pilula tp-pilula-direita" {{on "click" (fn this.alternarPainel "painelPedidos")}}>
+                <FaIcon @icon="list" />{{t "fleet-ops.ui.tela-pedidos.pedidos.titulo"}} <b>{{this.contagem.todos}}</b>
+                {{#if this.contagem.oferta}}<span class="tp-selo tp-selo-alerta">{{t "fleet-ops.ui.tela-pedidos.folha.sem-motoboy" n=this.contagem.oferta}}</span>{{/if}}
+            </button>
+        {{/if}}
+
+        {{#if this.pedidoSelecionado}}
+            <section class="tp-detalhe">
+                <TelaPedidos::Detalhe @pedido={{this.pedidoSelecionado}} @ehAdmin={{this.ehAdmin}} @capaceteLivre={{this.capaceteLivre}} @enviando={{this.aoVivo.enviando}} @aoFechar={{this.fecharDetalhe}} @aoAbrir={{this.abrirPedido}} @aoAlternarAtribuir={{this.alternarAtribuir}} @aoEnviar={{this.enviar}} />
+            </section>
+        {{/if}}
+    {{/if}}
+</div>

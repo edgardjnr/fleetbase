@@ -42,7 +42,13 @@ Acrescenta a cada pedido:
 - `oferta`: no pedido sem motoboy, a distribuição aberta, com `fase`, `rodada`, `rodadas` e o `vence_em` da oferta
   pendente em ISO de Brasília. Fica `null` sem distribuição (aguardando a central) ou com a distribuição encerrada.
 
-Tudo sai em lote: 3 consultas, qualquer que seja o número de pedidos. O cache é de **5 s por central**, e o atribuir
+Acrescenta também, para a tela de pedidos (`/fleet-ops`, ver "Tela de pedidos" em `packages/fleetops/CLAUDE.md`):
+- `motoboys[].corridas_hoje`: as corridas finalizadas hoje (dia de Brasília, `Financeiro::hoje`) por motoboy, de
+  `entregas_corridas_finalizadas` (o `motoboy_uuid` vira o `public_id` pelo `drivers`);
+- `concluidos`: `{total, ultimos}`, as corridas finalizadas hoje, com os 6 mais recentes primeiro (`id` = public_id do
+  pedido, `numero`, `loja`, `motoboy`, `finalizada_em` em ISO de Brasília). É a coluna Concluídos do Quadro.
+
+Tudo sai em lote: 5 consultas, qualquer que seja o número de pedidos. O cache é de **5 s por central**, e o atribuir
 limpa (`AoVivo::esquecer`).
 
 Limite herdado do `PedidosNoMapa`: pedido sem coordenada no destino não aparece.
@@ -60,7 +66,10 @@ A distribuição se encerra sozinha pelo `ObservadorDaDistribuicao`. O log sai c
 
 ## Front
 
-O componente é `packages/fleetops/addon/components/home/painel-inicial.*`, com o mapa em `home/painel-inicial/mapa.*` e
+A mesma API serve à tela de pedidos do Fleet-Ops (`/fleet-ops`: Mapa e Quadro, componentes `tela-pedidos/*`). O
+"Trocar motoboy" do detalhe usa o mesmo `POST` do Atribuir.
+
+O componente do painel é `packages/fleetops/addon/components/home/painel-inicial.*`, com o mapa em `home/painel-inicial/mapa.*` e
 as contas puras em `utils/painel-inicial.js`. Detalhes em `packages/fleetops/CLAUDE.md`, seção "Painel inicial".
 
 ## Testes
