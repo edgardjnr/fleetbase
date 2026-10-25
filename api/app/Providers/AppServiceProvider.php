@@ -21,6 +21,7 @@ use App\Notifications\Entregas\Email\CanalEmailEntregas;
 use App\Support\Entregas\ConexaoDoStorefront;
 use App\Support\Entregas\Distribuicao\TrocaDoListenerDoDespacho;
 use App\Support\Entregas\FusoDoServidor;
+use App\Support\Entregas\ImagensPadrao;
 use Fleetbase\FleetOps\Console\Commands\DispatchAdhocOrders;
 use Fleetbase\FleetOps\Console\Commands\DispatchOrders;
 use Fleetbase\FleetOps\Console\Commands\ProcessMaintenanceTriggers;
@@ -28,7 +29,10 @@ use Fleetbase\FleetOps\Console\Commands\SendMaintenanceReminders;
 use Fleetbase\FleetOps\Console\Commands\TrackOrderDistanceAndTime;
 use Fleetbase\FleetOps\Events\OrderDriverAssigned;
 use Fleetbase\FleetOps\Http\Controllers\Api\v1\DriverController as ApiDriverController;
+use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
+use Fleetbase\FleetOps\Models\Place;
+use Fleetbase\FleetOps\Models\Vehicle;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Events\TransactionBeginning;
@@ -123,6 +127,20 @@ class AppServiceProvider extends ServiceProvider
         $this->lancarCorridasNoFinanceiro();
         $this->registrarCorridasDoSistema();
         $this->gravarPrazoDosPedidos();
+        $this->imagensPadraoLocais();
+    }
+
+    /**
+     * Entregas: o avatar_url gravado de motoboy, local e veículo com a imagem padrão do bucket do Fleetbase vira a cópia do
+     * console ao salvar (ver ImagensPadrao). Os eventos do socket serializam o modelo e não passam pelo middleware.
+     */
+    protected function imagensPadraoLocais(): void
+    {
+        foreach ([Driver::class, Place::class, Vehicle::class] as $modelo) {
+            if (class_exists($modelo)) {
+                $modelo::saving(fn ($registro) => ImagensPadrao::corrigirAtributo($registro, 'avatar_url'));
+            }
+        }
     }
 
     /**

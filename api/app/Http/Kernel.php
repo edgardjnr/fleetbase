@@ -29,6 +29,8 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\RestringirChaveDoApp::class,
         // motoboy (líder incluído) fora do console e do portal (int/v1): 403 no login e com token; papel Administrator passa
         \App\Http\Middleware\BarrarMotoboyNoConsole::class,
+        // imagens padrão do bucket do Fleetbase (avatar sem foto, ícones) trocadas pelas cópias do console nas respostas JSON
+        \App\Http\Middleware\TrocarImagensDoFleetbase::class,
     ];
 
     /**

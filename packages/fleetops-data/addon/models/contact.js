@@ -30,7 +30,7 @@ export default class ContactModel extends Model {
     @attr('string') type;
     @attr('raw') meta;
     @attr('string', {
-        defaultValue: 'https://s3.ap-southeast-1.amazonaws.com/flb-assets/static/no-avatar.png',
+        defaultValue: '/images/entregas/padrao/static/no-avatar.png',
     })
     photo_url;
     @attr('string') slug;

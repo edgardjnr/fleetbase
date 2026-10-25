@@ -31,7 +31,7 @@ export default class EntityModel extends Model {
     @attr('string') type;
     @attr('string') description;
     @attr('string', {
-        defaultValue: 'https://flb-assets.s3-ap-southeast-1.amazonaws.com/static/parcels/medium.png',
+        defaultValue: '/images/entregas/padrao/static/parcels/medium.png',
     })
     photo_url;
     @attr('string', {
