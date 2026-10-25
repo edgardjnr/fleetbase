@@ -94,8 +94,8 @@ export default class TelaPedidosMapaLeafletComponent extends Component {
     @action aoCarregar(evento) {
         this.mapa = evento?.target ?? null;
         if (!this.mapa) return;
-        // o canto de cima à esquerda fica atrás do painel Motoboys
-        this.mapa.zoomControl?.setPosition('bottomright');
+        // em cima à esquerda fica o painel Motoboys e à direita o Pedidos: o zoom vai embaixo à esquerda
+        this.mapa.zoomControl?.setPosition('bottomleft');
         this.observador = new ResizeObserver(() => {
             this.mapa?.invalidateSize();
             this.enquadrar();
