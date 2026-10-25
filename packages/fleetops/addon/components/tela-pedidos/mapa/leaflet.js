@@ -5,11 +5,15 @@ import { CAPACETES } from '../../../utils/entregas-capacete';
 import { ICONE_DA_LOJA } from '../../../utils/entregas-icone-da-loja';
 import { ALFINETE, rotuloNoAlfinete, classeDoRotulo, emEntrega } from '../../../utils/entregas-pedidos-no-mapa';
 import ensureLeafletDrawEditNamespace from '../../../utils/leaflet-draw-namespace-guard';
+import { pontosParaEnquadrar } from '../../../utils/pedido-aberto';
 
 // Ribeirão Preto: o centro até chegar o primeiro motoboy ou pedido
 const CENTRO_PADRAO = { lat: -21.1775, lng: -47.8103 };
 const APAGADO = 0.25;
 const COR_DA_ROTA = '#ea7a1a';
+const CONTORNO = '#ffffff';
+// o que falta é mais grosso que o que já foi feito
+const LARGURAS = { feito: 4, feita: 4, prevista: 4, 'ate-loja': 4 };
 // tamanhos fixos (mesma referência a cada tique do relógio): um array novo faria o Leaflet trocar o ícone todo segundo
 const CAPACETE = [32, 32];
 const CAPACETE_GRANDE = [42, 42];
@@ -18,8 +22,10 @@ const ALFINETE_GRANDE = { tamanho: ALFINETE.tamanho.map((n) => n * 1.4), ponta: 
 /**
  * Entregas: o mapa da vista Mapa da tela de pedidos (tela-pedidos/mapa). Capacete na cor da situação com o nome fixo,
  * pin laranja das lojas e alfinete vermelho no destino, com o rótulo "#4821 · Carlos" no pedido aceito (fundo pelo
- * prazo, como o mapa ao vivo antigo). O pedido escolhido fica maior, os outros apagados, e uma linha laranja liga o
- * motoboy à loja e ao cliente. O enquadramento desconta os painéis (@margens: esquerda, direita e baixo, em px).
+ * prazo, como o mapa ao vivo antigo). O pedido escolhido fica maior, os outros apagados, e o @rotaDoPedido desenha a
+ * rota do motoboy em trechos (utils/pedido-aberto: feito em cinza, falta em laranja, até a loja tracejado), com um
+ * contorno branco por baixo e o P na coleta. Sem @rotaDoPedido, a linha reta motoboy → loja → cliente de antes. O
+ * enquadramento desconta os painéis e a folha (@margens: esquerda, direita e baixo, em px).
  */
 export default class TelaPedidosMapaLeafletComponent extends Component {
     @service mapSettings;
@@ -69,8 +75,29 @@ export default class TelaPedidosMapaLeafletComponent extends Component {
         return ALFINETE;
     }
 
-    /** Linha do pedido escolhido: motoboy → loja → cliente (indo à loja), motoboy → cliente (a caminho), loja → cliente (sem motoboy). */
+    /** Trechos da rota do pedido aberto (do componente do mapa), cada um com o contorno branco por baixo. */
+    get trechos() {
+        return (this.args.rotaDoPedido?.trechos ?? []).map((trecho) => ({
+            ...trecho,
+            tracejado: trecho.tracejado ? '10 8' : null,
+            largura: LARGURAS[trecho.tipo] ?? 5,
+            contorno: (LARGURAS[trecho.tipo] ?? 5) + 4,
+        }));
+    }
+
+    get contorno() {
+        return CONTORNO;
+    }
+
+    /** O P da coleta do pedido aberto. */
+    get coletaDoPedido() {
+        const coleta = this.args.rotaDoPedido?.coleta;
+        return coleta && Number.isFinite(coleta.latitude) && Number.isFinite(coleta.longitude) ? coleta : null;
+    }
+
+    /** Linha reta do pedido escolhido, sem @rotaDoPedido: motoboy → loja → cliente (indo à loja), motoboy → cliente (a caminho), loja → cliente (sem motoboy). */
     get rota() {
+        if (this.args.rotaDoPedido) return null;
         const pedido = this.pedidos.find((p) => p.selecionado);
         if (!pedido) return null;
         const motoboy = this.motoboys.find((m) => m.id === pedido.motoboy_id);
@@ -113,14 +140,25 @@ export default class TelaPedidosMapaLeafletComponent extends Component {
         this.enquadrado = true;
     }
 
-    /** Ao escolher um pedido, mostra o motoboy, a loja e o cliente dele sem ficar atrás dos painéis. */
+    /**
+     * Ao abrir um pedido, mostra a rota inteira (motoboy, loja e cliente) sem ficar atrás dos painéis nem da folha.
+     * Enquadra uma vez por pedido (ao chegar a rota do servidor, de novo); depois quem mexe é a pessoa.
+     */
     @action focar() {
         if (!this.mapa || !this.mapa.getSize().y) return;
-        const rota = this.rota;
         const pedido = this.pedidos.find((p) => p.selecionado);
-        if (!pedido) return;
-        const pontos = rota?.pontos ?? [[pedido.latitude, pedido.longitude]];
-        this.mapa.fitBounds(pontos, { ...this.#padding(), maxZoom: 15 });
+        if (!pedido) {
+            this.focado = null;
+            return;
+        }
+        const daRota = this.args.rotaDoPedido;
+        const pontosDoPrimeiro = daRota?.trechos?.[0]?.pontos?.length ?? 0;
+        const chave = `${pedido.id}|${daRota?.trechos?.length ?? 0}|${pontosDoPrimeiro > 2 ? 'ruas' : 'reta'}`;
+        if (this.focado === chave) return;
+        this.focado = chave;
+        const pontos = daRota ? pontosParaEnquadrar(daRota.trechos, [pedido, daRota.coleta]) : (this.rota?.pontos ?? [[pedido.latitude, pedido.longitude]]);
+        if (!pontos.length) return;
+        this.mapa.fitBounds(pontos, { ...this.#padding(), maxZoom: 16 });
     }
 
     @action escolherPedido(id) {

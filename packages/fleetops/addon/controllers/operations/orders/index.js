@@ -13,6 +13,7 @@ export default class OperationsOrdersIndexController extends Controller {
     @service orderListOverlay;
     @service fetch;
     @service intl;
+    @service hostRouter;
 
     /** query params */
     @tracked queryParams = [
@@ -44,6 +45,9 @@ export default class OperationsOrdersIndexController extends Controller {
         'drawerOpen',
         'drawerTab',
         'orderPanelOpen',
+        // Entregas: pedido aberto no mapa (public_id) e de onde ele foi aberto (tabela, quadro, inicio)
+        'pedido',
+        'de',
     ];
     @tracked page = 1;
     @tracked limit;
@@ -71,6 +75,8 @@ export default class OperationsOrdersIndexController extends Controller {
     @tracked bulkSearchValue = '';
     @tracked bulk_query = '';
     @tracked layout = 'map';
+    @tracked pedido = null;
+    @tracked de = null;
 
     /** action buttons */
     get actionButtons() {
@@ -410,6 +416,11 @@ export default class OperationsOrdersIndexController extends Controller {
 
     @action changeLayout(mode) {
         this.layout = mode;
+        // Entregas: o pedido aberto é do mapa; ao trocar de vista, ele fecha
+        if (mode !== 'map') {
+            this.pedido = null;
+            this.de = null;
+        }
 
         if (mode === 'table') {
             this.isSearchVisible = false;
@@ -432,6 +443,23 @@ export default class OperationsOrdersIndexController extends Controller {
     @action verConcluidos() {
         this.escolherAba('concluidos');
         this.changeLayout('table');
+    }
+
+    /** Entregas: abre (ou fecha, com null) o pedido no mapa; `de` é para onde volta o "Voltar". */
+    @action abrirPedido(id, de = null) {
+        this.layout = 'map';
+        this.pedido = id || null;
+        this.de = id ? de : null;
+    }
+
+    /** Entregas: "Voltar para a Tabela/o Quadro/o Início" do pedido aberto. */
+    @action voltarDoPedido() {
+        const de = this.de;
+        this.pedido = null;
+        this.de = null;
+        if (de === 'inicio') return this.hostRouter.transitionTo('console.home');
+        if (de === 'tabela') this.changeLayout('table');
+        if (de === 'quadro') this.changeLayout('kanban');
     }
 
     @action novoPedido() {

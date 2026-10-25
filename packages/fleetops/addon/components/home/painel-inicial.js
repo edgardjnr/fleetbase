@@ -26,7 +26,8 @@ const INTERVALO_AO_VIVO_MS = 20000;
 const INTERVALO_RESUMO_MS = 5 * 60000;
 const ESPERA_DO_SOCKET_MS = 800;
 const EVENTOS_AO_VIVO = /^(order\.|waypoint\.|entity\.|driver\.(created|updated|deleted)$|entregas\.motoboy_online$)/;
-const ROTA_DO_PEDIDO = 'console.fleet-ops.operations.orders.index.details';
+// Entregas: o pedido abre no mapa do /fleet-ops com a folha da comanda (sketch 008 A); o "Voltar" volta ao Início
+const ROTA_DOS_PEDIDOS = 'console.fleet-ops.operations.orders.index';
 const P = 'fleet-ops.ui.painel-inicial';
 
 /**
@@ -314,7 +315,7 @@ export default class HomePainelInicialComponent extends Component {
     }
 
     @action abrirPedido(id) {
-        this.router.transitionTo(ROTA_DO_PEDIDO, id);
+        this.router.transitionTo(ROTA_DOS_PEDIDOS, { queryParams: { layout: 'map', pedido: id, de: 'inicio' } });
     }
 
     @action novoPedido() {

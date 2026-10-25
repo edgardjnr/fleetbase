@@ -5,6 +5,7 @@ import TelaDePedidosBase from '../../utils/tela-de-pedidos-base';
 import { CAPACETES } from '../../utils/entregas-capacete';
 import { FILTROS, contagens, filaDoPainel, resumoDosMotoboys, situacaoDoPedido } from '../../utils/painel-inicial';
 import { FILTROS_DOS_MOTOBOYS, motoboysDaTela, filtrarMotoboys, passaNoFiltro } from '../../utils/tela-de-pedidos';
+import { trechosDaRota, situacaoDaComanda } from '../../utils/pedido-aberto';
 
 const P = 'fleet-ops.ui.tela-pedidos';
 const PI = 'fleet-ops.ui.painel-inicial';
@@ -12,18 +13,27 @@ const CELULAR = '(max-width: 767px)';
 // largura dos painéis + margem (o enquadramento do mapa desconta)
 const LARGURA_MOTOBOYS = 300;
 const LARGURA_PEDIDOS = 390;
+// folha do pedido aberto (no lugar do painel Pedidos) + margem
+const LARGURA_FOLHA = 470;
+// releitura da comanda com o pedido aberto (o Ao vivo já relê nos eventos; isto pega o que ele não traz)
+const RELER_COMANDA_MS = 60 * 1000;
 
 /**
  * Entregas: vista Mapa da tela de pedidos (/fleet-ops; sketch 005, variante A invertida). Mapa em tela cheia com o
- * painel Motoboys flutuando à esquerda e o Pedidos à direita (recolhíveis), as contagens no topo (filtram mapa e
- * lista) e o detalhe do pedido escolhido embaixo, junto aos Pedidos. No celular, a folha de baixo com Pedidos e
- * Motoboys.
+ * painel Motoboys flutuando à esquerda e o Pedidos à direita (recolhíveis) e as contagens no topo (filtram mapa e
+ * lista). No celular, a folha de baixo com Pedidos e Motoboys.
+ *
+ * Pedido aberto (sketch 008 A): o `@pedido` da URL (?pedido=<public_id>) abre a folha da comanda no lugar do painel
+ * Pedidos, recolhe o Motoboys numa pílula e desenha a rota do motoboy em trechos (feito em cinza, falta em laranja). A
+ * comanda vem de GET entregas/pedidos/{id}/comanda e é relida quando o pedido muda no Ao vivo (status, motoboy) e a
+ * cada minuto. Pedido encerrado (fora do Ao vivo) também abre, com os dados da comanda.
  */
 export default class TelaPedidosMapaComponent extends TelaDePedidosBase {
     @tracked filtro = 'todos';
     @tracked filtroDosMotoboys = 'todos';
-    @tracked selecionado = null;
     @tracked motoboySelecionado = null;
+    @tracked comanda = null;
+    @tracked comandaFalhou = false;
     @tracked painelPedidos = true;
     @tracked painelMotoboys = true;
     @tracked celular = false;
@@ -45,6 +55,92 @@ export default class TelaPedidosMapaComponent extends TelaDePedidosBase {
     willDestroy() {
         super.willDestroy(...arguments);
         this._consulta?.removeEventListener?.('change', this._aoMudarTela);
+        clearInterval(this._relerComanda);
+    }
+
+    /* ---------- pedido aberto ---------- */
+
+    /** O pedido aberto é o da URL. */
+    get selecionado() {
+        return this.args.pedido || null;
+    }
+
+    /** O pedido aberto no formato do Ao vivo: o da lista, ou o da comanda (pedido encerrado ou fora da lista). */
+    get pedidoAbertoBruto() {
+        if (!this.selecionado) return null;
+        const doAoVivo = this.aoVivo.pedidos.find((p) => p.id === this.selecionado);
+        if (doAoVivo) return doAoVivo;
+        const daComanda = this.comandaDoPedido?.pedido;
+        return daComanda ?? null;
+    }
+
+    /** Muda quando o pedido muda no Ao vivo: aí a comanda é relida. */
+    get versaoDoPedidoAberto() {
+        const p = this.aoVivo.pedidos.find((x) => x.id === this.selecionado);
+        return p ? `${p.status}|${p.motoboy_id ?? ''}|${p.aceito ? 1 : 0}` : 'fora';
+    }
+
+    get comandaDoPedido() {
+        return this.comanda && this.comanda.pedido?.id === this.selecionado ? this.comanda : null;
+    }
+
+    get situacaoDoPedidoAberto() {
+        const bruto = this.pedidoAbertoBruto;
+        return situacaoDaComanda(this.comandaDoPedido, bruto ? situacaoDoPedido(bruto) : null);
+    }
+
+    /** A rota do motoboy em trechos (feito em cinza, falta em laranja), com a posição atual dele. */
+    get rotaDoPedidoAberto() {
+        const bruto = this.pedidoAbertoBruto;
+        if (!bruto) return null;
+        const comanda = this.comandaDoPedido;
+        const motoboy = this.aoVivo.motoboys.find((m) => m.id === bruto.motoboy_id);
+        const situacao = this.situacaoDoPedidoAberto;
+        const trechos = trechosDaRota({
+            situacao,
+            encerrado: !!comanda?.encerrado,
+            rota: comanda?.rota ?? null,
+            coleta: bruto.coleta,
+            entrega: Number.isFinite(bruto.latitude) ? { latitude: bruto.latitude, longitude: bruto.longitude } : null,
+            motoboy: motoboy && !comanda?.encerrado ? motoboy : null,
+        });
+        return { id: bruto.id, trechos, situacao, coleta: bruto.coleta ?? null };
+    }
+
+    @action aoMudarPedido() {
+        clearInterval(this._relerComanda);
+        this.atribuindo = null;
+        this.comandaFalhou = false;
+        if (!this.selecionado) return;
+        this.carregarComanda.perform();
+        this._relerComanda = setInterval(() => {
+            if (typeof document !== 'undefined' && document.hidden) return;
+            this.carregarComanda.perform();
+        }, RELER_COMANDA_MS);
+        if (this.celular && this.folha !== 'alta') this.folha = 'alta';
+    }
+
+    @action recarregarComanda() {
+        if (this.selecionado) this.carregarComanda.perform();
+    }
+
+    @task({ restartable: true }) *carregarComanda() {
+        const id = this.selecionado;
+        if (!id) return;
+        try {
+            const comanda = yield this.fetch.get(`entregas/pedidos/${id}/comanda`);
+            if (id === this.selecionado) {
+                this.comanda = comanda;
+                this.comandaFalhou = false;
+            }
+        } catch {
+            if (id === this.selecionado) this.comandaFalhou = true;
+        }
+    }
+
+    get textoDoVoltar() {
+        const de = this.args.de;
+        return de ? this.intl.t(`${P}.pedido-aberto.voltar.${de}`) : null;
     }
 
     /* ---------- contagens e filtros ---------- */
@@ -115,17 +211,29 @@ export default class TelaPedidosMapaComponent extends TelaDePedidosBase {
     }
 
     get pedidoSelecionado() {
-        const pedido = this.aoVivo.pedidos.find((p) => p.id === this.selecionado);
+        const pedido = this.pedidoAbertoBruto;
         if (!pedido) return null;
         const linha = this.linhaDoPedido(pedido);
         const motoboy = this.aoVivo.motoboys.find((m) => m.id === pedido.motoboy_id);
-        return { ...linha, motoboyDoPedido: motoboy ? { ...motoboy, capacete: CAPACETES[motoboy.situacao] ?? CAPACETES.offline } : null };
+        const situacao = this.situacaoDoPedidoAberto;
+        const encerrado = situacao === 'concluido' || situacao === 'cancelado';
+        return {
+            ...linha,
+            situacao,
+            encerrado,
+            ehOferta: !encerrado && linha.ehOferta,
+            prazo: encerrado ? null : linha.prazo,
+            textoDaSituacao: encerrado ? this.intl.t(`${P}.pedido-aberto.situacao.${situacao}`) : linha.textoDaSituacao,
+            motoboyDoPedido: motoboy ? { ...motoboy, capacete: CAPACETES[motoboy.situacao] ?? CAPACETES.offline } : null,
+        };
     }
 
     /* ---------- mapa ---------- */
 
     get pedidosDoMapa() {
-        return this.aoVivo.pedidos.map((pedido) => {
+        const bruto = this.pedidoAbertoBruto;
+        const fora = bruto && !this.aoVivo.pedidos.some((p) => p.id === bruto.id) && Number.isFinite(bruto.latitude);
+        return (fora ? [...this.aoVivo.pedidos, bruto] : this.aoVivo.pedidos).map((pedido) => {
             const linha = this.linhaDoPedido(pedido);
             const selecionado = pedido.id === this.selecionado;
             const apagado =
@@ -151,45 +259,67 @@ export default class TelaPedidosMapaComponent extends TelaDePedidosBase {
     }
 
     get margens() {
-        if (this.celular) return { esquerda: 0, direita: 0, baixo: 260 };
-        return { esquerda: this.painelMotoboys ? LARGURA_MOTOBOYS : 0, direita: this.painelPedidos ? LARGURA_PEDIDOS : 0, baixo: this.selecionado ? 280 : 0 };
+        if (this.celular) return { esquerda: 0, direita: 0, baixo: this.selecionado ? Math.round((typeof window !== 'undefined' ? window.innerHeight : 700) * 0.55) : 260 };
+        if (this.selecionado) return { esquerda: 0, direita: LARGURA_FOLHA, baixo: 0 };
+        return { esquerda: this.painelMotoboys ? LARGURA_MOTOBOYS : 0, direita: this.painelPedidos ? LARGURA_PEDIDOS : 0, baixo: 0 };
     }
 
     /* ---------- ações ---------- */
 
     @action escolherFiltro(chave) {
         this.filtro = this.filtro === chave && chave !== 'todos' ? 'todos' : chave;
-        this.selecionado = null;
+        if (this.selecionado) this.args.aoAbrirPedido?.(null);
     }
 
     @action escolherFiltroDosMotoboys(chave) {
         this.filtroDosMotoboys = this.filtroDosMotoboys === chave && chave !== 'todos' ? 'todos' : chave;
     }
 
+    /** Clique no pedido (lista ou alfinete): abre a folha dele; no que já está aberto, fecha. */
     @action escolherPedido(id) {
-        this.selecionado = this.selecionado === id ? null : id;
         this.motoboySelecionado = null;
-        this.atribuindo = null;
-        if (this.celular && this.selecionado && this.folha === 'baixa') this.folha = 'meia';
+        if (this.selecionado === id) this.args.aoAbrirPedido?.(null);
+        else this.args.aoAbrirPedido?.(id, this.args.de);
     }
 
     @action escolherMotoboy(id) {
         this.motoboySelecionado = this.motoboySelecionado === id ? null : id;
-        this.selecionado = null;
+        if (this.selecionado) this.args.aoAbrirPedido?.(null);
     }
 
-    /** Atribuir na linha: escolhe o pedido e abre os candidatos no detalhe (a lista fica num lugar só). */
+    /** Atribuir na linha: abre o pedido já com os candidatos (a lista fica num lugar só). */
     @action atribuirPedido(id, evento) {
         evento?.stopPropagation?.();
-        this.selecionado = id;
         this.motoboySelecionado = null;
-        this.atribuindo = id;
-        if (this.celular && this.folha === 'baixa') this.folha = 'meia';
+        if (this.selecionado === id) {
+            this.atribuindo = id;
+            return;
+        }
+        this.atribuirDepois = id;
+        this.args.aoAbrirPedido?.(id, this.args.de);
+    }
+
+    /** Depois do aoMudarPedido (que zera o atribuindo), abre os candidatos pedidos pela linha. */
+    @action aoMudarPedidoEAtribuir() {
+        this.aoMudarPedido();
+        if (this.atribuirDepois && this.atribuirDepois === this.selecionado) this.atribuindo = this.atribuirDepois;
+        this.atribuirDepois = null;
     }
 
     @action fecharDetalhe() {
-        this.selecionado = null;
         this.atribuindo = null;
+        this.args.aoAbrirPedido?.(null);
+    }
+
+    @action voltar() {
+        this.atribuindo = null;
+        this.args.aoVoltar?.();
+    }
+
+    /** Depois de atribuir/trocar, a comanda também muda (motoboy e linha do tempo). */
+    @action async enviarERecarregar(pedidoId, motoboyId, evento) {
+        await this.enviar(pedidoId, motoboyId, evento);
+        this.recarregarComanda();
     }
 
     @action alternarPainel(qual) {

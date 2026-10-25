@@ -135,9 +135,8 @@ A com os lados invertidos, `.planning/sketches/005-tela-de-pedidos/`). As vistas
 - **Mapa** (`tela-pedidos/mapa.{js,hbs}`, com o Leaflet em `tela-pedidos/mapa/leaflet.*`): mapa em tela cheia.
   - O painel **Motoboys** flutua à esquerda e o **Pedidos** à direita, os dois recolhíveis.
   - As contagens ficam no topo e filtram o mapa e a lista.
-  - Clicar num pedido abre o detalhe junto aos Pedidos (`tela-pedidos/detalhe.hbs`), apaga o resto e traça a linha
-    laranja motoboy → loja → cliente.
-  - O admin atribui ou troca o motoboy pelo detalhe; o Atribuir da linha abre o mesmo detalhe.
+  - Clicar num pedido abre o **pedido aberto** (ver abaixo): a folha da comanda no lugar do painel Pedidos.
+  - O admin atribui ou troca o motoboy pela folha; o Atribuir da linha abre a folha já com os candidatos.
   - O enquadramento desconta os painéis (`@margens`, `paddingTopLeft`/`paddingBottomRight`), e o zoom fica embaixo à
     esquerda (o painel Motoboys para 110 px antes do fim).
   - No celular (< 768 px, `matchMedia`), uma folha de baixo com Pedidos e Motoboys (3 alturas).
@@ -162,5 +161,41 @@ A com os lados invertidos, `.planning/sketches/005-tela-de-pedidos/`). As vistas
 - **Textos:** `fleet-ops.ui.tela-pedidos.*`. A fila, a oferta e o Atribuir reaproveitam `fleet-ops.ui.painel-inicial.*`.
   As chaves montadas no JS (`contagens.*`, `abas.*`, `motoboy.*`, `filtros.*`, `vazio.*`) não são vistas pelo
   i18n-check.
+- **Pedido aberto** (sketch 008, variante A, `.planning/sketches/008-pedido-aberto-no-console/`; 2026-10-25):
+  - **Onde abre:** o pedido abre sempre no mapa do `/fleet-ops`, com `?layout=map&pedido=<public_id>&de=tabela|quadro|inicio`
+    (query params `pedido` e `de` do controller; a rota tira os dois da consulta da lista).
+    - A rota antiga do detalhe do Fleetbase (`operations.orders.index.details`) **redireciona** para lá no
+      `beforeModel`. Assim valem todos os lugares que abriam o painel: Tabela, Quadro, Início, avisos (pedido sem
+      motoboy, ação recusada pelo iFood), Financeiro e o pedido novo. O `de` sai da transição
+      (`origemDaTransicao`); o Quadro e o Início já mandam o `de` direto.
+    - A pílula "Voltar para a Tabela/o Quadro/o Início" (`voltarDoPedido`) volta à origem. O X fecha e fica no mapa.
+      Trocar de vista fecha o pedido.
+  - **Folha** (`tela-pedidos/pedido-aberto.*`, 440 px no lugar do painel Pedidos; no celular, dentro da folha de baixo,
+    que abre alta): a comanda do app do motoboy.
+    - Número, origem, situação, prazo e "para <cliente>" (nome em caixa normal; sem nome, a rua).
+    - Motoboy com Trocar, ou a oferta com Atribuir (só admin), ou "Entregue por X às HH:MM" / "Cancelado".
+    - Cobrança, endereço com complemento e referência, observação do cliente, produtos em cupom e a loja da coleta.
+    - **Sem 0800 nem localizador**: só o motoboy do pedido recebe (regra do servidor).
+    - **"Mais"**: linha do tempo (`tracking-status-text`), rota e valores (só admin) e o que era do painel do
+      Fleetbase: os painéis iFood, Integração e Distribuição (`Order::Details::*`) e as ações (editar rota, editar
+      detalhes, atualizar status, tirar o motoboy, etiqueta, metadados, cancelar fora do iFood, excluir). O pedido do
+      Ember Data só carrega ao abrir o "Mais".
+  - **Dados:** `GET entregas/pedidos/{id}/comanda` (ver "Comanda do pedido" em `api/app/Support/Entregas/Painel/CLAUDE.md`).
+    Relida ao abrir, quando o pedido muda no Ao vivo (status, motoboy, aceite), depois de atribuir e a cada minuto (com
+    a aba à vista). Pedido encerrado, fora do Ao vivo, também abre (o alfinete vem da comanda).
+  - **Rota do motoboy no mapa** (`trechosDaRota` em `utils/pedido-aberto.js`, desenhada pelo `tela-pedidos/mapa/leaflet`
+    com contorno branco e o P na coleta): a linha pelas ruas é a do `RotaDoPedido` (OSRM coleta → cliente, a mesma do
+    app).
+    - A caminho do cliente: a linha é cortada no ponto mais perto do motoboy; o já feito sai em cinza e o que falta em
+      laranja.
+    - Indo à loja: motoboy → loja em linha reta tracejada (não há OSRM desse trecho) e loja → cliente em laranja.
+    - Sem motoboy: a rota prevista em cinza tracejado. Encerrado: a rota da entrega em cinza.
+    - Rota aproximada (o OSRM falhou): tracejada. Sem rota do servidor: linha reta.
+    - A legenda (`tela-pedidos/legenda-da-rota`) fica embaixo, ao lado do zoom. O enquadramento desconta a folha e
+      acontece uma vez por pedido (de novo quando chega a rota das ruas).
+  - **Contas puras:** `utils/pedido-aberto.js`. Teste: `scripts/teste-portal/pedido-aberto.test.mjs`.
+  - **Textos:** `fleet-ops.ui.tela-pedidos.pedido-aberto.*`. As chaves `voltar.*` e `situacao.*` são montadas no JS.
+  - **Para voltar ao painel do Fleetbase:** tire o redirecionamento do `beforeModel` de
+    `routes/operations/orders/index/details.js`.
 - **Para voltar à tela antiga:** reverta o `templates/operations/orders/index.hbs` (o controller e a rota só ganharam o
   `unassigned` e as ações novas).

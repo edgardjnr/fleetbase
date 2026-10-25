@@ -1,0 +1,20 @@
+{{! Entregas: o que cada linha da rota do pedido aberto quer dizer (utils/pedido-aberto, trechosDaRota). }}
+<div class="tp-legenda-rota" aria-label={{t "fleet-ops.ui.tela-pedidos.pedido-aberto.legenda.titulo"}}>
+    {{#if (eq @situacao "rota")}}
+        <span><i class="tp-traco tp-traco-feito"></i>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.legenda.feito"}}</span>
+        <span><i class="tp-traco tp-traco-falta"></i>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.legenda.falta"}}</span>
+    {{else if (eq @situacao "loja")}}
+        <span><i class="tp-traco tp-traco-falta tp-traco-tracejado"></i>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.legenda.ate-loja"}}</span>
+        <span><i class="tp-traco tp-traco-falta"></i>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.legenda.entrega"}}</span>
+    {{else if (eq @situacao "oferta")}}
+        <span><i class="tp-traco tp-traco-feito tp-traco-tracejado"></i>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.legenda.prevista"}}</span>
+    {{else}}
+        <span><i class="tp-traco tp-traco-feito"></i>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.legenda.feita"}}</span>
+    {{/if}}
+    {{#if @comanda.rota.metros}}
+        <span class="tp-legenda-km">{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.legenda.km" km=(this.km @comanda.rota.metros)}}</span>
+    {{/if}}
+    {{#if @comanda.rota.aproximado}}
+        <span class="tp-legenda-km">{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.legenda.aproximada"}}</span>
+    {{/if}}
+</div>

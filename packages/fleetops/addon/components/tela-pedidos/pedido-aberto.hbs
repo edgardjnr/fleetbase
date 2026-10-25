@@ -1,0 +1,210 @@
+{{! Entregas: folha do pedido aberto (comanda), no lugar do painel Pedidos do mapa; no celular, dentro da folha de baixo. }}
+<div class="tp-pa {{if @celular 'tp-pa-celular'}}">
+    <header class="tp-pa-cabeca">
+        {{#if @celular}}
+            <button type="button" class="tp-pa-voltar" {{on "click" (if @textoDoVoltar @aoVoltar @aoFechar)}}>
+                <FaIcon @icon="arrow-left" /> {{if @textoDoVoltar @textoDoVoltar (t "fleet-ops.ui.tela-pedidos.pedido-aberto.voltar.pedidos")}}
+            </button>
+        {{/if}}
+        <div class="tp-pa-topo">
+            <b class="tp-pa-numero">{{this.numero}}</b>
+            {{#if this.seloDaOrigem}}<span class="tp-selo {{this.seloDaOrigem.classe}}">{{this.seloDaOrigem.texto}}</span>{{/if}}
+            {{#if this.comanda.teste}}<span class="tp-selo tp-selo-teste">{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.teste"}}</span>{{/if}}
+            {{#if this.situacao}}<span class="tp-pa-situacao tp-pa-situacao-{{this.situacao}}">{{@pedido.textoDaSituacao}}</span>{{/if}}
+            {{#if @pedido.prazo}}<span class="tp-prazo tp-prazo-{{@pedido.prazo.estado}}"><FaIcon @icon="clock" /> {{@pedido.prazo.texto}}</span>{{/if}}
+            {{#unless @celular}}
+                <button type="button" class="tp-icone tp-fechar" aria-label={{t "fleet-ops.ui.tela-pedidos.detalhe.fechar"}} title={{t "fleet-ops.ui.tela-pedidos.detalhe.fechar"}} {{on "click" @aoFechar}}><FaIcon @icon="xmark" /></button>
+            {{/unless}}
+        </div>
+        <p class="tp-pa-para">
+            {{#if this.nomeDoCliente}}
+                {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.para"}} <b>{{this.nomeDoCliente}}</b>{{#if this.comanda.cliente.bairro}} · {{this.comanda.cliente.bairro}}{{/if}}
+            {{else if this.endereco}}
+                {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.cliente"}} · {{this.endereco}}
+            {{/if}}
+        </p>
+    </header>
+
+    <div class="tp-pa-corpo">
+        {{#if this.carregando}}
+            <div class="tp-pa-carregando"><Spinner /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.carregando"}}</div>
+        {{else if @falhou}}
+            <div class="tp-pa-aviso">
+                <FaIcon @icon="triangle-exclamation" /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.erro"}}
+                <button type="button" class="tp-botao tp-botao-contorno tp-pequeno" {{on "click" this.recarregar}}>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.tentar"}}</button>
+            </div>
+        {{/if}}
+
+        {{! motoboy, oferta ou o fim do pedido }}
+        {{#if (eq this.situacao "cancelado")}}
+            <section class="tp-pa-sec">
+                <div class="tp-pa-linha"><FaIcon @icon="ban" /><div><b>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.situacao.cancelado"}}</b></div></div>
+            </section>
+        {{else if (eq this.situacao "concluido")}}
+            <section class="tp-pa-sec tp-pa-sec-ok">
+                <div class="tp-pa-linha"><FaIcon @icon="flag-checkered" /><div><b>{{this.conclusao.titulo}}</b>{{#if this.conclusao.detalhe}}<small>{{this.conclusao.detalhe}}</small>{{/if}}</div></div>
+            </section>
+        {{else if this.ehOferta}}
+            <section class="tp-pa-oferta">
+                <div class="tp-pa-oferta-linha"><FaIcon @icon="tower-broadcast" /> <span>{{@pedido.textoDaOferta}}</span></div>
+                {{#if @ehAdmin}}
+                    <button type="button" class="tp-botao tp-botao-marca" aria-expanded={{if @pedido.aberto "true" "false"}} {{on "click" (fn @aoAlternarAtribuir @pedido.id)}}>
+                        <FaIcon @icon="user-plus" /> {{t "fleet-ops.ui.painel-inicial.atribuir.botao"}}
+                    </button>
+                {{/if}}
+            </section>
+        {{else if @pedido}}
+            <section class="tp-pa-sec">
+                <span class="tp-pa-rotulo"><FaIcon @icon="helmet-safety" /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.motoboy"}}</span>
+                <div class="tp-pa-motoboy">
+                    <img src={{if @pedido.motoboyDoPedido @pedido.motoboyDoPedido.capacete @pedido.capacete}} alt="" />
+                    <div>
+                        <b>{{if @pedido.motoboyDoPedido @pedido.motoboyDoPedido.nome @pedido.motoboy}}</b>
+                        <small>{{@pedido.textoDaSituacao}}{{#if @pedido.motoboyDoPedido}} · {{t "fleet-ops.ui.tela-pedidos.corridas-hoje" n=(or @pedido.motoboyDoPedido.corridas_hoje 0)}}{{/if}}</small>
+                    </div>
+                    {{#if @ehAdmin}}
+                        <button type="button" class="tp-botao tp-botao-contorno tp-pequeno" aria-expanded={{if @pedido.aberto "true" "false"}} {{on "click" (fn @aoAlternarAtribuir @pedido.id)}}>
+                            <FaIcon @icon="right-left" /> {{t "fleet-ops.ui.tela-pedidos.detalhe.trocar"}}
+                        </button>
+                    {{/if}}
+                </div>
+            </section>
+        {{/if}}
+
+        {{#if @pedido.aberto}}
+            <div class="tp-candidatos">
+                {{#each @pedido.candidatos key="id" as |motoboy|}}
+                    <div class="tp-candidato">
+                        <img src={{@capaceteLivre}} alt="" />
+                        <span><b>{{motoboy.nome}}</b><small>{{motoboy.kmTexto}} · {{motoboy.corridasTexto}}</small></span>
+                        <button type="button" class="tp-botao tp-botao-marca tp-pequeno" disabled={{@enviando}} {{on "click" (fn @aoEnviar @pedido.id motoboy.id)}}>{{t "fleet-ops.ui.painel-inicial.atribuir.enviar"}}</button>
+                    </div>
+                {{else}}
+                    <p class="tp-nota">{{t "fleet-ops.ui.painel-inicial.atribuir.ninguem-livre"}}</p>
+                {{/each}}
+                <p class="tp-nota"><FaIcon @icon="circle-info" /> {{if @pedido.ehOferta (t "fleet-ops.ui.painel-inicial.atribuir.nota") (t "fleet-ops.ui.tela-pedidos.detalhe.nota-troca")}}</p>
+            </div>
+        {{/if}}
+
+        {{! cobrança }}
+        {{#if this.cobranca}}
+            <section class="tp-pa-cobranca {{if this.cobranca.cobrar 'tp-pa-cobrar' 'tp-pa-pago'}}">
+                <FaIcon @icon={{if this.cobranca.cobrar "hand-holding-dollar" "circle-check"}} />
+                <span><b>{{this.cobranca.titulo}}</b>{{#if this.cobranca.detalhe}}<small>{{this.cobranca.detalhe}}</small>{{/if}}</span>
+                {{#if this.cobranca.valor}}<b>{{this.cobranca.valor}}</b>{{/if}}
+            </section>
+        {{/if}}
+
+        {{! cliente }}
+        {{#if this.endereco}}
+            <section class="tp-pa-sec">
+                <span class="tp-pa-rotulo"><FaIcon @icon="user" /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.cliente"}}{{#if this.nomeDoCliente}} · {{this.nomeDoCliente}}{{/if}}</span>
+                <div class="tp-pa-linha">
+                    <FaIcon @icon="location-dot" class="tp-cor-cliente" />
+                    <div>
+                        <b>{{this.endereco}}</b>
+                        {{#if this.bairro}}<small>{{this.bairro}}</small>{{/if}}
+                        {{#if this.comanda.cliente.complemento}}<small>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.complemento" texto=this.comanda.cliente.complemento}}</small>{{/if}}
+                        {{#if this.comanda.cliente.referencia}}<small><FaIcon @icon="signs-post" /> {{this.comanda.cliente.referencia}}</small>{{/if}}
+                    </div>
+                </div>
+                {{#if this.comanda.observacoes}}
+                    <div class="tp-pa-obs"><FaIcon @icon="message" /><span><b>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.observacao"}}</b> {{this.comanda.observacoes}}</span></div>
+                {{/if}}
+            </section>
+        {{/if}}
+
+        {{! produtos, como o cupom da comanda do motoboy }}
+        {{#if this.cupom}}
+            <section class="tp-pa-cupom">
+                <div class="tp-pa-cupom-cab"><FaIcon @icon="bag-shopping" /> <b>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.itens" n=this.cupom.total}}</b></div>
+                {{#each this.cupom.itens as |item|}}
+                    <div class="tp-pa-produto">
+                        <span class="tp-pa-q">{{item.quantidade}}×</span>
+                        <div>
+                            <b>{{item.nome}}</b>
+                            {{#if item.opcoes}}<small>{{item.opcoes}}</small>{{/if}}
+                            {{#if item.observacao}}<span class="tp-pa-obs-item">{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.obs-do-item" texto=item.observacao}}</span>{{/if}}
+                        </div>
+                    </div>
+                {{/each}}
+            </section>
+        {{/if}}
+
+        {{! loja da coleta }}
+        {{#if this.loja.nome}}
+            <section class="tp-pa-sec tp-pa-sec-borda">
+                <div class="tp-pa-linha">
+                    <FaIcon @icon="store" class="tp-cor-loja" />
+                    <div>
+                        <b>{{this.loja.nome}}</b>
+                        <small>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.coleta"}}{{#if this.loja.endereco}} · {{this.loja.endereco}}{{/if}}</small>
+                    </div>
+                    {{#if this.loja.telefone}}
+                        <a class="tp-icone" href="tel:{{this.loja.telefone}}" title={{this.loja.telefone}}><FaIcon @icon="phone" /></a>
+                    {{/if}}
+                </div>
+            </section>
+        {{/if}}
+
+        {{! Mais: linha do tempo, valores, painéis e as ações do Fleetbase }}
+        <section class="tp-pa-mais {{if this.mais 'tp-aberto'}}">
+            <button type="button" class="tp-pa-mais-botao" aria-expanded={{if this.mais "true" "false"}} {{on "click" this.alternarMais}}>
+                <FaIcon @icon="ellipsis" />
+                <span><b>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.mais.titulo"}}</b><small>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.mais.descricao"}}</small></span>
+                <FaIcon @icon={{if this.mais "chevron-up" "chevron-down"}} />
+            </button>
+            {{#if this.mais}}
+                <div class="tp-pa-mais-corpo">
+                    {{#if this.linhaDoTempo.length}}
+                        <div>
+                            <span class="tp-pa-rotulo"><FaIcon @icon="list-check" /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.mais.linha-do-tempo"}}</span>
+                            <ol class="tp-pa-tempo">
+                                {{#each this.linhaDoTempo as |item|}}
+                                    <li><span>{{tracking-status-text item.texto}}</span><time>{{item.hora}}</time></li>
+                                {{/each}}
+                            </ol>
+                        </div>
+                    {{/if}}
+
+                    {{#if (or this.kmDaRota this.valores)}}
+                        <div>
+                            <span class="tp-pa-rotulo"><FaIcon @icon="route" /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.mais.valores"}}</span>
+                            <dl class="tp-pa-valores">
+                                {{#if this.kmDaRota}}<dt>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.mais.rota"}}</dt><dd>{{this.kmDaRota}} km{{#if this.minutosDaRota}} · {{this.minutosDaRota}} min{{/if}}</dd>{{/if}}
+                                {{#if this.valores.motoboy}}<dt>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.mais.motoboy-recebe"}}</dt><dd>{{this.valores.motoboy}}</dd>{{/if}}
+                                {{#if this.valores.loja}}<dt>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.mais.loja-paga"}}</dt><dd>{{this.valores.loja}}</dd>{{/if}}
+                                {{#if this.valores.margem}}<dt>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.mais.margem"}}</dt><dd>{{this.valores.margem}}</dd>{{/if}}
+                                {{#if this.valores.multiplicador}}<dt>{{t "fleet-ops.ui.tela-pedidos.pedido-aberto.mais.multiplicador"}}</dt><dd>{{this.valores.multiplicador}}</dd>{{/if}}
+                            </dl>
+                        </div>
+                    {{/if}}
+
+                    {{#if this.carregarPedido.isRunning}}
+                        <div class="tp-pa-carregando"><Spinner /></div>
+                    {{else if this.pedidoDoFleetbase}}
+                        <div class="tp-pa-acoes">
+                            <button type="button" class="tp-botao tp-botao-contorno tp-pequeno" {{on "click" (fn this.acao "rota")}}><FaIcon @icon="route" /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.acoes.rota"}}</button>
+                            <button type="button" class="tp-botao tp-botao-contorno tp-pequeno" disabled={{eq this.situacao "cancelado"}} {{on "click" (fn this.acao "detalhes")}}><FaIcon @icon="pencil" /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.acoes.detalhes"}}</button>
+                            <button type="button" class="tp-botao tp-botao-contorno tp-pequeno" disabled={{eq this.situacao "cancelado"}} {{on "click" (fn this.acao "status")}}><FaIcon @icon="signal" /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.acoes.status"}}</button>
+                            {{#if this.podeDesatribuir}}
+                                <button type="button" class="tp-botao tp-botao-contorno tp-pequeno" {{on "click" (fn this.acao "desatribuir")}}><FaIcon @icon="user-xmark" /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.acoes.desatribuir"}}</button>
+                            {{/if}}
+                            <button type="button" class="tp-botao tp-botao-contorno tp-pequeno" {{on "click" (fn this.acao "etiqueta")}}><FaIcon @icon="file-invoice" /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.acoes.etiqueta"}}</button>
+                            <button type="button" class="tp-botao tp-botao-contorno tp-pequeno" {{on "click" (fn this.acao "metadados")}}><FaIcon @icon="table" /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.acoes.metadados"}}</button>
+                            {{#if this.podeCancelar}}
+                                <button type="button" class="tp-botao tp-botao-contorno tp-pequeno tp-perigo" {{on "click" (fn this.acao "cancelar")}}><FaIcon @icon="ban" /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.acoes.cancelar"}}</button>
+                            {{/if}}
+                            <button type="button" class="tp-botao tp-botao-contorno tp-pequeno tp-perigo" {{on "click" (fn this.acao "excluir")}}><FaIcon @icon="trash" /> {{t "fleet-ops.ui.tela-pedidos.pedido-aberto.acoes.excluir"}}</button>
+                        </div>
+                        <div class="tp-pa-paineis">
+                            <Order::Details::Ifood @resource={{this.pedidoDoFleetbase}} />
+                            <Order::Details::Integracao @resource={{this.pedidoDoFleetbase}} />
+                            <Order::Details::Distribuicao @resource={{this.pedidoDoFleetbase}} />
+                        </div>
+                    {{/if}}
+                </div>
+            {{/if}}
+        </section>
+    </div>
+</div>

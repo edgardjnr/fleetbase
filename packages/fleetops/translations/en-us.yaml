@@ -725,9 +725,66 @@ fleet-ops:
             hoje: today
           detalhe:
             fechar: Close
-            abrir: Open order
             trocar: Change driver
             nota-troca: The current driver is notified that they were removed from the order.
+          pedido-aberto:
+            titulo: Open order
+            ver-motoboys: Close the order and see the drivers
+            voltar:
+              tabela: Back to the Table
+              quadro: Back to the Board
+              inicio: Back to Home
+              pedidos: Orders
+            situacao:
+              concluido: Delivered
+              cancelado: Canceled
+            sistema: Store system
+            teste: Test
+            para: for
+            cliente: Customer
+            carregando: Loading the order…
+            erro: Could not load the order details.
+            tentar: Try again
+            entregue: 'Delivered by {motoboy} at {hora}'
+            entregue-minutos: '{minutos} min from order to delivery'
+            motoboy: Driver
+            cobrar: Collect at the door
+            pago: Paid online · nothing to collect
+            troco: 'change for {valor}'
+            complemento: 'Complement: {texto}'
+            observacao: 'Customer note:'
+            itens: '{n, plural, one {# item} other {# items}}'
+            obs-do-item: 'Note: {texto}'
+            coleta: Pickup
+            mais:
+              titulo: More
+              descricao: Timeline, amounts, actions and panels
+              linha-do-tempo: Timeline
+              valores: Route and amounts
+              rota: Route
+              motoboy-recebe: Driver earns
+              loja-paga: Store pays
+              margem: Dispatch margin
+              multiplicador: Multiplier
+            acoes:
+              rota: Edit route
+              detalhes: Edit details
+              status: Update status
+              desatribuir: Unassign driver
+              etiqueta: Label
+              metadados: Technical data
+              cancelar: Cancel order
+              excluir: Delete
+            legenda:
+              titulo: Driver route
+              feito: done
+              falta: remaining
+              ate-loja: to the store
+              entrega: store → customer
+              prevista: planned route (no driver)
+              feita: delivery route
+              km: '{km} km by road'
+              aproximada: straight line (no road route)
           folha:
             mexer: Raise or lower the list
             pedidos: '{n} orders'

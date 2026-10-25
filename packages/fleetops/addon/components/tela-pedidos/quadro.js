@@ -11,6 +11,8 @@ const P = 'fleet-ops.ui.tela-pedidos';
  * Clique no cartão abre o pedido; no sem motoboy, o admin atribui ali mesmo.
  */
 export default class TelaPedidosQuadroComponent extends TelaDePedidosBase {
+    origem = 'quadro';
+
     get colunas() {
         const c = colunasDoQuadro(this.aoVivo.pedidos, this.agora);
         const linha = (pedido) => this.linhaDoPedido(pedido);

@@ -725,9 +725,66 @@ fleet-ops:
         hoje: hoje
       detalhe:
         fechar: Fechar
-        abrir: Abrir pedido
         trocar: Trocar motoboy
         nota-troca: O motoboy atual recebe o aviso de que saiu do pedido.
+      pedido-aberto:
+        titulo: Pedido aberto
+        ver-motoboys: Fechar o pedido e ver os motoboys
+        voltar:
+          tabela: Voltar para a Tabela
+          quadro: Voltar para o Quadro
+          inicio: Voltar para o Início
+          pedidos: Pedidos
+        situacao:
+          concluido: Entregue
+          cancelado: Cancelado
+        sistema: Sistema da loja
+        teste: Teste
+        para: para
+        cliente: Cliente
+        carregando: Carregando o pedido…
+        erro: Não foi possível carregar os dados do pedido.
+        tentar: Tentar de novo
+        entregue: 'Entregue por {motoboy} às {hora}'
+        entregue-minutos: '{minutos} min do pedido à entrega'
+        motoboy: Motoboy
+        cobrar: Cobrar na porta
+        pago: Pago online · nada a cobrar
+        troco: 'troco p/ {valor}'
+        complemento: 'Complemento: {texto}'
+        observacao: 'Observação do cliente:'
+        itens: '{n, plural, one {# item} other {# itens}}'
+        obs-do-item: 'Obs.: {texto}'
+        coleta: Coleta
+        mais:
+          titulo: Mais
+          descricao: Linha do tempo, valores, ações e painéis
+          linha-do-tempo: Linha do tempo
+          valores: Rota e valores
+          rota: Rota
+          motoboy-recebe: Motoboy recebe
+          loja-paga: Loja paga
+          margem: Margem da central
+          multiplicador: Multiplicador
+        acoes:
+          rota: Editar rota
+          detalhes: Editar detalhes
+          status: Atualizar status
+          desatribuir: Tirar o motoboy
+          etiqueta: Etiqueta
+          metadados: Dados técnicos
+          cancelar: Cancelar pedido
+          excluir: Excluir
+        legenda:
+          titulo: Rota do motoboy
+          feito: já feito
+          falta: falta
+          ate-loja: até a loja
+          entrega: loja → cliente
+          prevista: rota prevista (sem motoboy)
+          feita: rota da entrega
+          km: '{km} km pelas ruas'
+          aproximada: linha reta (sem a rota das ruas)
       folha:
         mexer: Subir ou descer a lista
         pedidos: '{n} pedidos'

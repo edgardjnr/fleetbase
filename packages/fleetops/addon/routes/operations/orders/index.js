@@ -34,7 +34,10 @@ export default class OperationsOrdersIndexRoute extends Route {
     };
 
     model(params) {
-        return this.store.query('order', params);
+        // Entregas: o pedido aberto no mapa e a origem do "Voltar" ficam só na URL, fora da consulta da lista
+        // eslint-disable-next-line no-unused-vars
+        const { pedido, de, ...consulta } = params;
+        return this.store.query('order', consulta);
     }
 
     // Entregas: (re)liga o tempo real da empresa sempre que a lista é aberta (no-op se já estiver ligado)

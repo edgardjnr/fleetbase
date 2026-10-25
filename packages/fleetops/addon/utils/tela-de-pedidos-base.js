@@ -10,7 +10,8 @@ import { segundosRestantes } from './distribuicao';
 import { situacaoDoPedido, motoboysParaAtribuir } from './painel-inicial';
 import { progressoDoPrazo } from './tela-de-pedidos';
 
-const ROTA_DO_PEDIDO = 'console.fleet-ops.operations.orders.index.details';
+// Entregas: o pedido abre no mapa com a folha da comanda (sketch 008 A); `origem` é para onde volta o "Voltar"
+const ROTA_DOS_PEDIDOS = 'console.fleet-ops.operations.orders.index';
 // textos de fila, oferta e atribuir: os mesmos do painel inicial
 const PI = 'fleet-ops.ui.painel-inicial';
 
@@ -99,8 +100,11 @@ export default class TelaDePedidosBase extends Component {
             }));
     }
 
+    /** Para onde volta o "Voltar" do pedido aberto (o Quadro diz 'quadro'; o Mapa abre no próprio lugar). */
+    origem = null;
+
     @action abrirPedido(id) {
-        this.hostRouter.transitionTo(ROTA_DO_PEDIDO, id);
+        this.hostRouter.transitionTo(ROTA_DOS_PEDIDOS, { queryParams: { layout: 'map', pedido: id, de: this.origem } });
     }
 
     /** Cliques dentro da lista de candidatos não abrem o pedido (o cartão do Quadro é clicável). */

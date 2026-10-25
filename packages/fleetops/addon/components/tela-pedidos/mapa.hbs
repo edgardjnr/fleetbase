@@ -1,4 +1,10 @@
-<div class="tela-pedidos tp-mapa-tela {{if this.celular 'tp-celular'}} {{if this.painelMotoboys 'tp-com-motoboys'}} {{if this.painelPedidos 'tp-com-pedidos'}}" ...attributes>
+<div
+    class="tela-pedidos tp-mapa-tela {{if this.celular 'tp-celular'}} {{if this.painelMotoboys 'tp-com-motoboys'}} {{if this.painelPedidos 'tp-com-pedidos'}} {{if this.selecionado 'tp-com-pedido-aberto'}}"
+    {{did-insert this.aoMudarPedidoEAtribuir}}
+    {{did-update this.aoMudarPedidoEAtribuir @pedido}}
+    {{did-update this.recarregarComanda this.versaoDoPedidoAberto}}
+    ...attributes
+>
     <TelaPedidos::Mapa::Leaflet
         class="tp-mapa"
         @motoboys={{this.motoboysDoMapa}}
@@ -6,11 +12,13 @@
         @lojas={{this.lojas}}
         @margens={{this.margens}}
         @selecionado={{this.selecionado}}
+        @rotaDoPedido={{this.rotaDoPedidoAberto}}
         @agora={{this.agora}}
         @aoEscolherPedido={{this.escolherPedido}}
         @aoEscolherMotoboy={{this.escolherMotoboy}}
     />
 
+    {{#unless this.selecionado}}
     <div class="tp-contagens">
         {{#each this.chips as |chip|}}
             <button type="button" class="tp-chip {{if chip.ativo 'tp-ativo'}} {{if chip.alerta 'tp-alerta'}}" aria-pressed={{if chip.ativo "true" "false"}} {{on "click" (fn this.escolherFiltro chip.chave)}}>
@@ -22,6 +30,11 @@
             <img src={{this.capaceteLivre}} alt="" /><b>{{this.online.livres}}</b><span>{{this.textoDosLivres}}</span>
         </button>
     </div>
+    {{/unless}}
+
+    {{#if this.rotaDoPedidoAberto.trechos.length}}
+        <TelaPedidos::LegendaDaRota @situacao={{this.rotaDoPedidoAberto.situacao}} @comanda={{this.comandaDoPedido}} />
+    {{/if}}
 
     {{#if this.celular}}
         <section class="tp-folha tp-folha-{{this.folha}}">
@@ -32,9 +45,24 @@
                     {{#if this.contagem.oferta}}<span class="tp-texto-oferta"><FaIcon @icon="tower-broadcast" /> {{t "fleet-ops.ui.tela-pedidos.folha.sem-motoboy" n=this.contagem.oferta}}</span>{{/if}}
                 </span>
             </button>
-            {{#if this.pedidoSelecionado}}
+            {{#if this.selecionado}}
                 <div class="tp-rolagem">
-                    <TelaPedidos::Detalhe @pedido={{this.pedidoSelecionado}} @ehAdmin={{this.ehAdmin}} @capaceteLivre={{this.capaceteLivre}} @enviando={{this.aoVivo.enviando}} @aoFechar={{this.fecharDetalhe}} @aoAbrir={{this.abrirPedido}} @aoAlternarAtribuir={{this.alternarAtribuir}} @aoEnviar={{this.enviar}} />
+                    <TelaPedidos::PedidoAberto
+                        @id={{this.selecionado}}
+                        @pedido={{this.pedidoSelecionado}}
+                        @comanda={{this.comandaDoPedido}}
+                        @falhou={{this.comandaFalhou}}
+                        @ehAdmin={{this.ehAdmin}}
+                        @capaceteLivre={{this.capaceteLivre}}
+                        @enviando={{this.aoVivo.enviando}}
+                        @textoDoVoltar={{this.textoDoVoltar}}
+                        @celular={{true}}
+                        @aoVoltar={{this.voltar}}
+                        @aoFechar={{this.fecharDetalhe}}
+                        @aoAlternarAtribuir={{this.alternarAtribuir}}
+                        @aoEnviar={{this.enviarERecarregar}}
+                        @aoRecarregar={{this.recarregarComanda}}
+                    />
                 </div>
             {{else}}
                 <div class="tp-seg tp-seg-cheio">
@@ -68,7 +96,16 @@
             {{/if}}
         </section>
     {{else}}
-        {{#if this.painelMotoboys}}
+        {{#if this.selecionado}}
+            <div class="tp-pilulas-do-pedido">
+                {{#if this.textoDoVoltar}}
+                    <button type="button" class="tp-pilula tp-pilula-voltar" {{on "click" this.voltar}}><FaIcon @icon="arrow-left" /> {{this.textoDoVoltar}}</button>
+                {{/if}}
+                <button type="button" class="tp-pilula" title={{t "fleet-ops.ui.tela-pedidos.pedido-aberto.ver-motoboys"}} {{on "click" this.fecharDetalhe}}>
+                    <img src={{this.capaceteLivre}} alt="" />{{t "fleet-ops.ui.tela-pedidos.motoboys.titulo"}} <b>{{this.online.livres}}/{{this.online.online}}</b>
+                </button>
+            </div>
+        {{else if this.painelMotoboys}}
             <section class="tp-painel tp-painel-motoboys" aria-label={{t "fleet-ops.ui.tela-pedidos.motoboys.titulo"}}>
                 <div class="tp-painel-cabecalho">
                     <h3>{{t "fleet-ops.ui.tela-pedidos.motoboys.titulo"}}</h3>
@@ -98,7 +135,23 @@
             </button>
         {{/if}}
 
-        {{#if this.painelPedidos}}
+        {{#if this.selecionado}}
+            <section class="tp-painel tp-folha-do-pedido" aria-label={{t "fleet-ops.ui.tela-pedidos.pedido-aberto.titulo"}}>
+                <TelaPedidos::PedidoAberto
+                    @id={{this.selecionado}}
+                    @pedido={{this.pedidoSelecionado}}
+                    @comanda={{this.comandaDoPedido}}
+                    @falhou={{this.comandaFalhou}}
+                    @ehAdmin={{this.ehAdmin}}
+                    @capaceteLivre={{this.capaceteLivre}}
+                    @enviando={{this.aoVivo.enviando}}
+                    @aoFechar={{this.fecharDetalhe}}
+                    @aoAlternarAtribuir={{this.alternarAtribuir}}
+                    @aoEnviar={{this.enviarERecarregar}}
+                    @aoRecarregar={{this.recarregarComanda}}
+                />
+            </section>
+        {{else if this.painelPedidos}}
             <section class="tp-painel tp-painel-pedidos" aria-label={{t "fleet-ops.ui.tela-pedidos.pedidos.titulo"}}>
                 <div class="tp-painel-cabecalho">
                     <h3>{{t "fleet-ops.ui.tela-pedidos.pedidos.titulo"}}</h3>
@@ -126,10 +179,5 @@
             </button>
         {{/if}}
 
-        {{#if this.pedidoSelecionado}}
-            <section class="tp-detalhe">
-                <TelaPedidos::Detalhe @pedido={{this.pedidoSelecionado}} @ehAdmin={{this.ehAdmin}} @capaceteLivre={{this.capaceteLivre}} @enviando={{this.aoVivo.enviando}} @aoFechar={{this.fecharDetalhe}} @aoAbrir={{this.abrirPedido}} @aoAlternarAtribuir={{this.alternarAtribuir}} @aoEnviar={{this.enviar}} />
-            </section>
-        {{/if}}
     {{/if}}
 </div>

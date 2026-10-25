@@ -1,4 +1,4 @@
-<div class="tp-mapa-leaflet {{@class}}" ...attributes {{did-update this.enquadrar @motoboys @pedidos}} {{did-update this.focar @selecionado}}>
+<div class="tp-mapa-leaflet {{@class}}" ...attributes {{did-update this.enquadrar @motoboys @pedidos}} {{did-update this.focar @selecionado @rotaDoPedido}}>
     <LeafletMap
         class="w-full h-full"
         @lat={{this.centro.lat}}
@@ -12,6 +12,17 @@
 
         {{#if this.rota}}
             <layers.polyline @locations={{this.rota.pontos}} @color={{this.rota.cor}} @weight={{5}} @opacity={{0.9}} @dashArray="10 8" />
+        {{/if}}
+
+        {{! Entregas: rota do motoboy do pedido aberto (contorno branco por baixo, depois a linha do trecho) }}
+        {{#each this.trechos as |trecho|}}
+            <layers.polyline @locations={{trecho.pontos}} @color={{this.contorno}} @weight={{trecho.contorno}} @opacity={{0.85}} @interactive={{false}} />
+        {{/each}}
+        {{#each this.trechos as |trecho|}}
+            <layers.polyline @locations={{trecho.pontos}} @color={{trecho.cor}} @weight={{trecho.largura}} @opacity={{0.95}} @dashArray={{trecho.tracejado}} @interactive={{false}} />
+        {{/each}}
+        {{#if this.coletaDoPedido}}
+            <layers.marker @lat={{this.coletaDoPedido.latitude}} @lng={{this.coletaDoPedido.longitude}} @zIndexOffset={{2500}} @icon={{div-icon html="<span>P</span>" className="tp-marcador-coleta" iconSize=(array 30 30) iconAnchor=(array 15 30)}} />
         {{/if}}
 
         {{#each @lojas key="id" as |loja|}}

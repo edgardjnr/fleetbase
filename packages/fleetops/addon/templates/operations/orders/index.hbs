@@ -3,7 +3,8 @@
 <TelaPedidos::Barra @layout={{this.layout}} @total={{@model.meta.total}} @aoTrocar={{this.changeLayout}} @aoNovo={{this.novoPedido}} />
 
 {{#if (eq this.layout "map")}}
-    <TelaPedidos::Mapa />
+    {{! Entregas: o pedido aberto (folha da comanda, sketch 008 A) fica na URL: ?pedido=<public_id>&de=tabela|quadro|inicio }}
+    <TelaPedidos::Mapa @pedido={{this.pedido}} @de={{this.de}} @aoAbrirPedido={{this.abrirPedido}} @aoVoltar={{this.voltarDoPedido}} />
 {{/if}}
 
 {{#if (eq this.layout "table")}}
