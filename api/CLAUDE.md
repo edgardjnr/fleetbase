@@ -70,6 +70,15 @@ Decisão de 2026-10-20 (spec `docs/superpowers/specs/2026-10-20-cronometro-do-pr
 - **Agendados desligados:** `fleetops:sync-telematics` (a cada minuto; o Entregas não tem rastreador veicular) e `sandbox:sync` (de hora em hora; sem modo de teste) saem da agenda no `Kernel::bootstrap()`, pelo `App\Support\Entregas\AgendadosDesligados`. Não dá para fazer no `schedule()`: os pacotes agendam no `booted()` deles, depois dele. Sem o `sandbox:sync`, empresa ou usuário novo não vai ao banco de teste (criar chave de API em modo de teste para eles pode falhar).
   - **Ao atualizar o core-api ou o fleetops-api,** confira os nomes dos comandos (`scheduleCommands` dos providers; teste `scripts/teste-php/agendados-desligados.php`).
 
+## Imagens padrão sem o bucket do Fleetbase (2026-10-25)
+
+- O core-api e o Fleet-Ops usam imagens do bucket S3 do Fleetbase (`flb-assets`) quando falta foto: avatar sem foto, ícone de motoboy, de local e de veículo, placeholders. Com isso, todo navegador e todo celular baixava as imagens de lá, e o Fleetbase via o IP de quem usa e o domínio do sistema.
+- As cópias ficam em `console/public/images/entregas/padrao/<caminho no bucket>` (fora do fingerprint). Lista em `App\Support\Entregas\ImagensPadrao::ARQUIVOS`; só esses caminhos são trocados.
+- **API:** o middleware global `TrocarImagensDoFleetbase` troca as URLs nas respostas JSON (o que vem dos acessores sem valor gravado). O `AppServiceProvider::imagensPadraoLocais` corrige o `avatar_url` ao salvar motoboy, local e veículo, porque os eventos do socket não passam pelo middleware. A migration `2026_10_25_130000_imagens_padrao_locais` corrigiu os gravados (9 motoboys e 2 locais). Teste: `scripts/teste-php/imagens-padrao.php`.
+- **Console:** os padrões do `console/config/environment.js` e do `packages/fleetops/config/environment.js` e os fallbacks fixos (ember-ui `header.hbs` e `avatar-url`, fleetops-data `contact` e `entity`, portal `gaveta.hbs` e `portal.hbs`) apontam para `/images/entregas/padrao/`.
+- Ficaram no bucket só os modelos de planilha de importação (`import-templates/`), que abrem por clique e estão com o Importar oculto.
+- **Ao atualizar o core-api ou o fleetops-api,** procure `flb-assets` e `amazonaws.com` nos modelos: imagem padrão nova precisa de cópia local e de entrar em `ARQUIVOS`.
+
 ## Armadilhas do Fleetbase
 
 Achadas no portal da loja; valem para todo o código da `api/app`.
