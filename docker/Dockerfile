@@ -20,12 +20,10 @@ RUN install-php-extensions \
   gmp \
   apcu \
   opcache \
-  memcached \
   imagick \
   # geos \
   sockets \
   pcntl \
-  xdebug \
   @composer
 
 # Install build dependencies for GEOS
@@ -60,9 +58,6 @@ RUN sed -e 's/^expose_php.*/expose_php = Off/' "$PHP_INI_DIR/php.ini-production"
 
 # Install global node modules
 RUN npm install -g chokidar pnpm ember-cli npm-cli-login
-
-# Install ssm-parent
-COPY --from=ghcr.io/springload/ssm-parent:1.8 /usr/bin/ssm-parent /sbin/ssm-parent
 
 # Create the pnpm directory and set the PNPM_HOME environment variable
 RUN mkdir -p ~/.pnpm
@@ -149,16 +144,6 @@ FROM base AS scheduler-dev
 ENTRYPOINT []
 CMD ["go-crond", "--verbose", "root:./crontab"]
 
-# Scheduler stage
-FROM base AS scheduler
-ENTRYPOINT ["/sbin/ssm-parent", "-c", ".ssm-parent.yaml", "run", "--"]
-CMD ["go-crond", "--verbose", "root:./crontab"]
-
-# Events stage
-FROM base AS events
-ENTRYPOINT ["/sbin/ssm-parent", "-c", ".ssm-parent.yaml", "run", "--", "docker-php-entrypoint"]
-CMD ["php", "artisan", "queue:work"]
-
 # Events stage
 FROM base AS events-dev
 ENTRYPOINT []
@@ -172,9 +157,4 @@ CMD ["sh", "-c", "php artisan octane:frankenphp --max-requests=1000 --port=8000 
 # Application release stage
 FROM base AS app-release
 ENTRYPOINT ["docker-php-entrypoint"]
-CMD ["sh", "-c", "php artisan octane:frankenphp --max-requests=1000 --port=8000 --host=0.0.0.0"] 
-
-# Application stage
-FROM base AS app
-ENTRYPOINT ["/sbin/ssm-parent", "-c", ".ssm-parent.yaml", "run", "--", "docker-php-entrypoint"]
 CMD ["sh", "-c", "php artisan octane:frankenphp --max-requests=1000 --port=8000 --host=0.0.0.0"]
