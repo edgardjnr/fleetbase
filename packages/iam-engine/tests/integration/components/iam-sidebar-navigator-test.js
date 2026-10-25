@@ -53,7 +53,7 @@ module('Integration | Component | iam-sidebar-navigator', function (hooks) {
         assert.dom('.next-sidebar-navigator-back').hasText('User');
         assert.dom('.next-sidebar-navigator').includesText('All Users');
         assert.dom('.next-sidebar-navigator').includesText('Drivers');
-        assert.dom('.next-sidebar-navigator').includesText('Customers');
+        assert.dom('.next-sidebar-navigator').doesNotIncludeText('Customers', 'Entregas: sem a aba Clientes');
 
         await fillIn('.next-sidebar-navigator-search input', 'driver');
         await waitFor('.next-sidebar-navigator-search-result');

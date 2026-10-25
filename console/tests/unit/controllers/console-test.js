@@ -104,6 +104,18 @@ module('Unit | Controller | console', function (hooks) {
             configurable: true,
             value: (key) => this.whoisData[key],
         });
+
+        // Entregas: criar ou entrar em organização é só do administrador do sistema
+        this.controller.currentUser.userSnapshot = { is_admin: true };
+    });
+
+    test('createOrJoinOrg does nothing for a user who is not the system admin', function (assert) {
+        this.controller.currentUser.userSnapshot = { is_admin: false };
+        const shownBefore = this.modals.shown.length;
+
+        this.controller.createOrJoinOrg();
+
+        assert.strictEqual(this.modals.shown.length, shownBefore, 'no modal opens');
     });
 
     test('currentRouteClass dasherizes the current route name', function (assert) {
@@ -297,6 +309,7 @@ module('Unit | Controller | console | reload timers and defaults', function (hoo
 
         this.build = () => {
             const controller = this.owner.lookup('controller:console');
+            controller.currentUser.userSnapshot = { is_admin: true };
             this.reloads = 0;
             window.location.reload = () => this.reloads++;
             return controller;

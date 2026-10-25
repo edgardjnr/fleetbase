@@ -153,7 +153,7 @@ module('Unit | Controller | console/admin/organizations/details', function (hook
     test('the core tabs are always present and ordered by priority', function (assert) {
         const labels = this.controller.tabs.map((t) => t.label);
 
-        assert.deepEqual(labels, ['Overview', 'Users', 'Extensions', 'Activity', 'Settings']);
+        assert.deepEqual(labels, ['Overview', 'Users', 'Activity', 'Settings']);
     });
 
     test('registered tabs are merged in, filtered and sorted', function (assert) {

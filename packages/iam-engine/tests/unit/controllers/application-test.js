@@ -61,18 +61,18 @@ module('Unit | Controller | application', function (hooks) {
 
         assert.deepEqual(
             items.map((item) => item.route),
-            ['console.iam.home', 'console.iam.users', 'console.iam.groups', 'console.iam.roles', 'console.iam.policies'],
+            ['console.iam.home', 'console.iam.users', 'console.iam.roles', 'console.iam.policies'],
             'root items keep the console host route names'
         );
         assert.deepEqual(
             users.children.map((item) => item.route),
-            ['console.iam.users.index', 'console.iam.users.drivers', 'console.iam.users.customers'],
+            ['console.iam.users.index', 'console.iam.users.drivers'],
             'users item exposes child routes for nested navigator testing'
         );
         assert.deepEqual(
             users.children.map((item) => item.label),
-            ['Users', 'Drivers', 'Customers'],
-            'users item labels distinguish actual users from drivers and customers'
+            ['Users', 'Drivers'],
+            'users item labels distinguish actual users from drivers (no customers tab in Entregas)'
         );
         assert.true(items[0].tooltip, 'dashboard opts into description-backed tooltip behavior');
         assert.strictEqual(users.permission, 'iam list user', 'users item keeps list permission filtering');
@@ -81,12 +81,12 @@ module('Unit | Controller | application', function (hooks) {
 
     test('it marks IAM navigator items hidden when see permissions are denied', function (assert) {
         const abilities = this.owner.lookup('service:abilities');
-        abilities.denied.add('iam see group');
+        abilities.denied.add('iam see role');
 
         const controller = this.owner.lookup('controller:application');
-        const groups = controller.navigationItems.find((item) => item.route === 'console.iam.groups');
+        const roles = controller.navigationItems.find((item) => item.route === 'console.iam.roles');
 
-        assert.false(groups.visible);
+        assert.false(roles.visible);
     });
 
     test('it fetches IAM entity search results for the sidebar navigator', async function (assert) {
