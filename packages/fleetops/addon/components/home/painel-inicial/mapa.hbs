@@ -1,0 +1,45 @@
+<div class="pi-mapa {{@class}}" {{did-update this.enquadrar @motoboys @pedidos}}>
+    <LeafletMap
+        class="w-full h-full"
+        @lat={{this.centro.lat}}
+        @lng={{this.centro.lng}}
+        @zoom={{12}}
+        @zoomControl={{true}}
+        @scrollWheelZoom={{false}}
+        @onLoad={{this.aoCarregar}}
+        as |layers|
+    >
+        <layers.tile @url={{this.tileUrl}} />
+
+        {{#each @lojas key="id" as |loja|}}
+            <layers.marker
+                @location={{point-to-coordinates loja.location}}
+                @icon={{icon iconUrl=this.loja.url iconSize=this.loja.tamanho iconAnchor=this.loja.ponta}}
+                as |marker|
+            >
+                <marker.tooltip @permanent={{true}} @direction="bottom" @className="pi-rotulo pi-rotulo-loja">{{loja.name}}</marker.tooltip>
+            </layers.marker>
+        {{/each}}
+
+        {{#each this.pedidos key="id" as |pedido|}}
+            <layers.marker
+                @lat={{pedido.latitude}}
+                @lng={{pedido.longitude}}
+                @icon={{icon iconUrl=this.alfinete.url iconSize=this.alfinete.tamanho iconAnchor=this.alfinete.ponta}}
+                @onClick={{fn this.abrir pedido.id}}
+            />
+        {{/each}}
+
+        {{#each this.motoboys key="id" as |motoboy|}}
+            <layers.marker
+                @lat={{motoboy.latitude}}
+                @lng={{motoboy.longitude}}
+                @zIndexOffset={{1000}}
+                @icon={{icon iconUrl=motoboy.capacete iconSize=(array 32 32) tooltipAnchor=(array 0 12)}}
+                as |marker|
+            >
+                <marker.tooltip @permanent={{true}} @direction="bottom" @className="pi-rotulo">{{motoboy.nome}}</marker.tooltip>
+            </layers.marker>
+        {{/each}}
+    </LeafletMap>
+</div>
