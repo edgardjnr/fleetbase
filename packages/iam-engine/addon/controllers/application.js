@@ -44,26 +44,10 @@ export default class ApplicationController extends Controller {
                         visible: this.can('iam see user'),
                         keywords: ['fleet operators'],
                     },
-                    {
-                        label: this.intl.t('iam.ui.nav.customers'),
-                        description: this.intl.t('iam.ui.nav.customers-description'),
-                        icon: 'users',
-                        route: 'console.iam.users.customers',
-                        permission: 'iam list user',
-                        visible: this.can('iam see user'),
-                        keywords: ['clients'],
-                    },
+                    // Entregas RestaurantePro: sem "Clientes" (o login da loja nasce na tela Lojas do Fleet-Ops)
                 ],
             },
-            {
-                label: this.intl.t('iam.common.group'),
-                description: this.intl.t('iam.ui.nav.groups-description'),
-                icon: 'building',
-                route: 'console.iam.groups',
-                permission: 'iam list group',
-                visible: this.can('iam see group'),
-                keywords: ['teams', 'memberships'],
-            },
+            // Entregas RestaurantePro: sem Grupos
             {
                 label: this.intl.t('iam.common.roles'),
                 description: this.intl.t('iam.ui.nav.roles-description'),
@@ -107,7 +91,8 @@ export default class ApplicationController extends Controller {
                 limit,
             });
 
-            return response.results ?? [];
+            // Entregas RestaurantePro: a rota de Grupos saiu, então resultado que leva a ela não aparece
+            return (response.results ?? []).filter((result) => !String(result?.route ?? '').startsWith('console.iam.groups'));
         } catch (_) {
             return [];
         }

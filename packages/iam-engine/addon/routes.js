@@ -7,7 +7,7 @@ export default buildRoutes(function () {
         this.route('drivers');
         this.route('customers');
     });
-    this.route('groups', function () {});
+    // Entregas RestaurantePro: sem Grupos (as telas ficam no código, sem rota)
     this.route('roles', function () {});
     this.route('policies', function () {});
 });
