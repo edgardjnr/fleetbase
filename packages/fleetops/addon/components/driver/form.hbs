@@ -103,38 +103,7 @@
                 />
             </InputGroup>
 
-            <InputGroup @name={{t "driver.fields.vendor"}}>
-                <ModelSelect
-                    @modelName="vendor"
-                    @selectedModel={{@resource.vendor}}
-                    @placeholder={{t "driver.fields.select-vendor"}}
-                    @triggerClass="form-select form-input"
-                    @infiniteScroll={{false}}
-                    @renderInPlace={{true}}
-                    @onChange={{fn (mut @resource.vendor)}}
-                    @disabled={{cannot-write @resource}}
-                    as |model|
-                >
-                    {{model.name}}
-                </ModelSelect>
-            </InputGroup>
-
-            <InputGroup @name={{t "resource.vehicle"}}>
-                <ModelSelect
-                    @modelName="vehicle"
-                    @selectedModel={{@resource.vehicle}}
-                    @placeholder={{t "driver.fields.select-vehicle"}}
-                    @triggerClass="form-select form-input"
-                    @infiniteScroll={{false}}
-                    @renderInPlace={{true}}
-                    @onChange={{fn (mut @resource.vehicle)}}
-                    @onChangeId={{fn (mut @resource.vehicle_uuid)}}
-                    @disabled={{cannot-write @resource}}
-                    as |model|
-                >
-                    {{model.display_name}}
-                </ModelSelect>
-            </InputGroup>
+            {{!-- Entregas: sem os campos Fornecedor e Veículo (telas ocultas; o motoboy não tem veículo nem fornecedor) --}}
 
             <InputGroup @name={{t "common.city"}}>
                 <Input @value={{@resource.city}} @type="text" class="w-full form-input" placeholder={{t "common.city"}} disabled={{cannot-write @resource}} />
@@ -176,47 +145,7 @@
         </RegistryYield>
     </ContentPanel>
 
-    {{! ORCHESTRATOR CONSTRAINTS }}
-    <ContentPanel @title={{t "fleet-ops.ui.driver.form.orchestrator-constraints"}} @open={{true}} @wrapperClass="bordered-top">
-        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-2 no-input-group-padding text-xs">
-            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-1">
-                {{t "fleet-ops.ui.driver.form.skills-certifications"}}
-            </div>
-            <div class="col-span-1 lg:col-span-2">
-                <InputGroup @name={{t "fleet-ops.ui.driver.form.driver-skills"}} @helpText={{t "fleet-ops.ui.driver.form.skills-and-certifications-this-driver-holds"}}>
-                    <MultiSelect
-                        @options={{get-fleet-ops-options "driverSkills"}}
-                        @selected={{@resource.skills}}
-                        @onChange={{fn (mut @resource.skills)}}
-                        @placeholder={{t "fleet-ops.ui.driver.form.select-skills"}}
-                        @triggerClass="form-select form-input"
-                        @disabled={{cannot-write @resource}}
-                        as |option|
-                    >
-                        {{option.label}}
-                    </MultiSelect>
-                </InputGroup>
-            </div>
-            <div class="col-span-1 lg:col-span-2 text-[11px] uppercase tracking-wide text-gray-500 font-semibold mt-3">
-                {{t "fleet-ops.ui.driver.form.route-limits"}}
-            </div>
-            <div class="col-span-1 lg:col-span-2 text-xs text-gray-500 dark:text-gray-400 -mt-1">
-                {{t "fleet-ops.ui.driver.form.hard-caps-applied-by-the-orchestrator"}}
-            </div>
-            <InputGroup
-                @name={{t "fleet-ops.ui.driver.form.max-driving-time-seconds"}}
-                @helpText={{t "fleet-ops.ui.driver.form.maximum-total-driving-time-in-seconds"}}
-            >
-                <Input @value={{@resource.max_travel_time}} @type="number" class="form-input w-full" placeholder="e.g. 28800 (8 h)" disabled={{cannot-write @resource}} />
-            </InputGroup>
-            <InputGroup
-                @name={{t "fleet-ops.ui.driver.form.max-distance-metres"}}
-                @helpText={{t "fleet-ops.ui.driver.form.maximum-total-route-distance-in-metres"}}
-            >
-                <Input @value={{@resource.max_distance}} @type="number" class="form-input w-full" placeholder={{t "fleet-ops.ui.driver.form.e-g-150000-150-km"}} disabled={{cannot-write @resource}} />
-            </InputGroup>
-        </div>
-    </ContentPanel>
+    {{!-- Entregas: sem o painel "Restrições do orquestrador" (habilidades e limites de rota; orquestrador oculto) --}}
 
     <CustomField::Yield @subject={{@resource}} @wrapperClass="bordered-top" />
 

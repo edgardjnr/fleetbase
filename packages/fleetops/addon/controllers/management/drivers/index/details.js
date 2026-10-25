@@ -21,10 +21,7 @@ export default class ManagementDriverIndexDetailsController extends Controller {
                 route: 'management.drivers.index.details.positions',
                 label: this.intl.t('common.positions'),
             },
-            {
-                route: 'management.drivers.index.details.schedule',
-                label: this.intl.t('common.schedule'),
-            },
+            // Entregas: sem a aba Agenda (rota oculta em utils/entregas-hidden-routes)
             {
                 route: 'management.drivers.index.details.activity',
                 label: this.intl.t('common.activity'),
@@ -65,25 +62,7 @@ export default class ManagementDriverIndexDetailsController extends Controller {
                               },
                           ]
                         : []),
-                    {
-                        separator: true,
-                    },
-                    {
-                        text: this.intl.t('driver.actions.assign-vehicle'),
-                        icon: 'car',
-                        fn: () => this.driverActions.assignVehicle(this.model),
-                        permission: 'fleet-ops assign-vehicle-for driver',
-                    },
-                    ...(this.hasAssignedVehicle(this.model)
-                        ? [
-                              {
-                                  text: this.intl.t('driver.actions.unassign-vehicle'),
-                                  icon: 'link-slash',
-                                  fn: () => this.driverActions.unassignVehicle(this.model),
-                                  permission: 'fleet-ops assign-vehicle-for driver',
-                              },
-                          ]
-                        : []),
+                    // Entregas: sem Atribuir/Desatribuir veículo e Criar ocorrência (telas ocultas)
                     {
                         separator: true,
                     },
@@ -92,12 +71,6 @@ export default class ManagementDriverIndexDetailsController extends Controller {
                         icon: 'location-dot',
                         fn: () => this.driverActions.locate(this.model),
                         permission: 'fleet-ops view driver',
-                    },
-                    {
-                        text: this.intl.t('driver.actions.create-issue'),
-                        icon: 'triangle-exclamation',
-                        fn: () => this.createIssue(this.model),
-                        permission: 'fleet-ops create issue',
                     },
                 ],
             },

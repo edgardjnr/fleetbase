@@ -1,7 +1,7 @@
 import Controller from '@ember/controller';
 import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
-import { action, get } from '@ember/object';
+import { action } from '@ember/object';
 
 export default class ManagementDriversIndexController extends Controller {
     @service driverActions;
@@ -176,50 +176,7 @@ export default class ManagementDriversIndexController extends Controller {
                 filterable: true,
                 filterComponent: 'filter/string',
             },
-            {
-                label: this.intl.t('column.vehicle'),
-                cellComponent: 'cell/vehicle-identity',
-                compact: true,
-                permission: 'fleet-ops view vehicle',
-                action: async (vehicle) => {
-                    try {
-                        const resolvedVehicle = await this.resolveAssignedVehicle(vehicle);
-                        if (resolvedVehicle) this.vehicleActions.panel.view(resolvedVehicle);
-                    } catch (err) {
-                        this.notifications.serverError(err);
-                    }
-                },
-                valuePath: 'vehicle.display_name',
-                emptyText: '-',
-                showStatusBadge: true,
-                resourcePath: (driver) => {
-                    const vehicle = get(driver, 'vehicle_assigned') ?? get(driver, 'vehicle');
-
-                    if (vehicle) {
-                        return vehicle;
-                    }
-
-                    const vehicleName = get(driver, 'vehicle_name');
-
-                    if (vehicleName) {
-                        return {
-                            display_name: vehicleName,
-                            name: vehicleName,
-                            status: 'assigned',
-                            loadResource: () => driver.loadVehicle?.(),
-                        };
-                    }
-
-                    return null;
-                },
-                modelNamePath: 'display_name',
-                resizable: true,
-                filterable: true,
-                filterComponent: 'filter/model',
-                filterComponentPlaceholder: this.intl.t('fleet-ops.ui.controller.management-drivers-index.select-vehicle-to-filter-by'),
-                filterParam: 'vehicle',
-                model: 'vehicle',
-            },
+            // Entregas: sem as colunas Veículo e Fornecedor (telas ocultas; o motoboy não tem veículo nem fornecedor)
             {
                 label: this.intl.t('column.internal-id'),
                 valuePath: 'internal_id',
@@ -228,30 +185,6 @@ export default class ManagementDriversIndexController extends Controller {
                 sortable: true,
                 filterable: true,
                 filterComponent: 'filter/string',
-            },
-            {
-                label: this.intl.t('column.vendor'),
-                cellComponent: 'table/cell/anchor',
-                permission: 'fleet-ops view vendor',
-                onClick: async (driver) => {
-                    try {
-                        const vendor = await driver.loadVendor();
-                        if (vendor) this.vendorActions.panel.view(vendor);
-                    } catch (err) {
-                        this.notifications.serverError(err);
-                    }
-                },
-                // Driver list responses already include the vendor_name accessor,
-                // while the vendor relationship itself is not eager loaded. Use
-                // the scalar so assigned vendors do not render as blank cells.
-                valuePath: 'vendor_name',
-                modelNamePath: 'name',
-                resizable: true,
-                filterable: true,
-                filterComponent: 'filter/model',
-                filterComponentPlaceholder: this.intl.t('fleet-ops.ui.controller.management-drivers-index.select-vendor-to-filter-by'),
-                filterParam: 'vendor',
-                model: 'vendor',
             },
             {
                 label: this.intl.t('column.fleet'),
@@ -348,12 +281,7 @@ export default class ManagementDriversIndexController extends Controller {
                         fn: this.driverActions.assignOrder,
                         permission: 'fleet-ops assign-order-for driver',
                     },
-                    {
-                        label: this.intl.t('driver.actions.assign-vehicle'),
-                        icon: 'car',
-                        fn: this.driverActions.assignVehicle,
-                        permission: 'fleet-ops assign-vehicle-for driver',
-                    },
+                    // Entregas: sem Atribuir/Desatribuir veículo e Criar ocorrência (telas ocultas)
                     {
                         label: this.intl.t('driver.actions.unassign-orders'),
                         icon: 'user-minus',
@@ -362,23 +290,10 @@ export default class ManagementDriversIndexController extends Controller {
                         isVisible: (driver) => Number(driver.assigned_orders_count) > 0,
                     },
                     {
-                        label: this.intl.t('driver.actions.unassign-vehicle'),
-                        icon: 'link-slash',
-                        fn: this.driverActions.unassignVehicle,
-                        permission: 'fleet-ops assign-vehicle-for driver',
-                        isVisible: (driver) => this.hasAssignedVehicle(driver),
-                    },
-                    {
                         label: this.intl.t('driver.actions.locate-driver'),
                         icon: 'location-dot',
                         fn: this.driverActions.locate,
                         permission: 'fleet-ops view driver',
-                    },
-                    {
-                        label: this.intl.t('driver.actions.create-issue'),
-                        icon: 'triangle-exclamation',
-                        fn: this.createIssue,
-                        permission: 'fleet-ops create issue',
                     },
                     {
                         separator: true,

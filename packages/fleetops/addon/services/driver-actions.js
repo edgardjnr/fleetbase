@@ -35,11 +35,7 @@ export default class DriverActionsService extends ResourceActionService {
                 label: this.intl.t('fleet-ops.ui.service.driver-actions.positions'),
                 component: 'positions-replay',
             },
-            {
-                key: 'schedule',
-                label: this.intl.t('common.schedule'),
-                component: 'driver/schedule',
-            },
+            // Entregas: sem a aba Agenda (agenda e escalas estão ocultas)
             ...this.registeredTabs,
         ];
     }

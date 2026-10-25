@@ -40,20 +40,7 @@
             {{yield to="footer"}}
         {{/if}}
         <div class="fleetops-card-meta-list">
-            <div class="fleetops-card-meta">
-                <FaIcon @icon="car" @prefix="fas" />
-                <span class="fleetops-card-meta-value">
-                    {{#if this.assignedVehicleLabel}}
-                        {{#if this.hasVehicle}}
-                            <a href="javascript:;" class="fleetops-card-meta-link" {{on "click" this.viewVehicle}}>{{this.assignedVehicleLabel}}</a>
-                        {{else}}
-                            {{this.assignedVehicleLabel}}
-                        {{/if}}
-                    {{else}}
-                        {{t "common.no-vehicle-assigned"}}
-                    {{/if}}
-                </span>
-            </div>
+            {{!-- Entregas: sem a linha do veículo (o motoboy não tem veículo cadastrado) --}}
             <div class="fleetops-card-meta">{{t "common.last-modified"}}: {{@resource.updatedAt}}</div>
         </div>
     </Card.footer>

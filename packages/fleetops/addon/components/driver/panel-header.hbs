@@ -16,18 +16,7 @@
             </div>
             <div class="flex flex-col">
                 <h1 class="text-gray-900 dark:text-white font-semibold text-2xl">{{@resource.name}}</h1>
-                <div class="-mt-1">
-                    {{#if @resource.vehicle}}
-                        <div class="flex flex-row items-center">
-                            <a href="javascript:;" class="text-sm dark:text-blue-400 text-blue-600 hover:opacity-50">{{@resource.vehicle.displayName}}</a>
-                        </div>
-                    {{else}}
-                        <div class="flex flex-row items-center">
-                            <span class="text-sm dark:text-gray-500 text-gray-700 mr-3">{{t "driver.fields.no-vehicle-assigned"}}</span>
-                            {{!-- <Button @icon="plus" @size="xs" @helpText={{t "driver.actions.assign-vehicle"}} /> --}}
-                        </div>
-                    {{/if}}
-                </div>
+                {{!-- Entregas: sem o veículo atribuído (o motoboy não tem veículo cadastrado) --}}
                 <Badge @status={{if @resource.online "online" "offline"}}>{{if @resource.online (t "common.online") (t "common.offline")}}</Badge>
             </div>
         </div>
