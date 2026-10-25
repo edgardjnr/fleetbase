@@ -1,0 +1,202 @@
+<div class="painel-inicial" ...attributes>
+    <header class="pi-cabecalho">
+        <div>
+            <h1 class="pi-titulo">{{this.saudacao}}</h1>
+            <p class="pi-sub">{{this.dataDeHoje}}{{#if this.currentUser.companyName}} · {{this.currentUser.companyName}}{{/if}}</p>
+        </div>
+        <div class="pi-acoes">
+            <div class="pi-seg" role="group" aria-label={{t "fleet-ops.ui.painel-inicial.periodo.rotulo"}}>
+                {{#each this.periodos as |periodo|}}
+                    <button type="button" class={{if periodo.ativo "pi-ativo"}} aria-pressed={{if periodo.ativo "true" "false"}} {{on "click" (fn this.escolherPeriodo periodo.chave)}}>{{periodo.texto}}</button>
+                {{/each}}
+            </div>
+            <button type="button" class="pi-botao pi-botao-marca" {{on "click" this.novoPedido}}><FaIcon @icon="plus" /> {{t "fleet-ops.ui.painel-inicial.novo-pedido"}}</button>
+        </div>
+    </header>
+
+    <div class="pi-cartoes">
+        {{#each this.cartoes as |cartao|}}
+            <div class="pi-cartao {{if cartao.destaque 'pi-destaque'}} {{if cartao.alerta 'pi-alerta'}}">
+                <div class="pi-cartao-rotulo"><FaIcon @icon={{cartao.icone}} /> {{cartao.rotulo}}</div>
+                <div class="pi-cartao-valor">{{cartao.valor}}</div>
+                <div class="pi-cartao-detalhe">{{cartao.detalhe}}</div>
+            </div>
+        {{else}}
+            {{#each this.esqueleto}}<div class="pi-cartao pi-esqueleto"></div>{{/each}}
+        {{/each}}
+    </div>
+
+    <div class="pi-secao">
+        <h2>{{t "fleet-ops.ui.painel-inicial.ao-vivo.titulo"}}</h2>
+        <span class="pi-ao-vivo"><i></i>{{t "fleet-ops.ui.painel-inicial.ao-vivo.agora"}}</span>
+        <span class="pi-linha-fina"></span>
+        <span class="pi-sub">{{this.textoOnline}}</span>
+    </div>
+
+    {{#if this.alerta}}
+        <div class="pi-alerta-faixa" role="alert">
+            <FaIcon @icon="triangle-exclamation" />
+            <div><b>{{this.textoDoAlerta.titulo}}</b><span>{{this.textoDoAlerta.texto}}</span></div>
+            <button type="button" class="pi-botao" {{on "click" (fn this.escolherFiltro "oferta")}}>{{t "fleet-ops.ui.painel-inicial.alerta.ver"}}</button>
+        </div>
+    {{/if}}
+
+    <div class="pi-grade-ao-vivo">
+        <section class="pi-card pi-fila">
+            <div class="pi-card-cabecalho">
+                <h3>{{t "fleet-ops.ui.painel-inicial.ao-vivo.pedidos"}}</h3>
+                <button type="button" class="pi-link" {{on "click" this.abrirOperacoes}}>{{t "fleet-ops.ui.painel-inicial.ao-vivo.ver-operacoes"}}</button>
+            </div>
+            <div class="pi-filtros">
+                {{#each this.filtros as |filtro|}}
+                    <button type="button" class="{{if filtro.ativo 'pi-ativo'}} {{if filtro.alerta 'pi-com-alerta'}}" {{on "click" (fn this.escolherFiltro filtro.chave)}}>{{filtro.texto}} <b>{{filtro.n}}</b></button>
+                {{/each}}
+            </div>
+            <div class="pi-lista">
+                {{#each this.pedidos key="id" as |pedido|}}
+                    <div class="pi-pedido {{if pedido.ehOferta 'pi-oferta'}} {{if pedido.atrasado 'pi-atrasado'}}">
+                        <button type="button" class="pi-pedido-principal" {{on "click" (fn this.abrirPedido pedido.id)}}>
+                            <img class="pi-capacete" src={{pedido.capacete}} alt="" />
+                            <span class="pi-pedido-meio">
+                                <span class="pi-pedido-topo">
+                                    <b class="pi-numero">{{pedido.numeroTexto}}</b>
+                                    {{#if pedido.ifood}}<span class="pi-selo pi-selo-ifood">iFood</span>{{/if}}
+                                    <span class="pi-loja">{{pedido.loja}}</span>
+                                </span>
+                                <span class="pi-pedido-baixo">{{pedido.endereco}}</span>
+                            </span>
+                            <span class="pi-pedido-situacao">
+                                {{#if pedido.ehOferta}}
+                                    <span class="pi-texto-oferta"><FaIcon @icon="tower-broadcast" /> {{pedido.textoDaOferta}}</span>
+                                {{else}}
+                                    {{pedido.textoDaSituacao}}<small>{{pedido.motoboy}}</small>
+                                {{/if}}
+                            </span>
+                        </button>
+                        {{#if pedido.ehOferta}}
+                            {{#if this.ehAdmin}}
+                                <button type="button" class="pi-botao pi-botao-marca pi-pequeno" aria-expanded={{if pedido.aberto "true" "false"}} {{on "click" (fn this.alternarAtribuir pedido.id)}}><FaIcon @icon="user-plus" /> {{t "fleet-ops.ui.painel-inicial.atribuir.botao"}}</button>
+                            {{/if}}
+                        {{else if pedido.prazo}}
+                            <span class="pi-prazo pi-prazo-{{pedido.prazo.estado}}"><FaIcon @icon="clock" /> {{pedido.prazo.texto}}</span>
+                        {{/if}}
+                        {{#if pedido.aberto}}
+                            <div class="pi-candidatos">
+                                {{#each pedido.candidatos key="id" as |motoboy|}}
+                                    <div class="pi-candidato">
+                                        <img src={{this.capaceteLivre}} alt="" />
+                                        <span><b>{{motoboy.nome}}</b><small>{{motoboy.kmTexto}}</small></span>
+                                        <button type="button" class="pi-botao pi-botao-marca pi-pequeno" disabled={{this.atribuir.isRunning}} {{on "click" (fn this.enviar pedido.id motoboy.id)}}>{{t "fleet-ops.ui.painel-inicial.atribuir.enviar"}}</button>
+                                    </div>
+                                {{else}}
+                                    <p class="pi-nota">{{t "fleet-ops.ui.painel-inicial.atribuir.ninguem-livre"}}</p>
+                                {{/each}}
+                                <p class="pi-nota"><FaIcon @icon="circle-info" /> {{t "fleet-ops.ui.painel-inicial.atribuir.nota"}}</p>
+                            </div>
+                        {{/if}}
+                    </div>
+                {{else}}
+                    <div class="pi-vazio"><FaIcon @icon="circle-check" /> {{this.textoDoVazio}}</div>
+                {{/each}}
+            </div>
+        </section>
+
+        <section class="pi-card">
+            <div class="pi-card-cabecalho">
+                <h3>{{t "fleet-ops.ui.painel-inicial.ao-vivo.mapa"}}</h3>
+                <span class="pi-legenda">
+                    <span><img src={{this.capaceteLivre}} alt="" />{{t "fleet-ops.ui.painel-inicial.legenda.livre"}}</span>
+                    <span><span class="pi-bolinha pi-bolinha-loja"></span>{{t "fleet-ops.ui.painel-inicial.legenda.loja"}}</span>
+                    <span><span class="pi-bolinha pi-bolinha-rota"></span>{{t "fleet-ops.ui.painel-inicial.legenda.rota"}}</span>
+                    <span><FaIcon @icon="location-dot" class="pi-cor-cliente" />{{t "fleet-ops.ui.painel-inicial.legenda.cliente"}}</span>
+                </span>
+                <button type="button" class="pi-link" {{on "click" this.abrirOperacoes}}>{{t "fleet-ops.ui.painel-inicial.ao-vivo.tela-cheia"}}</button>
+            </div>
+            <Home::PainelInicial::Mapa class="pi-mapa-altura" @motoboys={{this.aoVivo.motoboys}} @pedidos={{this.aoVivo.pedidos}} @lojas={{this.lojasDoMapa}} @aoAbrirPedido={{this.abrirPedido}} />
+        </section>
+    </div>
+
+    <div class="pi-grade-baixo">
+        <section class="pi-card">
+            <div class="pi-card-cabecalho"><h3>{{this.tituloDoGrafico}}</h3><span class="pi-sub">{{t "fleet-ops.ui.painel-inicial.grafico.atual"}}</span></div>
+            {{#if this.barras.length}}
+                <div class="pi-grafico">
+                    {{#each this.barras as |barra|}}
+                        <div class="pi-coluna" title={{barra.dica}}>
+                            <div class="pi-caixa">
+                                {{#unless barra.futura}}<div class="pi-barra {{if barra.agora 'pi-agora'}}" style={{html-safe (concat "height:" barra.altura "%")}}></div>{{/unless}}
+                                {{#if barra.alturaMedia}}<div class="pi-media" style={{html-safe (concat "bottom:" barra.alturaMedia "%")}}></div>{{/if}}
+                            </div>
+                            <span class="pi-rotulo-hora">{{if barra.mostrarRotulo barra.rotuloCurto ""}}</span>
+                        </div>
+                    {{/each}}
+                </div>
+                <div class="pi-legenda pi-legenda-grafico">
+                    <span><span class="pi-amostra"></span>{{t "fleet-ops.ui.painel-inicial.grafico.atual"}}</span>
+                    {{#if this.temMedia}}<span><span class="pi-amostra pi-amostra-media"></span>{{t "fleet-ops.ui.painel-inicial.grafico.media"}}</span>{{/if}}
+                </div>
+            {{else}}
+                <div class="pi-vazio">{{t "fleet-ops.ui.painel-inicial.sem-corridas"}}</div>
+            {{/if}}
+        </section>
+
+        <section class="pi-card">
+            <div class="pi-card-cabecalho">
+                <h3>{{t "fleet-ops.ui.painel-inicial.lojas.titulo"}}</h3>
+                {{#if this.ehAdmin}}<button type="button" class="pi-link" {{on "click" this.abrirLojas}}>{{t "fleet-ops.ui.painel-inicial.lojas.todas"}}</button>{{/if}}
+            </div>
+            <div class="pi-ranking">
+                {{#each this.lojas key="uuid" as |loja|}}
+                    <div class="pi-item">
+                        <div class="pi-item-nome">
+                            {{loja.nome}}
+                            <small class="pi-ifood {{loja.ifoodClasse}}"><i></i>{{loja.ifoodTexto}}</small>
+                            <div class="pi-mini"><i style={{html-safe (concat "width:" loja.largura "%")}}></i></div>
+                        </div>
+                        <div class="pi-item-valor"><b>{{loja.corridas}}</b><small>{{loja.faturadoTexto}}</small></div>
+                    </div>
+                {{else}}
+                    <div class="pi-vazio">{{t "fleet-ops.ui.painel-inicial.sem-corridas"}}</div>
+                {{/each}}
+            </div>
+        </section>
+
+        <section class="pi-card">
+            <div class="pi-card-cabecalho">
+                <h3>{{t "fleet-ops.ui.painel-inicial.motoboys.titulo"}}</h3>
+                {{#if this.ehAdmin}}<button type="button" class="pi-link" {{on "click" this.abrirMotoboys}}>{{t "fleet-ops.ui.painel-inicial.motoboys.todos"}}</button>{{/if}}
+            </div>
+            <div class="pi-ranking">
+                {{#each this.motoboysDoPeriodo key="uuid" as |motoboy|}}
+                    <div class="pi-item">
+                        <span class="pi-posicao">{{motoboy.posicao}}</span>
+                        <div class="pi-item-nome">{{motoboy.nome}}</div>
+                        <div class="pi-item-valor"><b>{{motoboy.corridas}}</b><small>{{motoboy.ganhosTexto}}</small></div>
+                    </div>
+                {{else}}
+                    <div class="pi-vazio">{{t "fleet-ops.ui.painel-inicial.sem-corridas"}}</div>
+                {{/each}}
+            </div>
+        </section>
+    </div>
+
+    {{#if this.ehAdmin}}
+        <section class="pi-card">
+            <div class="pi-card-cabecalho">
+                <h3>{{t "fleet-ops.ui.painel-inicial.atencao.titulo"}}</h3>
+                <span class="pi-sub">{{this.textoDosItens}}</span>
+                <button type="button" class="pi-link" {{on "click" this.abrirFinanceiro}}>{{t "fleet-ops.ui.painel-inicial.atencao.financeiro"}}</button>
+            </div>
+            <div class="pi-atencao">
+                {{#each this.atencao as |item|}}
+                    <button type="button" class="pi-atencao-item" {{on "click" (fn this.abrirAtencao item)}}>
+                        <FaIcon @icon={{item.icone}} class={{item.cor}} />
+                        <span>{{item.texto}}</span>
+                    </button>
+                {{else}}
+                    <div class="pi-vazio"><FaIcon @icon="circle-check" /> {{t "fleet-ops.ui.painel-inicial.atencao.nada"}}</div>
+                {{/each}}
+            </div>
+        </section>
+    {{/if}}
+</div>
