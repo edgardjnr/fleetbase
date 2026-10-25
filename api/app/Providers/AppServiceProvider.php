@@ -18,6 +18,7 @@ use App\Listeners\Entregas\ObservadorDosPedidosIfood;
 use App\Listeners\Entregas\ObservadorFinanceiroDosPedidos;
 use App\Notifications\Entregas\CanalFcmEntregas;
 use App\Notifications\Entregas\Email\CanalEmailEntregas;
+use App\Support\Entregas\ConexaoDoStorefront;
 use App\Support\Entregas\Distribuicao\TrocaDoListenerDoDespacho;
 use App\Support\Entregas\FusoDoServidor;
 use Fleetbase\FleetOps\Console\Commands\DispatchAdhocOrders;
@@ -75,6 +76,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
+        // Entregas: o mysql:createdb do deploy.sh ainda pede a conexão do Storefront, que está fora do package:discover; ver
+        // ConexaoDoStorefront
+        $this->manterConexaoDoStorefront();
+
         // Entregas: servidor no horário de Brasília (sessão do MySQL e datas do Eloquent); ver FusoDoServidor
         $this->configurarFuso();
 
@@ -194,9 +199,9 @@ class AppServiceProvider extends ServiceProvider
      * Entregas: distribuição de pedidos abertos (ver App\Support\Entregas\Distribuicao). O DistribuirPedidoAberto entra
      * no lugar do HandleOrderDispatched do Fleet-Ops (pedido aberto: uma oferta por vez; o resto: o original), e os
      * outros listeners do OrderDispatched ficam, na mesma ordem: o SendResourceLifecycleWebhook e o NotifyOrderEvent do
-     * Fleet-Ops e o HandleOrderDispatched do Storefront (ver TrocaDoListenerDoDespacho). Os EventServiceProvider
-     * registram os listeners no boot deles (callback booting); o booted() roda depois do boot de todos os providers,
-     * inclusive os do Composer. Vale também com o event:cache (o cache só troca a fonte do $listen; o registro continua
+     * Fleet-Ops (ver TrocaDoListenerDoDespacho; o Storefront, que também escutava, está fora do package:discover). Os
+     * EventServiceProvider registram os listeners no boot deles (callback booting); o booted() roda depois do boot de
+     * todos os providers, inclusive os do Composer. Vale também com o event:cache (o cache só troca a fonte do $listen; o registro continua
      * no boot). O Order::updated encerra a distribuição quando o pedido ganha motoboy ou é encerrado
      * (ObservadorDaDistribuicao).
      *
@@ -208,6 +213,19 @@ class AppServiceProvider extends ServiceProvider
         Order::updated(fn ($pedido) => ObservadorDaDistribuicao::aoAtualizar($pedido));
 
         $this->app->booted(fn () => TrocaDoListenerDoDespacho::aplicar(Event::getFacadeRoot()));
+    }
+
+    /**
+     * Entregas: a conexão "storefront" (cópia da `mysql` com o banco <banco>_storefront) para o mysql:createdb (ver
+     * ConexaoDoStorefront). No register(): o core mescla a `mysql` no register() dele, e os pacotes registram antes dos
+     * providers do app.
+     */
+    protected function manterConexaoDoStorefront(): void
+    {
+        $conexao = ConexaoDoStorefront::configuracao((array) config('database.connections', []));
+        if ($conexao !== null) {
+            config(['database.connections.' . ConexaoDoStorefront::NOME => $conexao]);
+        }
     }
 
     /**

@@ -16,8 +16,8 @@ use Laravel\Sanctum\PersonalAccessToken;
  *
  * Middleware global (roda antes das rotas, inclusive as que vêm do Composer), por isso identifica
  * o usuário direto pelo token Sanctum: o do `Authorization: Bearer` (console e portal) ou o do
- * cabeçalho `Customer-Token` (API pública de clientes do Fleet-Ops `v1/customers/*` e do Storefront,
- * que vão com a chave de API no Bearer e criariam pedido com coleta livre, fora destas regras).
+ * cabeçalho `Customer-Token` (API pública de clientes do Fleet-Ops `v1/customers/*` e, se o Storefront for religado, a
+ * dele, que vão com a chave de API no Bearer e criariam pedido com coleta livre, fora destas regras).
  * Com o usuário de loja identificado por qualquer um dos dois, nega por padrão:
  * - customer-portal/int/v1/*: liberado, menos NEGADAS_NO_PORTAL (o portal filtra os dados pela
  *   conta da loja, mas tem rotas sem checagem de admin e telas fora do escopo);
@@ -88,8 +88,9 @@ class ProtegerPortalLoja
     public const CAMPOS_DO_PERFIL = ['name', 'avatar_uuid', 'avatar_url', 'timezone'];
 
     /**
-     * Lista das extensões instaladas (registry-bridge), que o console pede ao abrir cada página
-     * (ember-core load-installed-extensions.js). Liberada só em GET/HEAD e neste caminho exato.
+     * Lista das extensões instaladas, que o console pede ao abrir cada página (ember-core load-installed-extensions.js).
+     * Era do registry-bridge; hoje é a rota própria do RouteServiceProvider, sempre vazia. Liberada só em GET/HEAD e neste
+     * caminho exato.
      */
     public const CAMINHO_DAS_EXTENSOES = '~registry/v1/engines';
 

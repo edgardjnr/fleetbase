@@ -24,7 +24,10 @@ use Illuminate\Support\Facades\Storage;
  */
 final class FotoDoMotoboy
 {
-    /** Tabela => colunas que apontam para `files.uuid` (core-api 1.6.61, fleetops-api 0.6.65, registry-bridge). */
+    /**
+     * Tabela => colunas que apontam para `files.uuid` (core-api 1.6.61, fleetops-api 0.6.65, registry-bridge). As do
+     * registry-bridge ficam: ele saiu do package:discover, mas as tabelas continuam no banco (a que não existir é pulada).
+     */
     public const REFERENCIAS = [
         'users'                      => ['avatar_uuid'],
         'companies'                  => ['logo_uuid', 'backdrop_uuid'],

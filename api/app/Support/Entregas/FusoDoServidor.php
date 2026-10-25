@@ -23,7 +23,10 @@ class FusoDoServidor
     /** Fuso da sessão do MySQL. Fixo: Brasília não tem horário de verão desde 2019. */
     public const FUSO_DO_BANCO = '-03:00';
 
-    /** Conexões MySQL do Fleetbase: o banco principal, o sandbox (modo de teste) e o do storefront (se instalado). */
+    /**
+     * Conexões MySQL do Fleetbase: o banco principal, o sandbox (modo de teste) e o do storefront (se existir; com o
+     * Storefront fora do package:discover, ela só serve ao mysql:createdb, ver ConexaoDoStorefront).
+     */
     public const CONEXOES = ['mysql', 'sandbox', 'storefront'];
 
     /** Fuso da sessão do MySQL: a variável DB_TIMEZONE (getenv: sobrevive ao config:cache) ou FUSO_DO_BANCO. */

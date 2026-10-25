@@ -150,24 +150,6 @@ The `.fleetbase-dev-links.json` file stores original dependency ranges so links 
 
 For pnpm, the linker moves non-auth `public-hoist-pattern[]` settings from `console/.npmrc` into `console/pnpm-workspace.yaml`, keeps registry auth in `.npmrc`, and sets workspace linking options for local shared packages.
 
-## `docker-install.sh`
-
-`docker-install.sh` is the interactive Fleetbase Docker setup wizard. It checks required local tools, asks for core environment settings, generates local configuration, and guides Docker Compose setup.
-
-Run the interactive wizard:
-
-```sh
-bash scripts/docker-install.sh
-```
-
-Run with defaults for non-interactive environments:
-
-```sh
-bash scripts/docker-install.sh --non-interactive
-```
-
-The script expects Docker, Docker Compose v2, git, and OpenSSL to be available. It warns when common Fleetbase ports are already in use but does not treat that as a hard failure.
-
 ## Validation
 
 Check the package linker script:
@@ -175,10 +157,4 @@ Check the package linker script:
 ```sh
 node --check scripts/package-linker.mjs
 node --test scripts/package-linker.test.mjs
-```
-
-Check shell syntax for the Docker installer:
-
-```sh
-bash -n scripts/docker-install.sh
 ```
