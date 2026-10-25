@@ -18,7 +18,6 @@ Router.map(function () {
         this.route('reset-password', { path: '/reset-password/:id' });
         this.route('two-fa');
         this.route('verification');
-        this.route('portal-login', { path: '/portal' });
     });
     this.route('invite', { path: 'join' }, function () {
         this.route('for-driver', { path: '/fleet/:public_id' });
@@ -40,8 +39,6 @@ Router.map(function () {
         this.route('virtual', { path: '/:slug' });
         this.route('admin', function () {
             this.route('config', function () {
-                this.route('database');
-                this.route('cache');
                 this.route('filesystem');
                 this.route('mail');
                 this.route('notification-channels', { path: '/push-notifications' });
@@ -58,7 +55,6 @@ Router.map(function () {
                 this.route('details', { path: '/:public_id' }, function () {
                     this.route('index', { path: '/' });
                     this.route('users');
-                    this.route('extensions');
                     this.route('activity');
                     this.route('settings');
                     this.route('extensions-tab', { path: '/extensions/:slug' });

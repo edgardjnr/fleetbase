@@ -16,10 +16,10 @@ export default class ConsoleAdminOrganizationsDetailsController extends Controll
     @service('universe/menu-service') menuService;
 
     get tabs() {
+        // Entregas: sem a aba "Extensões" (lista de extensões instaladas, fora do escopo).
         const coreTabs = [
             { route: 'console.admin.organizations.details.index', label: this.intl.t('common.overview'), icon: 'chart-simple', priority: 0 },
             { route: 'console.admin.organizations.details.users', label: this.intl.t('common.users'), icon: 'users', priority: 10 },
-            { route: 'console.admin.organizations.details.extensions', label: this.intl.t('console.ui.admin.org.extensions'), icon: 'puzzle-piece', priority: 20 },
             { route: 'console.admin.organizations.details.activity', label: this.intl.t('common.activity'), icon: 'clock-rotate-left', priority: 30 },
             { route: 'console.admin.organizations.details.settings', label: this.intl.t('common.settings'), icon: 'gear', priority: 40 },
         ];

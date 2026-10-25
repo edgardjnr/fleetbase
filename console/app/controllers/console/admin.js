@@ -12,6 +12,7 @@ export default class ConsoleAdminController extends Controller {
         return [...this.coreNavigationItems, ...this.registryNavigationItems, ...this.registryPanelItems, this.systemConfigNavigationItem];
     }
 
+    // Entregas: "Platform API Token", Fila e Socket saíram do menu (as rotas continuam, sem link).
     get coreNavigationItems() {
         return [
             {
@@ -41,13 +42,6 @@ export default class ConsoleAdminController extends Controller {
                 icon: 'shield-halved',
                 route: 'console.admin.two-fa-settings',
                 keywords: ['two factor', '2fa', 'security', 'mfa'],
-            },
-            {
-                label: this.intl.t('console.admin.menu.platform-api-token'),
-                description: this.intl.t('console.ui.admin.nav.platform-api-token'),
-                icon: 'key',
-                route: 'console.admin.platform-api-token',
-                keywords: ['platform', 'api', 'token', 'security', 'organizations'],
             },
             {
                 label: this.intl.t('console.admin.schedule-monitor.schedule-monitor'),
@@ -103,20 +97,6 @@ export default class ConsoleAdminController extends Controller {
                     icon: 'hard-drive',
                     route: 'console.admin.config.filesystem',
                     keywords: ['filesystem', 'files', 'storage'],
-                },
-                {
-                    label: this.intl.t('console.admin.menu.queue'),
-                    description: this.intl.t('console.ui.admin.nav.queue'),
-                    icon: 'layer-group',
-                    route: 'console.admin.config.queue',
-                    keywords: ['queue', 'workers', 'jobs'],
-                },
-                {
-                    label: this.intl.t('console.admin.menu.socket'),
-                    description: this.intl.t('console.ui.admin.nav.socket'),
-                    icon: 'plug',
-                    route: 'console.admin.config.socket',
-                    keywords: ['socket', 'realtime', 'websocket'],
                 },
                 {
                     label: this.intl.t('console.admin.menu.push-notifications'),
