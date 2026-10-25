@@ -19,6 +19,7 @@ use App\Http\Controllers\Entregas\MapaController;
 use App\Http\Controllers\Entregas\MotoboyController;
 use App\Http\Controllers\Entregas\MultiplicadoresController;
 use App\Http\Controllers\Entregas\PagamentoMotoboysController;
+use App\Http\Controllers\Entregas\PainelInicialController;
 use App\Http\Controllers\Entregas\PortalLojaController;
 use App\Http\Middleware\AvisarOnlineDoMotoboy;
 use App\Http\Middleware\BarrarAceiteDePedidoEncerrado;
@@ -151,6 +152,12 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('pagamento-motoboys', [PagamentoMotoboysController::class, 'relatorio']);
                         Route::put('pagamento-motoboys/faixas', [PagamentoMotoboysController::class, 'salvarFaixas']);
                         Route::put('pagamento-motoboys/faixas-juntas', [PagamentoMotoboysController::class, 'salvarFaixasJuntas']);
+
+                        // Painel inicial do console (console.home → componente home/painel-inicial do Fleet-Ops): resumo do
+                        // período, ao vivo (pedidos + motoboys, relido a cada 20 s) e atribuir motoboy (só admin)
+                        Route::get('painel-inicial', [PainelInicialController::class, 'resumo']);
+                        Route::get('painel-inicial/ao-vivo', [PainelInicialController::class, 'aoVivo']);
+                        Route::post('painel-inicial/pedidos/{id}/motoboy', [PainelInicialController::class, 'atribuir']);
 
                         // Financeiro (console → Fleet-Ops → Financeiro, só admin: FinanceiroController): painel, motoboys (lista,
                         // extrato, Pix), lançamentos manuais e estornos, pagamentos com comprovante (multipart) e configurações
