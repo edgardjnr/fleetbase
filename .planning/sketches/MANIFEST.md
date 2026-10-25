@@ -16,6 +16,10 @@ baixo.
 Console no celular (sketch 007, 2026-10-25): o console inteiro no celular na marca Entregas, para fazer tudo o que se
 faz no PC, com o rodapé do Fleetbase trocado por 5 destinos fixos (Início · Pedidos · Mapa · Motoboys · Mais).
 
+Pedido aberto no console (sketch 008, 2026-10-25): o clique no pedido, em qualquer tela do console, abre o pedido como
+no portal (rota no mapa), com o conteúdo da Comanda do motoboy (app, sketch 007 B) e as ações do painel do Fleetbase
+no "Mais".
+
 ## Reference Points
 - O próprio portal em produção (https://entregas.restaurantepro.com.br/customer-portal).
 - Mesmas telas em A, B e C, com "comparar por tela" (preferência do Edgard).
@@ -31,3 +35,4 @@ faz no PC, com o rodapé do Fleetbase trocado por 5 destinos fixos (Início · P
 | 005 | tela-de-pedidos | Como fica a tela /fleet-ops (Mapa, Tabela e Quadro) com o mapa como protagonista, no desktop e no celular? | **A invertida** (mapa em tela cheia; Motoboys flutuando à esquerda e Pedidos à direita, recolhíveis; contagens no topo filtram; detalhe junto aos Pedidos; Tabela com abas; Quadro por situação; celular com folha de baixo) | console, fleet-ops, pedidos, mapa, tabela, quadro, mobile |
 | 006 | moldura-do-console | Como o cabeçalho do console e o menu lateral do Fleet-Ops ficam nas cores do painel, no claro e no escuro? | **C** (moldura em L cor de areia; folha do conteúdo com canto arredondado; módulos em barra segmentada; trilho de ícones em quadradinhos, ativo em laranja; lista direta com títulos de grupo) | console, cabeçalho, menu, sidebar, tema, mobile |
 | 007 | console-no-celular | Como fica o console inteiro no celular, na marca Entregas, com um rodapé que substitui a barra do Fleetbase? | **B** Doca flutuante | console, mobile, rodapé, navegação, tema |
+| 008 | pedido-aberto-no-console | Como o pedido abre no console (Mapa, Tabela, Painel e celular) com a rota no mapa e a folha no estilo Comanda do motoboy? | **A** (folha do portal: o clique leva ao mapa com a folha à direita e a pílula Voltar; rota do motoboy pelas ruas, feito em cinza e falta em laranja; comanda com cliente, cobrança, 0800, cupom, motoboy e loja; ações do Fleetbase no Mais) | console, pedido, detalhe, comanda, cliente, mobile |
