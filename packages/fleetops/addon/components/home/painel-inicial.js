@@ -111,11 +111,13 @@ export default class HomePainelInicialComponent extends Component {
         return nome ? `${texto}, ${nome}` : texto;
     }
 
-    // Sem a opção timeZone: o polyfill do Intl no console não tem o America/Sao_Paulo e cai no UTC (3 h a mais).
-    // A hora local do navegador já é a de Brasília (a mesma regra do resto do console).
+    // O polyfill do Intl no console usa UTC como fuso (sem o America/Sao_Paulo): a hora sai dos getters do Date, que
+    // são do navegador (Brasília), e o dia/mês por extenso vem do meio-dia UTC do mesmo dia (não vira o dia depois das 21h).
     get dataDeHoje() {
-        const texto = new Intl.DateTimeFormat(this.intl.primaryLocale, { weekday: 'long', day: 'numeric', month: 'long' }).format(this.agora);
-        const hora = new Intl.DateTimeFormat(this.intl.primaryLocale, { hour: '2-digit', minute: '2-digit' }).format(this.agora);
+        const agora = new Date(this.agora);
+        const meioDia = new Date(Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate(), 12));
+        const texto = new Intl.DateTimeFormat(this.intl.primaryLocale, { weekday: 'long', day: 'numeric', month: 'long' }).format(meioDia);
+        const hora = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
         return `${texto.charAt(0).toUpperCase()}${texto.slice(1)} · ${hora}`;
     }
 
