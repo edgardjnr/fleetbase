@@ -484,7 +484,7 @@ body.annot .pf [data-block]:not(.ov):not(.mapwrap):not(.sheet) { position: relat
 <script>
 /* ======================= estado ======================= */
 const S = {
-  variant: 'a', screen: 1, vp: 1440, cen: 'normal', filtro: 'todos', sel: null, selMoto: null, q: '',
+  variant: 'a2', screen: 1, vp: 1440, cen: 'normal', filtro: 'todos', sel: null, selMoto: null, q: '',
   painelPed: true, painelMoto: true, motoFiltro: 'todos',          // A (mapa)
   abaB: 'pedidos', cam: { motos: true, pedidos: true, lojas: true, rotas: true },   // B (mapa)
   abaT: 'andamento', visao: 'andamento', ord: { k: 'urg', dir: 1 }, marc: new Set(), pag: 1, lojaF: null,   // tabela
@@ -496,6 +496,7 @@ const HORA = 21 * 60 + 14;
 
 const VARIANTS = {
   a: { nome: 'A: Painéis flutuantes', desc: '<b>A: Painéis flutuantes.</b> O mapa ocupa a tela inteira. Por cima dele flutuam: as contagens por situação no topo (clicáveis: filtram mapa e lista), o painel <b>Pedidos</b> à esquerda e o painel <b>Motoboys</b> à direita, os dois recolhíveis num botão. Clicar num pedido acende a rota no mapa e abre um cartão de detalhe embaixo. <b>Tabela:</b> abas por situação, ordenação por coluna, seleção com ações em massa e paginação. <b>Quadro:</b> uma coluna por situação (Sem motoboy, Indo à loja, A caminho, Concluídos). <b>Celular:</b> mapa com as contagens e a folha de baixo com Pedidos e Motoboys.' },
+  a2: { nome: 'A invertida: Motoboys à esquerda, Pedidos à direita ★ Escolhida', desc: '<b>A invertida (escolhida).</b> A variante A com os painéis trocados de lado: <b>Motoboys</b> à esquerda e <b>Pedidos</b> à direita (o detalhe do pedido abre junto ao painel Pedidos, embaixo à direita, e as contagens alinham à direita). Tabela, Quadro e Celular iguais aos da A.' },
   b: { nome: 'B: Mapa + coluna à direita', desc: '<b>B: Mapa + coluna à direita.</b> O mapa fica à esquerda, com as <b>camadas</b> no topo (liga e desliga motoboys, pedidos, lojas e rotas) e uma faixa <b>Agora há pouco</b> embaixo, com os últimos eventos chegando ao vivo. À direita, uma coluna fixa com as abas Pedidos, Motoboys e Lojas; clicar num pedido troca a lista pelo detalhe. <b>Tabela:</b> visões salvas numa coluna à esquerda, filtros em chips e detalhe ao lado da tabela. <b>Quadro:</b> raias por loja × colunas por situação. <b>Celular:</b> mapa e folha com as três abas.' },
   c: { nome: 'C: Mapa imersivo', desc: '<b>C: Mapa imersivo.</b> Mapa noturno em tela cheia, como sala de controle. No topo, a faixa dos motoboys online (capacete + situação) e um placar com as contagens. Embaixo, os pedidos em cartões lado a lado, do mais urgente para o menos; escolher um cartão acende a rota no mapa e o cartão abre o detalhe. <b>Tabela:</b> agrupada por situação (grupos recolhíveis) e cada linha abre a linha do tempo do pedido. <b>Quadro:</b> uma coluna por motoboy, com "Sem motoboy" primeiro; <b>arraste o pedido até um motoboy livre para atribuir</b>. <b>Celular:</b> mapa, placar e os cartões deslizando na base.' },
 };
@@ -793,7 +794,7 @@ const trilho = () => `<nav class="trilho" data-block="Menu do Fleet-Ops (recolhi
 </div></nav>`;
 
 /* ======================= Variante A ======================= */
-function mapaA(m) {
+function mapaA(m, inv = false) {
   const c = counts(), o = resumoOnline();
   const chip = (k, ic, n, t, al) => `<div class="mchip ${S.filtro === k ? 'on' : ''} ${al ? 'alerta' : ''}" data-act="filtro" data-v="${k}">${ic}<b>${n}</b><span>${t}</span></div>`;
   const chips = [
@@ -805,19 +806,23 @@ function mapaA(m) {
   ].join('');
   const selP = S.sel ? achar(S.sel) : null;
   if (m) return celularA(chips, selP);
+  // inv: Motoboys à esquerda e Pedidos à direita (escolha do Edgard, 2026-10-25)
   const L = S.painelPed ? 398 : 14, R = S.painelMoto ? 308 : 14;
+  const ladoPed = inv ? 'right' : 'left', ladoMoto = inv ? 'left' : 'right';
+  const posPed = inv ? 'left:auto;right:14px' : '', posMoto = inv ? 'right:auto;left:14px' : '';
+  const setaPed = inv ? 'angles-right' : 'angles-left', setaMoto = inv ? 'angles-left' : 'angles-right';
   const ped = S.painelPed
-    ? `<div class="ov flutua pA" data-block="Painel Pedidos"><div class="pA-h"><h3>Pedidos</h3><span class="live"><i></i></span><span class="muted">${c.todos} em andamento</span><button class="icbtn" data-act="painel" data-v="painelPed" title="Recolher"><i class="fa-solid fa-angles-left"></i></button></div>${filtros()}<div class="fl">${lista(linha)}</div></div>`
-    : `<div class="ov flutua pilA" style="top:14px;left:14px" data-act="painel" data-v="painelPed"><i class="fa-solid fa-list"></i>Pedidos <b>${c.todos}</b>${c.oferta ? `<span class="badge" style="background:var(--bad);color:#fff">${c.oferta} sem motoboy</span>` : ''}</div>`;
+    ? `<div class="ov flutua pA" style="${posPed}" data-block="Painel Pedidos"><div class="pA-h"><h3>Pedidos</h3><span class="live"><i></i></span><span class="muted">${c.todos} em andamento</span><button class="icbtn" data-act="painel" data-v="painelPed" title="Recolher"><i class="fa-solid fa-${setaPed}"></i></button></div>${filtros()}<div class="fl">${lista(linha)}</div></div>`
+    : `<div class="ov flutua pilA" style="top:14px;${ladoPed}:14px" data-act="painel" data-v="painelPed"><i class="fa-solid fa-list"></i>Pedidos <b>${c.todos}</b>${c.oferta ? `<span class="badge" style="background:var(--bad);color:#fff">${c.oferta} sem motoboy</span>` : ''}</div>`;
   const ms = motosOnline().filter(x => S.motoFiltro === 'todos' || (S.motoFiltro === 'livre' ? x.st === 'livre' : x.st !== 'livre'));
   const mot = S.painelMoto
-    ? `<div class="ov flutua mA" data-block="Painel Motoboys"><div class="pA-h"><h3>Motoboys</h3><span class="muted">${o.on} online</span><button class="icbtn" data-act="painel" data-v="painelMoto" title="Recolher"><i class="fa-solid fa-angles-right"></i></button></div>
+    ? `<div class="ov flutua mA" style="${posMoto}" data-block="Painel Motoboys"><div class="pA-h"><h3>Motoboys</h3><span class="muted">${o.on} online</span><button class="icbtn" data-act="painel" data-v="painelMoto" title="Recolher"><i class="fa-solid fa-${setaMoto}"></i></button></div>
        <div class="seg">${[['todos', 'Todos'], ['livre', `Livres ${o.livres}`], ['ocupado', 'Em entrega']].map(([k, t]) => `<button class="${S.motoFiltro === k ? 'on' : ''}" data-act="motofiltro" data-v="${k}">${t}</button>`).join('')}</div>
        <div class="ml2">${ms.map(linhaMoto).join('') || '<div class="vazio">Ninguém aqui agora</div>'}</div></div>`
-    : `<div class="ov flutua pilA" style="top:14px;right:14px" data-act="painel" data-v="painelMoto"><img src="${capSrc('livre')}" style="width:22px" alt="">Motoboys <b>${o.livres}/${o.on}</b></div>`;
-  const det = selP ? `<div class="ov flutua dA" style="left:${L}px" data-block="Detalhe do pedido">${detalhe(selP)}</div>` : '';
+    : `<div class="ov flutua pilA" style="top:14px;${ladoMoto}:14px" data-act="painel" data-v="painelMoto"><img src="${capSrc('livre')}" style="width:22px" alt="">Motoboys <b>${o.livres}/${o.on}</b></div>`;
+  const det = selP ? `<div class="ov flutua dA" style="${ladoPed}:${L}px" data-block="Detalhe do pedido">${detalhe(selP)}</div>` : '';
   return `<div class="mapwrap" data-block="Mapa ao vivo">${mapa()}
-    <div class="ov chA" style="left:${S.painelPed ? L : 230}px;right:${S.painelMoto ? R : 200}px" data-block="Contagens (filtram)">${chips}</div>
+    <div class="ov chA" style="${ladoPed}:${S.painelPed ? L : 230}px;${ladoMoto}:${S.painelMoto ? R : 200}px;${inv ? 'justify-content:flex-end' : ''}" data-block="Contagens (filtram)">${chips}</div>
     ${ped}${mot}${det}${controles()}</div>`;
 }
 function celularA(chips, selP) {
@@ -1044,12 +1049,12 @@ function conteudoDe(v, m) {
   if (m) {
     if (S.mview === 'tabela') return celularLista();
     if (S.mview === 'quadro') return celularQuadro();
-    return { a: mapaA, b: mapaB, c: mapaC }[v](true);
+    return { a: mapaA, a2: mapaA, b: mapaB, c: mapaC }[v](true);
   }
   const t = vista();
-  if (t === 'mapa') return { a: mapaA, b: mapaB, c: mapaC }[v](false);
-  if (t === 'tabela') return { a: tabelaA, b: tabelaB, c: tabelaC }[v]();
-  return { a: quadroA, b: quadroB, c: quadroC }[v]();
+  if (t === 'mapa') return v === 'a2' ? mapaA(false, true) : { a: mapaA, b: mapaB, c: mapaC }[v](false);
+  if (t === 'tabela') return { a: tabelaA, a2: tabelaA, b: tabelaB, c: tabelaC }[v]();
+  return { a: quadroA, a2: quadroA, b: quadroB, c: quadroC }[v]();
 }
 function frame(v, availW) {
   const m = mob();
@@ -1064,7 +1069,7 @@ function render() {
   const foco = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.act === 'busca' ? document.activeElement.selectionStart : null;
   const rolos = [...document.querySelectorAll('#stage .fl, #stage .rolo, #stage .tbw, #stage .qd, #stage .ml2, #stage .mlist')].map(e => e.scrollTop);
   document.getElementById('vtabs').innerHTML = `<span class="lbl">Variante</span>` +
-    ['a', 'b', 'c'].map(k => `<button class="chip ${S.variant === k ? 'on' : ''}" data-v="${k}">${VARIANTS[k].nome}</button>`).join('') +
+    ['a2', 'a', 'b', 'c'].map(k => `<button class="chip ${S.variant === k ? 'on' : ''}" data-v="${k}">${VARIANTS[k].nome}</button>`).join('') +
     `<button class="chip cmp ${S.variant === 'cmp' ? 'on' : ''}" data-v="cmp"><i class="fa-solid fa-table-columns"></i> Comparar por tela</button>`;
   document.getElementById('stabs').innerHTML = `<span class="lbl">Tela</span>` + SCREENS.map(([n, t]) => `<button class="chip ${S.screen === n ? 'on' : ''}" data-s="${n}">${t}</button>`).join('');
   document.getElementById('ctabs').innerHTML = `<span class="lbl">Cenário</span>` + [['normal', 'Dia normal (9 pedidos)'], ['pico', 'Horário de pico (16 pedidos, 3 sem motoboy, 2 atrasados)']].map(([k, t]) => `<button class="chip ${S.cen === k ? 'on' : ''}" data-c="${k}">${t}</button>`).join('');
@@ -1075,7 +1080,7 @@ function render() {
   const availW = window.innerWidth - 48;
   if (S.variant === 'cmp') {
     stage.className = 'cmpgrid';
-    stage.innerHTML = ['a', 'b', 'c'].map(v => `<div class="cmpcol"><h3>${VARIANTS[v].nome}</h3>${frame(v, (availW - 32) / 3)}</div>`).join('');
+    stage.innerHTML = ['a2', 'b', 'c'].map(v => `<div class="cmpcol"><h3>${VARIANTS[v].nome}</h3>${frame(v, (availW - 32) / 3)}</div>`).join('');
   } else {
     stage.className = 'single';
     stage.innerHTML = frame(S.variant, availW);

@@ -2,7 +2,7 @@
 sketch: 005
 name: tela-de-pedidos
 question: "Como fica a tela /fleet-ops (Pedidos: Mapa, Tabela e Quadro) com o mapa como protagonista, no desktop e no celular?"
-winner: null
+winner: "A invertida"
 tags: [console, fleet-ops, pedidos, mapa, tabela, quadro, mobile]
 ---
 
@@ -88,3 +88,17 @@ pico.
   esses componentes por próprios, que leem a mesma rota de pedidos (`fleet-ops/orders`) com filtros.
 - **Quadro por motoboy com arrastar (C):** no soltar, usa o mesmo atribuir. Num motoboy ocupado, vira "entrega junto"
   (`entrega-junto-e-multiplicador`).
+
+## Resultado
+Em 2026-10-25 ficou a **A com os lados invertidos** (aba "A invertida ★"): **Motoboys à esquerda e Pedidos à
+direita**, os dois flutuando sobre o mapa em tela cheia e recolhíveis num botão.
+- O detalhe do pedido abre embaixo, junto ao painel Pedidos.
+- As contagens (sem motoboy, atrasados, indo à loja, a caminho, livres) ficam no topo, entre os dois painéis, e filtram
+  o mapa e a lista.
+- Tabela: abas por situação, ordenação, seleção em massa e paginação.
+- Quadro: colunas Sem motoboy, Indo à loja, A caminho e Concluídos.
+- Celular: mapa com as contagens e a folha de baixo com Pedidos e Motoboys.
+
+**Na implementação:** o enquadramento do mapa precisa descontar os painéis (`fitBounds` com `paddingTopLeft` e
+`paddingBottomRight` do tamanho deles). No sketch, o motoboy do pedido escolhido pode ficar escondido atrás do painel
+Motoboys.
