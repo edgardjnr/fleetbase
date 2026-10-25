@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch 006: moldura do console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link id="theme" rel="stylesheet" href="../themes/entregas.css">
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #e7e2da; font-family: system-ui, sans-serif; color: #1c1917; }
+body.dark-chrome { background: #0c0a09; }
+button, input { font: inherit; color: inherit; }
+
+/* moldura do sketch */
+#chrome { position: sticky; top: 0; z-index: 50; background: #1c1917; color: #e7e5e4; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; }
+#chrome .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#chrome .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #a8a29e; margin-right: 6px; font-weight: 700; min-width: 56px; }
+.chip { border: 1px solid #44403c; background: #292524; color: #e7e5e4; border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; transition: all .15s ease; flex: none; }
+.chip:hover { border-color: #fb923c; }
+.chip.on { background: #ea7a1a; border-color: #ea7a1a; color: #1c1917; font-weight: 600; }
+.chip.cmp { border-style: dashed; } .chip.cmp.on { border-style: solid; }
+#desc { font-size: 13px; color: #d6d3d1; max-width: 1200px; line-height: 1.45; }
+#desc b { color: #fff; }
+#stage { padding: 16px 24px 60px; }
+.single { display: flex; justify-content: center; }
+.cmpgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.cmpcol h3 { margin: 0 0 8px; font-size: 14px; color: #1c1917; }
+body.dark-chrome .cmpcol h3 { color: #e7e5e4; }
+.frame { width: max-content; overflow: hidden; border-radius: 10px; box-shadow: 0 10px 40px rgb(28 25 23 / 25%); }
+.frame.phone { border-radius: 34px; border: 10px solid #1c1917; }
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1c1917; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 14px; opacity: 0; transition: all .2s ease; z-index: 300; pointer-events: none; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#sketch-tools { position: fixed; bottom: 12px; right: 12px; z-index: 9999; font-family: system-ui; font-size: 12px; background: rgba(0,0,0,.75); color: #fff; padding: 8px 12px; border-radius: 8px; opacity: .45; transition: opacity .2s; display: flex; gap: 8px; align-items: center; }
+#sketch-tools:hover { opacity: 1; }
+#sketch-tools select, #sketch-tools button { background: #292524; color: #fff; border: 1px solid #44403c; border-radius: 6px; padding: 3px 6px; cursor: pointer; font-size: 12px; }
+#sketch-tools button.on { background: #ea7a1a; border-color: #ea7a1a; color: #1c1917; }
+body.annot .pf [data-block] { outline: 2px dashed #c026d3; outline-offset: -2px; }
+
+/* ================= a tela ================= */
+.pf { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.4; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.pf * { box-sizing: border-box; }
+.pf h1, .pf h2, .pf h3, .pf p { margin: 0; }
+.disp { font-family: var(--font-display); }
+.muted { color: var(--muted); }
+.corpo { flex: 1; min-height: 0; display: flex; position: relative; }
+.conteudo { flex: 1; min-width: 0; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+
+/* peças do cabeçalho (comuns) */
+.hd { flex: none; display: flex; align-items: center; gap: 14px; padding: 0 14px; position: relative; z-index: 20; }
+.hd .logo { display: flex; align-items: center; gap: 10px; flex: none; cursor: pointer; }
+.hd .logo .ic { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; font-size: 15px; }
+.hd .logo b { font-family: var(--font-display); font-size: 21px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; line-height: 1; display: block; }
+.hd .logo small { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
+.hd nav { display: flex; gap: 2px; height: 100%; align-items: center; }
+.hd nav a { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; transition: all .15s ease; white-space: nowrap; }
+.hd .dir { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.icb { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; border: 0; background: transparent; cursor: pointer; position: relative; transition: all .15s ease; flex: none; }
+.icb .dot { position: absolute; top: 3px; right: 2px; min-width: 17px; height: 17px; border-radius: 9px; background: var(--bad); color: #fff; font-size: 10px; display: grid; place-items: center; padding: 0 4px; font-weight: 700; }
+.org { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 12px; cursor: pointer; transition: all .15s ease; }
+.org .av { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-family: var(--font-display); font-size: 15px; }
+.org b { font-size: 13px; display: block; line-height: 1.1; }
+.org small { font-size: 11px; display: block; }
+.eu { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; cursor: pointer; flex: none; }
+
+/* peças do menu lateral (comuns) */
+.mn { width: 64px; flex: none; position: relative; z-index: 15; }
+.mn .in { position: absolute; top: 0; left: 0; bottom: 0; width: 64px; overflow: hidden; transition: width .2s ease, box-shadow .2s ease; display: flex; flex-direction: column; padding: 10px 10px; gap: 4px; }
+.mn:hover .in, .mn.aberto .in { width: 248px; }
+.mn .it { display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 12px; border-radius: 11px; cursor: pointer; white-space: nowrap; font-weight: 600; transition: background .15s ease, color .15s ease; border: 0; background: transparent; width: 100%; text-align: left; flex: none; }
+.mn .it > i:first-child { width: 20px; text-align: center; font-size: 16px; flex: none; }
+.mn .it .tx { opacity: 0; transition: opacity .12s ease; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mn .it .ct { opacity: 0; font-size: 11px; transition: opacity .12s ease; }
+.mn:hover .it .tx, .mn.aberto .it .tx, .mn:hover .it .ct, .mn.aberto .it .ct { opacity: 1; }
+.mn .sec { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; padding: 10px 12px 2px; white-space: nowrap; opacity: 0; height: 0; overflow: hidden; transition: opacity .12s ease; }
+.mn:hover .sec, .mn.aberto .sec { opacity: 1; height: auto; }
+.mn .sep { height: 1px; margin: 6px 4px; flex: none; }
+.mn .busca { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: 11px; white-space: nowrap; flex: none; }
+.mn .busca i { width: 20px; text-align: center; flex: none; }
+.mn .busca input { border: 0; background: transparent; outline: 0; min-width: 0; flex: 1; opacity: 0; transition: opacity .12s ease; }
+.mn:hover .busca input, .mn.aberto .busca input { opacity: 1; }
+.mn .sub { display: none; flex-direction: column; gap: 2px; padding-left: 0; }
+.mn:hover .sub.on, .mn.aberto .sub.on { display: flex; }
+.mn .sub .it { height: 34px; font-weight: 500; font-size: 13px; padding-left: 44px; }
+.mn .rodape { margin-top: auto; }
+
+/* ============ Variante A: moldura de papel (cartão) ============ */
+.vA .hd { height: 58px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.vA .hd .logo .ic { background: var(--brand); color: var(--brand-ink); }
+.vA .hd .logo small { color: var(--muted); }
+.vA .hd nav a { height: 100%; padding: 0 12px; color: var(--ink-2); border-bottom: 3px solid transparent; }
+.vA .hd nav a:hover { color: var(--ink); background: var(--surface-2); }
+.vA .hd nav a.on { color: var(--ink); border-bottom-color: var(--brand); font-weight: 700; }
+.vA .icb { color: var(--ink-2); } .vA .icb:hover { background: var(--surface-2); color: var(--ink); }
+.vA .icb .dot { border: 2px solid var(--surface); }
+.vA .org:hover { background: var(--surface-2); }
+.vA .org .av { background: var(--brand-soft); color: var(--brand-text); }
+.vA .org small { color: var(--muted); }
+.vA .eu { background: var(--ink); color: var(--bg); }
+.vA .mn .in { background: var(--surface); border-right: 1px solid var(--line); }
+.vA .mn:hover .in, .vA .mn.aberto .in { box-shadow: var(--shadow-lg); }
+.vA .mn .it { color: var(--ink-2); }
+.vA .mn .it:hover { background: var(--surface-2); color: var(--ink); }
+.vA .mn .it.on { background: var(--brand-soft); color: var(--brand-text); }
+.vA .mn .it.novo { background: var(--brand); color: var(--brand-ink); }
+.vA .mn .it.novo:hover { background: var(--brand-strong); }
+.vA .mn .busca { background: var(--surface-2); color: var(--muted); }
+.vA .mn .sep { background: var(--line); }
+.vA .mn .sec { color: var(--muted); }
+
+/* ============ Variante B: faixa laranja ============ */
+.vB .hd { height: 58px; background: var(--brand); color: var(--brand-ink); }
+.vB .hd .logo .ic { background: var(--brand-ink); color: var(--brand); }
+.vB .hd .logo small { opacity: .75; }
+.vB .hd nav a { padding: 7px 13px; border-radius: 10px; color: var(--brand-ink); opacity: .85; }
+.vB .hd nav a:hover { background: color-mix(in oklch, var(--brand-ink) 12%, transparent); opacity: 1; }
+.vB .hd nav a.on { background: var(--brand-ink); color: var(--brand); opacity: 1; }
+.vB .icb { color: var(--brand-ink); } .vB .icb:hover { background: color-mix(in oklch, var(--brand-ink) 12%, transparent); }
+.vB .icb .dot { border: 2px solid var(--brand); background: var(--brand-ink); color: var(--brand); }
+.vB .org { background: color-mix(in oklch, var(--brand-ink) 10%, transparent); }
+.vB .org:hover { background: color-mix(in oklch, var(--brand-ink) 18%, transparent); }
+.vB .org .av { background: var(--brand-ink); color: var(--brand); }
+.vB .org small { opacity: .75; }
+.vB .eu { background: var(--brand-ink); color: var(--brand); }
+.vB .mn .in { background: var(--surface); border-right: 1px solid var(--line); }
+.vB .mn:hover .in, .vB .mn.aberto .in { box-shadow: var(--shadow-lg); }
+.vB .mn .it { color: var(--ink-2); }
+.vB .mn .it:hover { background: var(--surface-2); color: var(--ink); }
+.vB .mn .it.on { background: var(--ink); color: var(--bg); }
+.vB .mn .it.on > i:first-child { color: var(--brand); }
+.vB .mn .it.novo { background: var(--brand-soft); color: var(--brand-text); }
+.vB .mn .busca { background: var(--surface-2); color: var(--muted); }
+.vB .mn .sep { background: var(--line); }
+.vB .mn .sec { color: var(--muted); }
+
+/* ============ Variante C: moldura em L, tom de areia ============ */
+.vC .hd { height: 56px; background: var(--surface-2); }
+.vC .corpo { background: var(--surface-2); }
+.vC .conteudo { background: var(--bg); border-top-left-radius: 18px; box-shadow: inset 1px 1px 0 var(--line); }
+.vC .hd .logo .ic { background: var(--brand); color: var(--brand-ink); width: 40px; height: 40px; border-radius: 12px; margin-left: 2px; }
+.vC .hd .logo small { color: var(--muted); }
+.vC .hd nav { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 3px; height: auto; margin-left: 24px; }
+.vC .hd nav a { padding: 6px 13px; border-radius: 9px; color: var(--ink-2); }
+.vC .hd nav a:hover { color: var(--ink); }
+.vC .hd nav a.on { background: var(--brand); color: var(--brand-ink); }
+.vC .icb { color: var(--ink-2); } .vC .icb:hover { background: var(--surface); color: var(--ink); }
+.vC .icb .dot { border: 2px solid var(--surface-2); }
+.vC .org { background: var(--surface); border: 1px solid var(--line); }
+.vC .org .av { background: var(--brand); color: var(--brand-ink); }
+.vC .org small { color: var(--muted); }
+.vC .eu { background: var(--ink); color: var(--bg); }
+.vC .mn { width: 72px; }
+.vC .mn .in { background: var(--surface-2); width: 72px; padding: 6px 12px 10px; }
+.vC .mn:hover .in, .vC .mn.aberto .in { width: 256px; box-shadow: var(--shadow-lg); border-radius: 0 18px 18px 0; }
+.vC .mn .it { color: var(--ink-2); padding: 0 10px; }
+.vC .mn .it > i:first-child { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 9px; background: var(--surface); border: 1px solid var(--line); font-size: 14px; }
+.vC .mn .it:hover { color: var(--ink); }
+.vC .mn .it:hover > i:first-child { border-color: var(--brand); }
+.vC .mn .it.on { color: var(--ink); font-weight: 700; }
+.vC .mn .it.on > i:first-child { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+.vC .mn .it.novo > i:first-child { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.vC .mn .busca { background: var(--surface); border: 1px solid var(--line); color: var(--muted); padding: 0 14px; }
+.vC .mn .sep { background: var(--line); }
+.vC .mn .sec { color: var(--muted); }
+.vC .mn .sub .it { padding-left: 48px; }
+
+/* conteúdo simplificado das telas */
+.pg { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; overflow: auto; flex: 1; }
+.pg h1 { font-family: var(--font-display); font-size: 30px; font-weight: 800; text-transform: uppercase; line-height: 1; }
+.cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.cd { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.cd:first-child { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+.cd small { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; opacity: .7; }
+.cd b { font-family: var(--font-display); font-size: 30px; }
+.blocos { display: grid; grid-template-columns: 5fr 7fr; gap: 14px; flex: 1; min-height: 260px; }
+.bl { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.bl h3 { font-family: var(--font-display); font-size: 18px; text-transform: uppercase; }
+.ln { height: 34px; border-radius: 8px; background: var(--surface-2); }
+.mp { flex: 1; border-radius: 10px; background: var(--map-land); position: relative; overflow: hidden; }
+.mp::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 46px, var(--map-road) 46px 52px), repeating-linear-gradient(90deg, transparent 0 70px, var(--map-road) 70px 76px); opacity: .9; }
+.mp .cap { position: absolute; width: 26px; height: 26px; }
+.vb2 { height: 52px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.vb2 h1 { font-family: var(--font-display); font-size: 24px; font-weight: 800; text-transform: uppercase; }
+.vb2 .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.vb2 .seg span { padding: 4px 12px; border-radius: 7px; font-weight: 600; font-size: 13px; color: var(--ink-2); }
+.vb2 .seg span.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+.vb2 .btn { margin-left: auto; background: var(--brand); color: var(--brand-ink); border-radius: 10px; padding: 8px 14px; font-weight: 700; }
+.mapa-cheio { flex: 1; position: relative; }
+.mapa-cheio .mp { position: absolute; inset: 0; border-radius: 0; }
+.pn { position: absolute; top: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.pn h3 { font-family: var(--font-display); font-size: 18px; text-transform: uppercase; }
+.tb { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; font-size: 13px; }
+.tb th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 9px 12px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.tb td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.tb td b { font-family: var(--font-display); font-size: 17px; }
+.pos { color: var(--ok); font-weight: 700; } .neg { color: var(--bad); font-weight: 700; }
+
+/* celular */
+.m .hd { height: 54px; padding: 0 10px; gap: 8px; }
+.m .hd nav, .m .org .tx2, .m .hd .dir .some { display: none; }
+.gaveta { position: absolute; inset: 0; z-index: 30; display: none; }
+.gaveta.on { display: block; }
+.gaveta .fundo { position: absolute; inset: 0; background: rgb(28 25 23 / 45%); }
+.gaveta .mn { position: absolute; top: 0; bottom: 0; left: 0; width: 280px; }
+.gaveta .mn .in { width: 280px; }
+.gaveta .mn .it .tx, .gaveta .mn .it .ct, .gaveta .mn .sec, .gaveta .mn .busca input { opacity: 1; }
+.gaveta .mn .sec { height: auto; }
+.gaveta .mn .sub.on { display: flex; }
+.gaveta .modulos { display: flex; gap: 6px; padding: 4px 0 8px; flex-wrap: wrap; }
+.gaveta .modulos span { font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); cursor: pointer; }
+.gaveta .modulos span.on { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+</style>
+</head>
+<body>
+<div id="chrome">
+  <div class="row" id="vtabs"></div>
+  <div class="row" id="stabs"></div>
+  <div class="row" id="otabs"></div>
+  <div id="desc"></div>
+</div>
+<div id="stage"></div>
+<div id="toast"></div>
+
+<div id="sketch-tools">
+  <span>Tema</span>
+  <select id="theme-switcher">
+    <option value="entregas">Claro</option>
+    <option value="entregas-escuro">Escuro</option>
+  </select>
+  <span>Desktop</span>
+  <button data-vp="1366">1366</button>
+  <button data-vp="1440" class="on">1440</button>
+  <button data-vp="1920">1920</button>
+  <button id="annot-btn">Anotações</button>
+</div>
+
+<script>
+const S = { variant: 'a', screen: 1, vp: 1440, aberto: false, grupo: 'operacoes', gaveta: true, modulo: 'fleet' };
+const IMG = '../../../console/public/images/entregas/';
+
+const VARIANTS = {
+  a: { nome: 'A: Papel', desc: '<b>A: Papel.</b> Cabeçalho e menu na cor dos cartões do painel (papel quente no claro, tinta quente no escuro), com borda fina. Módulo ativo com o sublinhado laranja (como as abas do painel); no menu, o item ativo num fundo laranja-claro e o "Novo pedido" em laranja cheio. É a mudança mais discreta: o laranja só marca onde você está.' },
+  b: { nome: 'B: Faixa laranja', desc: '<b>B: Faixa laranja.</b> O cabeçalho vira a faixa da marca (laranja cheio nos dois temas, como o cartão Corridas do painel e a landing), com o módulo ativo numa pílula escura. O menu fica na cor dos cartões, com o item ativo em tinta escura e o ícone laranja. A marca aparece forte em todas as telas.' },
+  c: { nome: 'C: Moldura em L', desc: '<b>C: Moldura em L.</b> Cabeçalho e menu formam uma moldura só, em tom de areia (um degrau mais escuro que o fundo), e o conteúdo fica numa folha com o canto arredondado. Módulos numa barra segmentada; no menu, cada ícone num quadradinho, com o ativo em laranja cheio, e grupos com título (Operação, Recursos, Financeiro) numa lista direta, sem o "entrar e voltar" de hoje.' },
+};
+const SCREENS = [[1, '1 · Painel inicial'], [2, '2 · Fleet-Ops: Pedidos (mapa)'], [3, '3 · Fleet-Ops: Financeiro → Motoboys'], [4, '4 · Celular (menu aberto)']];
+const mob = () => S.screen === 4;
+
+/* menu do Fleet-Ops (itens reais de hoje, depois da limpeza) */
+const GRUPOS = [
+  { k: 'operacoes', ic: 'paper-plane', t: 'Operação', itens: [['Pedidos', 'list'], ['Distribuição', 'tower-broadcast'], ['Configurar pedidos', 'sliders']] },
+  { k: 'recursos', ic: 'truck', t: 'Recursos', itens: [['Motoboys', 'helmet-safety'], ['Lojas', 'store']] },
+  { k: 'financeiro', ic: 'sack-dollar', t: 'Financeiro', itens: [['Painel', 'chart-pie'], ['Motoboys', 'motorcycle'], ['Lojas e faturas', 'file-invoice-dollar'], ['Tabela de km', 'route'], ['Multiplicadores', 'cloud-rain'], ['Configurações', 'gear'], ['Corridas do sistema', 'building']] },
+  { k: 'config', ic: 'gear', t: 'Configurações', itens: [['Navegador (app)', 'mobile-screen'], ['Notificações', 'bell'], ['Campos personalizados', 'table-list']] },
+];
+const MODULOS = [['painel', 'Painel', 'house'], ['fleet', 'Fleet-Ops', 'route'], ['iam', 'Usuários', 'user-shield'], ['fin', 'Financeiro', 'sack-dollar']];
+const ativoDaTela = () => S.screen === 1 ? { mod: 'painel', item: null } : S.screen === 3 ? { mod: 'fleet', grupo: 'financeiro', item: 'Motoboys' } : { mod: 'fleet', grupo: 'operacoes', item: 'Pedidos' };
+
+function cabecalho(v, m) {
+  const a = ativoDaTela();
+  const logo = `<div class="logo" data-act="toast" data-msg="Vai ao painel inicial"><div class="ic"><i class="fa-solid fa-motorcycle"></i></div>${m ? '' : '<div><b>Entregas</b><small>RestaurantePro</small></div>'}</div>`;
+  const nav = `<nav data-block="Módulos">${MODULOS.map(([k, t, ic]) => `<a class="${a.mod === k ? 'on' : ''}" data-act="toast" data-msg="Abre ${t}">${v === 'c' ? `<i class="fa-solid fa-${ic}"></i>` : ''}${t}</a>`).join('')}</nav>`;
+  const dir = `<div class="dir">
+    <button class="icb some" data-act="toast" data-msg="Idioma"><i class="fa-solid fa-globe"></i></button>
+    <button class="icb" data-act="toast" data-msg="4 avisos"><i class="fa-regular fa-bell"></i><span class="dot">4</span></button>
+    <button class="icb some" data-act="toast" data-msg="Chat com motoboys e lojas"><i class="fa-regular fa-comment"></i></button>
+    <div class="org" data-act="toast" data-msg="Trocar de organização"><span class="av">R</span><span class="tx2"><b>Restaurante Pro</b><small>Central Ribeirão</small></span></div>
+    <div class="eu" data-act="toast" data-msg="Conta, tema e sair">ED</div>
+  </div>`;
+  return `<header class="hd" data-block="Cabeçalho">${m ? `<button class="icb" data-act="gaveta"><i class="fa-solid fa-bars"></i></button>` : ''}${logo}${m ? '' : nav}${dir}</header>`;
+}
+
+function menu(v, gaveta = false) {
+  const a = ativoDaTela();
+  const aberto = gaveta || S.aberto;
+  const novo = `<button class="it novo" data-act="toast" data-msg="Abre o formulário de novo pedido"><i class="fa-solid fa-plus"></i><span class="tx">Criar novo pedido</span></button>`;
+  const busca = `<label class="busca"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Buscar no Fleet-Ops"></label>`;
+  let corpo = '';
+  if (v === 'c') {
+    // lista direta com títulos de grupo
+    corpo = GRUPOS.map(g => `<div class="sec">${g.t}</div>${g.itens.slice(0, g.k === 'financeiro' ? 4 : 3).map(([t, ic]) => `<button class="it ${a.grupo === g.k && a.item === t ? 'on' : ''}" data-act="toast" data-msg="Abre ${g.t} → ${t}"><i class="fa-solid fa-${ic}"></i><span class="tx">${t}</span></button>`).join('')}`).join('');
+  } else {
+    // grupos que abrem (como hoje), recolhidos mostram só o ícone do grupo
+    corpo = GRUPOS.map(g => {
+      const on = a.grupo === g.k;
+      const sub = `<div class="sub ${S.grupo === g.k ? 'on' : ''}">${g.itens.map(([t]) => `<button class="it ${on && a.item === t ? 'on' : ''}" data-act="toast" data-msg="Abre ${g.t} → ${t}"><span class="tx">${t}</span></button>`).join('')}</div>`;
+      return `<button class="it ${on ? 'on' : ''}" data-act="grupo" data-v="${g.k}"><i class="fa-solid fa-${g.ic}"></i><span class="tx">${g.t}</span><i class="fa-solid fa-chevron-${S.grupo === g.k ? 'down' : 'right'} ct"></i></button>${sub}`;
+    }).join('');
+  }
+  const modulos = gaveta ? `<div class="modulos">${MODULOS.map(([k, t]) => `<span class="${S.modulo === k ? 'on' : ''}" data-act="modulo" data-v="${k}">${t}</span>`).join('')}</div>` : '';
+  return `<aside class="mn ${aberto ? 'aberto' : ''}" data-block="Menu do Fleet-Ops"><div class="in">${modulos}${novo}${busca}<div class="sep"></div>${corpo}<div class="rodape"><div class="sep"></div><button class="it" data-act="toast" data-msg="Recolher / fixar o menu"><i class="fa-solid fa-thumbtack"></i><span class="tx">Fixar aberto</span></button></div></div></aside>`;
+}
+
+function telaPainel() {
+  const c = [['Corridas', '142'], ['Faturado', 'R$ 1.988'], ['A pagar', 'R$ 1.420'], ['Margem', 'R$ 568'], ['No prazo', '94%'], ['Tempo médio', '31 min']];
+  return `<div class="pg"><div><h1>Boa tarde, Edgard</h1><p class="muted">Domingo, 25 de outubro · 15:32</p></div>
+    <div class="cards">${c.map(([t, n]) => `<div class="cd"><small>${t}</small><b>${n}</b></div>`).join('')}</div>
+    <div class="blocos"><div class="bl"><h3>Pedidos em andamento</h3>${'<div class="ln"></div>'.repeat(5)}</div><div class="bl"><h3>Mapa</h3><div class="mp">${caps()}</div></div></div></div>`;
+}
+const caps = () => [['verde', 20, 30], ['amarelo', 45, 55], ['vermelho', 70, 25], ['verde', 60, 75]].map(([c, x, y]) => `<img class="cap" src="${IMG}capacete-${c}.png" style="left:${x}%;top:${y}%" alt="">`).join('');
+function telaPedidos() {
+  return `<div class="vb2"><h1>Pedidos</h1><div class="seg"><span class="on">Mapa</span><span>Tabela</span><span>Quadro</span></div><span class="btn">+ Novo pedido</span></div>
+    <div class="mapa-cheio"><div class="mp">${caps()}</div>
+      <div class="pn" style="left:14px;width:250px"><h3>Motoboys</h3>${'<div class="ln"></div>'.repeat(4)}</div>
+      <div class="pn" style="right:14px;width:330px;bottom:14px"><h3>Pedidos</h3>${'<div class="ln"></div>'.repeat(7)}</div></div>`;
+}
+function telaFinanceiro() {
+  const l = [['Carlos', '14', 'R$ 168,40', 1], ['Marcos', '13', 'R$ 151,20', 1], ['Juliana', '12', '-R$ 20,00', 0], ['Thiago', '12', 'R$ 137,10', 1], ['Rafael', '11', 'R$ 126,50', 1], ['Wesley', '7', 'R$ 79,90', 1]];
+  return `<div class="pg"><div style="display:flex;align-items:flex-end;gap:12px"><h1>Motoboys</h1><span class="muted">Financeiro · outubro</span></div>
+    <table class="tb"><thead><tr><th>Motoboy</th><th>Corridas</th><th>Saldo</th><th>Último pagamento</th></tr></thead><tbody>${l.map(([n, c, s, p]) => `<tr><td><b>${n}</b></td><td>${c}</td><td class="${p ? 'pos' : 'neg'}">${s}</td><td class="muted">18/10</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function frame(v, availW) {
+  const m = mob();
+  const W = m ? 390 : S.vp, H = m ? 780 : Math.round(S.vp * 0.58);
+  const s = Math.min(1, availW / (W + (m ? 20 : 0)));
+  const tela = S.screen === 1 ? telaPainel() : S.screen === 3 ? telaFinanceiro() : telaPedidos();
+  const comMenu = S.screen !== 1;
+  const corpo = m
+    ? `<div class="corpo"><div class="conteudo">${telaPedidos().replace('style="left:14px;width:250px"', 'style="display:none"').replace('style="right:14px;width:330px;bottom:14px"', 'style="left:0;right:0;bottom:0;top:auto;height:45%;border-radius:18px 18px 0 0"')}</div></div>
+       <div class="gaveta ${S.gaveta ? 'on' : ''}"><div class="fundo" data-act="gaveta"></div>${menu(v, true)}</div>`
+    : `<div class="corpo">${comMenu ? menu(v) : ''}<div class="conteudo">${tela}</div></div>`;
+  return `<div class="frame ${m ? 'phone' : ''}" style="zoom:${s}"><div class="pf v${v.toUpperCase()} ${m ? 'm' : ''}" style="width:${W}px;height:${H}px">${cabecalho(v, m)}${corpo}</div></div>`;
+}
+function render() {
+  document.getElementById('vtabs').innerHTML = `<span class="lbl">Variante</span>` + ['a', 'b', 'c'].map(k => `<button class="chip ${S.variant === k ? 'on' : ''}" data-v="${k}">${VARIANTS[k].nome}</button>`).join('') + `<button class="chip cmp ${S.variant === 'cmp' ? 'on' : ''}" data-v="cmp"><i class="fa-solid fa-table-columns"></i> Comparar por tela</button>`;
+  document.getElementById('stabs').innerHTML = `<span class="lbl">Tela</span>` + SCREENS.map(([n, t]) => `<button class="chip ${S.screen === n ? 'on' : ''}" data-s="${n}">${t}</button>`).join('');
+  document.getElementById('otabs').innerHTML = `<span class="lbl">Menu</span><button class="chip ${!S.aberto ? 'on' : ''}" data-o="0">Trilho (abre ao passar o mouse)</button><button class="chip ${S.aberto ? 'on' : ''}" data-o="1">Mostrar aberto</button>`;
+  document.getElementById('desc').innerHTML = S.variant === 'cmp' ? '<b>Comparar por tela:</b> A, B e C lado a lado. Troque o tema (Claro/Escuro) na barrinha do canto para ver os dois.' : VARIANTS[S.variant].desc;
+  const stage = document.getElementById('stage'), availW = window.innerWidth - 48;
+  if (S.variant === 'cmp') { stage.className = 'cmpgrid'; stage.innerHTML = ['a', 'b', 'c'].map(v => `<div class="cmpcol"><h3>${VARIANTS[v].nome}</h3>${frame(v, (availW - 32) / 3)}</div>`).join(''); }
+  else { stage.className = 'single'; stage.innerHTML = frame(S.variant, availW); }
+}
+let toastT;
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2000); }
+document.addEventListener('click', (e) => {
+  const vt = e.target.closest('#vtabs [data-v]'); if (vt) { S.variant = vt.dataset.v; render(); return; }
+  const st = e.target.closest('#stabs [data-s]'); if (st) { S.screen = +st.dataset.s; render(); return; }
+  const ot = e.target.closest('#otabs [data-o]'); if (ot) { S.aberto = ot.dataset.o === '1'; render(); return; }
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const act = el.dataset.act;
+  if (act === 'grupo') { S.grupo = S.grupo === el.dataset.v ? null : el.dataset.v; render(); return; }
+  if (act === 'gaveta') { S.gaveta = !S.gaveta; render(); return; }
+  if (act === 'modulo') { S.modulo = el.dataset.v; render(); toast('Troca o menu para ' + el.textContent); return; }
+  if (act === 'toast') toast(el.dataset.msg);
+});
+document.getElementById('theme-switcher').addEventListener('change', (e) => { document.getElementById('theme').href = '../themes/' + e.target.value + '.css'; document.body.classList.toggle('dark-chrome', e.target.value !== 'entregas'); });
+document.querySelectorAll('#sketch-tools [data-vp]').forEach(b => b.addEventListener('click', () => { S.vp = +b.dataset.vp; document.querySelectorAll('#sketch-tools [data-vp]').forEach(x => x.classList.toggle('on', x === b)); render(); }));
+document.getElementById('annot-btn').addEventListener('click', (e) => { document.body.classList.toggle('annot'); e.target.classList.toggle('on'); });
+window.addEventListener('resize', render);
+render();
+</script>
+</body>
+</html>
