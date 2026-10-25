@@ -24,14 +24,7 @@
                     />
                 </div>
             </div>
-            <div class="field-info-container">
-                <div class="field-name flex flex-row items-center justify-between">
-                    <span>{{t "order.fields.vehicle-assigned"}}</span>
-                </div>
-                <div class="field-value">
-                    <Vehicle::Pill @vehicle={{@resource.vehicle_assigned}} @titleFallback={{t "fleet-ops.ui.order.details-detail.no-vehicle-assigned"}} @titleClass={{unless @resource.vehicle_assigned "text-gray-300"}} />
-                </div>
-            </div>
+            {{!-- Entregas: sem "Veículo atribuído" e "Facilitador" (veículos e fornecedores ocultos) --}}
             <div class="field-info-container">
                 {{#if @resource.isMultiDrop}}
                     <div class="field-name">{{pluralize (t "order.fields.customer")}}</div>
@@ -59,27 +52,6 @@
                         </div>
                     </div>
                 {{/if}}
-            </div>
-            <div class="field-info-container">
-                <div class="field-name">{{t "order.fields.facilitator"}}</div>
-                <div class="field-value">
-                    <div class="flex flex-row space-x-2">
-                        <div>
-                            <Image
-                                src={{resource-image @resource.facilitator.photo_url "vendor"}}
-                                @fallbackSrc={{(placeholder-image "vendor")}}
-                                width="28"
-                                height="28"
-                                class="w-7 h-7 rounded-full ring-2 ring-gray-800 dark:ring-gray-700 shadow transition-shadow hover:shadow-md focus:shadow-md"
-                                alt={{@resource.facilitator.name}}
-                            />
-                        </div>
-                        <div>
-                            <div class="text-sm {{unless @resource.facilitator 'text-gray-300'}}">{{n-a @resource.facilitator.name (t "fleet-ops.ui.order.details-detail.no-facilitator")}}</div>
-                            <div class="text-xs text-gray-400 dark:text-gray-500">{{n-a @resource.facilitator.phone (t "fleet-ops.ui.order.details-detail.no-phone")}}</div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
         <div>

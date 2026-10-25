@@ -1,3 +1,4 @@
-<ContentPanel @title={{t "fleet-ops.ui.order.details-metadata.metadata"}} @open={{true}} @actionButtons={{this.actionButtons}} @wrapperClass="bordered-top" @panelBodyWrapperClass={{unless this.emptyMetadata "px-0i" ""}}>
+{{!-- Entregas: sem o botão Editar (o meta guarda dados da integração, do prazo e do km; editar à mão quebra). Só para ver. --}}
+<ContentPanel @title={{t "fleet-ops.ui.order.details-metadata.metadata"}} @open={{true}} @wrapperClass="bordered-top" @panelBodyWrapperClass={{unless this.emptyMetadata "px-0i" ""}}>
     <MetadataViewer @metadata={{@resource.meta}} />
 </ContentPanel>

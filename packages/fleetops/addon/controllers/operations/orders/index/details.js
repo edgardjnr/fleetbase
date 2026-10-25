@@ -118,11 +118,7 @@ export default class OperationsOrdersIndexDetailsController extends Controller {
                     {
                         separator: true,
                     },
-                    {
-                        text: this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.listen-to-socket-channel'),
-                        icon: 'headphones',
-                        fn: () => this.hostRouter.transitionTo('console.developers.sockets.view', `order.${this.model.public_id}`),
-                    },
+                    // Entregas: sem "Ouvir canal do socket" (ferramenta de desenvolvedor)
                     {
                         text: this.intl.t('fleet-ops.ui.controller.operations-orders-index-details.view-metadata'),
                         icon: 'table',

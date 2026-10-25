@@ -22,24 +22,8 @@ export default class OrderDetailsRouteComponent extends Component {
     }
 
     get actionButtons() {
+        // Entregas: sem "Otimizar rota" (roteamento e orquestrador ocultos); fica o Editar rota no menu
         return [
-            this.showOptimizationSelect
-                ? {
-                      component: 'route-optimization-engine-select-button',
-                      onClick: (service) => this.optimizeRouteWithService.perform(service),
-                      isLoading: this.optimizeRouteWithService.isRunning,
-                      disabled: !this.canOptimizeRoute,
-                  }
-                : {
-                      type: 'magic',
-                      icon: 'magic',
-                      text: this.intl.t('order.fields.optimize-route'),
-                      onClick: () => this.optimizeRoute.perform(),
-                      permission: 'fleet-ops optimize order',
-                      helpText: this.intl.t('order.fields.optimize-route-help-text'),
-                      disabled: !this.canOptimizeRoute,
-                      isLoading: this.optimizeRoute.isRunning,
-                  },
             {
                 icon: 'ellipsis-h',
                 prefix: 'fas',

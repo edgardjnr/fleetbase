@@ -62,16 +62,14 @@
         <Order::Details::CustomFields @resource={{@resource}} @onChange={{@onCustomFieldsChanged}} @isLoading={{@isLoading}} />
         <Order::Details::PurchaseRate @resource={{@resource}} @isLoading={{@isLoading}} />
         <Order::Details::Tracking @resource={{@resource}} @isLoading={{@isLoading}} />
-        <Order::Details::Proof @resource={{@resource}} @reloadToken={{this.effectiveProofReloadToken}} @isLoading={{@isLoading}} />
+        {{!-- Entregas: sem o painel Comprovante de entrega (o pedido novo sai sem POD) --}}
         <Order::Details::Notes @resource={{@resource}} @onChange={{@onNotesChanged}} @isLoading={{@isLoading}} />
         <Order::Details::IntegratedVendorDetails @resource={{@resource}} @isLoading={{@isLoading}} />
         <Order::Details::Route @resource={{@resource}} @onChange={{@onRouteChanged}} @isLoading={{@isLoading}} />
         <RegistryYield @registry="fleet-ops:component:order:details" as |RegistryComponent|>
             <RegistryComponent @resource={{@resource}} @controller={{@controller}} @permission={{get-write-permission @resource}} @isLoading={{@isLoading}} />
         </RegistryYield>
-        <Order::Details::Payload @resource={{@resource}} @onChange={{@onPayloadChanged}} @isLoading={{@isLoading}} />
-        <Order::Details::Documents @resource={{@resource}} @onChange={{@onDocumentsChanged}} @isLoading={{@isLoading}} />
-        <Order::Details::Comments @resource={{@resource}} @onChange={{@onCommentsChanged}} @isLoading={{@isLoading}} />
+        {{!-- Entregas: sem Itens/Entidades ("Adicionar item"), Documentos e Comentários; Metadados só para ver --}}
         <Order::Details::Metadata @resource={{@resource}} @onChange={{@onMetadataChanged}} @isLoading={{@isLoading}} />
         <RegistryYield @registry="fleet-ops:component:order:details:end" as |RegistryComponent|>
             <RegistryComponent @resource={{@resource}} @controller={{@controller}} @permission={{get-write-permission @resource}} @isLoading={{@isLoading}} />
