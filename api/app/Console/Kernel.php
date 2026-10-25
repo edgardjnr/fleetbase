@@ -2,12 +2,14 @@
 
 namespace App\Console;
 
+use App\Support\Entregas\AgendadosDesligados;
 use App\Support\Entregas\Distribuicao\Distribuicao;
 use App\Support\Entregas\Financeiro\Financeiro;
 use App\Support\Entregas\Ifood\ClienteIfood;
 use App\Support\Entregas\Integracao\Integracao;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Illuminate\Support\Facades\Log;
 
 class Kernel extends ConsoleKernel
 {
@@ -62,6 +64,25 @@ class Kernel extends ConsoleKernel
         // do financeiro.
         // withoutOverlapping(30): a importação do histórico pode passar de 10 min
         $schedule->command('entregas:corridas-conferir')->everyFiveMinutes()->withoutOverlapping(30)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
+    }
+
+    /**
+     * Entregas RestaurantePro: depois de subir os providers, tira da agenda os comandos dos pacotes que o Entregas não usa
+     * (fleetops:sync-telematics e sandbox:sync; ver AgendadosDesligados). Não dá para fazer no schedule(): ele roda quando
+     * a agenda é criada, e os pacotes agendam depois, no booted() deles. O bootstrap() roda antes de todo comando artisan
+     * (inclusive o schedule:run, o schedule:list e o schedule-monitor:sync); uma falha aqui só vai ao log.
+     *
+     * @return void
+     */
+    public function bootstrap()
+    {
+        parent::bootstrap();
+
+        try {
+            AgendadosDesligados::aplicar($this->app->make(Schedule::class));
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] agenda: não deu para tirar os comandos sem uso: ' . get_class($e));
+        }
     }
 
     /**
