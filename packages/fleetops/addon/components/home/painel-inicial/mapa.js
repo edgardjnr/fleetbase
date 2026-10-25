@@ -46,13 +46,17 @@ export default class HomePainelInicialMapaComponent extends Component {
     @action aoCarregar(evento) {
         this.mapa = evento?.target ?? null;
         if (!this.mapa) return;
-        this.observador = new ResizeObserver(() => this.mapa?.invalidateSize());
+        // ao ganhar tamanho (o mapa pode nascer com altura 0), redesenha e enquadra se ainda não enquadrou
+        this.observador = new ResizeObserver(() => {
+            this.mapa?.invalidateSize();
+            this.enquadrar();
+        });
         this.observador.observe(this.mapa.getContainer());
         this.enquadrar();
     }
 
     @action enquadrar() {
-        if (!this.mapa || this.enquadrado) return;
+        if (!this.mapa || this.enquadrado || !this.mapa.getSize().y) return;
         const pontos = [...this.motoboys.map((m) => [m.latitude, m.longitude]), ...this.pedidos.map((p) => [p.latitude, p.longitude])];
         if (!pontos.length) return;
         this.mapa.fitBounds(pontos, { padding: [30, 30], maxZoom: 14 });

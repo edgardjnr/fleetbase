@@ -111,9 +111,11 @@ export default class HomePainelInicialComponent extends Component {
         return nome ? `${texto}, ${nome}` : texto;
     }
 
+    // Sem a opção timeZone: o polyfill do Intl no console não tem o America/Sao_Paulo e cai no UTC (3 h a mais).
+    // A hora local do navegador já é a de Brasília (a mesma regra do resto do console).
     get dataDeHoje() {
-        const texto = new Intl.DateTimeFormat(this.intl.primaryLocale, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' }).format(this.agora);
-        const hora = new Intl.DateTimeFormat(this.intl.primaryLocale, { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).format(this.agora);
+        const texto = new Intl.DateTimeFormat(this.intl.primaryLocale, { weekday: 'long', day: 'numeric', month: 'long' }).format(this.agora);
+        const hora = new Intl.DateTimeFormat(this.intl.primaryLocale, { hour: '2-digit', minute: '2-digit' }).format(this.agora);
         return `${texto.charAt(0).toUpperCase()}${texto.slice(1)} · ${hora}`;
     }
 
@@ -143,7 +145,7 @@ export default class HomePainelInicialComponent extends Component {
         if (this.ehAdmin) {
             lista.push(
                 { chave: 'faturado', icone: 'store', rotulo: t('faturado'), valor: r.faturado === null ? '—' : f.valor(r.faturado), detalhe: r.faturado && r.corridas ? t('por-corrida', { valor: f.valor(r.faturado / r.corridas) }) : '' },
-                { chave: 'a-pagar', icone: 'sack-dollar', rotulo: t('a-pagar'), valor: r.a_pagar === null ? '—' : f.valor(r.a_pagar), detalhe: r.km === null ? '' : t('km', { km: f.km(r.km) }) },
+                { chave: 'a-pagar', icone: 'sack-dollar', rotulo: t('a-pagar'), valor: r.a_pagar === null ? '—' : f.valor(r.a_pagar), detalhe: r.km === null ? '' : t('km', { km: f.km(r.km).replace(/,(\d)\d$/, ',$1') }) },
                 { chave: 'margem', icone: 'chart-line', rotulo: t('margem'), valor: r.margem === null ? '—' : f.valor(r.margem), detalhe: r.margem !== null && r.faturado ? t('do-faturado', { pct: f.km((r.margem / r.faturado) * 100).replace(/,(\d)\d$/, ',$1') }) : '' }
             );
         }
@@ -259,6 +261,10 @@ export default class HomePainelInicialComponent extends Component {
             ...barra,
             dica: this.intl.t(`${P}.grafico.dica`, { rotulo: barra.rotuloCurto, total: barra.total }),
         }));
+    }
+
+    get graficoVazio() {
+        return !this.barras.some((barra) => barra.total > 0 || (barra.media ?? 0) > 0);
     }
 
     get temMedia() {

@@ -29,6 +29,10 @@
     font-size: 14px;
     line-height: 1.4;
     padding: 22px 24px 40px;
+    /* filho de um contêiner flex (next-view-section-body): sem isto encolhe para a altura da tela */
+    flex: 0 0 auto;
+    width: 100%;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     gap: 18px;

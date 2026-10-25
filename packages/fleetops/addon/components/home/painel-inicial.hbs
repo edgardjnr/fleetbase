@@ -119,7 +119,7 @@
     <div class="pi-grade-baixo">
         <section class="pi-card">
             <div class="pi-card-cabecalho"><h3>{{this.tituloDoGrafico}}</h3><span class="pi-sub">{{t "fleet-ops.ui.painel-inicial.grafico.atual"}}</span></div>
-            {{#if this.barras.length}}
+            {{#unless this.graficoVazio}}
                 <div class="pi-grafico">
                     {{#each this.barras as |barra|}}
                         <div class="pi-coluna" title={{barra.dica}}>
@@ -137,7 +137,7 @@
                 </div>
             {{else}}
                 <div class="pi-vazio">{{t "fleet-ops.ui.painel-inicial.sem-corridas"}}</div>
-            {{/if}}
+            {{/unless}}
         </section>
 
         <section class="pi-card">
