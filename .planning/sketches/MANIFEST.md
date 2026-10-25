@@ -13,6 +13,9 @@ Tela de pedidos `/fleet-ops` (sketch 005, 2026-10-25): Mapa, Tabela e Quadro ref
 como protagonista (acompanhar a operação; fila e motoboys em painéis), e no celular o mapa com uma folha que sobe de
 baixo.
 
+Console no celular (sketch 007, 2026-10-25): o console inteiro no celular na marca Entregas, para fazer tudo o que se
+faz no PC, com o rodapé do Fleetbase trocado por 5 destinos fixos (Início · Pedidos · Mapa · Motoboys · Mais).
+
 ## Reference Points
 - O próprio portal em produção (https://entregas.restaurantepro.com.br/customer-portal).
 - Mesmas telas em A, B e C, com "comparar por tela" (preferência do Edgard).
@@ -27,3 +30,4 @@ baixo.
 | 004 | painel-inicial | Como o painel inicial do console divide números do período e operação ao vivo, no desktop e no celular? | **A** (faixa de 6 números no topo; Ao vivo com fila à esquerda e mapa à direita; corridas por hora, lojas e motoboys; faixa Atenção; barra vermelha no pico; celular empilhado) | console, painel, dashboard, layout, mobile |
 | 005 | tela-de-pedidos | Como fica a tela /fleet-ops (Mapa, Tabela e Quadro) com o mapa como protagonista, no desktop e no celular? | **A invertida** (mapa em tela cheia; Motoboys flutuando à esquerda e Pedidos à direita, recolhíveis; contagens no topo filtram; detalhe junto aos Pedidos; Tabela com abas; Quadro por situação; celular com folha de baixo) | console, fleet-ops, pedidos, mapa, tabela, quadro, mobile |
 | 006 | moldura-do-console | Como o cabeçalho do console e o menu lateral do Fleet-Ops ficam nas cores do painel, no claro e no escuro? | **C** (moldura em L cor de areia; folha do conteúdo com canto arredondado; módulos em barra segmentada; trilho de ícones em quadradinhos, ativo em laranja; lista direta com títulos de grupo) | console, cabeçalho, menu, sidebar, tema, mobile |
+| 007 | console-no-celular | Como fica o console inteiro no celular, na marca Entregas, com um rodapé que substitui a barra do Fleetbase? | **B** Doca flutuante | console, mobile, rodapé, navegação, tema |
