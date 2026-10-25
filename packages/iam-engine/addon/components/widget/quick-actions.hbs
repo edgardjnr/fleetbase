@@ -9,7 +9,7 @@
     <div class="iam-widget-body iam-report-body">
         <div class="iam-action-grid">
             <LinkTo @route="users" class="iam-action-link"><FaIcon @icon="user-plus" /><span>{{t "iam.ui.widgets.quick-actions.invite-user"}}</span></LinkTo>
-            <LinkTo @route="groups" class="iam-action-link"><FaIcon @icon="people-group" /><span>{{t "iam.ui.widgets.quick-actions.create-group"}}</span></LinkTo>
+            {{! Entregas RestaurantePro: sem Grupos (a rota groups saiu do routes.js) }}
             <LinkTo @route="roles" class="iam-action-link"><FaIcon @icon="user-tag" /><span>{{t "iam.ui.widgets.quick-actions.create-role"}}</span></LinkTo>
             <LinkTo @route="policies" class="iam-action-link"><FaIcon @icon="file-shield" /><span>{{t "iam.ui.widgets.quick-actions.create-policy"}}</span></LinkTo>
         </div>

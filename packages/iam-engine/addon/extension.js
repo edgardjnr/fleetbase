@@ -165,18 +165,7 @@ export default {
                     icon: 'id-card',
                     route: 'console.iam.users.drivers',
                 },
-                {
-                    title: 'Customers',
-                    description: 'View and manage customer accounts linked to your organisation.',
-                    icon: 'users',
-                    route: 'console.iam.users.customers',
-                },
-                {
-                    title: 'Groups',
-                    description: 'Organise users into groups for bulk permission management.',
-                    icon: 'people-group',
-                    route: 'console.iam.groups',
-                },
+                // Entregas RestaurantePro: sem os atalhos Customers (logins de loja só pela tela Lojas) e Groups
                 {
                     title: 'Roles',
                     description: 'Define named roles that bundle sets of permissions.',

@@ -255,6 +255,7 @@ module('Unit | Controller | console/account/organizations', function (hooks) {
     });
 
     test('createOrganization posts the new organization and refreshes', async function (assert) {
+        this.controller.currentUser.userSnapshot = { id: 'user_1', is_admin: true };
         this.controller.createOrganization();
 
         const options = this.modals.lastOptions;
@@ -417,6 +418,7 @@ module('Unit | Controller | console/account/organizations | failures', function 
     test('a failed create stops the modal loading and reports the error', async function (assert) {
         const failure = new Error('create rejected');
         this.postRejectsWith = failure;
+        this.controller.currentUser.userSnapshot = { id: 'user_1', is_admin: true };
 
         this.controller.createOrganization();
         const modal = fakeModal({ organization: { name: 'New Co' } });

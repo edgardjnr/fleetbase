@@ -16,10 +16,7 @@ export default class UsersController extends Controller {
                 route: 'users.drivers',
                 label: this.intl.t('iam.ui.nav.drivers'),
             },
-            {
-                route: 'users.customers',
-                label: this.intl.t('iam.ui.nav.customers'),
-            },
+            // Entregas RestaurantePro: sem a aba Clientes (o login da loja nasce na tela Lojas do Fleet-Ops)
         ];
     }
 

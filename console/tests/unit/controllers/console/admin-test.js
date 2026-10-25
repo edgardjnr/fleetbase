@@ -97,25 +97,18 @@ module('Unit | Controller | console/admin', function (hooks) {
         const items = controller.navigationItems;
 
         assert.deepEqual(
-            items.slice(0, 6).map((item) => item.label),
-            ['Overview', 'Organizations', 'Branding', '2FA Config', 'Platform API Token', 'Schedule Monitor'],
+            items.slice(0, 5).map((item) => item.label),
+            ['Overview', 'Organizations', 'Branding', '2FA Config', 'Schedule Monitor'],
             'core admin items retain their current order'
         );
         assert.deepEqual(
-            items.slice(0, 6).map((item) => item.route),
-            [
-                'console.admin.index',
-                'console.admin.organizations',
-                'console.admin.branding',
-                'console.admin.two-fa-settings',
-                'console.admin.platform-api-token',
-                'console.admin.schedule-monitor',
-            ],
+            items.slice(0, 5).map((item) => item.route),
+            ['console.admin.index', 'console.admin.organizations', 'console.admin.branding', 'console.admin.two-fa-settings', 'console.admin.schedule-monitor'],
             'core admin items retain their routes'
         );
         assert.deepEqual(
-            items.slice(0, 6).map((item) => item.icon),
-            ['rectangle-list', 'building', 'palette', 'shield-halved', 'key', 'calendar-check'],
+            items.slice(0, 5).map((item) => item.icon),
+            ['rectangle-list', 'building', 'palette', 'shield-halved', 'calendar-check'],
             'core admin items retain their icons'
         );
     });
@@ -219,7 +212,7 @@ module('Unit | Controller | console/admin', function (hooks) {
         assert.strictEqual(systemConfig.label, 'System Config');
         assert.deepEqual(
             systemConfig.children.map((item) => item.label),
-            ['Services', 'Mail', 'Filesystem', 'Queue', 'Socket', 'Push Notifications'],
+            ['Services', 'Mail', 'Filesystem', 'Push Notifications'],
             'system config children retain their current order'
         );
         assert.deepEqual(
@@ -228,8 +221,6 @@ module('Unit | Controller | console/admin', function (hooks) {
                 'console.admin.config.services',
                 'console.admin.config.mail',
                 'console.admin.config.filesystem',
-                'console.admin.config.queue',
-                'console.admin.config.socket',
                 'console.admin.config.notification-channels',
             ],
             'system config children retain their routes'

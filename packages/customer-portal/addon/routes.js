@@ -17,6 +17,8 @@ export default buildRoutes(function () {
             this.route('new');
             this.route('details', { path: '/:id' });
         });
+        // Entregas: billing, support, documents, address-book e notifications só redirecionam para Pedidos
+        // (links antigos); as telas foram apagadas
         this.route('billing', function () {
             this.route('index', { path: '/' });
             this.route('details', { path: '/:id' });

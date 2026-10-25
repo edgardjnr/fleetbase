@@ -91,14 +91,18 @@ export default class LayoutHeaderComponent extends Component {
                 text: this.intl.t('ember-ui.layout.header.organization-settings'),
                 icon: 'gear',
             },
-            {
+        ];
+
+        // Entregas RestaurantePro: "Criar ou entrar em organização" só para o administrador do sistema
+        if (this.currentUser.isAdmin) {
+            staticMenuItems.pushObject({
                 id: 'create-or-join-organizations',
                 href: 'javascript:;',
                 text: this.intl.t('ember-ui.layout.header.create-or-join-organizations'),
                 action: 'createOrJoinOrg',
                 icon: 'building',
-            },
-        ];
+            });
+        }
 
         // If registry bridge is booted add to static items
         if (this.hasExtension('@fleetbase/registry-bridge-engine')) {
@@ -184,14 +188,7 @@ export default class LayoutHeaderComponent extends Component {
                 route: 'console.account.index',
                 text: this.intl.t('ember-ui.layout.header.view-profile'),
             },
-            {
-                id: 'show-keyboard-shortcuts-user-nav-item',
-                wrapperClass: 'show-keyboard-shortcuts-user-nav-item',
-                href: 'javascript:;',
-                text: this.intl.t('ember-ui.layout.header.show-keyboard-shortcuts'),
-                disabled: true,
-                action: 'showKeyboardShortcuts',
-            },
+            // Entregas RestaurantePro: sem "Atalhos de teclado" (item desativado no Fleetbase)
             {
                 seperator: true,
             },

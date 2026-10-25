@@ -59,10 +59,7 @@
         "ember-prism": "^0.13.0",
         "ember-radio-button": "3.0.0-beta.1",
         "ember-tag-input": "^3.1.0",
-        "fleetbase-extensions-indexer": "^0.0.5",
-        "postcss-at-rules-variables": "^0.3.0",
-        "postcss-custom-properties": "^12.1.11",
-        "postcss-nth-list": "^1.0.2"
+        "postcss-at-rules-variables": "^0.3.0"
     },
     "devDependencies": {
         "@babel/core": "^7.25.2",
@@ -123,10 +120,8 @@
         "eslint-plugin-prettier": "^5.2.1",
         "eslint-plugin-qunit": "^8.1.2",
         "fast-glob": "^3.3.2",
-        "fs": "0.0.1-security",
         "inter-ui": "^3.19.3",
         "loader.js": "^4.7.0",
-        "normalize.css": "^8.0.1",
         "postcss": "^8.4.41",
         "postcss-conditionals-renewed": "^1.0.0",
         "postcss-each": "^1.1.0",
