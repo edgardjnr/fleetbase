@@ -1,7 +1,8 @@
 /**
  * Entregas RestaurantePro: regras do pedido criado pela central (Fleet-Ops → Pedidos → Novo).
  *
- * - O pedido novo já abre como ad-hoc (oferta aos motoboys) e com despacho ligado.
+ * - O pedido novo já abre como ad-hoc (oferta aos motoboys) e com despacho ligado, e sem comprovante de entrega
+ *   (POD): o formulário não mostra mais o "Exigir comprovante".
  * - Só cria com uma loja como cliente e com o ID interno preenchido: sem a loja, o pedido não entra no portal nem
  *   na cobrança dela (Financeiro), e o ID interno é o número que a loja e o motoboy usam para achar o pedido.
  *
@@ -16,7 +17,7 @@ export const RAIO_ADHOC_PADRAO = 5000;
  * Atributos iniciais do pedido novo.
  *
  * @param {Number} [raio] o `fleetops.adhoc_distance` da empresa
- * @return {{adhoc: Boolean, adhoc_distance: Number, dispatched: Boolean}}
+ * @return {{adhoc: Boolean, adhoc_distance: Number, dispatched: Boolean, pod_required: Boolean}}
  */
 export function padroesDoPedidoNovo(raio) {
     const distancia = Number(raio);
@@ -25,6 +26,7 @@ export function padroesDoPedidoNovo(raio) {
         adhoc: true,
         adhoc_distance: Number.isFinite(distancia) && distancia > 0 ? distancia : RAIO_ADHOC_PADRAO,
         dispatched: true,
+        pod_required: false,
     };
 }
 

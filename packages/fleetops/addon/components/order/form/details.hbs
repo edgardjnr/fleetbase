@@ -77,33 +77,7 @@
             {{/if}}
         </InputGroup>
 
-        <InputGroup @name={{t "order.fields.facilitator"}} @helpText={{t "order.fields.facilitator-help-text"}}>
-            <ModelSelect
-                @modelName="facilitator"
-                @selectedModel={{@resource.facilitator}}
-                @placeholder={{t "order.fields.facilitator-placeholder"}}
-                @triggerClass="form-select form-input"
-                @allowClear={{true}}
-                @infiniteScroll={{false}}
-                @renderInPlace={{true}}
-                @disabled={{cannot-write @resource}}
-                @onChange={{this.selectFacilitator}}
-                as |model|
-            >
-                <div class="flex items-center">
-                    <div class="w-7 flex-grow-0 flex-shrink-0">
-                        {{#if model.isIntegratedVendor}}
-                            <Image src={{model.photo_url}} alt={{model.name}} class="w-4 h-4" width="16" height="16" />
-                        {{else}}
-                            <FaIcon @icon={{if model.isVendor "warehouse" "user"}} />
-                        {{/if}}
-                    </div>
-                    <span class="uppercase">
-                        {{model.name}}
-                    </span>
-                </div>
-            </ModelSelect>
-        </InputGroup>
+        {{!-- Entregas: sem o campo Facilitador (fornecedor/parceiro: tela oculta) --}}
 
         {{#if (and @resource.facilitator.isIntegratedVendor @resource.facilitator.service_types.length)}}
             <InputGroup @name={{t "order.fields.service-type"}} @helpText={{concat (t "order.fields.service-type-help-text") @resource.facilitator.name "."}}>
@@ -154,51 +128,8 @@
             </ModelSelect>
         </InputGroup>
 
-        <InputGroup @name={{t "order.fields.assign-vehicle"}} @helpText={{t "order.fields.assign-vehicle-help-text"}}>
-            <ModelSelect
-                @modelName="vehicle"
-                @selectedModel={{@resource.vehicle_assigned}}
-                @placeholder={{t "order.fields.assign-vehicle-placeholder"}}
-                @triggerClass="form-select form-input"
-                @infiniteScroll={{false}}
-                @renderInPlace={{true}}
-                @allowClear={{true}}
-                @disabled={{@resource.facilitator.isIntegratedVendor}}
-                @permission="fleet-ops create order"
-                @onChange={{fn (mut @resource.vehicle_assigned)}}
-                as |model|
-            >
-                <div class="flex items-center">
-                    <div class="w-7 flex-grow-0 flex-shrink-0">
-                        <Image @src={{model.avatar_url}} @fallbackSrc={{config "defaultValues.vehicleAvatar"}} class="w-4 h-4 shadow-sm rounded-md" />
-                    </div>
-                    <div class="flex-1 flex flex-row truncate">
-                        <span class="uppercase">{{model.display_name}}</span>
-                    </div>
-                </div>
-            </ModelSelect>
-        </InputGroup>
-
-        {{#if (and @resource.pod_required (not @resource.facilitator.isIntegratedVendor))}}
-            <InputGroup @name={{t "order.fields.proof-delivery"}} @helpText={{t "order.fields.proof-delivery-help-text"}} @required={{true}}>
-                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
-                    <PowerSelect
-                        @options={{get-fleet-ops-options "podOptions"}}
-                        @selected={{find-by "value" @resource.pod_method (get-fleet-ops-options "podOptions")}}
-                        @onChange={{set-model-attr @resource "pod_method"}}
-                        @placeholder={{t "order.fields.proof-delivery-placeholder"}}
-                        @triggerClass="form-select form-input"
-                        @disabled={{cannot-write @resource}}
-                        as |option|
-                    >
-                        <div class="text-sm">
-                            <div class="font-semibold normalize-in-trigger">{{option.label}}</div>
-                            <div class="hide-from-trigger">{{option.description}}</div>
-                        </div>
-                    </PowerSelect>
-                </div>
-            </InputGroup>
-        {{/if}}
+        {{!-- Entregas: sem "Atribuir veículo" e sem o método do comprovante (POD fica desligado: pod_required false
+             em utils/entregas-pedido-novo) --}}
 
         {{#if @resource.adhoc}}
             <div>
@@ -242,18 +173,7 @@
             </InputGroup>
         </div>
 
-        <div class="lg:col-span-2">
-            <InputGroup @wrapperClass="pt-1">
-                <Toggle
-                    @label={{t "order.fields.require-proof"}}
-                    @wrapperClass="justify-start-i"
-                    @isToggled={{@resource.pod_required}}
-                    @onToggle={{this.toggleProofOfDelivery}}
-                    @disabled={{cannot-write @resource}}
-                    @helpText={{t "order.fields.require-proof-help-text"}}
-                />
-            </InputGroup>
-        </div>
+        {{!-- Entregas: sem "Exigir comprovante de entrega" --}}
 
         <RegistryYield @registry="fleet-ops:component:order:form:details" as |RegistryComponent|>
             <RegistryComponent @order={{@resource}} @resource={{@resource}} />

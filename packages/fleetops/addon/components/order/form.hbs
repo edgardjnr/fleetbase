@@ -25,12 +25,9 @@
         <RegistryYield @registry="fleet-ops:component:order:form" as |RegistryComponent|>
             <RegistryComponent @order={{@resource}} @resource={{@resource}} />
         </RegistryYield>
-        <Order::Form::Payload @resource={{@resource}} />
-        <Order::Form::ServiceRate @resource={{@resource}} />
+        {{!-- Entregas: só Notas. Sem Itens/Entidades (payload.entities; a coleta, a entrega e as paradas vêm do
+             Order::Form::Route), Serviço/Tarifa, Documentos, Restrições do orquestrador e Metadados --}}
         <Order::Form::Notes @resource={{@resource}} />
-        <Order::Form::Documents @resource={{@resource}} />
-        <Order::Form::OrchestratorConstraints @resource={{@resource}} />
-        <Order::Form::Metadata @resource={{@resource}} />
         <RegistryYield @registry="fleet-ops:component:order:form:end" as |RegistryComponent|>
             <RegistryComponent @order={{@resource}} @resource={{@resource}} />
         </RegistryYield>

@@ -1,12 +1,12 @@
-// Pedido novo da central: padrões (ad-hoc e despacho ligados) e o que falta para criar (loja e ID interno).
+// Pedido novo da central: padrões (ad-hoc e despacho ligados, POD desligado) e o que falta para criar (loja e ID interno).
 // Uso, na raiz do repo: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/entregas-pedido-novo.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { RAIO_ADHOC_PADRAO, padroesDoPedidoNovo, pendenciasDoPedidoNovo } from '../../packages/fleetops/addon/utils/entregas-pedido-novo.js';
 
-test('pedido novo abre com ad-hoc e despacho ligados, com o raio da empresa', () => {
-    assert.deepEqual(padroesDoPedidoNovo(3000), { adhoc: true, adhoc_distance: 3000, dispatched: true });
-    assert.deepEqual(padroesDoPedidoNovo('8000'), { adhoc: true, adhoc_distance: 8000, dispatched: true });
+test('pedido novo abre com ad-hoc e despacho ligados, sem comprovante (POD), com o raio da empresa', () => {
+    assert.deepEqual(padroesDoPedidoNovo(3000), { adhoc: true, adhoc_distance: 3000, dispatched: true, pod_required: false });
+    assert.deepEqual(padroesDoPedidoNovo('8000'), { adhoc: true, adhoc_distance: 8000, dispatched: true, pod_required: false });
 });
 
 test('sem raio configurado (ou inválido) usa o padrão', () => {

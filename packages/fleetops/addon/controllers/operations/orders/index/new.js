@@ -26,13 +26,8 @@ export default class OperationsOrdersIndexNewController extends Controller {
 
     /** action buttons */
     get actionButtons() {
+        // Entregas: sem Importar (planilha de paradas/entidades) e sem "Criar novo facilitador" (fornecedores ocultos)
         return [
-            {
-                text: this.intl.t('common.import'),
-                icon: 'upload',
-                type: 'magic',
-                onClick: () => this.orderImport.promptImport(this.order),
-            },
             {
                 icon: 'ellipsis-h',
                 triggerClass: 'hidden md:flex',
@@ -41,11 +36,6 @@ export default class OperationsOrdersIndexNewController extends Controller {
                         icon: 'user-plus',
                         text: this.intl.t('order.actions.create-new-customer'),
                         fn: this.customerActions.modal.create,
-                    },
-                    {
-                        icon: 'truck',
-                        text: this.intl.t('order.actions.create-new-facilitator'),
-                        fn: this.vendorActions.modal.create,
                     },
                     {
                         icon: 'map-pin',

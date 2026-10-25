@@ -8,21 +8,7 @@
         </div>
         <div class="flex flex-1 justify-end space-x-2">
             {{#if this.multipleWaypoints}}
-                {{#if this.routeOptimization.availableEngines}}
-                    <RouteOptimizationEngineSelectButton @onClick={{perform this.optimizeRouteWithService}} @isLoading={{this.optimizeRouteWithService.isRunning}} />
-                {{else}}
-                    <Button
-                        @type="magic"
-                        @icon="magic"
-                        @text={{t "order.fields.optimize-route"}}
-                        @size="xs"
-                        @onClick={{perform this.optimizeRoute}}
-                        @permission="fleet-ops optimize order"
-                        @helpText={{t "order.fields.optimize-route-help-text"}}
-                        @disabled={{lt @resource.payload.waypoints.length 3}}
-                        @isLoading={{this.optimizeRoute.isRunning}}
-                    />
-                {{/if}}
+                {{!-- Entregas: sem "Otimizar rota" (roteamento e orquestrador ocultos) --}}
                 <Button
                     @icon="map-marked-alt"
                     @text={{t "order.fields.add-waypoint"}}
