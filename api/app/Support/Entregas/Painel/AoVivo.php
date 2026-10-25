@@ -22,6 +22,11 @@ use Illuminate\Support\Facades\DB;
  *   de Brasília). É null sem distribuição (aguardando a central) ou com ela encerrada.
  * Tudo em lote (3 consultas, qualquer que seja o número de pedidos) e com cache de 5 s por central: várias telas da
  * mesma central dividem a conta. O atribuir do painel chama esquecer().
+ *
+ * A tela de pedidos (/fleet-ops, sketch 005) usa a mesma resposta e lê também:
+ * - motoboys[].corridas_hoje: corridas finalizadas hoje (dia de Brasília) por motoboy (entregas_corridas_finalizadas);
+ * - concluidos: {total, ultimos} das corridas finalizadas hoje, os 6 mais recentes primeiro (coluna Concluídos do Quadro).
+ * Mais 2 consultas (corridas de hoje e o public_id dos motoboys delas).
  */
 final class AoVivo
 {
@@ -88,7 +93,60 @@ final class AoVivo
         }
         unset($pedido);
 
-        return ['pedidos' => $pedidos, 'motoboys' => array_values($mapa['motoboys'] ?? [])];
+        [$porMotoboy, $concluidos] = static::corridasDeHoje($co);
+        $motoboys = array_map(function ($motoboy) use ($porMotoboy) {
+            $motoboy['corridas_hoje'] = $porMotoboy[(string) ($motoboy['id'] ?? '')] ?? 0;
+
+            return $motoboy;
+        }, array_values($mapa['motoboys'] ?? []));
+
+        return ['pedidos' => $pedidos, 'motoboys' => $motoboys, 'concluidos' => $concluidos];
+    }
+
+    public const ULTIMOS_CONCLUIDOS = 6;
+
+    /**
+     * Corridas finalizadas hoje: a contagem por motoboy (public_id) e os últimos concluídos.
+     *
+     * @return array{0: array<string, int>, 1: array{total: int, ultimos: array<int, array>}}
+     */
+    private static function corridasDeHoje(string $co): array
+    {
+        $hoje   = Financeiro::hoje($co);
+        $linhas = DB::table(PainelInicial::TABELA_CORRIDAS)
+            ->where('company_uuid', $co)
+            ->where('finalizada_em', '>=', $hoje . ' 00:00:00')
+            ->where('finalizada_em', '<=', $hoje . ' 23:59:59')
+            ->get()
+            ->all();
+
+        $uuids = array_values(array_unique(array_filter(array_map(fn ($linha) => (string) ($linha->motoboy_uuid ?? ''), $linhas))));
+        $ids   = [];
+        if ($uuids) {
+            foreach (DB::table('drivers')->select(['uuid', 'public_id'])->whereIn('uuid', $uuids)->get()->all() as $motoboy) {
+                $ids[(string) $motoboy->uuid] = (string) $motoboy->public_id;
+            }
+        }
+
+        $porMotoboy = [];
+        foreach ($linhas as $linha) {
+            $id = $ids[(string) ($linha->motoboy_uuid ?? '')] ?? null;
+            if ($id !== null) {
+                $porMotoboy[$id] = ($porMotoboy[$id] ?? 0) + 1;
+            }
+        }
+
+        usort($linhas, fn ($a, $b) => strcmp((string) $b->finalizada_em, (string) $a->finalizada_em));
+        $fuso    = Financeiro::fuso($co);
+        $ultimos = array_map(fn ($linha) => [
+            'id'            => (string) $linha->pedido,
+            'numero'        => $linha->numero !== null && $linha->numero !== '' ? (string) $linha->numero : (string) $linha->pedido,
+            'loja'          => $linha->loja_nome,
+            'motoboy'       => $linha->motoboy_nome,
+            'finalizada_em' => static::iso($linha->finalizada_em ?? null, $fuso),
+        ], array_slice($linhas, 0, static::ULTIMOS_CONCLUIDOS));
+
+        return [$porMotoboy, ['total' => count($linhas), 'ultimos' => $ultimos]];
     }
 
     /**
