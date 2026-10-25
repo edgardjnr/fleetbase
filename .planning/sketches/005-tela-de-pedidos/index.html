@@ -1,0 +1,1235 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch 005: tela de pedidos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link id="theme" rel="stylesheet" href="../themes/entregas.css">
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #e7e2da; font-family: system-ui, sans-serif; color: #1c1917; }
+body.dark-chrome { background: #0c0a09; }
+button, input, select { font: inherit; color: inherit; }
+
+/* ---------- moldura do sketch (fora da tela) ---------- */
+#chrome { position: sticky; top: 0; z-index: 50; background: #1c1917; color: #e7e5e4; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; }
+#chrome .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#chrome .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #a8a29e; margin-right: 6px; font-weight: 700; min-width: 56px; }
+.chip { border: 1px solid #44403c; background: #292524; color: #e7e5e4; border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; transition: all .15s ease; flex: none; }
+.chip:hover { border-color: #fb923c; }
+.chip.on { background: #ea7a1a; border-color: #ea7a1a; color: #1c1917; font-weight: 600; }
+.chip.cmp { border-style: dashed; }
+.chip.cmp.on { border-style: solid; }
+#desc { font-size: 13px; color: #d6d3d1; max-width: 1200px; line-height: 1.45; }
+#desc b { color: #fff; }
+#stage { padding: 16px 24px 60px; }
+.single { display: flex; justify-content: center; }
+.cmpgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.cmpcol h3 { margin: 0 0 8px; font-size: 14px; color: #1c1917; }
+body.dark-chrome .cmpcol h3 { color: #e7e5e4; }
+.frame { width: max-content; overflow: hidden; border-radius: 10px; box-shadow: 0 10px 40px rgb(28 25 23 / 25%); }
+.frame.phone { border-radius: 34px; border: 10px solid #1c1917; }
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1c1917; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 14px; opacity: 0; transition: all .2s ease; z-index: 300; pointer-events: none; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#sketch-tools { position: fixed; bottom: 12px; right: 12px; z-index: 9999; font-family: system-ui; font-size: 12px; background: rgba(0,0,0,.75); color: #fff; padding: 8px 12px; border-radius: 8px; opacity: .45; transition: opacity .2s; display: flex; gap: 8px; align-items: center; }
+#sketch-tools:hover { opacity: 1; }
+#sketch-tools select, #sketch-tools button { background: #292524; color: #fff; border: 1px solid #44403c; border-radius: 6px; padding: 3px 6px; cursor: pointer; font-size: 12px; }
+#sketch-tools button.on { background: #ea7a1a; border-color: #ea7a1a; color: #1c1917; }
+body.annot .pf [data-block] { outline: 2px dashed #c026d3; outline-offset: -2px; }
+body.annot .pf [data-block]::after { content: attr(data-block); position: absolute; top: 4px; right: 6px; background: #c026d3; color: #fff; font: 600 11px system-ui; padding: 1px 6px; border-radius: 4px; z-index: 40; pointer-events: none; }
+body.annot .pf [data-block]:not(.ov):not(.mapwrap):not(.sheet) { position: relative; }
+
+/* modal de atribuir */
+#modal { position: fixed; inset: 0; z-index: 200; display: none; place-items: center; background: rgb(28 25 23 / 45%); backdrop-filter: blur(3px); }
+#modal.show { display: grid; }
+#modal .box { width: min(440px, calc(100vw - 32px)); background: var(--surface); color: var(--ink); border-radius: 16px; box-shadow: var(--shadow-lg); font-family: var(--font-body); overflow: hidden; animation: subir .18s ease; }
+@keyframes subir { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+#modal .mh { padding: 18px 20px 12px; border-bottom: 1px solid var(--line); }
+#modal .mh h2 { margin: 0; font-family: var(--font-display); font-size: 24px; text-transform: uppercase; }
+#modal .mh p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+#modal .ml { max-height: 340px; overflow: auto; }
+#modal .mr { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--line); }
+#modal .mr img { width: 30px; height: 30px; }
+#modal .mr div { flex: 1; }
+#modal .mr small { display: block; color: var(--muted); font-size: 13px; }
+#modal .mf { padding: 12px 20px 16px; display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+#modal .mf .btn { margin-left: auto; }
+
+/* ================= a tela (dentro do quadro) ================= */
+.pf { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.4; display: flex; flex-direction: column; overflow: hidden; }
+.pf * { box-sizing: border-box; }
+.pf h1, .pf h2, .pf h3 { margin: 0; }
+.pf .muted { color: var(--muted); }
+.disp { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+
+/* cabeçalho do console */
+.sh { height: 56px; flex: none; display: flex; align-items: center; gap: 22px; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--line); position: relative; z-index: 12; }
+.sh-logo { display: flex; align-items: center; gap: 10px; flex: none; }
+.sh-logo .ic { width: 32px; height: 32px; border-radius: 8px; background: var(--brand); display: grid; place-items: center; color: var(--brand-ink); font-size: 15px; }
+.sh-logo b { font-family: var(--font-display); font-size: 21px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; line-height: 1; display: block; }
+.sh-logo small { display: block; font-size: 10px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
+.sh-nav { display: flex; gap: 2px; height: 100%; }
+.sh-nav a { display: flex; align-items: center; padding: 0 12px; color: var(--ink-2); font-weight: 500; border-bottom: 3px solid transparent; cursor: pointer; transition: all .15s ease; }
+.sh-nav a.on { color: var(--ink); border-bottom-color: var(--brand); font-weight: 700; }
+.sh-nav a:hover { color: var(--ink); background: var(--surface-2); }
+.sh-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.icbtn { width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; border: 0; background: transparent; cursor: pointer; position: relative; color: var(--ink-2); transition: all .15s ease; flex: none; }
+.icbtn:hover { background: var(--surface-2); color: var(--ink); }
+.icbtn .dot { position: absolute; top: 3px; right: 2px; min-width: 17px; height: 17px; border-radius: 9px; background: var(--bad); color: #fff; font-size: 10px; display: grid; place-items: center; padding: 0 4px; font-weight: 700; border: 2px solid var(--surface); }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 700; font-size: 13px; cursor: pointer; flex: none; }
+.sh-org { font-size: 12px; line-height: 1.2; }
+.sh-org b { display: block; font-size: 13px; }
+.sh-org span { color: var(--muted); }
+
+/* barra da tela: título, vistas, busca, novo pedido */
+.vb { height: 54px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 16px 0 20px; background: var(--surface); border-bottom: 1px solid var(--line); position: relative; z-index: 11; }
+.vb h1 { font-family: var(--font-display); font-size: 26px; font-weight: 800; text-transform: uppercase; letter-spacing: .01em; line-height: 1; }
+.vb .grow { flex: 1; }
+.seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; flex: none; }
+.seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: 7px; cursor: pointer; font-weight: 600; color: var(--ink-2); font-size: 13px; transition: all .15s ease; display: inline-flex; align-items: center; gap: 7px; }
+.seg button:hover { color: var(--ink); }
+.seg button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+.seg button .n { font-size: 11px; background: var(--line); border-radius: 999px; padding: 0 6px; font-weight: 700; }
+.seg button.on .n { background: var(--brand); color: var(--brand-ink); }
+.busca { width: 300px; height: 36px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-2); display: flex; align-items: center; gap: 8px; padding: 0 10px; color: var(--muted); transition: border-color .15s ease; }
+.busca:focus-within { border-color: var(--brand); }
+.busca input { border: 0; background: transparent; outline: 0; flex: 1; min-width: 0; color: var(--ink); }
+.kbd { font-size: 11px; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ok); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; flex: none; }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: pulso 1.6s infinite; }
+@keyframes pulso { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--ok) 60%, transparent); } 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@keyframes pulsoR { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--bad) 55%, transparent); } 70% { box-shadow: 0 0 0 10px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+/* corpo: trilho do menu + conteúdo */
+.corpo { flex: 1; min-height: 0; display: flex; position: relative; }
+.trilho { width: 56px; flex: none; background: var(--surface); border-right: 1px solid var(--line); position: relative; z-index: 10; }
+.trilho .tin { position: absolute; top: 0; left: 0; bottom: 0; width: 56px; background: var(--surface); border-right: 1px solid var(--line); padding: 10px 8px; display: flex; flex-direction: column; gap: 4px; overflow: hidden; transition: width .18s ease, box-shadow .18s ease; }
+.trilho:hover .tin { width: 220px; box-shadow: var(--shadow-lg); }
+.trilho a { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 11px; border-radius: 10px; color: var(--ink-2); cursor: pointer; white-space: nowrap; font-weight: 600; transition: background .15s ease; }
+.trilho a i { width: 18px; text-align: center; font-size: 15px; flex: none; }
+.trilho a:hover { background: var(--surface-2); color: var(--ink); }
+.trilho a.on { background: var(--brand-soft); color: var(--brand-text); }
+.trilho a span { opacity: 0; transition: opacity .12s ease; }
+.trilho:hover a span { opacity: 1; }
+.trilho .sep { height: 1px; background: var(--line); margin: 6px 4px; }
+.conteudo { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; }
+
+/* peças comuns */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; min-width: 0; }
+.btn { border: 0; border-radius: 10px; padding: 9px 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; transition: all .15s ease; white-space: nowrap; flex: none; }
+.btn.brand { background: var(--brand); color: var(--brand-ink); }
+.btn.brand:hover { background: var(--brand-strong); }
+.btn.ink { background: var(--ink); color: var(--bg); }
+.btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+.btn.ghost:hover { background: var(--surface-2); }
+.btn.danger { background: var(--bad); color: #fff; }
+.btn.sm { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
+.badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap; letter-spacing: .03em; text-transform: uppercase; flex: none; }
+.b-ifood { background: var(--ifood); color: #fff; }
+.b-rp { background: var(--ink); color: var(--bg); }
+.pz { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; flex: none; }
+.pz.g { background: var(--ok-soft); color: var(--ok); }
+.pz.y { background: var(--warn-soft); color: var(--warn-text); }
+.pz.r { background: var(--bad); color: #fff; }
+.pz.n { background: var(--surface-2); color: var(--muted); }
+.ofr { color: var(--bad); font-weight: 700; font-size: 12px; white-space: nowrap; }
+.ofr span { font-variant-numeric: tabular-nums; }
+.cap { width: 28px; height: 28px; flex: none; }
+.ifs { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.ifs i { width: 7px; height: 7px; border-radius: 50%; }
+.ifs.on i { background: var(--ok); } .ifs.rp i { background: var(--muted); }
+.ifs.erro { color: var(--bad); } .ifs.erro i { background: var(--bad); animation: pulsoR 1.4s infinite; }
+.vazio { padding: 28px 16px; text-align: center; color: var(--muted); }
+.vazio i { display: block; font-size: 22px; color: var(--ok); margin-bottom: 6px; }
+.sttag { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; white-space: nowrap; }
+.sttag img { width: 22px; height: 22px; }
+.sttag.fim { color: var(--ok); } .sttag.canc { color: var(--muted); text-decoration: line-through; }
+
+/* filtros por situação */
+.flt { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: none; }
+.flt button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 11px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--ink-2); white-space: nowrap; transition: all .15s ease; display: inline-flex; gap: 6px; align-items: center; flex: none; }
+.flt button b { font-family: var(--font-display); font-size: 15px; }
+.flt button:hover { border-color: var(--brand); }
+.flt button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.flt button.alerta { border-color: var(--bad); color: var(--bad); }
+.flt button.alerta.on { background: var(--bad); color: #fff; }
+
+/* linha de pedido (lista) */
+.fr { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-top: 1px solid var(--line); cursor: pointer; transition: background .15s ease; }
+.fr:hover { background: var(--surface-2); }
+.fr.oferta { background: color-mix(in oklch, var(--bad-soft) 70%, transparent); }
+.fr.atr { box-shadow: inset 3px 0 0 var(--bad); }
+.fr.sel { background: var(--brand-soft); box-shadow: inset 3px 0 0 var(--brand); }
+.fr-main { flex: 1; min-width: 0; }
+.fr-l1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.fr-l1 .muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.fr.oferta { flex-wrap: wrap; row-gap: 2px; }
+.fr.oferta .fr-st { order: 5; width: 100%; text-align: left; padding-left: 38px; }
+.fr-l1 b { font-family: var(--font-display); font-size: 17px; font-weight: 700; }
+.fr-l2 { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fr-st { text-align: right; font-size: 13px; font-weight: 600; line-height: 1.25; flex: none; }
+.fr-st small { display: block; color: var(--muted); font-weight: 500; font-size: 12px; }
+
+/* cartão de pedido */
+.fc { padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; transition: all .15s ease; }
+.fc:hover { border-color: var(--brand); box-shadow: var(--shadow-sm); }
+.fc.oferta { border-color: var(--bad); background: color-mix(in oklch, var(--bad-soft) 70%, var(--surface)); }
+.fc.atr { border-color: var(--bad); }
+.fc.sel { outline: 2px solid var(--brand); outline-offset: 1px; }
+.fc.fim { opacity: .75; }
+.fc-t { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.fc-t .muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.fc-t b { font-family: var(--font-display); font-size: 19px; font-weight: 700; }
+.fc-t .pz, .fc-t .btn, .fc-t .rt { margin-left: auto; }
+.fc-t .rt { font-size: 12px; color: var(--muted); font-weight: 600; }
+.fc-m { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; color: var(--ink-2); min-width: 0; }
+.fc-m .cap { width: 22px; height: 22px; }
+.fc-m span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar { height: 4px; border-radius: 4px; background: var(--surface-2); margin-top: 9px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 4px; }
+.bar i.g { background: var(--ok); } .bar i.y { background: var(--warn); } .bar i.r { background: var(--bad); }
+
+/* linha de motoboy */
+.mr2 { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-top: 1px solid var(--line); cursor: pointer; transition: background .15s ease; }
+.mr2:hover { background: var(--surface-2); }
+.mr2.sel { background: var(--brand-soft); }
+.mr2 .cap { width: 26px; height: 26px; }
+.mr2 .mt { flex: 1; min-width: 0; }
+.mr2 .mt b { display: block; font-weight: 700; }
+.mr2 .mt small { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mr2 .mc { text-align: right; font-size: 12px; color: var(--muted); line-height: 1.2; flex: none; }
+.mr2 .mc b { font-family: var(--font-display); font-size: 18px; color: var(--ink); display: block; }
+
+/* detalhe do pedido */
+.det { padding: 14px 16px; }
+.det-h { display: flex; align-items: center; gap: 8px; }
+.det-h b { font-family: var(--font-display); font-size: 26px; font-weight: 800; line-height: 1; }
+.det-h .x { margin-left: auto; }
+.det-rota { margin-top: 10px; display: grid; grid-template-columns: 18px 1fr; gap: 2px 10px; font-size: 13px; }
+.det-rota i { color: var(--muted); text-align: center; margin-top: 3px; }
+.det-rota .ln { width: 2px; background: var(--line); justify-self: center; height: 10px; }
+.det-moto { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px; border-radius: 12px; background: var(--surface-2); }
+.det-moto .cap { width: 32px; height: 32px; }
+.det-moto div { flex: 1; min-width: 0; }
+.det-moto small { display: block; color: var(--muted); font-size: 12px; }
+.tl { margin-top: 12px; display: flex; flex-direction: column; gap: 0; }
+.tl .st { display: grid; grid-template-columns: 16px 1fr auto; gap: 10px; align-items: start; font-size: 13px; position: relative; padding-bottom: 8px; }
+.tl .st:not(:last-child)::before { content: ''; position: absolute; left: 7px; top: 14px; bottom: -2px; width: 2px; background: var(--line); }
+.tl .st.ok:not(:last-child)::before { background: var(--ok); }
+.tl .st .bo { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); margin-top: 1px; position: relative; z-index: 1; }
+.tl .st.ok .bo { background: var(--ok); border-color: var(--ok); }
+.tl .st.agora .bo { border-color: var(--brand); background: var(--brand); animation: pulso 1.6s infinite; }
+.tl .st span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.tl .st.pend { color: var(--muted); }
+.det-acts { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+
+/* mapa */
+.mapa { position: absolute; inset: 0; overflow: hidden; background: var(--map-land); }
+.mapa svg.ruas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mapa.noite { --map-land: oklch(0.22 0.014 255); --map-road: oklch(0.33 0.02 255); --map-road-edge: oklch(0.18 0.012 255); --map-park: oklch(0.29 0.04 160); --map-water: oklch(0.28 0.05 235); }
+.mk { position: absolute; transform: translate(-50%, -50%); cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: transform .15s ease, opacity .2s ease, left 1.8s linear, top 1.8s linear; z-index: 3; }
+.mk:hover { transform: translate(-50%, -50%) scale(1.15); z-index: 7; }
+.mk img { width: 30px; height: 30px; filter: drop-shadow(0 2px 2px rgb(0 0 0 / 30%)); }
+.mk .nm { font-size: 10px; font-weight: 700; background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 0 5px; border-radius: 6px; margin-top: -3px; white-space: nowrap; }
+.mk.loja { transform: translate(-50%, -100%); z-index: 2; }
+.mk.loja:hover { transform: translate(-50%, -100%) scale(1.12); }
+.mk.loja img { width: 30px; height: 36px; object-fit: contain; }
+.mk.loja .nm { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.mk.dest { transform: translate(-50%, -100%); color: var(--bad); font-size: 22px; z-index: 1; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 30%)); }
+.mk.dest:hover { transform: translate(-50%, -100%) scale(1.15); }
+.mk.dest .rot { font-size: 10px; font-weight: 700; color: #fff; background: var(--ok); padding: 0 5px; border-radius: 6px; white-space: nowrap; margin-top: -2px; font-family: var(--font-body); display: inline-flex; gap: 4px; align-items: center; }
+.mk.dest .rot.y { background: var(--warn); color: oklch(0.25 0.04 70); } .mk.dest .rot.r { background: oklch(0.5 0.19 27); }
+.mk.dest.oferta i { animation: pulsoR 1.4s infinite; border-radius: 50%; }
+.mk.sel { z-index: 9 !important; }
+.mk.dest.sel { font-size: 32px; color: var(--brand-strong); }
+.mk.moto.sel img { width: 40px; height: 40px; }
+.mk.moto.sel .nm { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+.mk.dim { opacity: .22; }
+.mapa line.sel { stroke-width: 5 !important; opacity: 1 !important; stroke: var(--brand-strong) !important; stroke-dasharray: none !important; }
+.mapa line.dim { opacity: .12 !important; }
+.ov { position: absolute; z-index: 8; }
+.mctl { right: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
+.mctl button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: pointer; box-shadow: var(--shadow-md); transition: all .15s ease; }
+.mctl button:hover { color: var(--ink); border-color: var(--brand); }
+.leg { display: inline-flex; gap: 10px; align-items: center; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.leg span { display: inline-flex; align-items: center; gap: 4px; }
+.leg img { width: 18px; height: 18px; }
+.flutua { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); }
+
+/* tabela */
+.tbw { flex: 1; min-height: 0; overflow: auto; }
+.tb { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tb th { position: sticky; top: 0; z-index: 2; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--surface-2); white-space: nowrap; cursor: pointer; user-select: none; }
+.tb th:hover { color: var(--ink); }
+.tb th.ord { color: var(--ink); }
+.tb th.nosort { cursor: default; }
+.tb td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; background: var(--surface); }
+.tb tr.lin { cursor: pointer; }
+.tb tr.lin:hover td { background: var(--surface-2); }
+.tb tr.oferta td { background: color-mix(in oklch, var(--bad-soft) 70%, var(--surface)); }
+.tb tr.atr td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+.tb tr.sel td { background: var(--brand-soft); }
+.tb tr.marc td { background: color-mix(in oklch, var(--brand-soft) 60%, var(--surface)); }
+.tb .pnum { font-family: var(--font-display); font-size: 17px; font-weight: 700; }
+.tb .ck { width: 36px; }
+.tb input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--brand-strong); cursor: pointer; }
+.tb .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tb .sub { color: var(--muted); font-size: 12px; }
+.tb tr.grp td { background: var(--surface-2); font-weight: 700; cursor: pointer; padding: 7px 12px; }
+.tb tr.grp td .disp { font-size: 16px; text-transform: uppercase; letter-spacing: .02em; }
+.tb tr.grp td .c { color: var(--muted); font-weight: 600; margin-left: 6px; }
+.tb tr.exp td { background: var(--surface-2); padding: 4px 12px 14px 48px; }
+.massa { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--ink); color: var(--bg); border-radius: 12px; margin: 0 16px 10px; animation: subir .15s ease; }
+.massa .btn.ghost { color: var(--bg); border-color: color-mix(in oklch, var(--bg) 30%, transparent); }
+.massa .btn.ghost:hover { background: color-mix(in oklch, var(--bg) 12%, transparent); }
+.pag { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); background: var(--surface); flex: none; }
+.pag .grow { flex: 1; }
+.pag button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 3px 10px; cursor: pointer; }
+.pag button:hover:not(:disabled) { border-color: var(--brand); }
+.pag button:disabled { opacity: .4; cursor: default; }
+.pag button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.abas { display: flex; gap: 2px; border-bottom: 1px solid var(--line); padding: 0 16px; flex: none; background: var(--surface); }
+.abas button { border: 0; background: transparent; padding: 11px 12px 9px; font-weight: 600; color: var(--ink-2); border-bottom: 3px solid transparent; cursor: pointer; display: inline-flex; gap: 7px; align-items: center; transition: all .15s ease; white-space: nowrap; }
+.abas button:hover { color: var(--ink); }
+.abas button.on { color: var(--ink); border-bottom-color: var(--brand); font-weight: 700; }
+.abas button .n { font-size: 11px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; font-weight: 700; }
+.abas button.alerta .n { background: var(--bad); color: #fff; border-color: var(--bad); }
+.ferr { display: flex; align-items: center; gap: 8px; padding: 10px 16px; flex: none; flex-wrap: wrap; }
+.fchip { display: inline-flex; align-items: center; gap: 6px; border: 1px dashed var(--line); border-radius: 999px; padding: 4px 10px; font-size: 13px; color: var(--ink-2); cursor: pointer; background: var(--surface); transition: all .15s ease; }
+.fchip:hover { border-color: var(--brand); }
+.fchip.on { border-style: solid; border-color: var(--brand); background: var(--brand-soft); color: var(--brand-text); font-weight: 600; }
+
+/* quadro */
+.qd { flex: 1; min-height: 0; overflow: auto; display: flex; gap: 12px; padding: 14px 16px; align-items: flex-start; }
+.qc { width: 290px; flex: none; background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; display: flex; flex-direction: column; max-height: 100%; transition: all .15s ease; }
+.qc.alvo { outline: 2px dashed var(--brand); background: var(--brand-soft); }
+.qc.livre { border-color: color-mix(in oklch, var(--ok) 50%, var(--line)); }
+.qc-h { display: flex; align-items: center; gap: 8px; padding: 12px 12px 8px; flex: none; }
+.qc-h h3 { font-family: var(--font-display); font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; }
+.qc-h .n { margin-left: auto; font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--muted); }
+.qc-h .cap { width: 26px; height: 26px; }
+.qc-h small { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+.qc-b { padding: 0 8px 8px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; overflow-x: hidden; min-height: 60px; }
+.qc.bad .qc-h h3 { color: var(--bad); }
+.qc-dica { border: 2px dashed color-mix(in oklch, var(--ok) 45%, var(--line)); border-radius: 12px; padding: 16px 10px; text-align: center; color: var(--ok); font-size: 13px; font-weight: 600; }
+.fc[draggable=true] { cursor: grab; }
+.fc.arrastando { opacity: .4; }
+.raia { display: grid; grid-template-columns: 170px repeat(4, minmax(220px, 1fr)); gap: 0; min-width: 1100px; }
+.raia > div { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 8px; display: flex; flex-direction: column; gap: 8px; min-height: 70px; }
+.raia .rh { position: sticky; top: 0; z-index: 2; background: var(--surface-2); font-family: var(--font-display); font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; min-height: 0; flex-direction: row; align-items: center; gap: 8px; }
+.raia .rh .n { color: var(--muted); margin-left: auto; }
+.raia .rl { background: var(--surface); position: sticky; left: 0; z-index: 1; font-weight: 700; }
+.raia .rl small { display: block; font-weight: 500; }
+.raia .vz { color: var(--muted); font-size: 12px; justify-content: center; align-items: center; }
+.raia .fc { padding: 8px 10px; }
+.raia .fc-t b { font-size: 17px; }
+
+/* ============ Variante A: painéis flutuantes ============ */
+.mapwrap { flex: 1; min-height: 0; position: relative; }
+.pA { top: 14px; left: 14px; bottom: 14px; width: 370px; display: flex; flex-direction: column; overflow: hidden; }
+.pA-h { display: flex; align-items: center; gap: 8px; padding: 12px 14px 10px; flex: none; }
+.pA-h h3 { font-family: var(--font-display); font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; }
+.pA-h .icbtn { margin-left: auto; width: 30px; height: 30px; }
+.pA .flt { padding: 0 14px 10px; }
+.pA .fl { flex: 1; overflow: auto; }
+.mA { top: 14px; right: 14px; width: 280px; max-height: calc(100% - 28px); display: flex; flex-direction: column; overflow: hidden; }
+.mA .seg { margin: 0 14px 10px; }
+.mA .ml2 { overflow: auto; }
+.pilA { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; font-weight: 700; transition: border-color .15s ease; }
+.pilA:hover { border-color: var(--brand); }
+.pilA b { font-family: var(--font-display); font-size: 18px; }
+.chA { top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+.mchip { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 6px 11px; box-shadow: var(--shadow-md); cursor: pointer; display: flex; align-items: center; gap: 9px; transition: all .15s ease; flex: none; }
+.mchip:hover { border-color: var(--brand); }
+.mchip.on { outline: 2px solid var(--ink); }
+.mchip img { width: 22px; height: 22px; }
+.mchip b { font-family: var(--font-display); font-size: 22px; line-height: 1; }
+.mchip span { font-size: 12px; color: var(--muted); font-weight: 600; line-height: 1.15; }
+.mchip.alerta { background: var(--bad); border-color: var(--bad); color: #fff; animation: pulsoR 1.6s infinite; }
+.mchip.alerta span { color: #fff; opacity: .9; }
+.dA { bottom: 14px; width: 400px; }
+
+/* ============ Variante B: coluna à direita ============ */
+.gB { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 400px; }
+.gB .colB { background: var(--surface); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.gB .colB .abas { padding: 0 8px; }
+.gB .colB .rolo { flex: 1; overflow: auto; }
+.gB .colB .flt { padding: 10px 14px; }
+.camB { top: 14px; left: 14px; right: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.camB .cam { display: inline-flex; align-items: center; gap: 7px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: var(--shadow-md); transition: all .15s ease; color: var(--ink-2); }
+.camB .cam:hover { border-color: var(--brand); }
+.camB .cam.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.camB .cam i.fa-solid { font-size: 12px; }
+.camB .legB { margin-left: auto; padding: 6px 12px; border-radius: 999px; }
+.evB { left: 14px; right: 64px; bottom: 14px; display: flex; align-items: center; gap: 12px; padding: 8px 14px; overflow: hidden; }
+.evB .t { font-family: var(--font-display); font-size: 15px; font-weight: 800; text-transform: uppercase; white-space: nowrap; flex: none; }
+.evB .evs { display: flex; gap: 18px; overflow: hidden; flex: 1; min-width: 0; mask-image: linear-gradient(90deg, #000 85%, transparent); }
+.evB .ev { white-space: nowrap; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.evB .ev span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.evB .ev.novo { animation: entra .5s ease; }
+@keyframes entra { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+.precisa { margin: 10px 14px 0; padding: 10px 12px; border-radius: 12px; background: var(--bad); color: #fff; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.precisa b { font-family: var(--font-display); font-size: 18px; text-transform: uppercase; display: block; line-height: 1.1; }
+.grpB { padding: 12px 14px 4px; font-family: var(--font-display); font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); display: flex; gap: 6px; }
+.lojB { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); cursor: pointer; }
+.lojB:hover { background: var(--surface-2); }
+.lojB img { width: 22px; height: 26px; object-fit: contain; }
+.lojB .lt { flex: 1; min-width: 0; }
+.lojB .lt b { display: block; }
+.lojB .lc { text-align: right; font-size: 12px; color: var(--muted); }
+.lojB .lc b { font-family: var(--font-display); font-size: 18px; color: var(--ink); display: block; }
+.voltar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); cursor: pointer; font-weight: 600; color: var(--brand-text); }
+.voltar:hover { background: var(--surface-2); }
+.visB { width: 220px; flex: none; border-right: 1px solid var(--line); background: var(--surface); padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
+.visB h4 { margin: 10px 10px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.visB a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; cursor: pointer; font-weight: 600; color: var(--ink-2); transition: background .15s ease; }
+.visB a:hover { background: var(--surface-2); }
+.visB a.on { background: var(--brand-soft); color: var(--brand-text); }
+.visB a i { width: 16px; text-align: center; }
+.visB a .n { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 700; }
+.visB a.alerta .n { background: var(--bad); color: #fff; border-radius: 999px; padding: 0 7px; }
+.splitB { flex: 1; min-width: 0; display: flex; min-height: 0; }
+.splitB .princ { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.splitB .lado { width: 360px; flex: none; border-left: 1px solid var(--line); background: var(--surface); overflow: auto; animation: subir .15s ease; }
+
+/* ============ Variante C: mapa imersivo ============ */
+.topC { top: 12px; left: 12px; right: 12px; display: flex; gap: 10px; align-items: flex-start; }
+.motC { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 6px; }
+.motC .av { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 62px; padding: 6px 2px 5px; border-radius: 12px; cursor: pointer; transition: background .15s ease; }
+.motC .av:hover { background: var(--surface-2); }
+.motC .av.sel { background: var(--brand-soft); }
+.motC .av img { width: 30px; height: 30px; }
+.motC .av b { font-size: 11px; font-weight: 700; white-space: nowrap; max-width: 58px; overflow: hidden; text-overflow: ellipsis; }
+.motC .av small { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.hudC { display: flex; gap: 0; padding: 0; overflow: hidden; flex: none; }
+.hudC .h { padding: 8px 14px; border-left: 1px solid var(--line); cursor: pointer; text-align: center; transition: background .15s ease; }
+.hudC .h:first-child { border-left: 0; }
+.hudC .h:hover { background: var(--surface-2); }
+.hudC .h.on { background: var(--ink); color: var(--bg); }
+.hudC .h.on small { color: var(--bg); }
+.hudC .h b { font-family: var(--font-display); font-size: 26px; font-weight: 800; line-height: 1; display: block; }
+.hudC .h small { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.hudC .h.alerta { background: var(--bad); color: #fff; }
+.hudC .h.alerta small { color: #fff; }
+.carC { left: 12px; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
+.carC .ch { display: flex; align-items: center; gap: 8px; }
+.carC .ch .pil { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-weight: 700; box-shadow: var(--shadow-md); font-size: 13px; }
+.carC .ch .icbtn { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-md); width: 34px; height: 34px; border-radius: 50%; }
+.carC .ch .icbtn:first-of-type { margin-left: auto; }
+.carC .trilhoC { display: flex; gap: 10px; overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none; padding: 2px; }
+.carC .fc { width: 270px; flex: none; box-shadow: var(--shadow-lg); }
+.carC .fc.det2 { width: 380px; }
+
+/* ============ celular ============ */
+.m .sh { gap: 10px; padding: 0 12px; height: 54px; }
+.m .sh-logo b { font-size: 19px; }
+.m .vb { height: 48px; padding: 0 12px; gap: 8px; }
+.m .vb h1 { font-size: 22px; }
+.m .vb .seg button { padding: 4px 9px; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: 0 -8px 30px oklch(0.2 0.02 60 / 22%); display: flex; flex-direction: column; transition: height .25s ease; overflow: hidden; }
+.sheet .alca { flex: none; padding: 8px 14px 6px; cursor: pointer; }
+.sheet .alca::before { content: ''; display: block; width: 44px; height: 5px; border-radius: 5px; background: var(--line); margin: 0 auto 8px; }
+.sheet .alca .lin { display: flex; align-items: center; gap: 8px; }
+.sheet .alca .lin b { font-family: var(--font-display); font-size: 20px; font-weight: 800; text-transform: uppercase; }
+.sheet .alca .lin .ofr { margin-left: auto; }
+.sheet .rolo { flex: 1; overflow: auto; }
+.sheet .flt { padding: 0 14px 8px; }
+.sheet .fcs { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.m .chA { left: 10px; right: 10px; top: 10px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.m .mchip { padding: 5px 9px; }
+.m .mchip b { font-size: 19px; }
+.m .mctl { right: 10px; }
+.m .carC { left: 0; right: 0; }
+.m .carC .trilhoC { padding: 2px 10px; scroll-snap-type: x mandatory; }
+.m .carC .fc { width: 300px; scroll-snap-align: center; }
+.m .topC { left: 8px; right: 8px; top: 8px; flex-direction: column; gap: 6px; }
+.m .hudC { align-self: stretch; }
+.m .hudC .h { flex: 1; padding: 6px 4px; }
+.m .hudC .h b { font-size: 21px; }
+.m .hudC .h small { font-size: 10px; }
+.mlist { flex: 1; overflow: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.mlist .flt { padding: 0 0 4px; }
+.mquad { flex: 1; overflow-x: auto; display: flex; gap: 10px; padding: 10px 12px; scroll-snap-type: x mandatory; }
+.mquad .qc { width: 300px; scroll-snap-align: start; }
+</style>
+</head>
+<body>
+<div id="chrome">
+  <div class="row" id="vtabs"></div>
+  <div class="row" id="stabs"></div>
+  <div class="row" id="ctabs"></div>
+  <div id="desc"></div>
+</div>
+<div id="stage"></div>
+<div id="toast"></div>
+<div id="modal"></div>
+
+<div id="sketch-tools">
+  <span>Tema</span>
+  <select id="theme-switcher">
+    <option value="entregas">Claro</option>
+    <option value="entregas-escuro">Escuro</option>
+  </select>
+  <span>Desktop</span>
+  <button data-vp="1366">Notebook 1366</button>
+  <button data-vp="1440" class="on">1440</button>
+  <button data-vp="1920">Monitor 1920</button>
+  <button id="annot-btn">Anotações</button>
+</div>
+
+<script>
+/* ======================= estado ======================= */
+const S = {
+  variant: 'a', screen: 1, vp: 1440, cen: 'normal', filtro: 'todos', sel: null, selMoto: null, q: '',
+  painelPed: true, painelMoto: true, motoFiltro: 'todos',          // A (mapa)
+  abaB: 'pedidos', cam: { motos: true, pedidos: true, lojas: true, rotas: true },   // B (mapa)
+  abaT: 'andamento', visao: 'andamento', ord: { k: 'urg', dir: 1 }, marc: new Set(), pag: 1, lojaF: null,   // tabela
+  fech: new Set(['concluido', 'cancelado']), exp: null,             // C (tabela)
+  sheet: 'meio', mview: 'mapa', abaM: 'pedidos',                    // celular
+};
+const IMG = '../../../console/public/images/entregas/';
+const HORA = 21 * 60 + 14;
+
+const VARIANTS = {
+  a: { nome: 'A: Painéis flutuantes', desc: '<b>A: Painéis flutuantes.</b> O mapa ocupa a tela inteira. Por cima dele flutuam: as contagens por situação no topo (clicáveis: filtram mapa e lista), o painel <b>Pedidos</b> à esquerda e o painel <b>Motoboys</b> à direita, os dois recolhíveis num botão. Clicar num pedido acende a rota no mapa e abre um cartão de detalhe embaixo. <b>Tabela:</b> abas por situação, ordenação por coluna, seleção com ações em massa e paginação. <b>Quadro:</b> uma coluna por situação (Sem motoboy, Indo à loja, A caminho, Concluídos). <b>Celular:</b> mapa com as contagens e a folha de baixo com Pedidos e Motoboys.' },
+  b: { nome: 'B: Mapa + coluna à direita', desc: '<b>B: Mapa + coluna à direita.</b> O mapa fica à esquerda, com as <b>camadas</b> no topo (liga e desliga motoboys, pedidos, lojas e rotas) e uma faixa <b>Agora há pouco</b> embaixo, com os últimos eventos chegando ao vivo. À direita, uma coluna fixa com as abas Pedidos, Motoboys e Lojas; clicar num pedido troca a lista pelo detalhe. <b>Tabela:</b> visões salvas numa coluna à esquerda, filtros em chips e detalhe ao lado da tabela. <b>Quadro:</b> raias por loja × colunas por situação. <b>Celular:</b> mapa e folha com as três abas.' },
+  c: { nome: 'C: Mapa imersivo', desc: '<b>C: Mapa imersivo.</b> Mapa noturno em tela cheia, como sala de controle. No topo, a faixa dos motoboys online (capacete + situação) e um placar com as contagens. Embaixo, os pedidos em cartões lado a lado, do mais urgente para o menos; escolher um cartão acende a rota no mapa e o cartão abre o detalhe. <b>Tabela:</b> agrupada por situação (grupos recolhíveis) e cada linha abre a linha do tempo do pedido. <b>Quadro:</b> uma coluna por motoboy, com "Sem motoboy" primeiro; <b>arraste o pedido até um motoboy livre para atribuir</b>. <b>Celular:</b> mapa, placar e os cartões deslizando na base.' },
+};
+const SCREENS = [[1, '1 · Mapa'], [2, '2 · Tabela'], [3, '3 · Quadro'], [4, '4 · Celular']];
+const mob = () => S.screen === 4;
+const pico = () => S.cen === 'pico';
+
+/* ======================= dados ======================= */
+const LOJAS = {
+  terraco: { nome: 'Terraço Pizza Bar', curto: 'Terraço', x: 27, y: 36, ifood: 'on' },
+  spunto: { nome: 'Spunto Trattoria', curto: 'Spunto', x: 60, y: 22, ifood: 'on' },
+  brasa: { nome: 'Brasa Burger', curto: 'Brasa', x: 79, y: 52, ifood: 'on' },
+  mousse: { nome: 'Mousse Cake Fiusa', curto: 'Mousse Cake', x: 47, y: 72, ifood: 'rp' },
+  kenzo: { nome: 'Kenzo Sushi', curto: 'Kenzo', x: 15, y: 70, ifood: 'on' },
+};
+const MOTOS = { Carlos: 14, Marcos: 13, Juliana: 12, Thiago: 12, Rafael: 11, Anderson: 11, Paulo: 10, Bruno: 10, Diego: 9, 'Fábio': 9, Lucas: 8, Renan: 8, Gustavo: 8, Wesley: 7, 'Vinícius': 0 };
+
+function P(num, origem, loja, cliente, bairro, st, moto, min, prazo, dx, dy, mx, my, extra = {}) {
+  return { id: num, num, origem, loja, cliente, bairro, st, moto, min, prazo, dx, dy, mx, my, ...extra };
+}
+function cenarios() {
+  return {
+    normal: {
+      online: ['Carlos', 'Marcos', 'Juliana', 'Thiago', 'Rafael', 'Anderson', 'Paulo', 'Bruno', 'Diego', 'Fábio', 'Lucas', 'Renan', 'Gustavo', 'Wesley'],
+      livresPos: { Diego: [36, 50], 'Fábio': [66, 40], Lucas: [52, 30], Renan: [22, 56], Gustavo: [72, 70], Wesley: [40, 84] },
+      livreHa: { Diego: 6, 'Fábio': 2, Lucas: 11, Renan: 4, Gustavo: 1, Wesley: 18 },
+      pedidos: [
+        P('4836', 'ifood', 'terraco', 'Larissa M.', 'Jardim Irajá', 'oferta', null, 3, 50, 35, 12, 0, 0, { rodada: 2, cd: 32 }),
+        P('4834', 'ifood', 'spunto', 'Pedro A.', 'Alto da Boa Vista', 'loja', 'Juliana', 9, 50, 72, 9, 54, 30),
+        P('RP1290', 'rp', 'mousse', 'Camila R.', 'Nova Aliança', 'loja', 'Paulo', 12, 50, 60, 90, 40, 64),
+        P('4831', 'ifood', 'brasa', 'João V.', 'Ribeirânia', 'loja', 'Bruno', 14, 45, 93, 34, 86, 62),
+        P('4827', 'ifood', 'terraco', 'Mariana S.', 'Jardim Botânico', 'rota', 'Carlos', 22, 50, 8, 24, 18, 30),
+        P('4825', 'ifood', 'kenzo', 'Felipe C.', 'Jardim Sumaré', 'rota', 'Marcos', 27, 50, 6, 92, 10, 82),
+        P('4823', 'ifood', 'spunto', 'Ana P.', 'Centro', 'rota', 'Thiago', 31, 55, 50, 44, 56, 34),
+        P('4821', 'ifood', 'brasa', 'Rodrigo L.', 'Jardim Paulista', 'rota', 'Rafael', 36, 50, 90, 80, 85, 68),
+        P('RP1288', 'rp', 'mousse', 'Helena F.', 'Lagoinha', 'rota', 'Anderson', 30, 50, 30, 93, 37, 84),
+      ],
+    },
+    pico: {
+      online: Object.keys(MOTOS),
+      livresPos: { Lucas: [50, 30], 'Vinícius': [8, 46] },
+      livreHa: { Lucas: 3, 'Vinícius': 25 },
+      kenzoErro: true,
+      pedidos: [
+        P('4851', 'ifood', 'terraco', 'Sofia N.', 'Jardim Irajá', 'oferta', null, 6, 50, 36, 10, 0, 0, { rodada: 3, cd: 18 }),
+        P('4850', 'ifood', 'brasa', 'Gabriel T.', 'Ribeirânia', 'oferta', null, 2, 45, 95, 40, 0, 0, { rodada: 1, cd: 44 }),
+        P('RP1302', 'rp', 'mousse', 'Lívia C.', 'Vila Seixas', 'oferta', null, 4, 50, 64, 88, 0, 0, { rodada: 2, cd: 9 }),
+        P('4848', 'ifood', 'spunto', 'Pedro A.', 'Alto da Boa Vista', 'loja', 'Juliana', 9, 50, 72, 9, 56, 28),
+        P('RP1299', 'rp', 'mousse', 'Camila R.', 'Nova Aliança', 'loja', 'Paulo', 12, 50, 58, 92, 42, 66),
+        P('4846', 'ifood', 'brasa', 'João V.', 'Ribeirânia', 'loja', 'Bruno', 14, 45, 92, 30, 84, 60),
+        P('4845', 'ifood', 'terraco', 'Marina D.', 'Jardim Botânico', 'loja', 'Diego', 11, 50, 12, 18, 30, 44),
+        P('4844', 'ifood', 'kenzo', 'Otávio B.', 'Jardim Sumaré', 'loja', 'Gustavo', 8, 50, 4, 84, 20, 62),
+        P('4838', 'ifood', 'terraco', 'Mariana S.', 'Jardim Botânico', 'rota', 'Carlos', 58, 50, 8, 26, 12, 28),
+        P('4837', 'ifood', 'kenzo', 'Felipe C.', 'Jardim Sumaré', 'rota', 'Marcos', 51, 48, 6, 92, 9, 86),
+        P('4835', 'ifood', 'spunto', 'Ana P.', 'Centro', 'rota', 'Thiago', 33, 50, 50, 46, 55, 36),
+        P('4833', 'ifood', 'brasa', 'Rodrigo L.', 'Jardim Paulista', 'rota', 'Rafael', 37, 50, 90, 82, 86, 70),
+        P('RP1296', 'rp', 'mousse', 'Helena F.', 'Lagoinha', 'rota', 'Anderson', 30, 50, 30, 94, 38, 86),
+        P('4832', 'ifood', 'spunto', 'Bruna K.', 'Higienópolis', 'rota', 'Fábio', 24, 50, 76, 4, 70, 12),
+        P('4830', 'ifood', 'terraco', 'Caio R.', 'Vila Tibério', 'rota', 'Renan', 19, 50, 20, 4, 24, 18),
+        P('4829', 'ifood', 'brasa', 'Daniela P.', 'Jardim Canadá', 'rota', 'Wesley', 26, 50, 70, 96, 74, 80),
+      ],
+    },
+  };
+}
+const CEN = cenarios();
+
+/* histórico do dia (concluídos e cancelados), para Tabela e Quadro */
+const HIST = (() => {
+  const lojas = Object.keys(LOJAS), motos = Object.keys(MOTOS).slice(0, 14);
+  const clientes = ['Beatriz L.', 'Gustavo H.', 'Patrícia O.', 'Vitor S.', 'Renata M.', 'Igor P.', 'Aline T.', 'Márcio D.', 'Fernanda Q.', 'Leandro B.', 'Tatiane R.', 'Hugo N.'];
+  const bairros = ['Centro', 'Jardim Irajá', 'Ribeirânia', 'Vila Seixas', 'Lagoinha', 'Jardim Paulista', 'Alto da Boa Vista', 'Nova Aliança', 'Jardim Sumaré', 'Higienópolis'];
+  const l = [];
+  for (let i = 0; i < 46; i++) {
+    const rp = i % 7 === 3;
+    const dur = 18 + ((i * 13) % 37);
+    const km = 1.6 + ((i * 7) % 58) / 10;
+    l.push({
+      id: rp ? 'RP' + (1287 - i) : String(4820 - i), num: rp ? 'RP' + (1287 - i) : String(4820 - i), origem: rp ? 'rp' : 'ifood',
+      loja: lojas[i % 5], cliente: clientes[i % clientes.length], bairro: bairros[(i * 3) % bairros.length],
+      st: i === 9 || i === 27 ? 'cancelado' : 'concluido', moto: i === 9 || i === 27 ? null : motos[(i * 5) % motos.length],
+      min: 40 + i * 9, dur, prazo: 50, km: Math.round(km * 10) / 10, valor: km <= 3 ? 7 : km <= 5 ? 9 : 12,
+    });
+  }
+  return l;
+})();
+const EVENTOS_POOL = [
+  ['fa-circle-check', 'var(--ok)', '#4819 entregue por Diego · 26 min'],
+  ['fa-tower-broadcast', 'var(--bad)', '#4836 oferta rodada 2 · Terraço'],
+  ['fa-motorcycle', 'var(--warn-text)', 'Juliana aceitou #4834 · Spunto'],
+  ['fa-box', 'var(--ink-2)', 'Thiago coletou #4823 · Spunto'],
+  ['fa-plug', 'var(--ok)', 'Fábio ficou online'],
+  ['fa-receipt', 'var(--ifood)', 'Novo pedido iFood #4837 · Kenzo'],
+  ['fa-circle-check', 'var(--ok)', '#4818 entregue por Lucas · 31 min'],
+  ['fa-clock', 'var(--bad)', '#4838 passou do prazo · Carlos'],
+];
+let EVENTOS = [
+  ['21:13', ...EVENTOS_POOL[1]], ['21:12', ...EVENTOS_POOL[2]], ['21:11', ...EVENTOS_POOL[0]], ['21:09', ...EVENTOS_POOL[3]], ['21:08', ...EVENTOS_POOL[4]], ['21:06', ...EVENTOS_POOL[6]],
+];
+
+/* ======================= derivados ======================= */
+const sc = () => CEN[S.cen];
+const restante = p => p.prazo - p.min;
+const tomPz = p => { const r = restante(p); return r < 0 ? 'r' : r <= 15 ? 'y' : 'g'; };
+const atrasado = p => (p.st === 'loja' || p.st === 'rota') && restante(p) < 0;
+const ativo = p => p.st === 'oferta' || p.st === 'loja' || p.st === 'rota';
+function counts() {
+  const ps = sc().pedidos;
+  return { todos: ps.length, oferta: ps.filter(p => p.st === 'oferta').length, loja: ps.filter(p => p.st === 'loja').length, rota: ps.filter(p => p.st === 'rota').length, atrasado: ps.filter(atrasado).length };
+}
+function motosOnline() {
+  const c = sc();
+  return c.online.map(nome => {
+    const ps = c.pedidos.filter(x => x.moto === nome);
+    const p = ps.find(x => x.st === 'rota') || ps[0];
+    const pos = p ? [p.mx, p.my] : (c.livresPos[nome] || [50, 50]);
+    return { nome, st: p ? p.st : 'livre', x: pos[0], y: pos[1], ped: p, peds: ps, corridas: MOTOS[nome], ha: c.livreHa[nome] || 0 };
+  });
+}
+const capSrc = st => IMG + 'capacete-' + ({ livre: 'verde', loja: 'amarelo', rota: 'vermelho' }[st] || 'cinza') + '.png';
+const urg = p => p.st === 'oferta' ? -1000 + p.cd / 100 : atrasado(p) ? -500 + restante(p) : ativo(p) ? restante(p) : 1000 + p.min;
+const ordenados = () => [...sc().pedidos].sort((a, b) => urg(a) - urg(b));
+const casaFiltro = p => S.filtro === 'todos' || (S.filtro === 'atrasado' ? atrasado(p) : p.st === S.filtro);
+const filtrados = () => ordenados().filter(casaFiltro);
+const brl = n => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const mmss = s => '0:' + String(Math.max(0, s)).padStart(2, '0');
+const hm = minAtras => { const t = HORA - minAtras; return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(((t % 60) + 60) % 60).padStart(2, '0'); };
+const achar = id => sc().pedidos.find(x => x.id === id) || HIST.find(x => x.id === id);
+const todos = () => [...sc().pedidos, ...HIST];
+function resumoOnline() { const ms = motosOnline(); return { on: ms.length, livres: ms.filter(m => m.st === 'livre').length }; }
+const casaBusca = p => { if (!S.q) return true; const q = S.q.toLowerCase(); return [p.num, p.cliente, p.bairro, LOJAS[p.loja].nome, p.moto || ''].some(t => t.toLowerCase().includes(q)); };
+
+/* ======================= peças ======================= */
+const origem = p => p.origem === 'ifood' ? '<span class="badge b-ifood">iFood</span>' : '<span class="badge b-rp">RP</span>';
+const numTxt = p => p.origem === 'rp' ? p.num : '#' + p.num;
+function pz(p) {
+  if (p.st === 'concluido') return `<span class="pz ${p.dur <= p.prazo ? 'g' : 'r'}"><i class="fa-solid fa-flag-checkered"></i>${p.dur} min</span>`;
+  if (p.st === 'cancelado') return `<span class="pz n">—</span>`;
+  const r = restante(p);
+  return `<span class="pz ${tomPz(p)}"><i class="fa-regular fa-clock"></i>${r < 0 ? 'atrasado ' + (-r) + ' min' : r + ' min'}</span>`;
+}
+const ofertaTxt = p => `<span class="ofr"><i class="fa-solid fa-tower-broadcast"></i> Oferta · rodada <span data-rd="${p.id}">${p.rodada}</span>/3 · <span data-cd="${p.id}">${mmss(p.cd)}</span></span>`;
+const stTxt = p => ({ oferta: 'Sem motoboy', loja: 'Indo à loja', rota: 'A caminho', concluido: 'Entregue', cancelado: 'Cancelado' })[p.st];
+function stTag(p) {
+  if (p.st === 'oferta') return ofertaTxt(p);
+  if (p.st === 'concluido') return `<span class="sttag fim"><i class="fa-solid fa-circle-check"></i>Entregue ${hm(p.min - p.dur)}</span>`;
+  if (p.st === 'cancelado') return `<span class="sttag canc"><i class="fa-solid fa-ban"></i>Cancelado</span>`;
+  return `<span class="sttag"><img src="${capSrc(p.st)}" alt="">${stTxt(p)}</span>`;
+}
+const btnAtribuir = (p, cls = 'brand') => `<button class="btn sm ${cls}" data-act="atribuir" data-id="${p.id}"><i class="fa-solid fa-user-plus"></i> Atribuir</button>`;
+const btnNovo = () => `<button class="btn brand" data-act="toast" data-msg="Abre o formulário de novo pedido"><i class="fa-solid fa-plus"></i> Novo pedido</button>`;
+
+function filtros() {
+  const c = counts();
+  const it = [['todos', 'Todos'], ['oferta', 'Sem motoboy'], ['loja', 'Indo à loja'], ['rota', 'A caminho'], ['atrasado', 'Atrasados']];
+  return `<div class="flt">${it.map(([k, t]) => {
+    const al = (k === 'oferta' || k === 'atrasado') && c[k] > 0;
+    return `<button class="${S.filtro === k ? 'on' : ''} ${al ? 'alerta' : ''}" data-act="filtro" data-v="${k}">${t} <b>${c[k]}</b></button>`;
+  }).join('')}</div>`;
+}
+function vazio() {
+  const t = { oferta: 'Todos os pedidos têm motoboy', atrasado: 'Nenhum pedido atrasado', loja: 'Ninguém indo à loja agora', rota: 'Nenhum pedido a caminho', todos: 'Nenhum pedido em andamento' }[S.filtro];
+  return `<div class="vazio"><i class="fa-solid fa-circle-check"></i>${t}</div>`;
+}
+function linha(p) {
+  const l = LOJAS[p.loja];
+  return `<div class="fr ${p.st === 'oferta' ? 'oferta' : ''} ${atrasado(p) ? 'atr' : ''} ${S.sel === p.id ? 'sel' : ''}" data-act="sel" data-id="${p.id}">
+    <img class="cap" src="${capSrc(p.st)}" alt="">
+    <div class="fr-main"><div class="fr-l1"><b>${numTxt(p)}</b>${origem(p)}<span class="muted">${l.curto}</span></div><div class="fr-l2">${p.cliente} · ${p.bairro}</div></div>
+    ${p.st === 'oferta' ? `<div class="fr-st">${ofertaTxt(p)}</div>${btnAtribuir(p)}` : `<div class="fr-st">${stTxt(p)}<small>${p.moto}</small></div>${pz(p)}`}
+  </div>`;
+}
+function cartao(p, extra = '') {
+  const l = LOJAS[p.loja];
+  const pct = Math.min(100, Math.round(p.min / p.prazo * 100));
+  const fim = !ativo(p);
+  return `<div class="fc ${p.st === 'oferta' ? 'oferta' : ''} ${atrasado(p) ? 'atr' : ''} ${S.sel === p.id ? 'sel' : ''} ${fim ? 'fim' : ''}" data-act="sel" data-id="${p.id}" ${extra}>
+    <div class="fc-t"><b>${numTxt(p)}</b>${origem(p)}<span class="muted">${l.curto}</span>${p.st === 'oferta' ? btnAtribuir(p) : pz(p)}</div>
+    <div class="fc-m"><img class="cap" src="${capSrc(p.st)}" alt="">${p.st === 'oferta' ? ofertaTxt(p) : `<span><b>${stTxt(p)}</b>${p.moto ? ' · ' + p.moto : ''} → ${p.cliente}, ${p.bairro}</span>`}</div>
+    ${p.st === 'oferta' ? `<div class="fc-m"><span>${p.cliente} · ${p.bairro}</span></div>` : fim ? '' : `<div class="bar"><i class="${tomPz(p)}" style="width:${pct}%"></i></div>`}
+  </div>`;
+}
+const lista = fn => { const ps = filtrados(); return ps.length ? ps.map(fn).join('') : vazio(); };
+
+function etapas(p) {
+  const c = p.min;
+  const L = [['Pedido criado', hm(c), 'ok']];
+  if (p.st === 'cancelado') { L.push(['Cancelado pela loja', hm(c - 6), 'ok']); return L; }
+  if (p.st === 'oferta') { L.push([`Oferta em rodadas (rodada ${p.rodada}/3)`, 'agora', 'agora'], ['Motoboy aceita', '', 'pend'], ['Coletado na loja', '', 'pend'], ['Entregue', '', 'pend']); return L; }
+  const ac = Math.max(1, Math.round(c * .8));
+  L.push([`Aceito por ${p.moto}`, hm(ac), 'ok']);
+  if (p.st === 'loja') { L.push(['Indo à loja', 'agora', 'agora'], ['Coletado na loja', '', 'pend'], ['Entregue', '', 'pend']); return L; }
+  L.push(['Coletado na loja', hm(Math.round(c * .45)), 'ok']);
+  if (p.st === 'rota') { L.push(['A caminho do cliente', 'agora', 'agora'], ['Entregue', `prazo ${hm(c - p.prazo)}`, 'pend']); return L; }
+  L.push(['Entregue', hm(c - p.dur), 'ok']);
+  return L;
+}
+const linhaTempo = p => `<div class="tl">${etapas(p).map(([t, h, k]) => `<div class="st ${k}"><span class="bo"></span><div>${t}</div><span>${h}</span></div>`).join('')}</div>`;
+function detalhe(p, fechar = true) {
+  if (!p) return '';
+  const l = LOJAS[p.loja];
+  const moto = p.moto ? `<div class="det-moto"><img class="cap" src="${capSrc(ativo(p) ? p.st : 'livre')}" alt=""><div><b>${p.moto}</b><small>${MOTOS[p.moto]} corridas hoje</small></div><button class="icbtn" data-act="toast" data-msg="Liga para ${p.moto}"><i class="fa-solid fa-phone"></i></button><button class="icbtn" data-act="toast" data-msg="Chat com ${p.moto}"><i class="fa-regular fa-comment"></i></button></div>` : '';
+  return `<div class="det">
+    <div class="det-h"><b>${numTxt(p)}</b>${origem(p)}${pz(p)}${fechar ? `<button class="icbtn x" data-act="desel"><i class="fa-solid fa-xmark"></i></button>` : ''}</div>
+    <div class="det-rota"><i class="fa-solid fa-store"></i><div><b>${l.nome}</b></div><span class="ln"></span><span></span><i class="fa-solid fa-location-dot" style="color:var(--bad)"></i><div>${p.cliente} · ${p.bairro}</div></div>
+    ${p.st === 'oferta' ? `<div style="margin-top:10px">${ofertaTxt(p)}</div>` : ''}
+    ${moto}
+    ${linhaTempo(p)}
+    <div class="det-acts">${p.st === 'oferta' ? btnAtribuir(p) : ativo(p) ? `<button class="btn sm ghost" data-act="atribuir" data-id="${p.id}"><i class="fa-solid fa-right-left"></i> Trocar motoboy</button>` : ''}<button class="btn sm ghost" data-act="toast" data-msg="Abre o pedido ${numTxt(p)} (detalhe do sketch 007)"><i class="fa-solid fa-up-right-from-square"></i> Abrir pedido</button><button class="btn sm ghost" data-act="toast" data-msg="Chat com ${l.nome}"><i class="fa-regular fa-comments"></i> Loja</button></div>
+  </div>`;
+}
+
+/* mapa: tudo em % (o desenho estica com o contêiner) */
+function mapa(opts = {}) {
+  const c = sc(), cam = opts.cam || { motos: true, pedidos: true, lojas: true, rotas: true };
+  const motos = motosOnline();
+  const selP = S.sel ? achar(S.sel) : null;
+  const ativoSel = selP && ativo(selP) ? selP : null;
+  const selMoto = S.selMoto;
+  const dimP = p => (S.filtro !== 'todos' && !casaFiltro(p)) || (ativoSel && ativoSel.id !== p.id) || (selMoto && p.moto !== selMoto);
+  let linhas = '';
+  if (cam.rotas) c.pedidos.forEach(p => {
+    const l = LOJAS[p.loja];
+    const k = `${ativoSel && ativoSel.id === p.id ? 'sel' : dimP(p) ? 'dim' : ''}`;
+    if (p.st === 'rota') linhas += `<line data-l="${p.id}" class="${k}" x1="${p.mx}" y1="${p.my}" x2="${p.dx}" y2="${p.dy}" style="stroke:var(--bad);stroke-width:2.5;stroke-dasharray:5 5;opacity:.75" vector-effect="non-scaling-stroke"/>`;
+    if (p.st === 'loja') linhas += `<line data-l="${p.id}" class="${k}" x1="${p.mx}" y1="${p.my}" x2="${l.x}" y2="${l.y}" style="stroke:var(--warn-text);stroke-width:2.5;stroke-dasharray:5 5;opacity:.75" vector-effect="non-scaling-stroke"/>`;
+    if (p.st === 'oferta') linhas += `<line class="${k}" x1="${l.x}" y1="${l.y}" x2="${p.dx}" y2="${p.dy}" style="stroke:var(--muted);stroke-width:2;stroke-dasharray:2 5;opacity:.8" vector-effect="non-scaling-stroke"/>`;
+  });
+  const rua = (d, w) => `<path d="${d}" style="stroke:var(--map-road-edge);stroke-width:${w + 2};fill:none" vector-effect="non-scaling-stroke"/><path d="${d}" style="stroke:var(--map-road);stroke-width:${w};fill:none" vector-effect="non-scaling-stroke"/>`;
+  const svg = `<svg class="ruas" viewBox="0 0 100 100" preserveAspectRatio="none">
+    <rect x="40" y="46" width="13" height="15" rx="1" style="fill:var(--map-park)"/>
+    <rect x="84" y="6" width="10" height="11" rx="1" style="fill:var(--map-park)"/>
+    <rect x="4" y="40" width="9" height="8" rx="1" style="fill:var(--map-park)"/>
+    <path d="M0,62 C18,56 30,68 50,64 S80,52 100,58" style="stroke:var(--map-water);stroke-width:12;fill:none" vector-effect="non-scaling-stroke"/>
+    ${[8, 35, 66, 92].map(y => rua(`M0,${y} L100,${y}`, 3)).join('')}${[10, 35, 62, 88].map(x => rua(`M${x},0 L${x},100`, 3)).join('')}
+    ${[20, 50, 80].map(y => rua(`M0,${y} L100,${y}`, 6)).join('')}${[22, 48, 74].map(x => rua(`M${x},0 L${x},100`, 6)).join('')}
+    ${rua('M0,98 L100,8', 9)}
+    ${linhas}
+  </svg>`;
+  const lojas = cam.lojas ? Object.entries(LOJAS).map(([k, l]) => `<div class="mk loja ${ativoSel && ativoSel.loja !== k ? 'dim' : ''}" style="left:${l.x}%;top:${l.y}%" data-act="toast" data-msg="${l.nome} · ${c.pedidos.filter(p => p.loja === k).length} pedidos em andamento"><img src="${IMG}loja-pin.png" alt=""><span class="nm">${l.curto}</span></div>`).join('') : '';
+  const dests = cam.pedidos ? c.pedidos.map(p => {
+    const rot = p.st === 'rota' || p.st === 'loja' ? `<span class="rot ${tomPz(p) === 'g' ? '' : tomPz(p)}">${p.st === 'rota' ? '<i class="fa-solid fa-motorcycle"></i>' : ''}${numTxt(p)} · ${p.moto}</span>` : '';
+    return `<div class="mk dest ${p.st === 'oferta' ? 'oferta' : ''} ${ativoSel && ativoSel.id === p.id ? 'sel' : dimP(p) ? 'dim' : ''}" style="left:${p.dx}%;top:${p.dy}%" data-act="sel" data-id="${p.id}" title="${numTxt(p)} · ${p.cliente}"><i class="fa-solid fa-location-dot"></i>${opts.rotulos === false ? '' : rot}</div>`;
+  }).join('') : '';
+  const caps = cam.motos ? motos.map(m => {
+    const dim = (S.filtro !== 'todos' && !(m.ped && casaFiltro(m.ped))) || (ativoSel && ativoSel.moto !== m.nome) || (selMoto && selMoto !== m.nome);
+    const sel = (ativoSel && ativoSel.moto === m.nome) || selMoto === m.nome;
+    return `<div class="mk moto ${sel ? 'sel' : dim ? 'dim' : ''}" data-m="${m.nome}" style="left:${m.x}%;top:${m.y}%" data-act="moto" data-n="${m.nome}"><img src="${capSrc(m.st)}" alt="">${opts.nomes === false && !sel ? '' : `<span class="nm">${m.nome}</span>`}</div>`;
+  }).join('') : '';
+  return `<div class="mapa ${opts.noite ? 'noite' : ''}">${svg}${dests}${lojas}${caps}</div>`;
+}
+const controles = () => `<div class="ov mctl"><button data-act="toast" data-msg="Aproxima"><i class="fa-solid fa-plus"></i></button><button data-act="toast" data-msg="Afasta"><i class="fa-solid fa-minus"></i></button><button data-act="toast" data-msg="Enquadra todos os motoboys e pedidos"><i class="fa-solid fa-expand"></i></button></div>`;
+const legenda = () => `<span class="leg"><span><img src="${capSrc('livre')}" alt="">livre</span><span><img src="${capSrc('loja')}" alt="">indo à loja</span><span><img src="${capSrc('rota')}" alt="">a caminho</span><span><i class="fa-solid fa-location-dot" style="color:var(--bad)"></i>cliente</span></span>`;
+
+function linhaMoto(m) {
+  const sub = m.st === 'livre' ? `livre há ${m.ha} min` : `${numTxt(m.ped)} · ${m.st === 'loja' ? 'indo à ' + LOJAS[m.ped.loja].curto : 'a caminho de ' + m.ped.bairro}${m.peds.length > 1 ? ' · +' + (m.peds.length - 1) : ''}`;
+  return `<div class="mr2 ${S.selMoto === m.nome ? 'sel' : ''}" data-act="moto" data-n="${m.nome}"><img class="cap" src="${capSrc(m.st)}" alt=""><div class="mt"><b>${m.nome}</b><small>${sub}</small></div><div class="mc"><b>${m.corridas}</b>hoje</div></div>`;
+}
+
+/* ======================= cabeçalhos ======================= */
+function cabecalhoConsole(m) {
+  const n = pico() ? 7 : 4;
+  if (m) return `<header class="sh">
+    <button class="icbtn" data-act="toast" data-msg="Abre o menu do console"><i class="fa-solid fa-bars"></i></button>
+    <div class="sh-logo"><div class="ic"><i class="fa-solid fa-motorcycle"></i></div><div><b>Entregas</b><small>RestaurantePro</small></div></div>
+    <div class="sh-right"><button class="icbtn" data-act="toast" data-msg="Buscar pedido"><i class="fa-solid fa-magnifying-glass"></i></button><button class="icbtn" data-act="toast" data-msg="${n} avisos"><i class="fa-regular fa-bell"></i><span class="dot">${n}</span></button><div class="avatar" data-act="toast" data-msg="Conta e organização">ED</div></div>
+  </header>`;
+  return `<header class="sh">
+    <div class="sh-logo"><div class="ic"><i class="fa-solid fa-motorcycle"></i></div><div><b>Entregas</b><small>RestaurantePro</small></div></div>
+    <nav class="sh-nav">${['Painel', 'Operações', 'Motoboys', 'Lojas', 'Financeiro', 'Configurações'].map(t => `<a class="${t === 'Operações' ? 'on' : ''}" data-act="nav" data-n="${t}">${t}</a>`).join('')}</nav>
+    <div class="sh-right">
+      <button class="icbtn" data-act="toast" data-msg="${n} avisos"><i class="fa-regular fa-bell"></i><span class="dot">${n}</span></button>
+      <div class="sh-org"><b>Edgard</b><span>Central Ribeirão</span></div>
+      <div class="avatar" data-act="toast" data-msg="Conta e organização">ED</div>
+    </div>
+  </header>`;
+}
+const vista = () => S.screen === 1 ? 'mapa' : S.screen === 2 ? 'tabela' : 'quadro';
+function barraVistas(m) {
+  const at = sc().pedidos.length, tot = todos().length;
+  if (m) {
+    const it = [['mapa', 'Mapa'], ['tabela', 'Lista'], ['quadro', 'Quadro']];
+    return `<div class="vb"><h1>Pedidos</h1><span class="live"><i></i></span><span class="grow"></span><div class="seg">${it.map(([k, t]) => `<button class="${S.mview === k ? 'on' : ''}" data-act="mview" data-v="${k}">${t}</button>`).join('')}</div></div>`;
+  }
+  const it = [[1, 'map', 'Mapa', at], [2, 'table-list', 'Tabela', tot], [3, 'table-columns', 'Quadro', at]];
+  return `<div class="vb"><h1>Pedidos</h1><span class="live"><i></i>ao vivo</span>
+    <div class="seg">${it.map(([s, ic, t, n]) => `<button class="${S.screen === s ? 'on' : ''}" data-act="vista" data-s="${s}"><i class="fa-solid fa-${ic}"></i>${t}<span class="n">${n}</span></button>`).join('')}</div>
+    <span class="grow"></span>
+    <label class="busca"><i class="fa-solid fa-magnifying-glass"></i><input data-act="busca" value="${S.q}" placeholder="Buscar pedido, cliente, loja ou motoboy"><span class="kbd">Ctrl K</span></label>
+    ${btnNovo()}
+  </div>`;
+}
+const trilho = () => `<nav class="trilho" data-block="Menu do Fleet-Ops (recolhido)"><div class="tin">
+  ${[['paper-plane', 'Pedidos', 1], ['helmet-safety', 'Motoboys'], ['store', 'Lojas'], ['location-dot', 'Locais'], ['sack-dollar', 'Financeiro'], ['tower-broadcast', 'Distribuição']].map(([i, t, on]) => `<a class="${on ? 'on' : ''}" data-act="nav" data-n="${t}"><i class="fa-solid fa-${i}"></i><span>${t}</span></a>`).join('')}
+  <div class="sep"></div><a data-act="nav" data-n="Configurações"><i class="fa-solid fa-gear"></i><span>Configurações</span></a>
+</div></nav>`;
+
+/* ======================= Variante A ======================= */
+function mapaA(m) {
+  const c = counts(), o = resumoOnline();
+  const chip = (k, ic, n, t, al) => `<div class="mchip ${S.filtro === k ? 'on' : ''} ${al ? 'alerta' : ''}" data-act="filtro" data-v="${k}">${ic}<b>${n}</b><span>${t}</span></div>`;
+  const chips = [
+    chip('oferta', `<i class="fa-solid fa-tower-broadcast"></i>`, c.oferta, 'sem<br>motoboy', c.oferta > 1),
+    chip('atrasado', `<i class="fa-regular fa-clock"></i>`, c.atrasado, 'atra-<br>sados', c.atrasado > 0),
+    chip('loja', `<img src="${capSrc('loja')}" alt="">`, c.loja, 'indo à<br>loja'),
+    chip('rota', `<img src="${capSrc('rota')}" alt="">`, c.rota, 'a<br>caminho'),
+    `<div class="mchip" data-act="motofiltro" data-v="livre"><img src="${capSrc('livre')}" alt=""><b>${o.livres}</b><span>livres de<br>${o.on} online</span></div>`,
+  ].join('');
+  const selP = S.sel ? achar(S.sel) : null;
+  if (m) return celularA(chips, selP);
+  const L = S.painelPed ? 398 : 14, R = S.painelMoto ? 308 : 14;
+  const ped = S.painelPed
+    ? `<div class="ov flutua pA" data-block="Painel Pedidos"><div class="pA-h"><h3>Pedidos</h3><span class="live"><i></i></span><span class="muted">${c.todos} em andamento</span><button class="icbtn" data-act="painel" data-v="painelPed" title="Recolher"><i class="fa-solid fa-angles-left"></i></button></div>${filtros()}<div class="fl">${lista(linha)}</div></div>`
+    : `<div class="ov flutua pilA" style="top:14px;left:14px" data-act="painel" data-v="painelPed"><i class="fa-solid fa-list"></i>Pedidos <b>${c.todos}</b>${c.oferta ? `<span class="badge" style="background:var(--bad);color:#fff">${c.oferta} sem motoboy</span>` : ''}</div>`;
+  const ms = motosOnline().filter(x => S.motoFiltro === 'todos' || (S.motoFiltro === 'livre' ? x.st === 'livre' : x.st !== 'livre'));
+  const mot = S.painelMoto
+    ? `<div class="ov flutua mA" data-block="Painel Motoboys"><div class="pA-h"><h3>Motoboys</h3><span class="muted">${o.on} online</span><button class="icbtn" data-act="painel" data-v="painelMoto" title="Recolher"><i class="fa-solid fa-angles-right"></i></button></div>
+       <div class="seg">${[['todos', 'Todos'], ['livre', `Livres ${o.livres}`], ['ocupado', 'Em entrega']].map(([k, t]) => `<button class="${S.motoFiltro === k ? 'on' : ''}" data-act="motofiltro" data-v="${k}">${t}</button>`).join('')}</div>
+       <div class="ml2">${ms.map(linhaMoto).join('') || '<div class="vazio">Ninguém aqui agora</div>'}</div></div>`
+    : `<div class="ov flutua pilA" style="top:14px;right:14px" data-act="painel" data-v="painelMoto"><img src="${capSrc('livre')}" style="width:22px" alt="">Motoboys <b>${o.livres}/${o.on}</b></div>`;
+  const det = selP ? `<div class="ov flutua dA" style="left:${L}px" data-block="Detalhe do pedido">${detalhe(selP)}</div>` : '';
+  return `<div class="mapwrap" data-block="Mapa ao vivo">${mapa()}
+    <div class="ov chA" style="left:${S.painelPed ? L : 230}px;right:${S.painelMoto ? R : 200}px" data-block="Contagens (filtram)">${chips}</div>
+    ${ped}${mot}${det}${controles()}</div>`;
+}
+function celularA(chips, selP) {
+  const c = counts();
+  const H = { baixo: 150, meio: 360, alto: 600 }[S.sheet];
+  const ms = motosOnline();
+  const corpo = S.abaM === 'pedidos'
+    ? `${filtros()}<div class="fcs">${filtrados().length ? filtrados().map(p => cartao(p)).join('') : vazio()}</div>`
+    : `<div>${ms.map(linhaMoto).join('')}</div>`;
+  const conteudo = selP && ativo(selP) ? `<div class="rolo">${detalhe(selP)}</div>` : `<div style="padding:0 14px 8px"><div class="seg" style="width:100%"><button style="flex:1;justify-content:center" class="${S.abaM === 'pedidos' ? 'on' : ''}" data-act="abaM" data-v="pedidos">Pedidos ${c.todos}</button><button style="flex:1;justify-content:center" class="${S.abaM === 'motos' ? 'on' : ''}" data-act="abaM" data-v="motos">Motoboys ${ms.length}</button></div></div><div class="rolo">${corpo}</div>`;
+  return `<div class="mapwrap" data-block="Mapa ao vivo">${mapa({ nomes: false, rotulos: false })}
+    <div class="ov chA" data-block="Contagens">${chips}</div>
+    <div class="ov mctl" style="bottom:${H + 12}px"><button data-act="toast" data-msg="Enquadra todos"><i class="fa-solid fa-expand"></i></button><button data-act="toast" data-msg="Minha posição"><i class="fa-solid fa-location-crosshairs"></i></button></div>
+    <div class="sheet" style="height:${H}px" data-block="Folha de baixo">
+      <div class="alca" data-act="sheet"><div class="lin"><b>${c.todos} pedidos</b>${c.oferta ? `<span class="ofr"><i class="fa-solid fa-tower-broadcast"></i> ${c.oferta} sem motoboy</span>` : `<span class="muted" style="margin-left:auto">${c.atrasado} atrasados</span>`}</div></div>
+      ${conteudo}
+    </div></div>`;
+}
+function tabelaA() {
+  const c = counts();
+  const abas = [['andamento', 'Em andamento', c.todos], ['oferta', 'Sem motoboy', c.oferta, c.oferta > 0], ['atrasado', 'Atrasados', c.atrasado, c.atrasado > 0], ['concluido', 'Concluídos hoje', HIST.filter(p => p.st === 'concluido').length], ['cancelado', 'Cancelados', HIST.filter(p => p.st === 'cancelado').length], ['todos', 'Todos de hoje', todos().length]];
+  const dados = linhasTabela(S.abaT);
+  return `<div class="abas" data-block="Abas por situação">${abas.map(([k, t, n, al]) => `<button class="${S.abaT === k ? 'on' : ''} ${al ? 'alerta' : ''}" data-act="abaT" data-v="${k}">${t}<span class="n">${n}</span></button>`).join('')}</div>
+    <div class="ferr"><span class="fchip ${S.lojaF ? 'on' : ''}" data-act="lojaF">${S.lojaF ? `<i class="fa-solid fa-store"></i>${LOJAS[S.lojaF].curto} <i class="fa-solid fa-xmark"></i>` : '<i class="fa-solid fa-plus"></i> Loja'}</span><span class="fchip" data-act="toast" data-msg="Filtrar por motoboy"><i class="fa-solid fa-plus"></i> Motoboy</span><span class="fchip" data-act="toast" data-msg="Filtrar por origem (iFood, RestaurantePro)"><i class="fa-solid fa-plus"></i> Origem</span><span class="fchip" data-act="toast" data-msg="Escolher o período"><i class="fa-regular fa-calendar"></i> Hoje</span><span class="grow" style="flex:1"></span><button class="btn sm ghost" data-act="toast" data-msg="Exporta CSV com os filtros atuais"><i class="fa-solid fa-download"></i> Exportar</button><button class="btn sm ghost" data-act="toast" data-msg="Escolher colunas"><i class="fa-solid fa-sliders"></i> Colunas</button></div>
+    ${barraMassa()}
+    ${tabela(dados, { checks: true, pag: true })}`;
+}
+function quadroA() {
+  const ps = sc().pedidos.filter(casaBusca);
+  const col = (k, t, l, cls = '', extra = '') => `<div class="qc ${cls}" data-block="Coluna ${t}"><div class="qc-h"><h3>${t}</h3>${extra}<span class="n">${l.length}</span></div><div class="qc-b">${l.length ? l.map(p => cartao(p)).join('') : `<div class="vazio" style="padding:14px"><i class="fa-solid fa-circle-check"></i>Nada aqui</div>`}</div></div>`;
+  const of = ps.filter(p => p.st === 'oferta'), lj = ps.filter(p => p.st === 'loja').sort((a, b) => urg(a) - urg(b)), rt = ps.filter(p => p.st === 'rota').sort((a, b) => urg(a) - urg(b));
+  const fim = HIST.filter(p => p.st === 'concluido' && casaBusca(p)).slice(0, 6);
+  return `<div class="qd">
+    ${col('oferta', 'Sem motoboy', of, of.length ? 'bad' : '', of.length ? '<i class="fa-solid fa-tower-broadcast" style="color:var(--bad)"></i>' : '')}
+    ${col('loja', 'Indo à loja', lj, '', `<img class="cap" src="${capSrc('loja')}" alt="">`)}
+    ${col('rota', 'A caminho', rt, '', `<img class="cap" src="${capSrc('rota')}" alt="">`)}
+    <div class="qc" data-block="Coluna Concluídos"><div class="qc-h"><h3>Concluídos</h3><i class="fa-solid fa-circle-check" style="color:var(--ok)"></i><span class="n">${HIST.filter(p => p.st === 'concluido').length}</span></div><div class="qc-b">${fim.map(p => cartao(p)).join('')}<button class="btn sm ghost" style="justify-content:center" data-act="vista" data-s="2" data-aba="concluido">Ver todos na Tabela →</button></div></div>
+  </div>`;
+}
+
+/* ======================= tabela (comum) ======================= */
+function linhasTabela(aba) {
+  let l = todos().filter(casaBusca);
+  if (aba === 'andamento') l = l.filter(ativo);
+  else if (aba === 'oferta') l = l.filter(p => p.st === 'oferta');
+  else if (aba === 'atrasado') l = l.filter(atrasado);
+  else if (aba === 'concluido') l = l.filter(p => p.st === 'concluido');
+  else if (aba === 'cancelado') l = l.filter(p => p.st === 'cancelado');
+  else if (aba === 'semprazo') l = l.filter(p => ativo(p) && tomPz(p) !== 'g');
+  if (S.lojaF) l = l.filter(p => p.loja === S.lojaF);
+  const { k, dir } = S.ord;
+  const val = p => k === 'urg' ? urg(p) : k === 'num' ? p.num : k === 'loja' ? LOJAS[p.loja].curto : k === 'moto' ? (p.moto || '~') : k === 'criado' ? p.min : k === 'km' ? (p.km || 0) : k === 'cliente' ? p.cliente : urg(p);
+  return l.sort((a, b) => { const x = val(a), y = val(b); return (x > y ? 1 : x < y ? -1 : 0) * dir; });
+}
+function barraMassa() {
+  if (!S.marc.size) return '';
+  return `<div class="massa"><b>${S.marc.size} selecionado${S.marc.size > 1 ? 's' : ''}</b><span class="grow" style="flex:1"></span><button class="btn sm ghost" data-act="toast" data-msg="Atribuir os ${S.marc.size} pedidos ao mesmo motoboy (entrega junto)"><i class="fa-solid fa-user-plus"></i> Atribuir</button><button class="btn sm ghost" data-act="toast" data-msg="Exporta os ${S.marc.size} pedidos"><i class="fa-solid fa-download"></i> Exportar</button><button class="btn sm ghost" data-act="toast" data-msg="Pede confirmação antes de cancelar"><i class="fa-solid fa-ban"></i> Cancelar</button><button class="btn sm ghost" data-act="limpamarc"><i class="fa-solid fa-xmark"></i></button></div>`;
+}
+const COLS = [['num', 'Pedido'], ['loja', 'Loja'], ['cliente', 'Cliente'], ['urg', 'Situação'], ['moto', 'Motoboy'], ['prazo', 'Prazo', 1], ['criado', 'Criado'], ['km', 'Km'], ['valor', 'Corrida', 1]];
+function th(ks) {
+  return ks.map(([k, t, nos]) => `<th class="${nos ? 'nosort' : ''} ${S.ord.k === k ? 'ord' : ''} ${k === 'km' || k === 'valor' ? 'num' : ''}" ${nos ? '' : `data-act="ord" data-k="${k}"`}>${t}${S.ord.k === k ? (S.ord.dir > 0 ? ' ↑' : ' ↓') : ''}</th>`).join('');
+}
+function celulas(p, ks) {
+  const l = LOJAS[p.loja];
+  const km = p.km != null ? p.km : Math.round(Math.hypot(l.x - p.dx, (l.y - p.dy) * .7) / 5.5 * 10) / 10;
+  const val = p.valor != null ? p.valor : km <= 3 ? 7 : km <= 5 ? 9 : 12;
+  const m = {
+    num: `<span class="pnum">${numTxt(p)}</span> ${origem(p)}`,
+    loja: l.curto,
+    cliente: `${p.cliente}<div class="sub">${p.bairro}</div>`,
+    urg: stTag(p),
+    moto: p.moto || '<span class="muted">—</span>',
+    prazo: p.st === 'oferta' ? btnAtribuir(p) : pz(p),
+    criado: `<span style="font-variant-numeric:tabular-nums">${hm(p.min)}</span><div class="sub">há ${p.min} min</div>`,
+    km: `<span class="num">${km.toFixed(1).replace('.', ',')}</span>`,
+    valor: p.st === 'cancelado' ? '<span class="muted">—</span>' : brl(val),
+  };
+  return ks.map(([k]) => `<td class="${k === 'km' || k === 'valor' ? 'num' : ''}">${m[k]}</td>`).join('');
+}
+function tabela(dados, o = {}) {
+  const ks = o.cols || COLS;
+  const POR = 15, tot = dados.length, pags = Math.max(1, Math.ceil(tot / POR));
+  if (S.pag > pags) S.pag = 1;
+  const pg = o.pag ? dados.slice((S.pag - 1) * POR, S.pag * POR) : dados;
+  const todosMarc = pg.length && pg.every(p => S.marc.has(p.id));
+  const corpo = pg.length ? pg.map(p => `<tr class="lin ${p.st === 'oferta' ? 'oferta' : ''} ${atrasado(p) ? 'atr' : ''} ${S.sel === p.id && o.sel ? 'sel' : ''} ${S.marc.has(p.id) ? 'marc' : ''}" data-act="${o.sel ? 'sel' : 'abrir'}" data-id="${p.id}">${o.checks ? `<td class="ck"><input type="checkbox" data-act="marc" data-id="${p.id}" ${S.marc.has(p.id) ? 'checked' : ''}></td>` : ''}${celulas(p, ks)}</tr>`).join('')
+    : `<tr><td colspan="${ks.length + 1}"><div class="vazio"><i class="fa-solid fa-magnifying-glass"></i>Nenhum pedido com esses filtros</div></td></tr>`;
+  const pag = o.pag ? `<div class="pag"><span>${tot ? `${(S.pag - 1) * POR + 1}–${Math.min(S.pag * POR, tot)} de ${tot}` : '0 pedidos'}</span><span class="grow"></span><button data-act="pag" data-v="${S.pag - 1}" ${S.pag <= 1 ? 'disabled' : ''}>‹</button>${Array.from({ length: pags }, (_, i) => `<button class="${S.pag === i + 1 ? 'on' : ''}" data-act="pag" data-v="${i + 1}">${i + 1}</button>`).join('')}<button data-act="pag" data-v="${S.pag + 1}" ${S.pag >= pags ? 'disabled' : ''}>›</button></div>` : '';
+  return `<div class="tbw" data-block="Tabela"><table class="tb"><thead><tr>${o.checks ? `<th class="ck nosort"><input type="checkbox" data-act="marctodos" ${todosMarc ? 'checked' : ''}></th>` : ''}${th(ks)}</tr></thead><tbody>${corpo}</tbody></table></div>${pag}`;
+}
+
+/* ======================= Variante B ======================= */
+function mapaB(m) {
+  const c = counts(), o = resumoOnline();
+  const selP = S.sel ? achar(S.sel) : null;
+  if (m) return celularB(selP);
+  const cams = [['motos', 'helmet-safety', 'Motoboys', o.on], ['pedidos', 'location-dot', 'Pedidos', c.todos], ['lojas', 'store', 'Lojas', 5], ['rotas', 'route', 'Rotas', '']];
+  const camadas = `<div class="ov camB" data-block="Camadas do mapa">${cams.map(([k, ic, t, n]) => `<span class="cam ${S.cam[k] ? 'on' : ''}" data-act="cam" data-v="${k}"><i class="fa-solid fa-${S.cam[k] ? 'eye' : 'eye-slash'}"></i>${t}${n !== '' ? ' ' + n : ''}</span>`).join('')}<span class="flutua legB">${legenda()}</span></div>`;
+  const ev = `<div class="ov flutua evB" data-block="Agora há pouco (eventos ao vivo)"><span class="t">Agora há pouco</span><span class="live"><i></i></span><div class="evs">${EVENTOS.slice(0, 6).map(([h, ic, cor, t], i) => `<span class="ev ${i === 0 && EVENTOS.novo ? 'novo' : ''}" data-act="toast" data-msg="${t}"><span>${h}</span><i class="fa-solid ${ic}" style="color:${cor}"></i>${t}</span>`).join('')}</div></div>`;
+  return `<div class="gB">
+    <div class="mapwrap" data-block="Mapa ao vivo">${mapa({ cam: S.cam })}${camadas}${ev}${controles()}</div>
+    <div class="colB" data-block="Coluna: Pedidos / Motoboys / Lojas">${colunaB(selP)}</div>
+  </div>`;
+}
+function colunaB(selP) {
+  const c = counts(), ms = motosOnline();
+  if (selP) return `<div class="voltar" data-act="desel"><i class="fa-solid fa-arrow-left"></i> Voltar aos pedidos</div><div class="rolo">${detalhe(selP, false)}</div>`;
+  const abas = `<div class="abas">${[['pedidos', 'Pedidos', c.todos, c.oferta > 0], ['motos', 'Motoboys', ms.length], ['lojas', 'Lojas', 5]].map(([k, t, n, al]) => `<button class="${S.abaB === k ? 'on' : ''} ${al ? 'alerta' : ''}" data-act="abaB" data-v="${k}">${t}<span class="n">${n}</span></button>`).join('')}</div>`;
+  let corpo = '';
+  if (S.abaB === 'pedidos') {
+    const precisa = c.oferta + c.atrasado > 0 && pico() ? `<div class="precisa"><i class="fa-solid fa-bell" style="font-size:18px"></i><div><b>Precisa de você</b>${c.oferta} sem motoboy e ${c.atrasado} atrasados, no topo da lista</div></div>` : '';
+    corpo = `${precisa}${filtros()}<div style="display:flex;flex-direction:column;gap:8px;padding:0 12px 12px">${filtrados().length ? filtrados().map(p => cartao(p)).join('') : vazio()}</div>`;
+  } else if (S.abaB === 'motos') {
+    const g = (t, l) => l.length ? `<div class="grpB">${t} <span>${l.length}</span></div>${l.map(linhaMoto).join('')}` : '';
+    corpo = g('Livres', ms.filter(x => x.st === 'livre')) + g('Indo à loja', ms.filter(x => x.st === 'loja')) + g('A caminho', ms.filter(x => x.st === 'rota'));
+  } else {
+    corpo = Object.entries(LOJAS).map(([k, l]) => {
+      const st = k === 'kenzo' && sc().kenzoErro ? 'erro' : l.ifood;
+      const n = sc().pedidos.filter(p => p.loja === k).length;
+      return `<div class="lojB" data-act="toast" data-msg="Filtra o mapa pela ${l.nome}"><img src="${IMG}loja-pin.png" alt=""><div class="lt"><b>${l.nome}</b><span class="ifs ${st}"><i></i>${{ on: 'iFood conectado', rp: 'só RestaurantePro', erro: 'iFood desconectado' }[st]}</span></div><div class="lc"><b>${n}</b>em andamento</div></div>`;
+    }).join('');
+  }
+  return `${abas}<div class="rolo">${corpo}</div>`;
+}
+function celularB(selP) {
+  const H = { baixo: 150, meio: 380, alto: 600 }[S.sheet];
+  const c = counts();
+  return `<div class="mapwrap" data-block="Mapa ao vivo">${mapa({ cam: S.cam, nomes: false, rotulos: false })}
+    <div class="ov" style="top:10px;right:10px"><button class="icbtn flutua" style="width:40px;height:40px" data-act="toast" data-msg="Camadas: motoboys, pedidos, lojas e rotas"><i class="fa-solid fa-layer-group"></i></button></div>
+    <div class="ov flutua" style="top:10px;left:10px;padding:6px 10px;display:flex;gap:8px;align-items:center;font-size:13px;font-weight:600"><span class="live"><i></i></span>${resumoOnline().livres} livres · ${c.oferta} sem motoboy</div>
+    <div class="sheet" style="height:${H}px" data-block="Folha: Pedidos / Motoboys / Lojas">
+      <div class="alca" data-act="sheet"><div class="lin"><b>${selP ? numTxt(selP) : 'Operação'}</b>${c.atrasado ? `<span class="ofr" style="margin-left:auto"><i class="fa-regular fa-clock"></i> ${c.atrasado} atrasados</span>` : ''}</div></div>
+      ${colunaB(selP)}
+    </div></div>`;
+}
+function tabelaB() {
+  const c = counts();
+  const vis = [
+    ['andamento', 'bolt', 'Em andamento', c.todos], ['oferta', 'tower-broadcast', 'Sem motoboy', c.oferta, c.oferta > 0], ['atrasado', 'clock', 'Atrasados', c.atrasado, c.atrasado > 0], ['semprazo', 'hourglass-half', 'Perto do prazo', sc().pedidos.filter(p => ativo(p) && tomPz(p) !== 'g').length],
+    ['concluido', 'circle-check', 'Concluídos hoje', HIST.filter(p => p.st === 'concluido').length], ['cancelado', 'ban', 'Cancelados', HIST.filter(p => p.st === 'cancelado').length], ['todos', 'list', 'Todos de hoje', todos().length],
+  ];
+  const selP = S.sel ? achar(S.sel) : null;
+  const dados = linhasTabela(S.visao);
+  const cols = selP ? COLS.filter(([k]) => !['km', 'valor', 'criado'].includes(k)) : COLS;
+  return `<div style="display:flex;flex:1;min-height:0">
+    <aside class="visB" data-block="Visões salvas"><h4>Visões</h4>${vis.map(([k, ic, t, n, al]) => `<a class="${S.visao === k ? 'on' : ''} ${al ? 'alerta' : ''}" data-act="visao" data-v="${k}"><i class="fa-solid fa-${ic}"></i>${t}<span class="n">${n}</span></a>`).join('')}
+      <h4>Minhas visões</h4><a data-act="toast" data-msg="Visão salva: pedidos do Terraço de hoje"><i class="fa-solid fa-bookmark"></i>Terraço hoje</a><a data-act="toast" data-msg="Visão salva: corridas acima de 5 km"><i class="fa-solid fa-bookmark"></i>Acima de 5 km</a><a data-act="toast" data-msg="Salva os filtros atuais como uma visão"><i class="fa-solid fa-plus"></i>Salvar visão</a></aside>
+    <div class="splitB"><div class="princ">
+      <div class="ferr" data-block="Filtros em chips"><span class="fchip ${S.lojaF ? 'on' : ''}" data-act="lojaF">${S.lojaF ? `<i class="fa-solid fa-store"></i>Loja: ${LOJAS[S.lojaF].curto} <i class="fa-solid fa-xmark"></i>` : '<i class="fa-solid fa-plus"></i> Loja'}</span><span class="fchip" data-act="toast" data-msg="Filtrar por motoboy"><i class="fa-solid fa-plus"></i> Motoboy</span><span class="fchip" data-act="toast" data-msg="Filtrar por origem"><i class="fa-solid fa-plus"></i> Origem</span><span class="fchip on" data-act="toast" data-msg="Escolher o período"><i class="fa-regular fa-calendar"></i> Hoje</span><span style="flex:1"></span><span class="muted" style="font-size:13px">${dados.length} pedidos</span><button class="btn sm ghost" data-act="toast" data-msg="Exporta CSV"><i class="fa-solid fa-download"></i> Exportar</button></div>
+      ${tabela(dados, { pag: true, sel: true, cols })}
+    </div>${selP ? `<div class="lado" data-block="Detalhe ao lado">${detalhe(selP)}</div>` : ''}</div>
+  </div>`;
+}
+function quadroB() {
+  const ps = sc().pedidos.filter(casaBusca);
+  const sts = [['oferta', 'Sem motoboy'], ['loja', 'Indo à loja'], ['rota', 'A caminho'], ['concluido', 'Concluídos']];
+  let html = `<div class="rh">Loja</div>` + sts.map(([k, t]) => `<div class="rh">${k === 'oferta' ? '<i class="fa-solid fa-tower-broadcast" style="color:var(--bad)"></i>' : k === 'concluido' ? '<i class="fa-solid fa-circle-check" style="color:var(--ok)"></i>' : `<img class="cap" style="width:22px;height:22px" src="${capSrc(k)}" alt="">`}${t}<span class="n">${k === 'concluido' ? HIST.filter(p => p.st === 'concluido').length : ps.filter(p => p.st === k).length}</span></div>`).join('');
+  Object.entries(LOJAS).forEach(([lk, l]) => {
+    const st = lk === 'kenzo' && sc().kenzoErro ? 'erro' : l.ifood;
+    const ativos = ps.filter(p => p.loja === lk).length;
+    html += `<div class="rl">${l.nome}<small><span class="ifs ${st}"><i></i>${{ on: 'iFood', rp: 'só RP', erro: 'iFood desconectado' }[st]}</span> · ${ativos} ativos</small></div>`;
+    sts.forEach(([k]) => {
+      const l2 = k === 'concluido' ? HIST.filter(p => p.st === 'concluido' && p.loja === lk) : ps.filter(p => p.loja === lk && p.st === k).sort((a, b) => urg(a) - urg(b));
+      html += k === 'concluido'
+        ? `<div class="vz" style="flex-direction:row;gap:6px"><b class="disp" style="font-size:22px;color:var(--ink)">${l2.length}</b> entregues hoje</div>`
+        : `<div class="${l2.length ? '' : 'vz'}">${l2.length ? l2.map(p => cartao(p)).join('') : '—'}</div>`;
+    });
+  });
+  return `<div class="qd" style="padding:0;display:block" data-block="Raias por loja × situação"><div class="raia">${html}</div></div>`;
+}
+
+/* ======================= Variante C ======================= */
+function mapaC(m) {
+  const c = counts(), ms = motosOnline(), o = resumoOnline();
+  const selP = S.sel ? achar(S.sel) : null;
+  const motStrip = `<div class="flutua motC" data-block="Motoboys online">${ms.map(x => `<div class="av ${S.selMoto === x.nome || (selP && selP.moto === x.nome) ? 'sel' : ''}" data-act="moto" data-n="${x.nome}"><img src="${capSrc(x.st)}" alt=""><b>${x.nome}</b><small>${x.st === 'livre' ? 'livre' : numTxt(x.ped)}</small></div>`).join('')}</div>`;
+  const h = (k, n, t, al) => `<div class="h ${S.filtro === k ? 'on' : ''} ${al ? 'alerta' : ''}" data-act="filtro" data-v="${k}"><b>${n}</b><small>${t}</small></div>`;
+  const hud = `<div class="flutua hudC" data-block="Placar (filtra)">${h('oferta', c.oferta, 'sem moto', c.oferta > 1)}${h('atrasado', c.atrasado, 'atrasados', c.atrasado > 0)}${h('loja', c.loja, 'na loja')}${h('rota', c.rota, 'a caminho')}${h('todos', o.livres, 'livres')}</div>`;
+  const ps = filtrados().filter(p => !S.selMoto || p.moto === S.selMoto);
+  const cards = ps.map(p => S.sel === p.id ? `<div class="fc sel det2" style="padding:0">${detalhe(p)}</div>` : cartao(p)).join('') || `<div class="flutua" style="padding:4px 10px">${vazio()}</div>`;
+  const car = `<div class="ov carC" data-block="Pedidos em cartões (do mais urgente)"><div class="ch"><span class="pil">${S.selMoto ? `Pedidos de ${S.selMoto} · <a style="cursor:pointer;color:var(--brand-text)" data-act="moto" data-n="${S.selMoto}">limpar</a>` : `${ps.length} pedidos · do mais urgente`}</span>${m ? '' : `<button class="icbtn" data-act="rolar" data-v="-1"><i class="fa-solid fa-chevron-left"></i></button><button class="icbtn" data-act="rolar" data-v="1"><i class="fa-solid fa-chevron-right"></i></button>`}</div><div class="trilhoC" id="trilhoC">${cards}</div></div>`;
+  return `<div class="mapwrap" data-block="Mapa noturno">${mapa({ noite: true, nomes: !m, rotulos: !m })}
+    <div class="ov topC">${motStrip}${hud}</div>${car}
+    ${m ? '' : `<div class="ov mctl" style="bottom:auto;top:110px">${controles().replace('<div class="ov mctl">', '').replace(/<\/div>$/, '')}</div>`}</div>`;
+}
+function tabelaC() {
+  const grupos = [['oferta', 'Sem motoboy', p => p.st === 'oferta'], ['atrasado', 'Atrasados', atrasado], ['loja', 'Indo à loja', p => p.st === 'loja' && !atrasado(p)], ['rota', 'A caminho', p => p.st === 'rota' && !atrasado(p)], ['concluido', 'Concluídos hoje', p => p.st === 'concluido'], ['cancelado', 'Cancelados', p => p.st === 'cancelado']];
+  const ks = COLS;
+  let l = todos().filter(casaBusca);
+  if (S.lojaF) l = l.filter(p => p.loja === S.lojaF);
+  const rows = grupos.map(([k, t, f]) => {
+    const g = l.filter(f).sort((a, b) => urg(a) - urg(b));
+    if (!g.length) return '';
+    const aberto = !S.fech.has(k);
+    const cor = k === 'oferta' || k === 'atrasado' ? 'color:var(--bad)' : '';
+    return `<tr class="grp" data-act="grupo" data-v="${k}"><td colspan="${ks.length + 1}"><i class="fa-solid fa-chevron-${aberto ? 'down' : 'right'}" style="width:16px"></i> <span class="disp" style="${cor}">${t}</span><span class="c">${g.length}</span></td></tr>` +
+      (aberto ? g.map(p => `<tr class="lin ${p.st === 'oferta' ? 'oferta' : ''} ${atrasado(p) ? 'atr' : ''}" data-act="exp" data-id="${p.id}"><td class="ck"><i class="fa-solid fa-chevron-${S.exp === p.id ? 'down' : 'right'} muted"></i></td>${celulas(p, ks)}</tr>${S.exp === p.id ? `<tr class="exp"><td colspan="${ks.length + 1}"><div style="max-width:560px">${detalhe(p, false).replace('<div class="det">', '<div class="det" style="padding:4px 0">')}</div></td></tr>` : ''}`).join('') : '');
+  }).join('');
+  return `<div class="ferr" data-block="Filtros"><span class="fchip ${S.lojaF ? 'on' : ''}" data-act="lojaF">${S.lojaF ? `<i class="fa-solid fa-store"></i>${LOJAS[S.lojaF].curto} <i class="fa-solid fa-xmark"></i>` : '<i class="fa-solid fa-plus"></i> Loja'}</span><span class="fchip" data-act="toast" data-msg="Filtrar por motoboy"><i class="fa-solid fa-plus"></i> Motoboy</span><span class="fchip on"><i class="fa-regular fa-calendar"></i> Hoje</span><span style="flex:1"></span><button class="btn sm ghost" data-act="grupos" data-v="abrir">Abrir todos</button><button class="btn sm ghost" data-act="grupos" data-v="fechar">Fechar todos</button><button class="btn sm ghost" data-act="toast" data-msg="Exporta CSV"><i class="fa-solid fa-download"></i> Exportar</button></div>
+    <div class="tbw" data-block="Tabela agrupada por situação"><table class="tb"><thead><tr><th class="ck nosort"></th>${th(ks)}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function quadroC() {
+  const ps = sc().pedidos.filter(casaBusca);
+  const ms = motosOnline().sort((a, b) => (a.st === 'livre' ? 0 : 1) - (b.st === 'livre' ? 0 : 1));
+  const of = ps.filter(p => p.st === 'oferta');
+  const colOf = `<div class="qc ${of.length ? 'bad' : ''}" data-drop="nenhum" data-block="Sem motoboy (arraste daqui)"><div class="qc-h"><i class="fa-solid fa-tower-broadcast" style="color:var(--bad)"></i><h3>Sem motoboy</h3><span class="n">${of.length}</span></div><div class="qc-b">${of.length ? of.map(p => cartao(p, 'draggable="true"')).join('') : '<div class="vazio" style="padding:14px"><i class="fa-solid fa-circle-check"></i>Todos têm motoboy</div>'}</div></div>`;
+  const colsM = ms.map(m => {
+    const lp = ps.filter(p => p.moto === m.nome);
+    return `<div class="qc ${m.st === 'livre' ? 'livre' : ''}" data-drop="${m.nome}"><div class="qc-h"><img class="cap" src="${capSrc(m.st)}" alt=""><div><h3>${m.nome}</h3><small>${m.st === 'livre' ? `livre há ${m.ha} min` : m.st === 'loja' ? 'indo à loja' : 'em entrega'} · ${m.corridas} hoje</small></div><span class="n">${lp.length}</span></div><div class="qc-b">${lp.map(p => cartao(p, 'draggable="true"')).join('')}${m.st === 'livre' ? `<div class="qc-dica"><i class="fa-solid fa-hand-pointer"></i> Arraste um pedido aqui para atribuir</div>` : ''}</div></div>`;
+  }).join('');
+  return `<div class="qd" data-block="Quadro por motoboy">${colOf}${colsM}</div>`;
+}
+
+/* ======================= celular: lista e quadro (comuns) ======================= */
+function celularLista() { return `<div class="mlist">${filtros()}${filtrados().length ? filtrados().map(p => cartao(p)).join('') : vazio()}</div>`; }
+function celularQuadro() {
+  const ps = sc().pedidos;
+  const col = (t, l, img) => `<div class="qc"><div class="qc-h">${img}<h3>${t}</h3><span class="n">${l.length}</span></div><div class="qc-b">${l.map(p => cartao(p)).join('') || '<div class="vazio">Nada aqui</div>'}</div></div>`;
+  return `<div class="mquad">${col('Sem motoboy', ps.filter(p => p.st === 'oferta'), '<i class="fa-solid fa-tower-broadcast" style="color:var(--bad)"></i>')}${col('Indo à loja', ps.filter(p => p.st === 'loja'), `<img class="cap" src="${capSrc('loja')}" alt="">`)}${col('A caminho', ps.filter(p => p.st === 'rota'), `<img class="cap" src="${capSrc('rota')}" alt="">`)}</div>`;
+}
+
+/* ======================= render ======================= */
+function conteudoDe(v, m) {
+  if (m) {
+    if (S.mview === 'tabela') return celularLista();
+    if (S.mview === 'quadro') return celularQuadro();
+    return { a: mapaA, b: mapaB, c: mapaC }[v](true);
+  }
+  const t = vista();
+  if (t === 'mapa') return { a: mapaA, b: mapaB, c: mapaC }[v](false);
+  if (t === 'tabela') return { a: tabelaA, b: tabelaB, c: tabelaC }[v]();
+  return { a: quadroA, b: quadroB, c: quadroC }[v]();
+}
+function frame(v, availW) {
+  const m = mob();
+  const W = m ? 390 : S.vp, H = m ? 800 : Math.round(S.vp * 0.6);
+  const s = Math.min(1, availW / (W + (m ? 20 : 0)));
+  const corpo = m
+    ? `<div class="corpo"><div class="conteudo">${conteudoDe(v, true)}</div></div>`
+    : `<div class="corpo">${trilho()}<div class="conteudo">${conteudoDe(v, false)}</div></div>`;
+  return `<div class="frame ${m ? 'phone' : ''}" style="zoom:${s}"><div class="pf ${m ? 'm' : ''} var-${v}" style="width:${W}px;height:${H}px">${cabecalhoConsole(m)}${barraVistas(m)}${corpo}</div></div>`;
+}
+function render() {
+  const foco = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.act === 'busca' ? document.activeElement.selectionStart : null;
+  const rolos = [...document.querySelectorAll('#stage .fl, #stage .rolo, #stage .tbw, #stage .qd, #stage .ml2, #stage .mlist')].map(e => e.scrollTop);
+  document.getElementById('vtabs').innerHTML = `<span class="lbl">Variante</span>` +
+    ['a', 'b', 'c'].map(k => `<button class="chip ${S.variant === k ? 'on' : ''}" data-v="${k}">${VARIANTS[k].nome}</button>`).join('') +
+    `<button class="chip cmp ${S.variant === 'cmp' ? 'on' : ''}" data-v="cmp"><i class="fa-solid fa-table-columns"></i> Comparar por tela</button>`;
+  document.getElementById('stabs').innerHTML = `<span class="lbl">Tela</span>` + SCREENS.map(([n, t]) => `<button class="chip ${S.screen === n ? 'on' : ''}" data-s="${n}">${t}</button>`).join('');
+  document.getElementById('ctabs').innerHTML = `<span class="lbl">Cenário</span>` + [['normal', 'Dia normal (9 pedidos)'], ['pico', 'Horário de pico (16 pedidos, 3 sem motoboy, 2 atrasados)']].map(([k, t]) => `<button class="chip ${S.cen === k ? 'on' : ''}" data-c="${k}">${t}</button>`).join('');
+  document.getElementById('desc').innerHTML = S.variant === 'cmp'
+    ? '<b>Comparar por tela:</b> A, B e C lado a lado, na mesma tela e no mesmo cenário. Filtros, seleção e "Atribuir" valem para os três.'
+    : VARIANTS[S.variant].desc;
+  const stage = document.getElementById('stage');
+  const availW = window.innerWidth - 48;
+  if (S.variant === 'cmp') {
+    stage.className = 'cmpgrid';
+    stage.innerHTML = ['a', 'b', 'c'].map(v => `<div class="cmpcol"><h3>${VARIANTS[v].nome}</h3>${frame(v, (availW - 32) / 3)}</div>`).join('');
+  } else {
+    stage.className = 'single';
+    stage.innerHTML = frame(S.variant, availW);
+  }
+  [...document.querySelectorAll('#stage .fl, #stage .rolo, #stage .tbw, #stage .qd, #stage .ml2, #stage .mlist')].forEach((e, i) => { if (rolos[i]) e.scrollTop = rolos[i]; });
+  if (foco != null) { const i = document.querySelector('#stage [data-act="busca"]'); if (i) { i.focus(); i.setSelectionRange(foco, foco); } }
+  ligarArrastar();
+}
+
+let toastT;
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200); }
+
+/* atribuir: motoboys livres por distância até a loja, desempate por menos corridas hoje */
+function abrirAtribuir(id) {
+  const p = achar(id); if (!p) return;
+  const l = LOJAS[p.loja];
+  const livres = motosOnline().filter(m => m.st === 'livre' && m.nome !== p.moto).map(m => ({ ...m, km: Math.hypot(m.x - l.x, (m.y - l.y) * .7) / 9 }))
+    .sort((a, b) => Math.abs(a.km - b.km) < .3 ? a.corridas - b.corridas : a.km - b.km);
+  const md = document.getElementById('modal');
+  md.innerHTML = `<div class="box">
+    <div class="mh"><h2>${p.moto ? 'Trocar motoboy' : 'Atribuir'} ${numTxt(p)}</h2><p>${l.nome} → ${p.cliente}, ${p.bairro}</p></div>
+    <div class="ml">${livres.length ? livres.map(m => `<div class="mr"><img src="${capSrc('livre')}" alt=""><div><b>${m.nome}</b><small>${m.km.toFixed(1).replace('.', ',')} km da loja · ${m.corridas} corridas hoje</small></div><button class="btn sm brand" data-act="enviar" data-id="${p.id}" data-m="${m.nome}">Enviar</button></div>`).join('') : '<div class="mr"><div>Nenhum motoboy livre agora.<small>A distribuição segue oferecendo aos que forem ficando livres.</small></div></div>'}</div>
+    <div class="mf"><i class="fa-solid fa-circle-info"></i> ${p.st === 'oferta' ? 'A distribuição continua oferecendo até você escolher.' : 'O motoboy atual recebe o aviso de que saiu do pedido.'}<button class="btn sm ghost" data-act="fechar">Cancelar</button></div>
+  </div>`;
+  md.classList.add('show');
+}
+function atribuir(id, nome) {
+  const p = achar(id);
+  const pos = sc().livresPos[nome] || motosOnline().find(m => m.nome === nome) && [motosOnline().find(m => m.nome === nome).x, motosOnline().find(m => m.nome === nome).y] || [50, 50];
+  Object.assign(p, { st: p.st === 'oferta' ? 'loja' : p.st, moto: nome, mx: pos[0], my: pos[1] });
+  toast(`Pedido ${numTxt(p)} enviado para ${nome}`);
+  render();
+}
+
+/* arrastar no quadro da C */
+function ligarArrastar() {
+  document.querySelectorAll('#stage .fc[draggable=true]').forEach(el => {
+    el.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', el.dataset.id); el.classList.add('arrastando'); });
+    el.addEventListener('dragend', () => el.classList.remove('arrastando'));
+  });
+  document.querySelectorAll('#stage [data-drop]').forEach(col => {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('alvo'); });
+    col.addEventListener('dragleave', () => col.classList.remove('alvo'));
+    col.addEventListener('drop', e => {
+      e.preventDefault(); col.classList.remove('alvo');
+      const id = e.dataTransfer.getData('text/plain'), nome = col.dataset.drop, p = achar(id);
+      if (!p || nome === 'nenhum' || p.moto === nome) return;
+      const m = motosOnline().find(x => x.nome === nome);
+      if (m.st !== 'livre') { toast(`${nome} está ${m.st === 'loja' ? 'indo à loja' : 'em entrega'}: o pedido entra como "entrega junto" (pede confirmação)`); }
+      atribuir(id, nome);
+    });
+  });
+}
+
+document.addEventListener('click', (e) => {
+  const vt = e.target.closest('#vtabs [data-v]');
+  if (vt) { S.variant = vt.dataset.v; render(); return; }
+  const st = e.target.closest('#stabs [data-s]');
+  if (st) { S.screen = +st.dataset.s; S.sel = null; S.selMoto = null; S.marc.clear(); render(); return; }
+  const ct = e.target.closest('#ctabs [data-c]');
+  if (ct) { S.cen = ct.dataset.c; S.sel = null; S.selMoto = null; S.filtro = 'todos'; render(); return; }
+  if (e.target.id === 'modal') { e.target.classList.remove('show'); return; }
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.dataset.act, v = el.dataset.v;
+  if (act === 'busca') return;
+  if (act === 'filtro') { e.stopPropagation(); S.filtro = S.filtro === v && v !== 'todos' ? 'todos' : v; S.sel = null; render(); return; }
+  if (act === 'atribuir') { e.stopPropagation(); abrirAtribuir(el.dataset.id); return; }
+  if (act === 'fechar') { document.getElementById('modal').classList.remove('show'); return; }
+  if (act === 'enviar') { document.getElementById('modal').classList.remove('show'); atribuir(el.dataset.id, el.dataset.m); return; }
+  if (act === 'sel') { S.sel = S.sel === el.dataset.id ? null : el.dataset.id; S.selMoto = null; if (mob() && S.sel && S.sheet === 'baixo') S.sheet = 'meio'; render(); return; }
+  if (act === 'desel') { e.stopPropagation(); S.sel = null; render(); return; }
+  if (act === 'abrir') { S.sel = el.dataset.id; toast(`Abre o pedido ${numTxt(achar(el.dataset.id))} (detalhe do sketch 007)`); return; }
+  if (act === 'moto') { S.selMoto = S.selMoto === el.dataset.n ? null : el.dataset.n; S.sel = null; render(); return; }
+  if (act === 'painel') { S[v] = !S[v]; render(); return; }
+  if (act === 'motofiltro') { S.motoFiltro = S.motoFiltro === v && v !== 'todos' ? 'todos' : v; S.painelMoto = true; render(); return; }
+  if (act === 'cam') { S.cam[v] = !S.cam[v]; render(); return; }
+  if (act === 'abaB') { S.abaB = v; render(); return; }
+  if (act === 'abaM') { S.abaM = v; render(); return; }
+  if (act === 'abaT') { S.abaT = v; S.pag = 1; S.marc.clear(); render(); return; }
+  if (act === 'visao') { S.visao = v; S.pag = 1; S.sel = null; render(); return; }
+  if (act === 'vista') { S.screen = +el.dataset.s; if (el.dataset.aba) { S.abaT = el.dataset.aba; S.visao = el.dataset.aba; } S.sel = null; S.marc.clear(); render(); return; }
+  if (act === 'mview') { S.mview = v; render(); return; }
+  if (act === 'sheet') { S.sheet = { baixo: 'meio', meio: 'alto', alto: 'baixo' }[S.sheet]; render(); return; }
+  if (act === 'ord') { const k = el.dataset.k; S.ord = { k, dir: S.ord.k === k ? -S.ord.dir : 1 }; render(); return; }
+  if (act === 'pag') { S.pag = +v; render(); return; }
+  if (act === 'marc') { e.stopPropagation(); const id = el.dataset.id; S.marc.has(id) ? S.marc.delete(id) : S.marc.add(id); render(); return; }
+  if (act === 'marctodos') { e.stopPropagation(); const ids = [...document.querySelectorAll('#stage input[data-act="marc"]')].map(i => i.dataset.id); const all = ids.every(i => S.marc.has(i)); ids.forEach(i => all ? S.marc.delete(i) : S.marc.add(i)); render(); return; }
+  if (act === 'limpamarc') { S.marc.clear(); render(); return; }
+  if (act === 'lojaF') { const ks = Object.keys(LOJAS); S.lojaF = S.lojaF ? null : ks[0]; S.pag = 1; toast(S.lojaF ? 'Filtro: Terraço Pizza Bar (no real, abre a lista de lojas)' : 'Filtro de loja removido'); render(); return; }
+  if (act === 'grupo') { S.fech.has(v) ? S.fech.delete(v) : S.fech.add(v); render(); return; }
+  if (act === 'grupos') { if (v === 'abrir') S.fech.clear(); else ['oferta', 'atrasado', 'loja', 'rota', 'concluido', 'cancelado'].forEach(k => S.fech.add(k)); render(); return; }
+  if (act === 'exp') { S.exp = S.exp === el.dataset.id ? null : el.dataset.id; render(); return; }
+  if (act === 'rolar') { const t = document.getElementById('trilhoC'); if (t) t.scrollLeft += (+v) * 560; return; }
+  if (act === 'nav') { toast(el.dataset.n === 'Pedidos' || el.dataset.n === 'Operações' ? 'Você já está em Pedidos' : 'Abre ' + el.dataset.n); return; }
+  if (act === 'toast') { toast(el.dataset.msg); return; }
+});
+document.addEventListener('input', (e) => {
+  if (e.target.dataset.act === 'busca') { S.q = e.target.value; S.pag = 1; render(); }
+});
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); const i = document.querySelector('#stage [data-act="busca"]'); if (i) i.focus(); }
+  if (e.key === 'Escape') { document.getElementById('modal').classList.remove('show'); if (S.sel || S.selMoto) { S.sel = null; S.selMoto = null; render(); } }
+});
+
+/* relógio das ofertas (rodadas de 50 s) */
+setInterval(() => {
+  Object.values(CEN).forEach(c => c.pedidos.filter(p => p.st === 'oferta').forEach(p => {
+    p.cd--;
+    if (p.cd < 0) { p.cd = 50; p.rodada = p.rodada >= 3 ? 1 : p.rodada + 1; }
+    document.querySelectorAll(`[data-cd="${p.id}"]`).forEach(s => s.textContent = mmss(p.cd));
+    document.querySelectorAll(`[data-rd="${p.id}"]`).forEach(s => s.textContent = p.rodada);
+  }));
+}, 1000);
+
+/* motoboys andando: a cada 2 s, um passo na direção da loja (indo à loja) ou do cliente (a caminho) */
+setInterval(() => {
+  if (document.hidden) return;
+  sc().pedidos.forEach(p => {
+    if (p.st !== 'loja' && p.st !== 'rota') return;
+    const alvo = p.st === 'rota' ? [p.dx, p.dy] : [LOJAS[p.loja].x, LOJAS[p.loja].y];
+    const dx = alvo[0] - p.mx, dy = alvo[1] - p.my, d = Math.hypot(dx, dy);
+    if (d < 1.5) return;
+    p.mx += dx / d * 0.6; p.my += dy / d * 0.6;
+  });
+  motosOnline().forEach(m => {
+    document.querySelectorAll(`#stage .mk.moto[data-m="${m.nome}"]`).forEach(el => { el.style.left = m.x + '%'; el.style.top = m.y + '%'; });
+    if (m.ped) document.querySelectorAll(`#stage line[data-l="${m.ped.id}"]`).forEach(ln => { ln.setAttribute('x1', m.ped.mx); ln.setAttribute('y1', m.ped.my); });
+  });
+}, 2000);
+
+/* B: um evento novo a cada 9 s na faixa "Agora há pouco" */
+let evI = 0, evMin = HORA;
+setInterval(() => {
+  if (document.hidden) return;
+  evMin++;
+  const ev = EVENTOS_POOL[evI++ % EVENTOS_POOL.length];
+  EVENTOS = [[`${Math.floor(evMin / 60)}:${String(evMin % 60).padStart(2, '0')}`, ...ev], ...EVENTOS].slice(0, 8);
+  EVENTOS.novo = true;
+  const alvo = document.querySelector('#stage .evB .evs');
+  if (alvo) alvo.innerHTML = EVENTOS.slice(0, 6).map(([h, ic, cor, t], i) => `<span class="ev ${i === 0 ? 'novo' : ''}" data-act="toast" data-msg="${t}"><span>${h}</span><i class="fa-solid ${ic}" style="color:${cor}"></i>${t}</span>`).join('');
+  EVENTOS.novo = false;
+}, 9000);
+
+document.getElementById('theme-switcher').addEventListener('change', (e) => {
+  document.getElementById('theme').href = '../themes/' + e.target.value + '.css';
+  document.body.classList.toggle('dark-chrome', e.target.value !== 'entregas');
+});
+document.querySelectorAll('#sketch-tools [data-vp]').forEach(b => b.addEventListener('click', () => {
+  S.vp = +b.dataset.vp; document.querySelectorAll('#sketch-tools [data-vp]').forEach(x => x.classList.toggle('on', x === b)); render();
+}));
+document.getElementById('annot-btn').addEventListener('click', (e) => { document.body.classList.toggle('annot'); e.target.classList.toggle('on'); });
+window.addEventListener('resize', render);
+render();
+</script>
+</body>
+</html>

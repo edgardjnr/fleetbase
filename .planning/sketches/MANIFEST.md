@@ -9,6 +9,10 @@ Painel inicial do console (sketch 004, 2026-10-25): tela que abre depois do logi
 (números do período + operação ao vivo), na marca Entregas da landing (laranja, papel quente, Barlow Condensed;
 temas `entregas.css` e `entregas-escuro.css`), com o celular trazendo os mesmos blocos empilhados.
 
+Tela de pedidos `/fleet-ops` (sketch 005, 2026-10-25): Mapa, Tabela e Quadro refeitos na marca Entregas, com o mapa
+como protagonista (acompanhar a operação; fila e motoboys em painéis), e no celular o mapa com uma folha que sobe de
+baixo.
+
 ## Reference Points
 - O próprio portal em produção (https://entregas.restaurantepro.com.br/customer-portal).
 - Mesmas telas em A, B e C, com "comparar por tela" (preferência do Edgard).
@@ -21,3 +25,4 @@ temas `entregas.css` e `entregas-escuro.css`), com o celular trazendo os mesmos 
 | 002 | card-do-pedido | Card com o número do pedido em destaque e sem endereços de coleta e entrega | **S** (A compacto: número + origem + situação; motoboy, cliente, hora e tempo; sem barra e sem endereços) | portal-da-loja, card, pedidos |
 | 003 | gaveta-do-portal | Gaveta do ☰ na tela Pedidos opaca e moderna, com loja, resumo do dia, Novo pedido e conta | **B** (marca da loja: topo laranja, resumo em cartões, Novo pedido, itens com ícone colorido, tema e sair no rodapé; opaca) | portal-da-loja, menu, gaveta, pedidos |
 | 004 | painel-inicial | Como o painel inicial do console divide números do período e operação ao vivo, no desktop e no celular? | **A** (faixa de 6 números no topo; Ao vivo com fila à esquerda e mapa à direita; corridas por hora, lojas e motoboys; faixa Atenção; barra vermelha no pico; celular empilhado) | console, painel, dashboard, layout, mobile |
+| 005 | tela-de-pedidos | Como fica a tela /fleet-ops (Mapa, Tabela e Quadro) com o mapa como protagonista, no desktop e no celular? | — | console, fleet-ops, pedidos, mapa, tabela, quadro, mobile |
