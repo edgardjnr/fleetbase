@@ -72,8 +72,8 @@ class Distribuicao
     /** Em rodadas: aceito pela lista aberta por quem não tinha a oferta. */
     public const ACEITA_PELA_LISTA = 'aceita_pela_lista';
 
-    /** Em rodadas: cada oferta dura isto (era 20 s; 30 s em 2026-10-08; 40 s por decisão do Edgard em 2026-10-24). */
-    public const SEGUNDOS_DA_OFERTA_EM_RODADAS = 40;
+    /** Em rodadas: cada oferta dura isto (era 20 s; 30 s em 2026-10-08; 50 s por decisão do Edgard em 2026-10-24). */
+    public const SEGUNDOS_DA_OFERTA_EM_RODADAS = 50;
     /** Raio de cada rodada em múltiplos do raio base (R = raioBase()). */
     public const MULTIPLICADOR_DA_RODADA = [1 => 1.0, 2 => 1.5, 3 => 2.0];
     public const ULTIMA_RODADA           = 3;
