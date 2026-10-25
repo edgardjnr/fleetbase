@@ -1,0 +1,38 @@
+/* Marca Entregas (console): tema escuro, mesmo laranja sobre tinta quente */
+:root {
+  --bg: oklch(0.18 0.012 60);
+  --surface: oklch(0.22 0.013 60);
+  --surface-2: oklch(0.26 0.014 60);
+  --line: oklch(0.33 0.014 60);
+  --ink: oklch(0.95 0.01 75);
+  --ink-2: oklch(0.83 0.012 70);
+  --muted: oklch(0.67 0.012 65);
+
+  --brand: oklch(0.74 0.165 62);
+  --brand-strong: oklch(0.8 0.14 66);
+  --brand-ink: oklch(0.22 0.05 55);
+  --brand-text: oklch(0.8 0.14 66);
+  --brand-soft: oklch(0.3 0.06 60);
+
+  --ok: oklch(0.72 0.15 150);
+  --ok-soft: oklch(0.3 0.05 150);
+  --warn: oklch(0.82 0.15 85);
+  --warn-text: oklch(0.85 0.13 85);
+  --warn-soft: oklch(0.32 0.06 85);
+  --bad: oklch(0.65 0.2 27);
+  --bad-soft: oklch(0.3 0.07 27);
+  --ifood: #ea1d2c;
+
+  --map-land: oklch(0.24 0.012 60);
+  --map-road: oklch(0.34 0.012 65);
+  --map-road-edge: oklch(0.2 0.01 60);
+  --map-park: oklch(0.32 0.05 140);
+  --map-water: oklch(0.32 0.05 230);
+
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-body: 'Barlow', system-ui, sans-serif;
+
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 30%);
+  --shadow-md: 0 4px 14px oklch(0 0 0 / 35%);
+  --shadow-lg: 0 14px 36px oklch(0 0 0 / 50%);
+}
