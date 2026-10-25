@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
  * fora os avisos no log ("agendado sem janela" e "pagamento inconsistente", só com ids e valores, sem dado do cliente).
  *
  * - Número: `displayId` (ex.: 4821) vira o internal_id e o "iFood #4821" das notas.
+ * - Retirada na loja ou consumo no local (`orderType` diferente de DELIVERY, semEntrega): não vira pedido.
  * - Entrega: coordenadas, rua + número (sem `streetName`, o `formattedAddress`), bairro, complemento e referência (no
  *   street2, para o motoboy ler) e o nome do cliente (nome do Local). Sem geocodificação: as coordenadas do iFood
  *   valem.
@@ -72,6 +73,18 @@ final class PedidoDoIfood
     public const ANO_MAXIMO = 2037;
 
     public const UFS = ['AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO'];
+
+    /**
+     * Pedido que não é entrega: retirada na loja (`orderType` TAKEOUT, sem o bloco `delivery`; visto no #5830 em
+     * 2026-10-25, que virou corrida "[SEM LOCALIZAÇÃO]") ou consumo no local (DINE_IN, INDOOR). Não vai aos motoboys.
+     * Sem `orderType` legível, vale como entrega (o formato visto na sonda sempre trouxe o campo).
+     */
+    public static function semEntrega(array $pedido): bool
+    {
+        $tipo = is_string($pedido['orderType'] ?? null) ? strtoupper(trim($pedido['orderType'])) : '';
+
+        return $tipo !== '' && $tipo !== 'DELIVERY';
+    }
 
     public static function mapear(array $pedido, float $latitudeColeta, float $longitudeColeta, DateTimeInterface $agora): array
     {

@@ -539,6 +539,32 @@ $job  = new ProcessarPedidoIfood('pedido-real-1');
 $erro = excecao(fn () => $job->handle(new VinculosIfood(new ClienteIfood()), new ClienteIfood(), new CriadorFalso()));
 confere($erro instanceof ErroIfood && $erro->status === 503 && $job->falhouCom === null && $job->liberadoPor === null, 'ErroIfood 503 sobe, sem fail nem release');
 
+echo '== Retirada na loja (TAKEOUT, caso real #5830 de 2026-10-25): não vira corrida' . PHP_EOL;
+foreach (['TAKEOUT', 'takeout ', 'DINE_IN', 'INDOOR'] as $tipo) {
+    reiniciarIfood();
+    vinculoDaLojaA();
+    gravarEvento('ev-1', 'PLC', '2026-10-05T17:59:00Z');
+    gravarEvento('ev-2', 'CFM', '2026-10-05T17:59:01Z');
+    $retirada = pedidoEmDinheiroComTroco();
+    $retirada['orderType'] = $tipo;
+    unset($retirada['delivery']);
+    Http::responder(200, $retirada);
+    $criador = new CriadorFalso();
+    rodar($criador);
+    confere($criador->criados === [] && linhaDoPedido() === null, "{$tipo}: nada criado");
+    confere(evento('ev-1')->ignorado === true && evento('ev-2')->ignorado === true && evento('ev-1')->processado_em !== null, "{$tipo}: eventos marcados como ignorados (sem nova tentativa)");
+    confere(logou('pedido sem entrega (retirada ou no local)', 'info'), "{$tipo}: log");
+}
+reiniciarIfood();
+vinculoDaLojaA();
+gravarEvento('ev-1', 'PLC', '2026-10-05T17:59:00Z');
+$semTipo = pedidoEmDinheiroComTroco();
+unset($semTipo['orderType']);
+Http::responder(200, $semTipo);
+$criador = new CriadorFalso();
+rodar($criador);
+confere(count($criador->criados) === 1, 'sem orderType: vale como entrega (cria)');
+
 echo '== Falha definitiva' . PHP_EOL;
 reiniciarIfood();
 (new ProcessarPedidoIfood('pedido-real-1'))->failed(new ErroIfood('pedido', 503, 'Cliente Ficticio, Rua Ficticia'));

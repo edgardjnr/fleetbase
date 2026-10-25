@@ -74,6 +74,7 @@ Fora dessa pasta:
 2. **Job** (trava `entregas:ifood-pedido:<id do iFood>`): processa os pendentes em ordem de `createdAt`.
    - O pedido nasce no **PLC** ou, se o PLC se perdeu, num evento anterior à coleta (CFM, RTP, DDCR, DPCR).
    - **Não nasce** se o pedido tem CAN ou RDS (entrega parceira) ou já passou da coleta (DSP, CON, CLT, DDD, AAD, DDCS, GTO, ADR, AAO), procurando entre todos os eventos gravados dele. Também não nasce só com eventos de entrega, cancelamento ou alteração.
+   - **Retirada na loja ou consumo no local não nasce** (2026-10-25, caso real #5830 do Terraço, que virou corrida "[SEM LOCALIZAÇÃO]" à espera de motoboy): `orderType` diferente de `DELIVERY` (TAKEOUT, DINE_IN, INDOOR; o TAKEOUT vem sem o bloco `delivery`) é descartado depois do GET (`PedidoDoIfood::semEntrega`), com os eventos marcados como ignorados e o log info `pedido sem entrega (retirada ou no local)`. Sem `orderType`, vale como entrega.
 3. **Criação** (`GET logistics/orders/{id}`), numa transação só:
    - Place da entrega com as coordenadas do iFood, sem dono;
    - Payload com a coleta no Local da loja;

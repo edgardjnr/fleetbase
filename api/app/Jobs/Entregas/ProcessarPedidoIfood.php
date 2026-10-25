@@ -8,6 +8,7 @@ use App\Support\Entregas\Ifood\CriadorDoPedidoIfood;
 use App\Support\Entregas\Ifood\ErroIfood;
 use App\Support\Entregas\Ifood\EventosIfood;
 use App\Support\Entregas\Ifood\FilaIfood;
+use App\Support\Entregas\Ifood\PedidoDoIfood;
 use App\Support\Entregas\Ifood\VinculoPerdido;
 use App\Support\Entregas\Ifood\VinculosIfood;
 use Illuminate\Bus\Queueable;
@@ -243,6 +244,14 @@ class ProcessarPedidoIfood implements ShouldQueue
             $dados = $vinculos->comToken($vinculo, fn (string $token) => $cliente->pedidoLogistics($token, $this->pedidoIfoodId));
         } catch (VinculoPerdido) {
             Log::warning('[entregas] ifood: vínculo perdido; pedido não criado', ['merchant' => $merchantId, 'pedido_ifood' => $this->pedidoIfoodId]);
+
+            return null;
+        }
+
+        if (PedidoDoIfood::semEntrega($dados)) {
+            // retirada na loja ou consumo no local: não vira corrida (quem chama marca os eventos como ignorados; um evento
+            // que cria, vindo depois, busca de novo e cai aqui de novo)
+            Log::info('[entregas] ifood: pedido sem entrega (retirada ou no local); não foi criado', ['pedido_ifood' => $this->pedidoIfoodId, 'tipo' => $dados['orderType']]);
 
             return null;
         }
