@@ -45,8 +45,9 @@ x-api-env: &api-env
   MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
   MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-nao-responda@restaurantepro.com.br}
   MAIL_FROM_NAME: ${APP_NAME:-Entregas}
-  REGISTRY_HOST: https://registry.fleetbase.io
-  REGISTRY_PREINSTALLED_EXTENSIONS: "true"
+  # sem o ping diário de telemetria ao Fleetbase (telemetry:ping do core-api manda contagem de usuários, empresas e
+  # pedidos, domínio e região do servidor); o core lê com getenv (Fleetbase\Support\Telemetry::isDisabled)
+  TELEMETRY_DISABLED: "true"
   OSRM_HOST: ${OSRM_HOST:-https://router.project-osrm.org}
   # rastreio e previsão de chegada do pedido pelo OSRM: o padrão do Fleet-Ops é o google_routes (Routes API, paga)
   TRACKING_PROVIDER: ${TRACKING_PROVIDER:-osrm}
