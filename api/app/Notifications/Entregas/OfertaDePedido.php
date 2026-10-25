@@ -12,7 +12,7 @@ use Fleetbase\FleetOps\Notifications\OrderPing;
  * É o OrderPing do Fleet-Ops (`order_ping` no push, `order.ping` no socket: o app trata como pedido novo e o cartão do
  * alarme mostra Aceitar e Recusar), com o título da oferta, os dados `entregas_oferta`/`entregas_oferta_vence_em`/`entregas_oferta_segundos` (segundos que faltam, calculados na hora
  * do envio: o app não depende do relógio do celular) e o
- * TTL do que falta até vencer, no máximo $segundosDaOferta (30 s, com ou sem rodadas) (AvisosDoMotoboy).
+ * TTL do que falta até vencer, no máximo $segundosDaOferta (40 s em rodadas, 30 s sem) (AvisosDoMotoboy).
  */
 class OfertaDePedido extends OrderPing
 {
