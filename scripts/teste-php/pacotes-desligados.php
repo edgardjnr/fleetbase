@@ -69,6 +69,19 @@ if (isset($composer['config']['platform'])) {
 ksort($relevantes);
 confere(md5(json_encode($relevantes, 0)) === ($travado['content-hash'] ?? null), 'content-hash do composer.lock em dia com o composer.json');
 
+// sem o repositório registry.fleetbase.io e sem o secure-http: false (o install baixa tudo pelo lock, do GitHub, em https)
+confere(!isset($composer['repositories']) && !array_key_exists('secure-http', $composer['config'] ?? []), 'composer.json sem repositories e sem secure-http');
+$hosts = [];
+foreach (array_merge($travado['packages'] ?? [], $travado['packages-dev'] ?? []) as $pacote) {
+    foreach (['dist', 'source'] as $tipo) {
+        if (isset($pacote[$tipo]['url'])) {
+            $hosts[(string) parse_url($pacote[$tipo]['url'], PHP_URL_SCHEME) . '://' . (string) parse_url($pacote[$tipo]['url'], PHP_URL_HOST)] = true;
+        }
+    }
+}
+ksort($hosts);
+confere(array_keys($hosts) === ['https://api.github.com', 'https://github.com'], 'todas as URLs do lock em https no GitHub (' . implode(', ', array_keys($hosts)) . ')');
+
 echo '== ConexaoDoStorefront (mysql:createdb)' . PHP_EOL;
 $mysql = ['driver' => 'mysql', 'host' => 'entregas-db', 'database' => 'fleetbase', 'username' => 'root', 'charset' => 'utf8mb4', 'collation' => 'utf8mb4_unicode_ci'];
 $conexao = ConexaoDoStorefront::configuracao(['mysql' => $mysql, 'sandbox' => ['database' => 'fleetbase_sandbox']]);
