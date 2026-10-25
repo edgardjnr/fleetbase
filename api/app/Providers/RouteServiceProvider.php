@@ -23,6 +23,7 @@ use App\Http\Controllers\Entregas\PainelInicialController;
 use App\Http\Controllers\Entregas\PortalLojaController;
 use App\Http\Middleware\AvisarOnlineDoMotoboy;
 use App\Http\Middleware\BarrarAceiteDePedidoEncerrado;
+use App\Http\Middleware\BarrarOrganizacaoParaNaoAdmin;
 use App\Http\Middleware\ExigirAppAtualizado;
 use App\Http\Middleware\FiltrarPedidosAbertosDoMotoboy;
 use App\Http\Middleware\IncluirNotasNaListaDePedidos;
@@ -69,6 +70,11 @@ class RouteServiceProvider extends ServiceProvider
         // Entregas RestaurantePro: as listas de pedidos do console (tabela, quadro e painel do mapa) usam o recurso enxuto, sem
         // `notes`; o selo "iFood #N" precisa delas (ver IncluirNotasNaListaDePedidos). Só GET, só nas duas rotas de lista
         $this->app['router']->pushMiddlewareToGroup('fleetbase.protected', IncluirNotasNaListaDePedidos::class);
+
+        // Entregas RestaurantePro: criar e entrar em organização (auth/create-organization e auth/join-organization) só para o
+        // administrador do sistema. No fim do grupo: depois da autenticação, com o usuário da sessão (ver
+        // BarrarOrganizacaoParaNaoAdmin)
+        $this->app['router']->pushMiddlewareToGroup('fleetbase.protected', BarrarOrganizacaoParaNaoAdmin::class);
 
         // Entregas RestaurantePro: aceite do motoboy (v1/orders/{id}/start) de pedido encerrado é barrado, e o
         // cancelamento da API v1 roda com a mesma trava do aceite. O core preenche o grupo fleetbase.api no boot()
