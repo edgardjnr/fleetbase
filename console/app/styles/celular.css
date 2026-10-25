@@ -171,7 +171,8 @@
     line-height: 1.15;
     text-align: center;
     cursor: pointer;
-    overflow-wrap: anywhere;
+    hyphens: auto;
+    overflow-wrap: break-word;
 }
 .ent-mais-grade button svg { font-size: 18px; height: 22px; color: var(--pi-tinta); }
 .ent-mais-grade button:active { border-color: var(--pi-laranja); }
@@ -184,9 +185,10 @@
     html body .next-view-container > nav.next-sidebar ~ .next-view-section { border-top-left-radius: 0; box-shadow: none; }
 
     /* cabeçalho: logo, avisos, organização e avatar */
+    /* (o ember-ui mostra os itens com "#view-header-tray-items > .next-user-button": o id precisa estar aqui também) */
     html body header.next-view-header .sidebar-toggle-button-wrapper,
-    html body header.next-view-header .locale-selector-tray,
-    html body header.next-view-header .chat-tray { display: none; }
+    html body header.next-view-header #view-header-tray-items > .locale-selector-tray,
+    html body header.next-view-header #view-header-tray-items > .chat-tray { display: none; }
 
     /* o "+" flutuante substitui o "Novo pedido" do Início e o da barra de Pedidos (no Mapa, o da barra fica) */
     html body .painel-inicial .pi-acoes .pi-botao-marca { display: none; }

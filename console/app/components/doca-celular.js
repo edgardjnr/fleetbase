@@ -76,11 +76,15 @@ export default class DocaCelularComponent extends Component {
      */
     get mostrarNovo() {
         if (this.maisAberto || !this.abilities.can('fleet-ops create order')) return false;
-        return this.rota === 'console.home' || (this.rota === PEDIDOS && this.aba === 'pedidos');
+        return this.rota === 'console.home' || ((this.rota === PEDIDOS || this.rota === `${PEDIDOS}.index`) && this.aba === 'pedidos');
     }
 
     get ehAdmin() {
         return this.currentUser.isAdmin === true;
+    }
+
+    get idioma() {
+        return this.intl.primaryLocale;
     }
 
     get escuro() {
@@ -132,10 +136,10 @@ export default class DocaCelularComponent extends Component {
         return grupos.map((grupo) => ({ ...grupo, itens: grupo.itens.filter((i) => i.visivel) })).filter((grupo) => grupo.itens.length);
     }
 
-    /** Módulos do cabeçalho (menu de cima do desktop), menos o Fleet-Ops, que já está nos grupos acima. */
+    /** Módulos do cabeçalho (menu de cima do desktop), sem os atalhos (Orders, Drivers…) e sem o Fleet-Ops, que já está acima. */
     get modulos() {
         return (this.universe.headerMenuItems ?? [])
-            .filter((m) => m.id !== 'fleet-ops' && this.abilities.can(`${m.id} see extension`))
+            .filter((m) => !m._isShortcut && m.id !== 'fleet-ops' && this.abilities.can(`${m.id} see extension`))
             .map((m) => ({ icone: m.icon, menuItem: m, rota: m.route, visivel: true }));
     }
 
