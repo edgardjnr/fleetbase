@@ -423,7 +423,10 @@ namespace {
             }
         }
     }
-    confere($achadas >= 12, "achou as chaves estrangeiras ({$achadas})");
+    // 11 desde que a cópia do registry-bridge saiu de packages/ (2026-10-25); as tabelas dele seguem no banco e nas
+    // REFERENCIAS (conferidas abaixo)
+    confere($achadas >= 11, "achou as chaves estrangeiras ({$achadas})");
+    confere((FotoDoMotoboy::REFERENCIAS['registry_extensions'] ?? null) === ['icon_uuid'] && (FotoDoMotoboy::REFERENCIAS['registry_extension_bundles'] ?? null) === ['bundle_uuid'], 'as tabelas do registry-bridge (fora do package:discover, ainda no banco) continuam nas REFERENCIAS');
     confere($faltando === [], 'nenhuma fora da lista' . ($faltando ? ': ' . implode(', ', $faltando) : ''));
 
     echo '== update() do fleetops-api 0.6.65 grava a foto só no avatar do usuário' . PHP_EOL;
