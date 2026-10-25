@@ -22,7 +22,10 @@ use Illuminate\Support\Facades\Log;
  *   pagamento, a cobrança da loja e os ganhos do motoboy contam o pedido pelo valor congelado da faixa, na data do
  *   cancelamento (CalculoEntregas::pedidosConcluidos), e o push acrescenta "Você recebe por esta entrega…";
  * - pedido já cancelado (por uma tentativa anterior que caiu depois do cancel): só grava o que faltar;
- * - sem Order no Entregas: só grava o cancelado_pelo_ifood_em, com log info.
+ * - sem Order no Entregas: só grava o cancelado_pelo_ifood_em, com log info;
+ * - entrega parceira (RDS, $entregaParceira, 2026-10-25): a loja passou o pedido para o entregador do iFood. Sai do
+ *   Entregas do mesmo jeito (o cancelado_pelo_ifood_em para as ações, o agendador e o acompanhamento), com o
+ *   entrega_parceira_em, o log próprio e o push "Pedido #4821 passou para o entregador do iFood".
  *
  * Uma exceção no cancelamento sobe como RuntimeException com só a classe e o SQLSTATE (o failed_jobs guarda a exceção
  * inteira, e a do banco traz o SQL com dados do pedido); LockTimeoutException sobe como veio (o CAN fica pendente).
@@ -46,16 +49,17 @@ class CancelamentoPeloIfood
     public function __construct(protected AcoesIfood $acoes) {}
 
     /**
-     * @param string $quando a data do CAN (createdAt do evento, já no fuso do app)
+     * @param string $quando          a data do CAN ou do RDS (createdAt do evento, já no fuso do app)
+     * @param bool   $entregaParceira o evento é o RDS (o pedido passou para o entregador do iFood)
      *
      * @return string o que aconteceu (uma das constantes)
      *
-     * @throws LockTimeoutException trava do pedido ou das ações ocupada (o CAN fica pendente e o job tenta de novo)
+     * @throws LockTimeoutException trava do pedido ou das ações ocupada (o evento fica pendente e o job tenta de novo)
      */
-    public function aplicar(object $linha, string $quando): string
+    public function aplicar(object $linha, string $quando, bool $entregaParceira = false): string
     {
         if (!$linha->order_uuid) {
-            PedidosIfood::atualizar($linha, ['cancelado_pelo_ifood_em' => $linha->cancelado_pelo_ifood_em ?? $quando]);
+            PedidosIfood::atualizar($linha, static::marcas($linha, $quando, $entregaParceira));
             static::logSemOrder($linha);
 
             return static::SEM_PEDIDO;
@@ -64,7 +68,7 @@ class CancelamentoPeloIfood
         $orderUuid = (string) $linha->order_uuid;
 
         try {
-            return TravaDoPedido::executar($orderUuid, fn () => $this->acoes->comATrava($orderUuid, fn () => $this->aplicarComAsTravas($orderUuid, $quando)));
+            return TravaDoPedido::executar($orderUuid, fn () => $this->acoes->comATrava($orderUuid, fn () => $this->aplicarComAsTravas($orderUuid, $quando, $entregaParceira)));
         } catch (LockTimeoutException $e) {
             throw $e;
         } catch (\Throwable $e) {
@@ -91,35 +95,48 @@ class CancelamentoPeloIfood
         }
 
         $numero = trim((string) ($linha->numero ?? ''));
-        $titulo = $numero !== '' ? "Pedido #{$numero} cancelado pelo iFood" : 'Pedido cancelado pelo iFood';
+        $motivo = !empty($linha->entrega_parceira_em) ? 'passou para o entregador do iFood' : 'cancelado pelo iFood';
+        $titulo = $numero !== '' ? "Pedido #{$numero} {$motivo}" : "Pedido {$motivo}";
 
         return [$titulo, !empty($linha->pago_mesmo_cancelado) ? static::TEXTO_PAGO : 'Não precisa mais fazer esta entrega.'];
     }
 
-    protected function aplicarComAsTravas(string $orderUuid, string $quando): string
+    /** O que gravar na linha: as datas que já estão nela ficam (o evento repetido não troca a data). */
+    protected static function marcas(object $linha, string $quando, bool $entregaParceira): array
+    {
+        $marcas = ['cancelado_pelo_ifood_em' => $linha->cancelado_pelo_ifood_em ?? $quando];
+        if ($entregaParceira) {
+            $marcas['entrega_parceira_em'] = $linha->entrega_parceira_em ?? $quando;
+        }
+
+        return $marcas;
+    }
+
+    protected function aplicarComAsTravas(string $orderUuid, string $quando, bool $entregaParceira): string
     {
         // relidos com as travas: um aceite ou uma ação que terminou enquanto o job esperava aparece aqui
         $linha  = PedidosIfood::doPedido($orderUuid);
         $pedido = Order::where('uuid', $orderUuid)->first();
-        $quando = $linha->cancelado_pelo_ifood_em ?? $quando;
+        $marcas = static::marcas($linha, $quando, $entregaParceira);
+        $codigo = $entregaParceira ? 'RDS' : 'CAN';
 
         if (!$pedido) {
-            PedidosIfood::atualizar($linha, ['cancelado_pelo_ifood_em' => $quando]);
+            PedidosIfood::atualizar($linha, $marcas);
             static::logSemOrder($linha);
 
             return static::SEM_PEDIDO;
         }
 
         if ($pedido->status === 'completed') {
-            PedidosIfood::atualizar($linha, ['cancelado_pelo_ifood_em' => $quando]);
-            Log::info('[entregas] ifood: CAN de pedido já concluído; nada muda', ['pedido' => $pedido->public_id, 'numero' => $linha->numero]);
+            PedidosIfood::atualizar($linha, $marcas);
+            Log::info("[entregas] ifood: {$codigo} de pedido já concluído; nada muda", ['pedido' => $pedido->public_id, 'numero' => $linha->numero]);
 
             return static::JA_CONCLUIDO;
         }
 
         // o motoboy já saiu com o pedido: o dispatch aceito pelo iFood ou o "A caminho" tocado no app (Order enroute)
         $pago = (bool) $linha->pago_mesmo_cancelado || SequenciaIfood::saiuParaEntrega($linha->ultima_acao) || $pedido->status === 'enroute';
-        PedidosIfood::atualizar($linha, ['cancelado_pelo_ifood_em' => $quando, 'pago_mesmo_cancelado' => $pago]);
+        PedidosIfood::atualizar($linha, $marcas + ['pago_mesmo_cancelado' => $pago]);
 
         if (in_array($pedido->status, StatusDoPedido::CANCELADOS, true)) {
             return static::JA_CANCELADO;
@@ -135,7 +152,7 @@ class CancelamentoPeloIfood
         // atividade "canceled" + OrderCanceled na fila → HandleOrderCanceled avisa o motoboy atribuído (push)
         $pedido->cancel();
 
-        Log::warning('[entregas] ifood: pedido cancelado pelo iFood', [
+        Log::warning($entregaParceira ? '[entregas] ifood: pedido saiu para a entrega parceira do iFood' : '[entregas] ifood: pedido cancelado pelo iFood', [
             'pedido'               => $pedido->public_id,
             'order_uuid'           => $pedido->uuid,
             'numero'               => $linha->numero,

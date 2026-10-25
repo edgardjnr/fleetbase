@@ -29,14 +29,15 @@ use Illuminate\Support\Facades\Log;
  *   pedido no Logistics e cria o pedido (CriadorDoPedidoIfood). Pedido já existente (pedido_ifood_id único) nunca é
  *   criado de novo; sem pedido e sem evento que cria, os eventos só ficam processados e ignorados (log "evento sem
  *   pedido");
- * - pedido cancelado (CAN) ou que já passou da coleta (EventosIfood::POS_COLETA: a coleta, a entrega ou um entregador
+ * - pedido cancelado (CAN), passado ao entregador do iFood (RDS) ou que já passou da coleta (EventosIfood::POS_COLETA: a coleta, a entrega ou um entregador
  *   do iFood já aconteceram) antes de entrar não é criado, nem por um evento atrasado numa rodada seguinte: os dois são
  *   procurados entre todos os eventos do pedido na tabela, processados ou não, e não só entre os pendentes. São
  *   definitivos;
  * - código ignorado: log warning quando exige ação da loja no iFood (EventosIfood::nivelDoIgnorado), info nos outros;
  * - DDCR marca exige_codigo; CAN cancela o pedido no Entregas (CancelamentoPeloIfood, etapa 3: como o portal, com o
  *   push ao motoboy e o pago_mesmo_cancelado quando o dispatch já tinha saído) e tira a linha da fila do agendador
- *   (despachar_em nulo). Com a trava do pedido ocupada, o LockTimeoutException sobe, o CAN fica pendente e a fila tenta
+ *   (despachar_em nulo); o RDS (a loja passou o pedido ao entregador do iFood) faz o mesmo, com a marca
+ *   entrega_parceira_em. Com a trava do pedido ocupada, o LockTimeoutException sobe, o CAN fica pendente e a fila tenta
  *   de novo pelo $backoff; o cancelamento é idempotente;
  * - código desconhecido, loja não vinculada, vínculo perdido e loja sem Local de coleta ficam processados e ignorados.
  *   Nos três últimos isso não é definitivo: um evento de criação posterior do mesmo pedido (CFM, RTP…) tenta de novo.
@@ -148,10 +149,11 @@ class ProcessarPedidoIfood implements ShouldQueue
         ], $linhas));
         $pedido = DB::table(static::PEDIDOS)->where('pedido_ifood_id', $this->pedidoIfoodId)->first();
 
-        if (!$pedido && $this->foiCancelado()) {
-            // cancelado antes de entrar (ex.: a loja recusou antes do polling): não vai aos motoboys, nem com um evento
-            // atrasado (CFM, CAR…) numa rodada seguinte, depois de o CAN já ter sido processado
-            Log::info('[entregas] ifood: pedido cancelado antes de entrar; não foi criado', ['pedido_ifood' => $this->pedidoIfoodId]);
+        if (!$pedido && ($codigos = $this->codigosQueTiramDoEntregas())) {
+            // cancelado ou passado ao entregador do iFood antes de entrar (ex.: a loja recusou antes do polling): não vai
+            // aos motoboys, nem com um evento atrasado (CFM, CAR…) numa rodada seguinte, depois de o CAN ou o RDS já ter
+            // sido processado
+            Log::info('[entregas] ifood: pedido saiu do Entregas antes de entrar; não foi criado', ['pedido_ifood' => $this->pedidoIfoodId, 'codigos' => $codigos]);
             $this->marcar(array_column($eventos, 'id'), true);
 
             return;
@@ -194,11 +196,12 @@ class ProcessarPedidoIfood implements ShouldQueue
                 $pedido->exige_codigo = true;
             }
 
-            if ($acao === EventosIfood::CANCELA && $pedido) {
-                // cancela no Entregas (etapa 3), com a trava do pedido: ocupada, o LockTimeoutException sobe, o CAN fica
-                // pendente e a fila tenta de novo pelo $backoff. Idempotente (o CAN repetido não cancela duas vezes)
+            if (($acao === EventosIfood::CANCELA || $acao === EventosIfood::ENTREGA_PARCEIRA) && $pedido) {
+                // cancela no Entregas (etapa 3; o RDS da entrega parceira do iFood também), com a trava do pedido:
+                // ocupada, o LockTimeoutException sobe, o evento fica pendente e a fila tenta de novo pelo $backoff.
+                // Idempotente (o CAN repetido não cancela duas vezes)
                 $quando = $evento['createdAt'] ? substr((string) $evento['createdAt'], 0, 19) : now()->toDateTimeString();
-                $this->cancelamento->aplicar($pedido, $quando);
+                $this->cancelamento->aplicar($pedido, $quando, $acao === EventosIfood::ENTREGA_PARCEIRA);
                 // e a linha sai da fila do entregas:ifood-agendados. Condicional no banco: o agendador pode ter
                 // despachado depois de a linha ser lida
                 DB::table(static::PEDIDOS)->where('id', $pedido->id)->whereNotNull('despachar_em')->whereNull('despachado_em')
@@ -265,10 +268,15 @@ class ProcessarPedidoIfood implements ShouldQueue
         }
     }
 
-    /** Algum CAN deste pedido na tabela, processado ou não (não só entre os pendentes desta rodada). */
-    protected function foiCancelado(): bool
+    /**
+     * Os CAN e RDS (EventosIfood::SAEM_DO_ENTREGAS) deste pedido na tabela, processados ou não (não só entre os
+     * pendentes desta rodada); [] se nenhum.
+     */
+    protected function codigosQueTiramDoEntregas(): array
     {
-        return DB::table(static::EVENTOS)->where('pedido_ifood_id', $this->pedidoIfoodId)->where('codigo', 'CAN')->exists();
+        $codigos = DB::table(static::EVENTOS)->where('pedido_ifood_id', $this->pedidoIfoodId)->whereIn('codigo', EventosIfood::SAEM_DO_ENTREGAS)->pluck('codigo')->all();
+
+        return array_values(array_unique($codigos));
     }
 
     /** Códigos de depois da coleta (EventosIfood::POS_COLETA) deste pedido na tabela, processados ou não; [] se nenhum. */

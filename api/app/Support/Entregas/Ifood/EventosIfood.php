@@ -20,6 +20,9 @@ use DateTimeZone;
  * - DDCR (chega logo depois do CFM, sem metadata) marca exige_codigo;
  * - CAN registra cancelado_pelo_ifood_em e, no pedido ainda não despachado, o tira do agendamento (ver
  *   ProcessarPedidoIfood; o cancelamento do pedido no Entregas é da etapa 3);
+ * - RDS (REQUEST_DRIVER_SUCCESS: a loja pediu o entregador do iFood e ele foi aprovado) tira o pedido do Entregas como o
+ *   CAN, com a marca entrega_parceira_em (2026-10-25). O RDR (pedido), o RDF (negado), o DCRA e o DCRR (cancelamento
+ *   do entregador do iFood) só ficam registrados: o pedido continua conosco até o RDS;
  * - os outros códigos conhecidos só ficam registrados (as ações e o ORDER_PATCHED são da etapa 3);
  * - código desconhecido fica gravado como ignorado; o log dele é warning quando o código exige ação da loja no iFood
  *   (HSD, negociação que "obrigatoriamente deve ser respondida", referência, grupo HANDSHAKE_PLATFORM), info nos outros
@@ -27,14 +30,21 @@ use DateTimeZone;
  */
 final class EventosIfood
 {
-    public const CRIA         = 'cria';
-    public const EXIGE_CODIGO = 'exige_codigo';
-    public const CANCELA      = 'cancela';
-    public const REGISTRA     = 'registra';
-    public const IGNORA       = 'ignora';
+    public const CRIA             = 'cria';
+    public const EXIGE_CODIGO     = 'exige_codigo';
+    public const CANCELA          = 'cancela';
+    public const ENTREGA_PARCEIRA = 'entrega_parceira';
+    public const REGISTRA         = 'registra';
+    public const IGNORA           = 'ignora';
 
     /** Códigos conhecidos (spec, "Eventos relevantes"). */
-    public const CONHECIDOS = ['PLC', 'CFM', 'RTP', 'DSP', 'CON', 'CAN', 'CAR', 'CARF', 'ADR', 'GTO', 'AAO', 'DDD', 'CLT', 'AAD', 'DDCR', 'DDCS', 'DPCR', 'OPA'];
+    public const CONHECIDOS = ['PLC', 'CFM', 'RTP', 'DSP', 'CON', 'CAN', 'CAR', 'CARF', 'ADR', 'GTO', 'AAO', 'DDD', 'CLT', 'AAD', 'DDCR', 'DDCS', 'DPCR', 'OPA', 'RDR', 'RDS', 'RDF', 'DCRA', 'DCRR'];
+
+    /**
+     * Códigos que tiram o pedido do Entregas: o CAN e o RDS (entrega parceira do iFood aprovada). Antes da criação,
+     * qualquer um deles na tabela impede o pedido de nascer (ProcessarPedidoIfood).
+     */
+    public const SAEM_DO_ENTREGAS = ['CAN', 'RDS'];
 
     /** Códigos que criam o pedido quando ele ainda não existe: o PLC e, se ele se perdeu, os anteriores à coleta. */
     public const CRIAM_PEDIDO = ['PLC', 'CFM', 'RTP', 'DDCR', 'DPCR'];
@@ -46,7 +56,7 @@ final class EventosIfood
     public const POS_COLETA = ['DSP', 'CON', 'CLT', 'DDD', 'AAD', 'DDCS', 'GTO', 'ADR', 'AAO'];
 
     /** Ordem natural do pedido, para o desempate de createdAt igual: criação, preparo, entrega, conclusão, cancelamento. */
-    public const ORDEM = ['PLC', 'CFM', 'DDCR', 'DPCR', 'RTP', 'ADR', 'GTO', 'AAO', 'DDD', 'CLT', 'DSP', 'AAD', 'DDCS', 'CON', 'OPA', 'CAR', 'CARF', 'CAN'];
+    public const ORDEM = ['PLC', 'CFM', 'DDCR', 'DPCR', 'RTP', 'ADR', 'GTO', 'AAO', 'DDD', 'CLT', 'DSP', 'AAD', 'DDCS', 'CON', 'OPA', 'RDR', 'RDF', 'RDS', 'DCRA', 'DCRR', 'CAR', 'CARF', 'CAN'];
 
     /** Códigos ignorados que exigem resposta da loja no iFood (log warning em vez de info). */
     public const EXIGEM_ACAO_DA_LOJA = ['HSD'];
@@ -115,6 +125,7 @@ final class EventosIfood
             $codigo === 'PLC'                         => static::CRIA,
             $codigo === 'DDCR'                        => static::EXIGE_CODIGO,
             $codigo === 'CAN'                         => static::CANCELA,
+            $codigo === 'RDS'                         => static::ENTREGA_PARCEIRA,
             in_array($codigo, static::CONHECIDOS, true) => static::REGISTRA,
             default                                   => static::IGNORA,
         };

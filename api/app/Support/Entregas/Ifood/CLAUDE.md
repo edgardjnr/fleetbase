@@ -73,7 +73,7 @@ Fora dessa pasta:
    - enfileira um `ProcessarPedidoIfood` por pedido com evento pendente.
 2. **Job** (trava `entregas:ifood-pedido:<id do iFood>`): processa os pendentes em ordem de `createdAt`.
    - O pedido nasce no **PLC** ou, se o PLC se perdeu, num evento anterior à coleta (CFM, RTP, DDCR, DPCR).
-   - **Não nasce** se o pedido tem CAN ou já passou da coleta (DSP, CON, CLT, DDD, AAD, DDCS, GTO, ADR, AAO), procurando entre todos os eventos gravados dele. Também não nasce só com eventos de entrega, cancelamento ou alteração.
+   - **Não nasce** se o pedido tem CAN ou RDS (entrega parceira) ou já passou da coleta (DSP, CON, CLT, DDD, AAD, DDCS, GTO, ADR, AAO), procurando entre todos os eventos gravados dele. Também não nasce só com eventos de entrega, cancelamento ou alteração.
 3. **Criação** (`GET logistics/orders/{id}`), numa transação só:
    - Place da entrega com as coordenadas do iFood, sem dono;
    - Payload com a coleta no Local da loja;
@@ -95,6 +95,7 @@ Fora dessa pasta:
 - **Outros eventos:**
   - DDCR marca `exige_codigo`;
   - CAN cancela o pedido no Entregas (etapa 3, `CancelamentoPeloIfood`; ver "Integração iFood (etapa 3: ciclo da entrega)") e tira a linha da fila do agendador (`despachar_em` nulo);
+  - RDS (`REQUEST_DRIVER_SUCCESS`: a loja pediu o entregador parceiro do iFood e ele foi aprovado) faz o mesmo que o CAN (ver "Entrega parceira" em "Cancelamento"). RDR, RDF, DCRA e DCRR só ficam registrados;
   - os outros códigos conhecidos só ficam registrados;
   - código desconhecido fica como ignorado, com warning no HSD (exige resposta da loja no iFood) e info nos outros.
 - **Cobrança:**
@@ -122,7 +123,7 @@ As migrations ficam em `api/database/migrations`.
 
 - `entregas_ifood_lojas`: o vínculo. Tokens cifrados (APP_KEY); `situacao` = `vinculada` | `vinculo_perdido` | `desvinculada`.
 - `entregas_ifood_eventos`: um registro por evento. Uma vez por dia, a limpeza apaga os processados há mais de 7 dias e os pendentes há mais de 30.
-- `entregas_ifood_pedidos`: dados do iFood de cada pedido (0800, cobrança, observações, `exige_codigo`, `cancelado_pelo_ifood_em`, `teste`, `agendado`, `despachar_em`, `despachado_em`, `itens`). Fica fora do `meta` do Order de propósito (o `meta` sai na API v1 e no socket). A exceção é o prazo de entrega (`entregas_prazo_em`, 2026-10-20), que não é sensível. `itens` (JSON, migration `2026_10_19_120000_add_itens_*`): ver "Produtos do pedido".
+- `entregas_ifood_pedidos`: dados do iFood de cada pedido (0800, cobrança, observações, `exige_codigo`, `cancelado_pelo_ifood_em`, `entrega_parceira_em`, `teste`, `agendado`, `despachar_em`, `despachado_em`, `itens`). Fica fora do `meta` do Order de propósito (o `meta` sai na API v1 e no socket). A exceção é o prazo de entrega (`entregas_prazo_em`, 2026-10-20), que não é sensível. `itens` (JSON, migration `2026_10_19_120000_add_itens_*`): ver "Produtos do pedido".
 - Datas em TIMESTAMP, gravadas como texto no fuso do app (`PedidoDoIfood::paraOBanco`, `EventosIfood::paraOBanco`): as contas com o iFood (ISO com `Z`) são feitas em UTC e só a saída é convertida. Ver "Fuso (horário de Brasília)" em `api/CLAUDE.md`.
 
 ### Tokens e erros
@@ -248,6 +249,8 @@ Desenho: spec, seções 3 e 4. Plano: `docs/superpowers/plans/2026-10-06-ifood-e
 - **CAN** (`CancelamentoPeloIfood`, chamado pelo `ProcessarPedidoIfood`, com a `TravaDoPedido` e a trava das ações): concluído → nada muda (log); nos outros, sai dos abertos e do agendamento (`saveQuietly`: `dispatched` e `adhoc` falsos, `scheduled_at` nulo) e `Order::cancel()` (atividade, `OrderCanceled` → push ao motoboy atribuído, "Pedido #4821 cancelado pelo iFood"). Sem Order: só grava e registra (info). Idempotente: o job repete enquanto o CAN estiver pendente (trava ocupada).
 - **`pago_mesmo_cancelado`** quando o `dispatch` já foi aceito (`ultima_acao`) **ou** o Order está `enroute` (o motoboy tocou "A caminho", mesmo que o `dispatch` não tenha chegado ao iFood). O push acrescenta "Você recebe por esta entrega. Combine com a loja a devolução." e o pedido entra no relatório, na cobrança da loja e nos ganhos do app **pela data do cancelamento** (`CalculoEntregas::pedidosConcluidos`, `cancelado_pago` na linha).
   - O extrato do portal da loja repassa o `cancelado_pago` (`PortalLojaController::extrato`) e mostra o selo "Cancelado pelo iFood (cobrado)" na linha (coluna Situação) e uma coluna com o mesmo rótulo no CSV (vazia nas demais).
+- **Entrega parceira** (2026-10-25; caso real: #4047 do Terraço, que recebeu RDR + RDS às 18:16 e um motoboy nosso aceitou às 18:23, porque os dois eram códigos desconhecidos e ficaram ignorados): o RDS chama o `CancelamentoPeloIfood` com `$entregaParceira`. O pedido sai do Entregas como no CAN (mesmas travas, mesma regra do `pago_mesmo_cancelado`, push ao motoboy atribuído) e a linha ganha o `cancelado_pelo_ifood_em` (que para as ações, o agendador e o acompanhamento, e libera o cancelamento pela central) e o `entrega_parceira_em` (migration `2026_10_25_190000_add_entrega_parceira_*`). O push diz "Pedido #4047 passou para o entregador do iFood"; o log é `pedido saiu para a entrega parceira do iFood` (warning). O RDR (pedido feito) e o RDF (negado) não mexem no pedido.
+  - **Risco aceito:** se a loja cancelar o entregador do iFood depois do RDS (DCR → DCRA), o pedido não volta sozinho; a central cria outro. O app ainda mostra o aviso "cancelado pelo iFood" nos detalhes (o `DadosIfoodDoMotoboy` não traz o motivo).
 - Exceção no cancelamento sobe como `RuntimeException` só com a classe e o SQLSTATE (o `failed_jobs` guarda a exceção inteira, e a do banco traz o SQL); `LockTimeoutException` passa como veio.
 - **Cancelamento do nosso lado é proibido** no pedido iFood (400 "Pedido do iFood: o cancelamento é feito no iFood."): `RegrasPortalLoja` (portal) e `RegrasDoPedidoIfood` (API v1 e console):
   - API v1: `cancelOrder`, a atividade "canceled" no `updateActivity` e o `PUT v1/orders/{id}` (`update`) com `status` de cancelamento;

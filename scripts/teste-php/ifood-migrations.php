@@ -105,6 +105,18 @@ $migracao->down();
 $desfeito = Schema::$alteradas['entregas_ifood_pedidos'][0]->colunas[0] ?? null;
 confere($desfeito && $desfeito->tipo === 'dropColumn' && $desfeito->argumentos === ['itens'], 'down tira a coluna');
 
+echo '== entregas_ifood_pedidos: entrega parceira do iFood (entrega_parceira_em)' . PHP_EOL;
+Schema::$alteradas = [];
+$migracao = require '/repo/api/database/migrations/2026_10_25_190000_add_entrega_parceira_to_entregas_ifood_pedidos_table.php';
+$migracao->up();
+$parceira = Schema::$alteradas['entregas_ifood_pedidos'][0]->colunas ?? [];
+confere(count($parceira) === 1 && tem(['entrega_parceira_em' => $parceira[0]], 'entrega_parceira_em', 'timestamp', ['nullable']) && $parceira[0]->argumentos === ['entrega_parceira_em'], 'entrega_parceira_em: timestamp nulo');
+confere(excecao(fn () => \Teste\Banco::exigirColuna('entregas_ifood_pedidos', 'entrega_parceira_em')) === null, 'o banco em memória conhece a coluna entrega_parceira_em');
+Schema::$alteradas = [];
+$migracao->down();
+$desfeito = Schema::$alteradas['entregas_ifood_pedidos'][0]->colunas[0] ?? null;
+confere($desfeito && $desfeito->tipo === 'dropColumn' && $desfeito->argumentos === ['entrega_parceira_em'], 'down tira a coluna');
+
 echo '== down' . PHP_EOL;
 foreach (['2026_10_05_120000_create_entregas_ifood_lojas_table.php' => 'entregas_ifood_lojas', '2026_10_05_120100_create_entregas_ifood_eventos_table.php' => 'entregas_ifood_eventos', '2026_10_05_120200_create_entregas_ifood_pedidos_table.php' => 'entregas_ifood_pedidos'] as $arquivo => $tabela) {
     (require '/repo/api/database/migrations/' . $arquivo)->down();

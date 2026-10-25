@@ -52,6 +52,12 @@ echo '== Ação por código' . PHP_EOL;
 confere(EventosIfood::acao('PLC') === EventosIfood::CRIA, 'PLC cria');
 confere(EventosIfood::acao('DDCR') === EventosIfood::EXIGE_CODIGO, 'DDCR exige código');
 confere(EventosIfood::acao('CAN') === EventosIfood::CANCELA, 'CAN cancela (só registra na etapa 2)');
+confere(EventosIfood::acao('RDS') === EventosIfood::ENTREGA_PARCEIRA, 'RDS (entregador do iFood aprovado) tira o pedido do Entregas');
+foreach (['RDR', 'RDF', 'DCRA', 'DCRR'] as $codigo) {
+    confere(EventosIfood::acao($codigo) === EventosIfood::REGISTRA, "{$codigo} só registra");
+}
+confere(EventosIfood::SAEM_DO_ENTREGAS === ['CAN', 'RDS'], 'CAN e RDS tiram o pedido do Entregas (e impedem a criação)');
+confere(!EventosIfood::criaPedido('RDR') && !EventosIfood::criaPedido('RDS'), 'RDR e RDS não criam');
 foreach (['CFM', 'RTP', 'DSP', 'CON', 'CAR', 'CARF', 'ADR', 'GTO', 'AAO', 'DDD', 'CLT', 'AAD', 'DDCS', 'DPCR', 'OPA'] as $codigo) {
     confere(EventosIfood::acao($codigo) === EventosIfood::REGISTRA, "{$codigo} só registra");
 }

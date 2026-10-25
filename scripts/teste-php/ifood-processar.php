@@ -236,6 +236,60 @@ gravarEvento('ev-2', 'CAN', '2026-10-05T18:02:00Z');
 rodar($criador);
 confere(linhaDoPedido()->cancelado_pelo_ifood_em === '2026-10-05 15:02:00' && linhaDoPedido()->despachar_em === '2026-10-05 14:59:30', 'já despachado: só registra o cancelamento');
 
+echo '== Entrega parceira (RDS) depois de criado: o pedido sai do Entregas como no CAN' . PHP_EOL;
+// caso real de 2026-10-25 (#4047): a loja pediu entregador do iFood (RDR + RDS) com o pedido aberto, e um motoboy aceitou depois
+reiniciarFleetbase();
+reiniciarIfood();
+vinculoDaLojaA();
+gravarEvento('ev-1', 'PLC', '2026-10-05T17:59:00Z');
+Http::responder(200, pedidoEmDinheiroComTroco());
+$criador              = new CriadorFalso();
+$criador->despacharEm = '2026-10-05 15:40:00';
+rodar($criador);
+$parceira          = Order::where('uuid', 'order-1')->first();
+$parceira->adhoc   = true;
+$parceira->started = true;
+$parceira->status  = 'started';
+gravarEvento('ev-2', 'RDR', '2026-10-05T18:16:07.521Z');
+gravarEvento('ev-3', 'RDS', '2026-10-05T18:16:07.889Z');
+rodar($criador);
+confere($parceira->chamadas === ['saveQuietly', 'cancel'] && $parceira->status === 'canceled' && $parceira->adhoc === false && $parceira->dispatched === false, 'RDS: cancelado e fora dos pedidos abertos');
+confere(linhaDoPedido()->entrega_parceira_em === '2026-10-05 15:16:07' && linhaDoPedido()->cancelado_pelo_ifood_em === '2026-10-05 15:16:07', 'entrega_parceira_em e cancelado_pelo_ifood_em = createdAt do RDS');
+confere(!linhaDoPedido()->pago_mesmo_cancelado && linhaDoPedido()->despachar_em === null, 'sem pagamento (não tinha saído "A caminho") e fora da fila do agendador');
+confere(evento('ev-2')->ignorado === false && evento('ev-3')->ignorado === false && evento('ev-3')->processado_em !== null, 'RDR e RDS processados, não ignorados');
+confere(logou('pedido saiu para a entrega parceira do iFood', 'warning'), 'log próprio da entrega parceira');
+
+echo '== Entrega parceira negada (RDR + RDF): nada muda' . PHP_EOL;
+reiniciarFleetbase();
+reiniciarIfood();
+vinculoDaLojaA();
+gravarEvento('ev-1', 'PLC', '2026-10-05T17:59:00Z');
+Http::responder(200, pedidoEmDinheiroComTroco());
+$criador = new CriadorFalso();
+rodar($criador);
+$negada = Order::where('uuid', 'order-1')->first();
+gravarEvento('ev-2', 'RDR', '2026-10-05T18:16:07Z');
+gravarEvento('ev-3', 'RDF', '2026-10-05T18:16:09Z');
+rodar($criador);
+confere($negada->chamadas === [] && $negada->status !== 'canceled', 'o Order continua');
+confere((linhaDoPedido()->entrega_parceira_em ?? null) === null && linhaDoPedido()->cancelado_pelo_ifood_em === null, 'nada gravado na linha');
+confere(evento('ev-2')->ignorado === false && evento('ev-3')->ignorado === false && evento('ev-3')->processado_em !== null, 'RDR e RDF só registrados');
+
+echo '== Entrega parceira antes de entrar: não cria' . PHP_EOL;
+reiniciarIfood();
+vinculoDaLojaA();
+gravarEvento('ev-1', 'PLC', '2026-10-05T17:59:00Z');
+gravarEvento('ev-2', 'RDR', '2026-10-05T17:59:30Z');
+gravarEvento('ev-3', 'RDS', '2026-10-05T17:59:31Z');
+$criador = new CriadorFalso();
+rodar($criador);
+confere($criador->criados === [] && Http::$chamadas === [] && linhaDoPedido() === null, 'não busca nem cria');
+confere(evento('ev-1')->processado_em !== null && evento('ev-3')->processado_em !== null && logou('saiu do Entregas antes de entrar'), 'eventos processados, com log');
+\Illuminate\Support\Facades\Log::$registros = [];
+gravarEvento('ev-4', 'CFM', '2026-10-05T17:59:10Z');
+rodar($criador);
+confere($criador->criados === [] && linhaDoPedido() === null && logou('saiu do Entregas antes de entrar'), 'evento atrasado numa rodada seguinte também não cria');
+
 echo '== Cancelado antes de entrar: não cria' . PHP_EOL;
 reiniciarIfood();
 vinculoDaLojaA();
@@ -245,7 +299,7 @@ gravarEvento('ev-3', 'CAN', '2026-10-05T17:59:31Z');
 $criador = new CriadorFalso();
 rodar($criador);
 confere($criador->criados === [] && Http::$chamadas === [] && linhaDoPedido() === null, 'não busca nem cria');
-confere(evento('ev-1')->processado_em !== null && evento('ev-3')->processado_em !== null && logou('cancelado antes de entrar'), 'eventos processados, com log');
+confere(evento('ev-1')->processado_em !== null && evento('ev-3')->processado_em !== null && logou('saiu do Entregas antes de entrar'), 'eventos processados, com log');
 confere(evento('ev-1')->ignorado === true && evento('ev-3')->ignorado === true, 'eventos não aplicados ficam ignorados');
 
 echo '== Cancelado antes de entrar: evento atrasado numa rodada seguinte também não cria' . PHP_EOL;
@@ -253,7 +307,7 @@ echo '== Cancelado antes de entrar: evento atrasado numa rodada seguinte também
 gravarEvento('ev-4', 'CFM', '2026-10-05T17:59:10Z');
 rodar($criador);
 confere($criador->criados === [] && Http::$chamadas === [] && linhaDoPedido() === null, 'o CAN já processado ainda vale: não busca nem cria');
-confere(evento('ev-4')->processado_em !== null && logou('cancelado antes de entrar'), 'evento atrasado processado, com log');
+confere(evento('ev-4')->processado_em !== null && logou('saiu do Entregas antes de entrar'), 'evento atrasado processado, com log');
 
 echo '== Evento sem pedido que não cria' . PHP_EOL;
 reiniciarIfood();

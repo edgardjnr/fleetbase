@@ -34,9 +34,9 @@ function linha(): object
     return (new Teste\Consulta('entregas_ifood_pedidos'))->where('order_uuid', 'order-1')->first();
 }
 
-function cancelar(string $quando = '2026-10-05 14:58:00'): string
+function cancelar(string $quando = '2026-10-05 14:58:00', bool $entregaParceira = false): string
 {
-    return (new CancelamentoPeloIfood(new AcoesIfood(new VinculosIfood(new ClienteIfood()), new ClienteIfood())))->aplicar(linha(), $quando);
+    return (new CancelamentoPeloIfood(new AcoesIfood(new VinculosIfood(new ClienteIfood()), new ClienteIfood())))->aplicar(linha(), $quando, $entregaParceira);
 }
 
 echo '== Dispatch já aceito pelo iFood: cancelado e pago mesmo assim' . PHP_EOL;
@@ -106,5 +106,25 @@ confere(CancelamentoPeloIfood::textoDoPush((object) ['numero' => '4821', 'cancel
 confere(CancelamentoPeloIfood::textoDoPush((object) ['numero' => '4821', 'cancelado_pelo_ifood_em' => '2026-10-05 14:58:00', 'pago_mesmo_cancelado' => false]) === ['Pedido #4821 cancelado pelo iFood', 'Não precisa mais fazer esta entrega.'], 'sem pagamento');
 confere(CancelamentoPeloIfood::textoDoPush((object) ['numero' => null, 'cancelado_pelo_ifood_em' => '2026-10-05 14:58:00', 'pago_mesmo_cancelado' => false])[0] === 'Pedido cancelado pelo iFood', 'sem número');
 confere(CancelamentoPeloIfood::textoDoPush((object) ['numero' => '4821', 'cancelado_pelo_ifood_em' => null, 'pago_mesmo_cancelado' => false]) === null, 'não cancelado pelo iFood: null (texto comum)');
+
+echo '== Entrega parceira (RDS): sai do Entregas como no CAN, com a marca própria' . PHP_EOL;
+$pedido = pedidoIfood(['status' => 'started'], ['ultima_acao' => 'goingToOrigin']);
+confere(cancelar('2026-10-25 18:16:07', true) === CancelamentoPeloIfood::CANCELADO && $pedido->status === 'canceled' && $pedido->chamadas === ['saveQuietly', 'cancel'], 'cancelado, fora dos abertos');
+confere(linha()->entrega_parceira_em === '2026-10-25 18:16:07' && linha()->cancelado_pelo_ifood_em === '2026-10-25 18:16:07' && linha()->pago_mesmo_cancelado === false, 'entrega_parceira_em e cancelado_pelo_ifood_em gravados, sem pagamento');
+confere(logou('pedido saiu para a entrega parceira do iFood', 'warning') && !logou('pedido cancelado pelo iFood'), 'log próprio');
+confere(cancelar('2026-10-25 18:20:00', true) === CancelamentoPeloIfood::JA_CANCELADO && linha()->entrega_parceira_em === '2026-10-25 18:16:07', 'idempotente: mantém a data');
+
+$pedido = pedidoIfood(['status' => 'enroute'], ['ultima_acao' => 'arrivedAtOrigin']);
+confere(cancelar('2026-10-25 18:16:07', true) === CancelamentoPeloIfood::CANCELADO_PAGO && linha()->pago_mesmo_cancelado === true, 'motoboy já "A caminho": pago, como no CAN');
+
+$pedido = pedidoIfood(['status' => 'completed']);
+confere(cancelar('2026-10-25 18:16:07', true) === CancelamentoPeloIfood::JA_CONCLUIDO && $pedido->chamadas === [] && $pedido->status === 'completed', 'já concluído: o Order não muda (só registra, como no CAN)');
+
+$pedido = pedidoIfood(['status' => 'started']);
+cancelar('2026-10-25 18:16:07', true);
+confere(cancelar('2026-10-25 18:30:00') === CancelamentoPeloIfood::JA_CANCELADO && linha()->cancelado_pelo_ifood_em === '2026-10-25 18:16:07', 'CAN depois da entrega parceira: já cancelado, mantém a data');
+
+confere(CancelamentoPeloIfood::textoDoPush((object) ['numero' => '4047', 'cancelado_pelo_ifood_em' => '2026-10-25 18:16:07', 'entrega_parceira_em' => '2026-10-25 18:16:07', 'pago_mesmo_cancelado' => false]) === ['Pedido #4047 passou para o entregador do iFood', 'Não precisa mais fazer esta entrega.'], 'push da entrega parceira');
+confere(CancelamentoPeloIfood::textoDoPush((object) ['numero' => null, 'cancelado_pelo_ifood_em' => '2026-10-25 18:16:07', 'entrega_parceira_em' => '2026-10-25 18:16:07', 'pago_mesmo_cancelado' => true]) === ['Pedido passou para o entregador do iFood', CancelamentoPeloIfood::TEXTO_PAGO], 'push da entrega parceira, pago e sem número');
 
 resumo();
