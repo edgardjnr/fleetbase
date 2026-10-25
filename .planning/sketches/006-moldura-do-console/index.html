@@ -238,13 +238,13 @@ body.annot .pf [data-block] { outline: 2px dashed #c026d3; outline-offset: -2px;
 </div>
 
 <script>
-const S = { variant: 'a', screen: 1, vp: 1440, aberto: false, grupo: 'operacoes', gaveta: true, modulo: 'fleet' };
+const S = { variant: 'c', screen: 1, vp: 1440, aberto: false, grupo: 'operacoes', gaveta: true, modulo: 'fleet' };
 const IMG = '../../../console/public/images/entregas/';
 
 const VARIANTS = {
   a: { nome: 'A: Papel', desc: '<b>A: Papel.</b> Cabeçalho e menu na cor dos cartões do painel (papel quente no claro, tinta quente no escuro), com borda fina. Módulo ativo com o sublinhado laranja (como as abas do painel); no menu, o item ativo num fundo laranja-claro e o "Novo pedido" em laranja cheio. É a mudança mais discreta: o laranja só marca onde você está.' },
   b: { nome: 'B: Faixa laranja', desc: '<b>B: Faixa laranja.</b> O cabeçalho vira a faixa da marca (laranja cheio nos dois temas, como o cartão Corridas do painel e a landing), com o módulo ativo numa pílula escura. O menu fica na cor dos cartões, com o item ativo em tinta escura e o ícone laranja. A marca aparece forte em todas as telas.' },
-  c: { nome: 'C: Moldura em L', desc: '<b>C: Moldura em L.</b> Cabeçalho e menu formam uma moldura só, em tom de areia (um degrau mais escuro que o fundo), e o conteúdo fica numa folha com o canto arredondado. Módulos numa barra segmentada; no menu, cada ícone num quadradinho, com o ativo em laranja cheio, e grupos com título (Operação, Recursos, Financeiro) numa lista direta, sem o "entrar e voltar" de hoje.' },
+  c: { nome: 'C: Moldura em L ★ Escolhida', desc: '<b>C: Moldura em L.</b> Cabeçalho e menu formam uma moldura só, em tom de areia (um degrau mais escuro que o fundo), e o conteúdo fica numa folha com o canto arredondado. Módulos numa barra segmentada; no menu, cada ícone num quadradinho, com o ativo em laranja cheio, e grupos com título (Operação, Recursos, Financeiro) numa lista direta, sem o "entrar e voltar" de hoje.' },
 };
 const SCREENS = [[1, '1 · Painel inicial'], [2, '2 · Fleet-Ops: Pedidos (mapa)'], [3, '3 · Fleet-Ops: Financeiro → Motoboys'], [4, '4 · Celular (menu aberto)']];
 const mob = () => S.screen === 4;

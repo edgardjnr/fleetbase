@@ -2,7 +2,7 @@
 sketch: 006
 name: moldura-do-console
 question: "Como o cabeçalho do console e o menu lateral do Fleet-Ops ficam nas cores do painel (marca Entregas), no claro e no escuro?"
-winner: null
+winner: "C"
 tags: [console, cabeçalho, menu, sidebar, fleet-ops, tema, mobile]
 ---
 
@@ -55,3 +55,14 @@ módulo embaixo.
 - Menu: `.next-sidebar` e `.next-sidebar-navigator*`, mais o `fleet-ops-sidebar.js`. O trilho de Pedidos já existe
   em CSS (`console/app/styles/tela-de-pedidos.css`); passaria a valer em todo o Fleet-Ops (ou em todo o console).
 - Tokens: os `--pi-*` do `painel-inicial.css`, que valeriam para o `body` inteiro.
+
+## Resultado
+**C (Moldura em L)** foi escolhida em 2026-10-25.
+- Cabeçalho e menu lateral formam uma moldura só, em tom de areia (`--pi-cartao-2`, que segue o claro e o escuro).
+- O conteúdo fica numa folha com o canto de cima à esquerda arredondado.
+- Os módulos vão numa barra segmentada com ícone, e o ativo fica em laranja cheio.
+- O menu é um trilho de ícones em quadradinhos em todas as telas e abre ao passar o mouse. O item ativo fica em laranja
+  cheio e o "Criar novo pedido" em tinta.
+- A lista é direta, com títulos de grupo (Operação, Recursos, Financeiro, Configurações), sem o "entrar no grupo e
+  voltar".
+- No celular, o ☰ abre a gaveta com os módulos no topo.
