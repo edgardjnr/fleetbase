@@ -93,12 +93,7 @@ export default class OperationsOrdersIndexController extends Controller {
                 wrapperClass: 'hidden md:flex',
                 onClick: this.orderActions.export,
             },
-            {
-                text: this.intl.t('common.import'),
-                icon: 'file-import',
-                wrapperClass: 'hidden md:flex',
-                onClick: () => this.orderActions.importOrders({ onImportComplete: this.orderActions.refresh }),
-            },
+            // Entregas: sem Importar (a importação passaria por fora da regra "só cria com loja e ID interno")
         ];
     }
 
@@ -236,35 +231,7 @@ export default class OperationsOrdersIndexController extends Controller {
                 filterParam: 'customer',
                 model: 'customer',
             },
-            {
-                label: this.intl.t('column.vehicle-assigned'),
-                cellComponent: 'cell/vehicle-name',
-                valuePath: 'vehicle_assigned.display_name',
-                modelPath: 'vehicle_assigned',
-                showOnlineIndicator: true,
-                hidden: true,
-                resizable: true,
-                sortable: true,
-                filterable: true,
-                filterComponent: 'filter/model',
-                filterComponentPlaceholder: this.intl.t('fleet-ops.ui.controller.operations-orders-index.select-vehicle-for-order'),
-                filterParam: 'vehicle',
-                modelNamePath: 'display_name',
-                model: 'vehicle',
-            },
-            {
-                label: this.intl.t('column.facilitator'),
-                valuePath: 'facilitator.name',
-                cellComponent: 'table/cell/base',
-                resizable: true,
-                hidden: true,
-                sortable: true,
-                filterable: true,
-                filterComponent: 'filter/model',
-                filterComponentPlaceholder: this.intl.t('fleet-ops.ui.controller.operations-orders-index.select-order-facilitator'),
-                filterParam: 'facilitator',
-                model: 'vendor',
-            },
+            // Entregas: sem as colunas Veículo e Facilitador
             {
                 label: this.intl.t('column.scheduled-at'),
                 valuePath: 'scheduledAt',
@@ -299,17 +266,7 @@ export default class OperationsOrdersIndexController extends Controller {
                 filterable: true,
                 filterComponent: 'filter/string',
             },
-            {
-                label: this.intl.t('column.type'),
-                valuePath: 'type',
-                resizable: true,
-                humanize: true,
-                sortable: true,
-                filterable: true,
-                filterComponent: 'filter/model',
-                model: 'order-config',
-                filterComponentPlaceholder: this.intl.t('fleet-ops.ui.controller.operations-orders-index.filter-by-order-config'),
-            },
+            // Entregas: sem a coluna Tipo (o tipo de pedido é sempre o padrão)
             {
                 label: this.intl.t('column.status'),
                 valuePath: 'status',
