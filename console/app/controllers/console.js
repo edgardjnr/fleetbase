@@ -54,6 +54,11 @@ export default class ConsoleController extends Controller {
      * @void
      */
     @action createOrJoinOrg() {
+        // Entregas RestaurantePro: só o administrador do sistema cria ou entra em organização
+        if (!this.currentUser.isAdmin) {
+            return;
+        }
+
         const currency = this.currentUser.company?.currency ?? this.currentUser.currency ?? 'USD';
         const country = this.currentUser.company?.country ?? this.currentUser.country;
         const timezone = this.currentUser.company?.timezone ?? this.currentUser.whois('timezone');

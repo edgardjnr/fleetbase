@@ -164,6 +164,11 @@ export default class ConsoleAccountOrganizationsController extends Controller {
     }
 
     @action createOrganization() {
+        // Entregas RestaurantePro: só o administrador do sistema cria organização
+        if (!this.currentUser.isAdmin) {
+            return;
+        }
+
         const currency = this.currentUser.currency;
         const country = this.currentUser.country;
 
