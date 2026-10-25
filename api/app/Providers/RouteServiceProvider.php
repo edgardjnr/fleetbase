@@ -26,6 +26,7 @@ use App\Http\Middleware\BarrarAceiteDePedidoEncerrado;
 use App\Http\Middleware\ExigirAppAtualizado;
 use App\Http\Middleware\FiltrarPedidosAbertosDoMotoboy;
 use App\Http\Middleware\IncluirNotasNaListaDePedidos;
+use App\Http\Middleware\ProtegerPortalLoja;
 use App\Http\Middleware\RegrasDoPedidoIfood;
 use App\Support\Entregas\Financeiro\Pagamentos;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -144,6 +145,11 @@ class RouteServiceProvider extends ServiceProvider
                         );
                     }
                 );
+
+                // Entregas RestaurantePro: a lista de extensões instaladas, que o console pede ao abrir cada página (ember-core,
+                // utils/load-installed-extensions.js). Era do registry-bridge, fora do package:discover (api/composer.json):
+                // sem esta rota, 404 em toda página. Sempre vazia: as extensões do console estão na lista fixa do ember-core
+                Route::get(ProtegerPortalLoja::CAMINHO_DAS_EXTENSOES, fn () => response()->json([]));
 
                 // Entregas RestaurantePro: pagamento dos motoboys e cobrança das lojas por faixa de km (console → Fleet-Ops → Pagamento e cobrança)
                 Route::prefix('int/v1/entregas')

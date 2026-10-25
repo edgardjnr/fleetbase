@@ -12,14 +12,15 @@ use Illuminate\Support\Facades\Log;
 /**
  * Entregas RestaurantePro: põe o DistribuirPedidoAberto no lugar do HandleOrderDispatched do Fleet-Ops no
  * OrderDispatched, preservando os outros listeners do evento (o SendResourceLifecycleWebhook e o NotifyOrderEvent do
- * Fleet-Ops, o HandleOrderDispatched do Storefront, que segue no composer, e o que mais houver). O Laravel não tira um
+ * Fleet-Ops e o que mais houver; o HandleOrderDispatched do Storefront saiu com o Storefront fora do package:discover,
+ * api/composer.json). O Laravel não tira um
  * listener só: lê a lista crua (getRawListeners), esquece o evento e registra o nosso primeiro (no lugar do original,
  * que era o primeiro do Fleet-Ops) e depois os outros, na ordem em que estavam. Chamado pelo
  * AppServiceProvider::distribuirPedidosAbertos no booted(), depois do boot de todos os providers.
  *
  * Sem o original na lista (o fleetops-api mudou): aviso no log e o nosso registrado mesmo assim (ele chama o original
  * quando não deve distribuir; se o original reaparecer por outro caminho, rodaria em dobro). Dispatcher sem
- * getRawListeners (outra implementação): a lista fixa do EventServiceProvider do Fleet-Ops (perderia o do Storefront).
+ * getRawListeners (outra implementação): a lista fixa do EventServiceProvider do Fleet-Ops (perderia os de outros pacotes).
  */
 class TrocaDoListenerDoDespacho
 {

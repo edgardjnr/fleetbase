@@ -4,6 +4,8 @@
 set -e
 
 # Create mysql databases if none exists
+# Entregas RestaurantePro: também o fleetbase_storefront, que o comando lê do composer (o storefront-api segue instalado,
+# fora do package:discover); a conexão vem do App\Support\Entregas\ConexaoDoStorefront
 php artisan mysql:createdb
 
 # Run migrations
@@ -35,9 +37,6 @@ php artisan route:clear
 # Optimize
 php artisan config:cache
 php artisan route:cache
-
-# Initialize registry
-php artisan registry:init
 
 # Notify open install pages that setup has completed
 php artisan fleetbase:notify-installed || true

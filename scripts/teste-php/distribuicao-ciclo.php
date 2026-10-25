@@ -572,7 +572,10 @@ $eventosFleetOps = file_get_contents('/repo/packages/fleetops/server/src/Provide
 preg_match('/\\\\Fleetbase\\\\FleetOps\\\\Events\\\\OrderDispatched::class\s*=>\s*\[([^\]]*)\]/', $eventosFleetOps, $lista);
 $listeners = array_map(fn ($l) => trim(str_replace('::class', '', $l), " \\"), explode(',', $lista[1] ?? ''));
 confere($listeners === [$original, $webhook, $notificar] && TrocaDoListenerDoDespacho::LISTA_FIXA === [$webhook, $notificar], 'o Fleet-Ops registra o original e os dois da lista fixa (' . implode(', ', $listeners) . ')');
-confere(str_contains(file_get_contents('/repo/packages/storefront/server/src/Providers/EventServiceProvider.php'), '\Fleetbase\FleetOps\Events\OrderDispatched::class     => [\Fleetbase\Storefront\Listeners\HandleOrderDispatched::class]'), 'o Storefront também escuta o OrderDispatched (preservado pela troca)');
+// o Storefront também escutava o OrderDispatched; com ele fora do package:discover, o listener dele não sobe (a troca
+// preservaria, como qualquer outro: ver os casos com $storefront acima)
+$naoDescobre = json_decode(file_get_contents('/repo/api/composer.json'), true)['extra']['laravel']['dont-discover'] ?? [];
+confere(in_array('fleetbase/storefront-api', $naoDescobre, true), 'o Storefront está fora do package:discover: o HandleOrderDispatched dele não escuta mais o OrderDispatched');
 
 $provedor = str_replace("\r\n", "\n", file_get_contents('/repo/api/app/Providers/AppServiceProvider.php'));
 preg_match('/protected function distribuirPedidosAbertos\(\): void\s*\{(.*?)\n    \}/s', $provedor, $troca);

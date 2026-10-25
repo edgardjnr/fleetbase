@@ -120,7 +120,15 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": []
+            "dont-discover": [
+                "fleetbase/storefront-api",
+                "fleetbase/ledger-api",
+                "fleetbase/registry-bridge",
+                "fleetbase/ai",
+                "fleetbase/valhalla-api",
+                "fleetbase/vroom-api",
+                "laravel/cashier"
+            ]
         }
     },
     "config": {
