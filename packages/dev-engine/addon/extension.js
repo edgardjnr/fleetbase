@@ -17,24 +17,8 @@ export default {
                     icon: 'key',
                     route: 'console.developers.api-keys',
                 },
-                {
-                    title: 'Webhooks',
-                    description: 'Configure webhook endpoints to receive real-time event notifications.',
-                    icon: 'globe',
-                    route: 'console.developers.webhooks',
-                },
-                {
-                    title: 'Sockets',
-                    description: 'Monitor active WebSocket channels and connected clients.',
-                    icon: 'plug',
-                    route: 'console.developers.sockets',
-                },
-                {
-                    title: 'Events',
-                    description: 'Browse the full history of platform events and payloads.',
-                    icon: 'bolt',
-                    route: 'console.developers.events',
-                },
+                // Entregas RestaurantePro: sem os atalhos Webhooks, Sockets e Events no menu do topo
+                // (as telas continuam dentro de Developers)
                 {
                     title: 'Logs',
                     description: 'Inspect API request and response logs for debugging.',
