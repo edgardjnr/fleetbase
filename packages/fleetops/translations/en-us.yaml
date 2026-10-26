@@ -9797,5 +9797,17 @@ sensor:
         min-threshold-placeholder: Minimum threshold
         max-threshold-placeholder: Maximum threshold
 menu-text:
+    fleet-ops:
+        title: Operations
+        description: Orders, dispatch to drivers, live map, stores and finances.
+    fleet-ops-sc-orders:
+        title: Orders
+        description: Create, dispatch, and track delivery orders in real time.
+    fleet-ops-sc-drivers:
+        title: Drivers
+        description: Driver records, status and live location.
+    fleet-ops-sc-driver-payouts:
+        title: Finances
+        description: Driver statements and payments, store invoices and margin.
     track-order:
         title: Track Order

@@ -1,5 +1,5 @@
 fleet-ops:
-  extension-name: Fleet-Ops
+  extension-name: Operação
   operations:
     orders:
       index:
@@ -1413,7 +1413,7 @@ fleet-ops:
       map-settings:
         configure-map: Configurar Mapa
         default-map-provider: Provedor de Mapa Padrão
-        sets-the-default-map-provider-for: Define o provedor de mapa padrão para todas as organizações, a menos que elas o substituam nas próprias configurações de mapa do Fleet-Ops.
+        sets-the-default-map-provider-for: Define o provedor de mapa padrão para todas as organizações, a menos que elas o substituam nas próprias configurações de mapa da Operação.
         select-default-map-provider: Selecione o provedor de mapa padrão
         google-map-id: ID do Mapa do Google
         required-for-google-advanced-markers-and: Obrigatório para os Advanced Markers do Google e a estilização de mapa na nuvem.
@@ -1440,7 +1440,7 @@ fleet-ops:
         tracking-defaults-saved: Padrões de rastreamento salvos.
     ai:
       create-order-preview:
-        creating-fleet-ops-order: Criando pedido no Fleet-Ops...
+        creating-fleet-ops-order: Criando pedido na Operação...
         open-order: Abrir pedido
         order-type: Tipo de pedido
         select-order-type: Selecione o tipo de pedido
@@ -1475,7 +1475,7 @@ fleet-ops:
         edit-vehicle: Editar veículo
         edit-notes: Editar observações
         this-order-creation-preview-was-cancelled: Esta prévia de criação de pedido foi cancelada.
-        fleet-ops-order-was-created: O pedido do Fleet-Ops foi criado.
+        fleet-ops-order-was-created: O pedido da Operação foi criado.
         created-order: Pedido criado
         add-schedule: Adicionar agendamento
         add-pickup: Adicionar coleta
@@ -1492,7 +1492,7 @@ fleet-ops:
         unable-to-upload-photo: 'Não foi possível enviar a foto: '
     customer:
       admin-settings:
-        fleet-ops-order-settings: Configurações de Pedidos do Fleet-Ops
+        fleet-ops-order-settings: Configurações de Pedidos da Operação
         enabled-order-types: Tipos de Pedido Habilitados
         saving-changes: Salvando alterações...
         enable-payments: Habilitar Pagamentos
@@ -1979,7 +1979,7 @@ fleet-ops:
         create-vehicle: Criar veículo
         create-fleet: Criar frota
       fleet-ops-sidebar:
-        search-fleet-ops: Buscar no Fleet-Ops...
+        search-fleet-ops: Buscar na Operação...
     maintenance:
       cost-panel:
         costs: Custos
@@ -2969,7 +2969,7 @@ fleet-ops:
         webhook-url-unavailable-until-this-integration: URL do webhook indisponível até que esta integração tenha um ID público.
         update-mode: Modo de Atualização
         provider-polling: Consulta ao provedor
-        fleet-ops-polls-this-provider-for: O Fleet-Ops consulta este provedor para obter dados dos dispositivos e atualizações de telemetria.
+        fleet-ops-polls-this-provider-for: A Operação consulta este provedor para obter dados dos dispositivos e atualizações de telemetria.
         hardware-identity: Identidade do Hardware
         provider-blackbox-metadata-stored-on-the: Metadados da caixa-preta do provedor armazenados na integração.
         online: Online
@@ -3002,7 +3002,7 @@ fleet-ops:
         select-the-provider-that-will-supply: Selecione o provedor que fornecerá a conectividade e a telemetria dos dispositivos.
         selected: Selecionado
         credentials: Credenciais
-        fleet-ops-uses-these-credentials-to: O Fleet-Ops usa estas credenciais para testar a conexão e sincronizar dispositivos.
+        fleet-ops-uses-these-credentials-to: A Operação usa estas credenciais para testar a conexão e sincronizar dispositivos.
         advanced-connection-settings: Configurações avançadas de conexão
         endpoint-overrides: Substituição de endpoints
         choose-a-provider-before-entering-credentials: Escolha um provedor antes de informar as credenciais.
@@ -3019,7 +3019,7 @@ fleet-ops:
         webhook-url: URL do Webhook
         use-this-public-url-in-the: Use esta URL pública no painel do provedor.
         the-webhook-url-will-be-available: A URL do webhook estará disponível depois que esta conexão tiver um ID público.
-        this-provider-does-not-require-fleet: Este provedor não exige configuração de webhook no Fleet-Ops.
+        this-provider-does-not-require-fleet: Este provedor não exige configuração de webhook na Operação.
         hardware-identity: Identidade do Hardware
         optional-blackbox-metadata-for-provider-hardware: Metadados opcionais da caixa-preta do hardware do provedor instalado na frota.
         model: Modelo
@@ -3105,7 +3105,7 @@ fleet-ops:
         webhook: Webhook
         provider-facing-url-used-for-inbound: URL usada pelo provedor para enviar telemetria, quando suportado.
         webhook-url-unavailable-until-this-connection: URL do webhook indisponível até que esta conexão tenha um ID público.
-        this-provider-does-not-require-fleet: Este provedor não exige configuração de webhook no Fleet-Ops.
+        this-provider-does-not-require-fleet: Este provedor não exige configuração de webhook na Operação.
         hardware-identity: Identidade do Hardware
         optional-blackbox-metadata-for-provider-hardware: Metadados opcionais da caixa-preta do hardware do provedor instalado na frota.
         model: Modelo
@@ -3818,7 +3818,7 @@ fleet-ops:
         normalized-payload: Dados Normalizados
         raw-payload: Dados Brutos
         manual-match: Associação Manual
-        use-a-fleet-ops-uuid-or: Use um UUID ou ID público do Fleet-Ops quando a associação automática não conseguir identificar o veículo ou o pedido.
+        use-a-fleet-ops-uuid-or: Use um UUID ou ID público da Operação quando a associação automática não conseguir identificar o veículo ou o pedido.
         vehicle-id: ID do Veículo
         match-vehicle: Associar Veículo
         order-trip-id: ID do Pedido / Viagem
@@ -3848,8 +3848,8 @@ fleet-ops:
         read-the-guide-on: Leia o guia sobre {label}
       settings-index:
         settings: Configurações
-        fleet-ops-settings: Configurações do Fleet-Ops
-        configure-the-operator-driver-routing-notificati: Configure as regras de operador, motorista, roteamento, notificações e dados que definem os fluxos do Fleet-Ops.
+        fleet-ops-settings: Configurações da Operação
+        configure-the-operator-driver-routing-notificati: Configure as regras de operador, motorista, roteamento, notificações e dados que definem os fluxos da Operação.
         setup-focus: Foco da Configuração
         compact-next-steps-for-operators: Próximos passos resumidos para operadores.
         guides: Guias
@@ -3865,7 +3865,7 @@ fleet-ops:
         refresh: Atualizar
         payments-guide: Guia de pagamentos
       settings-routing:
-        fleet-ops-routing-tracking: Roteamento e Rastreamento do Fleet-Ops
+        fleet-ops-routing-tracking: Roteamento e Rastreamento da Operação
         routing-optimization-engine: Mecanismo de Otimização de Rotas
         choose-which-engine-should-optimize-stop: Escolha qual mecanismo deve otimizar a ordem das paradas antes de a rota ser desenhada.
         select-route-optimization-engine: Selecione o mecanismo de otimização de rotas
@@ -3909,10 +3909,10 @@ fleet-ops:
       operations-service-rates-index-edit:
         edit: 'Editar: '
       analytics-index:
-        fleet-ops-dashboard: Painel do Fleet-Ops
+        fleet-ops-dashboard: Painel da Operação
       analytics-reports-index:
         no-reports-yet: Nenhum relatório ainda
-        create-a-fleet-ops-report-to: Crie um relatório do Fleet-Ops para acompanhar tendências operacionais, utilização e desempenho ao longo do tempo.
+        create-a-fleet-ops-report-to: Crie um relatório da Operação para acompanhar tendências operacionais, utilização e desempenho ao longo do tempo.
         no-reports-match-your-search: Nenhum relatório corresponde à sua busca
         adjust-the-search-or-filters-to: Ajuste a busca ou os filtros para encontrar um relatório existente.
         new-report: Novo relatório
@@ -4077,7 +4077,7 @@ fleet-ops:
         integrated-vendors-guide: Guia de fornecedores integrados
       operations-orders-index:
         create-your-first-order: Crie seu primeiro pedido
-        orders-are-the-center-of-fleet: 'Os pedidos são o centro do Fleet-Ops: planeje rotas, atribua motoristas e veículos, acompanhe o andamento e colete comprovantes.'
+        orders-are-the-center-of-fleet: 'Os pedidos são o centro da Operação: planeje rotas, atribua motoristas e veículos, acompanhe o andamento e colete comprovantes.'
         no-orders-match-your-filters: Nenhum pedido corresponde aos seus filtros
         adjust-the-search-bulk-search-or: Ajuste a busca, a busca em massa ou os filtros para encontrar outro pedido.
         new-order: Novo pedido
@@ -4086,7 +4086,7 @@ fleet-ops:
         order-guide: Guia de pedidos
       operations-service-rates-index:
         set-up-your-first-service-rate: Configure sua primeira tarifa de serviço
-        service-rates-define-how-fleet-ops: As tarifas de serviço definem como o Fleet-Ops precifica rotas, zonas, distância e outras regras de serviço.
+        service-rates-define-how-fleet-ops: As tarifas de serviço definem como a Operação precifica rotas, zonas, distância e outras regras de serviço.
         no-service-rates-match-your-filters: Nenhuma tarifa de serviço corresponde aos seus filtros
         adjust-the-search-or-filters-to: Ajuste a busca ou os filtros para encontrar outra tarifa de serviço.
         new-service-rate: Nova tarifa de serviço
@@ -4123,7 +4123,7 @@ fleet-ops:
         title: Orquestrador
         description: Aloque e despache pedidos de forma inteligente para os motoristas disponíveis.
       admin:
-        panel-title: Configuração do Fleet-Ops
+        panel-title: Configuração da Operação
         routing: Roteamento
         map: Mapa
         navigator-app: App Navigator
@@ -4131,7 +4131,7 @@ fleet-ops:
         track-order: Rastrear Pedido
     widgets:
       key-metrics:
-        name: Métricas do Fleet-Ops (Legado)
+        name: Métricas da Operação (Legado)
         description: OBSOLETO — substituído pelos widgets individuais de KPI. Será removido na próxima versão principal.
       kpi-earnings:
         name: Faturamento (30 dias)
@@ -6677,7 +6677,7 @@ fleet-ops:
         no-unmatched-fuel-transactions: Nenhuma transação de combustível sem associação
         no-transactions-imported-for-this-integration: Nenhuma transação importada para esta integração
         no-fuel-transactions-imported-yet: Nenhuma transação de combustível importada ainda
-        fleet-ops-did-not-find-imported: O Fleet-Ops não encontrou faturas importadas que ainda precisem de associação a veículo ou viagem.
+        fleet-ops-did-not-find-imported: A Operação não encontrou faturas importadas que ainda precisem de associação a veículo ou viagem.
         run-a-sync-from-the-fuel: Execute uma sincronização na página de detalhes da integração de combustível para importar as faturas para este registro.
         connect-petroapp-or-another-fuel-integration: Conecte o PetroApp ou outra integração de combustível e execute uma sincronização de transações. As faturas importadas aparecem aqui antes de os Relatórios de Combustível vinculados serem criados.
       management-index:
@@ -6763,7 +6763,7 @@ fleet-ops:
         payments: Pagamentos
         payment-setup-for-operational-commerce-workflows: Configuração de pagamentos para os fluxos comerciais da operação.
         custom-fields: Campos Personalizados
-        operational-metadata-fields-for-fleet-ops: Campos de metadados operacionais para os registros do Fleet-Ops.
+        operational-metadata-fields-for-fleet-ops: Campos de metadados operacionais para os registros da Operação.
         avatars: Avatares
         visual-assets-for-driver-vehicle-and: Recursos visuais para motoristas, veículos e mapas.
         communication: Comunicação
@@ -6781,7 +6781,7 @@ fleet-ops:
         map-settings: Configurações do mapa
         set-map-providers-display-defaults-and: Defina provedores de mapa, padrões de exibição e o comportamento do mapa para operadores.
         payments-guide: Guia de pagamentos
-        connect-payment-providers-and-payment-behavior: Conecte provedores de pagamento e configure os pagamentos dos fluxos do Fleet-Ops.
+        connect-payment-providers-and-payment-behavior: Conecte provedores de pagamento e configure os pagamentos dos fluxos da Operação.
         notification-settings: Configurações de notificações
         tune-operational-alerts-sent-to-dispatchers: Ajuste os alertas operacionais enviados a despachantes, clientes e motoristas.
         routing-settings: Configurações de roteamento
@@ -6791,7 +6791,7 @@ fleet-ops:
         scheduling-settings: Configurações de agendamento
         manage-schedule-templates-and-timing-rules: Gerencie modelos de escala e regras de horário para o trabalho planejado.
         custom-field-settings: Configurações de campos personalizados
-        add-structured-operational-metadata-to-fleet: Adicione metadados operacionais estruturados aos registros do Fleet-Ops.
+        add-structured-operational-metadata-to-fleet: Adicione metadados operacionais estruturados aos registros da Operação.
         avatar-settings: Configurações de avatares
         manage-visual-markers-used-across-maps: Gerencie os marcadores visuais usados nos mapas e telas operacionais.
       settings-map:
@@ -6834,7 +6834,7 @@ fleet-ops:
         select-user: Selecione o usuário
     route-js:
       home:
-        loading-fleet-ops: Carregando Fleet-Ops...
+        loading-fleet-ops: Carregando a Operação...
       settings-payments-onboard:
         this-system-is-unable-to-acceot: Este sistema não pode aceitar ou processar pagamentos no momento; contate o administrador do sistema para configurar os pagamentos.
         your-account-is-already-enabled-to: Sua conta já está habilitada para aceitar pagamentos.
@@ -8907,7 +8907,7 @@ widget:
     message: Vamos ver o que você pode fazer para acelerar as operações...
     start-task: Iniciar Tarefa
   get-started:
-    title: Primeiros Passos com o Fleet-Ops
+    title: Primeiros Passos com a Operação
     subtitle: Configure o essencial e conclua seu primeiro fluxo de despacho.
     completed: concluído(s)
     preview-title: Fluxo do primeiro pedido
@@ -8916,7 +8916,7 @@ widget:
     subtitle: Explore ferramentas que ajudam novas equipes de operação a ganhar produtividade mais rápido.
     learn-more: Saiba mais
   key-metrics:
-    title: Métricas Fleet-Ops
+    title: Métricas da Operação
     earnings: Ganhos
     fuel-expenses: Despesas com Combustível
     traveled: Distância Percorrida
@@ -9194,8 +9194,8 @@ settings:
       button-in-progress: Integração em andamento
   avatar-management: Gerenciamento de Avatares
   map:
-    fleet-ops-map-settings: Configurações do Mapa do Fleet-Ops
-    fleet-ops-map: Mapa do Fleet-Ops
+    fleet-ops-map-settings: Configurações do Mapa da Operação
+    fleet-ops-map: Mapa da Operação
     configure-map: Configurar Mapa
     map-provider: Provedor de Mapa
     map-provider-help-text: Escolha o mecanismo de mapa usado para exibir o mapa de operações ao vivo. O Leaflet usa blocos do OpenStreetMap e não exige chave de API. O Google Maps exige uma chave válida da API JavaScript do Google Maps.
@@ -9376,7 +9376,7 @@ trailer:
     notes: Observações internas sobre este reboque
   help:
     photo: Envie uma foto deste reboque.
-    name: O nome exibido no Fleet-Ops. Obrigatório.
+    name: O nome exibido na Operação. Obrigatório.
     code: Sua própria referência de frota para este reboque.
     type: O tipo define quais seções se aplicam, por exemplo refrigeração para reboques refrigerados.
     status: Status do ciclo de vida. Engate e conectividade são acompanhados separadamente.
@@ -9860,5 +9860,17 @@ sensor:
     min-threshold-placeholder: Limite mínimo
     max-threshold-placeholder: Limite máximo
 menu-text:
+  fleet-ops:
+    title: Operação
+    description: Pedidos, despacho aos motoboys, mapa ao vivo, lojas e financeiro.
+  fleet-ops-sc-orders:
+    title: Pedidos
+    description: Crie, despache e acompanhe os pedidos de entrega em tempo real.
+  fleet-ops-sc-drivers:
+    title: Motoboys
+    description: Cadastro dos motoboys, situação e posição ao vivo.
+  fleet-ops-sc-driver-payouts:
+    title: Financeiro
+    description: Extrato e pagamento dos motoboys, faturas das lojas e margem.
   track-order:
     title: Rastrear Pedido

@@ -4,6 +4,9 @@ Parte do `CLAUDE.md` da raiz (índice em "Onde está cada assunto"). Responda e 
 
 O escopo do produto e as extensões fora do console: `CLAUDE.md` da raiz ("Escopo enxuto"). Selo e painel iFood: `api/app/Support/Entregas/Ifood/CLAUDE.md` ("Etapa 4"); painel "Distribuição": `api/app/Support/Entregas/Distribuicao/CLAUDE.md`; painel "Integração" e tela Lojas: `api/app/Support/Entregas/Integracao/CLAUDE.md`.
 
+- **Nome na tela: "Operação"** (decisão do Edgard, 2026-10-26: "condiz mais com o português"). Vale para o menu do topo, o "⋯" (Extensões) e todos os textos pt-BR que diziam "Fleet-Ops" ("do Fleet-Ops" virou "da Operação"). Os identificadores ficam: rota e URL `/fleet-ops`, `console.fleet-ops`, o engine `@fleetbase/fleetops-engine`, as chaves `fleet-ops.*` e o título `'Fleet-Ops'` do `registerHeaderMenuItem` (gera o id `fleet-ops` dos atalhos salvos). O texto da tela sai de `menu-text.fleet-ops*` no `translations/pt-br.yaml`. Texto novo em pt-BR: escreva "Operação", nunca "Fleet-Ops".
+  - **Atalhos do cabeçalho:** `intl.t()` no `extension.js` roda na inicialização, ainda em inglês, e o texto fica congelado (era o "Orders"/"Finances" no topo). Por isso os atalhos são traduzidos pelo id em `menu-text.fleet-ops-sc-*`; atalho novo precisa da chave lá.
+
 ## Telas, pagamento e cobrança, mapa ao vivo
 
 - **Telas ocultas do Fleet-Ops:** a lista está em `packages/fleetops/addon/utils/entregas-hidden-routes.js`.

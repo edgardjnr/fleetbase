@@ -3,6 +3,8 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { isArray } from '@ember/array';
 import { htmlSafe } from '@ember/template';
+import { inject as service } from '@ember/service';
+import menuText from '../../../../utils/menu-text';
 
 /**
  * Layout::Header::SmartNavMenu::Dropdown
@@ -15,6 +17,7 @@ import { htmlSafe } from '@ember/template';
  * (muted style, no pin button).
  */
 export default class LayoutHeaderSmartNavMenuDropdownComponent extends Component {
+    @service intl;
     @tracked searchQuery = '';
 
     get positionStyle() {
@@ -41,10 +44,14 @@ export default class LayoutHeaderSmartNavMenuDropdownComponent extends Component
         if (!query) {
             return this.expandedItems;
         }
+        const contem = (texto) => typeof texto === 'string' && texto.toLowerCase().includes(query);
         return this.expandedItems.filter((item) => {
-            if ((item.title || '').toLowerCase().includes(query)) return true;
-            if (item.description && item.description.toLowerCase().includes(query)) return true;
-            if (item._parentTitle && item._parentTitle.toLowerCase().includes(query)) return true;
+            if (contem(item.title)) return true;
+            if (contem(item.description)) return true;
+            if (contem(item._parentTitle)) return true;
+            // Entregas: também pelo texto traduzido (menu-text), que é o que aparece na tela
+            if (contem(menuText(this.intl, item, 'title')) || contem(menuText(this.intl, item, 'description'))) return true;
+            if (item._parentId && contem(menuText(this.intl, { id: item._parentId, title: item._parentTitle }, 'title'))) return true;
             // Match against any of the item's tags
             if (isArray(item.tags) && item.tags.some((t) => t.toLowerCase().includes(query))) return true;
             return false;

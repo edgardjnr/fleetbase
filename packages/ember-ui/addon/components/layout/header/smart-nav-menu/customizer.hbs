@@ -64,7 +64,7 @@
                         </div>
                         <span class="snm-customizer-item-title truncate">{{menu-text item "title"}}</span>
                         {{#if item._parentTitle}}
-                            <span class="snm-customizer-item-parent-label">· {{item._parentTitle}}</span>
+                            <span class="snm-customizer-item-parent-label">· {{menu-text (hash id=item._parentId title=item._parentTitle) "title"}}</span>
                         {{/if}}
                         <button
                             type="button"
@@ -115,7 +115,7 @@
                         </div>
                         <span class="snm-customizer-item-title truncate">{{menu-text item "title"}}</span>
                         {{#if item._parentTitle}}
-                            <span class="snm-customizer-item-parent-label">· {{item._parentTitle}}</span>
+                            <span class="snm-customizer-item-parent-label">· {{menu-text (hash id=item._parentId title=item._parentTitle) "title"}}</span>
                         {{/if}}
                         {{#if (this.isPinned item)}}
                             <FaIcon @icon="check" @size="xs" class="snm-customizer-pinned-check ml-auto flex-shrink-0" />

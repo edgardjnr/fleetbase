@@ -842,7 +842,7 @@ widget-text:
     description: Faturas do cliente em aberto, quando o Ledger está instalado.
   customer-portal-open-tickets:
     name: Chamados de suporte abertos
-    description: Chamados de suporte abertos, registrados como ocorrências do Fleet-Ops.
+    description: Chamados de suporte abertos, registrados como ocorrências da Operação.
   customer-portal-recent-orders:
     name: Pedidos recentes
     description: Pedidos mais recentes da conta de cliente ativa no portal.

@@ -235,7 +235,7 @@ iam:
         operations-manager: Papel responsável por supervisionar todas as operações, incluindo despacho, gestão da frota e coordenação de pedidos.
         fleet-supervisor: Papel focado na gestão da frota e dos motoristas.
         service-coordinator: Papel dedicado à gestão de tarifas de serviço e zonas.
-        operations-administrator: Papel com acesso administrativo completo a todos os aspectos operacionais do Fleet-Ops.
+        operations-administrator: Papel com acesso administrativo completo a todos os aspectos da Operação.
         maintenance-technician: Papel para técnicos responsáveis por registros de manutenção, ordens de serviço, equipamentos e estoque de peças.
         driver-coordinator: Papel responsável por coordenar motoristas, veículos e pedidos.
         navigator-app-manager: Papel responsável por gerenciar as configurações do aplicativo Navigator.
@@ -272,8 +272,8 @@ iam:
       driver-coordinator: Coordenador de motoristas
       navigator-app-manager: Gerente do app Navigator
       driver: Motorista
-      fleet-ops-customer: Cliente (Fleet-Ops)
-      fleet-ops-contact: Contato (Fleet-Ops)
+      fleet-ops-customer: Cliente (Operação)
+      fleet-ops-contact: Contato (Operação)
       ledger-administrator: Administrador do Ledger
       billing-specialist: Especialista em cobrança
       accountant: Contador
@@ -324,7 +324,7 @@ iam:
       services:
         developers: Desenvolvedores
         iam: IAM
-        fleetops: Fleet-Ops
+        fleetops: Operação
         ledger: Ledger
         registrybridge: Registry Bridge
         storefront: Storefront

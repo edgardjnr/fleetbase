@@ -20,7 +20,7 @@ O objetivo é que nenhum texto de interface apareça em inglês com pt-BR seleci
   ```
   - Precisa sair com exit 0. O `VERBOSE=1` lista o que falta e os textos fixos restantes.
   - Também confira que todo JS alterado parseia com `@babel/parser` de `console/node_modules/.pnpm/@babel+parser@7*`. Um import duplicado já quebrou o build.
-- **Menus registrados por extensões** (header, atalhos, painéis admin): o título gera `id`/`slug`/`view` (URLs). Não troque o título; traduza por `menu-text.<id>.title|description`, com o helper e util `menu-text` do ember-ui. Itens de painel admin usam `<panel-slug>-<item-view>`.
+- **Menus registrados por extensões** (header, atalhos, painéis admin): o título gera `id`/`slug`/`view` (URLs). Não troque o título; traduza por `menu-text.<id>.title|description`, com o helper e util `menu-text` do ember-ui. Itens de painel admin usam `<panel-slug>-<item-view>`. O selo "· <extensão>" dos cartões do "⋯" (Extensões) e a busca de lá também passam pelo `menu-text` (pelo `_parentId` do atalho), desde 2026-10-26.
 - **Widgets do painel:** `widget-text.<widget-id>.name|description` (util `widget-text`). As categorias usam `ember-ui.dashboard.widget-category.*`.
 - **Status e enums:** o `Badge` e o `smart-humanize` traduzem por `ember-ui.status.<valor>`. O `@status` continua cru, porque vira classe CSS de cor.
 - **Texto que vem da API**, sempre por identificador estável e com fallback ao texto do servidor:
