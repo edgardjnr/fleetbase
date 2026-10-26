@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Entregas;
 
 use App\Http\Controllers\Controller;
 use App\Notifications\Entregas\PagamentoRegistrado;
+use App\Notifications\Entregas\PixDeSaqueAlterado;
 use App\Support\Entregas\Financeiro\ChavePix;
 use App\Support\Entregas\Financeiro\CicloDeCobranca;
 use App\Support\Entregas\Financeiro\ExtratoDaConta;
@@ -11,6 +12,7 @@ use App\Support\Entregas\Financeiro\Financeiro;
 use App\Support\Entregas\Financeiro\Lancamentos;
 use App\Support\Entregas\Financeiro\PainelFinanceiro;
 use App\Support\Entregas\Financeiro\Pagamentos;
+use App\Support\Entregas\Saques\Saque;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
@@ -168,7 +170,9 @@ class FinanceiroController extends Controller
         if (isset($pix['erro'])) {
             return $this->erro($pix['erro']);
         }
-        ChavePix::salvar($this->empresa(), (string) $motoboy->uuid, $pix['chave'], $pix['tipo']);
+        if (ChavePix::salvar($this->empresa(), (string) $motoboy->uuid, $pix['chave'], $pix['tipo'], $this->usuario($request))) {
+            $this->avisarPixAlterado($motoboy);
+        }
 
         return response()->json(['pix' => ['chave' => $pix['chave'], 'tipo' => $pix['tipo']]]);
     }
@@ -527,6 +531,19 @@ class FinanceiroController extends Controller
             $motoboy?->notify(new PagamentoRegistrado((string) $pagamento->uuid, (float) $pagamento->valor, (string) $pagamento->forma));
         } catch (\Throwable $e) {
             Log::warning('[entregas] financeiro: push do pagamento não saiu', ['pagamento' => $pagamento->uuid ?? null, 'erro' => $e->getMessage()]);
+        }
+    }
+
+    /** O push "Chave Pix alterada" ao motoboy, com a hora em que o saque volta (24 h); uma falha só fica no log. */
+    protected function avisarPixAlterado(Driver $motoboy): void
+    {
+        try {
+            $liberado = (new \DateTimeImmutable(now()->format('Y-m-d H:i:s'), new \DateTimeZone((string) (config('app.timezone') ?: Financeiro::FUSO_PADRAO))))
+                ->modify('+' . Saque::CARENCIA_PIX_HORAS . ' hours')
+                ->setTimezone(new \DateTimeZone(Financeiro::fuso($this->empresa())));
+            $motoboy->notify(new PixDeSaqueAlterado($liberado->format('d/m') . ' às ' . $liberado->format('H:i')));
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] saque: push da troca da chave Pix não saiu', ['motoboy' => $motoboy->uuid ?? null, 'erro' => get_class($e)]);
         }
     }
 
