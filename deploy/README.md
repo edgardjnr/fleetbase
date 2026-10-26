@@ -62,3 +62,20 @@ No Portainer, se usar "Update the stack", deixe **Re-pull image desligado**.
 - **Arquivos:** os uploads ficam no volume `entregas_api_storage` e o MySQL no `entregas_mysql_data`.
   Inclua os dois no backup.
 - **Limite de upload:** a Cloudflare (plano free) corta requisições acima de 100 MB.
+
+## Saque Pix (Asaas): Docker secret
+
+A chave de API do Asaas de cada central fica cifrada no MySQL. A chave que cifra fica num **Docker secret**, fora do
+banco e do Portainer. Crie uma vez, **antes** de colar o `docker-stack.yml` novo no Portainer:
+
+```bash
+openssl rand -base64 32 | docker secret create entregas_saque_chave -
+docker secret ls | grep entregas_saque_chave
+```
+
+- O secret entra só na API (`application`) e no agendador (`scheduler`), em `/run/secrets/entregas_saque_chave`.
+- Não apague nem recrie: sem a mesma chave, as chaves do Asaas gravadas não decifram e as centrais precisam conectar de
+  novo. Para trocar de propósito: desligue o saque, crie `entregas_saque_chave_2`, aponte o stack para ele e peça às
+  centrais para conectar de novo.
+- Depois do stack atualizado: `ENTREGAS_SAQUE=1` no `stack.env` (Stacks → entregas → Editor → Update the stack, "Re-pull
+  image" desligado).

@@ -89,6 +89,10 @@ x-api-env: &api-env
   # financeiro (extrato e pagamento dos motoboys, faturas das lojas): 1 liga o lançamento automático das corridas, as
   # rotinas entregas:financeiro-* e os e-mails das faturas; vazio = só as telas e os lançamentos manuais
   ENTREGAS_FINANCEIRO: ${ENTREGAS_FINANCEIRO:-}
+  # saque Pix do motoboy pelo app, pela conta Asaas da central: 1 liga. A chave que cifra a chave de API das centrais vem
+  # do Docker secret entregas_saque_chave (só application e scheduler). O ensaio usa https://api-sandbox.asaas.com/v3
+  ENTREGAS_SAQUE: ${ENTREGAS_SAQUE:-}
+  ASAAS_API_URL: ${ASAAS_API_URL:-https://api.asaas.com/v3}
   # trava "Atualize o app" do motoboy (AppDoMotoboy): 1 liga; a versão mínima é a última publicada no MinIO pelo
   # GitHub Actions do app. ENTREGAS_APP_VERSAO_MINIMA fixa outra à mão (emergência). Ligar só com o APK 35+ em todos
   ENTREGAS_APP_TRAVA: ${ENTREGAS_APP_TRAVA:-}
@@ -155,6 +159,7 @@ services:
       LOG_CHANNEL: stderr
     volumes:
       - api_storage:/fleetbase/api/storage/app
+    secrets: [entregas_saque_chave]
     # substitui o healthcheck herdado (admin do Caddy na :2019): só exige que o Octane responda HTTP
     healthcheck:
       test: ["CMD-SHELL", "curl -s -o /dev/null --max-time 5 http://localhost:8000/ || exit 1"]
@@ -212,6 +217,7 @@ services:
     environment: *api-env
     volumes:
       - api_storage:/fleetbase/api/storage/app
+    secrets: [entregas_saque_chave]
     networks: [internal]
     deploy: *default-deploy
 
@@ -238,3 +244,11 @@ networks:
   public:
     external: true
     name: ${PUBLIC_NETWORK:-network_public}
+
+# Chave do Cofre do saque Pix (cifra a chave de API do Asaas das centrais). Crie ANTES de atualizar o stack, senão o
+# deploy falha com "secret not found":
+#   openssl rand -base64 32 | docker secret create entregas_saque_chave -
+# Nunca apague nem troque à toa: sem ela, as chaves gravadas não decifram (as centrais precisam conectar de novo).
+secrets:
+  entregas_saque_chave:
+    external: true
