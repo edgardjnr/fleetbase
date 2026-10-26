@@ -28,3 +28,7 @@ Endereços, VPS, stack e comandos de deploy: `CLAUDE.md` da raiz ("Produção").
   - **Criar ou entrar em organização só o admin do sistema** (2026-10-25): o `BarrarOrganizacaoParaNaoAdmin` (fim do grupo `fleetbase.protected`) dá 403 em `int/v1/auth/create-organization` e `join-organization` a quem não é `type admin`; o console esconde o menu e o botão de Conta → Organizações. Instalação (`onboard/create-account`) e convite (`users/accept-company-invite`) não passam por ele. Teste: `scripts/teste-php/barrar-organizacao.php`.
   - **Motoboy não entra no console** (2026-10-23), nem o líder: o `BarrarMotoboyNoConsole` da API dá 403 no login. Para liberar o console a quem também tem cadastro de motoboy, dê a ele o papel Administrator na organização (ver "Segurança" em `packages/customer-portal/CLAUDE.md`).
 - **E-mail:** `MAIL_MAILER=log` até alguém configurar SMTP no `stack.env`.
+
+## Docker secret do saque Pix
+
+`entregas_saque_chave` (externo) cifra a chave de API do Asaas das centrais. Criado à mão na VPS antes do stack novo (`deploy/README.md`); entra só em `application` e `scheduler`. Sem ele o deploy do stack falha ("secret not found"). Não recriar: as chaves gravadas deixam de decifrar.

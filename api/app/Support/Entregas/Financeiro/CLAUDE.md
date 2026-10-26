@@ -6,7 +6,7 @@ Extrato e pagamento dos motoboys (corridas, diária, bônus, ajuste, adiantament
 
 Telas do console: `packages/fleetops/CLAUDE.md` ("Financeiro"). Portal: `packages/customer-portal/CLAUDE.md` ("Financeiro da loja"). App: `api/app/Http/Controllers/Entregas/CLAUDE.md` ("Início = extrato do Financeiro"). E-mails: `api/app/Notifications/Entregas/Email/CLAUDE.md`.
 
-**Só registro:** o dinheiro sai e entra fora do sistema (app do banco). O sistema guarda valor, forma, data e comprovante. Sem integração bancária (fica para depois).
+**Registro + saque Pix pelo app:** o pagamento feito pela central continua só registro (o dinheiro sai pelo app do banco). O motoboy pode sacar o saldo pelo app quando a central conecta o Asaas e liga o saque (`api/app/Support/Entregas/Saques/CLAUDE.md`): o saque vira um pagamento Pix do sistema, que não se estorna à mão.
 
 ## Regras
 
@@ -185,6 +185,7 @@ Comprovante: GET `v1/entregas/comprovantes/{uuid}` (`ComprovantesController@most
 - "Há mais de um pedido com esse número; use o código do pedido (order_…)" e "Pedido não encontrado." (pedido do ajuste).
 - "A corrida deste pedido já foi estornada." (ajuste negativo com pedido sem corrida valendo em alguma das contas; o caminho inverso é o `estornosDevidos`).
 - "Diária e bônus não aceitam valor negativo.", "Só o ajuste pode ter pedido.", "Lance para até 100 contas de uma vez.", "Estorne o pagamento pelo botão do pagamento.".
+- "Saque em andamento.", "O dinheiro do saque já saiu; corrija com um ajuste.", "Este saque não foi concluído e o pagamento já foi estornado." (estornar pagamento de saque).
 - "O comprovante precisa ser uma imagem ou um PDF.", "O comprovante pode ter até 10 MB.", "Envie um comprovante só.".
 - Faturas: "Fatura sem valor a cobrar; cancele o rascunho.", "A fatura já foi emitida: cancele em vez de apagar.", "Informe o motivo do ajuste (a loja vê este texto).", "Esta entrega já está marcada como não cobrada.", "O vencimento não pode ser antes do fim do período.", "Só a fatura emitida vai por e-mail.", e as do ciclo (`CicloDeCobranca::validar`).
 

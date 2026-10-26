@@ -138,7 +138,8 @@ valor ≥ mínimo e ≤ disponível.
    `externalReference` = `saque:<uuid>`.
 4. `Pagamentos::registrar`: pagamento `forma = pix`, `observacao_interna` "Saque Pix pelo app", ligado ao saque
    (`entregas_saques.pagamento_uuid`).
-5. Taxa > 0: lançamento `ajuste` negativo, motivo "Taxa do saque Pix", `pagamento_uuid` do saque (para estornar junto).
+5. Taxa > 0: lançamento `ajuste` negativo, motivo "Taxa do saque Pix", ligado ao saque por `taxa_lancamento_id` (sem
+   `pagamento_uuid`, para o extrato não mostrar como pagamento).
 
 O dinheiro sai do saldo na hora: console, painel e extrato já o mostram como pago.
 
@@ -183,7 +184,9 @@ Saques `enviando`/`processando` de centrais conectadas:
 
 ### Reembolso
 
-Estorno automático do pagamento do saque e da taxa (`Lancamentos::estornar`, motivo "Saque não concluído"), push
+Estorno automático do pagamento do saque e da taxa: `Pagamentos::estornar` com o motivo padrão "Pagamento estornado" (o
+app reconhece o estorno de pagamento por esse texto; o motivo da falha fica no saque e no push) e `Lancamentos::estornar`
+da taxa com "Taxa do saque devolvida". Push
 "Saque não concluído; o valor voltou para o seu saldo." com o motivo. Idempotente (estorno repetido → ignora o 409).
 
 ### Console
