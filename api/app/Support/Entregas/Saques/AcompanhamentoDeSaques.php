@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Log;
  * não achou, falha e devolve. Sem transfer_id há mais de 5 min (a API caiu no meio do envio): procura pelo
  * externalReference; achou, adota; não achou, falha e devolve. Erro de rede, outro erro ou 404 recente nunca dá por
  * falho: tenta no minuto seguinte. Um saque com problema não para os outros, e uma central não para as outras.
+ * Mais de uma transferência com o externalReference do saque (quem tem a chave de API pode copiá-lo): só adota a que a
+ * validação aprovou (aprovado_transfer_id); sem ela, Log::critical e o saque fica parado (nem adota, nem falha).
  */
 final class AcompanhamentoDeSaques
 {
@@ -109,7 +111,11 @@ final class AcompanhamentoDeSaques
         return static::adotar($saque, $achada);
     }
 
-    /** A transferência do saque nas recentes (pelo externalReference); null se não está lá; false se o Asaas não respondeu. */
+    /**
+     * A transferência do saque nas recentes (pelo externalReference); null se não está lá; false se o Asaas não respondeu
+     * ou se não dá para saber qual é a dele (mais de uma com o externalReference e nenhuma é a aprovada, ou a única não é
+     * a aprovada: Log::critical e o saque fica parado).
+     */
     private static function achar(AsaasCliente $asaas, object $saque, array|false|null &$recentes): array|false|null
     {
         if ($recentes === false) {
@@ -118,12 +124,31 @@ final class AcompanhamentoDeSaques
         if ($recentes === null) {
             return false;
         }
+        $lista = $recentes[(string) $saque->external_reference] ?? [];
+        if ($lista === []) {
+            return null;
+        }
+        $aprovada = ($saque->aprovado_transfer_id ?? null) !== null ? (string) $saque->aprovado_transfer_id : null;
+        if (count($lista) === 1 && ($aprovada === null || (string) $lista[0]['id'] === $aprovada)) {
+            return $lista[0];
+        }
+        foreach ($lista as $item) {
+            if ($aprovada !== null && (string) $item['id'] === $aprovada) {
+                return $item;
+            }
+        }
+        Log::critical('[entregas] saque: transferências no Asaas com o externalReference do saque e nenhuma é a aprovada', [
+            'empresa'  => $saque->company_uuid,
+            'saque'    => $saque->uuid,
+            'aprovada' => $aprovada,
+            'achadas'  => array_map(fn ($item) => (string) $item['id'], $lista),
+        ]);
 
-        return $recentes[(string) $saque->external_reference] ?? null;
+        return false;
     }
 
     /**
-     * Adota a transferência achada: só se ela confere com o saque (valor e externalReference) e ele ainda está em
+     * Adota a transferência achada: só se ela confere com o saque (Saques::confere) e ele ainda está em
      * andamento (um saque que falhou no meio, valor já devolvido, não volta a processar); depois aplica o status.
      */
     private static function adotar(object $saque, array $achada): bool
@@ -135,7 +160,7 @@ final class AcompanhamentoDeSaques
         return Saques::aplicarStatus(Saques::recarregar($saque), $achada);
     }
 
-    /** externalReference => transferência, das mais recentes (até 500); null se o Asaas não respondeu. */
+    /** externalReference => [transferências], das mais recentes (até 500); null se o Asaas não respondeu. */
     private static function transferenciasRecentes(AsaasCliente $asaas): ?array
     {
         $porReferencia = [];
@@ -148,7 +173,7 @@ final class AcompanhamentoDeSaques
             foreach ($itens as $item) {
                 $referencia = $item['externalReference'] ?? null;
                 if (is_string($referencia) && $referencia !== '' && is_string($item['id'] ?? null)) {
-                    $porReferencia[$referencia] = $item;
+                    $porReferencia[$referencia][] = $item;
                 }
             }
             if (count($itens) < static::POR_PAGINA || ($resposta->dados['hasMore'] ?? null) === false) {

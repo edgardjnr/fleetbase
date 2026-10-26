@@ -159,6 +159,72 @@ asaas(200, ['data' => [['id' => 'tra_errada', 'externalReference' => 'saque:' . 
 confere(AcompanhamentoDeSaques::conferir() === 0 && saqueDoBanco(UA)->transfer_id === 'tra_sumiu' && saqueDoBanco(UA)->situacao === 'processando', 'achada com outro valor: não adota, nada muda');
 confere(in_array('[entregas] saque: transferência não confere com o saque', logsDe('critical'), true), 'e vai ao log como crítico');
 
+echo '== Segunda revisão, N2: mais de uma transferência com o mesmo externalReference' . PHP_EOL;
+/** O saque UA de 50 "enviando" sem id (POST sem resposta), aprovado pela validação para tra_REAL se $aprovar. */
+function saqueSemRespostaDoPost(bool $aprovar): void
+{
+    centralComSaque();
+    $s = Saques::pedir('empresa-1', 'driver-1', UA, 50)['saque'];
+    asaas(200, ['data' => [['id' => 'wallet-1']]]);
+    asaas(0, null);
+    Saques::enviar($s);
+    if ($aprovar) {
+        $real = ['type' => 'TRANSFER', 'transfer' => ['id' => 'tra_REAL', 'value' => 50, 'operationType' => 'PIX', 'externalReference' => 'saque:' . UA, 'bankAccount' => ['pixAddressKey' => '+5511999994321']]];
+        confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, $real) === [200, ['status' => 'APPROVED']], 'a validação aprovou tra_REAL');
+    }
+    Relogio::$agora = '2026-10-27 10:06:00';
+}
+saqueSemRespostaDoPost(true);
+asaas(200, ['data' => [
+    ['id' => 'tra_REAL', 'status' => 'DONE', 'value' => 50, 'externalReference' => 'saque:' . UA, 'transactionReceiptUrl' => 'https://www.asaas.com/c/real'],
+    ['id' => 'tra_ATT', 'status' => 'DONE', 'value' => 50, 'externalReference' => 'saque:' . UA, 'transactionReceiptUrl' => 'https://www.asaas.com/c/att'],
+], 'hasMore' => false]);
+AcompanhamentoDeSaques::conferir();
+$s = saqueDoBanco(UA);
+confere($s->situacao === 'concluido' && $s->transfer_id === 'tra_REAL' && $s->comprovante_url === 'https://www.asaas.com/c/real', 'PoC B: duas na lista (a do atacante por último): adota a aprovada (tra_REAL), com o comprovante dela');
+confere(logsDe('critical') === [], 'sem log crítico');
+
+saqueSemRespostaDoPost(true);
+asaas(200, ['data' => [
+    ['id' => 'tra_REAL', 'status' => 'DONE', 'value' => 50, 'externalReference' => 'saque:' . UA],
+    ['id' => 'tra_ATT', 'status' => 'FAILED', 'value' => 50, 'externalReference' => 'saque:' . UA, 'failReason' => 'Recusada'],
+], 'hasMore' => false]);
+AcompanhamentoDeSaques::conferir();
+$s = saqueDoBanco(UA);
+confere($s->situacao === 'concluido' && $s->transfer_id === 'tra_REAL', 'PoC C: a do atacante FAILED não falha (nem devolve) o saque; vale a aprovada (DONE)');
+
+saqueSemRespostaDoPost(false);
+asaas(200, ['data' => [
+    ['id' => 'tra_X', 'status' => 'DONE', 'value' => 50, 'externalReference' => 'saque:' . UA],
+    ['id' => 'tra_Y', 'status' => 'FAILED', 'value' => 50, 'externalReference' => 'saque:' . UA],
+], 'hasMore' => false]);
+confere(AcompanhamentoDeSaques::conferir() === 0 && saqueDoBanco(UA)->situacao === 'enviando' && saqueDoBanco(UA)->transfer_id === null, 'duas e nenhuma aprovada: nem adota, nem falha (fica parado)');
+confere(logsDe('critical') === ['[entregas] saque: transferências no Asaas com o externalReference do saque e nenhuma é a aprovada'], 'e vai ao log como crítico');
+
+saqueSemRespostaDoPost(true);
+asaas(200, ['data' => [['id' => 'tra_ATT', 'status' => 'DONE', 'value' => 50, 'externalReference' => 'saque:' . UA]], 'hasMore' => false]);
+confere(AcompanhamentoDeSaques::conferir() === 0 && saqueDoBanco(UA)->situacao === 'enviando' && saqueDoBanco(UA)->transfer_id === null, 'uma só, mas não é a aprovada: não adota, nem falha');
+confere(logsDe('critical') === ['[entregas] saque: transferências no Asaas com o externalReference do saque e nenhuma é a aprovada'], 'e vai ao log como crítico');
+
+saqueSemRespostaDoPost(false);
+asaas(200, ['data' => [['id' => 'tra_X', 'status' => 'BANK_PROCESSING', 'value' => 50, 'externalReference' => 'saque:' . UA]], 'hasMore' => false]);
+confere(AcompanhamentoDeSaques::conferir() === 0 && saqueDoBanco(UA)->transfer_id === 'tra_X' && saqueDoBanco(UA)->situacao === 'processando', 'uma só e nenhuma aprovação gravada: adota como antes');
+
+echo '== Segunda revisão, N2: a conclusão confere a chave Pix e o operationType' . PHP_EOL;
+centralComSaque();
+saqueEnviado('driver-1', UA, 10, ['id' => 'tra_a', 'status' => 'PENDING']);
+asaas(200, ['id' => 'tra_a', 'status' => 'DONE', 'value' => 10, 'bankAccount' => ['pixAddressKey' => 'atacante@exemplo.com']]);
+confere(AcompanhamentoDeSaques::conferir() === 0 && saqueDoBanco(UA)->situacao === 'processando', 'GET com outra chave Pix: não conclui');
+confere(logsDe('critical') === ['[entregas] saque: transferência não confere com o saque'], 'e vai ao log como crítico');
+asaas(200, ['id' => 'tra_a', 'status' => 'FAILED', 'value' => 10, 'operationType' => 'TED']);
+confere(AcompanhamentoDeSaques::conferir() === 0 && saqueDoBanco(UA)->situacao === 'processando', 'GET com operationType TED: não falha (nem devolve)');
+asaas(200, ['id' => 'tra_a', 'status' => 'DONE', 'value' => 10, 'operationType' => 'PIX', 'bankAccount' => ['pixAddressKey' => '(11) *****-4321']]);
+confere(AcompanhamentoDeSaques::conferir() === 1 && saqueDoBanco(UA)->situacao === 'concluido', 'chave mascarada no GET: não dá para comparar, segue (Pix, valor certo)');
+centralComSaque();
+saqueEnviado('driver-1', UA, 10, ['id' => 'tra_a', 'status' => 'PENDING']);
+asaas(200, ['id' => 'tra_a', 'status' => 'DONE', 'value' => 10, 'operationType' => 'PIX', 'bankAccount' => ['pixAddressKey' => '+55 11 99999-4321']]);
+confere(AcompanhamentoDeSaques::conferir() === 1 && saqueDoBanco(UA)->situacao === 'concluido', 'a mesma chave (com +55): conclui');
+
 echo '== Comando e agenda' . PHP_EOL;
 centralComSaque();
 saqueEnviado('driver-1', UA, 10, ['id' => 'tra_a', 'status' => 'PENDING']);

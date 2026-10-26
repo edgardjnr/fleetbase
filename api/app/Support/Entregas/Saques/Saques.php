@@ -365,16 +365,22 @@ final class Saques
     }
 
     /**
-     * A transferência do Asaas é a deste saque: o valor (quando vem) e o externalReference (quando vem) batem. Se não
-     * batem, Log::critical e false: quem chama não muda nada (o saque fica parado e aparece no painel).
+     * A transferência do Asaas é a deste saque: o valor, o externalReference, a chave Pix (inteira, sem "*") e o
+     * operationType (PIX), cada um quando vem, batem. Se não batem, Log::critical e false: quem chama não muda nada (o
+     * saque fica parado e aparece no painel).
      */
     public static function confere(object $saque, array $dados): bool
     {
         $valor      = $dados['value'] ?? null;
         $referencia = $dados['externalReference'] ?? null;
+        $chave      = $dados['bankAccount']['pixAddressKey'] ?? $dados['pixAddressKey'] ?? null;
+        $chave      = is_string($chave) && trim($chave) !== '' ? trim($chave) : null;
+        $operacao   = $dados['operationType'] ?? null;
         $valorBate  = $valor === null || (is_numeric($valor) && Saque::centavos($valor) === Saque::centavos($saque->valor));
         $refBate    = $referencia === null || $referencia === '' || (string) $referencia === (string) $saque->external_reference;
-        if ($valorBate && $refBate) {
+        $chaveBate  = $chave === null || ValidacaoDeSaque::mascarada($chave) || ValidacaoDeSaque::mesmaChave((string) $saque->chave_pix, (string) $saque->tipo_chave, $chave);
+        $pixBate    = $operacao === null || $operacao === 'PIX';
+        if ($valorBate && $refBate && $chaveBate && $pixBate) {
             return true;
         }
         Log::critical('[entregas] saque: transferência não confere com o saque', [
@@ -383,13 +389,15 @@ final class Saques
             'transfer' => is_scalar($dados['id'] ?? null) ? (string) $dados['id'] : null,
             'valor'    => $valorBate ? 'confere' : 'diferente',
             'externalReference' => $refBate ? 'confere' : 'diferente',
+            'chave'    => $chaveBate ? 'confere' : 'diferente',
+            'operationType' => $pixBate ? 'confere' : (is_scalar($operacao) ? mb_substr((string) $operacao, 0, 30) : 'diferente'),
         ]);
 
         return false;
     }
 
     /**
-     * Aplica o status de uma transferência do Asaas ao saque (só se ela confere com o saque: valor e externalReference).
+     * Aplica o status de uma transferência do Asaas ao saque (só se ela confere com o saque: Saques::confere).
      * true se ele terminou agora (concluído ou falho).
      */
     public static function aplicarStatus(object $saque, array $dados): bool
