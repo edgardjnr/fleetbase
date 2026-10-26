@@ -18,6 +18,7 @@ import {
     validarPix,
 } from '../../utils/financeiro';
 import { selosDaCorrida } from '../../utils/financeiro-multiplicadores';
+import { avisoDeCarencia, linkSeguro, seloDoSaque } from '../../utils/financeiro-saque-pix';
 
 const ENDPOINT = 'entregas/financeiro/motoboys';
 // tipos que aparecem na conta do motoboy (o filtro "tipo" do extrato)
@@ -26,7 +27,9 @@ const TIPOS_DO_MOTOBOY = ['corrida', 'diaria', 'bonus', 'ajuste', 'saldo_inicial
 /**
  * Entregas RestaurantePro: extrato de um motoboy no Financeiro. Saldo de agora, Pix (copiar e editar), filtros de período
  * e tipo, saldo anterior e totais do período, lançamentos agrupados por dia com a situação de cada crédito (calculada no
- * servidor com a conta inteira), Registrar pagamento, Lançar, Estornar por linha e CSV.
+ * servidor com a conta inteira), Registrar pagamento, Lançar, Estornar por linha e CSV. Saque Pix pelo app: o interruptor
+ * "Saque liberado / bloqueado" e o aviso de carência depois da troca da chave (bloco `saque` do extrato, só com o saque
+ * ligado na central) e o selo "Saque Pix · app" com a situação e o comprovante do Asaas no pagamento de saque.
  * Formato "Extrato"/"Lancamento" do contrato (plano do financeiro, 1.5).
  */
 export default class FinanceiroMotoboyController extends Controller {
@@ -71,6 +74,15 @@ export default class FinanceiroMotoboyController extends Controller {
 
     get grupos() {
         return agruparPorDia(this.extrato?.lancamentos);
+    }
+
+    /** {bloqueado, liberado_em, alterada_por} do saque Pix; null com o saque desligado na central (sem interruptor). */
+    get saque() {
+        return this.extrato?.saque ?? null;
+    }
+
+    get carencia() {
+        return avisoDeCarencia(this.saque);
     }
 
     get tiposDoFiltro() {
@@ -146,6 +158,20 @@ export default class FinanceiroMotoboyController extends Controller {
     /** Selos da corrida: "2ª entrega" e "Chuva ×1,2" (o fator desta conta, dos detalhes do lançamento). */
     @action selos(detalhes) {
         return selosDaCorrida(detalhes, this.intl.primaryLocale);
+    }
+
+    /** Selo "Saque Pix · app" do pagamento de saque: {status do Badge, chave da situação}. */
+    @action seloDoSaque(saque) {
+        return seloDoSaque(saque);
+    }
+
+    @action linkSeguro(url) {
+        return linkSeguro(url);
+    }
+
+    /** O Toggle chama com o estado novo: ligado = saque liberado. */
+    @action alternarSaque(liberado) {
+        this.salvarSaque.perform(liberado);
     }
 
     @action setData(campo, event) {
@@ -274,6 +300,16 @@ export default class FinanceiroMotoboyController extends Controller {
             yield this.fetch.put(`${ENDPOINT}/${this.motoboyId}/pix`, { tipo: this.pixTipo, chave: this.pixChave.trim() });
             this.fecharPix();
             this.notifications.success(this.intl.t('fleet-ops.ui.financeiro.pix.salvo'));
+            yield this.carregar.perform();
+        } catch (error) {
+            this.notifications.serverError(error);
+        }
+    }
+
+    @task({ drop: true }) *salvarSaque(liberado) {
+        try {
+            yield this.fetch.put(`${ENDPOINT}/${this.motoboyId}/saque`, { bloqueado: liberado !== true });
+            this.notifications.success(this.intl.t(`fleet-ops.ui.financeiro.saque-pix.motoboys.${liberado ? 'salvo-liberado' : 'salvo-bloqueado'}`, { nome: this.nome }));
             yield this.carregar.perform();
         } catch (error) {
             this.notifications.serverError(error);
