@@ -113,6 +113,21 @@ em_andamento, indisponivel_motivo} só quando a central liberou. O extrato e o r
 houver) e `saque_parado` (1 h). `Saques::publico($saque)` (app) traz `motivo` = `motivo_falha`;
 `Saques::publico($saque, true)` (aba Saques do console) traz `motivo` = texto do Asaas quando houver e `motivo_asaas`.
 
+## Console (plano 2)
+
+- Telas: ver "Saque Pix pelo app" em `packages/fleetops/CLAUDE.md`.
+- `SaqueNoConsole` (só com `ENTREGAS_SAQUE` ligada e a conta conectada; sem a tabela, nada): `doMotoboy` → bloco `saque`
+  `{bloqueado, liberado_em, alterada_por}` do extrato do console (`FinanceiroController@extratoDoMotoboy`; `alterada_por`
+  é o nome de quem trocou a chave, só durante a carência); `bloqueados` → `saque_bloqueado` da lista
+  `GET financeiro/motoboys`.
+- `ConexaoAsaas::publico` traz `ip_de_saida` (`services.entregas.ip_de_saida` = env `ENTREGAS_IP_DE_SAIDA`, no
+  `stack.env`): o IP fixo da VPS que o card mostra para a lista de IPs do Asaas. Vazio = o card pede o IP a quem
+  administra.
+- O card manda a senha do admin em conectar, desconectar, gerar o token e testar (passos 1 e 2; cada campo é limpo
+  depois do pedido) e mostra o "Senha incorreta." e o 429 como vêm. Na tela Saques Pix, `motivo_asaas` preenchido liga
+  o selo "Asaas" junto do motivo.
+- Teste: `saque-console.php`.
+
 ## Testes
 
 `PHP_WASM_DIR=/c/tmp/php-wasm node scripts/teste-php/rodar.mjs scripts/teste-php/<teste>.php`: `saque-esquema`,

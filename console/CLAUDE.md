@@ -81,7 +81,8 @@ Saiu do sketch 007, variante B "Doca flutuante" (`.planning/sketches/007-console
   - O "+" flutuante (novo pedido) aparece só no Início e em Pedidos, na tela em si. No Mapa fica o botão da barra.
 - **Mais:** uma folha de baixo com a conta, os atalhos em grade e o tema e o sair.
   - Os atalhos repetem as telas do trilho do Fleet-Ops que ficaram (lista fixa no getter `grupos`; o Financeiro e
-    Lojas só para o admin). Os outros módulos vêm dos `universe.headerMenuItems`, pela permissão `<id> see extension`.
+    Lojas só para o admin, menos Saques Pix, que o admin da organização também vê: `ehAdminDaCentral` do
+    `doca-celular.js`, cópia da regra do fleetops). Os outros módulos vêm dos `universe.headerMenuItems`, pela permissão `<id> see extension`.
   - **Tela nova no menu do Fleet-Ops? Ponha também no `grupos`.**
 - **Menu lateral:** fica escondido no celular por CSS. Fora do Início e do Fleet-Ops (IAM, Desenvolvedores, Conta,
   Admin), o "Menu desta área" do Mais o abre (classe `ent-menu-lateral-aberto` no `body`), e ele fecha na troca de rota.

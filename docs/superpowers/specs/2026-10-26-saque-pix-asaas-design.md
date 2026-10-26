@@ -29,7 +29,7 @@ o `externalReference` estável e a consulta ao Asaas antes de dar algo por falho
 | Tarifa do Asaas | A central configura uma taxa fixa por saque (padrão R$ 0), debitada do saldo do motoboy à parte |
 | Validação de saque do Asaas | **Obrigatória** para ligar o saque |
 | Quem saca | Todo motoboy com chave Pix, menos os bloqueados pelo admin |
-| Quem configura no console | Admin do sistema e admin da organização (papel Administrador); conectar, trocar e desconectar pedem a senha |
+| Quem configura no console | Admin do sistema e admin da organização (papel Administrador); conectar, trocar, desconectar, gerar o token e testar a validação pedem a senha |
 | Confirmação no app | Tela de confirmação + desbloqueio do aparelho (digital, rosto ou PIN). Celular sem bloqueio de tela não saca |
 | Chave que cifra | Docker secret `entregas_saque_chave` (fora do MySQL, fora do `stack.env` e do Portainer) |
 
@@ -239,6 +239,11 @@ fica em `motivo_asaas`, só no console). Idempotente (estorno repetido → ignor
 - **Lista de motoboys**: selo "saque bloqueado".
 - **Painel do Financeiro → Atenção**: `saque_falhou` (últimas 24 h) e `saque_parado` (processando há mais de 1 h).
 - Tradução pt-BR nas chaves do engine, `i18n-check` com exit 0.
+- Decisões do plano 2 (console): a "aba Saques" é a tela própria "Saques Pix" no menu do Financeiro; o extrato do console
+  traz o bloco `saque` (`{bloqueado, liberado_em, alterada_por}`, `SaqueNoConsole`) para a carência com o nome de quem
+  trocou; o IP da VPS vem de `ENTREGAS_IP_DE_SAIDA` (`ip_de_saida` na conexão); o admin da organização vê no console só
+  Saques Pix e o card das Configurações. No passo 2, gerar o token e testar têm cada um o seu campo de senha (limpo
+  depois do pedido); na tela Saques Pix, o motivo que veio do Asaas (`motivo_asaas`) ganha o selo "Asaas".
 
 ### App (`entregas-navigator`)
 
