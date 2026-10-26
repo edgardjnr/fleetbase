@@ -331,11 +331,16 @@ final class ConexaoAsaas
         return static::daEmpresa($companyUuid);
     }
 
-    /** "10,50", "10.5", 10.5 → 10.5; outra coisa → null. */
+    /** O maior valor que cabe nas colunas decimal(10,2). */
+    public const MAIOR_VALOR = 9999999.99;
+
+    /** "10,50", "10.5", 10.5 → 10.5; negativo, infinito, NaN, acima de MAIOR_VALOR ou outra coisa → null. */
     private static function numero($valor): ?float
     {
         if (is_int($valor) || is_float($valor)) {
-            return round((float) $valor, 2);
+            $numero = (float) $valor;
+
+            return is_finite($numero) && $numero >= 0 && $numero <= static::MAIOR_VALOR ? round($numero, 2) : null;
         }
         if (is_string($valor) && preg_match('/^\d{1,7}([.,]\d{1,2})?$/', trim($valor))) {
             return round((float) str_replace(',', '.', trim($valor)), 2);

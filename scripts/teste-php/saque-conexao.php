@@ -185,6 +185,11 @@ confere(mensagem(fn () => ConexaoAsaas::configurar('empresa-1', ['saques_dia' =>
 confere(mensagem(fn () => ConexaoAsaas::configurar('empresa-1', ['taxa' => 25], 'u')) === 'A taxa vai de R$ 0,00 a R$ 10,00.', 'taxa acima de 10');
 confere(mensagem(fn () => ConexaoAsaas::configurar('empresa-1', ['minimo' => 5, 'taxa' => 5], 'u')) === 'A taxa precisa ser menor que o mínimo por saque.', 'taxa igual ao mínimo');
 confere(mensagem(fn () => ConexaoAsaas::configurar('empresa-1', ['minimo' => 'abc'], 'u')) === 'Valor inválido: mínimo por saque.', 'mínimo que não é número');
+confere(mensagem(fn () => ConexaoAsaas::configurar('empresa-1', ['maximo_dia' => 1000000000], 'u')) === 'Valor inválido: máximo por dia.', 'máximo por dia acima de 9.999.999,99 (não cabe no decimal(10,2))');
+confere(mensagem(fn () => ConexaoAsaas::configurar('empresa-1', ['maximo_dia' => INF], 'u')) === 'Valor inválido: máximo por dia.' && mensagem(fn () => ConexaoAsaas::configurar('empresa-1', ['maximo_dia' => NAN], 'u')) === 'Valor inválido: máximo por dia.', 'infinito e NaN: inválidos');
+confere(mensagem(fn () => ConexaoAsaas::configurar('empresa-1', ['taxa' => -1], 'u')) === 'Valor inválido: taxa.', 'número negativo: inválido');
+confere(mensagem(fn () => ConexaoAsaas::configurar('empresa-1', ['maximo_dia' => 9999999.99], 'u')) === null && ConexaoAsaas::limites(conexao())['maximo_dia'] === 9999999.99, 'até 9.999.999,99 passa');
+ConexaoAsaas::configurar('empresa-1', ['maximo_dia' => 300], 'u');
 confere(mensagem(fn () => ConexaoAsaas::configurar('empresa-1', ['saque_ligado' => 'talvez'], 'u')) === 'Informe se o saque fica ligado.', 'ligado que não é sim/não');
 confere(ConexaoAsaas::limites(conexao())['minimo'] === 20.0, 'recusa não muda nada');
 ConexaoAsaas::configurar('empresa-1', ['saque_ligado' => false], 'u');
