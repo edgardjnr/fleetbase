@@ -112,8 +112,12 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('entregas-motoboy-recusa', fn (Request $request) => Limit::perMinute(30)->by('entregas-motoboy-recusa:' . (session('user') ?: $request->ip())));
         // saque Pix pelo app: pedir e acompanhar (o app consulta a cada 3 s por até 1 min), 30 por minuto por motoboy
         RateLimiter::for('entregas-motoboy-saque', fn (Request $request) => Limit::perMinute(30)->by('entregas-motoboy-saque:' . (session('user') ?: $request->ip())));
-        // validação de saque do Asaas (sem usuário): 120 por minuto por IP
-        RateLimiter::for('entregas-asaas-validacao', fn (Request $request) => Limit::perMinute(120)->by('entregas-asaas-validacao:' . $request->ip()));
+        // validação de saque do Asaas (sem usuário): 120 por minuto por token (o hash, nunca o token no cache) e 1000 por
+        // minuto por IP (os IPs do Asaas são compartilhados por todas as centrais: um balde só por IP travaria todas)
+        RateLimiter::for('entregas-asaas-validacao', fn (Request $request) => [
+            Limit::perMinute(120)->by('entregas-asaas-validacao:t:' . hash('sha256', (string) $request->header('asaas-access-token'))),
+            Limit::perMinute(1000)->by('entregas-asaas-validacao:ip:' . $request->ip()),
+        ]);
 
         // Entregas RestaurantePro: dados do pedido iFood no app (cada card de pedido aberto e os detalhes, relidos a cada
         // mudança do pedido), até 120 chamadas por minuto por motoboy, num balde separado do entregas-motoboy: assim a lista

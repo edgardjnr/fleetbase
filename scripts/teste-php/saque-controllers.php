@@ -128,8 +128,11 @@ foreach ([
     "->middleware(['throttle:entregas-asaas-validacao'])",
     "RateLimiter::for('entregas-motoboy-saque'",
     "RateLimiter::for('entregas-asaas-validacao'",
+    "Limit::perMinute(120)->by('entregas-asaas-validacao:t:' . hash('sha256', (string) \$request->header('asaas-access-token')))",
+    "Limit::perMinute(1000)->by('entregas-asaas-validacao:ip:' . \$request->ip())",
 ] as $trecho) {
     confere(str_contains($rotas, $trecho), 'rota: ' . $trecho);
 }
+confere(!str_contains($rotas, "Limit::perMinute(120)->by('entregas-asaas-validacao:' . \$request->ip())"), 'a validação não tem mais um balde só por IP (os IPs do Asaas são de todas as centrais)');
 
 resumo();
