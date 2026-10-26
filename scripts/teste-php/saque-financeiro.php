@@ -68,6 +68,32 @@ Config::$valores['services.entregas.saque'] = null;
 confere(!array_key_exists('saque', Carteira::doMotoboy('empresa-1', 'driver-1')), 'desligado: sem a chave (o app esconde o botão)');
 Config::$valores['services.entregas.saque'] = '1';
 
+echo '== Pagamento à mão com saque em andamento' . PHP_EOL;
+/** O Request do pagamento à mão (sem comprovante: file() vazio). */
+class PedidoDePagamento extends Request
+{
+    public function file($chave = null, $padrao = null) { return $padrao; }
+}
+function pagarAMao(string $conta)
+{
+    session(['company' => 'empresa-1', 'user' => 'user-admin']);
+    \Fleetbase\Support\Auth::$usuario = new UsuarioDoSaque('user-admin', 'admin');
+
+    return (new FinanceiroController())->registrarPagamento(new PedidoDePagamento(['conta_tipo' => 'motoboy', 'conta' => $conta, 'valor' => '10,00', 'forma' => 'pix', 'data' => '2026-10-27']));
+}
+centralComSaque();
+motoboyComSaldo('driver-2', 'Maria Souza');
+$emAndamento = saqueEnviado('driver-1', 'aaaaaaaa-0000-4000-8000-000000000003', 30, ['id' => 'tra_3', 'status' => 'PENDING']);
+$pagamentos  = count(linhasDe('entregas_pagamentos'));
+$r = pagarAMao('driver_1');
+confere($r->status === 422 && $r->dados === ['errors' => ['Há um saque Pix em andamento para este motoboy; espere ele terminar.']], 'saque processando: 422');
+confere(count(linhasDe('entregas_pagamentos')) === $pagamentos, 'e nenhum pagamento é gravado');
+DB::table('entregas_saques')->where('uuid', 'aaaaaaaa-0000-4000-8000-000000000003')->update(['situacao' => 'enviando', 'transfer_id' => null]);
+confere(pagarAMao('driver_1')->status === 422, 'saque enviando: também 422');
+confere(pagarAMao('driver_2')->status === 200, 'outro motoboy (sem saque): paga normalmente');
+Saques::concluir(Saques::recarregar($emAndamento), null);
+confere(pagarAMao('driver_1')->status === 200, 'saque terminado: paga normalmente');
+
 echo '== Painel: atenção' . PHP_EOL;
 centralComSaque();
 motoboyComSaldo('driver-2', 'Maria Souza');

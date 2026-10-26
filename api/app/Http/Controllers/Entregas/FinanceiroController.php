@@ -358,6 +358,10 @@ class FinanceiroController extends Controller
         if (!$conta) {
             return $this->erro($contaTipo === Financeiro::CONTA_MOTOBOY ? 'Motoboy não encontrado.' : 'Loja não encontrada.', 404);
         }
+        if ($contaTipo === Financeiro::CONTA_MOTOBOY && static::saqueEmAndamento($this->empresa(), $conta)) {
+            // o saque já reservou o saldo e pode cair a qualquer momento: um pagamento à mão agora pagaria em dobro
+            return $this->erro('Há um saque Pix em andamento para este motoboy; espere ele terminar.');
+        }
         if (static::milharSemCentavos($request->input('valor'))) {
             return $this->erro(static::MILHAR_SEM_CENTAVOS);
         }
@@ -620,6 +624,16 @@ class FinanceiroController extends Controller
      * [public_id => uuid] das contas da empresa encontradas (motoboys ou lojas). O motoboy excluído (soft delete) também
      * (o acerto final: pagamento e lançamento depois da exclusão).
      */
+    /** O motoboy tem saque Pix em andamento (enviando ou processando); API antes da migration do saque: false. */
+    protected static function saqueEmAndamento(string $companyUuid, string $driverUuid): bool
+    {
+        try {
+            return Saques::emAndamento($companyUuid, $driverUuid) !== null;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
     protected function contas(string $contaTipo, array $ids): array
     {
         $consulta = $contaTipo === Financeiro::CONTA_MOTOBOY ? Driver::withTrashed()->where('company_uuid', $this->empresa()) : Vendor::where('company_uuid', $this->empresa());
