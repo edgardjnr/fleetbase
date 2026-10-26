@@ -1,7 +1,8 @@
 /* Entregas: tela de pedidos do Fleet-Ops (/fleet-ops; componentes tela-pedidos/*; sketch 005, variante A invertida).
    Barra própria, Mapa em tela cheia com os painéis Motoboys (esquerda) e Pedidos (direita) flutuando, abas da Tabela e
    Quadro por situação. Tokens --pi-* da marca em painel-inicial.css (claro e escuro). No celular (< 768 px), o mapa
-   com a folha de baixo. As sobreposições do mapa ficam acima dos panes do Leaflet (z-index até 1000). */
+   com a folha de baixo. As sobreposições do mapa ficam acima dos panes do Leaflet (z-index até 1000), presas no
+   .tp-mapa-tela (isolation: isolate) para não passarem por cima das Mensagens do cabeçalho (chat, z-index 800-860). */
 .tela-pedidos {
     color: var(--pi-tinta);
     font-family: var(--pi-corpo);
@@ -77,7 +78,7 @@
 .tp-abas button.tp-ativo { color: var(--pi-tinta); border-bottom-color: var(--pi-laranja); font-weight: 700; }
 
 /* vista Mapa */
-.tela-pedidos.tp-mapa-tela { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; background: var(--pi-fundo); }
+.tela-pedidos.tp-mapa-tela { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; background: var(--pi-fundo); isolation: isolate; }
 .tp-mapa-tela .tp-mapa { position: absolute; inset: 0; }
 .tp-mapa-tela .tp-mapa-leaflet .leaflet-container { height: 100%; width: 100%; font-family: var(--pi-corpo); }
 .tp-mapa-tela .tp-painel { position: absolute; z-index: 1001; top: 14px; bottom: 14px; display: flex; flex-direction: column; background: var(--pi-cartao); border: 1px solid var(--pi-linha); border-radius: 14px; box-shadow: 0 14px 36px oklch(0.2 0.02 60 / 18%); overflow: hidden; }
