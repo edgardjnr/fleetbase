@@ -1,8 +1,9 @@
 // Saque Pix no console (packages/fleetops/addon/utils/financeiro-saque-pix.js): quem configura, rotas liberadas ao admin
-// da organização, etapas do card, teste da validação, limites, situação dos saques, carência e links do comprovante.
+// da organização, etapas do card, teste da validação, limites, situação dos saques, carência, links do comprovante e o atalho do Financeiro no cabeçalho.
 // Uso: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/financeiro-saque-pix.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
     API_DO_SAQUE_PIX,
     ESPERA_DO_TESTE_MS,
@@ -45,6 +46,16 @@ test('rotas liberadas ao admin da organização: Saques Pix e Configurações', 
     for (const nome of ['console.fleet-ops.financeiro.painel', 'console.fleet-ops.financeiro.motoboy', 'console.fleet-ops.financeiro.corridas-do-sistema', 'console.fleet-ops.operations.orders.index', '', null]) {
         assert.equal(rotaDoAdminDaCentral(nome), false, String(nome));
     }
+});
+
+test('atalho do cabeçalho: abre a raiz do Financeiro, que escolhe Painel ou Saques Pix pelo usuário', () => {
+    const extensao = readFileSync(new URL('../../packages/fleetops/addon/extension.js', import.meta.url), 'utf8');
+    const atalho = extensao.match(/id: 'fleet-ops-sc-driver-payouts',[\s\S]*?route: '([^']+)'/);
+    assert.ok(atalho, 'o atalho fleet-ops-sc-driver-payouts existe');
+    assert.equal(atalho[1], 'console.fleet-ops.financeiro', 'não fixa o Painel (só do admin do sistema)');
+    assert.equal(rotaDoAdminDaCentral(`${atalho[1]}.index`), true, 'a guarda deixa o admin da organização chegar ao index');
+    const indice = readFileSync(new URL('../../packages/fleetops/addon/routes/financeiro/index.js', import.meta.url), 'utf8');
+    assert.match(indice, /isAdmin \? 'painel' : 'saques'/, 'o index manda o admin do sistema ao Painel e os outros a Saques Pix');
 });
 
 test('etapas do card: conectar, token, validação e ligar', () => {
