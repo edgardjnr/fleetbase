@@ -39,7 +39,7 @@ o `externalReference` estável e a consulta ao Asaas antes de dar algo por falho
 
 | O quê | Onde | Como |
 |---|---|---|
-| Chave de API do Asaas da central | MySQL do stack (`entregas_asaas_conexoes`) | Cifrada (AES-256-GCM, `Illuminate\Encryption\Encrypter` com a chave do secret) |
+| Chave de API do Asaas da central | MySQL do stack (`entregas_asaas_conexoes`) | Cifrada (AES-256-GCM, `Cofre`, com a chave do secret e o `company_uuid` como dado autenticado: o cifrado de uma central não decifra na linha de outra) |
 | Token da validação de saque | MySQL do stack | Só o hash (SHA-256). Mostrado uma vez na geração |
 | Chave que cifra (`ENTREGAS_SAQUE_CHAVE`) | Docker secret `entregas_saque_chave`, arquivo `/run/secrets/entregas_saque_chave` | Só nos serviços `application`, `queue` e `scheduler` |
 
@@ -57,8 +57,10 @@ o `externalReference` estável e a consulta ao Asaas antes de dar algo por falho
    destino é a cadastrada pelo admin; o saldo é recalculado no banco dentro da transação.
 2. **Validação de saque do Asaas** (Integrações → Mecanismos de segurança, na conta da central): antes de cada
    transferência por API, o Asaas chama `POST v1/entregas/asaas/validar-saque` com o token no cabeçalho
-   `asaas-access-token`. Só um saque nosso em andamento, com o mesmo `transfer.id`, valor e chave Pix, recebe
-   `APPROVED`. Uma chave do Asaas vazada não tira dinheiro, porque o Entregas recusa qualquer transferência que não criou.
+   `asaas-access-token`. Só um saque nosso em andamento recebe `APPROVED` (regras em "Validação", abaixo), e a
+   validação nunca grava o `transfer_id`: quem grava é o envio, com o id da resposta do nosso POST. Uma chave do Asaas
+   vazada não tira dinheiro, porque o Entregas recusa qualquer transferência que não criou, mesmo que tenha o valor de um
+   saque em andamento.
 3. **Wallet fixada:** a wallet da conta é gravada ao conectar e conferida (`GET /wallets`) antes de cada transferência.
    Uma chave trocada por outra de outra conta Asaas não paga.
 4. **Troca da chave Pix do motoboy:** bloqueia o saque por 24 h, avisa o motoboy por push ("Sua chave Pix de saque foi
@@ -92,10 +94,10 @@ Card "Saque Pix (Asaas)" em Financeiro → Configurações, em três passos.
 
 ### 2. Validação de saque
 
-- "Gerar token": token aleatório de 48 caracteres, mostrado uma vez junto da URL
+- "Gerar token" (com a senha; `throttle:10,1`): token aleatório de 48 caracteres, mostrado uma vez junto da URL
   `https://entregas-api.restaurantepro.com.br/v1/entregas/asaas/validar-saque`, com o passo a passo do Asaas. Gerar de
   novo invalida o anterior e pede novo teste.
-- "Testar validação": o admin informa uma chave Pix própria. A API cria `POST /transfers` de **R$ 1,00** para ela com
+- "Testar validação" (com a senha): o admin informa uma chave Pix própria. A API cria `POST /transfers` de **R$ 1,00** para ela com
   `externalReference` `teste:<uuid>`. A rota de validação reconhece o teste pelo `transfer.id` gravado e responde
   `REFUSED` ("Teste do Entregas"); ao receber o pedido com o token certo, grava `validacao_confirmada_em`. A tela
   consulta o resultado por até 60 s: "Recusada pelo Entregas ✓", ou "O Asaas não chamou o Entregas: confira a URL e o
@@ -150,9 +152,13 @@ Decifra a chave, confere a wallet e chama `POST /transfers`:
 Tipos: `cpf` → `CPF`, `cnpj` → `CNPJ`, `telefone` → `PHONE`, `email` → `EMAIL`, `aleatoria` → `EVP` (formato do
 telefone a confirmar no sandbox).
 
-- Resposta com `id`: grava `transfer_id`, situação `processando` (ou `concluido`/`falhou` se já vier `DONE`/`FAILED`).
-- Asaas recusou (4xx com `errors`): `falhou` com a mensagem do Asaas e reembolso (abaixo).
-- Erro de rede ou 5xx: fica `enviando` sem `transfer_id`; a rotina resolve. Nunca dá por falho o que pode ter saído.
+- Resposta com `id`: o id do POST é o que vale. Grava `transfer_id` (outro id já gravado: log crítico e fica o do
+  POST; id já usado por outro saque: log crítico e o saque fica `enviando` para a rotina, sem erro para o app), situação
+  `processando` (ou `concluido`/`falhou` se já vier `DONE`/`FAILED`).
+- Asaas recusou com certeza (400/401/403/404/422 **e** `errors` no corpo): `falhou` e reembolso (abaixo); o texto do
+  Asaas vai para `motivo_asaas` e o motoboy vê "Não foi possível concluir o saque agora.".
+- Qualquer outro não-2xx (409, 429, 4xx sem `errors`, 5xx), erro de rede ou 200 sem `id`: fica `enviando` sem
+  `transfer_id`; a rotina resolve. Nunca dá por falho o que pode ter saído.
 - Wallet não confere: `falhou` "A chave do Asaas não é mais da conta conectada." e reembolso; a central é avisada no
   painel.
 
@@ -161,10 +167,20 @@ telefone a confirmar no sandbox).
 - Sem token ou token sem central → 401. Comparação pelo hash, `hash_equals`. `throttle` próprio.
 - `type` diferente de `TRANSFER` → `REFUSED`.
 - `transfer.id` de um teste da central → `REFUSED` "Teste do Entregas" e grava `validacao_confirmada_em`.
-- `transfer.id` de um saque da central em `enviando`/`processando`, com o mesmo valor e a mesma chave Pix →
-  `APPROVED`. Se o pedido chegar antes de o `transfer_id` ser gravado (corrida rara): aceita o saque `enviando` da
-  central criado há até 2 min com mesmo valor e chave Pix e grava o `transfer_id`.
-- Qualquer outro caso → `REFUSED` "Transferência não reconhecida pelo Entregas".
+- A chave Pix do pedido é `transfer.bankAccount.pixAddressKey` ou `transfer.pixAddressKey` (vazia = não veio). Telefone
+  comparado inteiro, as duas como 55 + DDD + número.
+- **Por id:** `transfer.id` = `transfer_id` de um saque da central em `enviando`/`processando` (id que veio da resposta
+  do nosso POST), mesmo valor e, se o pedido trouxer, a mesma chave Pix e o mesmo `externalReference` → `APPROVED`.
+- **Sem id gravado** (o Asaas chamou antes de recebermos a resposta do POST), só saques `enviando` sem `transfer_id`
+  criados há até 2 min, e **sem gravar o `transfer_id`**:
+  - o pedido traz `transfer.externalReference` = o `external_reference` de um deles (`saque:<uuid>`, uuid gerado no app),
+    com valor igual e chave igual se vier → `APPROVED`;
+  - sem `externalReference`: exatamente um candidato com o mesmo valor **e** o pedido traz a chave Pix, igual à dele (o
+    dinheiro iria para o próprio motoboy) → `APPROVED`. Mais de um candidato → `REFUSED`; sem chave → `REFUSED`
+    "Transferência sem chave Pix para conferir.".
+- Ao aprovar, grava `aprovado_em` no saque.
+- Qualquer outro caso → `REFUSED` "Transferência não reconhecida pelo Entregas" (ou o motivo: valor/chave diferente).
+- Limite: 120/min por token (pelo hash) e 1000/min por IP (os IPs do Asaas servem todas as centrais).
 - Cada decisão vai ao log `[entregas] saque: validação` com central, transfer, decisão e motivo (chave Pix parcialmente
   escondida).
 
@@ -172,27 +188,39 @@ telefone a confirmar no sandbox).
 
 Saques `enviando`/`processando` de centrais conectadas:
 
-- Com `transfer_id`: `GET /transfers/{id}`.
+- Com `transfer_id`: `GET /transfers/{id}`. 404 em saque criado há mais de 30 min (órfão): procura pelo
+  `externalReference` nas recentes; achou e confere → adota (troca o `transfer_id`, log crítico) e aplica o status; não
+  achou → `falhou` "Transferência não encontrada no Asaas." e reembolso. 404 recente ou outro erro → espera.
 - Sem `transfer_id` há mais de 5 min: procura pelo `externalReference` nas transferências recentes (paginado, como no
-  RestaurantePro). Achou → adota o `id`. Não achou → `falhou` "Saque interrompido antes de chegar ao Asaas" e reembolso.
-- `DONE` → `concluido`, `concluido_em`, guarda `transactionReceiptUrl` como comprovante, push "Seu saque de R$ X caiu
-  no Pix".
-- `FAILED`/`CANCELLED` → `falhou` com o motivo (`failReason` ou o da validação) e reembolso.
+  RestaurantePro). Achou e confere → adota o `id`. Não achou → `falhou` "Saque interrompido antes de chegar ao Asaas" e
+  reembolso.
+- O status só é aplicado se a transferência confere com o saque: `value` igual (quando vem) e `externalReference` igual
+  (quando vem). Senão, log crítico e nada muda (o saque fica parado e aparece no painel).
+- `DONE` → `concluido`, `concluido_em`, guarda `transactionReceiptUrl` como comprovante (só `https://…asaas.com/`;
+  outro endereço → sem comprovante), push "Seu saque de R$ X caiu no Pix". Concluído sem `aprovado_em` → log crítico
+  (a validação foi desligada no Asaas?), mas conclui: o dinheiro saiu.
+- `FAILED`/`CANCELLED` com `failReason` → `falhou`, o texto do Asaas em `motivo_asaas` e "Não foi possível concluir o
+  saque agora." em `motivo_falha`; sem `failReason` → motivo nosso ("Transferência cancelada no Asaas." / "não
+  concluída pelo Asaas."); reembolso.
 - Outros (`PENDING`, `BANK_PROCESSING`) → continua.
 - Erro de rede ou 5xx → tenta no minuto seguinte.
-- `withoutOverlapping`, `when(ENTREGAS_SAQUE ligada)`, falha numa central não para as outras.
+- `withoutOverlapping`, `when(ENTREGAS_SAQUE ligada)`; um saque com erro não para os outros da central, e uma central
+  não para as outras.
 
 ### Reembolso
 
 Estorno automático do pagamento do saque e da taxa: `Pagamentos::estornar` com o motivo padrão "Pagamento estornado" (o
 app reconhece o estorno de pagamento por esse texto; o motivo da falha fica no saque e no push) e `Lancamentos::estornar`
 da taxa com "Taxa do saque devolvida". Push
-"Saque não concluído; o valor voltou para o seu saldo." com o motivo. Idempotente (estorno repetido → ignora o 409).
+"Saque não concluído; o valor voltou para o seu saldo." com o motivo de `motivo_falha` (nunca o texto cru do Asaas, que
+fica em `motivo_asaas`, só no console). Idempotente (estorno repetido → ignora o 409).
 
 ### Console
 
 - O pagamento de saque não se estorna à mão: em andamento → 422 "Saque em andamento."; concluído → 422 "O dinheiro do
   saque já saiu; corrija com um ajuste."; falho já vem estornado.
+- Pagamento à mão (`POST financeiro/pagamentos`) a motoboy com saque em andamento → 422 "Há um saque Pix em andamento
+  para este motoboy; espere ele terminar.".
 - Bloquear/desbloquear o saque do motoboy: `PUT financeiro/motoboys/{id}/saque` `{bloqueado}`.
 - `PUT financeiro/motoboys/{id}/pix` passa a gravar `pix_alterada_em`/`pix_alterada_por` e a mandar o push, quando a
   chave muda (não no primeiro cadastro).
@@ -204,7 +232,8 @@ da taxa com "Taxa do saque devolvida". Push
 - **Financeiro → Configurações → "Saque Pix (Asaas)"**: os três passos acima. Textos explicam a conta própria e a lista
   de IPs com o IP da VPS.
 - **Financeiro → aba "Saques"**: últimos 30 dias, mais novo primeiro: data e hora, motoboy, valor, taxa, situação
-  (enviando, processando, concluído, falhou + motivo), link do comprovante do Asaas; filtro por situação.
+  (enviando, processando, concluído, falhou + motivo: o texto do Asaas quando houver, com `motivo_asaas` à parte), link
+  do comprovante do Asaas; filtro por situação.
 - **Extrato do motoboy**: interruptor "Saque liberado / bloqueado" junto da chave Pix; aviso de carência depois da troca
   ("Saque liberado às 14:30 de 27/10 · chave trocada por Fulano"); selo "Saque Pix · app" com a situação no pagamento.
 - **Lista de motoboys**: selo "saque bloqueado".
@@ -232,9 +261,10 @@ Migration nova (`*_entregas_saques_*`):
   `wallet_id`, `conectada_por`, `conectada_em`, `token_hash`, `token_gerado_em`, `validacao_confirmada_em`,
   `teste_transfer_id`, `saque_ligado`, `minimo`, `maximo_dia`, `saques_dia`, `taxa`, `atualizada_por`, timestamps.
 - `entregas_saques`: `uuid` (único, vem do app), `company_uuid`, `driver_uuid`, `valor`, `taxa`, `chave_pix`,
-  `tipo_chave`, `situacao` (`enviando`, `processando`, `concluido`, `falhou`), `motivo_falha`, `transfer_id` (único
-  quando preenchido), `external_reference`, `pagamento_uuid`, `comprovante_url`, `asaas_status`, `concluido_em`,
-  timestamps. Índices por `company_uuid + situacao` e `driver_uuid + created_at`.
+  `tipo_chave`, `situacao` (`enviando`, `processando`, `concluido`, `falhou`), `motivo_falha` (o que o motoboy vê),
+  `motivo_asaas` (texto cru do Asaas, só no console), `transfer_id` (único quando preenchido; só o envio e a rotina
+  gravam), `external_reference`, `pagamento_uuid`, `comprovante_url`, `asaas_status`, `aprovado_em` (a validação
+  aprovou), `concluido_em`, timestamps. Índices por `company_uuid + situacao` e `driver_uuid + created_at`.
 - `entregas_motoboys_financeiro`: + `saque_bloqueado` (bool, padrão falso), `pix_alterada_em`, `pix_alterada_por`.
 
 Classes em `App\Support\Entregas\Saques`: `Cofre` (cifra/decifra com o secret), `AsaasCliente` (único ponto de HTTP com
@@ -250,16 +280,20 @@ Configuração: `ENTREGAS_SAQUE` (`services.entregas.saque`), `ASAAS_API_URL` (s
 
 PHP (`scripts/teste-php/`, php-wasm), com um Asaas falso no lugar do `AsaasCliente`:
 
-- `saque-cofre.php`: cifra e decifra; texto no banco ≠ chave; sem secret → erro claro, nada gravado.
+- `saque-cofre.php`: cifra e decifra; texto no banco ≠ chave; o cifrado de uma central não decifra como de outra; sem
+  secret → erro claro, nada gravado.
 - `saque-conexao.php`: senha errada, chave inválida, chave de outra wallet na troca, desconectar com saque em
   andamento, token gerado (hash gravado, original nunca), teste da validação.
 - `saque-pedido.php`: cada conferência; valor acima do disponível; mesmo uuid duas vezes; trava; lançamentos do
   pagamento e da taxa; reembolso dos dois; estorno à mão bloqueado; carência de 24 h; bloqueio.
 - `saque-validacao.php`: sem token/token errado → 401; tipo errado, transferência desconhecida, valor ou chave
-  diferentes → `REFUSED`; saque nosso → `APPROVED`; corrida do `transfer_id` ainda não gravado; teste → `REFUSED` e
+  diferentes → `REFUSED`; saque nosso → `APPROVED` e `aprovado_em`; sem id gravado (por `externalReference` ou chave de
+  um único candidato; nunca grava o id); transferência do atacante com o valor do saque (PoC 1) e dois candidatos do
+  mesmo valor (PoC 2) → `REFUSED`; telefone comparado inteiro; conclusão que não confere; teste → `REFUSED` e
   `validacao_confirmada_em`.
-- `saque-acompanhamento.php`: DONE, FAILED, CANCELLED, sem `transfer_id` (adota ou falha), erro de rede nunca falha,
-  pushes, agenda, rotas, stack (secret e `ENTREGAS_SAQUE`).
+- `saque-acompanhamento.php`: DONE, FAILED, CANCELLED, sem `transfer_id` (adota ou falha), id que dá 404 (órfão), um
+  saque com erro não trava os outros (PoC 3), erro de rede nunca falha, pushes, agenda, rotas, stack (secret e
+  `ENTREGAS_SAQUE`).
 
 Front: `scripts/teste-portal/` (card de configurações, aba Saques, interruptor do motoboy). App:
 `scripts/testes/` do `entregas-navigator` (disponível, mensagens, tela de acompanhamento).
