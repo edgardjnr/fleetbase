@@ -28,10 +28,16 @@ final class Saque
     public const MINUTOS_SEM_TRANSFERENCIA = 5;
 
     /**
-     * Minutos até a rotina tratar como órfão o saque cujo transfer_id dá 404 no Asaas: procura pelo externalReference
-     * (achou, adota; não achou, falha e devolve). Antes disso, um 404 só espera.
+     * Minutos (desde o pedido) até a rotina procurar pelo externalReference o saque cujo transfer_id dá 404 no Asaas
+     * (achou, adota). Antes disso, um 404 só espera.
      */
     public const MINUTOS_ORFAO = 30;
+
+    /**
+     * Horas de 404 seguidos (desde nao_encontrado_desde) sem achar a transferência nas recentes até o log crítico (uma
+     * vez, alerta_critico_em). O órfão nunca falha sozinho: fica em andamento ("saque parado") até alguém conferir no Asaas.
+     */
+    public const HORAS_ORFAO = 6;
 
     /** Minutos em que a validação aceita um saque (ou o teste) ainda sem transfer_id gravado. */
     public const MINUTOS_DA_VALIDACAO = 2;

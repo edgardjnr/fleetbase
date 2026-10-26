@@ -66,6 +66,8 @@ return new class extends Migration
             $table->timestamp('aprovado_em')->nullable();        // a validação de saque do Asaas aprovou (ValidacaoDeSaque)
             $table->string('aprovado_transfer_id', 64)->nullable(); // a transferência aprovada (uma só por saque)
             $table->timestamp('concluido_em')->nullable();
+            $table->timestamp('nao_encontrado_desde')->nullable(); // 1º 404 do GET /transfers/{id} seguido (a resposta OK limpa)
+            $table->timestamp('alerta_critico_em')->nullable();    // o log crítico do órfão já saiu (uma vez só)
             $table->timestamps();
             $table->index(['company_uuid', 'situacao'], 'ent_saq_situacao');
             $table->index(['driver_uuid', 'created_at'], 'ent_saq_motoboy');

@@ -7,9 +7,11 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Entregas RestaurantePro: acompanha no Asaas os saques em andamento (rotina entregas:saques-conferir, a cada minuto).
- * Com transfer_id: GET /transfers/{id} e aplica o status (Saques::aplicarStatus, que confere valor e externalReference).
- * 404 num saque criado há mais de 30 min (órfão): procura nas recentes pelo externalReference; achou, adota (log crítico);
- * não achou, falha e devolve. Sem transfer_id há mais de 5 min (a API caiu no meio do envio): procura pelo
+ * Com transfer_id: GET /transfers/{id} e aplica o status (Saques::aplicarStatus, que confere com Saques::confere).
+ * 404 (órfão): o primeiro grava nao_encontrado_desde (a resposta OK limpa); num saque criado há mais de 30 min, procura
+ * nas recentes pelo externalReference; achou, adota (log crítico); não achou, NUNCA falha sozinho (o dinheiro pode ter
+ * saído): fica em andamento ("saque parado" no painel) e, com 404 seguidos há mais de 6 h, um log crítico só
+ * (alerta_critico_em) para conferir à mão no Asaas. Sem transfer_id há mais de 5 min (a API caiu no meio do envio): procura pelo
  * externalReference; achou, adota; não achou, falha e devolve. Erro de rede, outro erro ou 404 recente nunca dá por
  * falho: tenta no minuto seguinte. Um saque com problema não para os outros, e uma central não para as outras.
  * Mais de uma transferência com o externalReference do saque (quem tem a chave de API pode copiá-lo): só adota a que a
@@ -74,21 +76,28 @@ final class AcompanhamentoDeSaques
         if ($saque->transfer_id !== null) {
             $resposta = $asaas->transferencia((string) $saque->transfer_id);
             if ($resposta->ok() && is_array($resposta->dados)) {
+                static::encontrado($saque);
+
                 return Saques::aplicarStatus($saque, $resposta->dados);
             }
-            $orfao = now()->subMinutes(Saque::MINUTOS_ORFAO)->format('Y-m-d H:i:s');
-            if ($resposta->status !== 404 || (string) $saque->created_at > $orfao) {
+            if ($resposta->status !== 404) {
                 return false;
             }
-            // o id que temos não existe no Asaas há mais de 30 min: procura o saque pelo externalReference
+            $desde = static::naoEncontrado($saque);
+            $orfao = now()->subMinutes(Saque::MINUTOS_ORFAO)->format('Y-m-d H:i:s');
+            if ((string) $saque->created_at > $orfao) {
+                return false;
+            }
+            // o id que temos não existe no Asaas e o saque tem mais de 30 min: procura pelo externalReference
             $achada = static::achar($asaas, $saque, $recentes);
             if ($achada === false) {
                 return false;
             }
             if ($achada === null) {
-                Log::warning('[entregas] saque: transferência não encontrada no Asaas', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'transfer' => $saque->transfer_id]);
+                // nunca falha (e devolve) sozinho: o dinheiro pode ter saído; depois de 6 h, alguém confere à mão
+                static::alertarOrfao($saque, $desde);
 
-                return Saques::falhar($saque, 'Transferência não encontrada no Asaas.');
+                return false;
             }
             Log::critical('[entregas] saque: transferência do saque trocada pela achada no Asaas', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'antes' => $saque->transfer_id, 'achada' => (string) $achada['id']]);
 
@@ -109,6 +118,42 @@ final class AcompanhamentoDeSaques
         Log::warning('[entregas] saque: transferência achada pelo externalReference', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'transfer' => (string) $achada['id']]);
 
         return static::adotar($saque, $achada);
+    }
+
+    /** O GET respondeu: limpa a marca de 404 (e o alerta), se havia. */
+    private static function encontrado(object $saque): void
+    {
+        if (($saque->nao_encontrado_desde ?? null) === null && ($saque->alerta_critico_em ?? null) === null) {
+            return;
+        }
+        DB::table(Saque::TABELA)->where('id', $saque->id)->update(['nao_encontrado_desde' => null, 'alerta_critico_em' => null, 'updated_at' => now()->format('Y-m-d H:i:s')]);
+    }
+
+    /** 404 no GET: grava nao_encontrado_desde no primeiro (warning); devolve desde quando o saque não é encontrado. */
+    private static function naoEncontrado(object $saque): string
+    {
+        $desde = $saque->nao_encontrado_desde ?? null;
+        if ($desde !== null) {
+            return (string) $desde;
+        }
+        $agora = now()->format('Y-m-d H:i:s');
+        DB::table(Saque::TABELA)->where('id', $saque->id)->whereNull('nao_encontrado_desde')->update(['nao_encontrado_desde' => $agora, 'updated_at' => $agora]);
+        Log::warning('[entregas] saque: transferência não encontrada no Asaas', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'transfer' => $saque->transfer_id]);
+
+        return $agora;
+    }
+
+    /** 404 seguidos há mais de 6 h e fora das recentes: Log::critical uma vez só (marca alerta_critico_em). */
+    private static function alertarOrfao(object $saque, string $desde): void
+    {
+        if ($desde > now()->subHours(Saque::HORAS_ORFAO)->format('Y-m-d H:i:s') || ($saque->alerta_critico_em ?? null) !== null) {
+            return;
+        }
+        $agora = now()->format('Y-m-d H:i:s');
+        $feito = DB::table(Saque::TABELA)->where('id', $saque->id)->whereNull('alerta_critico_em')->update(['alerta_critico_em' => $agora, 'updated_at' => $agora]);
+        if ($feito > 0) {
+            Log::critical('[entregas] saque: transferência não encontrada no Asaas há horas; conferir à mão', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'transfer' => $saque->transfer_id, 'desde' => $desde]);
+        }
     }
 
     /**
@@ -156,6 +201,7 @@ final class AcompanhamentoDeSaques
         if (!Saques::confere($saque, $achada) || !Saques::gravarTransferencia($saque, (string) $achada['id'])) {
             return false;
         }
+        static::encontrado($saque);
 
         return Saques::aplicarStatus(Saques::recarregar($saque), $achada);
     }

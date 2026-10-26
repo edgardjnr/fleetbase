@@ -2,7 +2,8 @@
 
 // Saque Pix: a rotina entregas:saques-conferir (AcompanhamentoDeSaques): consulta as transferências em andamento, adota
 // pelo externalReference a que ficou sem id (ou cujo id dá 404 há mais de 30 min) e falha a que nunca chegou ao Asaas.
-// Erro de rede nunca dá por falho; um saque com problema não para os outros.
+// O órfão (404) nunca falha sozinho: depois de 6 h de 404 seguidos, um log crítico só. Erro de rede nunca dá por falho;
+// um saque com problema não para os outros.
 // Uso: PHP_WASM_DIR=<pasta> node scripts/teste-php/rodar.mjs scripts/teste-php/saque-acompanhamento.php
 
 require __DIR__ . '/stubs-saque.php';
@@ -125,23 +126,48 @@ confere(saqueDoBanco(UA)->situacao === 'processando' && saqueDoBanco(UA)->transf
 confere(saqueDoBanco(UC)->situacao === 'concluido' && $n === 2, 'C: conferido e concluído (a central não travou)');
 confere(logsDe('critical') === ['[entregas] saque: concluído sem a aprovação da validação'], 'só o aviso de C sem aprovação: ' . json_encode(logsDe('critical'), JSON_UNESCAPED_UNICODE));
 
-echo '== Id que dá 404 (saque órfão)' . PHP_EOL;
+echo '== Id que dá 404 (saque órfão): nunca falha sozinho' . PHP_EOL;
 centralComSaque();
 saqueEnviado('driver-1', UA, 10, ['id' => 'tra_sumiu', 'status' => 'PENDING']);
 HttpFalso::$chamadas = [];
 asaas(404, ['errors' => [['code' => 'not_found', 'description' => 'Transferência não encontrada.']]]);
-Relogio::$agora = '2026-10-27 10:29:59';
+Relogio::$agora = '2026-10-27 10:05:00';
 confere(AcompanhamentoDeSaques::conferir() === 0 && saqueDoBanco(UA)->situacao === 'processando' && count(HttpFalso::$chamadas) === 1, 'menos de 30 min: 404 só espera (nem lista)');
+confere(saqueDoBanco(UA)->nao_encontrado_desde === '2026-10-27 10:05:00' && logsDe('warning') === ['[entregas] saque: transferência não encontrada no Asaas'], 'o primeiro 404 grava nao_encontrado_desde (warning)');
 Relogio::$agora = '2026-10-27 10:30:00';
 asaas(500, null);
 confere(AcompanhamentoDeSaques::conferir() === 0 && saqueDoBanco(UA)->situacao === 'processando' && count(HttpFalso::$chamadas) === 2, 'outro erro (500), mesmo depois de 30 min: espera');
+confere(saqueDoBanco(UA)->nao_encontrado_desde === '2026-10-27 10:05:00', 'e não mexe na marca do 404');
 asaas(404, null);
 HttpFalso::$respostas[] = 'conexao';
 confere(AcompanhamentoDeSaques::conferir() === 0 && saqueDoBanco(UA)->situacao === 'processando', '404 e a lista fora do ar: espera');
+Relogio::$agora = '2026-10-27 10:31:00';
+asaas(404, null);
+asaas(200, ['data' => [], 'hasMore' => false]);
+confere(AcompanhamentoDeSaques::conferir() === 0 && saqueDoBanco(UA)->situacao === 'processando', 'PoC F: 404 com 31 min e a lista vazia: NÃO falha (o dinheiro pode ter saído)');
+confere(ExtratoDaConta::saldo('empresa-1', 'motoboy', 'driver-1') === 90.0 && logsDe('critical') === [] && saqueDoBanco(UA)->nao_encontrado_desde === '2026-10-27 10:05:00', 'nada devolvido, nenhum log crítico ainda, a marca continua do primeiro 404');
+asaas(200, ['id' => 'tra_sumiu', 'status' => 'BANK_PROCESSING', 'value' => 10]);
+confere(AcompanhamentoDeSaques::conferir() === 0 && saqueDoBanco(UA)->nao_encontrado_desde === null && saqueDoBanco(UA)->asaas_status === 'BANK_PROCESSING', 'resposta OK: limpa nao_encontrado_desde');
+Relogio::$agora = '2026-10-27 11:00:00';
 asaas(404, null);
 asaas(200, ['data' => [['id' => 'tra_x', 'externalReference' => 'saque:outro', 'status' => 'DONE']], 'hasMore' => false]);
-confere(AcompanhamentoDeSaques::conferir() === 1 && saqueDoBanco(UA)->situacao === 'falhou' && saqueDoBanco(UA)->motivo_falha === 'Transferência não encontrada no Asaas.', '404 há 30 min e não está nas recentes: falha e devolve');
-confere(ExtratoDaConta::saldo('empresa-1', 'motoboy', 'driver-1') === 100.0, 'o valor voltou ao saldo');
+confere(AcompanhamentoDeSaques::conferir() === 0 && saqueDoBanco(UA)->nao_encontrado_desde === '2026-10-27 11:00:00', 'novo 404 depois do OK: a contagem recomeça');
+Relogio::$agora = '2026-10-27 16:59:59';
+asaas(404, null);
+asaas(200, ['data' => [], 'hasMore' => false]);
+confere(AcompanhamentoDeSaques::conferir() === 0 && logsDe('critical') === [], 'menos de 6 h de 404 seguidos: sem log crítico');
+Relogio::$agora = '2026-10-27 17:00:00';
+asaas(404, null);
+asaas(200, ['data' => [], 'hasMore' => false]);
+confere(AcompanhamentoDeSaques::conferir() === 0 && saqueDoBanco(UA)->situacao === 'processando' && saqueDoBanco(UA)->alerta_critico_em === '2026-10-27 17:00:00', '6 h de 404 seguidos e fora das recentes: continua processando, marca alerta_critico_em');
+confere(logsDe('critical') === ['[entregas] saque: transferência não encontrada no Asaas há horas; conferir à mão'], 'e um log crítico');
+Relogio::$agora = '2026-10-27 17:01:00';
+asaas(404, null);
+asaas(200, ['data' => [], 'hasMore' => false]);
+confere(AcompanhamentoDeSaques::conferir() === 0 && count(logsDe('critical')) === 1 && saqueDoBanco(UA)->situacao === 'processando', 'no minuto seguinte: nem falha, nem repete o log crítico');
+confere(ExtratoDaConta::saldo('empresa-1', 'motoboy', 'driver-1') === 90.0, 'o valor não volta sozinho (a central confere no Asaas)');
+$parado = array_values(array_filter(Saques::atencao('empresa-1'), fn ($i) => $i['tipo'] === 'saque_parado'));
+confere(count($parado) === 1 && $parado[0]['saque'] === UA, 'aparece como "saque parado" no painel');
 
 centralComSaque();
 saqueEnviado('driver-1', UA, 10, ['id' => 'tra_sumiu', 'status' => 'PENDING']);
