@@ -101,7 +101,7 @@ final class ConexaoAsaas
     }
 
     /** Conecta (ou troca a chave pela de outra chave da MESMA conta). Devolve a linha gravada. */
-    public static function conectar(string $companyUuid, $chaveApi, ?string $usuarioUuid): object
+    public static function conectar(string $companyUuid, #[\SensitiveParameter] $chaveApi, ?string $usuarioUuid): object
     {
         $chave = is_string($chaveApi) ? trim($chaveApi) : '';
         if (mb_strlen($chave) < static::TAMANHO_MINIMO_DA_CHAVE || preg_match('/\s/', $chave)) {

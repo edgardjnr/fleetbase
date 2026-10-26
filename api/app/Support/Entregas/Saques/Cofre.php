@@ -18,7 +18,7 @@ final class Cofre
         return static::chave() !== null;
     }
 
-    public static function cifrar(string $texto): string
+    public static function cifrar(#[\SensitiveParameter] string $texto): string
     {
         $chave = static::chave();
         if ($chave === null) {

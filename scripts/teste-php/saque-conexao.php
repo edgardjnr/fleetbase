@@ -113,6 +113,7 @@ DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-7')->delete
 confere(linhasDe('entregas_asaas_conexoes') === $guardada, 'empresa-1 intacta');
 
 echo '== Token da validação' . PHP_EOL;
+confere(mensagem(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901', 'user-admin')) === 'Gere o token e configure a validação no Asaas antes de testar.', 'testar antes de gerar o token: recusado');
 $token = ConexaoAsaas::gerarToken('empresa-1');
 confere(strlen($token) === 48 && ctype_xdigit($token), 'token de 48 caracteres hexadecimais');
 confere(conexao()->token_hash === hash('sha256', $token) && !str_contains(json_encode(linhasDe('entregas_asaas_conexoes')), $token), 'no banco, só o hash do token');
@@ -137,6 +138,7 @@ confere(mensagem(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '123
 Relogio::$agora = '2026-10-27 10:04:00';
 HttpFalso::$respostas[] = 'conexao';
 confere(excecao(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901', 'user-admin')) instanceof ErroDoAsaas, 'teste sem resposta: ErroDoAsaas');
+confere(!str_contains(json_encode(Log::$registros), CHAVE_ASAAS) && !str_contains(json_encode(Log::$registros), 'chave-nova-da-mesma-conta-999') && !str_contains(json_encode(Log::$registros), $token), 'depois de conectar, trocar, gerar o token e testar: o log não traz a chave (nem a nova) nem o token');
 
 echo '== Teste da validação: um por vez e no máximo 5 por dia' . PHP_EOL;
 centralComSaque(['validacao_confirmada_em' => null, 'saque_ligado' => false]);
@@ -243,5 +245,21 @@ confere($erro instanceof \InvalidArgumentException && $erro->getMessage() === 'N
 unlink(CHAVE_DO_COFRE);
 confere(excecao(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901', 'user-admin')) instanceof CofreIndisponivel, 'sem o secret: CofreIndisponivel (503)');
 confere(HttpFalso::$chamadas === [] && (int) conexao()->testes_no_dia === 0, 'nos dois casos, nem chama o Asaas nem conta o teste');
+
+echo '== Segredos fora do rastro de erro' . PHP_EOL;
+/** O parâmetro tem #[\SensitiveParameter] (o PHP o esconde no stack trace)? */
+function sensivel(array $funcao, string $parametro): bool
+{
+    foreach ((new \ReflectionMethod(...$funcao))->getParameters() as $p) {
+        if ($p->getName() === $parametro) {
+            return $p->getAttributes(\SensitiveParameter::class) !== [];
+        }
+    }
+
+    return false;
+}
+confere(sensivel([\App\Support\Entregas\Saques\AsaasCliente::class, '__construct'], 'chave'), 'AsaasCliente::__construct($chave)');
+confere(sensivel([Cofre::class, 'cifrar'], 'texto'), 'Cofre::cifrar($texto)');
+confere(sensivel([ConexaoAsaas::class, 'conectar'], 'chaveApi'), 'ConexaoAsaas::conectar($chaveApi)');
 
 resumo();

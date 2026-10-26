@@ -15,7 +15,7 @@ class AsaasCliente
 {
     public const TEMPO_LIMITE = 20;
 
-    public function __construct(private string $chave)
+    public function __construct(#[\SensitiveParameter] private string $chave)
     {
     }
 
