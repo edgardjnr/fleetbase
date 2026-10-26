@@ -211,6 +211,10 @@ final class ConexaoAsaas
         }
         $chave = Cofre::decifrar((string) $conexao->chave_cifrada);
         if ($chave === null) {
+            if (Cofre::disponivel()) {
+                // o secret existe mas não abre a chave gravada: foi trocado depois de conectar
+                throw new \InvalidArgumentException('Não foi possível ler a chave do Asaas gravada (a chave do servidor mudou). Conecte a chave de novo.');
+            }
             throw new CofreIndisponivel();
         }
 

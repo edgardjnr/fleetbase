@@ -235,4 +235,13 @@ confere(conexao() === null, 'desconectada: a linha (chave, token, limites) some'
 confere(\Teste\Banco::$travas === [['entregas_asaas_conexoes', true]], 'a linha da conexão travada numa transação antes de conferir o saque em andamento (um pedido no meio espera): ' . json_encode(\Teste\Banco::$travas));
 confere(mensagem(fn () => ConexaoAsaas::desconectar('empresa-1', 'user-admin')) === 'A conta Asaas não está conectada.', 'desconectar de novo: erro');
 
+echo '== Testar sem conseguir ler a chave gravada' . PHP_EOL;
+centralComSaque();
+file_put_contents(CHAVE_DO_COFRE, base64_encode(str_repeat('z', 32)));
+$erro = excecao(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901', 'user-admin'));
+confere($erro instanceof \InvalidArgumentException && $erro->getMessage() === 'Não foi possível ler a chave do Asaas gravada (a chave do servidor mudou). Conecte a chave de novo.', 'secret trocado: 422 pedindo para conectar de novo' . ($erro ? ' (' . get_class($erro) . ': ' . $erro->getMessage() . ')' : ''));
+unlink(CHAVE_DO_COFRE);
+confere(excecao(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901', 'user-admin')) instanceof CofreIndisponivel, 'sem o secret: CofreIndisponivel (503)');
+confere(HttpFalso::$chamadas === [] && (int) conexao()->testes_no_dia === 0, 'nos dois casos, nem chama o Asaas nem conta o teste');
+
 resumo();
