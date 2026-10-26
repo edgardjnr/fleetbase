@@ -812,6 +812,7 @@ fleet-ops:
         descricao: 'Extrato e pagamento dos motoboys, faturas das lojas e margem'
         painel: Painel
         motoboys: Motoboys
+        saques: Saques Pix
         lojas: Lojas e faturas
         relatorio: Tabela de km e relatório
         multiplicadores: Multiplicadores
@@ -851,6 +852,8 @@ fleet-ops:
           email_nao_enviado: 'Fatura {numero} de {loja} não foi enviada por e-mail'
           sem_loja: 'Pedido {numero} sem loja para cobrar'
           sem_valor: 'Pedido {numero} concluído sem valor (sem km ou sem faixas)'
+          saque_falhou: 'Saque de {valor} de {motoboy} não foi concluído: {motivo}'
+          saque_parado: 'Saque de {valor} de {motoboy} em andamento desde {hora} de {dia}'
       tipos:
         corrida: Corrida
         diaria: Diária
@@ -1165,6 +1168,122 @@ fleet-ops:
         quinzenal-ajuda: Fecha no dia 15 e no último dia do mês.
         prazo: Vencimento (dias após o fechamento)
         ciclo-ajuda: Vale para as lojas sem ciclo próprio. A fatura nasce como rascunho no dia seguinte ao fechamento.
+      saque-pix:
+        titulo: Saque Pix (Asaas)
+        intro: 'O motoboy saca o saldo pelo app e o dinheiro cai na chave Pix dele, saindo da conta Asaas da central. Configure em três passos.'
+        desligado-no-servidor: 'O saque Pix está desligado no servidor (ENTREGAS_SAQUE). Dá para configurar, mas nenhum motoboy saca até ele ser ligado.'
+        sem-cofre: 'Saque Pix indisponível: chave de criptografia não configurada no servidor. Fale com quem administra o Entregas.'
+        passo: 'Passo {numero}'
+        feito: Feito
+        conta:
+          titulo: Conectar a conta Asaas
+          ajuda: 'Use uma conta Asaas só para os saques dos motoboys (conta própria ou subconta). A validação de saque do passo 2 vale para toda transferência por API dessa conta.'
+          chave: Chave de API do Asaas
+          chave-ajuda: 'No Asaas: Integrações → Chaves de API. A chave fica guardada cifrada e não aparece de novo.'
+          senha: Sua senha do console
+          senha-ajuda: Conectar, trocar a chave e desconectar pedem a sua senha.
+          conectar: Conectar
+          conectada: Conta Asaas conectada.
+          nome: Conta
+          documento: CPF/CNPJ
+          wallet: Carteira (wallet)
+          conectada-em: 'Conectada em {quando}'
+          trocar: Trocar a chave
+          trocar-ajuda: 'A chave nova precisa ser da mesma conta Asaas. Para mudar de conta, desconecte e conecte de novo.'
+          salvar-troca: Salvar a chave nova
+          chave-trocada: Chave de API trocada.
+          desconectar: Desconectar
+          desconectar-ajuda: 'Desconectar apaga a chave e o token, desliga o saque e pede o teste da validação de novo. Com saque em andamento, espere ele terminar.'
+          confirmar-desconexao: Desconectar a conta
+          desconectada: Conta Asaas desconectada.
+          cancelar: Cancelar
+          preencha: Preencha a chave de API e a sua senha.
+          preencha-senha: Digite a sua senha.
+        validacao:
+          titulo: Validação de saque
+          ajuda: 'Antes de cada transferência pela API, o Asaas pergunta ao Entregas se pode pagar. O Entregas só aprova o saque que ele mesmo criou: uma chave do Asaas vazada não tira dinheiro.'
+          conecte-antes: Conecte a conta Asaas primeiro.
+          url: URL da validação
+          token: Token de autenticação
+          gerar: Gerar token
+          gerar-outro: Gerar outro token
+          gerar-outro-titulo: Gerar outro token?
+          gerar-outro-texto: O token atual deixa de valer, o saque é desligado e a validação precisa ser testada de novo.
+          token-gerado: Token gerado. Copie agora e cole no Asaas.
+          token-uma-vez: 'Copie agora: o token não aparece de novo.'
+          token-existe: Token já gerado. Ele não aparece de novo; se você perdeu, gere outro.
+          passos-titulo: No Asaas da central
+          passo-1: Abra Integrações → Mecanismos de segurança.
+          passo-2: Ligue a validação de saque, cole a URL e o token acima e salve.
+          passo-3: Volte aqui e teste.
+          ips-titulo: 'Recomendado: lista de IPs'
+          ips-com-ip: 'Na mesma tela, cadastre o IP fixo do servidor do Entregas na lista de IPs autorizados: {ip}. Assim a chave de API só funciona a partir do nosso servidor.'
+          ips-sem-ip: Na mesma tela, cadastre o IP fixo do servidor do Entregas na lista de IPs autorizados (peça o IP a quem administra o Entregas). Assim a chave de API só funciona a partir do nosso servidor.
+          teste-titulo: Testar a validação
+          teste-ajuda: O Entregas pede ao Asaas uma transferência de R$ 1,00 para uma chave Pix sua, e a validação do Entregas recusa. Se a validação não estiver configurada no Asaas, o R$ 1,00 cai na sua conta.
+          teste-tipo: Tipo da sua chave Pix
+          teste-chave: Sua chave Pix
+          testar: Testar validação
+          esperando: 'Esperando o Asaas chamar o Entregas… {segundos} s'
+          confirmada: 'Recusada pelo Entregas ✓ Validação confirmada em {quando}.'
+          sem-resposta: 'O Asaas não chamou o Entregas: confira a URL e o token no Asaas e teste de novo.'
+          gere-o-token: Gere o token e configure o Asaas antes de testar.
+        ligar:
+          titulo: Ligar o saque e definir os limites
+          travado: Teste a validação de saque (passo 2) para poder ligar.
+          interruptor: Saque Pix pelo app
+          ligado: Saque ligado. Os motoboys com chave Pix já podem sacar.
+          desligado: Saque desligado.
+          minimo: Mínimo por saque (R$)
+          maximo-dia: Máximo por dia, por motoboy (R$)
+          saques-dia: Saques por dia, por motoboy
+          taxa: Taxa por saque (R$)
+          taxa-ajuda: 'Sai do saldo do motoboy, à parte do valor sacado. Use para repassar a tarifa do Asaas; R$ 0,00 = a central paga.'
+          salvar: Salvar limites
+          salvos: Limites salvos.
+        erros:
+          minimo-invalido: Mínimo por saque inválido.
+          minimo-baixo: O mínimo por saque é de pelo menos R$ 2,00.
+          maximo-invalido: Máximo por dia inválido.
+          maximo-menor: O máximo por dia precisa ser maior ou igual ao mínimo por saque.
+          saques-dia: 'Saques por dia: de 1 a 20.'
+          taxa-invalida: Taxa inválida.
+          taxa-faixa: A taxa vai de R$ 0,00 a R$ 10,00.
+          taxa-maior: A taxa precisa ser menor que o mínimo por saque.
+        situacoes:
+          enviando: Enviando
+          processando: Processando
+          concluido: Concluído
+          falhou: Falhou
+          desconhecida: Outra
+        saques:
+          titulo: Saques Pix
+          ajuda: Saques pedidos pelos motoboys no app nos últimos 30 dias, do mais novo para o mais antigo.
+          filtro: Situação
+          todas: Todas
+          quando: Data e hora
+          motoboy: Motoboy
+          valor: Valor
+          taxa: Taxa
+          situacao: Situação
+          comprovante: Comprovante
+          ver-comprovante: Ver no Asaas
+          vazio: Nenhum saque nos últimos 30 dias.
+          configurar: Configurar o saque Pix
+        motoboys:
+          titulo: Motoboys com chave Pix
+          ajuda: Bloqueie o saque de um motoboy em caso de celular roubado ou acerto pendente. A chave Pix é cadastrada no extrato do motoboy.
+          liberado: Saque liberado
+          bloqueado: Saque bloqueado
+          vazio: Nenhum motoboy com chave Pix.
+          salvo-liberado: 'Saque de {nome} liberado.'
+          salvo-bloqueado: 'Saque de {nome} bloqueado.'
+        carencia: 'Saque liberado às {hora} de {dia}'
+        carencia-por: 'Saque liberado às {hora} de {dia} · chave trocada por {nome}'
+        selo-bloqueado: saque bloqueado
+        selo-bloqueado-ajuda: O motoboy não consegue sacar pelo app. Libere no extrato ou na tela Saques Pix.
+        selo-app: 'Saque Pix · app'
+        comprovante-asaas: comprovante do Asaas
     order-form:
       store-or-customer: Loja ou cliente
       store-or-customer-placeholder: Selecionar loja ou cliente

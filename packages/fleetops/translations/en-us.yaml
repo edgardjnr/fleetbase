@@ -812,6 +812,7 @@ fleet-ops:
                 descricao: 'Driver statements and payments, store invoices and margin'
                 painel: Overview
                 motoboys: Drivers
+                saques: Pix withdrawals
                 lojas: Stores and invoices
                 relatorio: Km table and report
                 multiplicadores: Multipliers
@@ -851,6 +852,8 @@ fleet-ops:
                     email_nao_enviado: 'Invoice {numero} from {loja} was not sent by email'
                     sem_loja: 'Order {numero} has no store to charge'
                     sem_valor: 'Order {numero} completed without a value (no km or no bands)'
+                    saque_falhou: 'Withdrawal of {valor} by {motoboy} was not completed: {motivo}'
+                    saque_parado: 'Withdrawal of {valor} by {motoboy} in progress since {hora} on {dia}'
             tipos:
                 corrida: Ride
                 diaria: Daily allowance
@@ -1165,6 +1168,122 @@ fleet-ops:
                 quinzenal-ajuda: Closes on the 15th and on the last day of the month.
                 prazo: Due date (days after closing)
                 ciclo-ajuda: Applies to stores without their own cycle. The invoice starts as a draft the day after closing.
+            saque-pix:
+                titulo: Pix withdrawal (Asaas)
+                intro: 'Drivers withdraw their balance in the app and the money goes to their Pix key, out of the dispatch center Asaas account. Set it up in three steps.'
+                desligado-no-servidor: 'Pix withdrawal is turned off on the server (ENTREGAS_SAQUE). You can set it up, but no driver can withdraw until it is turned on.'
+                sem-cofre: 'Pix withdrawal unavailable: the encryption key is not configured on the server. Contact whoever runs Entregas.'
+                passo: 'Step {numero}'
+                feito: Done
+                conta:
+                    titulo: Connect the Asaas account
+                    ajuda: 'Use an Asaas account only for driver withdrawals (own account or subaccount). The withdrawal validation in step 2 applies to every API transfer from that account.'
+                    chave: Asaas API key
+                    chave-ajuda: 'In Asaas: Integrations → API keys. The key is stored encrypted and is never shown again.'
+                    senha: Your console password
+                    senha-ajuda: Connecting, changing the key and disconnecting ask for your password.
+                    conectar: Connect
+                    conectada: Asaas account connected.
+                    nome: Account
+                    documento: CPF/CNPJ
+                    wallet: Wallet
+                    conectada-em: 'Connected on {quando}'
+                    trocar: Change the key
+                    trocar-ajuda: 'The new key must belong to the same Asaas account. To switch accounts, disconnect and connect again.'
+                    salvar-troca: Save the new key
+                    chave-trocada: API key changed.
+                    desconectar: Disconnect
+                    desconectar-ajuda: 'Disconnecting deletes the key and the token, turns withdrawals off and asks for the validation test again. If a withdrawal is in progress, wait for it to finish.'
+                    confirmar-desconexao: Disconnect the account
+                    desconectada: Asaas account disconnected.
+                    cancelar: Cancel
+                    preencha: Fill in the API key and your password.
+                    preencha-senha: Type your password.
+                validacao:
+                    titulo: Withdrawal validation
+                    ajuda: 'Before each API transfer, Asaas asks Entregas whether it may pay. Entregas only approves withdrawals it created itself: a leaked Asaas key cannot take money out.'
+                    conecte-antes: Connect the Asaas account first.
+                    url: Validation URL
+                    token: Authentication token
+                    gerar: Generate token
+                    gerar-outro: Generate another token
+                    gerar-outro-titulo: Generate another token?
+                    gerar-outro-texto: The current token stops working, withdrawals are turned off and the validation must be tested again.
+                    token-gerado: Token generated. Copy it now and paste it in Asaas.
+                    token-uma-vez: 'Copy it now: the token is not shown again.'
+                    token-existe: Token already generated. It is not shown again; if you lost it, generate another one.
+                    passos-titulo: In the dispatch center Asaas account
+                    passo-1: Open Integrations → Security mechanisms.
+                    passo-2: Turn on withdrawal validation, paste the URL and the token above and save.
+                    passo-3: Come back here and test it.
+                    ips-titulo: 'Recommended: IP list'
+                    ips-com-ip: 'On the same screen, add the Entregas server fixed IP to the authorized IP list: {ip}. This way the API key only works from our server.'
+                    ips-sem-ip: On the same screen, add the Entregas server fixed IP to the authorized IP list (ask whoever runs Entregas for the IP). This way the API key only works from our server.
+                    teste-titulo: Test the validation
+                    teste-ajuda: Entregas asks Asaas for a R$ 1.00 transfer to a Pix key of yours, and the Entregas validation refuses it. If the validation is not set up in Asaas, the R$ 1.00 goes to your account.
+                    teste-tipo: Your Pix key type
+                    teste-chave: Your Pix key
+                    testar: Test validation
+                    esperando: 'Waiting for Asaas to call Entregas… {segundos} s'
+                    confirmada: 'Refused by Entregas ✓ Validation confirmed on {quando}.'
+                    sem-resposta: 'Asaas did not call Entregas: check the URL and the token in Asaas and test again.'
+                    gere-o-token: Generate the token and set up Asaas before testing.
+                ligar:
+                    titulo: Turn withdrawals on and set the limits
+                    travado: Test the withdrawal validation (step 2) to turn it on.
+                    interruptor: Pix withdrawal in the app
+                    ligado: Withdrawals on. Drivers with a Pix key can withdraw now.
+                    desligado: Withdrawals off.
+                    minimo: Minimum per withdrawal (R$)
+                    maximo-dia: Maximum per day, per driver (R$)
+                    saques-dia: Withdrawals per day, per driver
+                    taxa: Fee per withdrawal (R$)
+                    taxa-ajuda: 'Taken from the driver balance, apart from the amount withdrawn. Use it to pass on the Asaas fee; R$ 0.00 = the dispatch center pays.'
+                    salvar: Save limits
+                    salvos: Limits saved.
+                erros:
+                    minimo-invalido: Invalid minimum per withdrawal.
+                    minimo-baixo: The minimum per withdrawal is at least R$ 2.00.
+                    maximo-invalido: Invalid maximum per day.
+                    maximo-menor: The maximum per day must be greater than or equal to the minimum per withdrawal.
+                    saques-dia: 'Withdrawals per day: from 1 to 20.'
+                    taxa-invalida: Invalid fee.
+                    taxa-faixa: The fee goes from R$ 0.00 to R$ 10.00.
+                    taxa-maior: The fee must be lower than the minimum per withdrawal.
+                situacoes:
+                    enviando: Sending
+                    processando: Processing
+                    concluido: Completed
+                    falhou: Failed
+                    desconhecida: Other
+                saques:
+                    titulo: Pix withdrawals
+                    ajuda: Withdrawals requested by drivers in the app in the last 30 days, newest first.
+                    filtro: Status
+                    todas: All
+                    quando: Date and time
+                    motoboy: Driver
+                    valor: Amount
+                    taxa: Fee
+                    situacao: Status
+                    comprovante: Receipt
+                    ver-comprovante: View in Asaas
+                    vazio: No withdrawals in the last 30 days.
+                    configurar: Set up Pix withdrawal
+                motoboys:
+                    titulo: Drivers with a Pix key
+                    ajuda: Block withdrawals for a driver if the phone was stolen or a settlement is pending. The Pix key is set in the driver statement.
+                    liberado: Withdrawal allowed
+                    bloqueado: Withdrawal blocked
+                    vazio: No driver with a Pix key.
+                    salvo-liberado: 'Withdrawal allowed for {nome}.'
+                    salvo-bloqueado: 'Withdrawal blocked for {nome}.'
+                carencia: 'Withdrawal allowed at {hora} on {dia}'
+                carencia-por: 'Withdrawal allowed at {hora} on {dia} · key changed by {nome}'
+                selo-bloqueado: withdrawal blocked
+                selo-bloqueado-ajuda: The driver cannot withdraw in the app. Allow it in the statement or on the Pix withdrawals screen.
+                selo-app: 'Pix withdrawal · app'
+                comprovante-asaas: Asaas receipt
         order-form:
             store-or-customer: Store or customer
             store-or-customer-placeholder: Select store or customer
