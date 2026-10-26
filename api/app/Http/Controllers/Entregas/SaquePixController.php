@@ -118,8 +118,9 @@ class SaquePixController extends Controller
     }
 
     /**
-     * GET financeiro/saques?situacao → {saques (últimos 30 dias, mais novo primeiro, com o motoboy), motoboys (com chave
-     * Pix: id, nome, chave escondida, tipo, bloqueado, liberado_em)}.
+     * GET financeiro/saques?situacao → {saques (últimos 30 dias, mais novo primeiro, com o motoboy; `motivo` é o texto do
+     * Asaas quando houver, e `motivo_asaas` vem à parte), motoboys (com chave Pix: id, nome, chave escondida, tipo,
+     * bloqueado, liberado_em)}.
      */
     public function saques(Request $request)
     {
@@ -145,7 +146,7 @@ class SaquePixController extends Controller
             $motoboys[(string) $motoboy->uuid] = $motoboy;
         }
 
-        $saques = array_map(fn ($saque) => Saques::publico($saque) + ['motoboy' => [
+        $saques = array_map(fn ($saque) => Saques::publico($saque, true) + ['motoboy' => [
             'id'   => $motoboys[(string) $saque->driver_uuid]->public_id ?? null,
             'nome' => $motoboys[(string) $saque->driver_uuid]->name ?? null,
         ]], $linhas);

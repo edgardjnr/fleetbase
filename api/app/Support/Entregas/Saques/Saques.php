@@ -252,7 +252,7 @@ final class Saques
 
         $itens = [];
         foreach ($falhos as $saque) {
-            $itens[] = ['tipo' => 'saque_falhou', 'saque' => (string) $saque->uuid, 'motoboy' => $nomes[(string) $saque->driver_uuid] ?? null, 'valor' => round((float) $saque->valor, 2), 'motivo' => $saque->motivo_falha];
+            $itens[] = ['tipo' => 'saque_falhou', 'saque' => (string) $saque->uuid, 'motoboy' => $nomes[(string) $saque->driver_uuid] ?? null, 'valor' => round((float) $saque->valor, 2), 'motivo' => static::motivoNoConsole($saque)];
         }
         foreach ($parados as $saque) {
             $itens[] = ['tipo' => 'saque_parado', 'saque' => (string) $saque->uuid, 'motoboy' => $nomes[(string) $saque->driver_uuid] ?? null, 'valor' => round((float) $saque->valor, 2), 'desde' => Saque::iso($saque->created_at, $companyUuid)];
@@ -261,23 +261,39 @@ final class Saques
         return $itens;
     }
 
-    /** O saque no formato do app e do console: {id, valor, taxa, situacao, motivo, chave, tipo_chave, comprovante_url, criado_em, concluido_em}. */
-    public static function publico(object $saque): array
+    /**
+     * O saque no formato do app e do console: {id, valor, taxa, situacao, motivo, chave, tipo_chave, comprovante_url,
+     * criado_em, concluido_em}. No app, `motivo` é o que o motoboy vê (nunca o texto cru do Asaas). Com $console, `motivo`
+     * é o texto do Asaas quando houver, e vem também `motivo_asaas` (null se a falha não veio do Asaas).
+     */
+    public static function publico(object $saque, bool $console = false): array
     {
         $empresa = (string) $saque->company_uuid;
-
-        return [
+        $dados   = [
             'id'              => (string) $saque->uuid,
             'valor'           => round((float) $saque->valor, 2),
             'taxa'            => round((float) $saque->taxa, 2),
             'situacao'        => (string) $saque->situacao,
-            'motivo'          => $saque->motivo_falha,
+            'motivo'          => $console ? static::motivoNoConsole($saque) : $saque->motivo_falha,
             'chave'           => Saque::chaveEscondida((string) $saque->chave_pix, (string) $saque->tipo_chave),
             'tipo_chave'      => (string) $saque->tipo_chave,
             'comprovante_url' => $saque->comprovante_url,
             'criado_em'       => Saque::iso($saque->created_at, $empresa),
             'concluido_em'    => Saque::iso($saque->concluido_em, $empresa),
         ];
+        if ($console) {
+            $dados['motivo_asaas'] = ($saque->motivo_asaas ?? null) !== null ? (string) $saque->motivo_asaas : null;
+        }
+
+        return $dados;
+    }
+
+    /** O motivo da falha para a central: o texto do Asaas quando houver; senão o nosso. */
+    private static function motivoNoConsole(object $saque): ?string
+    {
+        $doAsaas = $saque->motivo_asaas ?? null;
+
+        return is_string($doAsaas) && $doAsaas !== '' ? $doAsaas : $saque->motivo_falha;
     }
 
     /** O saque relido do banco. */
@@ -328,7 +344,7 @@ final class Saques
         if ($resposta->ok() && is_string($id) && $id !== '') {
             static::registrarTransferencia($saque, $resposta->dados);
         } elseif (static::recusaClara($resposta)) {
-            static::falhar($saque, $resposta->mensagem('O Asaas recusou a transferência.'));
+            static::falhar($saque, Saque::MOTIVO_FALHA_DO_ASAAS, null, $resposta->mensagem('O Asaas recusou a transferência.'));
         } else {
             // sem resposta, 5xx, 200 sem id, 409, 429, 4xx sem `errors`...: pode ter saído; a rotina procura
             Log::warning('[entregas] saque: envio sem confirmação do Asaas; a rotina confere', ['saque' => $saque->uuid, 'status' => $resposta->status]);
@@ -389,11 +405,12 @@ final class Saques
             return static::concluir($saque, is_string($url) && $url !== '' ? mb_substr($url, 0, 500) : null);
         }
         if ($situacao === Saque::FALHOU) {
-            $motivo = is_string($dados['failReason'] ?? null) && trim($dados['failReason']) !== ''
-                ? trim($dados['failReason'])
-                : ($status === 'CANCELLED' ? 'Transferência cancelada no Asaas.' : 'Transferência não concluída pelo Asaas.');
+            if (is_string($dados['failReason'] ?? null) && trim($dados['failReason']) !== '') {
+                // o texto do Asaas fica para a central; o motoboy vê a frase nossa
+                return static::falhar($saque, Saque::MOTIVO_FALHA_DO_ASAAS, $status, trim($dados['failReason']));
+            }
 
-            return static::falhar($saque, $motivo, $status);
+            return static::falhar($saque, $status === 'CANCELLED' ? 'Transferência cancelada no Asaas.' : 'Transferência não concluída pelo Asaas.', $status);
         }
         if ($status !== '') {
             DB::table(Saque::TABELA)->where('id', $saque->id)->update(['asaas_status' => mb_substr($status, 0, 30), 'updated_at' => now()->format('Y-m-d H:i:s')]);
@@ -426,10 +443,11 @@ final class Saques
     /**
      * Falha o saque em andamento e, na mesma transação, estorna o pagamento (motivo "Pagamento estornado", que o app
      * reconhece) e a taxa; depois avisa o motoboy. false se ele não estava em andamento (nada muda, nada é estornado).
+     * $motivo é o que o motoboy vê (push e app); $motivoDoAsaas, o texto cru do Asaas, fica só para o console.
      */
-    public static function falhar(object $saque, string $motivo, ?string $statusDoAsaas = null): bool
+    public static function falhar(object $saque, string $motivo, ?string $statusDoAsaas = null, ?string $motivoDoAsaas = null): bool
     {
-        $feito = DB::transaction(function () use ($saque, $motivo, $statusDoAsaas) {
+        $feito = DB::transaction(function () use ($saque, $motivo, $statusDoAsaas, $motivoDoAsaas) {
             $agora = now()->format('Y-m-d H:i:s');
             $n     = DB::table(Saque::TABELA)
                 ->where('id', $saque->id)
@@ -437,6 +455,7 @@ final class Saques
                 ->update([
                     'situacao'     => Saque::FALHOU,
                     'motivo_falha' => mb_substr($motivo, 0, 255),
+                    'motivo_asaas' => $motivoDoAsaas !== null && trim($motivoDoAsaas) !== '' ? mb_substr(trim($motivoDoAsaas), 0, 255) : null,
                     'asaas_status' => $statusDoAsaas !== null && $statusDoAsaas !== '' ? mb_substr($statusDoAsaas, 0, 30) : null,
                     'updated_at'   => $agora,
                 ]);
@@ -457,7 +476,7 @@ final class Saques
         if (!$feito) {
             return false;
         }
-        Log::info('[entregas] saque: não concluído, valor devolvido', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'motivo' => $motivo]);
+        Log::info('[entregas] saque: não concluído, valor devolvido', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'motivo' => $motivo, 'motivo_asaas' => $motivoDoAsaas]);
         static::avisar($saque, new SaqueNaoConcluido((string) $saque->uuid, (float) $saque->valor, $motivo));
 
         return true;

@@ -55,7 +55,8 @@ return new class extends Migration
             $table->string('chave_pix', 140);                    // copiada do cadastro no instante do pedido
             $table->string('tipo_chave', 12);
             $table->string('situacao', 12);                      // enviando processando concluido falhou
-            $table->string('motivo_falha', 255)->nullable();
+            $table->string('motivo_falha', 255)->nullable();     // o que o motoboy vê (push e app)
+            $table->string('motivo_asaas', 255)->nullable();     // o texto cru do Asaas (só no console)
             $table->string('transfer_id', 64)->nullable()->unique();
             $table->string('external_reference', 80);            // saque:<uuid>
             $table->string('asaas_status', 30)->nullable();

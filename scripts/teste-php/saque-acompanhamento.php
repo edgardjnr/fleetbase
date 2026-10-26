@@ -47,11 +47,11 @@ HttpFalso::$respostas[] = 'conexao';
 confere(AcompanhamentoDeSaques::conferir() === 2, 'dois saques terminaram');
 confere(array_column(HttpFalso::$chamadas, 'url') === ['https://asaas.teste/v3/transfers/tra_a', 'https://asaas.teste/v3/transfers/tra_b', 'https://asaas.teste/v3/transfers/tra_c'], 'consulta cada um pelo id');
 confere(saqueDoBanco(UA)->situacao === 'concluido' && saqueDoBanco(UA)->comprovante_url === 'https://asaas.teste/c/a', 'DONE: concluído com o comprovante');
-confere(saqueDoBanco(UB)->situacao === 'falhou' && saqueDoBanco(UB)->motivo_falha === 'Chave Pix não encontrada' && saqueDoBanco(UB)->asaas_status === 'FAILED', 'FAILED: falhou com o motivo do Asaas');
+confere(saqueDoBanco(UB)->situacao === 'falhou' && saqueDoBanco(UB)->motivo_falha === 'Não foi possível concluir o saque agora.' && saqueDoBanco(UB)->motivo_asaas === 'Chave Pix não encontrada' && saqueDoBanco(UB)->asaas_status === 'FAILED', 'FAILED com failReason: o texto do Asaas em motivo_asaas, a frase nossa em motivo_falha');
 confere(saqueDoBanco(UC)->situacao === 'processando', 'sem resposta: continua processando (nunca falha às cegas)');
 confere(Driver::$avisos[0][1] instanceof SaqueConcluido && Driver::$avisos[1][1] instanceof SaqueNaoConcluido && count(Driver::$avisos) === 2, 'um push para cada um que terminou');
 asaas(200, ['id' => 'tra_c', 'status' => 'CANCELLED']);
-confere(AcompanhamentoDeSaques::conferir() === 1 && saqueDoBanco(UC)->motivo_falha === 'Transferência cancelada no Asaas.', 'CANCELLED sem motivo: "cancelada no Asaas"');
+confere(AcompanhamentoDeSaques::conferir() === 1 && saqueDoBanco(UC)->motivo_falha === 'Transferência cancelada no Asaas.' && saqueDoBanco(UC)->motivo_asaas === null, 'CANCELLED sem motivo: "cancelada no Asaas" (texto nosso)');
 
 echo '== Sem id: espera 5 min, depois procura pelo externalReference' . PHP_EOL;
 centralComSaque();

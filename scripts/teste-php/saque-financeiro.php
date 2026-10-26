@@ -78,6 +78,8 @@ Relogio::$agora = '2026-10-27 11:00:01';
 $atencao = Saques::atencao('empresa-1');
 confere(($atencao[0] ?? null) === ['tipo' => 'saque_falhou', 'saque' => U1, 'motoboy' => 'João Silva', 'valor' => 10.0, 'motivo' => 'Saldo insuficiente.'], 'saque que falhou nas últimas 24 h: ' . json_encode($atencao[0] ?? null, JSON_UNESCAPED_UNICODE));
 confere(($atencao[1]['tipo'] ?? null) === 'saque_parado' && $atencao[1]['motoboy'] === 'Maria Souza' && $atencao[1]['desde'] === '2026-10-27T10:00:00-03:00', 'em andamento há mais de 1 h: parado');
+\Illuminate\Support\Facades\DB::table('entregas_saques')->where('uuid', U1)->update(['motivo_falha' => 'Não foi possível concluir o saque agora.', 'motivo_asaas' => 'Chave Pix inexistente no DICT.']);
+confere((Saques::atencao('empresa-1')[0]['motivo'] ?? null) === 'Chave Pix inexistente no DICT.', 'falha do Asaas: o painel mostra o texto do Asaas');
 Relogio::$agora = '2026-10-28 11:00:01';
 confere(array_column(Saques::atencao('empresa-1'), 'tipo') === ['saque_parado'], 'depois de 24 h, a falha sai do painel');
 Config::$valores['services.entregas.saque'] = null;

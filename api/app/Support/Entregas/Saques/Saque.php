@@ -51,6 +51,9 @@ final class Saque
     public const MOTIVO_TAXA_DEVOLVIDA   = 'Taxa do saque devolvida';
     public const DESCRICAO_NO_ASAAS      = 'Saque Entregas';
 
+    /** O motivo que o motoboy vê quando a falha vem do Asaas (o texto do Asaas fica em motivo_asaas, só no console). */
+    public const MOTIVO_FALHA_DO_ASAAS = 'Não foi possível concluir o saque agora.';
+
     public static function ligada(): bool
     {
         return filter_var(config('services.entregas.saque'), FILTER_VALIDATE_BOOLEAN);

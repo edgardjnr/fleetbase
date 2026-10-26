@@ -104,6 +104,16 @@ confere($console->bloquear(doAdmin(['bloqueado' => 'talvez']), 'driver_1')->stat
 $lista = $console->saques(doAdmin())->dados;
 confere(($lista['motoboys'] ?? null) === [['id' => 'driver_1', 'nome' => 'João Silva', 'chave' => '*******4321', 'tipo' => 'telefone', 'bloqueado' => true, 'liberado_em' => null]], 'motoboys com chave Pix, para o interruptor: ' . json_encode($lista['motoboys'] ?? null, JSON_UNESCAPED_UNICODE));
 confere(($lista['saques'] ?? null) === [], 'sem saques');
+\Illuminate\Support\Facades\DB::table('entregas_saques')->insert([
+    'uuid' => U1, 'company_uuid' => 'empresa-1', 'driver_uuid' => 'driver-1', 'valor' => 20, 'taxa' => 0, 'chave_pix' => '11999994321',
+    'tipo_chave' => 'telefone', 'situacao' => 'falhou', 'motivo_falha' => 'Não foi possível concluir o saque agora.',
+    'motivo_asaas' => 'Conta de destino encerrada.', 'external_reference' => 'saque:' . U1, 'created_at' => '2026-10-27 09:00:00', 'updated_at' => '2026-10-27 09:01:00',
+]);
+$item = $console->saques(doAdmin())->dados['saques'][0] ?? [];
+confere(($item['motivo'] ?? null) === 'Conta de destino encerrada.' && array_key_exists('motivo_asaas', $item) && $item['motivo_asaas'] === 'Conta de destino encerrada.', 'console: o motivo é o texto do Asaas, com motivo_asaas à parte: ' . json_encode($item, JSON_UNESCAPED_UNICODE));
+$doApp = (new SaquesController())->mostrar(doMotoboy(), U1)->dados['saque'] ?? [];
+confere(($doApp['motivo'] ?? null) === 'Não foi possível concluir o saque agora.' && !array_key_exists('motivo_asaas', $doApp), 'app: a frase nossa, sem o texto do Asaas');
+\Fleetbase\Support\Auth::$usuario = new UsuarioDoSaque('user-admin', 'admin');
 confere($console->saques(doAdmin(['situacao' => 'lixo']))->status === 422, 'situação inválida: 422');
 
 echo '== Console: desconectar' . PHP_EOL;
