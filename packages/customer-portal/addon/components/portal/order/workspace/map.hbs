@@ -47,7 +47,7 @@
                 {{!-- Entregas: pedido já aceito, número do pedido e nome do motoboy fixos embaixo do alfinete; o fundo segue o prazo de entrega (verde, amarelo, vermelho; sem prazo, cinza neutro); a caminho do cliente, uma motinha na frente (emEntrega). Um tooltip só, com o className fixo (no Leaflet ele só vale na criação); o estado vai na classe do span, que é DOM do Glimmer dentro do tooltip e muda sozinho, e o CSS pinta o tooltip com :has(.entregas-prazo-*) --}}
                 {{#let (this.rotuloNoAlfinete pedido) as |nome|}}
                     {{#if nome}}
-                        <marker.tooltip @permanent={{true}} @direction="bottom" @className="entregas-nome-no-alfinete"><span class={{this.classeDoRotulo pedido this.relogio}}>{{#if (this.emEntrega pedido)}}<FaIcon @icon="motorcycle" class="entregas-moto-no-alfinete" />{{/if}}{{nome}}</span></marker.tooltip>
+                        <marker.tooltip @permanent={{true}} @direction="bottom" @className="entregas-nome-no-alfinete"><span class={{this.classeDoRotulo pedido this.relogio}}>{{#if (this.emEntrega pedido)}}<FaIcon @icon="motorcycle" class="entregas-moto-no-alfinete" />{{/if}}{{nome}}{{#if this.lojaDoRotulo}}<span class="entregas-loja-no-alfinete">{{this.lojaDoRotulo}}</span>{{/if}}</span></marker.tooltip>
                     {{/if}}
                 {{/let}}
             </layers.marker>

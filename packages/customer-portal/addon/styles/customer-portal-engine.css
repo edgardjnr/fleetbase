@@ -4441,6 +4441,25 @@ body[data-theme='dark'].fleetbase-portal .portal-invoice-notes p {
     font-size: 11px;
 }
 
+/* Entregas: a segunda linha do rótulo do alfinete, com o nome da loja do pedido (lojaNoAlfinete, 2026-10-26). Com ela, o
+   rótulo deixa de ser pílula e vira um cartãozinho de duas linhas centralizadas, na mesma cor do prazo */
+.fleetbase-portal .leaflet-tooltip.entregas-nome-no-alfinete:has(.entregas-loja-no-alfinete) {
+    border-radius: 8px;
+    padding: 2px 7px 3px;
+    text-align: center;
+}
+
+.fleetbase-portal .entregas-nome-no-alfinete .entregas-loja-no-alfinete {
+    display: block;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 13px;
+    opacity: 0.92;
+}
+
 /* Entregas: o fundo do rótulo do alfinete segue o prazo de entrega (utils/entregas-cronometro.js, classeDoRotulo): verde
    no prazo, amarelo a 15 min ou menos, vermelho atrasado. Sem prazo (pedido de antes do deploy), o neutro acima. O
    tooltip tem classe fixa (o className do Leaflet só vale na criação); o estado vem no span de dentro, daí o :has. As

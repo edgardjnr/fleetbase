@@ -185,7 +185,7 @@ label.rot { display: block; font-size: 12.5px; font-weight: 700; color: var(--in
 .mk.pd.d .pin { background: var(--bad); }
 .mk.pd.d.novo { animation: pula .35s ease; }
 @keyframes pula { 0% { transform: translate(-50%, -160%); } 100% { transform: translate(-50%, -100%); } }
-.mk .rot { font-size: 11px; font-weight: 700; background: var(--ok); color: #fff; padding: 1px 6px; border-radius: 6px; margin-top: 2px; white-space: nowrap; }
+.mk .rot { font-size: 11px; font-weight: 700; background: var(--ok); color: #fff; padding: 1px 7px 2px; border-radius: 8px; margin-top: 2px; white-space: nowrap; text-align: center; }
 .mk .rot.y { background: var(--warn); color: oklch(0.25 0.05 70); }
 .mk .rot.r { background: var(--bad); }
 .mk .rot.n { background: oklch(0.55 0.03 255); }
@@ -657,7 +657,7 @@ function mapa(opts = {}) {
     mk += `<div class="mk loja" style="left:${tx(L[0])}%;top:${ty(L[1])}%" data-act="toast" data-msg="${LOJA.nome}"><img src="${IMG}loja-pin.png" alt=""><span class="nm">${LOJA.curto}</span></div>`;
     ativos().forEach(p => {
       const m = D.motos.find(x => x.ped === p.id);
-      const rot = m && opts.rotulos !== false ? `<span class="rot ${tomPz(p) === 'g' ? '' : tomPz(p)}">${p.st === 'rota' ? '<i class="fa-solid fa-motorcycle"></i> ' : ''}${numTxt(p)} · ${m.nome}</span>` : '';
+      const rot = m && opts.rotulos !== false ? `<span class="rot ${tomPz(p) === 'g' ? '' : tomPz(p)}">${p.st === 'rota' ? '<i class="fa-solid fa-motorcycle"></i> ' : ''}${numTxt(p)} · ${m.nome}<small style="display:block;font-weight:500;font-size:10px;line-height:12px;opacity:.92">${LOJA.nome}</small></span>` : '';
       mk += `<div class="mk dest ${filtra(p) ? '' : 'dim'}" style="left:${tx(p.dx)}%;top:${ty(p.dy)}%" data-act="abrir" data-id="${p.id}" title="${numTxt(p)}"><i class="fa-solid fa-location-dot"></i>${rot}</div>`;
     });
     D.motos.forEach(x => {

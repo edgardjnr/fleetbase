@@ -2,8 +2,8 @@
 // Uso, na raiz do repo: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/*.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALFINETE, classeDoRotulo, emEntrega, nomeNoAlfinete, rotuloNoAlfinete, mesmaLista, pedidosValidos, semOPedidoAberto, tempoDesde } from '../../packages/customer-portal/addon/utils/pedidos-no-mapa.js';
-import { ALFINETE as ALFINETE_DO_CONSOLE, classeDoRotulo as classeDoRotuloDoConsole, emEntrega as emEntregaDoConsole } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
+import { ALFINETE, classeDoRotulo, emEntrega, lojaNoAlfinete, nomeNoAlfinete, rotuloNoAlfinete, mesmaLista, pedidosValidos, semOPedidoAberto, tempoDesde } from '../../packages/customer-portal/addon/utils/pedidos-no-mapa.js';
+import { ALFINETE as ALFINETE_DO_CONSOLE, classeDoRotulo as classeDoRotuloDoConsole, emEntrega as emEntregaDoConsole, lojaNoAlfinete as lojaNoAlfineteDoConsole } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
 
 test('o mesmo alfinete do console', () => {
     assert.deepEqual(ALFINETE, ALFINETE_DO_CONSOLE);
@@ -81,4 +81,18 @@ test('motinha no rótulo: a mesma regra do console', () => {
     }
     assert.equal(emEntrega({ status: 'enroute' }), true);
     assert.equal(emEntrega({ status: 'started' }), false);
+});
+
+test('segunda linha do rótulo do alfinete: o nome da loja do pedido', () => {
+    assert.equal(lojaNoAlfinete('Pizzaria Bella Massa'), 'Pizzaria Bella Massa');
+    assert.equal(lojaNoAlfinete('  Terraço Pizza Bar  '), 'Terraço Pizza Bar', 'sem os espaços das pontas');
+    assert.equal(lojaNoAlfinete(''), null, 'vazio: só a primeira linha');
+    assert.equal(lojaNoAlfinete('   '), null);
+    assert.equal(lojaNoAlfinete(null), null, 'API antiga ou pedido sem loja');
+    assert.equal(lojaNoAlfinete(undefined), null);
+    assert.equal(lojaNoAlfinete(42), null);
+});
+
+test('segunda linha do rótulo: a mesma regra do console', () => {
+    for (const v of ['Bella Massa', ' X ', '', null, undefined, 7]) assert.equal(lojaNoAlfinete(v), lojaNoAlfineteDoConsole(v));
 });

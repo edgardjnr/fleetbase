@@ -76,6 +76,17 @@ export function rotuloNoAlfinete(pedido) {
 }
 
 /**
+ * Segunda linha do rótulo fixo do alfinete, embaixo do "#4821 · Carlos": o nome da loja do pedido (decisão do Edgard,
+ * 2026-10-26, em todos os mapas: console, portal e app). Recebe o nome (no console, o `loja` do pedido; no portal, a loja
+ * da sessão). Vazio ou ausente: null, e o rótulo fica só com a primeira linha.
+ */
+export function lojaNoAlfinete(loja) {
+    const nome = typeof loja === 'string' ? loja.trim() : '';
+
+    return nome === '' ? null : nome;
+}
+
+/**
  * Classe do span dentro do rótulo fixo do alfinete ("#4821 · Carlos"; o tooltip tem a classe fixa
  * entregas-nome-no-alfinete e o CSS pinta o fundo com :has): segue o cronômetro do prazo de entrega (prazo_em do
  * PedidosNoMapa): entregas-prazo-no_prazo (verde), -perto (amarelo) ou -atrasado (vermelho). Sem prazo (pedido de antes

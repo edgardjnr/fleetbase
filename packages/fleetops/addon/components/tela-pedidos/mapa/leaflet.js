@@ -3,7 +3,7 @@ import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
 import { CAPACETES } from '../../../utils/entregas-capacete';
 import { ICONE_DA_LOJA } from '../../../utils/entregas-icone-da-loja';
-import { ALFINETE, rotuloNoAlfinete, classeDoRotulo, emEntrega } from '../../../utils/entregas-pedidos-no-mapa';
+import { ALFINETE, rotuloNoAlfinete, lojaNoAlfinete, classeDoRotulo, emEntrega } from '../../../utils/entregas-pedidos-no-mapa';
 import ensureLeafletDrawEditNamespace from '../../../utils/leaflet-draw-namespace-guard';
 import { pontosParaEnquadrar } from '../../../utils/pedido-aberto';
 
@@ -63,6 +63,7 @@ export default class TelaPedidosMapaLeafletComponent extends Component {
             .map((pedido) => ({
                 ...pedido,
                 rotulo: rotuloNoAlfinete(pedido),
+                lojaDoRotulo: lojaNoAlfinete(pedido.loja),
                 classe: classeDoRotulo(pedido, agora),
                 emEntrega: emEntrega(pedido),
                 tamanho: pedido.selecionado ? ALFINETE_GRANDE.tamanho : ALFINETE.tamanho,

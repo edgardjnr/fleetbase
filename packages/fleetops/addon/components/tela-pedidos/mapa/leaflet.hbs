@@ -46,7 +46,7 @@
                 as |marker|
             >
                 {{#if pedido.rotulo}}
-                    <marker.tooltip @permanent={{true}} @direction="bottom" @className="entregas-nome-no-alfinete"><span class={{pedido.classe}}>{{#if pedido.emEntrega}}<FaIcon @icon="motorcycle" class="entregas-moto-no-alfinete" />{{/if}}{{pedido.rotulo}}</span></marker.tooltip>
+                    <marker.tooltip @permanent={{true}} @direction="bottom" @className="entregas-nome-no-alfinete"><span class={{pedido.classe}}>{{#if pedido.emEntrega}}<FaIcon @icon="motorcycle" class="entregas-moto-no-alfinete" />{{/if}}{{pedido.rotulo}}{{#if pedido.lojaDoRotulo}}<span class="entregas-loja-no-alfinete">{{pedido.lojaDoRotulo}}</span>{{/if}}</span></marker.tooltip>
                 {{/if}}
             </layers.marker>
         {{/each}}

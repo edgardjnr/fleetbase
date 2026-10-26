@@ -132,3 +132,6 @@ tela".
   mapa com a pílula "Voltar para a Tabela".
 - **Celular (telas 11 e 12):** a C, com as abas no topo, a barra Novo pedido embaixo, o mapa com a folha de baixo e o
   menu no avatar.
+- **Rótulo do alfinete com a loja** (pedido do Edgard em 2026-10-26, para todos os mapas: console, portal e app):
+  embaixo do "#4821 · Carlos", uma segunda linha com o nome da loja do pedido. No portal, é sempre a própria loja. Já
+  implementado no código (console, portal e app), fora do sketch.

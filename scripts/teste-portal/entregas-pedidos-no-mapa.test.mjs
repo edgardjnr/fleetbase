@@ -2,7 +2,7 @@
 // Uso, na raiz do repo: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/*.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALFINETE, classeDoRotulo, emEntrega, nomeNoAlfinete, rotuloNoAlfinete, mesmaLista, pedidosValidos, tempoDesde } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
+import { ALFINETE, classeDoRotulo, emEntrega, lojaNoAlfinete, nomeNoAlfinete, rotuloNoAlfinete, mesmaLista, pedidosValidos, tempoDesde } from '../../packages/fleetops/addon/utils/entregas-pedidos-no-mapa.js';
 
 test('alfinete vermelho em SVG, com a ponta embaixo no meio', () => {
     assert.match(ALFINETE.url, /^data:image\/svg\+xml;charset=UTF-8,/);
@@ -91,4 +91,14 @@ test('motinha no rótulo: só com o pedido já a caminho do cliente (o mesmo STA
     }
     assert.equal(emEntrega(null), false);
     assert.equal(emEntrega(undefined), false);
+});
+
+test('segunda linha do rótulo do alfinete: o nome da loja do pedido', () => {
+    assert.equal(lojaNoAlfinete('Pizzaria Bella Massa'), 'Pizzaria Bella Massa');
+    assert.equal(lojaNoAlfinete('  Terraço Pizza Bar  '), 'Terraço Pizza Bar', 'sem os espaços das pontas');
+    assert.equal(lojaNoAlfinete(''), null, 'vazio: só a primeira linha');
+    assert.equal(lojaNoAlfinete('   '), null);
+    assert.equal(lojaNoAlfinete(null), null, 'API antiga ou pedido sem loja');
+    assert.equal(lojaNoAlfinete(undefined), null);
+    assert.equal(lojaNoAlfinete(42), null);
 });
