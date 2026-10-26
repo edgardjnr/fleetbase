@@ -107,12 +107,20 @@ final class ValidacaoDeSaque
         return str_contains($chave, '*');
     }
 
-    /** A nossa chave e a do Asaas são a mesma (telefone: as duas como 55 + DDD + número, comparadas inteiras). */
+    /**
+     * A nossa chave e a do Asaas são a mesma, comparadas inteiras depois de normalizar pelo tipo: telefone, as duas como
+     * 55 + DDD + número; CPF/CNPJ, só os dígitos; e-mail, só aparado e em minúsculas (ponto e hífen contam:
+     * joao.silva@ ≠ joaosilva@); aleatória, minúsculas sem espaços. Tipo desconhecido: só aparada.
+     */
     public static function mesmaChave(string $nossa, string $tipo, string $deles): bool
     {
-        $limpa = $tipo === 'telefone'
-            ? fn (string $chave) => static::telefone($chave)
-            : fn (string $chave) => strtolower((string) preg_replace('/[\s.\-\/()+]/', '', $chave));
+        $limpa = match ($tipo) {
+            'telefone'    => fn (string $chave) => static::telefone($chave),
+            'cpf', 'cnpj' => fn (string $chave) => (string) preg_replace('/\D/', '', $chave),
+            'email'       => fn (string $chave) => mb_strtolower(trim($chave)),
+            'aleatoria'   => fn (string $chave) => mb_strtolower((string) preg_replace('/\s+/u', '', $chave)),
+            default       => fn (string $chave) => trim($chave),
+        };
         $a = $limpa($nossa);
         $b = $limpa($deles);
 

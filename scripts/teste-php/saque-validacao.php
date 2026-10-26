@@ -85,6 +85,19 @@ foreach (['+5511999994321' => true, '5511999994321' => true, '11999994321' => tr
 confere(ValidacaoDeSaque::mesmaChave('5511999994321', 'telefone', '11999994321') && ValidacaoDeSaque::mesmaChave('1133334444', 'telefone', '+551133334444'), 'cadastro com 55 ou fixo de 10 dígitos: também');
 confere(!ValidacaoDeSaque::mesmaChave('', 'telefone', '') && !ValidacaoDeSaque::mesmaChave('', 'cpf', ''), 'vazias: nunca são a mesma');
 confere(ValidacaoDeSaque::mesmaChave('123.456.789-01', 'cpf', '12345678901') && !ValidacaoDeSaque::mesmaChave('12345678901', 'cpf', '2345678901'), 'CPF: sem pontuação, comparado inteiro');
+
+echo '== Segunda revisão, N4: normalização da chave pelo tipo' . PHP_EOL;
+confere(!ValidacaoDeSaque::mesmaChave('joao.silva@hotmail.com', 'email', 'joaosilva@hotmail.com'), 'PoC D: e-mail com ponto ≠ sem ponto');
+confere(!ValidacaoDeSaque::mesmaChave('joao-silva@hotmail.com', 'email', 'joaosilva@hotmail.com') && !ValidacaoDeSaque::mesmaChave('joao+pix@gmail.com', 'email', 'joaopix@gmail.com'), 'e-mail: hífen e + também contam');
+confere(ValidacaoDeSaque::mesmaChave('joao.silva@hotmail.com', 'email', '  Joao.Silva@HOTMAIL.com ') && !ValidacaoDeSaque::mesmaChave('joao.silva@hotmail.com', 'email', 'joao. silva@hotmail.com'), 'e-mail: só aparado e em minúsculas');
+confere(ValidacaoDeSaque::mesmaChave('12.345.678/0001-99', 'cnpj', '12345678000199') && ValidacaoDeSaque::mesmaChave('12345678000199', 'cnpj', ' 12 345 678 0001 99') && !ValidacaoDeSaque::mesmaChave('12345678000199', 'cnpj', '12345678000198'), 'CNPJ: só os dígitos, comparado inteiro');
+confere(ValidacaoDeSaque::mesmaChave('123e4567-e89b-12d3-a456-426614174000', 'aleatoria', ' 123E4567-E89B-12D3-A456-426614174000 ') && !ValidacaoDeSaque::mesmaChave('123e4567-e89b-12d3-a456-426614174000', 'aleatoria', '123e4567e89b12d3a456426614174000'), 'aleatória: minúsculas sem espaços (o hífen conta)');
+confere(ValidacaoDeSaque::mesmaChave('11999994321', 'telefone', '+55 (11) 99999-4321'), 'telefone: como antes (55 + DDD + número)');
+centralComSaque();
+DB::table('entregas_motoboys_financeiro')->where('driver_uuid', 'driver-1')->update(['chave_pix' => 'joao.silva@hotmail.com', 'tipo_chave' => 'email']);
+saqueEnviado('driver-1', U1, 50, ['id' => 'tra_1', 'status' => 'PENDING']);
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50, 'joaosilva@hotmail.com')) === recusa('Chave Pix diferente da cadastrada.'), 'validação: e-mail de outra pessoa (sem o ponto) é recusado');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50, 'Joao.Silva@hotmail.com')) === aprovado(), 'validação: o mesmo e-mail (outra caixa) é aprovado');
 centralComSaque();
 saqueEnviado('driver-1', U1, 50, ['id' => 'tra_1', 'status' => 'PENDING']);
 confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50, '4321')) === recusa('Chave Pix diferente da cadastrada.'), 'pedido com só o final do telefone: recusado');
