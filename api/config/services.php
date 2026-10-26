@@ -90,6 +90,9 @@ return [
         'saque_chave_arquivo' => env('ENTREGAS_SAQUE_CHAVE_ARQUIVO', '/run/secrets/entregas_saque_chave'),
         // API do Asaas (o ensaio usa https://api-sandbox.asaas.com/v3)
         'asaas_url' => env('ASAAS_API_URL', 'https://api.asaas.com/v3'),
+        // IP fixo de saída do servidor (o da VPS), mostrado no card do saque Pix do console para a central pôr na lista de
+        // IPs autorizados do Asaas (recomendação). Vazio = o console pede o IP a quem administra o Entregas
+        'ip_de_saida' => env('ENTREGAS_IP_DE_SAIDA'),
         // domínio do console, para o link de rastreio do cliente final (…/~/track-order?order=<código>)
         'console_url' => env('ENTREGAS_CONSOLE_URL', 'https://entregas.restaurantepro.com.br'),
     ],

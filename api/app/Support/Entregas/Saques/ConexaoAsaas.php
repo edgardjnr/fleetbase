@@ -80,6 +80,8 @@ final class ConexaoAsaas
             'teste_pedido_em'         => Saque::iso($conexao->teste_pedido_em, $companyUuid),
             'saque_ligado'            => (bool) $conexao->saque_ligado,
             'limites'                 => static::limites($conexao),
+            // o IP fixo do servidor (ENTREGAS_IP_DE_SAIDA), para a central pôr na lista de IPs do Asaas; null sem configurar
+            'ip_de_saida'             => trim((string) config('services.entregas.ip_de_saida')) ?: null,
         ];
     }
 

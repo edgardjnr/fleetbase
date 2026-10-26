@@ -13,6 +13,7 @@ use App\Support\Entregas\Financeiro\Lancamentos;
 use App\Support\Entregas\Financeiro\PainelFinanceiro;
 use App\Support\Entregas\Financeiro\Pagamentos;
 use App\Support\Entregas\Saques\Saque;
+use App\Support\Entregas\Saques\SaqueNoConsole;
 use App\Support\Entregas\Saques\Saques;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
@@ -53,9 +54,9 @@ class FinanceiroController extends Controller
 
     /**
      * GET financeiro/motoboys?inicio&fim (padrão: este mês): todos os motoboys da empresa (mesmo sem lançamento), com o
-     * saldo de agora, o último pagamento, as corridas do período (sem as estornadas), se tem chave Pix e `excluido` (o
-     * motoboy excluído com soft delete só aparece com saldo ≠ 0, e aceita pagamento e lançamento). Ordem: saldo desc,
-     * depois nome.
+     * saldo de agora, o último pagamento, as corridas do período (sem as estornadas), se tem chave Pix, `excluido` e
+     * `saque_bloqueado` (saque Pix pelo app) (o motoboy excluído com soft delete só aparece com saldo ≠ 0, e aceita
+     * pagamento e lançamento). Ordem: saldo desc, depois nome.
      */
     public function motoboys(Request $request)
     {
@@ -70,6 +71,8 @@ class FinanceiroController extends Controller
         $empresa = $this->empresa();
         $saldos  = Lancamentos::saldos($empresa, Financeiro::CONTA_MOTOBOY);
         $comPix  = ChavePix::motoboysComChave($empresa);
+        // saque Pix pelo app: o selo "saque bloqueado" da lista (vazio com o saque desligado no servidor)
+        $bloqueados = SaqueNoConsole::bloqueados($empresa);
 
         // último pagamento (não estornado) de cada motoboy: maior data, depois o último registrado
         $ultimos = [];
@@ -127,6 +130,7 @@ class FinanceiroController extends Controller
                 'valor_corridas'   => round(($porMotoboy[$uuid]['centavos'] ?? 0) / 100, 2),
                 'tem_pix'          => isset($comPix[$uuid]),
                 'excluido'         => $excluido,
+                'saque_bloqueado'  => isset($bloqueados[$uuid]),
             ];
         }
         usort($lista, fn ($a, $b) => [$b['saldo'], mb_strtolower((string) $a['nome'])] <=> [$a['saldo'], mb_strtolower((string) $b['nome'])]);
@@ -134,7 +138,7 @@ class FinanceiroController extends Controller
         return response()->json(['motoboys' => $lista]);
     }
 
-    /** GET financeiro/motoboys/{id}/extrato?inicio&fim&tipo (período opcional; o console sempre manda). */
+    /** GET financeiro/motoboys/{id}/extrato?inicio&fim&tipo (período opcional; o console sempre manda) + `saque` (SaqueNoConsole). */
     public function extratoDoMotoboy(Request $request, string $id)
     {
         if ($negado = $this->negarSeNaoAdmin($request)) {
@@ -153,7 +157,13 @@ class FinanceiroController extends Controller
             return $this->erro('Tipo de lançamento inválido.');
         }
 
-        return response()->json(ExtratoDaConta::montar($this->empresa(), Financeiro::CONTA_MOTOBOY, (string) $motoboy->uuid, $inicio, $fim, false, $tipo ?: null));
+        $extrato = ExtratoDaConta::montar($this->empresa(), Financeiro::CONTA_MOTOBOY, (string) $motoboy->uuid, $inicio, $fim, false, $tipo ?: null);
+        // saque Pix pelo app: o interruptor de bloqueio e a carência da troca da chave (só com o saque ligado na central)
+        if ($saque = SaqueNoConsole::doMotoboy($this->empresa(), (string) $motoboy->uuid)) {
+            $extrato['saque'] = $saque;
+        }
+
+        return response()->json($extrato);
     }
 
     /** PUT financeiro/motoboys/{id}/pix {tipo, chave} → {pix: {chave, tipo}}. */
