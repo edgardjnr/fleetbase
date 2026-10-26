@@ -1,0 +1,21 @@
+<ContentPanel @title={{t "fleet-ops.ui.financeiro.saque-pix.titulo"}} @open={{true}} @wrapperClass="bordered-classic">
+    <div class="space-y-4">
+        <div class="flex items-start justify-between gap-3">
+            <p class="text-sm text-gray-600 dark:text-gray-300">{{t "fleet-ops.ui.financeiro.saque-pix.intro"}}</p>
+            <Button @icon="refresh" @size="xs" @helpText={{t "common.reload"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
+        </div>
+        {{#if this.conexao}}
+            {{#if (eq this.conexao.ligada false)}}
+                <div class="text-sm rounded-md px-3 py-2 bg-yellow-50 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">{{t "fleet-ops.ui.financeiro.saque-pix.desligado-no-servidor"}}</div>
+            {{/if}}
+            {{#if (eq this.conexao.cofre false)}}
+                <div class="text-sm rounded-md px-3 py-2 bg-red-50 text-red-800 dark:bg-red-900 dark:text-red-100">{{t "fleet-ops.ui.financeiro.saque-pix.sem-cofre"}}</div>
+            {{/if}}
+            <Financeiro::SaquePix::Conta @conexao={{this.conexao}} @etapas={{this.etapas}} @aoMudar={{this.aoMudar}} />
+            <Financeiro::SaquePix::Validacao @conexao={{this.conexao}} @etapas={{this.etapas}} @aoMudar={{this.aoMudar}} />
+            <Financeiro::SaquePix::Ligar @conexao={{this.conexao}} @etapas={{this.etapas}} @aoMudar={{this.aoMudar}} />
+        {{else if this.carregar.isRunning}}
+            <Spinner />
+        {{/if}}
+    </div>
+</ContentPanel>

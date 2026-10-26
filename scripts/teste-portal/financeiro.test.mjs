@@ -20,6 +20,7 @@ import {
     periodoAoAbrir,
     periodoDoAtalho,
     podeEstornar,
+    quandoDoIso,
     rotuloDoTipo,
     tiposDaConta,
     validarCobranca,
@@ -163,6 +164,8 @@ test('pode estornar', () => {
     assert.equal(podeEstornar({ tipo: 'pagamento', estornado: false, pagamento: { id: 'p1', estornado: true } }), false, 'pagamento já estornado');
     assert.equal(podeEstornar({ tipo: 'pagamento', estornado: false, pagamento: null }), false, 'pagamento sem o registro');
     assert.equal(podeEstornar(null), false);
+    // saque Pix pelo app: o servidor recusa o estorno à mão (em andamento, concluído ou já estornado sozinho)
+    assert.equal(podeEstornar({ tipo: 'pagamento', estornado: false, pagamento: { id: 'p2', estornado: false, saque: { situacao: 'concluido', comprovante_url: null } } }), false, 'pagamento de saque não se estorna');
 });
 
 test('tipos da conta', () => {
@@ -402,4 +405,36 @@ test('CSV: texto que começa como fórmula ganha apóstrofo (mesma regra do port
 
     const linhas = linhasCsvDoExtrato({ lancamentos: [{ tipo: 'ajuste', valor: -2, data: '2026-10-11', pedido: null, motivo: '=1+1', situacao: null }] });
     assert.equal(linhas[1], '"11/10/2026";"Ajuste";"";"\'=1+1";-2,00;""', 'o valor (número) continua sem aspas');
+});
+
+test('hora escrita no ISO, sem converter o fuso', () => {
+    assert.deepEqual(quandoDoIso('2026-10-27T14:30:00-03:00'), { data: '27/10/2026', dia: '27/10', hora: '14:30' });
+    assert.deepEqual(quandoDoIso('2026-10-27T23:59:00+00:00'), { data: '27/10/2026', dia: '27/10', hora: '23:59' }, 'nunca converte para o fuso do navegador');
+    assert.equal(quandoDoIso(null), null);
+    assert.equal(quandoDoIso('27/10/2026'), null);
+});
+
+test('itens de atenção do saque Pix abrem a tela Saques Pix com o filtro', () => {
+    const f = formatadores('pt-BR');
+    const falhou = itemDeAtencao({ tipo: 'saque_falhou', saque: 'u1', motoboy: 'João Silva', valor: 10, motivo: 'Saldo insuficiente.' }, f);
+    assert.equal(falhou.rota, 'financeiro.saques');
+    assert.equal(falhou.modelo, null, 'sem modelo: a rota não tem segmento dinâmico');
+    assert.deepEqual(falhou.consulta, { situacao: 'falhou' });
+    assert.equal(falhou.chave, 'fleet-ops.ui.financeiro.painel.atencao.saque_falhou');
+    assert.equal(falhou.params.motoboy, 'João Silva');
+    assert.equal(falhou.params.motivo, 'Saldo insuficiente.');
+    assert.match(falhou.params.valor, /10,00/);
+    assert.match(falhou.cor, /red/);
+
+    const parado = itemDeAtencao({ tipo: 'saque_parado', saque: 'u2', motoboy: 'Maria Souza', valor: 20, desde: '2026-10-27T10:00:00-03:00' }, f);
+    assert.deepEqual(parado.consulta, { situacao: '' }, 'parado pode estar enviando ou processando: sem filtro');
+    assert.equal(parado.params.hora, '10:00');
+    assert.equal(parado.params.dia, '27/10');
+    assert.match(parado.cor, /yellow/);
+
+    const semNada = itemDeAtencao({ tipo: 'saque_falhou', motoboy: null, valor: 5, motivo: null }, f);
+    assert.equal(semNada.params.motivo, '—', 'sem motivo: travessão');
+    assert.equal(semNada.params.motoboy, '');
+    falhou.consulta.situacao = 'mexido';
+    assert.deepEqual(itemDeAtencao({ tipo: 'saque_falhou', valor: 1 }, f).consulta, { situacao: 'falhou' }, 'cada item leva a própria cópia do filtro');
 });

@@ -249,7 +249,7 @@ ChavePix::salvar('empresa-1', 'driver-2', '12345678901', 'cpf');
 $resposta = $controller->motoboys(pedidoFeito(['inicio' => '2026-10-02', 'fim' => '2026-10-12']));
 $lista    = $resposta->dados['motoboys'] ?? [];
 confere($resposta->status === 200 && array_column($lista, 'id') === ['driver_1', 'driver_2'], 'todos os motoboys da empresa (não os de outra), por saldo: ' . json_encode(array_column($lista, 'id')));
-confere(($lista[0] ?? null) === ['id' => 'driver_1', 'nome' => 'João Silva', 'saldo' => 31.5, 'ultimo_pagamento' => ['id' => $pagamento->uuid, 'valor' => 15.0, 'data' => '2026-10-06', 'forma' => 'pix'], 'corridas' => 1, 'valor_corridas' => 10.0, 'tem_pix' => false, 'excluido' => false],'João: saldo, último pagamento, corridas do período (só a de 03/10) e sem Pix: ' . json_encode($lista[0] ?? null, JSON_UNESCAPED_UNICODE));
+confere(($lista[0] ?? null) === ['id' => 'driver_1', 'nome' => 'João Silva', 'saldo' => 31.5, 'ultimo_pagamento' => ['id' => $pagamento->uuid, 'valor' => 15.0, 'data' => '2026-10-06', 'forma' => 'pix'], 'corridas' => 1, 'valor_corridas' => 10.0, 'tem_pix' => false, 'excluido' => false, 'saque_bloqueado' => false],'João: saldo, último pagamento, corridas do período (só a de 03/10) e sem Pix: ' . json_encode($lista[0] ?? null, JSON_UNESCAPED_UNICODE));
 confere(($lista[1]['saldo'] ?? null) === 25.0 && nulo($lista[1] ?? null, 'ultimo_pagamento') && ($lista[1]['corridas'] ?? null) === 0 && ($lista[1]['tem_pix'] ?? null) === true, 'Maria: saldo da diária, sem pagamento, sem corridas, com Pix');
 Lancamentos::estornar(Lancamentos::porId('empresa-1', $ids['corrida2']), 'user-admin', null);
 $lista = $controller->motoboys(pedidoFeito(['inicio' => '2026-10-02', 'fim' => '2026-10-12']))->dados['motoboys'];

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Entregas;
 
 use App\Http\Controllers\Controller;
 use App\Notifications\Entregas\PagamentoRegistrado;
+use App\Notifications\Entregas\PixDeSaqueAlterado;
 use App\Support\Entregas\Financeiro\ChavePix;
 use App\Support\Entregas\Financeiro\CicloDeCobranca;
 use App\Support\Entregas\Financeiro\ExtratoDaConta;
@@ -11,6 +12,9 @@ use App\Support\Entregas\Financeiro\Financeiro;
 use App\Support\Entregas\Financeiro\Lancamentos;
 use App\Support\Entregas\Financeiro\PainelFinanceiro;
 use App\Support\Entregas\Financeiro\Pagamentos;
+use App\Support\Entregas\Saques\Saque;
+use App\Support\Entregas\Saques\SaqueNoConsole;
+use App\Support\Entregas\Saques\Saques;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
@@ -50,9 +54,9 @@ class FinanceiroController extends Controller
 
     /**
      * GET financeiro/motoboys?inicio&fim (padrão: este mês): todos os motoboys da empresa (mesmo sem lançamento), com o
-     * saldo de agora, o último pagamento, as corridas do período (sem as estornadas), se tem chave Pix e `excluido` (o
-     * motoboy excluído com soft delete só aparece com saldo ≠ 0, e aceita pagamento e lançamento). Ordem: saldo desc,
-     * depois nome.
+     * saldo de agora, o último pagamento, as corridas do período (sem as estornadas), se tem chave Pix, `excluido` e
+     * `saque_bloqueado` (saque Pix pelo app) (o motoboy excluído com soft delete só aparece com saldo ≠ 0, e aceita
+     * pagamento e lançamento). Ordem: saldo desc, depois nome.
      */
     public function motoboys(Request $request)
     {
@@ -67,6 +71,8 @@ class FinanceiroController extends Controller
         $empresa = $this->empresa();
         $saldos  = Lancamentos::saldos($empresa, Financeiro::CONTA_MOTOBOY);
         $comPix  = ChavePix::motoboysComChave($empresa);
+        // saque Pix pelo app: o selo "saque bloqueado" da lista (vazio com o saque desligado no servidor)
+        $bloqueados = SaqueNoConsole::bloqueados($empresa);
 
         // último pagamento (não estornado) de cada motoboy: maior data, depois o último registrado
         $ultimos = [];
@@ -124,6 +130,7 @@ class FinanceiroController extends Controller
                 'valor_corridas'   => round(($porMotoboy[$uuid]['centavos'] ?? 0) / 100, 2),
                 'tem_pix'          => isset($comPix[$uuid]),
                 'excluido'         => $excluido,
+                'saque_bloqueado'  => isset($bloqueados[$uuid]),
             ];
         }
         usort($lista, fn ($a, $b) => [$b['saldo'], mb_strtolower((string) $a['nome'])] <=> [$a['saldo'], mb_strtolower((string) $b['nome'])]);
@@ -131,7 +138,7 @@ class FinanceiroController extends Controller
         return response()->json(['motoboys' => $lista]);
     }
 
-    /** GET financeiro/motoboys/{id}/extrato?inicio&fim&tipo (período opcional; o console sempre manda). */
+    /** GET financeiro/motoboys/{id}/extrato?inicio&fim&tipo (período opcional; o console sempre manda) + `saque` (SaqueNoConsole). */
     public function extratoDoMotoboy(Request $request, string $id)
     {
         if ($negado = $this->negarSeNaoAdmin($request)) {
@@ -150,7 +157,13 @@ class FinanceiroController extends Controller
             return $this->erro('Tipo de lançamento inválido.');
         }
 
-        return response()->json(ExtratoDaConta::montar($this->empresa(), Financeiro::CONTA_MOTOBOY, (string) $motoboy->uuid, $inicio, $fim, false, $tipo ?: null));
+        $extrato = ExtratoDaConta::montar($this->empresa(), Financeiro::CONTA_MOTOBOY, (string) $motoboy->uuid, $inicio, $fim, false, $tipo ?: null);
+        // saque Pix pelo app: o interruptor de bloqueio e a carência da troca da chave (só com o saque ligado na central)
+        if ($saque = SaqueNoConsole::doMotoboy($this->empresa(), (string) $motoboy->uuid)) {
+            $extrato['saque'] = $saque;
+        }
+
+        return response()->json($extrato);
     }
 
     /** PUT financeiro/motoboys/{id}/pix {tipo, chave} → {pix: {chave, tipo}}. */
@@ -168,7 +181,9 @@ class FinanceiroController extends Controller
         if (isset($pix['erro'])) {
             return $this->erro($pix['erro']);
         }
-        ChavePix::salvar($this->empresa(), (string) $motoboy->uuid, $pix['chave'], $pix['tipo']);
+        if (ChavePix::salvar($this->empresa(), (string) $motoboy->uuid, $pix['chave'], $pix['tipo'], $this->usuario($request))) {
+            $this->avisarPixAlterado($motoboy);
+        }
 
         return response()->json(['pix' => ['chave' => $pix['chave'], 'tipo' => $pix['tipo']]]);
     }
@@ -326,7 +341,8 @@ class FinanceiroController extends Controller
      * POST financeiro/pagamentos (multipart): conta_tipo, conta (public_id), valor ("150.50" ou "150,50"), forma, data,
      * observacao_interna e o arquivo em `comprovante` (ou `file`); um campo `fatura` é ignorado. → {pagamento, saldo}.
      * Valor acima do saldo vira adiantamento. Pagamento ao motoboy manda o push "Pagamento registrado" (falha no push
-     * não desfaz o pagamento).
+     * não desfaz o pagamento). Motoboy com saque Pix em andamento: 422 (conferido numa transação com a linha do motoboy
+     * travada, como no Saques::pedir: um pedido de saque ao mesmo tempo espera este pagamento, e vice-versa).
      */
     public function registrarPagamento(Request $request)
     {
@@ -364,9 +380,22 @@ class FinanceiroController extends Controller
         }
 
         $empresa = $this->empresa();
+        $usuario = $this->usuario($request);
         try {
-            $pagamento = Pagamentos::registrar($empresa, $contaTipo, $conta, $valor, (string) $request->input('forma'),
-                (string) $request->input('data'), $arquivo ?: null, $observacao, $this->usuario($request));
+            // transação externa (a do Pagamentos::registrar vira savepoint): a conferência do saque e o pagamento juntos
+            $pagamento = DB::transaction(function () use ($empresa, $contaTipo, $conta, $valor, $request, $arquivo, $observacao, $usuario) {
+                if ($contaTipo === Financeiro::CONTA_MOTOBOY) {
+                    // a linha do motoboy travada, como no Saques::pedir: um saque pedido agora espera este pagamento
+                    Saques::linhaDoMotoboy($empresa, $conta, true);
+                    if (static::saqueEmAndamento($empresa, $conta)) {
+                        // o saque já reservou o saldo e pode cair a qualquer momento: um pagamento à mão agora pagaria em dobro
+                        throw new \InvalidArgumentException(static::SAQUE_EM_ANDAMENTO);
+                    }
+                }
+
+                return Pagamentos::registrar($empresa, $contaTipo, $conta, $valor, (string) $request->input('forma'),
+                    (string) $request->input('data'), $arquivo ?: null, $observacao, $usuario);
+            });
         } catch (\InvalidArgumentException $e) {
             return $this->erro($e->getMessage());
         }
@@ -391,6 +420,15 @@ class FinanceiroController extends Controller
         $pagamento = Pagamentos::porUuid($empresa, $id);
         if (!$pagamento) {
             return $this->erro('Pagamento não encontrado.', 404);
+        }
+        // o pagamento de um saque Pix pelo app não se estorna à mão: em andamento, a rotina resolve; concluído, o dinheiro já
+        // saiu (corrige-se com ajuste); falho, já foi estornado sozinho
+        if ($saque = Saques::doPagamento($empresa, $id)) {
+            return $this->erro(match ((string) $saque->situacao) {
+                Saque::CONCLUIDO => 'O dinheiro do saque já saiu; corrija com um ajuste.',
+                Saque::FALHOU    => 'Este saque não foi concluído e o pagamento já foi estornado.',
+                default          => 'Saque em andamento.',
+            });
         }
         if (!Pagamentos::estornar($pagamento, $this->usuario($request))) {
             return $this->erro('Este pagamento já foi estornado.', 409);
@@ -466,6 +504,9 @@ class FinanceiroController extends Controller
     /** Mensagem do valor no formato de milhar com ponto e sem vírgula ("1.500"), que viraria 1,50. */
     public const MILHAR_SEM_CENTAVOS = 'Valor ambíguo: para mil e quinhentos, escreva 1500 ou 1.500,00 (vírgula antes dos centavos).';
 
+    /** Pagamento à mão a motoboy com saque Pix em andamento (422). */
+    public const SAQUE_EM_ANDAMENTO = 'Há um saque Pix em andamento para este motoboy; espere ele terminar.';
+
     /**
      * Texto no formato de milhar com ponto e sem vírgula ("1.500", "-2.000", "12.345"): ambíguo (1,50 ou 1.500?), é
      * recusado com 422 (MILHAR_SEM_CENTAVOS) para não gravar R$ 1,50 por engano vindo de outro cliente da API.
@@ -530,6 +571,19 @@ class FinanceiroController extends Controller
         }
     }
 
+    /** O push "Chave Pix alterada" ao motoboy, com a hora em que o saque volta (24 h); uma falha só fica no log. */
+    protected function avisarPixAlterado(Driver $motoboy): void
+    {
+        try {
+            $liberado = (new \DateTimeImmutable(now()->format('Y-m-d H:i:s'), new \DateTimeZone((string) (config('app.timezone') ?: Financeiro::FUSO_PADRAO))))
+                ->modify('+' . Saque::CARENCIA_PIX_HORAS . ' hours')
+                ->setTimezone(new \DateTimeZone(Financeiro::fuso($this->empresa())));
+            $motoboy->notify(new PixDeSaqueAlterado($liberado->format('d/m') . ' às ' . $liberado->format('H:i')));
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] saque: push da troca da chave Pix não saiu', ['motoboy' => $motoboy->uuid ?? null, 'erro' => get_class($e)]);
+        }
+    }
+
     /**
      * [inicio, fim, erro]: datas 'Y-m-d' de inicio e fim. Com $padraoMes, sem as duas = este mês (dia 1 até hoje, no fuso
      * da empresa); sem ele, sem as duas = sem limite (null, null).
@@ -577,6 +631,16 @@ class FinanceiroController extends Controller
         }
 
         return [$texto, null];
+    }
+
+    /** O motoboy tem saque Pix em andamento (enviando ou processando); API antes da migration do saque: false. */
+    protected static function saqueEmAndamento(string $companyUuid, string $driverUuid): bool
+    {
+        try {
+            return Saques::emAndamento($companyUuid, $driverUuid) !== null;
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     /**

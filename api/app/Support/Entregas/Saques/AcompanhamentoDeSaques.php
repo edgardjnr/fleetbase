@@ -1,0 +1,232 @@
+<?php
+
+namespace App\Support\Entregas\Saques;
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Entregas RestaurantePro: acompanha no Asaas os saques em andamento (rotina entregas:saques-conferir, a cada minuto).
+ * Com transfer_id: GET /transfers/{id} e aplica o status (Saques::aplicarStatus, que confere com Saques::confere).
+ * 404 (órfão): o primeiro grava nao_encontrado_desde (a resposta OK limpa); num saque criado há mais de 30 min, procura
+ * nas recentes pelo externalReference; achou, adota (log crítico); não achou, NUNCA falha sozinho (o dinheiro pode ter
+ * saído): fica em andamento ("saque parado" no painel) e, com 404 seguidos há mais de 6 h, um log crítico só
+ * (alerta_critico_em) para conferir à mão no Asaas. Sem transfer_id há mais de 5 min (a API caiu no meio do envio): procura pelo
+ * externalReference; achou, adota; não achou, falha e devolve. Erro de rede, outro erro ou 404 recente nunca dá por
+ * falho: tenta no minuto seguinte. Um saque com problema não para os outros, e uma central não para as outras.
+ * Mais de uma transferência com o externalReference do saque (quem tem a chave de API pode copiá-lo): só adota a que a
+ * validação aprovou (aprovado_transfer_id); sem ela, Log::critical e o saque fica parado (nem adota, nem falha).
+ */
+final class AcompanhamentoDeSaques
+{
+    public const PAGINAS = 5;
+
+    public const POR_PAGINA = 100;
+
+    /** Quantos saques terminaram (concluídos ou falhos) nesta passada. */
+    public static function conferir(): int
+    {
+        $porEmpresa = [];
+        foreach (DB::table(Saque::TABELA)->whereIn('situacao', Saque::EM_ANDAMENTO)->orderBy('id')->get() as $saque) {
+            $porEmpresa[(string) $saque->company_uuid][] = $saque;
+        }
+
+        $terminaram = 0;
+        foreach ($porEmpresa as $empresa => $saques) {
+            try {
+                $terminaram += static::daEmpresa((string) $empresa, $saques);
+            } catch (\Throwable $e) {
+                Log::warning('[entregas] saque: acompanhamento falhou', ['empresa' => $empresa, 'erro' => get_class($e)]);
+            }
+        }
+
+        return $terminaram;
+    }
+
+    private static function daEmpresa(string $empresa, array $saques): int
+    {
+        $conexao = ConexaoAsaas::daEmpresa($empresa);
+        $chave   = $conexao ? Cofre::decifrar((string) $conexao->chave_cifrada, $empresa) : null;
+        if ($chave === null) {
+            Log::warning('[entregas] saque: sem a chave do Asaas para acompanhar', ['empresa' => $empresa, 'saques' => count($saques)]);
+
+            return 0;
+        }
+
+        $asaas      = new AsaasCliente($chave);
+        $recentes   = false;
+        $terminaram = 0;
+        foreach ($saques as $saque) {
+            try {
+                $terminaram += static::umSaque($asaas, $saque, $recentes) ? 1 : 0;
+            } catch (\Throwable $e) {
+                Log::warning('[entregas] saque: acompanhamento do saque falhou', ['saque' => $saque->uuid ?? null, 'erro' => get_class($e)]);
+            }
+        }
+
+        return $terminaram;
+    }
+
+    /**
+     * Um saque em andamento; true se terminou agora. $recentes: as transferências recentes do Asaas, buscadas uma vez
+     * por central e só se alguém precisar (false = ainda não buscou; null = o Asaas não respondeu).
+     */
+    private static function umSaque(AsaasCliente $asaas, object $saque, array|false|null &$recentes): bool
+    {
+        if ($saque->transfer_id !== null) {
+            $resposta = $asaas->transferencia((string) $saque->transfer_id);
+            if ($resposta->ok() && is_array($resposta->dados)) {
+                static::encontrado($saque);
+
+                return Saques::aplicarStatus($saque, $resposta->dados);
+            }
+            if ($resposta->status !== 404) {
+                return false;
+            }
+            $desde = static::naoEncontrado($saque);
+            $orfao = now()->subMinutes(Saque::MINUTOS_ORFAO)->format('Y-m-d H:i:s');
+            if ((string) $saque->created_at > $orfao) {
+                return false;
+            }
+            // o id que temos não existe no Asaas e o saque tem mais de 30 min: procura pelo externalReference
+            $achada = static::achar($asaas, $saque, $recentes);
+            if ($achada === false) {
+                return false;
+            }
+            if ($achada === null) {
+                // nunca falha (e devolve) sozinho: o dinheiro pode ter saído; depois de 6 h, alguém confere à mão
+                static::alertarOrfao($saque, $desde);
+
+                return false;
+            }
+            Log::critical('[entregas] saque: transferência do saque trocada pela achada no Asaas', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'antes' => $saque->transfer_id, 'achada' => (string) $achada['id']]);
+
+            return static::adotar($saque, $achada);
+        }
+
+        $limite = now()->subMinutes(Saque::MINUTOS_SEM_TRANSFERENCIA)->format('Y-m-d H:i:s');
+        if ((string) $saque->created_at > $limite) {
+            return false;
+        }
+        $achada = static::achar($asaas, $saque, $recentes);
+        if ($achada === false) {
+            return false;
+        }
+        if ($achada === null) {
+            return Saques::falhar($saque, 'Saque interrompido antes de chegar ao Asaas.');
+        }
+        Log::warning('[entregas] saque: transferência achada pelo externalReference', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'transfer' => (string) $achada['id']]);
+
+        return static::adotar($saque, $achada);
+    }
+
+    /** O GET respondeu: limpa a marca de 404 (e o alerta), se havia. */
+    private static function encontrado(object $saque): void
+    {
+        if (($saque->nao_encontrado_desde ?? null) === null && ($saque->alerta_critico_em ?? null) === null) {
+            return;
+        }
+        DB::table(Saque::TABELA)->where('id', $saque->id)->update(['nao_encontrado_desde' => null, 'alerta_critico_em' => null, 'updated_at' => now()->format('Y-m-d H:i:s')]);
+    }
+
+    /** 404 no GET: grava nao_encontrado_desde no primeiro (warning); devolve desde quando o saque não é encontrado. */
+    private static function naoEncontrado(object $saque): string
+    {
+        $desde = $saque->nao_encontrado_desde ?? null;
+        if ($desde !== null) {
+            return (string) $desde;
+        }
+        $agora = now()->format('Y-m-d H:i:s');
+        DB::table(Saque::TABELA)->where('id', $saque->id)->whereNull('nao_encontrado_desde')->update(['nao_encontrado_desde' => $agora, 'updated_at' => $agora]);
+        Log::warning('[entregas] saque: transferência não encontrada no Asaas', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'transfer' => $saque->transfer_id]);
+
+        return $agora;
+    }
+
+    /** 404 seguidos há mais de 6 h e fora das recentes: Log::critical uma vez só (marca alerta_critico_em). */
+    private static function alertarOrfao(object $saque, string $desde): void
+    {
+        if ($desde > now()->subHours(Saque::HORAS_ORFAO)->format('Y-m-d H:i:s') || ($saque->alerta_critico_em ?? null) !== null) {
+            return;
+        }
+        $agora = now()->format('Y-m-d H:i:s');
+        $feito = DB::table(Saque::TABELA)->where('id', $saque->id)->whereNull('alerta_critico_em')->update(['alerta_critico_em' => $agora, 'updated_at' => $agora]);
+        if ($feito > 0) {
+            Log::critical('[entregas] saque: transferência não encontrada no Asaas há horas; conferir à mão', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'transfer' => $saque->transfer_id, 'desde' => $desde]);
+        }
+    }
+
+    /**
+     * A transferência do saque nas recentes (pelo externalReference); null se não está lá; false se o Asaas não respondeu
+     * ou se não dá para saber qual é a dele (mais de uma com o externalReference e nenhuma é a aprovada, ou a única não é
+     * a aprovada: Log::critical e o saque fica parado).
+     */
+    private static function achar(AsaasCliente $asaas, object $saque, array|false|null &$recentes): array|false|null
+    {
+        if ($recentes === false) {
+            $recentes = static::transferenciasRecentes($asaas);
+        }
+        if ($recentes === null) {
+            return false;
+        }
+        $lista = $recentes[(string) $saque->external_reference] ?? [];
+        if ($lista === []) {
+            return null;
+        }
+        $aprovada = ($saque->aprovado_transfer_id ?? null) !== null ? (string) $saque->aprovado_transfer_id : null;
+        if (count($lista) === 1 && ($aprovada === null || (string) $lista[0]['id'] === $aprovada)) {
+            return $lista[0];
+        }
+        foreach ($lista as $item) {
+            if ($aprovada !== null && (string) $item['id'] === $aprovada) {
+                return $item;
+            }
+        }
+        Log::critical('[entregas] saque: transferências no Asaas com o externalReference do saque e nenhuma é a aprovada', [
+            'empresa'  => $saque->company_uuid,
+            'saque'    => $saque->uuid,
+            'aprovada' => $aprovada,
+            'achadas'  => array_map(fn ($item) => (string) $item['id'], $lista),
+        ]);
+
+        return false;
+    }
+
+    /**
+     * Adota a transferência achada: só se ela confere com o saque (Saques::confere) e ele ainda está em
+     * andamento (um saque que falhou no meio, valor já devolvido, não volta a processar); depois aplica o status.
+     */
+    private static function adotar(object $saque, array $achada): bool
+    {
+        if (!Saques::confere($saque, $achada) || !Saques::gravarTransferencia($saque, (string) $achada['id'])) {
+            return false;
+        }
+        static::encontrado($saque);
+
+        return Saques::aplicarStatus(Saques::recarregar($saque), $achada);
+    }
+
+    /** externalReference => [transferências], das mais recentes (até 500); null se o Asaas não respondeu. */
+    private static function transferenciasRecentes(AsaasCliente $asaas): ?array
+    {
+        $porReferencia = [];
+        for ($pagina = 0; $pagina < static::PAGINAS; $pagina++) {
+            $resposta = $asaas->transferencias($pagina * static::POR_PAGINA, static::POR_PAGINA);
+            if (!$resposta->ok()) {
+                return null;
+            }
+            $itens = is_array($resposta->dados['data'] ?? null) ? $resposta->dados['data'] : [];
+            foreach ($itens as $item) {
+                $referencia = $item['externalReference'] ?? null;
+                if (is_string($referencia) && $referencia !== '' && is_string($item['id'] ?? null)) {
+                    $porReferencia[$referencia][] = $item;
+                }
+            }
+            if (count($itens) < static::POR_PAGINA || ($resposta->dados['hasMore'] ?? null) === false) {
+                break;
+            }
+        }
+
+        return $porReferencia;
+    }
+}

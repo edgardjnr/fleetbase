@@ -82,6 +82,17 @@ return [
         // financeiro (extrato e pagamento dos motoboys, faturas das lojas): 1 liga o lançamento automático das corridas,
         // as rotinas (entregas:financeiro-*) e os e-mails das faturas; vazio = só as telas e os lançamentos manuais
         'financeiro' => env('ENTREGAS_FINANCEIRO'),
+        // saque Pix do motoboy pelo app, pela conta Asaas da central (App\Support\Entregas\Saques): 1 liga as rotas do app,
+        // a validação de saque e o entregas:saques-conferir; vazio = nada de saque (o app não mostra o botão)
+        'saque' => env('ENTREGAS_SAQUE'),
+        // arquivo do Docker secret com a chave (base64 de 32 bytes) que cifra a chave de API do Asaas das centrais. Fora do
+        // banco de propósito: o backup do MySQL e um acesso ao banco só mostram texto cifrado
+        'saque_chave_arquivo' => env('ENTREGAS_SAQUE_CHAVE_ARQUIVO', '/run/secrets/entregas_saque_chave'),
+        // API do Asaas (o ensaio usa https://api-sandbox.asaas.com/v3)
+        'asaas_url' => env('ASAAS_API_URL', 'https://api.asaas.com/v3'),
+        // IP fixo de saída do servidor (o da VPS), mostrado no card do saque Pix do console para a central pôr na lista de
+        // IPs autorizados do Asaas (recomendação). Vazio = o console pede o IP a quem administra o Entregas
+        'ip_de_saida' => env('ENTREGAS_IP_DE_SAIDA'),
         // domínio do console, para o link de rastreio do cliente final (…/~/track-order?order=<código>)
         'console_url' => env('ENTREGAS_CONSOLE_URL', 'https://entregas.restaurantepro.com.br'),
     ],

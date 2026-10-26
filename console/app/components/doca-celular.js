@@ -83,6 +83,14 @@ export default class DocaCelularComponent extends Component {
         return this.currentUser.isAdmin === true;
     }
 
+    /**
+     * Admin do sistema ou papel Administrator na organização: vê os Saques Pix (a mesma regra do ehAdminDaCentral de
+     * packages/fleetops/addon/utils/financeiro-saque-pix.js; o console não importa utils do engine).
+     */
+    get ehAdminDaCentral() {
+        return this.currentUser.isAdmin === true || this.currentUser.roleName === 'Administrator';
+    }
+
     get idioma() {
         return this.intl.primaryLocale;
     }
@@ -115,6 +123,7 @@ export default class DocaCelularComponent extends Component {
                 itens: [
                     item('chart-pie', t('painel'), 'console.fleet-ops.financeiro.painel', this.ehAdmin),
                     item('motorcycle', t('extrato-motoboys'), 'console.fleet-ops.financeiro.motoboys', this.ehAdmin),
+                    item('money-bill-transfer', t('saques-pix'), 'console.fleet-ops.financeiro.saques', this.ehAdminDaCentral),
                     item('file-invoice-dollar', t('faturas-lojas'), 'console.fleet-ops.financeiro.lojas', this.ehAdmin),
                     item('table', t('relatorio'), 'console.fleet-ops.financeiro.relatorio', this.ehAdmin),
                     item('cloud-rain', t('multiplicadores'), 'console.fleet-ops.financeiro.multiplicadores', this.ehAdmin),

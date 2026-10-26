@@ -58,6 +58,9 @@ class AvisosDoMotoboy
         'entregas_pedido_trocado' => 'avisos',
         // a central registrou um pagamento ao motoboy (Financeiro: PagamentoRegistrado)
         'entregas_pagamento'      => 'avisos',
+        // saque Pix pelo app: concluído ou não (SaqueConcluido, SaqueNaoConcluido) e chave Pix trocada (PixDeSaqueAlterado)
+        'entregas_saque'          => 'avisos',
+        'entregas_pix_alterado'   => 'avisos',
     ];
 
     /** Canal do push de dados no APK antigo (a biblioteca de push mostra nele; o APK 16 usa o canal do alarme). */
@@ -124,6 +127,9 @@ class AvisosDoMotoboy
             $notificacao instanceof LembretePedidoAberto => [$notificacao->title, $notificacao->message],
             $notificacao instanceof PedidoPassadoParaOutro => [$notificacao->title, $notificacao->message],
             $notificacao instanceof PagamentoRegistrado  => [$notificacao->title, $notificacao->message],
+            $notificacao instanceof SaqueConcluido       => [$notificacao->title, $notificacao->message],
+            $notificacao instanceof SaqueNaoConcluido    => [$notificacao->title, $notificacao->message],
+            $notificacao instanceof PixDeSaqueAlterado   => [$notificacao->title, $notificacao->message],
             $notificacao instanceof OrderPing            => ['Novo pedido disponível', static::textoDaColeta($notificacao->distance)],
             $notificacao instanceof OrderAssigned        => ['Novo pedido para você', static::textoDoAtribuido($notificacao, $codigo)],
             $notificacao instanceof OrderDispatched      => [static::comCodigo('Pedido %s liberado para você', 'Pedido liberado para você', $codigo), 'Toque para ver e iniciar a entrega.'],

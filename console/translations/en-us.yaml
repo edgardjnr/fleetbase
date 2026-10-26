@@ -809,6 +809,7 @@ console:
         financeiro: Finance
         painel: Dashboard
         extrato-motoboys: Driver statements
+        saques-pix: Pix withdrawals
         faturas-lojas: Store invoices
         relatorio: Report
         multiplicadores: Multipliers

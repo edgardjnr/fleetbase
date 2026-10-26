@@ -85,6 +85,20 @@
                             <Button @size="xs" @icon="plus" @text={{t "fleet-ops.ui.financeiro.pix.cadastrar"}} @onClick={{this.abrirPix}} />
                         </div>
                     {{/if}}
+                    {{! saque Pix pelo app: só com o saque ligado na central (o servidor manda extrato.saque) }}
+                    {{#if this.saque}}
+                        <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-1">
+                            <Toggle
+                                @isToggled={{not this.saque.bloqueado}}
+                                @disabled={{this.salvarSaque.isRunning}}
+                                @onToggle={{this.alternarSaque}}
+                                @label={{if this.saque.bloqueado (t "fleet-ops.ui.financeiro.saque-pix.motoboys.bloqueado") (t "fleet-ops.ui.financeiro.saque-pix.motoboys.liberado")}}
+                            />
+                            {{#if this.carencia}}
+                                <p class="text-xs text-yellow-700 dark:text-yellow-300">{{t this.carencia.chave hora=this.carencia.params.hora dia=this.carencia.params.dia nome=this.carencia.params.nome}}</p>
+                            {{/if}}
+                        </div>
+                    {{/if}}
                 </div>
             </div>
         {{/if}}
@@ -170,6 +184,17 @@
                                                         </a>
                                                     {{else if lancamento.pagamento.tem_comprovante}}
                                                         <span class="text-gray-500 dark:text-gray-400"><FaIcon @icon="paperclip" class="mr-1" />{{t "fleet-ops.ui.financeiro.extrato.comprovante"}}</span>
+                                                    {{/if}}
+                                                    {{! saque Pix pelo app: a situação do saque e o comprovante do Asaas }}
+                                                    {{#if lancamento.pagamento.saque}}
+                                                        {{#let (this.seloDoSaque lancamento.pagamento.saque) as |selo|}}
+                                                            <Badge @status={{selo.status}} @hideStatusDot={{true}}>{{t "fleet-ops.ui.financeiro.saque-pix.selo-app"}} · {{t selo.chave}}</Badge>
+                                                        {{/let}}
+                                                        {{#if (this.linkSeguro lancamento.pagamento.saque.comprovante_url)}}
+                                                            <a href={{this.linkSeguro lancamento.pagamento.saque.comprovante_url}} target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                                                <FaIcon @icon="receipt" class="mr-1" />{{t "fleet-ops.ui.financeiro.saque-pix.comprovante-asaas"}}
+                                                            </a>
+                                                        {{/if}}
                                                     {{/if}}
                                                 {{/if}}
                                                 {{#if lancamento.observacao_interna}}

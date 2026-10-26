@@ -4,6 +4,7 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
 import { CICLOS, diaAoTrocarDeCiclo, diasDeFechamento, validarCobranca } from '../../utils/financeiro';
+import { ehAdminDaCentral } from '../../utils/financeiro-saque-pix';
 
 const ENDPOINT = 'entregas/financeiro/configuracoes';
 const PADRAO = { ciclo: 'semanal', dia_fechamento: 0, prazo_dias: 3 };
@@ -14,11 +15,14 @@ const PADRAO = { ciclo: 'semanal', dia_fechamento: 0, prazo_dias: 3 };
  *   é lançado automaticamente nessa organização.
  * - Ciclo padrão de cobrança das lojas (Setting ...cobranca_padrao), usado pela loja sem ciclo próprio.
  * - "ligada" (só leitura) = ENTREGAS_FINANCEIRO no servidor; desligada, as telas funcionam mas nada é lançado sozinho.
+ * - Card "Saque Pix (Asaas)" (componente Financeiro::SaquePix), também para o admin da organização. Esse admin vê só o
+ *   card: as rotas de corte e ciclo continuam só com o admin do sistema na API, e o `carregar` nem as chama para ele.
  */
 export default class FinanceiroConfiguracoesController extends Controller {
     @service fetch;
     @service intl;
     @service notifications;
+    @service currentUser;
 
     @tracked carregado = false;
     @tracked ligada = true;
@@ -26,6 +30,14 @@ export default class FinanceiroConfiguracoesController extends Controller {
     @tracked ciclo = PADRAO.ciclo;
     @tracked dia = PADRAO.dia_fechamento;
     @tracked prazo = String(PADRAO.prazo_dias);
+
+    get ehAdminDoSistema() {
+        return this.currentUser.isAdmin === true;
+    }
+
+    get ehAdminDaCentral() {
+        return ehAdminDaCentral(this.currentUser);
+    }
 
     get ciclos() {
         return CICLOS.map((ciclo) => ({ valor: ciclo, chave: `fleet-ops.ui.financeiro.ciclos.${ciclo}` }));
@@ -81,6 +93,10 @@ export default class FinanceiroConfiguracoesController extends Controller {
     }
 
     @task({ restartable: true }) *carregar() {
+        // o admin da organização vê só o card do saque Pix (a API nega a ele as configurações gerais)
+        if (!this.ehAdminDoSistema) {
+            return;
+        }
         try {
             this.preencher(yield this.fetch.get(ENDPOINT));
         } catch (error) {

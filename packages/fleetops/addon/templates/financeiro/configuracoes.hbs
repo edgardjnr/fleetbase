@@ -1,73 +1,81 @@
 <Layout::Section::Header @title={{t "fleet-ops.ui.financeiro.configuracoes.titulo"}}>
-    <div class="flex items-center space-x-2">
-        <Button @icon="refresh" @size="sm" @helpText={{t "common.reload"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
-        <Button
-            @type="primary"
-            @icon="save"
-            @size="sm"
-            @text={{t "fleet-ops.ui.financeiro.configuracoes.salvar"}}
-            @disabled={{or (not this.carregado) this.erro}}
-            @isLoading={{this.salvar.isRunning}}
-            @onClick={{perform this.salvar}}
-        />
-    </div>
+    {{#if this.ehAdminDoSistema}}
+        <div class="flex items-center space-x-2">
+            <Button @icon="refresh" @size="sm" @helpText={{t "common.reload"}} @isLoading={{this.carregar.isRunning}} @onClick={{perform this.carregar}} />
+            <Button
+                @type="primary"
+                @icon="save"
+                @size="sm"
+                @text={{t "fleet-ops.ui.financeiro.configuracoes.salvar"}}
+                @disabled={{or (not this.carregado) this.erro}}
+                @isLoading={{this.salvar.isRunning}}
+                @onClick={{perform this.salvar}}
+            />
+        </div>
+    {{/if}}
 </Layout::Section::Header>
 
 <Layout::Section::Body class="overflow-y-scroll-i h-full">
     <div class="max-w-3xl mx-auto px-4 py-6 space-y-5">
-        {{#if this.carregado}}
-            {{#unless this.ligada}}
-                <div class="text-sm rounded-md px-3 py-2 bg-yellow-50 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
-                    {{t "fleet-ops.ui.financeiro.configuracoes.desligada"}}
-                </div>
-            {{/unless}}
-
-            <ContentPanel @title={{t "fleet-ops.ui.financeiro.configuracoes.corte-titulo"}} @open={{true}} @wrapperClass="bordered-classic">
-                <div class="flex flex-wrap items-end gap-3">
-                    <InputGroup @name={{t "fleet-ops.ui.financeiro.configuracoes.corte"}} @wrapperClass="mb-0" as |id|>
-                        <input id={{id}} type="date" class="form-input form-input-sm" value={{this.corte}} {{on "change" this.setCorte}} />
-                    </InputGroup>
-                    {{#if this.corte}}
-                        <Button @size="sm" @icon="xmark" @text={{t "fleet-ops.ui.financeiro.configuracoes.tirar-corte"}} @onClick={{this.limparCorte}} />
-                    {{/if}}
-                </div>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">{{t "fleet-ops.ui.financeiro.configuracoes.corte-ajuda"}}</p>
-                {{#unless this.corte}}
-                    <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-1">{{t "fleet-ops.ui.financeiro.configuracoes.sem-corte"}}</p>
+        {{#if this.ehAdminDoSistema}}
+            {{#if this.carregado}}
+                {{#unless this.ligada}}
+                    <div class="text-sm rounded-md px-3 py-2 bg-yellow-50 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
+                        {{t "fleet-ops.ui.financeiro.configuracoes.desligada"}}
+                    </div>
                 {{/unless}}
-            </ContentPanel>
 
-            <ContentPanel @title={{t "fleet-ops.ui.financeiro.configuracoes.ciclo-titulo"}} @open={{true}} @wrapperClass="bordered-classic">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <InputGroup @name={{t "fleet-ops.ui.financeiro.configuracoes.ciclo"}} @wrapperClass="mb-0" as |id|>
-                        <select id={{id}} class="form-select form-select-sm w-full" {{on "change" this.setCiclo}}>
-                            {{#each this.ciclos as |opcao|}}
-                                <option value={{opcao.valor}} selected={{eq opcao.valor this.ciclo}}>{{t opcao.chave}}</option>
-                            {{/each}}
-                        </select>
-                    </InputGroup>
-                    {{#if this.dias.length}}
-                        <InputGroup @name={{t "fleet-ops.ui.financeiro.configuracoes.dia-fechamento"}} @wrapperClass="mb-0" as |id|>
-                            <select id={{id}} class="form-select form-select-sm w-full" {{on "change" this.setDia}}>
-                                {{#each this.dias as |opcao|}}
-                                    <option value={{opcao.valor}} selected={{eq opcao.valor this.dia}}>{{t opcao.chave dia=opcao.params.dia}}</option>
+                <ContentPanel @title={{t "fleet-ops.ui.financeiro.configuracoes.corte-titulo"}} @open={{true}} @wrapperClass="bordered-classic">
+                    <div class="flex flex-wrap items-end gap-3">
+                        <InputGroup @name={{t "fleet-ops.ui.financeiro.configuracoes.corte"}} @wrapperClass="mb-0" as |id|>
+                            <input id={{id}} type="date" class="form-input form-input-sm" value={{this.corte}} {{on "change" this.setCorte}} />
+                        </InputGroup>
+                        {{#if this.corte}}
+                            <Button @size="sm" @icon="xmark" @text={{t "fleet-ops.ui.financeiro.configuracoes.tirar-corte"}} @onClick={{this.limparCorte}} />
+                        {{/if}}
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">{{t "fleet-ops.ui.financeiro.configuracoes.corte-ajuda"}}</p>
+                    {{#unless this.corte}}
+                        <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-1">{{t "fleet-ops.ui.financeiro.configuracoes.sem-corte"}}</p>
+                    {{/unless}}
+                </ContentPanel>
+
+                <ContentPanel @title={{t "fleet-ops.ui.financeiro.configuracoes.ciclo-titulo"}} @open={{true}} @wrapperClass="bordered-classic">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <InputGroup @name={{t "fleet-ops.ui.financeiro.configuracoes.ciclo"}} @wrapperClass="mb-0" as |id|>
+                            <select id={{id}} class="form-select form-select-sm w-full" {{on "change" this.setCiclo}}>
+                                {{#each this.ciclos as |opcao|}}
+                                    <option value={{opcao.valor}} selected={{eq opcao.valor this.ciclo}}>{{t opcao.chave}}</option>
                                 {{/each}}
                             </select>
                         </InputGroup>
-                    {{else}}
-                        <div class="text-xs text-gray-500 dark:text-gray-400 md:pt-6">{{t "fleet-ops.ui.financeiro.configuracoes.quinzenal-ajuda"}}</div>
+                        {{#if this.dias.length}}
+                            <InputGroup @name={{t "fleet-ops.ui.financeiro.configuracoes.dia-fechamento"}} @wrapperClass="mb-0" as |id|>
+                                <select id={{id}} class="form-select form-select-sm w-full" {{on "change" this.setDia}}>
+                                    {{#each this.dias as |opcao|}}
+                                        <option value={{opcao.valor}} selected={{eq opcao.valor this.dia}}>{{t opcao.chave dia=opcao.params.dia}}</option>
+                                    {{/each}}
+                                </select>
+                            </InputGroup>
+                        {{else}}
+                            <div class="text-xs text-gray-500 dark:text-gray-400 md:pt-6">{{t "fleet-ops.ui.financeiro.configuracoes.quinzenal-ajuda"}}</div>
+                        {{/if}}
+                        <InputGroup @name={{t "fleet-ops.ui.financeiro.configuracoes.prazo"}} @wrapperClass="mb-0" as |id|>
+                            <input id={{id}} type="number" min="0" max="60" step="1" inputmode="numeric" class="form-input form-input-sm w-full" value={{this.prazo}} {{on "input" this.setPrazo}} />
+                        </InputGroup>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">{{t "fleet-ops.ui.financeiro.configuracoes.ciclo-ajuda"}}</p>
+                    {{#if this.erro}}
+                        <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-1">{{this.erro}}</p>
                     {{/if}}
-                    <InputGroup @name={{t "fleet-ops.ui.financeiro.configuracoes.prazo"}} @wrapperClass="mb-0" as |id|>
-                        <input id={{id}} type="number" min="0" max="60" step="1" inputmode="numeric" class="form-input form-input-sm w-full" value={{this.prazo}} {{on "input" this.setPrazo}} />
-                    </InputGroup>
-                </div>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">{{t "fleet-ops.ui.financeiro.configuracoes.ciclo-ajuda"}}</p>
-                {{#if this.erro}}
-                    <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-1">{{this.erro}}</p>
-                {{/if}}
-            </ContentPanel>
-        {{else if this.carregar.isRunning}}
-            <Spinner />
+                </ContentPanel>
+            {{else if this.carregar.isRunning}}
+                <Spinner />
+            {{/if}}
+        {{/if}}
+
+        {{#if this.ehAdminDaCentral}}
+            <Financeiro::SaquePix />
         {{/if}}
     </div>
     <Spacer @height="300px" />

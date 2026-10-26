@@ -71,9 +71,16 @@
                     {{#each this.atencao as |item|}}
                         <li class="py-2 flex items-center gap-3 text-sm dark:text-gray-100">
                             <FaIcon @icon={{item.icone}} @fixedWidth={{true}} class={{item.cor}} />
-                            <LinkTo @route={{item.rota}} @model={{item.modelo}} class="text-blue-600 dark:text-blue-400 hover:underline">
-                                {{t item.chave numero=item.params.numero loja=item.params.loja valor=item.params.valor vencimento=item.params.vencimento}}
-                            </LinkTo>
+                            {{#if item.modelo}}
+                                <LinkTo @route={{item.rota}} @model={{item.modelo}} class="text-blue-600 dark:text-blue-400 hover:underline">
+                                    {{t item.chave numero=item.params.numero loja=item.params.loja valor=item.params.valor vencimento=item.params.vencimento}}
+                                </LinkTo>
+                            {{else}}
+                                {{! saque Pix: a tela Saques Pix (rota sem modelo), com o filtro da situação }}
+                                <LinkTo @route={{item.rota}} @query={{item.consulta}} class="text-blue-600 dark:text-blue-400 hover:underline">
+                                    {{t item.chave valor=item.params.valor motoboy=item.params.motoboy motivo=item.params.motivo hora=item.params.hora dia=item.params.dia}}
+                                </LinkTo>
+                            {{/if}}
                         </li>
                     {{/each}}
                 </ul>

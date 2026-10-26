@@ -4,6 +4,7 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import isMenuItemActive from '@fleetbase/ember-ui/utils/is-menu-item-active';
 import isEntregasHiddenRoute from '../../utils/entregas-hidden-routes';
+import { ehAdminDaCentral } from '../../utils/financeiro-saque-pix';
 
 const SECTION_REGISTRY_KEYS = {
     operations: 'universeOperationsMenuItems',
@@ -70,13 +71,14 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
                 keywords: ['drivers', 'vehicles', 'fleets', 'contacts', 'places'],
                 children: this.resourcesItems,
             }),
-            // Entregas RestaurantePro: Financeiro, só admin (sem filho visível, o grupo some)
+            // Entregas RestaurantePro: Financeiro, só admin (sem filho visível, o grupo some); o admin da organização abre
+            // em Saques Pix (o Painel é só do admin do sistema e a guarda de routes/financeiro.js o recusaria)
             this.createBranch({
                 id: 'financeiro',
                 label: this.intl.t('fleet-ops.ui.financeiro.menu.titulo'),
                 icon: 'sack-dollar',
                 route: 'financeiro',
-                defaultRoute: 'financeiro.painel',
+                defaultRoute: this.currentUser.isAdmin === true ? 'financeiro.painel' : 'financeiro.saques',
                 requiresVisibleChildren: true,
                 keywords: ['financeiro', 'pagamento', 'motoboy', 'fatura', 'cobrança', 'extrato', 'diária'],
                 children: this.financeiroItems,
@@ -174,27 +176,28 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
         ]);
     }
 
-    /** Entregas RestaurantePro: telas do Financeiro (a API só atende administradores). */
+    /**
+     * Entregas RestaurantePro: telas do Financeiro (a API só atende administradores). Saques Pix e Configurações também
+     * para o administrador da organização (papel Administrator): o saque Pix aceita os dois admins na API.
+     */
     get financeiroItems() {
         const admin = this.currentUser.isAdmin === true;
-        const item = (intl, icon, route, keywords) => ({
+        const daCentral = ehAdminDaCentral(this.currentUser);
+        const item = (intl, icon, route, keywords, visivel = admin) => ({
             ...this.createItem(intl, icon, route, 'fleet-ops list driver', 'fleet-ops see driver', keywords),
-            visible: admin,
+            visible: visivel,
         });
 
         return this.sortByPriority([
             item('fleet-ops.ui.financeiro.menu.painel', 'chart-pie', 'financeiro.painel', ['a pagar', 'a receber', 'margem']),
             item('fleet-ops.ui.financeiro.menu.motoboys', 'motorcycle', 'financeiro.motoboys', ['extrato', 'pagamento', 'diária', 'pix']),
+            item('fleet-ops.ui.financeiro.menu.saques', 'money-bill-transfer', 'financeiro.saques', ['saque', 'pix', 'asaas', 'bloquear'], daCentral),
             item('fleet-ops.ui.financeiro.menu.lojas', 'file-invoice-dollar', 'financeiro.lojas', ['fatura', 'loja', 'cobrança', 'recebimento']),
             item('fleet-ops.ui.financeiro.menu.relatorio', 'table', 'financeiro.relatorio', ['faixas', 'km', 'relatório', 'payout']),
             item('fleet-ops.ui.financeiro.menu.multiplicadores', 'cloud-rain', 'financeiro.multiplicadores', ['chuva', 'multiplicador', 'intempérie', 'adicional']),
-            item('fleet-ops.ui.financeiro.menu.configuracoes', 'gear', 'financeiro.configuracoes', ['data de corte', 'ciclo']),
-            // relatório do dono do sistema (todas as organizações): regra própria, independente da dos itens acima, que vai
-            // passar a ser o administrador da organização
-            {
-                ...item('fleet-ops.ui.financeiro.menu.corridas-do-sistema', 'building', 'financeiro.corridas-do-sistema', ['corridas', 'centrais', 'organizações', 'sistema']),
-                visible: this.currentUser.isAdmin === true,
-            },
+            item('fleet-ops.ui.financeiro.menu.configuracoes', 'gear', 'financeiro.configuracoes', ['data de corte', 'ciclo', 'saque pix', 'asaas'], daCentral),
+            // relatório do dono do sistema (todas as organizações): regra própria, independente da dos itens acima
+            item('fleet-ops.ui.financeiro.menu.corridas-do-sistema', 'building', 'financeiro.corridas-do-sistema', ['corridas', 'centrais', 'organizações', 'sistema'], this.currentUser.isAdmin === true),
         ]);
     }
 
@@ -394,11 +397,12 @@ export default class LayoutFleetOpsSidebarComponent extends Component {
             'management.lojas': 1,
             'financeiro.painel': 0,
             'financeiro.motoboys': 1,
-            'financeiro.lojas': 2,
-            'financeiro.relatorio': 3,
-            'financeiro.multiplicadores': 4,
-            'financeiro.configuracoes': 5,
-            'financeiro.corridas-do-sistema': 6,
+            'financeiro.saques': 2,
+            'financeiro.lojas': 3,
+            'financeiro.relatorio': 4,
+            'financeiro.multiplicadores': 5,
+            'financeiro.configuracoes': 6,
+            'financeiro.corridas-do-sistema': 7,
             'management.vehicles': 2,
             'management.trailers': 3,
             'management.fleets': 4,

@@ -249,6 +249,9 @@ $avisosFin = $porComando['entregas:financeiro-avisos'] ?? null;
 unset($porComando['entregas:financeiro-avisos']);
 $rascunhos = $porComando['entregas:financeiro-rascunhos'] ?? null;
 unset($porComando['entregas:financeiro-rascunhos']);
+// o saque Pix tem o próprio when (ENTREGAS_SAQUE), conferido à parte no fim
+$saques = $porComando['entregas:saques-conferir'] ?? null;
+unset($porComando['entregas:saques-conferir']);
 // as corridas do sistema não dependem de chave (sem when): conferidas no corridas-do-sistema.php
 $corridasDoSistema = $porComando['entregas:corridas-conferir'] ?? null;
 unset($porComando['entregas:corridas-conferir']);
@@ -332,6 +335,19 @@ if ($quandoRas instanceof Closure) {
     confere($ligadaRas === true && $quandoRas() === false, 'entregas:financeiro-rascunhos: o when() segue o Financeiro::ligada()');
 } else {
     confere(false, 'entregas:financeiro-rascunhos: com when()');
+}
+
+echo '== Kernel: saque Pix' . PHP_EOL;
+confere($saques !== null && isset($saques['everyMinute']) && ($saques['withoutOverlapping'][0] ?? null) === 5 && isset($saques['runInBackground']) && ($saques['appendOutputTo'] ?? null) === ['/proc/1/fd/1'], 'entregas:saques-conferir: a cada minuto, withoutOverlapping(5), em segundo plano, saída no container');
+$quandoSaq = $saques['when'][0] ?? null;
+if ($quandoSaq instanceof Closure) {
+    reiniciarIfood();
+    Config::$valores['services.entregas.saque'] = '1';
+    $ligadaSaq                                  = $quandoSaq();
+    Config::$valores['services.entregas.saque'] = '';
+    confere($ligadaSaq === true && $quandoSaq() === false, 'entregas:saques-conferir: o when() segue o Saque::ligada()');
+} else {
+    confere(false, 'entregas:saques-conferir: com when()');
 }
 
 resumo();

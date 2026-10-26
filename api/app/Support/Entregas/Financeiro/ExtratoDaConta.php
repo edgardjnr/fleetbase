@@ -2,6 +2,7 @@
 
 namespace App\Support\Entregas\Financeiro;
 
+use App\Support\Entregas\Saques\Saques;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
@@ -197,12 +198,13 @@ final class ExtratoDaConta
     /**
      * O pagamento no formato do recibo (app, GET v1/entregas/motoboy/pagamentos/{id}) e da resposta do console:
      * {id, valor, forma, data, estornado, comprovante: {url, tipo, nome} | null}. Nunca a observação interna.
+     * Pagamento de saque Pix: + `saque` {situacao, comprovante_url}.
      */
     public static function pagamento(object $pagamento): array
     {
         $url = Pagamentos::urlDoComprovante($pagamento);
 
-        return [
+        $saida = [
             'id'          => (string) $pagamento->uuid,
             'valor'       => round((float) $pagamento->valor, 2),
             'forma'       => (string) $pagamento->forma,
@@ -214,6 +216,12 @@ final class ExtratoDaConta
                 'nome' => $pagamento->comprovante_nome ?? null,
             ] : null,
         ];
+        // saque Pix pelo app: a situação e o comprovante do Asaas (só quando o pagamento é de saque)
+        if ($saque = Saques::marcaDoPagamento($pagamento)) {
+            $saida['saque'] = $saque;
+        }
+
+        return $saida;
     }
 
     /** O saldo da conta agora (soma de todos os lançamentos). */
@@ -274,6 +282,9 @@ final class ExtratoDaConta
         ];
         if (!$publico) {
             $saida['comprovante_url'] = Pagamentos::urlDoComprovante($pagamento);
+        }
+        if ($saque = Saques::marcaDoPagamento($pagamento)) {
+            $saida['saque'] = $saque;
         }
 
         return $saida;

@@ -1,0 +1,61 @@
+<section class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3 {{unless @etapas.conectada 'opacity-60'}}">
+    <header class="flex flex-wrap items-center gap-2">
+        <span class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.passo" numero=3}}</span>
+        <h3 class="text-sm font-semibold dark:text-white">{{t "fleet-ops.ui.financeiro.saque-pix.ligar.titulo"}}</h3>
+        {{#if @etapas.ligado}}
+            <Badge @status="success" @hideStatusDot={{true}}>{{t "fleet-ops.ui.financeiro.saque-pix.feito"}}</Badge>
+        {{/if}}
+    </header>
+
+    {{#if @etapas.conectada}}
+        <Toggle
+            @isToggled={{this.ligado}}
+            @disabled={{this.interruptorTravado}}
+            @onToggle={{this.ligar}}
+            @label={{t "fleet-ops.ui.financeiro.saque-pix.ligar.interruptor"}}
+        />
+        {{#unless @etapas.podeLigar}}
+            <p class="text-xs text-yellow-700 dark:text-yellow-300">{{t "fleet-ops.ui.financeiro.saque-pix.ligar.travado"}}</p>
+        {{/unless}}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.saque-pix.ligar.minimo"}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="text" inputmode="decimal" autocomplete="off" class="form-input form-input-sm w-full" value={{this.campos.minimo}} {{on "input" (fn this.setCampo "minimo")}} />
+                {{#if (this.interpretado this.campos.minimo)}}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.valor-interpretado" valor=(this.interpretado this.campos.minimo)}}</p>
+                {{/if}}
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.saque-pix.ligar.maximo-dia"}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="text" inputmode="decimal" autocomplete="off" class="form-input form-input-sm w-full" value={{this.campos.maximo_dia}} {{on "input" (fn this.setCampo "maximo_dia")}} />
+                {{#if (this.interpretado this.campos.maximo_dia)}}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.valor-interpretado" valor=(this.interpretado this.campos.maximo_dia)}}</p>
+                {{/if}}
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.saque-pix.ligar.saques-dia"}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="number" min="1" max="20" step="1" inputmode="numeric" class="form-input form-input-sm w-full" value={{this.campos.saques_dia}} {{on "input" (fn this.setCampo "saques_dia")}} />
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.saque-pix.ligar.taxa"}} @helpText={{t "fleet-ops.ui.financeiro.saque-pix.ligar.taxa-ajuda"}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="text" inputmode="decimal" autocomplete="off" class="form-input form-input-sm w-full" value={{this.campos.taxa}} {{on "input" (fn this.setCampo "taxa")}} />
+                {{#if (this.interpretado this.campos.taxa)}}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.valor-interpretado" valor=(this.interpretado this.campos.taxa)}}</p>
+                {{/if}}
+            </InputGroup>
+        </div>
+        {{#if this.erro}}
+            <p class="text-xs text-yellow-700 dark:text-yellow-300">{{this.erro}}</p>
+        {{/if}}
+        <div>
+            <Button
+                @type="primary"
+                @size="sm"
+                @icon="save"
+                @text={{t "fleet-ops.ui.financeiro.saque-pix.ligar.salvar"}}
+                @disabled={{this.erro}}
+                @isLoading={{this.salvarLimites.isRunning}}
+                @onClick={{perform this.salvarLimites}}
+            />
+        </div>
+    {{else}}
+        <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.conecte-antes"}}</p>
+    {{/if}}
+</section>

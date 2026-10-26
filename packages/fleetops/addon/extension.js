@@ -29,12 +29,15 @@ export default {
                     route: 'console.fleet-ops.management.drivers',
                 },
                 {
-                    // Entregas: o id fica (atalhos salvos); a "Pagamento e cobrança" virou o Financeiro
+                    // Entregas: o id fica (atalhos salvos); a "Pagamento e cobrança" virou o Financeiro. A rota é a raiz do
+                    // Financeiro: o atalho é registrado antes de o usuário carregar, e routes/financeiro/index.js decide na
+                    // hora do clique (admin do sistema → Painel; admin da organização → Saques Pix; os demais a guarda de
+                    // routes/financeiro.js recusa, como antes)
                     id: 'fleet-ops-sc-driver-payouts',
                     title: intlService.t('fleet-ops.ui.financeiro.menu.titulo'),
                     description: intlService.t('fleet-ops.ui.financeiro.menu.descricao'),
                     icon: 'sack-dollar',
-                    route: 'console.fleet-ops.financeiro.painel',
+                    route: 'console.fleet-ops.financeiro',
                 },
             ],
         });

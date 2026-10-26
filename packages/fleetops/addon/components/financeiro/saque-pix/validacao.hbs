@@ -1,0 +1,110 @@
+<section class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3 {{unless @etapas.conectada 'opacity-60'}}">
+    <header class="flex flex-wrap items-center gap-2">
+        <span class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.passo" numero=2}}</span>
+        <h3 class="text-sm font-semibold dark:text-white">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.titulo"}}</h3>
+        {{#if @etapas.validada}}
+            <Badge @status="success" @hideStatusDot={{true}}>{{t "fleet-ops.ui.financeiro.saque-pix.feito"}}</Badge>
+        {{/if}}
+    </header>
+    <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.ajuda"}}</p>
+
+    {{#if @etapas.conectada}}
+        <div class="space-y-1">
+            <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.url"}}</div>
+            <ClickToCopy @value={{this.url}} class="inline-block font-mono text-sm text-gray-800 dark:text-gray-100 break-all">
+                <FaIcon @icon="copy" class="mr-1 text-gray-400" />{{this.url}}
+            </ClickToCopy>
+        </div>
+
+        <div class="space-y-1">
+            <div class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.token"}}</div>
+            {{#if this.tokenNovo}}
+                <div class="text-sm rounded-md px-3 py-2 bg-yellow-50 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.token-uma-vez"}}</div>
+                <ClickToCopy @value={{this.tokenNovo}} class="inline-block font-mono text-sm text-gray-800 dark:text-gray-100 break-all">
+                    <FaIcon @icon="copy" class="mr-1 text-gray-400" />{{this.tokenNovo}}
+                </ClickToCopy>
+            {{else if @etapas.tokenGerado}}
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.token-existe"}}</p>
+            {{/if}}
+            <div class="flex flex-wrap items-end gap-2">
+                <InputGroup @name={{t "fleet-ops.ui.financeiro.saque-pix.validacao.senha"}} @wrapperClass="mb-0 w-full md:w-64" as |id|>
+                    <input id={{id}} type="password" autocomplete="off" class="form-input form-input-sm w-full" value={{this.senhaDoToken}} {{on "input" (fn this.setCampo "senhaDoToken")}} />
+                </InputGroup>
+                <Button
+                    @size="sm"
+                    @icon="key"
+                    @text={{if @etapas.tokenGerado (t "fleet-ops.ui.financeiro.saque-pix.validacao.gerar-outro") (t "fleet-ops.ui.financeiro.saque-pix.validacao.gerar")}}
+                    @disabled={{not this.senhaDoToken}}
+                    @isLoading={{this.gerarToken.isRunning}}
+                    @onClick={{this.pedirToken}}
+                />
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.senha-ajuda"}}</p>
+        </div>
+
+        <div class="rounded-md border border-gray-200 dark:border-gray-700 p-3 space-y-2">
+            <div class="text-sm font-semibold dark:text-white">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.passos-titulo"}}</div>
+            <ol class="list-decimal pl-5 text-sm text-gray-700 dark:text-gray-200 space-y-1">
+                <li>{{t "fleet-ops.ui.financeiro.saque-pix.validacao.passo-1"}}</li>
+                <li>{{t "fleet-ops.ui.financeiro.saque-pix.validacao.passo-2"}}</li>
+                <li>{{t "fleet-ops.ui.financeiro.saque-pix.validacao.passo-3"}}</li>
+            </ol>
+            <div class="text-sm font-semibold dark:text-white pt-1">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.ips-titulo"}}</div>
+            <p class="text-sm text-gray-700 dark:text-gray-200">
+                {{#if this.ip}}
+                    {{t "fleet-ops.ui.financeiro.saque-pix.validacao.ips-com-ip" ip=this.ip}}
+                {{else}}
+                    {{t "fleet-ops.ui.financeiro.saque-pix.validacao.ips-sem-ip"}}
+                {{/if}}
+            </p>
+        </div>
+
+        <div class="space-y-2">
+            <div class="text-sm font-semibold dark:text-white">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.teste-titulo"}}</div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.teste-ajuda"}}</p>
+            {{#if @etapas.podeTestar}}
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                    <InputGroup @name={{t "fleet-ops.ui.financeiro.saque-pix.validacao.teste-tipo"}} @wrapperClass="mb-0" as |id|>
+                        <select id={{id}} class="form-select form-select-sm w-full" {{on "change" (fn this.setCampo "tipo")}}>
+                            {{#each this.tiposDePix as |opcao|}}
+                                <option value={{opcao.valor}} selected={{eq opcao.valor this.tipo}}>{{t opcao.chave}}</option>
+                            {{/each}}
+                        </select>
+                    </InputGroup>
+                    <InputGroup @name={{t "fleet-ops.ui.financeiro.saque-pix.validacao.teste-chave"}} @wrapperClass="mb-0" as |id|>
+                        <input id={{id}} type="text" autocomplete="off" maxlength="140" class="form-input form-input-sm w-full font-mono" value={{this.chavePix}} {{on "input" (fn this.setCampo "chavePix")}} />
+                    </InputGroup>
+                    <InputGroup @name={{t "fleet-ops.ui.financeiro.saque-pix.validacao.senha"}} @wrapperClass="mb-0" as |id|>
+                        <input id={{id}} type="password" autocomplete="off" class="form-input form-input-sm w-full" value={{this.senhaDoTeste}} {{on "input" (fn this.setCampo "senhaDoTeste")}} />
+                    </InputGroup>
+                    <div>
+                        <Button
+                            @type="primary"
+                            @size="sm"
+                            @icon="vial"
+                            @text={{t "fleet-ops.ui.financeiro.saque-pix.validacao.testar"}}
+                            @disabled={{or this.acompanhar.isRunning (not this.chavePix) (not this.senhaDoTeste)}}
+                            @isLoading={{this.testar.isRunning}}
+                            @onClick={{perform this.testar}}
+                        />
+                    </div>
+                </div>
+                {{#if (and this.chavePix this.erroDoPix)}}
+                    <p class="text-xs text-yellow-700 dark:text-yellow-300">{{this.erroDoPix}}</p>
+                {{/if}}
+            {{else}}
+                <p class="text-xs text-yellow-700 dark:text-yellow-300">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.gere-o-token"}}</p>
+            {{/if}}
+
+            {{#if (eq this.resultado "confirmada")}}
+                <p class="text-sm text-green-700 dark:text-green-400"><FaIcon @icon="circle-check" class="mr-1" />{{t "fleet-ops.ui.financeiro.saque-pix.validacao.confirmada" quando=this.confirmadaEm}}</p>
+            {{else if (eq this.resultado "esperando")}}
+                <p class="text-sm text-gray-600 dark:text-gray-300"><FaIcon @icon="hourglass-half" class="mr-1" />{{t "fleet-ops.ui.financeiro.saque-pix.validacao.esperando" segundos=this.segundos}}</p>
+            {{else if (eq this.resultado "sem-resposta")}}
+                <p class="text-sm text-red-600 dark:text-red-400"><FaIcon @icon="triangle-exclamation" class="mr-1" />{{t "fleet-ops.ui.financeiro.saque-pix.validacao.sem-resposta"}}</p>
+            {{/if}}
+        </div>
+    {{else}}
+        <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.validacao.conecte-antes"}}</p>
+    {{/if}}
+</section>

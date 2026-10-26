@@ -6,7 +6,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Entregas RestaurantePro: a chave Pix do motoboy (entregas_motoboys_financeiro), cadastrada pelo admin no extrato do
- * console. O motoboy vê no app (conta.pix do extrato), não edita. Só registro: o dinheiro sai pelo app do banco.
+ * console. O motoboy vê no app (conta.pix do extrato), não edita. O saque Pix pelo app usa esta chave
+ * (App\Support\Entregas\Saques); a troca bloqueia o saque por 24 h.
  */
 final class ChavePix
 {
@@ -71,22 +72,29 @@ final class ChavePix
         return ['chave' => $normalizada, 'tipo' => $tipo];
     }
 
-    /** Grava (cria ou troca) a chave do motoboy. */
-    public static function salvar(string $companyUuid, string $driverUuid, string $chave, string $tipo): void
+    /**
+     * Grava (cria ou troca) a chave do motoboy. Devolve true quando TROCOU uma chave que já existia por outra (chave ou tipo
+     * diferente): aí grava quem e quando (pix_alterada_por/_em), o que bloqueia o saque Pix por 24 h (Saques::liberadoEm).
+     * O primeiro cadastro e a mesma chave de novo não contam como troca.
+     */
+    public static function salvar(string $companyUuid, string $driverUuid, string $chave, string $tipo, ?string $usuarioUuid = null): bool
     {
-        $agora = now()->format('Y-m-d H:i:s');
-        $feito = DB::table(static::TABELA)
-            ->where('driver_uuid', $driverUuid)
-            ->update(['company_uuid' => $companyUuid, 'chave_pix' => $chave, 'tipo_chave' => $tipo, 'updated_at' => $agora]);
-        if ($feito < 1 && !DB::table(static::TABELA)->where('driver_uuid', $driverUuid)->exists()) {
-            DB::table(static::TABELA)->insert([
-                'company_uuid' => $companyUuid,
-                'driver_uuid'  => $driverUuid,
-                'chave_pix'    => $chave,
-                'tipo_chave'   => $tipo,
-                'created_at'   => $agora,
-                'updated_at'   => $agora,
-            ]);
+        $agora  = now()->format('Y-m-d H:i:s');
+        $atual  = DB::table(static::TABELA)->where('driver_uuid', $driverUuid)->first();
+        $antiga = $atual ? (string) ($atual->chave_pix ?? '') : '';
+        $trocou = $antiga !== '' && ($antiga !== $chave || (string) $atual->tipo_chave !== $tipo);
+
+        $campos = ['company_uuid' => $companyUuid, 'chave_pix' => $chave, 'tipo_chave' => $tipo, 'updated_at' => $agora];
+        if ($trocou) {
+            $campos['pix_alterada_em']  = $agora;
+            $campos['pix_alterada_por'] = $usuarioUuid;
         }
+        if ($atual) {
+            DB::table(static::TABELA)->where('driver_uuid', $driverUuid)->update($campos);
+        } else {
+            DB::table(static::TABELA)->insert($campos + ['driver_uuid' => $driverUuid, 'created_at' => $agora]);
+        }
+
+        return $trocou;
     }
 }
