@@ -125,10 +125,23 @@ export default class TelaPedidosMapaLeafletComponent extends Component {
         this.mapa.zoomControl?.setPosition('bottomleft');
         this.observador = new ResizeObserver(() => {
             this.mapa?.invalidateSize();
+            // o pedido aberto foi enquadrado com o mapa em outro tamanho (carregando direto pela URL): enquadra de novo
+            if (this.focado && this.tamanhoDoFoco !== this.#tamanho()) this.focado = null;
             this.enquadrar();
         });
         this.observador.observe(this.mapa.getContainer());
         this.enquadrar();
+        // o primeiro tamanho do mapa às vezes ainda não é o final: com um pedido aberto, enquadra de novo logo depois
+        this.mapa.whenReady?.(() => setTimeout(() => {
+            if (!this.mapa || !this.temPedidoAberto) return;
+            this.focado = null;
+            this.enquadrar();
+        }, 700));
+    }
+
+    #tamanho() {
+        const t = this.mapa?.getSize?.();
+        return t ? `${t.x}x${t.y}` : '';
     }
 
     get temPedidoAberto() {
@@ -167,6 +180,7 @@ export default class TelaPedidosMapaLeafletComponent extends Component {
         const chave = `${pedido.id}|${daRota?.trechos?.length ?? 0}|${pontosDoPrimeiro > 2 ? 'ruas' : 'reta'}`;
         if (this.focado === chave) return;
         this.focado = chave;
+        this.tamanhoDoFoco = this.#tamanho();
         const pontos = daRota ? pontosParaEnquadrar(daRota.trechos, [pedido, daRota.coleta]) : (this.rota?.pontos ?? [[pedido.latitude, pedido.longitude]]);
         if (!pontos.length) return;
         this.mapa.fitBounds(pontos, { ...this.#padding(), maxZoom: 16 });
