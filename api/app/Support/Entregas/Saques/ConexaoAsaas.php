@@ -24,6 +24,9 @@ final class ConexaoAsaas
 
     public const VALOR_DO_TESTE = 1.0;
 
+    /** O menor "mínimo por saque" que a central pode configurar: acima do R$ 1,00 do teste, para não se confundirem. */
+    public const MINIMO_POR_SAQUE = 2.0;
+
     /** Testes da validação por central por dia (de Brasília). */
     public const TESTES_POR_DIA = 5;
 
@@ -297,8 +300,8 @@ final class ConexaoAsaas
         }
 
         $final = array_merge(static::limites($atual), $campos);
-        if ($final['minimo'] < 1) {
-            throw new \InvalidArgumentException('O mínimo por saque é de pelo menos R$ 1,00.');
+        if ($final['minimo'] < static::MINIMO_POR_SAQUE) {
+            throw new \InvalidArgumentException('O mínimo por saque é de pelo menos R$ 2,00.');
         }
         if ($final['maximo_dia'] < $final['minimo']) {
             throw new \InvalidArgumentException('O máximo por dia precisa ser maior ou igual ao mínimo por saque.');
