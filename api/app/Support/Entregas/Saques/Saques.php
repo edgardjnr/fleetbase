@@ -86,9 +86,9 @@ final class Saques
     }
 
     /**
-     * Pede o saque: confere tudo e, numa transação com a linha do motoboy travada, grava o saque "enviando", o pagamento
-     * Pix no livro (o saldo já desconta) e a taxa. O $uuid vem do app: repetido devolve o mesmo saque (`novo` false).
-     * Recusas: SaqueRecusado com a mensagem pt-BR. Quem chama manda ao Asaas depois do commit (enviar).
+     * Pede o saque: confere tudo e, numa transação com a conexão da central e a linha do motoboy travadas, grava o saque
+     * "enviando", o pagamento Pix no livro (o saldo já desconta) e a taxa. O $uuid vem do app: repetido devolve o mesmo
+     * saque (`novo` false). Recusas: SaqueRecusado com a mensagem pt-BR. Quem chama manda ao Asaas depois do commit (enviar).
      *
      * @return array{saque: object, novo: bool}
      */
@@ -108,14 +108,14 @@ final class Saques
         if ($centavos === null) {
             throw new SaqueRecusado('Informe o valor do saque.');
         }
-        $conexao = ConexaoAsaas::daEmpresa($companyUuid);
-        if (!static::liberadoNaCentral($conexao)) {
-            throw new SaqueRecusado('A central não liberou o saque Pix.');
-        }
-        $limites = ConexaoAsaas::limites($conexao);
-
         try {
-            $saque = DB::transaction(function () use ($companyUuid, $driverUuid, $uuid, $centavos, $limites) {
+            $saque = DB::transaction(function () use ($companyUuid, $driverUuid, $uuid, $centavos) {
+                // a conexão relida travada: desconectar ou desligar no meio espera este pedido (e vice-versa)
+                $conexao = DB::table(Saque::CONEXOES)->where('company_uuid', $companyUuid)->lockForUpdate()->first();
+                if (!static::liberadoNaCentral($conexao)) {
+                    throw new SaqueRecusado('A central não liberou o saque Pix.');
+                }
+                $limites = ConexaoAsaas::limites($conexao);
                 // a linha do motoboy travada: dois pedidos ao mesmo tempo não passam juntos pelas conferências
                 $linha = static::linhaDoMotoboy($companyUuid, $driverUuid, true);
                 if (static::emAndamento($companyUuid, $driverUuid)) {

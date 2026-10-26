@@ -87,6 +87,31 @@ asaas(200, ['data' => [['id' => 'wallet-1']]]);
 ConexaoAsaas::conectar('empresa-1', 'chave-nova-da-mesma-conta-999', 'user-2');
 confere(Cofre::decifrar(conexao()->chave_cifrada) === 'chave-nova-da-mesma-conta-999' && conexao()->conectada_por === 'user-2' && count(linhasDe('entregas_asaas_conexoes')) === 1, 'mesma conta: troca a chave, uma linha só');
 
+echo '== Dois conectar ao mesmo tempo' . PHP_EOL;
+$guardada = linhasDe('entregas_asaas_conexoes');
+/** Antes do insert da primeira conexão, "outro pedido" grava a dele (wallet $wallet); a chave única segura o nosso. */
+function outroConectaAntes(string $wallet): void
+{
+    \Teste\Banco::$antesDeInserir['entregas_asaas_conexoes'] = fn () => DB::table('entregas_asaas_conexoes')->insert([
+        'company_uuid' => 'empresa-7', 'chave_cifrada' => Cofre::cifrar('chave-do-outro-pedido-0000'), 'wallet_id' => $wallet,
+        'conectada_por' => 'user-2', 'conectada_em' => '2026-10-27 09:59:59', 'created_at' => '2026-10-27 09:59:59', 'updated_at' => '2026-10-27 09:59:59',
+    ]);
+}
+outroConectaAntes('wallet-7');
+asaas(200, ['name' => 'Central Sete']);
+asaas(200, ['data' => [['id' => 'wallet-7']]]);
+$erro = excecao(fn () => ConexaoAsaas::conectar('empresa-7', CHAVE_ASAAS, 'user-admin'));
+$sete = ConexaoAsaas::daEmpresa('empresa-7');
+confere($erro === null && Cofre::decifrar($sete->chave_cifrada) === CHAVE_ASAAS && $sete->conectada_por === 'user-admin' && count(DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-7')->get()) === 1, 'mesma conta: vira troca da chave, uma linha só' . ($erro ? ': ' . get_class($erro) . ' ' . $erro->getMessage() : ''));
+confere((end(Log::$registros)[2] ?? null) === ['empresa' => 'empresa-7', 'wallet' => 'wallet-7', 'por' => 'user-admin', 'troca' => true], 'log: troca');
+DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-7')->delete();
+outroConectaAntes('wallet-8');
+asaas(200, ['name' => 'Central Sete']);
+asaas(200, ['data' => [['id' => 'wallet-7']]]);
+confere(mensagem(fn () => ConexaoAsaas::conectar('empresa-7', CHAVE_ASAAS, 'user-admin')) === 'Esta chave é de outra conta Asaas. Para mudar de conta, desconecte e conecte de novo.' && Cofre::decifrar(ConexaoAsaas::daEmpresa('empresa-7')->chave_cifrada) === 'chave-do-outro-pedido-0000', 'outra conta: recusada, fica a do outro pedido');
+DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-7')->delete();
+confere(linhasDe('entregas_asaas_conexoes') === $guardada, 'empresa-1 intacta');
+
 echo '== Token da validação' . PHP_EOL;
 $token = ConexaoAsaas::gerarToken('empresa-1');
 confere(strlen($token) === 48 && ctype_xdigit($token), 'token de 48 caracteres hexadecimais');
@@ -204,8 +229,10 @@ echo '== Desconectar' . PHP_EOL;
 DB::table('entregas_saques')->insert(['uuid' => 'aaaaaaaa-0000-4000-8000-000000000001', 'company_uuid' => 'empresa-1', 'driver_uuid' => 'driver-1', 'valor' => 10, 'chave_pix' => '1', 'tipo_chave' => 'cpf', 'situacao' => 'processando', 'external_reference' => 'saque:x', 'created_at' => '2026-10-27 09:00:00', 'updated_at' => '2026-10-27 09:00:00']);
 confere(mensagem(fn () => ConexaoAsaas::desconectar('empresa-1', 'user-admin')) === 'Há saque em andamento; espere ele terminar.', 'não desconecta com saque em andamento');
 DB::table('entregas_saques')->where('uuid', 'aaaaaaaa-0000-4000-8000-000000000001')->update(['situacao' => 'concluido']);
+\Teste\Banco::$travas = [];
 ConexaoAsaas::desconectar('empresa-1', 'user-admin');
 confere(conexao() === null, 'desconectada: a linha (chave, token, limites) some');
+confere(\Teste\Banco::$travas === [['entregas_asaas_conexoes', true]], 'a linha da conexão travada numa transação antes de conferir o saque em andamento (um pedido no meio espera): ' . json_encode(\Teste\Banco::$travas));
 confere(mensagem(fn () => ConexaoAsaas::desconectar('empresa-1', 'user-admin')) === 'A conta Asaas não está conectada.', 'desconectar de novo: erro');
 
 resumo();

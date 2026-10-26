@@ -4,6 +4,7 @@ namespace App\Support\Entregas\Saques;
 
 use App\Support\Entregas\Financeiro\ChavePix;
 use App\Support\Entregas\Financeiro\Financeiro;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -118,9 +119,7 @@ final class ConexaoAsaas
         }
 
         $atual = static::daEmpresa($companyUuid);
-        if ($atual && (string) $atual->wallet_id !== $carteira) {
-            throw new \InvalidArgumentException('Esta chave é de outra conta Asaas. Para mudar de conta, desconecte e conecte de novo.');
-        }
+        static::exigirMesmaConta($atual, $carteira);
 
         $agora  = now()->format('Y-m-d H:i:s');
         $nome   = trim((string) ($dados['name'] ?? $dados['companyName'] ?? ''));
@@ -133,10 +132,20 @@ final class ConexaoAsaas
             'conectada_em'    => $agora,
             'updated_at'      => $agora,
         ];
+        if (!$atual) {
+            try {
+                DB::table(Saque::CONEXOES)->insert($campos + ['company_uuid' => $companyUuid, 'created_at' => $agora]);
+            } catch (QueryException $e) {
+                // outro pedido conectou no meio (a chave única segurou este): vira troca, e a wallet tem de bater
+                $atual = static::daEmpresa($companyUuid);
+                if (!$atual) {
+                    throw $e;
+                }
+                static::exigirMesmaConta($atual, $carteira);
+            }
+        }
         if ($atual) {
             DB::table(Saque::CONEXOES)->where('company_uuid', $companyUuid)->update($campos);
-        } else {
-            DB::table(Saque::CONEXOES)->insert($campos + ['company_uuid' => $companyUuid, 'created_at' => $agora]);
         }
         Log::info('[entregas] saque: conta Asaas conectada', ['empresa' => $companyUuid, 'wallet' => $carteira, 'por' => $usuarioUuid, 'troca' => (bool) $atual]);
 
@@ -146,14 +155,17 @@ final class ConexaoAsaas
     /** Apaga a conexão inteira (chave, token, limites). Com saque em andamento, recusa: sem chave ninguém o acompanha. */
     public static function desconectar(string $companyUuid, ?string $usuarioUuid): void
     {
-        if (!static::daEmpresa($companyUuid)) {
-            throw new \InvalidArgumentException('A conta Asaas não está conectada.');
-        }
-        $emAndamento = DB::table(Saque::TABELA)->where('company_uuid', $companyUuid)->whereIn('situacao', Saque::EM_ANDAMENTO)->exists();
-        if ($emAndamento) {
-            throw new \InvalidArgumentException('Há saque em andamento; espere ele terminar.');
-        }
-        DB::table(Saque::CONEXOES)->where('company_uuid', $companyUuid)->delete();
+        DB::transaction(function () use ($companyUuid) {
+            // a linha travada: um pedido de saque (que a relê travada em Saques::pedir) espera, e não nasce saque sem chave
+            if (!DB::table(Saque::CONEXOES)->where('company_uuid', $companyUuid)->lockForUpdate()->first()) {
+                throw new \InvalidArgumentException('A conta Asaas não está conectada.');
+            }
+            $emAndamento = DB::table(Saque::TABELA)->where('company_uuid', $companyUuid)->whereIn('situacao', Saque::EM_ANDAMENTO)->exists();
+            if ($emAndamento) {
+                throw new \InvalidArgumentException('Há saque em andamento; espere ele terminar.');
+            }
+            DB::table(Saque::CONEXOES)->where('company_uuid', $companyUuid)->delete();
+        });
         Log::info('[entregas] saque: conta Asaas desconectada', ['empresa' => $companyUuid, 'por' => $usuarioUuid]);
     }
 
@@ -347,6 +359,14 @@ final class ConexaoAsaas
         }
 
         return null;
+    }
+
+    /** A conexão gravada é de outra wallet: recusa (mudar de conta só desconectando). */
+    private static function exigirMesmaConta(?object $atual, string $carteira): void
+    {
+        if ($atual && (string) $atual->wallet_id !== $carteira) {
+            throw new \InvalidArgumentException('Esta chave é de outra conta Asaas. Para mudar de conta, desconecte e conecte de novo.');
+        }
     }
 
     /** A resposta, se deu certo; chave recusada → 422 com a orientação; sem resposta ou outro erro → 502. */

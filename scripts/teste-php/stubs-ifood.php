@@ -76,6 +76,7 @@ namespace Illuminate\Support\Facades {
                     $modelos[$classe][$lista] = $classe::$$lista;
                 }
             }
+            \Teste\Banco::$transacoes++;
             try {
                 return $fazer();
             } catch (\Throwable $e) {
@@ -86,6 +87,8 @@ namespace Illuminate\Support\Facades {
                     }
                 }
                 throw $e;
+            } finally {
+                \Teste\Banco::$transacoes--;
             }
         }
     }
@@ -531,9 +534,14 @@ namespace Teste {
         public static array $falharComo = [];
         /** Tabela => função: roda uma vez, logo antes do próximo insert nela (outro processo gravando no meio). */
         public static array $antesDeInserir = [];
+        /** Os lockForUpdate pedidos, na ordem: [tabela, dentro de DB::transaction?]. */
+        public static array $travas = [];
+        /** Quantos DB::transaction estão abertos agora. */
+        public static int $transacoes = 0;
 
         public static function limpar(): void
         {
+            self::$travas         = [];
             self::$tabelas        = [];
             self::$proximoId      = [];
             self::$falhar         = [];
@@ -807,8 +815,9 @@ namespace Teste {
         public function whereNotNull($coluna) { Banco::exigirColuna($this->tabela, $coluna); $this->filtros[] = fn (array $linha) => ($linha[$coluna] ?? null) !== null; return $this; }
         public function orderBy($coluna, $direcao = 'asc') { Banco::exigirColuna($this->tabela, $coluna); $this->ordem[] = [$coluna, strtolower($direcao)]; return $this; }
         public function limit(int $quantos) { $this->limite = $quantos; return $this; }
-        // a trava de linha do MySQL (SELECT ... FOR UPDATE): sem efeito no banco em memória (um processo só)
-        public function lockForUpdate() { return $this; }
+        // a trava de linha do MySQL (SELECT ... FOR UPDATE): sem efeito no banco em memória (um processo só); fica anotada
+        // em Banco::$travas (o teste confere que travou, e dentro de transação)
+        public function lockForUpdate() { Banco::$travas[] = [$this->tabela, Banco::$transacoes > 0]; return $this; }
 
         /** sum(coluna): a soma das linhas selecionadas (o MySQL devolve texto; aqui número, que o código converte com (float)). */
         public function sum($coluna)

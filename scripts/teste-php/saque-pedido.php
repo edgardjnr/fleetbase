@@ -64,8 +64,10 @@ DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-1')->update
 confere(linhasDe('entregas_saques') === [] && linhasDe('entregas_pagamentos') === [], 'recusas não gravam nada');
 
 echo '== Pedido aceito' . PHP_EOL;
+\Teste\Banco::$travas = [];
 $r     = Saques::pedir('empresa-1', 'driver-1', strtoupper(U1), '60,50');
 $saque = $r['saque'];
+confere(array_slice(\Teste\Banco::$travas, 0, 2) === [['entregas_asaas_conexoes', true], ['entregas_motoboys_financeiro', true]], 'na transação: relê a conexão travada (desconectar ou desligar no meio espera) e depois a linha do motoboy: ' . json_encode(\Teste\Banco::$travas));
 confere($r['novo'] === true && $saque->uuid === U1 && $saque->situacao === 'enviando' && (float) $saque->valor === 60.5 && (float) $saque->taxa === 0.0, 'saque "enviando" de R$ 60,50 (uuid em minúsculas)');
 confere($saque->chave_pix === '11999994321' && $saque->tipo_chave === 'telefone' && $saque->external_reference === 'saque:' . U1 && $saque->transfer_id === null, 'chave Pix copiada do cadastro; externalReference estável');
 $pagamento = Pagamentos::porUuid('empresa-1', (string) $saque->pagamento_uuid);
