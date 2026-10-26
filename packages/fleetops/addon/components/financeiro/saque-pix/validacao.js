@@ -10,10 +10,12 @@ const P = 'fleet-ops.ui.financeiro.saque-pix.validacao';
 
 /**
  * Entregas RestaurantePro: passo 2 do card Saque Pix, a validação de saque do Asaas. Mostra a URL que a central cola no
- * Asaas, gera o token (POST …/saque-pix/token → {token, url, conexao}: o token aparece só aqui, só nesta tela, e some ao
- * sair), o passo a passo do Asaas e a recomendação da lista de IPs (com o `ip_de_saida` do servidor). "Testar validação"
- * (POST …/saque-pix/teste {tipo, chave}) manda R$ 1,00 para uma chave Pix do admin, que a validação do Entregas recusa;
- * a tela relê a conexão a cada 3 s por até 60 s esperando `validacao_confirmada_em`.
+ * Asaas, gera o token (POST …/saque-pix/token {senha} → {token, url, conexao}: o token aparece só aqui, só nesta tela, e
+ * some ao sair), o passo a passo do Asaas e a recomendação da lista de IPs (com o `ip_de_saida` do servidor). "Testar
+ * validação" (POST …/saque-pix/teste {tipo, chave, senha}) manda R$ 1,00 para uma chave Pix do admin, que a validação do
+ * Entregas recusa; a tela relê a conexão a cada 3 s por até 60 s esperando `validacao_confirmada_em`. Gerar o token e
+ * testar pedem a senha do admin (422 "Senha incorreta." do servidor, mostrado como vem); cada campo de senha é limpo
+ * depois de cada pedido, deu certo ou não.
  */
 export default class FinanceiroSaquePixValidacaoComponent extends Component {
     @service fetch;
@@ -25,6 +27,9 @@ export default class FinanceiroSaquePixValidacaoComponent extends Component {
     @tracked tokenNovo = null;
     @tracked tipo = 'cpf';
     @tracked chavePix = '';
+    // a senha do admin, digitada para gerar o token e para testar; limpa depois de cada pedido
+    @tracked senhaDoToken = '';
+    @tracked senhaDoTeste = '';
     // instante (ms) em que o teste desta tela foi pedido; null = nenhum
     @tracked comecouEm = null;
     @tracked agora = Date.now();
@@ -65,6 +70,10 @@ export default class FinanceiroSaquePixValidacaoComponent extends Component {
 
     /** Primeiro token: gera direto. Outro token: confirma, porque invalida o anterior, desliga o saque e pede novo teste. */
     @action pedirToken() {
+        if (!this.senhaDoToken) {
+            this.notifications.warning(this.intl.t(`${P}.preencha-senha`));
+            return;
+        }
         if (!this.args.etapas.tokenGerado) {
             this.gerarToken.perform();
             return;
@@ -82,8 +91,14 @@ export default class FinanceiroSaquePixValidacaoComponent extends Component {
     }
 
     @task({ drop: true }) *gerarToken() {
+        const senha = this.senhaDoToken;
+        this.senhaDoToken = '';
+        if (!senha) {
+            this.notifications.warning(this.intl.t(`${P}.preencha-senha`));
+            return;
+        }
         try {
-            const resposta = yield this.fetch.post(`${API_DO_SAQUE_PIX}/token`);
+            const resposta = yield this.fetch.post(`${API_DO_SAQUE_PIX}/token`, { senha });
             this.tokenNovo = resposta?.token ?? null;
             this.comecouEm = null;
             this.args.aoMudar(resposta?.conexao);
@@ -98,8 +113,14 @@ export default class FinanceiroSaquePixValidacaoComponent extends Component {
             this.notifications.warning(this.erroDoPix);
             return;
         }
+        if (!this.senhaDoTeste) {
+            this.notifications.warning(this.intl.t(`${P}.preencha-senha`));
+            return;
+        }
+        const senha = this.senhaDoTeste;
+        this.senhaDoTeste = '';
         try {
-            this.args.aoMudar(yield this.fetch.post(`${API_DO_SAQUE_PIX}/teste`, { tipo: this.tipo, chave: this.chavePix.trim() }));
+            this.args.aoMudar(yield this.fetch.post(`${API_DO_SAQUE_PIX}/teste`, { tipo: this.tipo, chave: this.chavePix.trim(), senha }));
         } catch (error) {
             this.notifications.serverError(error);
             return;

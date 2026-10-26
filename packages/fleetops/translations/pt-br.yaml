@@ -1228,6 +1228,9 @@ fleet-ops:
           confirmada: 'Recusada pelo Entregas ✓ Validação confirmada em {quando}.'
           sem-resposta: 'O Asaas não chamou o Entregas: confira a URL e o token no Asaas e teste de novo.'
           gere-o-token: Gere o token e configure o Asaas antes de testar.
+          senha: Sua senha do console
+          senha-ajuda: Gerar o token e testar a validação pedem a sua senha.
+          preencha-senha: Digite a sua senha.
         ligar:
           titulo: Ligar o saque e definir os limites
           travado: Teste a validação de saque (passo 2) para poder ligar.

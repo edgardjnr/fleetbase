@@ -1228,6 +1228,9 @@ fleet-ops:
                     confirmada: 'Refused by Entregas ✓ Validation confirmed on {quando}.'
                     sem-resposta: 'Asaas did not call Entregas: check the URL and the token in Asaas and test again.'
                     gere-o-token: Generate the token and set up Asaas before testing.
+                    senha: Your console password
+                    senha-ajuda: Generating the token and testing the validation ask for your password.
+                    preencha-senha: Enter your password.
                 ligar:
                     titulo: Turn withdrawals on and set the limits
                     travado: Test the withdrawal validation (step 2) to turn it on.
