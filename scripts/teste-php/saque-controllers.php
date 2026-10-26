@@ -79,12 +79,17 @@ asaas(200, ['name' => 'Central Teste', 'cpfCnpj' => '12345678000199']);
 asaas(200, ['data' => [['id' => 'wallet-1']]]);
 $r = $console->conectar(doAdmin(['chave' => CHAVE_ASAAS, 'senha' => 'senha-certa']));
 confere($r->status === 200 && $r->dados['conectada'] === true && $r->dados['conta']['wallet'] === 'wallet-1' && !str_contains(json_encode($r->dados), CHAVE_ASAAS), 'conectada: a conexão pública, sem a chave');
-$r = $console->gerarToken(doAdmin());
+confere($console->gerarToken(doAdmin())->dados === ['errors' => ['Senha incorreta.']] && ConexaoAsaas::daEmpresa('empresa-1')->token_hash === null, 'token sem senha: 422, nada gerado');
+confere($console->gerarToken(doAdmin(['senha' => 'errada']))->dados === ['errors' => ['Senha incorreta.']] && ConexaoAsaas::daEmpresa('empresa-1')->token_hash === null, 'token com senha errada: 422, nada gerado');
+$r = $console->gerarToken(doAdmin(['senha' => 'senha-certa']));
 confere($r->status === 200 && strlen($r->dados['token']) === 48 && $r->dados['url'] === 'https://entregas-api.teste/v1/entregas/asaas/validar-saque' && $r->dados['conexao']['token_gerado'] === true, 'token: aparece só aqui, com a URL');
+$chamadas = count(HttpFalso::$chamadas);
+confere($console->testar(doAdmin(['tipo' => 'cpf', 'chave' => '12345678901']))->dados === ['errors' => ['Senha incorreta.']] && count(HttpFalso::$chamadas) === $chamadas && ConexaoAsaas::daEmpresa('empresa-1')->teste_pedido_em === null, 'teste sem senha: 422, sem chamar o Asaas');
+confere($console->testar(doAdmin(['tipo' => 'cpf', 'chave' => '12345678901', 'senha' => 'errada']))->dados === ['errors' => ['Senha incorreta.']] && count(HttpFalso::$chamadas) === $chamadas, 'teste com senha errada: 422, sem chamar o Asaas');
 asaas(200, ['id' => 'tra_teste', 'status' => 'PENDING']);
-confere($console->testar(doAdmin(['tipo' => 'cpf', 'chave' => '12345678901']))->dados['teste_pedido_em'] === '2026-10-27T10:00:00-03:00', 'teste pedido');
+confere($console->testar(doAdmin(['tipo' => 'cpf', 'chave' => '12345678901', 'senha' => 'senha-certa']))->dados['teste_pedido_em'] === '2026-10-27T10:00:00-03:00', 'teste pedido (com a senha)');
 confere(\App\Support\Entregas\Saques\ConexaoAsaas::daEmpresa('empresa-1')->teste_pedido_por === 'user-admin', 'teste: grava quem pediu');
-confere($console->testar(doAdmin(['tipo' => 'cpf', 'chave' => '12345678901']))->dados === ['errors' => ['Espere o resultado do teste anterior.']], 'outro teste antes do resultado: 422');
+confere($console->testar(doAdmin(['tipo' => 'cpf', 'chave' => '12345678901', 'senha' => 'senha-certa']))->dados === ['errors' => ['Espere o resultado do teste anterior.']], 'outro teste antes do resultado: 422');
 confere($console->configurar(doAdmin(['saque_ligado' => true]))->dados === ['errors' => ['Teste a validação de saque antes de ligar.']], 'ligar antes do teste confirmar: 422');
 \Illuminate\Support\Facades\DB::table('entregas_asaas_conexoes')->update(['validacao_confirmada_em' => '2026-10-27 10:00:05']);
 $r = $console->configurar(doAdmin(['saque_ligado' => true, 'minimo' => 15]));
@@ -116,7 +121,7 @@ foreach ([
     "Route::put('financeiro/saque-pix', [SaquePixController::class, 'configurar']);",
     "Route::post('financeiro/saque-pix/conexao', [SaquePixController::class, 'conectar'])->middleware('throttle:10,1');",
     "Route::delete('financeiro/saque-pix/conexao', [SaquePixController::class, 'desconectar'])->middleware('throttle:10,1');",
-    "Route::post('financeiro/saque-pix/token', [SaquePixController::class, 'gerarToken']);",
+    "Route::post('financeiro/saque-pix/token', [SaquePixController::class, 'gerarToken'])->middleware('throttle:10,1');",
     "Route::post('financeiro/saque-pix/teste', [SaquePixController::class, 'testar'])->middleware('throttle:10,1');",
     "Route::get('financeiro/saques', [SaquePixController::class, 'saques']);",
     "Route::put('financeiro/motoboys/{id}/saque', [SaquePixController::class, 'bloquear']);",

@@ -209,7 +209,7 @@ class RouteServiceProvider extends ServiceProvider
                         Route::put('financeiro/saque-pix', [SaquePixController::class, 'configurar']);
                         Route::post('financeiro/saque-pix/conexao', [SaquePixController::class, 'conectar'])->middleware('throttle:10,1');
                         Route::delete('financeiro/saque-pix/conexao', [SaquePixController::class, 'desconectar'])->middleware('throttle:10,1');
-                        Route::post('financeiro/saque-pix/token', [SaquePixController::class, 'gerarToken']);
+                        Route::post('financeiro/saque-pix/token', [SaquePixController::class, 'gerarToken'])->middleware('throttle:10,1');
                         Route::post('financeiro/saque-pix/teste', [SaquePixController::class, 'testar'])->middleware('throttle:10,1');
                         Route::get('financeiro/saques', [SaquePixController::class, 'saques']);
                         Route::put('financeiro/motoboys/{id}/saque', [SaquePixController::class, 'bloquear']);

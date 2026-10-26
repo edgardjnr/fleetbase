@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\Hash;
 
 /**
  * Entregas RestaurantePro: o saque Pix no console (Financeiro → Configurações e aba Saques), para o administrador do
- * sistema e o da organização (AdminDaCentral): conta Asaas da central (conectar e desconectar pedem a senha), token e
- * teste da validação, limites e interruptor, lista dos saques e bloqueio por motoboy. As respostas trazem a conexão no
+ * sistema e o da organização (AdminDaCentral): conta Asaas da central, token e teste da validação (conectar,
+ * desconectar, gerar o token e testar pedem a senha), limites e interruptor, lista dos saques e bloqueio por motoboy. As respostas trazem a conexão no
  * formato público (ConexaoAsaas::publico): nunca a chave nem o token (o token sai só no gerarToken).
  */
 class SaquePixController extends Controller
@@ -65,11 +65,15 @@ class SaquePixController extends Controller
         return $this->tentar(fn () => ConexaoAsaas::desconectar($this->empresa(), (string) $usuario->uuid));
     }
 
-    /** POST financeiro/saque-pix/token → {token, url, conexao}: o token aparece só aqui. */
+    /** POST financeiro/saque-pix/token {senha} → {token, url, conexao}: o token aparece só aqui. */
     public function gerarToken(Request $request)
     {
-        if (!AdminDaCentral::usuario($request)) {
+        $usuario = AdminDaCentral::usuario($request);
+        if (!$usuario) {
             return $this->negado();
+        }
+        if (!$this->senhaConfere($request, $usuario)) {
+            return $this->erro('Senha incorreta.');
         }
         try {
             $token = ConexaoAsaas::gerarToken($this->empresa());
@@ -85,15 +89,18 @@ class SaquePixController extends Controller
     }
 
     /**
-     * POST financeiro/saque-pix/teste {tipo, chave}: R$ 1,00 para a chave do admin, que a validação precisa recusar. Um
-     * teste por vez e no máximo 5 por dia (422 "Espere o resultado do teste anterior." / "Limite de testes de hoje
-     * atingido."); grava e loga quem pediu.
+     * POST financeiro/saque-pix/teste {tipo, chave, senha}: R$ 1,00 para a chave do admin, que a validação precisa
+     * recusar. Um teste por vez e no máximo 5 por dia (422 "Espere o resultado do teste anterior." / "Limite de testes de
+     * hoje atingido."); grava e loga quem pediu.
      */
     public function testar(Request $request)
     {
         $usuario = AdminDaCentral::usuario($request);
         if (!$usuario) {
             return $this->negado();
+        }
+        if (!$this->senhaConfere($request, $usuario)) {
+            return $this->erro('Senha incorreta.');
         }
 
         return $this->tentar(fn () => ConexaoAsaas::testarValidacao($this->empresa(), $request->input('tipo'), $request->input('chave'), (string) $usuario->uuid));
