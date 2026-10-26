@@ -21,6 +21,7 @@ confere($r->ok() && ($r->dados['name'] ?? null) === 'Central Teste', 'dados come
 confere($c['metodo'] === 'GET' && $c['url'] === 'https://asaas.teste/v3/myAccount/commercialInfo/', 'GET /myAccount/commercialInfo/ na URL da configuração: ' . $c['url']);
 confere(($c['headers']['access_token'] ?? null) === CHAVE_ASAAS && ($c['headers']['User-Agent'] ?? null) === 'Entregas RestaurantePro', 'cabeçalhos access_token e User-Agent');
 confere($c['timeout'] === 20, 'tempo limite de 20 s');
+confere(($c['options']['allow_redirects'] ?? null) === false, 'não segue redirecionamento (o access_token iria junto): ' . json_encode($c['options']));
 
 asaas(200, ['data' => [['object' => 'wallet', 'id' => 'wallet-1']]]);
 $r = $asaas->carteiras();
@@ -56,5 +57,15 @@ asaas(401, null);
 $r = $asaas->transferencia('tra_1');
 confere($r->chaveRecusada() && $r->mensagem('Chave recusada.') === 'Chave recusada.', '401: chave recusada, mensagem padrão');
 confere((new RespostaAsaas(403, null))->chaveRecusada(), '403: chave recusada');
+
+echo '== Só https' . PHP_EOL;
+foreach (['http://asaas.teste/v3', 'HTTP://asaas.teste/v3', 'asaas.teste/v3', ''] as $base) {
+    \Teste\Config::$valores['services.entregas.asaas_url'] = $base;
+    $chamadas = count(HttpFalso::$chamadas);
+    $log      = count(Log::$registros);
+    $r        = (new AsaasCliente(CHAVE_ASAAS))->transferirPix(10, '11999994321', 'PHONE', 'Saque Entregas', 'saque:abc');
+    confere($r->status === 0 && $r->dados === null && count(HttpFalso::$chamadas) === $chamadas, "ASAAS_API_URL \"{$base}\": não chama, sem resposta");
+    confere((Log::$registros[$log] ?? null) === ['warning', '[entregas] saque: ASAAS_API_URL precisa ser https', []], "ASAAS_API_URL \"{$base}\": avisa no log");
+}
 
 resumo();

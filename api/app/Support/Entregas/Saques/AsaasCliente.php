@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * Entregas RestaurantePro: o único ponto de HTTP com o Asaas (base `services.entregas.asaas_url`), com a chave de API da
  * central já decifrada (Cofre). Nunca lança: falha de rede vira RespostaAsaas com status 0. O log leva só o caminho e a
- * classe do erro, nunca a chave.
+ * classe do erro, nunca a chave. Só https (outra base nem chama: status 0) e sem seguir redirecionamento (o access_token
+ * iria junto).
  */
 class AsaasCliente
 {
@@ -61,9 +62,18 @@ class AsaasCliente
 
     protected function chamar(string $metodo, string $caminho, ?array $dados = null): RespostaAsaas
     {
-        $url = rtrim((string) config('services.entregas.asaas_url', 'https://api.asaas.com/v3'), '/') . $caminho;
+        $base = trim((string) config('services.entregas.asaas_url', 'https://api.asaas.com/v3'));
+        if (!str_starts_with(strtolower($base), 'https://')) {
+            // a chave iria em texto aberto: nem chama
+            Log::warning('[entregas] saque: ASAAS_API_URL precisa ser https');
+
+            return new RespostaAsaas(0, null);
+        }
+        $url = rtrim($base, '/') . $caminho;
         try {
+            // sem seguir redirecionamento: o access_token iria junto para o outro endereço
             $pedido = Http::withHeaders(['access_token' => $this->chave, 'User-Agent' => 'Entregas RestaurantePro'])
+                ->withOptions(['allow_redirects' => false])
                 ->acceptJson()
                 ->timeout(static::TEMPO_LIMITE);
             $resposta = $metodo === 'POST' ? $pedido->post($url, $dados ?? []) : $pedido->get($url);
