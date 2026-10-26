@@ -40,6 +40,8 @@ export default buildRoutes(function () {
         this.route('painel');
         this.route('motoboys');
         this.route('motoboy', { path: '/motoboys/:id' });
+        // saque Pix pelo app: lista dos saques e bloqueio por motoboy (também o admin da organização; ver routes/financeiro.js)
+        this.route('saques');
         this.route('lojas');
         this.route('loja', { path: '/lojas/:id' });
         this.route('fatura', { path: '/faturas/:id' });
