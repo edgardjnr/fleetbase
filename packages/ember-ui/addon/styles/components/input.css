@@ -533,12 +533,12 @@ body[data-theme='dark'] .iti__selected-dial-code {
 }
 
 body[data-theme='dark'] .iti__search-input {
-    background-color: #111827;
-    border-bottom: 1px #374151 solid;
+    background-color: #1f1915;
+    border-bottom: 1px #3b342e solid;
 }
 
 body[data-theme='dark'] .iti__divider {
-    border-bottom: 1px solid #374151;
+    border-bottom: 1px solid #3b342e;
 }
 
 .ui-money-input .ember-basic-dropdown > .ember-basic-dropdown-trigger {

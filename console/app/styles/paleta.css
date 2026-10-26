@@ -1,0 +1,18 @@
+/*
+ * Entregas: paleta do console no lugar do azul do Fleetbase (2026-10-26). As cores ficam em
+ * packages/ember-ui/tailwind.paleta-entregas.js (Tailwind) e nas cores fixas dos CSS, trocadas pelo
+ * scripts/paleta-entregas.mjs. Aqui só o que a troca de cor não resolve: o botão principal virou laranja
+ * (sky-500) e o texto branco do Fleetbase ficava sem contraste; vai a tinta escura do "Novo pedido".
+ */
+.btn.btn-primary,
+a.btn.btn-primary,
+.fc-button.btn-primary,
+.ui-full-calendar .fc-button.btn-primary {
+    color: var(--pi-sobre-laranja);
+}
+
+.btn.btn-primary .btn-icon,
+.btn.btn-primary svg,
+a.btn.btn-primary svg {
+    color: inherit;
+}

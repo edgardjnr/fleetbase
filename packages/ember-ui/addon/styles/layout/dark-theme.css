@@ -14,7 +14,7 @@ body[data-theme='dark'] a:not([class*='text-']):hover {
     @apply text-gray-50;
 }
 body[data-theme='dark'] .box-divider {
-    box-shadow: inset 1px 0 #2b323e;
+    box-shadow: inset 1px 0 #3b342e;
 }
 body[data-theme='dark'] ::-webkit-calendar-picker-indicator {
     filter: invert(1);

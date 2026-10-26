@@ -104,12 +104,12 @@
         box-shadow 180ms ease-out,
         border-color 180ms ease-out;
     background-color: #ffffff;
-    border-color: #e5e7eb;
+    border-color: #eae5df;
 }
 
 body[data-theme='dark'] .fleet-ops-kpi-tile-pop {
-    background-color: #1f2937;
-    border-color: #374151;
+    background-color: #29231d;
+    border-color: #3b342e;
 }
 
 .fleet-ops-kpi-tile-pop:hover {
@@ -145,11 +145,11 @@ body[data-theme='dark'] .fleet-ops-kpi-tile-pop.kpi-accent-bad {
 
 /* ── neutral (no delta / zero) ── */
 .fleet-ops-kpi-tile-pop.kpi-accent-neutral {
-    background-image: linear-gradient(135deg, rgba(52, 133, 226, 0.05) 0%, rgba(52, 133, 226, 0) 65%);
+    background-image: linear-gradient(135deg, rgba(243, 143, 23, 0.05) 0%, rgba(243, 143, 23, 0) 65%);
 }
 
 body[data-theme='dark'] .fleet-ops-kpi-tile-pop.kpi-accent-neutral {
-    background-image: linear-gradient(135deg, rgba(52, 133, 226, 0.1) 0%, rgba(52, 133, 226, 0) 65%);
+    background-image: linear-gradient(135deg, rgba(243, 143, 23, 0.1) 0%, rgba(243, 143, 23, 0) 65%);
 }
 
 /* Value-row entrance: gentle fade-up as data arrives. */
@@ -193,16 +193,16 @@ body[data-theme='dark'] .fleet-ops-kpi-tile-pop.kpi-accent-neutral {
  *  - A neon-hued value number that pops against the dark theme.
  * ============================================================ */
 .fleet-ops-pulse-tile {
-    background-color: #f9fafb;
-    border-color: #e5e7eb;
+    background-color: #fcfaf7;
+    border-color: #eae5df;
     transition:
         transform 160ms ease-out,
         box-shadow 160ms ease-out;
 }
 
 body[data-theme='dark'] .fleet-ops-pulse-tile {
-    background-color: #1f2937;
-    border-color: #374151;
+    background-color: #29231d;
+    border-color: #3b342e;
 }
 
 .fleet-ops-pulse-tile:hover {
@@ -236,28 +236,28 @@ body[data-theme='dark'] .fleet-ops-pulse-tile:hover {
 
 /* Blue (active orders) */
 .fleet-ops-pulse-tile.pulse-accent-blue {
-    background-image: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0) 65%);
-    border-color: rgba(59, 130, 246, 0.25);
+    background-image: linear-gradient(135deg, rgba(235, 136, 31, 0.1) 0%, rgba(235, 136, 31, 0) 65%);
+    border-color: rgba(235, 136, 31, 0.25);
 }
 body[data-theme='dark'] .fleet-ops-pulse-tile.pulse-accent-blue {
-    background-image: linear-gradient(135deg, rgba(59, 130, 246, 0.18) 0%, rgba(59, 130, 246, 0) 65%);
-    border-color: rgba(59, 130, 246, 0.35);
+    background-image: linear-gradient(135deg, rgba(235, 136, 31, 0.18) 0%, rgba(235, 136, 31, 0) 65%);
+    border-color: rgba(235, 136, 31, 0.35);
 }
 .pulse-accent-blue .fleet-ops-pulse-stripe {
-    background-color: #3b82f6;
+    background-color: #eb881f;
 }
 .pulse-accent-blue .fleet-ops-pulse-icon {
-    background-color: rgba(59, 130, 246, 0.18);
-    color: #2563eb;
+    background-color: rgba(235, 136, 31, 0.18);
+    color: #c26201;
 }
 body[data-theme='dark'] .pulse-accent-blue .fleet-ops-pulse-icon {
-    color: #60a5fa;
+    color: #f8a650;
 }
 .pulse-accent-blue .fleet-ops-pulse-value {
-    color: #2563eb;
+    color: #c26201;
 }
 body[data-theme='dark'] .pulse-accent-blue .fleet-ops-pulse-value {
-    color: #60a5fa;
+    color: #f8a650;
 }
 
 /* Green (completed today) */

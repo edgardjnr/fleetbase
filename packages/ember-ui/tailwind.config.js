@@ -1,3 +1,5 @@
+const paletaEntregas = require('./tailwind.paleta-entregas');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
     darkMode: ['class', '[data-theme="dark"]'],
@@ -29,36 +31,9 @@ module.exports = {
             ringColor: {
                 DEFAULT: 'transparent',
             },
+            // Entregas: gray, blue, sky, night, nightsky e moregray vêm da paleta do console (tailwind.paleta-entregas.js)
             colors: {
-                sky: {
-                    100: '#e6f0fb',
-                    200: '#bad5f5',
-                    300: '#8dbbef',
-                    400: '#61a0e8',
-                    500: '#3485e2',
-                    600: '#1c6cc7',
-                    700: '#16539a',
-                    800: '#103b6d',
-                    900: '#092341',
-                },
-                nightsky: {
-                    100: '#0d2f57',
-                    200: '#092340',
-                    300: '#06172a',
-                    400: '#030b14',
-                },
-                night: {
-                    801: '#222C3C',
-                    802: '#202A3A',
-                    803: '#1D2737',
-                    804: '#1B2535',
-                    805: '#182232',
-                    901: '#131B2B',
-                    902: '#111929',
-                    903: '#0E1626',
-                    904: '#0C1424',
-                    905: '#091121',
-                },
+                ...paletaEntregas.colors,
                 midnight: {
                     100: '#555555',
                     200: '#484848',
@@ -67,10 +42,6 @@ module.exports = {
                     500: '#222222',
                     600: '#151515',
                     700: '#080808',
-                },
-                moregray: {
-                    750: '#283345',
-                    850: '#212a38',
                 },
             },
             boxShadow: {

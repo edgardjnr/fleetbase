@@ -19,7 +19,7 @@
 
 .sidebar-toggle-button-wrapper > .sidebar-toggle-button > svg {
     enable-background: new 0 0 50 50;
-    fill: rgb(249, 250, 251);
+    fill: rgb(252, 250, 247);
     width: 20px;
     height: 20px;
 }
@@ -48,16 +48,16 @@
 }
 
 body[data-theme="dark"] .sidebar-toggle-button-wrapper > .sidebar-toggle-button > svg > rect.cls-3 {
-    stroke: #111827;
+    stroke: #1f1915;
 }
 
 body[data-theme="light"] .sidebar-toggle-button-wrapper > .sidebar-toggle-button > svg,
 body[data-theme="light"] .sidebar-toggle-button-wrapper > .sidebar-toggle-button > svg > rect {
-    fill: #374151;
+    fill: #3b342e;
 }
 
 body[data-theme="light"] .sidebar-toggle-button .cls-1,
 body[data-theme="light"] .sidebar-toggle-button .cls-2,
 body[data-theme="light"] .sidebar-toggle-button .cls-3 {
-    fill: #374151;
+    fill: #3b342e;
 }

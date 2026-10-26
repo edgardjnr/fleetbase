@@ -19,7 +19,7 @@
     font-size: 1.72rem;
     line-height: 1.5rem;
     letter-spacing: 1.1rem;
-    color: #6b7280;
+    color: #79716c;
     opacity: 0.5; 
     text-align: center;
     font-family: monospace;
@@ -50,7 +50,7 @@ body[data-theme="dark"] > input.otp-input,
 body[data-theme="dark"] > input.otp-input::placeholder,
 .otp-input-container > input.otp-input::placeholder,
 .otp-input-container > input::placeholder {
-    color: rgba(107, 114, 128, 0.5);
+    color: rgba(121, 113, 108, 0.5);
     letter-spacing: 1rem;
 }
 

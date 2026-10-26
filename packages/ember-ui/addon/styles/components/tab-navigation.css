@@ -1,27 +1,27 @@
 :root {
     --tab-bg-primary: #ffffff;
-    --tab-bg-secondary: #f9fafb;
-    --tab-border-color: #e5e7eb;
-    --tab-text-primary: #111827;
-    --tab-text-secondary: #4b5563;
-    --tab-text-hover: #111827;
-    --tab-hover-bg: #f3f4f6;
-    --tab-active-indicator: #3b82f6;
-    --tab-focus-ring: #3b82f6;
-    --tab-close-hover: #e5e7eb;
+    --tab-bg-secondary: #fcfaf7;
+    --tab-border-color: #eae5df;
+    --tab-text-primary: #1f1915;
+    --tab-text-secondary: #5a524d;
+    --tab-text-hover: #1f1915;
+    --tab-hover-bg: #f6f3ee;
+    --tab-active-indicator: #eb881f;
+    --tab-focus-ring: #eb881f;
+    --tab-close-hover: #eae5df;
 }
 
 body[data-theme='dark'] {
-    --tab-bg-primary: #111827;
-    --tab-bg-secondary: #1f2937;
-    --tab-border-color: #374151;
+    --tab-bg-primary: #1f1915;
+    --tab-bg-secondary: #29231d;
+    --tab-border-color: #3b342e;
     --tab-text-primary: #ffffff;
-    --tab-text-secondary: #9ca3af;
+    --tab-text-secondary: #a7a099;
     --tab-text-hover: #ffffff;
-    --tab-hover-bg: #374151;
-    --tab-active-indicator: #3b82f6;
-    --tab-focus-ring: #3b82f6;
-    --tab-close-hover: #4b5563;
+    --tab-hover-bg: #3b342e;
+    --tab-active-indicator: #eb881f;
+    --tab-focus-ring: #eb881f;
+    --tab-close-hover: #5a524d;
 }
 
 .tab-navigation {
@@ -269,7 +269,7 @@ body[data-theme='dark'] .tab-badge {
 
 @media (prefers-contrast: high) {
     .tab-navigation[data-style='github'] .tab-item--active {
-        --tab-active-indicator: #2563eb;
+        --tab-active-indicator: #c26201;
     }
 
     .tab-navigation .tab-item {
@@ -340,7 +340,7 @@ body[data-theme='dark'] .tab-badge {
 }
 
 body[data-theme='dark'] .tab-overflow-menu .tab-overflow-menu-item {
-    color: #e5e7eb;
+    color: #eae5df;
 }
 
 .tab-overflow-menu-icon {

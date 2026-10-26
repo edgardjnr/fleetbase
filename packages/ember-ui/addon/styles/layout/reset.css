@@ -13,9 +13,9 @@ body {
 }
 
 body[data-theme="dark"] {
-    --sb-track-color: #111827;
-    --sb-thumb-color: #374151;
-    --sb-thumb-hover-color: rgba(55, 65, 81, .5);
+    --sb-track-color: #1f1915;
+    --sb-thumb-color: #3b342e;
+    --sb-thumb-hover-color: rgba(59, 52, 46, .5);
 }
 
 ::-webkit-scrollbar {

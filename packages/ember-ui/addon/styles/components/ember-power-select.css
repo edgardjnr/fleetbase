@@ -1,5 +1,5 @@
 .ember-power-select-trigger > ul.ember-power-select-multiple-options > li > .ember-power-select-placeholder {
-    color: #6b7280;
+    color: #79716c;
     opacity: 1;
 }
 
@@ -57,7 +57,7 @@
 
 .fleetbase-console.ember-power-select-trigger-multiple-input::placeholder,
 .ember-power-select-trigger-multiple-input .ember-power-select-trigger-multiple-input::placeholder {
-    color: #6b7280;
+    color: #79716c;
     opacity: 1;
 }
 

@@ -47,6 +47,28 @@ A moldura saiu do sketch 005 e do 006, variante C (`.planning/sketches/006-moldu
     tela de pedidos e no painel inicial.
 - **Para voltar:** tire o `@import 'moldura.css'` do `app.css` e o `@plano` do `fleet-ops-sidebar.hbs`.
 
+## Paleta do console, sem o azul do Fleetbase (2026-10-26)
+
+Pedido do Edgard: no tema escuro, o cinza azulado e o azul do Fleetbase não combinavam com a moldura (Financeiro,
+IAM e o resto). A troca vale para o console, as engines e o portal, no claro e no escuro.
+- **Paleta:** `packages/ember-ui/tailwind.paleta-entregas.js`, usada pelas duas configs do Tailwind
+  (`packages/ember-ui/tailwind.config.js`, a que compila o CSS do console, e `console/tailwind.config.js`).
+  - `gray` vira areia (tons dos `--pi-*`);
+  - `sky` (cor de marca do Fleetbase: `btn-primary`, foco, ícones) vira o laranja;
+  - `blue`: pontas em areia com um toque de laranja (fundos de selo e de aviso) e meio em laranja (links, abas,
+    caixas de seleção);
+  - `night`, `nightsky` e `moregray` são os escuros azulados antigos.
+- **Cores fixas nos CSS** (1.614 em 2026-10-26, a maioria no `fleetops-engine.css` e no `customer-portal-engine.css`):
+  trocadas pelo `node scripts/paleta-entregas.mjs`, com o mesmo mapa (`trocas` no arquivo da paleta). O
+  `--conferir` só conta e sai com 1 se sobrou cor antiga.
+  - **Ao atualizar o ember-ui, o fleetops ou outra engine pelo upstream, rode o script de novo.**
+  - Ficam de fora, de propósito: cores em JS/HBS (linhas de rota nos mapas, calendário) e o slate dos rótulos dos
+    alfinetes (cores combinadas em `packages/fleetops/CLAUDE.md`).
+- **Botão principal:** laranja com a tinta escura do "Novo pedido" (`console/app/styles/paleta.css`), porque o
+  branco do Fleetbase ficava sem contraste.
+- **Para voltar:** volte pelo git o arquivo da paleta, as duas configs e os CSS trocados, e tire o
+  `@import 'paleta.css'` do `app.css`.
+
 ## Console no celular (2026-10-25)
 
 Saiu do sketch 007, variante B "Doca flutuante" (`.planning/sketches/007-console-no-celular/`). Vale abaixo de 768 px

@@ -402,15 +402,15 @@ body[data-theme='dark'] .overloader {
 }
 
 .overloader.overloader-opacity-3 {
-    background-color: rgba(17, 24, 39, 0.5);
+    background-color: rgba(31, 25, 21, 0.5);
 }
 
 .overloader.overloader-opacity-2 {
-    background-color: rgba(17, 24, 39, 0.3);
+    background-color: rgba(31, 25, 21, 0.3);
 }
 
 .overloader.overloader-opacity-1 {
-    background-color: rgba(17, 24, 39, 0.2);
+    background-color: rgba(31, 25, 21, 0.2);
 }
 
 .waypoint-label {

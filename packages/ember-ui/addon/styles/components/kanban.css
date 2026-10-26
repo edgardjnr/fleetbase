@@ -91,15 +91,15 @@
 
 .kanban-board .kanban-drop-indicator {
     height: 4px !important;
-    background: #3b82f6 !important;
+    background: #eb881f !important;
     border-radius: 2px !important;
     margin: 8px 0 !important;
     opacity: 1 !important;
 }
 
 .kanban-board .kanban-column.drag-over {
-    background-color: rgba(59, 130, 246, 0.1) !important;
-    border: 2px dashed #3b82f6 !important;
+    background-color: rgba(235, 136, 31, 0.1) !important;
+    border: 2px dashed #eb881f !important;
 }
 
 .kanban-board .kanban-card-content {
@@ -170,12 +170,12 @@
 
 /* Dark mode */
 body[data-theme="dark"] .kanban-board .kanban-columns-container::-webkit-scrollbar-thumb {
-  background: #4b5563;
+  background: #5a524d;
   background-clip: content-box;
 }
 
 body[data-theme="dark"] .kanban-board .kanban-columns-container::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+  background: #79716c;
   background-clip: content-box;
 }
 

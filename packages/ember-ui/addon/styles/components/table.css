@@ -182,31 +182,31 @@
 }
 
 [data-theme='dark'] .next-table-empty-state-icon {
-    color: #93c5fd;
-    background: rgb(30 58 138 / 30%);
-    border-color: #1e40af;
+    color: #ffbf7e;
+    background: rgb(74 42 18 / 30%);
+    border-color: #733d18;
 }
 
 [data-theme='dark'] .next-table-empty-state-title {
-    color: #f9fafb;
+    color: #fcfaf7;
 }
 
 [data-theme='dark'] .next-table-empty-state-description {
-    color: #9ca3af;
+    color: #a7a099;
 }
 
 [data-theme='dark'] .next-table-empty-state-note {
-    color: #6b7280;
+    color: #79716c;
 }
 
 [data-theme='dark'] .next-table-empty-state-docs-action {
-    color: #bfdbfe;
+    color: #fed6ad;
 }
 
 [data-theme='dark'] .next-table-empty-state-docs-action:hover {
-    color: #dbeafe;
-    background: rgb(30 58 138 / 32%);
-    border-color: #1e40af;
+    color: #feebd6;
+    background: rgb(74 42 18 / 32%);
+    border-color: #733d18;
 }
 
 [data-theme='light'] .table-wrapper {
@@ -643,9 +643,9 @@ div.has-floating-pagination .floating-pagination .fleetbase-pagination-meta-info
 /* Firefox thin scrollbar */
 .next-table-wrapper {
     scrollbar-width: thin;
-    scrollbar-color: rgb(156 163 175) rgb(243 244 246); /* gray-400 gray-100 */
+    scrollbar-color: rgb(167 160 153) rgb(246 243 238); /* gray-400 gray-100 */
 }
 
 [data-theme='dark'] .next-table-wrapper {
-    scrollbar-color: rgb(107 114 128) rgb(55 65 81); /* gray-500 gray-700 */
+    scrollbar-color: rgb(121 113 108) rgb(59 52 46); /* gray-500 gray-700 */
 }

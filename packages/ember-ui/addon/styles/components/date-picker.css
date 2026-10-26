@@ -1,28 +1,28 @@
 .fleetbase-console .air-datepicker {
     @apply shadow-md shadow-gray-900;
     --adp-z-index: 999999;
-    --adp-day-name-color: rgb(17, 24, 39);
-    --adp-cell-background-color-selected: rgba(59, 130, 246, 1);
-    --adp-cell-background-color-selected-hover: rgba(96, 165, 250, 1);
-    --adp-cell-background-color-in-range: rgba(147, 197, 253, 0.1);
-    --adp-background-color-in-range-focused: rgba(147, 197, 253, 0.2);
+    --adp-day-name-color: rgb(31, 25, 21);
+    --adp-cell-background-color-selected: rgba(235, 136, 31, 1);
+    --adp-cell-background-color-selected-hover: rgba(248, 166, 80, 1);
+    --adp-cell-background-color-in-range: rgba(255, 191, 126, 0.1);
+    --adp-background-color-in-range-focused: rgba(255, 191, 126, 0.2);
 }
 
 body[data-theme='dark'].fleetbase-console .air-datepicker {
-    --adp-background-color: rgb(55, 65, 81);
-    --adp-background-color-hover: rgba(17, 24, 39, 0.75);
-    --adp-background-color-active: rgb(31, 41, 55);
-    --adp-accent-color: rgba(96, 165, 250, 1);
-    --adp-color: rgba(156, 163, 175, 1);
-    --adp-color-secondary: rgba(243, 244, 246, 1);
-    --adp-border-color: rgb(17, 24, 39);
-    --adp-border-color-inner: rgb(17, 24, 39);
-    --adp-border-color-inline: rgb(17, 24, 39);
+    --adp-background-color: rgb(59, 52, 46);
+    --adp-background-color-hover: rgba(31, 25, 21, 0.75);
+    --adp-background-color-active: rgb(41, 35, 29);
+    --adp-accent-color: rgba(248, 166, 80, 1);
+    --adp-color: rgba(167, 160, 153, 1);
+    --adp-color-secondary: rgba(246, 243, 238, 1);
+    --adp-border-color: rgb(31, 25, 21);
+    --adp-border-color-inner: rgb(31, 25, 21);
+    --adp-border-color-inline: rgb(31, 25, 21);
 
     /* --adp-background-color-selected-other-month: #a2ddf6;
-    --adp-background-color-selected-other-month-focused: rgba(96, 165, 250, 1);
+    --adp-background-color-selected-other-month-focused: rgba(248, 166, 80, 1);
     --adp-color-other-month: #dedede;
-    --adp-color-disabled: rgba(107, 114, 128, 1);
+    --adp-color-disabled: rgba(121, 113, 108, 1);
     --adp-color-disabled-in-range: #939393;
     --adp-color-other-month-hover: #c5c5c5; */
 }

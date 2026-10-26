@@ -72,7 +72,7 @@
 }
 
 .fleetbase-docs-panel-body-dark {
-    background: #111827;
+    background: #1f1915;
 }
 
 .fleetbase-docs-panel-body > iframe {
@@ -88,7 +88,7 @@
     align-items: center;
     justify-content: center;
     gap: 0.75rem;
-    color: #4b5563;
+    color: #5a524d;
     font-size: 0.875rem;
     font-weight: 600;
 }
@@ -98,6 +98,6 @@
 }
 
 .fleetbase-docs-panel-body-dark .fleetbase-docs-panel-loading {
-    color: #d1d5db;
-    background: #111827;
+    color: #d9d3cc;
+    background: #1f1915;
 }

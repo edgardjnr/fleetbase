@@ -28,7 +28,7 @@
     --flb-modal-header-border-width: 1px;
     --flb-modal-title-line-height: 1.5;
     --flb-modal-footer-gap: 0.5rem;
-    --flb-modal-footer-bg: rgba(249, 250, 251, 1);
+    --flb-modal-footer-bg: rgba(252, 250, 247, 1);
     --flb-modal-footer-border-color: var(--flb-border-color);
     --flb-modal-footer-border-width: 1px;
     position: fixed;
@@ -102,7 +102,7 @@
 .flb--modal-backdrop {
     @apply transition-all;
     --flb-backdrop-zindex: 1000;
-    --flb-backdrop-bg: rgba(107, 114, 128, 0.5);
+    --flb-backdrop-bg: rgba(121, 113, 108, 0.5);
     --flb-backdrop-opacity: 0.5;
     position: fixed;
     top: 0;
@@ -111,7 +111,7 @@
     z-index: var(--flb-backdrop-zindex);
     width: 100vw;
     height: 100vh;
-    background-color: rgba(107, 114, 128, 0.5);
+    background-color: rgba(121, 113, 108, 0.5);
     background-color: var(--flb-backdrop-bg);
 }
 
@@ -143,7 +143,7 @@
     font-size: 1.125rem;
     line-height: 1.75rem;
     font-weight: 500;
-    color: rgba(17, 24, 39, 1);
+    color: rgba(31, 25, 21, 1);
     margin-bottom: 0;
 }
 

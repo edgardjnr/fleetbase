@@ -82,7 +82,7 @@
     overflow: visible;
     margin-bottom: 10px;
     padding-bottom: 20px;
-    border-bottom: 3px rgb(243, 244, 246) solid;
+    border-bottom: 3px rgb(246, 243, 238) solid;
 }
 
 .timeline-items-container::-webkit-scrollbar {
@@ -105,8 +105,8 @@
 }
 
 .timeline-item.active::after {
-    background-color: rgb(59, 130, 246);
-    border-color: rgb(37, 99, 235);
+    background-color: rgb(235, 136, 31);
+    border-color: rgb(194, 98, 1);
 }
 
 .timeline-item::after {

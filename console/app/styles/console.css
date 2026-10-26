@@ -56,8 +56,8 @@ body.console-admin-organizations-index-index .next-table-wrapper > table {
 }
 
 .admin-organization-kpi-accent-blue {
-    border-color: rgb(59 130 246 / 28%);
-    background-image: linear-gradient(135deg, rgb(59 130 246 / 10%) 0%, rgb(59 130 246 / 0%) 62%);
+    border-color: rgb(235 136 31 / 28%);
+    background-image: linear-gradient(135deg, rgb(235 136 31 / 10%) 0%, rgb(235 136 31 / 0%) 62%);
 }
 
 .admin-organization-kpi-accent-green {
@@ -76,8 +76,8 @@ body.console-admin-organizations-index-index .next-table-wrapper > table {
 }
 
 .admin-organization-kpi-accent-blue .admin-organization-kpi-icon {
-    color: rgb(37 99 235);
-    background-color: rgb(59 130 246 / 12%);
+    color: rgb(194 98 1);
+    background-color: rgb(235 136 31 / 12%);
 }
 
 .admin-organization-kpi-accent-green .admin-organization-kpi-icon {
@@ -96,7 +96,7 @@ body.console-admin-organizations-index-index .next-table-wrapper > table {
 }
 
 body[data-theme='dark'] .admin-organization-kpi-accent-blue .admin-organization-kpi-icon {
-    color: rgb(147 197 253);
+    color: rgb(255 191 126);
 }
 
 body[data-theme='dark'] .admin-organization-kpi-accent-green .admin-organization-kpi-icon {
@@ -184,7 +184,7 @@ body.fleetbase-console .snm-dropdown-card {
     gap: 1rem;
     width: 100%;
     padding: 0.625rem 2.5rem;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid #eae5df;
     background-color: #fff;
     box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
     z-index: 700;
@@ -197,20 +197,20 @@ body.fleetbase-console .snm-dropdown-card {
 }
 
 body[data-theme='dark'] .console-dashboard-page {
-    border-bottom-color: #1f2937;
-    background-color: #111827;
+    border-bottom-color: #29231d;
+    background-color: #1f1915;
     box-shadow: 0 1px 2px rgb(2 6 23 / 30%);
 }
 
 .console-dashboard-title h1 {
-    color: #111827;
+    color: #1f1915;
     font-size: 1rem;
     font-weight: 700;
     line-height: 1.2;
 }
 
 body[data-theme='dark'] .console-dashboard-title h1 {
-    color: #f9fafb;
+    color: #fcfaf7;
 }
 
 .fleetbase-invite-shell {
