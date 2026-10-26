@@ -1,0 +1,1186 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch 009: portal da loja unificado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link id="theme" rel="stylesheet" href="../themes/entregas.css">
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #e7e2da; font-family: system-ui, sans-serif; color: #1c1917; }
+body.dark-chrome { background: #0c0a09; }
+button, input, select, textarea { font: inherit; color: inherit; }
+
+/* ---------- moldura do sketch (fora da tela) ---------- */
+#chrome { position: sticky; top: 0; z-index: 50; background: #1c1917; color: #e7e5e4; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; }
+#chrome .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#chrome .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #a8a29e; margin-right: 6px; font-weight: 700; min-width: 56px; }
+.chip { border: 1px solid #44403c; background: #292524; color: #e7e5e4; border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; transition: all .15s ease; flex: none; }
+.chip:hover { border-color: #fb923c; }
+.chip.on { background: #ea7a1a; border-color: #ea7a1a; color: #1c1917; font-weight: 600; }
+.chip.cmp { border-style: dashed; }
+.chip.cmp.on { border-style: solid; }
+#desc { font-size: 13px; color: #d6d3d1; max-width: 1250px; line-height: 1.45; }
+#desc b { color: #fff; }
+#stage { padding: 16px 24px 60px; }
+.single { display: flex; justify-content: center; }
+.cmpgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.cmpcol h3 { margin: 0 0 8px; font-size: 14px; color: #1c1917; }
+body.dark-chrome .cmpcol h3 { color: #e7e5e4; }
+.frame { width: max-content; overflow: hidden; border-radius: 10px; box-shadow: 0 10px 40px rgb(28 25 23 / 25%); }
+.frame.phone { border-radius: 34px; border: 10px solid #1c1917; }
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1c1917; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 14px; opacity: 0; transition: all .2s ease; z-index: 300; pointer-events: none; max-width: 90vw; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#sketch-tools { position: fixed; bottom: 12px; right: 12px; z-index: 9999; font-family: system-ui; font-size: 12px; background: rgba(0,0,0,.75); color: #fff; padding: 8px 12px; border-radius: 8px; opacity: .45; transition: opacity .2s; display: flex; gap: 8px; align-items: center; }
+#sketch-tools:hover { opacity: 1; }
+#sketch-tools select, #sketch-tools button { background: #292524; color: #fff; border: 1px solid #44403c; border-radius: 6px; padding: 3px 6px; cursor: pointer; font-size: 12px; }
+
+/* ---------- app (dentro da tela) ---------- */
+.app { position: relative; background: oklch(0.93 0.02 75); color: var(--ink); font-family: var(--font-body); font-size: 14px; overflow: hidden; }
+[data-theme-dark] .app { background: oklch(0.14 0.01 60); }
+.app.desk { width: 1366px; height: 768px; display: grid; }
+.app.desk.va { grid-template-rows: 52px 1fr; grid-template-columns: 64px 1fr; }
+.app.desk.vb, .app.desk.vc { grid-template-rows: 56px 1fr; grid-template-columns: 1fr; }
+.app.phone { width: 390px; height: 800px; background: var(--bg); }
+.app b, .app strong { font-weight: 700; }
+.disp { font-family: var(--font-display); }
+.muted { color: var(--muted); }
+.app button, .app a { cursor: pointer; transition: all .15s ease; }
+.app a { text-decoration: none; color: inherit; }
+.sheet { position: relative; background: var(--bg); overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+.va .sheet { border-radius: 14px 0 0 0; }
+.vb .sheet, .vc .sheet { border-radius: 14px 14px 0 0; margin: 0 8px; }
+
+/* cabeçalho */
+.ch { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 0 14px 0 12px; position: relative; z-index: 40; }
+.logo { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.logo .ic { width: 34px; height: 34px; border-radius: 10px; background: var(--brand); color: var(--brand-ink); display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 15px; flex: none; }
+.logo b { font-family: var(--font-display); font-size: 1.25rem; line-height: 1; display: block; white-space: nowrap; }
+.logo small { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.seg { display: flex; background: oklch(0.88 0.025 72); border-radius: 10px; padding: 3px; gap: 2px; }
+[data-theme-dark] .seg { background: oklch(0.22 0.012 60); }
+.seg a { padding: 6px 13px; border-radius: 8px; font-weight: 600; font-size: 13.5px; color: var(--ink-2); white-space: nowrap; display: inline-flex; gap: 7px; align-items: center; }
+.seg a:hover { color: var(--ink); }
+.seg a.on { background: var(--brand); color: var(--brand-ink); box-shadow: var(--shadow-sm); }
+.seg.claro a.on { background: var(--surface); color: var(--ink); }
+.ch .right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.busca { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0 10px; height: 34px; width: 280px; color: var(--muted); }
+.busca input { border: 0; background: transparent; outline: 0; flex: 1; min-width: 0; color: var(--ink); }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--brand-ink); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 12px; border: 0; flex: none; }
+.dd-wrap { position: relative; }
+.dd { position: absolute; top: 42px; right: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 6px; width: 240px; display: flex; flex-direction: column; z-index: 60; animation: sobe .15s ease; }
+.dd .dd-cab { padding: 8px 10px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.dd .dd-cab small { display: block; color: var(--muted); font-size: 12px; }
+.dd button { border: 0; background: transparent; text-align: left; padding: 8px 10px; border-radius: 8px; display: flex; gap: 10px; align-items: center; font-weight: 600; }
+.dd button:hover { background: var(--surface-2); }
+.dd button.perigo { color: var(--bad); }
+.contador { position: absolute; top: -5px; right: -5px; background: var(--bad); color: #fff; border-radius: 999px; font-size: 10.5px; font-weight: 800; min-width: 18px; height: 18px; display: grid; place-items: center; padding: 0 4px; border: 2px solid oklch(0.93 0.02 75); }
+
+/* A: trilho de ícones que abre por cima */
+.rail { position: relative; z-index: 30; }
+.rail-in { position: absolute; top: 0; left: 0; bottom: 0; width: 64px; padding: 6px 13px; display: flex; flex-direction: column; gap: 6px; background: oklch(0.93 0.02 75); transition: width .18s ease, box-shadow .18s ease; overflow: hidden; border-radius: 0 14px 14px 0; }
+[data-theme-dark] .rail-in { background: oklch(0.14 0.01 60); }
+.rail:hover .rail-in { width: 230px; box-shadow: var(--shadow-lg); }
+.rail .tit { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; padding: 8px 2px 2px; white-space: nowrap; opacity: 0; transition: opacity .15s; height: 22px; }
+.rail:hover .tit { opacity: 1; }
+.rail a { display: flex; align-items: center; gap: 11px; border-radius: 10px; white-space: nowrap; font-weight: 600; color: var(--ink-2); position: relative; }
+.rail a .q { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: oklch(0.89 0.025 72); flex: none; position: relative; }
+[data-theme-dark] .rail a .q { background: oklch(0.22 0.012 60); }
+.rail a:hover .q { filter: brightness(.96); }
+.rail a.on .q { background: var(--brand); color: var(--brand-ink); }
+.rail a.tinta .q { background: var(--ink); color: var(--bg); }
+.rail a.on { color: var(--ink); }
+.rail a .contador { border-color: oklch(0.89 0.025 72); }
+
+/* B: gaveta "Marca da loja" */
+.gv-fundo { position: absolute; inset: 0; background: oklch(0.2 0.02 60 / 40%); backdrop-filter: blur(2px); z-index: 70; animation: aparece .18s ease; }
+.gv { position: absolute; top: 0; left: 0; bottom: 0; width: 330px; background: var(--surface); z-index: 71; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); animation: entraEsq .2s ease; overflow: auto; }
+.phone .gv { width: 86%; }
+@keyframes entraEsq { from { transform: translateX(-30px); opacity: 0; } }
+.gv-topo { background: var(--brand); color: var(--brand-ink); padding: 16px 16px 18px; position: relative; }
+.gv-topo .x { position: absolute; top: 12px; right: 12px; background: oklch(1 0 0 / 30%); border: 0; color: var(--brand-ink); }
+.gv-topo .ini { width: 48px; height: 48px; border-radius: 14px; background: var(--brand-ink); color: var(--brand); display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 1.4rem; margin-bottom: 10px; }
+.gv-topo b { font-family: var(--font-display); font-size: 1.6rem; line-height: 1.05; display: block; }
+.gv-topo small { font-size: 12.5px; opacity: .85; }
+.gv-resumo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 12px 14px 4px; }
+.gv-resumo div { background: var(--surface-2); border-radius: 10px; padding: 8px; text-align: center; }
+.gv-resumo b { font-family: var(--font-display); font-size: 1.5rem; display: block; line-height: 1; }
+.gv-resumo small { font-size: 11px; color: var(--muted); line-height: 1.1; display: block; margin-top: 3px; }
+.gv-novo { margin: 10px 14px 6px; }
+.gv-menu { padding: 4px 8px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.gv-menu a { display: flex; align-items: center; gap: 12px; padding: 8px 8px; border-radius: 10px; font-weight: 600; }
+.gv-menu a:hover { background: var(--surface-2); }
+.gv-menu a.on { background: var(--brand-soft); }
+.gv-menu .circ { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; flex: none; }
+.gv-menu .n { margin-left: auto; background: var(--surface-2); border-radius: 999px; padding: 0 8px; font-size: 12px; font-weight: 700; }
+.gv-pe { border-top: 1px solid var(--line); padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+.gv-pe .linha { display: flex; align-items: center; gap: 10px; }
+.toggle { width: 40px; height: 22px; border-radius: 999px; background: var(--line); border: 0; position: relative; padding: 0; margin-left: auto; }
+.toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .15s ease; }
+.toggle.on { background: var(--brand); }
+.toggle.on::after { left: 21px; }
+
+/* botões e selos */
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 7px 12px; font-weight: 600; font-size: 13px; display: inline-flex; gap: 7px; align-items: center; justify-content: center; white-space: nowrap; }
+.btn:hover { border-color: var(--brand); }
+.btn.marca { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+.btn.marca:hover { background: var(--brand-strong); }
+.btn.tinta { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.btn.perigo { color: var(--bad); }
+.btn.perigo.cheio { background: var(--bad); color: #fff; border-color: var(--bad); }
+.btn.peq { padding: 5px 9px; font-size: 12px; border-radius: 8px; }
+.btn.grande { padding: 11px 16px; font-size: 14.5px; border-radius: 12px; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.icbtn { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); display: inline-grid; place-items: center; color: var(--ink-2); position: relative; flex: none; }
+.icbtn:hover { border-color: var(--brand); color: var(--ink); }
+.badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.b-ifood { background: var(--ifood); color: #fff; }
+.b-rp { background: var(--brand); color: var(--brand-ink); }
+.b-portal { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); }
+.s-oferta { background: var(--bad-soft); color: var(--bad); }
+.s-loja { background: var(--warn-soft); color: var(--warn-text); }
+.s-rota { background: var(--brand-soft); color: var(--brand-text); }
+.s-concluido { background: var(--ok-soft); color: var(--ok); }
+.s-cancelado { background: var(--surface-2); color: var(--muted); }
+.pz { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pz.g { background: var(--ok-soft); color: var(--ok); }
+.pz.y { background: var(--warn-soft); color: var(--warn-text); }
+.pz.r { background: var(--bad); color: #fff; }
+.pz.n { background: var(--surface-2); color: var(--muted); }
+.selo { display: inline-flex; border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 700; white-space: nowrap; margin-right: 4px; }
+.selo.azul { background: oklch(0.93 0.04 250); color: oklch(0.42 0.13 255); }
+.selo.amar { background: var(--warn-soft); color: var(--warn-text); }
+[data-theme-dark] .selo.azul { background: oklch(0.3 0.06 255); color: oklch(0.85 0.08 250); }
+.f-paga { background: var(--ok-soft); color: var(--ok); }
+.f-aberta { background: var(--brand-soft); color: var(--brand-text); }
+.f-parcial { background: var(--warn-soft); color: var(--warn-text); }
+.f-vencida { background: var(--bad); color: #fff; }
+.f-cancelada { background: var(--surface-2); color: var(--muted); text-decoration: line-through; }
+input.campo, select.campo, textarea.campo { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 11px; outline: 0; transition: border-color .15s ease; }
+input.campo:focus, select.campo:focus, textarea.campo:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+input.campo.erro { border-color: var(--bad); }
+input.campo[readonly] { background: var(--surface-2); color: var(--muted); }
+label.rot { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink-2); margin-bottom: 5px; }
+.erro-txt { color: var(--bad); font-size: 12.5px; font-weight: 600; margin-top: 4px; }
+
+/* ---------- mapa falso ---------- */
+.mapa { position: absolute; inset: 0; background: var(--map-land); overflow: hidden; }
+.mapa .ruas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mapa.marcar { cursor: crosshair; }
+.mk { position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; transition: opacity .2s ease; cursor: pointer; }
+.mk.dim { opacity: .2; }
+.mk.loja img { width: 30px; }
+.mk.moto img { width: 30px; transform: translateY(50%); }
+.mk.moto { transform: translate(-50%, -50%); }
+.mk .nm { font-size: 11px; font-weight: 700; background: var(--surface); padding: 1px 6px; border-radius: 6px; box-shadow: var(--shadow-sm); margin-top: 2px; white-space: nowrap; }
+.mk.moto .nm { margin-top: 16px; }
+.mk.dest i { font-size: 26px; color: var(--bad); filter: drop-shadow(0 2px 2px rgb(0 0 0 / 25%)); }
+.mk.pd .pin { width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: grid; place-items: center; color: #fff; font-weight: 800; box-shadow: var(--shadow-md); border: 2px solid #fff; }
+.mk.pd .pin span { transform: rotate(45deg); font-family: var(--font-display); font-size: 15px; }
+.mk.pd.p .pin { background: var(--brand-strong); }
+.mk.pd.d .pin { background: var(--bad); }
+.mk.pd.d.novo { animation: pula .35s ease; }
+@keyframes pula { 0% { transform: translate(-50%, -160%); } 100% { transform: translate(-50%, -100%); } }
+.mk .rot { font-size: 11px; font-weight: 700; background: var(--ok); color: #fff; padding: 1px 6px; border-radius: 6px; margin-top: 2px; white-space: nowrap; }
+.mk .rot.y { background: var(--warn); color: oklch(0.25 0.05 70); }
+.mk .rot.r { background: var(--bad); }
+.mk .rot.n { background: oklch(0.55 0.03 255); }
+.mapa .eta { position: absolute; background: var(--ink); color: var(--bg); border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; transform: translate(-50%, -50%); white-space: nowrap; box-shadow: var(--shadow-md); }
+.rota-leg { position: absolute; bottom: 12px; z-index: 3; background: var(--surface); border-radius: 10px; padding: 6px 10px; box-shadow: var(--shadow-md); display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.mctl { position: absolute; bottom: 12px; display: flex; flex-direction: column; gap: 4px; z-index: 3; }
+.mctl button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+
+/* ---------- tela de pedidos ---------- */
+.barra { flex: none; height: 54px; display: flex; align-items: center; gap: 12px; padding: 0 16px 0 18px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.barra h1 { font-family: var(--font-display); font-size: 1.75rem; margin: 0; line-height: 1; }
+.aovivo-sel { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--ok); }
+.aovivo-sel::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.barra .sp { flex: 1; }
+.area { position: relative; flex: 1; min-height: 0; isolation: isolate; }
+.ov { position: absolute; z-index: 4; }
+.contagens { top: 12px; display: flex; gap: 6px; }
+.cont { background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; box-shadow: var(--shadow-md); display: flex; gap: 6px; align-items: center; border: 1.5px solid transparent; }
+.cont b { font-family: var(--font-display); font-size: 1.1rem; }
+.cont.alerta b { color: var(--bad); }
+.cont.on { border-color: var(--brand); background: var(--brand-soft); }
+.cont:hover { border-color: var(--line); }
+.painel { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; overflow: hidden; }
+.ph { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-bottom: 1px solid var(--line); flex: none; }
+.ph b { font-family: var(--font-display); font-size: 1.2rem; }
+.ph .n { background: var(--surface-2); border-radius: 999px; padding: 0 8px; font-weight: 700; font-size: 12px; }
+.lista { overflow: auto; flex: 1; }
+.lp { display: flex; flex-direction: column; gap: 3px; padding: 10px 14px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .15s ease; }
+.lp:hover { background: var(--surface-2); }
+.lp.sel { background: var(--brand-soft); box-shadow: inset 3px 0 0 var(--brand); }
+.lp .l1 { display: flex; gap: 6px; align-items: center; }
+.lp .l1 b { font-family: var(--font-display); font-size: 1.2rem; }
+.lp .l1 .sp { flex: 1; }
+.lp .l2 { font-size: 12.5px; color: var(--ink-2); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.lp .l2 img { width: 16px; }
+.lp.fim { opacity: .7; }
+.grupo-tit { padding: 8px 14px 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--bg); border-bottom: 1px solid var(--line); }
+.mr { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 13px; }
+.mr img { width: 22px; }
+.mr small { color: var(--muted); display: block; font-size: 11.5px; }
+.mr .tag { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--brand-text); }
+.voltar-pill { background: var(--ink); color: var(--bg); border: 0; border-radius: 999px; padding: 8px 14px; font-weight: 700; box-shadow: var(--shadow-lg); display: flex; gap: 8px; align-items: center; }
+.col-lista { background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.filtros { display: flex; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; flex: none; }
+.fchip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; font-weight: 600; }
+.fchip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* ---------- folha do pedido aberto e do novo pedido ---------- */
+.fo { display: flex; flex-direction: column; overflow: hidden; }
+.fo-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; flex: none; }
+.fo-top { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.fo-top .num { font-family: var(--font-display); font-weight: 800; font-size: 1.75rem; line-height: 1; }
+.fo-top .x { margin-left: auto; }
+.fo-para { font-size: 14px; color: var(--ink-2); }
+.fo-para b { color: var(--ink); }
+.fo-corpo { overflow: auto; flex: 1; padding: 12px 14px 18px; }
+.fo-voltar { border: 0; background: transparent; color: var(--brand-text); font-weight: 700; font-size: 13px; padding: 0; display: inline-flex; gap: 6px; align-items: center; align-self: flex-start; }
+.cm { display: flex; flex-direction: column; gap: 12px; }
+.cm-sec { background: var(--surface-2); border-radius: 12px; padding: 11px 13px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.4; }
+.cm-sec.borda { background: transparent; border: 1px solid var(--line); }
+.cm-rot { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.cm-l { display: flex; gap: 10px; align-items: flex-start; }
+.cm-l > i { width: 18px; text-align: center; margin-top: 3px; color: var(--muted); }
+.cm-l .grow { flex: 1; min-width: 0; }
+.cm-l small { color: var(--muted); display: block; font-size: 12.5px; }
+.cm-moto { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.cm-moto img { width: 38px; }
+.cm-moto .grow { flex: 1; min-width: 0; }
+.cm-moto b { font-family: var(--font-display); font-size: 1.25rem; display: block; line-height: 1.1; }
+.cm-moto small { color: var(--muted); font-size: 12.5px; }
+.cm-oferta { background: var(--bad-soft); color: var(--bad); border-radius: 12px; padding: 10px 13px; display: flex; flex-direction: column; gap: 8px; font-weight: 600; }
+.cm-oferta .barra2 { height: 5px; background: oklch(0.85 0.05 27); border-radius: 9px; overflow: hidden; }
+.cm-oferta .barra2 span { display: block; height: 100%; background: var(--bad); transition: width 1s linear; }
+.cm-oferta small { font-weight: 500; color: var(--ink-2); }
+.cm-cobra { display: flex; align-items: center; gap: 10px; border-radius: 12px; padding: 10px 13px; font-weight: 600; }
+.cm-cobra.porta { background: var(--warn-soft); color: var(--warn-text); }
+.cm-cobra.online { background: var(--ok-soft); color: var(--ok); }
+.cm-cobra .val { margin-left: auto; font-family: var(--font-display); font-size: 1.4rem; white-space: nowrap; }
+.cm-obs { background: var(--warn-soft); color: oklch(0.35 0.08 70); border-radius: 10px; padding: 8px 11px; font-size: 13.5px; display: flex; gap: 8px; }
+[data-theme-dark] .cm-obs { color: var(--warn-text); }
+.cupom { position: relative; background: var(--surface-2); border-radius: 12px 12px 0 0; padding: 12px 14px; margin-bottom: 6px; }
+.cupom::after { content: ""; position: absolute; left: 0; right: 0; bottom: -6px; height: 6px; background: radial-gradient(circle at 5px 0, var(--surface-2) 5px, transparent 5.5px) repeat-x; background-size: 10px 6px; }
+.cupom-cab { display: flex; align-items: center; gap: 6px; font-size: 13.5px; padding-bottom: 6px; border-bottom: 2px dashed var(--line); margin-bottom: 2px; }
+.cupom-cab b { font-family: var(--font-display); font-size: 1.15rem; }
+.pr { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
+.pr:last-child { border-bottom: 0; }
+.pr .q { font-family: var(--font-display); font-weight: 800; font-size: 1.15rem; min-width: 26px; }
+.pr small { display: block; color: var(--muted); font-size: 12.5px; }
+.pr .ob { display: inline-block; background: var(--warn-soft); color: var(--warn-text); border-radius: 6px; padding: 0 6px; font-size: 12.5px; font-weight: 600; margin-top: 2px; }
+.mais { border: 1px solid var(--line); border-radius: 12px; }
+.mais-bt { width: 100%; border: 0; background: transparent; display: flex; gap: 10px; align-items: center; padding: 11px 13px; text-align: left; }
+.mais-bt .grow { flex: 1; min-width: 0; }
+.mais-bt b { font-family: var(--font-display); font-size: 1.15rem; display: block; }
+.mais-bt small { color: var(--muted); font-size: 12.5px; }
+.mais-bt .fa-chevron-down { transition: transform .2s ease; }
+.mais.aberto .mais-bt .fa-chevron-down { transform: rotate(180deg); }
+.mais-corpo { display: none; padding: 0 13px 13px; flex-direction: column; gap: 12px; }
+.mais.aberto .mais-corpo { display: flex; }
+.tl { display: flex; flex-direction: column; }
+.tl-i { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; font-size: 13.5px; padding: 3px 0; }
+.tl-i::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--brand); margin: 5px 0 0 3px; }
+.tl-i.fut::before { background: transparent; border: 2px solid var(--line); }
+.tl-i.fut { color: var(--muted); }
+.tl-i .h { color: var(--muted); font-variant-numeric: tabular-nums; }
+.vals { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 13.5px; }
+.vals b { text-align: right; }
+.confirma { background: var(--bad-soft); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; color: var(--bad); font-weight: 600; }
+.sug { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow-lg); z-index: 10; overflow: hidden; }
+.sug button { display: flex; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px 11px; font-size: 13.5px; }
+.sug button:hover { background: var(--surface-2); }
+.sug button small { color: var(--muted); display: block; }
+.salvos { display: flex; gap: 6px; flex-wrap: wrap; }
+.coleta-fixa { display: flex; gap: 10px; align-items: center; background: var(--surface-2); border-radius: 12px; padding: 10px 12px; font-size: 13px; }
+.coleta-fixa i.fa-lock { margin-left: auto; color: var(--muted); }
+.estim { display: flex; gap: 10px; align-items: center; background: var(--brand-soft); color: var(--brand-text); border-radius: 12px; padding: 10px 12px; font-weight: 600; font-size: 13.5px; }
+.estim b { font-family: var(--font-display); font-size: 1.3rem; margin-left: auto; color: var(--ink); }
+.dica-mapa { top: 12px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600; box-shadow: var(--shadow-lg); pointer-events: none; }
+
+/* ---------- páginas (tabelas, extrato, financeiro…) ---------- */
+.pag { flex: 1; overflow: auto; padding: 18px 22px 30px; }
+.tt { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.tt h1 { font-family: var(--font-display); font-size: 2rem; margin: 0; line-height: 1; }
+.tt .sp { flex: 1; }
+.abas { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.abas a { padding: 8px 12px; font-weight: 600; color: var(--ink-2); border-bottom: 2px solid transparent; }
+.abas a.on { color: var(--ink); border-color: var(--brand); }
+.abas a span { background: var(--surface-2); border-radius: 999px; padding: 0 7px; font-size: 12px; margin-left: 4px; }
+table.tb { width: 100%; border-collapse: collapse; background: var(--surface); }
+.tb-box { background: var(--surface); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm); }
+.abas + .tb-box { border-radius: 0 0 12px 12px; }
+.tb th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 700; padding: 10px 12px; border-bottom: 1px solid var(--line); text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+.tb th.r, .tb td.r { text-align: right; }
+.tb td { padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tb tr:last-child td { border-bottom: 0; }
+.tb tr.row { cursor: pointer; transition: background .15s ease; }
+.tb tr.row:hover td { background: var(--surface-2); }
+.tb td b.num { font-family: var(--font-display); font-size: 1.1rem; }
+.tb td img { width: 18px; vertical-align: -4px; margin-right: 4px; }
+.tb tfoot td { font-weight: 700; background: var(--surface-2); }
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.kpi { background: var(--surface); border-radius: 12px; padding: 12px 16px; box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 12px; }
+.kpi small { color: var(--muted); font-weight: 600; font-size: 12.5px; display: block; }
+.kpi b { display: block; font-family: var(--font-display); font-size: 2rem; line-height: 1.05; }
+.kpi .ico { margin-left: auto; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand-text); font-size: 17px; }
+.filtro-linha { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 14px; flex-wrap: wrap; }
+.filtro-linha input.campo { width: 160px; }
+.aviso { background: var(--warn-soft); color: var(--warn-text); border-radius: 10px; padding: 9px 12px; font-size: 13.5px; font-weight: 600; display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.card { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow-sm); padding: 16px 18px; }
+.ciclo { display: flex; gap: 18px; align-items: center; background: var(--surface); border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow-sm); margin-bottom: 16px; border-left: 5px solid var(--brand); }
+.ciclo .grande { font-family: var(--font-display); font-size: 2.6rem; font-weight: 800; line-height: 1; }
+.ciclo small { color: var(--muted); font-size: 13px; display: block; }
+.doc { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow-md); padding: 22px 26px; max-width: 980px; margin: 0 auto; }
+.doc-top { display: flex; justify-content: space-between; gap: 20px; padding-bottom: 14px; border-bottom: 2px solid var(--line); margin-bottom: 14px; }
+.doc-top h2 { font-family: var(--font-display); font-size: 2rem; margin: 0; line-height: 1; }
+.doc-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.doc-meta div { background: var(--surface-2); border-radius: 10px; padding: 8px 12px; }
+.doc-meta small { display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
+.doc-meta b { font-size: 15px; }
+.totais { display: grid; grid-template-columns: 1fr auto; gap: 6px 30px; justify-content: end; margin-top: 14px; font-size: 14.5px; width: 320px; margin-left: auto; }
+.totais b { text-align: right; font-variant-numeric: tabular-nums; }
+.totais .g { font-family: var(--font-display); font-size: 1.5rem; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.foto { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.foto .avatar { width: 64px; height: 64px; font-size: 20px; }
+
+/* ---------- início ---------- */
+.nums { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 14px; }
+.num-c { background: var(--surface); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow-sm); cursor: pointer; transition: box-shadow .15s ease; }
+.num-c:hover { box-shadow: var(--shadow-md); }
+.num-c small { color: var(--muted); font-weight: 600; font-size: 12px; display: block; }
+.num-c b { display: block; font-family: var(--font-display); font-size: 1.9rem; line-height: 1.1; }
+.num-c span { font-size: 12px; color: var(--muted); }
+.num-c.dinheiro { background: var(--ink); color: var(--bg); }
+.num-c.dinheiro small, .num-c.dinheiro span { color: oklch(0.8 0.01 70); }
+.aovivo { display: grid; grid-template-columns: 400px 1fr; gap: 12px; height: 530px; }
+.aovivo .painel { position: relative; }
+.mini-mapa { position: relative; border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-sm); }
+.heroi { display: flex; align-items: center; gap: 18px; background: var(--brand); color: var(--brand-ink); border-radius: 16px; padding: 18px 22px; margin-bottom: 14px; }
+.heroi h1 { font-family: var(--font-display); font-size: 2.2rem; margin: 0; line-height: 1; }
+.heroi p { margin: 4px 0 0; font-weight: 600; opacity: .85; }
+.heroi .btn { margin-left: auto; }
+.inicio-c { display: grid; grid-template-columns: 330px 1fr; gap: 12px; height: 100%; }
+.inicio-c .numsv { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; }
+
+/* ---------- conversas ---------- */
+.cv-wrap { display: grid; grid-template-columns: 320px 1fr; height: 100%; }
+.cv-lista { border-right: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
+.cv-item { display: flex; gap: 10px; align-items: center; padding: 11px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.cv-item:hover { background: var(--surface-2); }
+.cv-item.on { background: var(--brand-soft); box-shadow: inset 3px 0 0 var(--brand); }
+.cv-item img { width: 32px; }
+.cv-item .grow { flex: 1; min-width: 0; }
+.cv-item .grow small { display: block; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cv-item .nl { background: var(--bad); color: #fff; border-radius: 999px; font-size: 11px; font-weight: 800; padding: 0 7px; }
+.cv-item .h { font-size: 11.5px; color: var(--muted); }
+.cv-chat { display: flex; flex-direction: column; min-height: 0; background: var(--bg); }
+.cv-cab { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface); flex: none; }
+.cv-cab img { width: 32px; }
+.cv-cab small { display: block; color: var(--muted); font-size: 12.5px; }
+.cv-msgs { flex: 1; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.msg { max-width: 75%; padding: 8px 12px; border-radius: 14px; font-size: 14px; line-height: 1.35; background: var(--surface); box-shadow: var(--shadow-sm); align-self: flex-start; border-bottom-left-radius: 4px; }
+.msg.eu { align-self: flex-end; background: var(--brand); color: var(--brand-ink); border-bottom-left-radius: 14px; border-bottom-right-radius: 4px; }
+.msg small { display: block; font-size: 11px; opacity: .7; margin-top: 3px; }
+.dia { align-self: center; font-size: 11.5px; color: var(--muted); font-weight: 700; background: var(--surface-2); border-radius: 999px; padding: 2px 10px; }
+.cv-input { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); background: var(--surface); flex: none; }
+.cv-input input { flex: 1; }
+.cv-gaveta { position: absolute; top: 0; right: 0; bottom: 0; width: 420px; background: var(--surface); box-shadow: -10px 0 40px oklch(0.2 0.02 60 / 22%); z-index: 50; display: flex; flex-direction: column; animation: entra .2s ease; }
+.cv-pop { position: absolute; top: 6px; right: 70px; width: 420px; height: 600px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-lg); z-index: 55; display: flex; flex-direction: column; overflow: hidden; animation: sobe .18s ease; }
+.cv-pop::before { content: ""; position: absolute; top: -7px; right: 30px; width: 12px; height: 12px; background: var(--surface); border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg); }
+@keyframes entra { from { transform: translateX(30px); opacity: 0; } }
+@keyframes aparece { from { opacity: 0; } }
+@keyframes sobe { from { transform: translateY(10px); opacity: 0; } }
+
+/* ---------- celular ---------- */
+.m-top { height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 14px; flex: none; position: relative; z-index: 6; }
+.m-top h2 { margin: 0; font-family: var(--font-display); font-size: 1.6rem; line-height: 1; }
+.m-top .sp { flex: 1; }
+.vb .m-top, .vc .m-top { background: oklch(0.93 0.02 75); }
+[data-theme-dark] .vb .m-top, [data-theme-dark] .vc .m-top { background: oklch(0.14 0.01 60); }
+.m-abas-topo { display: flex; gap: 6px; padding: 0 12px 10px; overflow-x: auto; scrollbar-width: none; background: oklch(0.93 0.02 75); flex: none; position: relative; z-index: 6; }
+[data-theme-dark] .m-abas-topo { background: oklch(0.14 0.01 60); }
+.m-abas-topo a { padding: 6px 12px; border-radius: 999px; font-weight: 700; font-size: 13px; background: oklch(0.89 0.025 72); white-space: nowrap; color: var(--ink-2); }
+[data-theme-dark] .m-abas-topo a { background: oklch(0.22 0.012 60); }
+.m-abas-topo a.on { background: var(--brand); color: var(--brand-ink); }
+.m-corpo { position: relative; flex: 1; min-height: 0; }
+.phone.app { display: flex; flex-direction: column; }
+.m-rol { position: absolute; inset: 0; overflow: auto; padding: 4px 12px 110px; display: flex; flex-direction: column; gap: 10px; }
+.doca { position: absolute; left: 12px; right: 12px; bottom: 14px; height: 60px; border-radius: 999px; background: oklch(0.2 0.014 60); display: flex; align-items: center; justify-content: space-around; padding: 0 6px; z-index: 30; box-shadow: var(--shadow-lg); }
+.doca a { color: oklch(0.85 0.01 70); display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-radius: 999px; font-weight: 700; font-size: 13px; position: relative; }
+.doca a.on { background: var(--brand); color: var(--brand-ink); }
+.doca a.mais-novo { background: var(--surface); color: var(--ink); width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 50%; }
+.doca .contador { border-color: oklch(0.2 0.014 60); top: 0; right: 2px; }
+.abas-areia { flex: none; height: 66px; display: flex; align-items: stretch; justify-content: space-around; background: oklch(0.93 0.02 75); padding: 6px 4px 8px; position: relative; z-index: 30; }
+[data-theme-dark] .abas-areia { background: oklch(0.14 0.01 60); }
+.abas-areia a { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: var(--ink-2); flex: 1; position: relative; }
+.abas-areia a .q { width: 44px; height: 30px; border-radius: 10px; display: grid; place-items: center; }
+.abas-areia a.on .q { background: var(--brand); color: var(--brand-ink); }
+.abas-areia a.novo .q { background: var(--ink); color: var(--bg); }
+.abas-areia .contador { top: -4px; right: 14px; }
+.barra-novo { position: absolute; left: 12px; right: 12px; bottom: 14px; z-index: 30; }
+.barra-novo .btn { width: 100%; height: 52px; border-radius: 16px; font-size: 16px; box-shadow: var(--shadow-lg); }
+.m-card { background: var(--surface); border-radius: 14px; padding: 12px 14px; box-shadow: var(--shadow-sm); cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.m-card .l1 { display: flex; gap: 6px; align-items: center; }
+.m-card .l1 b { font-family: var(--font-display); font-size: 1.2rem; }
+.m-card .l2 { font-size: 13px; color: var(--ink-2); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.m-card .l2 img { width: 16px; }
+.folha-b { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 20px 20px 0 0; box-shadow: 0 -8px 30px oklch(0.2 0.02 60 / 22%); z-index: 20; display: flex; flex-direction: column; transition: height .25s ease; overflow: hidden; }
+.folha-b .alca { width: 44px; height: 5px; border-radius: 9px; background: var(--line); margin: 8px auto 6px; flex: none; cursor: pointer; }
+.folha-b .fb-corpo { flex: 1; overflow: auto; padding: 0 12px 16px; }
+.m-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.m-nums .num-c b { font-size: 1.7rem; }
+.m-mini { position: relative; height: 210px; border-radius: 14px; overflow: hidden; flex: none; }
+.sh-fundo { position: absolute; inset: 0; background: oklch(0.2 0.02 60 / 45%); z-index: 60; animation: aparece .18s ease; }
+.sh { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 61; border-radius: 24px 24px 0 0; padding: 0 16px 22px; animation: sobe .22s ease; max-height: 88%; overflow: auto; }
+.sh .alca { width: 44px; height: 5px; border-radius: 9px; background: var(--line); margin: 10px auto 12px; }
+.sh-conta { display: flex; gap: 12px; align-items: center; background: var(--surface); border-radius: 14px; padding: 12px; margin-bottom: 12px; }
+.sh-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.sh-grade a { background: var(--surface); border-radius: 14px; padding: 12px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-weight: 700; font-size: 12.5px; text-align: center; position: relative; }
+.sh-grade a .circ { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: #fff; }
+.sh-linha { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: 12px; padding: 12px; margin-bottom: 8px; font-weight: 600; }
+
+body.anot [data-n]:hover { outline: 2px dashed #ea7a1a; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div id="chrome">
+  <div class="row"><span class="lbl">Variante</span><span id="vchips"></span></div>
+  <div class="row"><span class="lbl">Tela</span><span id="tchips"></span></div>
+  <div id="desc"></div>
+</div>
+<div id="stage"></div>
+<div id="toast"></div>
+<div id="sketch-tools">
+  <select id="tema"><option value="entregas">Claro</option><option value="entregas-escuro">Escuro</option></select>
+  <button data-act="reiniciar" title="Volta os dados ao início">Reiniciar dados</button>
+</div>
+
+<script>
+const IMG = '../../../console/public/images/entregas/';
+const capSrc = st => IMG + 'capacete-' + ({ livre: 'verde', loja: 'amarelo', rota: 'vermelho' }[st] || 'cinza') + '.png';
+
+/* ======================= dados ======================= */
+const LOJA = { nome: 'Pizzaria Bella Massa', curto: 'Bella Massa', ini: 'BM', end: 'Av. Presidente Vargas, 1520 · Jardim América', x: 30, y: 34, usuario: 'Marina Alves', email: 'marina@bellamassa.com.br', central: 'Entregas Ribeirão' };
+const ENDERECOS = [
+  { rua: 'Rua Barão do Amazonas, 1240', bairro: 'Centro', x: 78, y: 50, km: 4.2 },
+  { rua: 'Rua Visconde de Inhaúma, 455', bairro: 'Vila Seixas', x: 70, y: 16, km: 3.1 },
+  { rua: 'Rua Lafaiete, 1900', bairro: 'Jardim Sumaré', x: 22, y: 82, km: 3.6 },
+  { rua: 'Av. Nove de Julho, 3010', bairro: 'Jardim Paulista', x: 12, y: 58, km: 2.4 },
+  { rua: 'Rua São Sebastião, 77', bairro: 'Centro', x: 64, y: 62, km: 3.9 },
+  { rua: 'Rua Tibiriçá, 520', bairro: 'Centro', x: 54, y: 86, km: 5.0 },
+  { rua: 'Rua Bernardino de Campos, 1010', bairro: 'Higienópolis', x: 44, y: 12, km: 2.2 },
+];
+const SALVOS = [ENDERECOS[0], ENDERECOS[3], ENDERECOS[6]];
+const faixa = km => km <= 3 ? 9 : km <= 5 ? 11 : 14;
+const DADOS0 = () => ({
+  pedidos: [
+    { id: 'p1', num: '4821', origem: 'ifood', st: 'rota', moto: 'Carlos', cliente: 'MARIANA SOUZA', rua: 'Rua Barão do Amazonas, 1240', bairro: 'Centro', compl: 'Apto 32, bloco B', ref: 'Portão azul, ao lado da farmácia', obs: 'Interfone não funciona. Ligar quando chegar.', cobra: { tipo: 'porta', valor: 86.8, forma: 'Cartão de crédito · levar maquininha' }, itens: [{ q: 1, n: 'Pizza grande Calabresa', op: 'Borda de catupiry' }, { q: 1, n: 'Pizza média Margherita', ob: 'sem cebola' }, { q: 2, n: 'Coca-Cola 2 L' }], prazo: 12, criado: '19:08', km: 4.2, min: 14, dx: 78, dy: 50, mx: 62, my: 42,
+      tl: [['Pedido recebido do iFood', '19:08'], ['Motoboy aceitou (Carlos)', '19:09'], ['Chegou à loja', '19:21'], ['Saiu para entrega', '19:27'], ['Entregue', '', 1]] },
+    { id: 'p8', num: '4815', origem: 'ifood', st: 'rota', moto: 'Davi', cliente: 'PAULO HENRIQUE ROCHA', rua: 'Rua Tibiriçá, 520', bairro: 'Centro', compl: 'Sala 4', ref: '', obs: '', cobra: { tipo: 'online' }, itens: [{ q: 1, n: 'Pizza grande Quatro queijos' }], prazo: -4, criado: '18:52', km: 5.0, min: 6, dx: 54, dy: 86, mx: 48, my: 72,
+      tl: [['Pedido recebido do iFood', '18:52'], ['Motoboy aceitou (Davi)', '18:55'], ['Chegou à loja', '19:12'], ['Saiu para entrega', '19:20'], ['Entregue', '', 1]] },
+    { id: 'p2', num: '5530', origem: 'rp', st: 'loja', moto: 'Thiago', cliente: 'Ana Beatriz Costa', rua: 'Rua Visconde de Inhaúma, 455', bairro: 'Vila Seixas', compl: 'Casa 2', ref: '', obs: 'Deixar na portaria.', cobra: { tipo: 'online' }, itens: [{ q: 1, n: 'Pizza grande Portuguesa' }, { q: 1, n: 'Suco de laranja 1 L' }], prazo: 33, criado: '19:22', km: 3.1, min: 10, dx: 70, dy: 16, mx: 38, my: 30,
+      tl: [['Pedido recebido do sistema da loja', '19:22'], ['Motoboy aceitou (Thiago)', '19:24'], ['Chegou à loja', '', 1], ['Saiu para entrega', '', 1], ['Entregue', '', 1]] },
+    { id: 'p4', num: 'RPX7K2', origem: 'portal', st: 'loja', moto: 'Bia', cliente: 'Seu Antônio', rua: 'Av. Nove de Julho, 3010', bairro: 'Jardim Paulista', compl: 'Bloco 4, apto 111', ref: '', obs: '', cobra: { tipo: 'online' }, itens: [], prazo: null, criado: '19:30', km: 2.4, min: 8, dx: 12, dy: 58, mx: 26, my: 40,
+      tl: [['Pedido criado no portal', '19:30'], ['Motoboy aceitou (Bia)', '19:31'], ['Chegou à loja', '', 1], ['Saiu para entrega', '', 1], ['Entregue', '', 1]] },
+    { id: 'p3', num: '4833', origem: 'ifood', st: 'oferta', moto: null, cliente: 'LUCAS MARTINS', rua: 'Rua Lafaiete, 1900', bairro: 'Jardim Sumaré', compl: '', ref: 'Esquina com a padaria', obs: 'Capricha no orégano!', cobra: { tipo: 'porta', valor: 54.9, forma: 'Dinheiro · troco para R$ 100,00' }, itens: [{ q: 1, n: 'Pizza grande Frango com catupiry' }, { q: 2, n: 'Guaraná lata' }], prazo: 41, criado: '19:31', km: 3.6, min: 12, dx: 22, dy: 82, rodada: 2, cd: 34,
+      tl: [['Pedido recebido do iFood', '19:31'], ['Oferta aos motoboys perto da loja', '19:31'], ['Ninguém aceitou · rodada 2', '19:32'], ['Motoboy aceita', '', 1], ['Entregue', '', 1]] },
+    { id: 'p5', num: '4790', origem: 'ifood', st: 'concluido', moto: 'Carlos', cliente: 'FERNANDA DOS SANTOS', rua: 'Rua São Sebastião, 77', bairro: 'Centro', compl: '', ref: '', obs: '', cobra: { tipo: 'porta', valor: 62.5, forma: 'Pix na entrega' }, itens: [{ q: 1, n: 'Pizza grande Pepperoni' }], prazo: 50, dur: 31, fim: '19:02', criado: '18:31', km: 3.9, min: 11, dx: 64, dy: 62, valor: 11,
+      tl: [['Pedido recebido do iFood', '18:31'], ['Motoboy aceitou (Carlos)', '18:32'], ['Chegou à loja', '18:44'], ['Saiu para entrega', '18:50'], ['Entregue · 31 min (no prazo)', '19:02']] },
+    { id: 'p6', num: '5521', origem: 'rp', st: 'concluido', moto: 'Rafa', cliente: 'Gustavo Lima', rua: 'Rua Bernardino de Campos, 1010', bairro: 'Higienópolis', compl: '', ref: '', obs: '', cobra: { tipo: 'online' }, itens: [{ q: 2, n: 'Pizza média Napolitana' }], prazo: 50, dur: 24, fim: '18:40', criado: '18:16', km: 2.2, min: 7, dx: 44, dy: 12, valor: 9,
+      tl: [['Pedido recebido do sistema da loja', '18:16'], ['Motoboy aceitou (Rafa)', '18:17'], ['Chegou à loja', '18:27'], ['Saiu para entrega', '18:31'], ['Entregue · 24 min (no prazo)', '18:40']] },
+    { id: 'p7', num: '4780', origem: 'ifood', st: 'cancelado', moto: null, cliente: 'RENATA PIRES', rua: 'Rua Lafaiete, 1900', bairro: 'Jardim Sumaré', compl: '', ref: '', obs: '', cobra: { tipo: 'online' }, itens: [], prazo: null, criado: '18:05', km: 3.6, min: 12, dx: 22, dy: 82,
+      tl: [['Pedido recebido do iFood', '18:05'], ['Cancelado pelo iFood', '18:09']] },
+  ],
+  motos: [
+    { nome: 'Carlos', st: 'rota', x: 62, y: 42, ped: 'p1' },
+    { nome: 'Davi', st: 'rota', x: 48, y: 72, ped: 'p8' },
+    { nome: 'Thiago', st: 'loja', x: 38, y: 30, ped: 'p2' },
+    { nome: 'Bia', st: 'loja', x: 26, y: 40, ped: 'p4' },
+    { nome: 'Rafa', st: 'rota', x: 88, y: 30 },
+    { nome: 'Gui', st: 'loja', x: 60, y: 22 },
+    { nome: 'Bruno', st: 'livre', x: 42, y: 58 },
+    { nome: 'Dani', st: 'livre', x: 88, y: 74 },
+    { nome: 'Léo', st: 'livre', x: 8, y: 20 },
+  ],
+  conversas: [
+    { id: 'c1', moto: 'Carlos', ped: 'p1', nl: 2, h: '19:29', msgs: [['eu', 'Carlos, o interfone do #4821 não funciona, liga para a cliente quando chegar.', '19:27'], ['ele', 'Beleza! Tô a uns 10 min.', '19:28'], ['ele', 'Ela pediu para deixar com o porteiro, pode?', '19:29']] },
+    { id: 'c2', moto: 'Thiago', ped: 'p2', nl: 1, h: '19:26', msgs: [['ele', 'Chegando na loja em 3 min.', '19:26']] },
+    { id: 'c3', moto: 'Bia', ped: 'p4', nl: 0, h: '19:32', msgs: [['eu', 'Bia, o pedido do Seu Antônio é bloco 4, apto 111.', '19:31'], ['ele', 'Anotado 👍', '19:32']] },
+    { id: 'c4', moto: 'Rafa', ped: null, nl: 0, h: 'ontem', msgs: [['ele', 'Boa noite! Entregue o 5521.', '18:40']] },
+  ],
+});
+let D = DADOS0();
+const EXTRATO = [
+  ['25/10 19:02', '#4790', 'Rua São Sebastião, 77 · Centro', 3.9, 'até 5 km', 11, []],
+  ['25/10 18:40', '5521', 'Rua Bernardino de Campos, 1010', 2.2, 'até 3 km', 9, []],
+  ['25/10 18:09', '#4780', 'Rua Lafaiete, 1900 · Jd. Sumaré', 3.6, 'até 5 km', 5.5, ['canc']],
+  ['25/10 13:22', '#4762', 'Av. Nove de Julho, 3010', 2.4, 'até 3 km', 6.3, ['junto']],
+  ['25/10 13:20', '#4761', 'Rua Visconde de Inhaúma, 455', 3.1, 'até 5 km', 11, []],
+  ['24/10 21:15', '#4740', 'Rua Barão do Amazonas, 1240', 4.2, 'até 5 km', 13.2, ['chuva']],
+  ['24/10 20:48', '5480', 'Rua Tibiriçá, 520 · Centro', 5.0, 'até 5 km', 13.2, ['chuva']],
+  ['24/10 20:10', '#4731', 'Rua Lafaiete, 1900 · Jd. Sumaré', 3.6, 'até 5 km', 11, []],
+  ['24/10 19:33', 'RPA1C9', 'Rua Bernardino de Campos, 1010', 2.2, 'até 3 km', 9, []],
+  ['23/10 20:55', '#4705', 'Rua São Sebastião, 77 · Centro', 3.9, 'até 5 km', 11, []],
+  ['23/10 20:20', '#4701', 'Av. Nove de Julho, 3010', 2.4, 'até 3 km', 9, []],
+  ['23/10 19:41', '5466', 'Rua Visconde de Inhaúma, 455', 3.1, 'até 5 km', 11, []],
+  ['22/10 21:02', '#4688', 'Rua Barão do Amazonas, 1240', 4.2, 'até 5 km', 11, []],
+  ['22/10 20:31', '#4683', 'Rua Tibiriçá, 520 · Centro', 5.0, 'até 5 km', 11, []],
+  ['21/10 20:12', '#4650', 'Rua Lafaiete, 1900 · Jd. Sumaré', 3.6, 'até 5 km', 11, []],
+  ['20/10 19:58', '#4622', 'Av. Nove de Julho, 3010', 2.4, 'até 3 km', 9, []],
+];
+const FATURAS = [
+  { id: 'F-0013', per: '13/10 a 19/10', venc: '24/10', emit: '20/10', total: 468, rec: 468, sit: 'paga', n: 41 },
+  { id: 'F-0012', per: '06/10 a 12/10', venc: '17/10', emit: '13/10', total: 512, rec: 300, sit: 'parcial', n: 45 },
+  { id: 'F-0011', per: '29/09 a 05/10', venc: '10/10', emit: '06/10', total: 389, rec: 0, sit: 'vencida', n: 34 },
+  { id: 'F-0010', per: '22/09 a 28/09', venc: '03/10', emit: '29/09', total: 402, rec: 0, sit: 'cancelada', n: 35 },
+];
+const MEMBROS = [['Marina Alves', 'marina@bellamassa.com.br', 'Ativo'], ['Rogério (caixa)', 'caixa@bellamassa.com.br', 'Ativo'], ['Júlia', 'julia@bellamassa.com.br', 'Desativado']];
+
+/* ======================= estado ======================= */
+const S0 = () => ({ tela: 1, ped: 'p1', de: null, mais: false, cancel: false, filtro: null, motosAberto: true, tabAba: 'andamento', conv: 'c1', gaveta: false, dd: false, cvAberta: true, novo: { nome: '', end: '', compl: '', ref: '', d: null, erro: false }, ext: 'semana', extTodos: false, fatura: 'F-0012', cfg: 'conta', cel: { folha: 'media', menu: false, ped: null } });
+const S = Object.assign({ v: 's' }, S0());
+const VARS = { a: 'A: Igual ao console', b: 'B: Moldura com gaveta', c: 'C: Abas no topo', s: 'S: Síntese (Início da B, resto da C, folhas à direita) ★' };
+const TELAS = { 1: '1 · Início', 2: '2 · Pedidos (mapa)', 3: '3 · Pedido aberto', 4: '4 · Pedidos (tabela)', 5: '5 · Novo pedido', 6: '6 · Conversas', 7: '7 · Extrato', 8: '8 · Financeiro', 9: '9 · Fatura', 10: '10 · Configurações', 11: '11 · Celular: Pedidos', 12: '12 · Celular: Início e menu' };
+const DESC = {
+  a: '<b>A: Igual ao console.</b> A moldura do console (sketch 006 C) na loja: cabeçalho areia com a loja, a busca de pedido, as Conversas e o avatar; trilho de ícones à esquerda (abre por cima ao passar o mouse; Novo pedido em tinta) e o conteúdo numa folha de canto arredondado. Pedidos é o /fleet-ops da loja: mapa cheio, Motoboys à esquerda, Pedidos à direita e o pedido aberto numa folha de 440 px. Conversas vira uma tela. Celular com a doca flutuante (007 B).',
+  b: '<b>B: Moldura com gaveta.</b> A mesma moldura areia, mas sem trilho: o ☰ abre a gaveta "Marca da loja" (sketch 003 B, nas cores novas), com o resumo de hoje, o Novo pedido e o menu. O conteúdo ganha a largura toda. Em Pedidos, a lista fica fixa à esquerda (como hoje no portal) e o pedido aberto flutua à direita do mapa. Conversas abrem numa gaveta à direita, como hoje. Celular com o ☰ e as abas na areia (007 A).',
+  c: '<b>C: Abas no topo.</b> Sem menu lateral: as seções (Início, Pedidos, Extrato, Financeiro) ficam na barra segmentada do cabeçalho, com o botão laranja Novo pedido e o ícone de Conversas com as não lidas; Configurações e o tema ficam no avatar. Em Pedidos, o mapa vai de ponta a ponta e a lista flutua à esquerda; o pedido aberto entra no lugar da lista ("← Pedidos"). Conversas num balão do cabeçalho. Celular com abas no topo e a barra Novo pedido embaixo.',
+  s: '<b>S: Síntese (escolha do Edgard).</b> O Início é o da B (faixa laranja com a saudação e o Novo pedido, números de hoje, ao vivo e mapa). Da tela 2 à 12 é a C: abas no cabeçalho, mapa de ponta a ponta e a lista de pedidos flutuando à esquerda. <b>Tudo o que abre fica à direita:</b> o pedido aberto, o novo pedido e as Conversas abrem numa folha de 440 px à direita, e a lista continua à vista na esquerda. No celular, a C (abas no topo e a barra Novo pedido).',
+  cmp: '<b>Comparar por tela.</b> A mesma tela nas três variantes, lado a lado. Troque a tela na linha acima; os cliques valem para as três.',
+};
+const TDESC = {
+  1: 'Painel da loja: números de hoje (clique leva à tela), pedidos ao vivo e o mapa com os motoboys.',
+  2: 'Mapa com os pedidos da loja (alfinete com "#número · motoboy" na cor do prazo) e todos os motoboys online. As contagens filtram.',
+  3: 'Pedido aberto: rota feito/falta, motoboy com Conversar, cobrança, cliente, produtos e o Mais (linha do tempo, valor, rastreio). Abra o "Sem motoboy" (#4833) para ver o Cancelar, que só existe antes do aceite.',
+  4: 'Tabela com abas; o clique na linha abre o pedido no mapa com a pílula "Voltar para a Tabela".',
+  5: 'Novo pedido só com o destino: escolha um endereço salvo, digite (sugestões) ou clique no mapa para marcar o D. Coleta fixa na loja.',
+  6: 'Conversas com os motoboys: uma por motoboy, com o número do pedido. Digite e envie.',
+  7: 'Extrato com período, três números, selos (2ª entrega, chuva, cancelado cobrado) e CSV.',
+  8: 'Financeiro: o ciclo em andamento e as faturas. Clique numa fatura.',
+  9: 'Fatura: cabeçalho, itens e totais, com CSV e Imprimir.',
+  10: 'Configurações: conta (nome, foto, fuso) e membros (só leitura).',
+  11: 'Celular, Pedidos: mapa com a folha de baixo (toque na alça para mudar a altura) e o pedido aberto dentro dela.',
+  12: 'Celular, Início e o menu de cada variante (A: Mais; B: ☰; C: avatar).',
+};
+
+/* ======================= utilidades ======================= */
+const $ = s => document.querySelector(s);
+const ped = id => D.pedidos.find(p => p.id === id);
+const brl = n => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const kmTxt = n => n.toFixed(1).replace('.', ',') + ' km';
+const mmss = s => '0:' + String(Math.max(0, s)).padStart(2, '0');
+const numTxt = p => p.origem === 'ifood' ? '#' + p.num : p.num;
+const ORIG = { ifood: '<span class="badge b-ifood">iFood</span>', rp: '<span class="badge b-rp">Sistema</span>', portal: '<span class="badge b-portal">Portal</span>' };
+const origem = p => ORIG[p.origem];
+const SIT = { oferta: 'Procurando motoboy', loja: 'Indo à loja', rota: 'A caminho', concluido: 'Entregue', cancelado: 'Cancelado' };
+const sit = p => `<span class="badge s-${p.st}">${SIT[p.st]}</span>`;
+const ativo = p => ['oferta', 'loja', 'rota'].includes(p.st);
+const tomPz = p => p.prazo == null ? 'n' : p.prazo < 0 ? 'r' : p.prazo <= 15 ? 'y' : 'g';
+function pz(p) {
+  if (p.st === 'concluido') return `<span class="pz g"><i class="fa-solid fa-flag-checkered"></i>${p.dur} min</span>`;
+  if (p.st === 'cancelado' || p.prazo == null) return '';
+  return `<span class="pz ${tomPz(p)}"><i class="fa-regular fa-clock"></i>${p.prazo < 0 ? 'atrasado há ' + (-p.prazo) + ' min' : p.prazo + ' min'}</span>`;
+}
+const MIN = ['da', 'de', 'do', 'das', 'dos', 'e'];
+const nome = p => !p.cliente ? '' : p.cliente.toLowerCase().split(' ').map((w, i) => i > 0 && MIN.includes(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+const qtdItens = p => p.itens.reduce((s, i) => s + i.q, 0);
+const ativos = () => D.pedidos.filter(ativo);
+const naoLidas = () => D.conversas.reduce((s, c) => s + c.nl, 0);
+function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2600); }
+const ic = (n, cls = 'fa-solid') => `<i class="${cls} fa-${n}"></i>`;
+
+/* seções do menu */
+const SECOES = [
+  { k: 'inicio', t: 'Início', ic: 'house', tela: 1, cor: 'oklch(0.6 0.15 250)' },
+  { k: 'pedidos', t: 'Pedidos', ic: 'box', tela: 2, cor: 'oklch(0.68 0.17 56)' },
+  { k: 'novo', t: 'Novo pedido', ic: 'plus', tela: 5, cor: 'oklch(0.3 0.02 60)' },
+  { k: 'conversas', t: 'Conversas', ic: 'comments', tela: 6, cor: 'oklch(0.6 0.15 150)' },
+  { k: 'extrato', t: 'Extrato', ic: 'receipt', tela: 7, cor: 'oklch(0.55 0.15 300)' },
+  { k: 'financeiro', t: 'Financeiro', ic: 'file-invoice-dollar', tela: 8, cor: 'oklch(0.6 0.13 190)' },
+  { k: 'config', t: 'Configurações', ic: 'gear', tela: 10, cor: 'oklch(0.5 0.02 60)' },
+];
+const secaoDa = t => ({ 1: 'inicio', 2: 'pedidos', 3: 'pedidos', 4: 'pedidos', 5: 'novo', 6: 'conversas', 7: 'extrato', 8: 'financeiro', 9: 'financeiro', 10: 'config' })[t];
+
+/* ======================= mapa ======================= */
+function mapa(opts = {}) {
+  const foco = opts.foco ? ped(opts.foco) : null;
+  const vb = [0, 0, 100, 100];
+  const tx = x => x.toFixed(2), ty = y => y.toFixed(2);
+  const rua = (d, w) => `<path d="${d}" style="stroke:var(--map-road-edge);stroke-width:${w + 2};fill:none" vector-effect="non-scaling-stroke"/><path d="${d}" style="stroke:var(--map-road);stroke-width:${w};fill:none" vector-effect="non-scaling-stroke"/>`;
+  const RX = [10, 22, 35, 48, 62, 74, 88], RY = [8, 20, 35, 50, 66, 80, 92];
+  const perto = (v, lista) => lista.reduce((m, x) => Math.abs(x - v) < Math.abs(m - v) ? x : m, lista[0]);
+  const rota = (A, B) => { const sx = perto(A[0], RX), sy = perto(B[1], RY); return [A, [sx, A[1]], [sx, sy], [B[0], sy], B]; };
+  const dpath = pts => 'M' + pts.map(p => p.join(',')).join(' L');
+  const traco = (pts, cor, w, extra = '') => `<path d="${dpath(pts)}" style="stroke:var(--surface);stroke-width:${w + 4};fill:none;stroke-linejoin:round;stroke-linecap:round;opacity:.9" vector-effect="non-scaling-stroke"/><path d="${dpath(pts)}" style="stroke:${cor};stroke-width:${w};fill:none;stroke-linejoin:round;stroke-linecap:round;${extra}" vector-effect="non-scaling-stroke"/>`;
+  const leg = (cor, t, tr) => `<span style="display:inline-flex;align-items:center;gap:6px"><svg width="22" height="6"><line x1="1" y1="3" x2="21" y2="3" style="stroke:${cor};stroke-width:4;stroke-linecap:round${tr ? ';stroke-dasharray:4 4' : ''}"/></svg>${t}</span>`;
+  const feito = 'var(--muted)', falta = 'var(--brand-strong)';
+  let linhas = '', legenda = '';
+  const L = [LOJA.x, LOJA.y];
+  if (foco) {
+    const Dp = [foco.dx, foco.dy], m = D.motos.find(x => x.ped === foco.id), M = m ? [m.x, m.y] : null;
+    if (foco.st === 'rota' && M) { linhas = traco(rota(L, M), feito, 4, 'opacity:.75') + traco(rota(M, Dp), falta, 5); legenda = leg(feito, 'já feito') + leg(falta, `falta · ${foco.min} min`); }
+    else if (foco.st === 'loja' && M) { linhas = traco(rota(M, L), falta, 5, 'stroke-dasharray:8 7') + traco(rota(L, Dp), falta, 5); legenda = leg(falta, 'até a loja', 1) + leg(falta, `loja → cliente · ${kmTxt(foco.km)}`); }
+    else if (foco.st === 'oferta') { linhas = traco(rota(L, Dp), feito, 4, 'stroke-dasharray:8 7'); legenda = leg(feito, `rota prevista · ${kmTxt(foco.km)} · sem motoboy`, 1); }
+    else { linhas = traco(rota(L, Dp), feito, 4); legenda = leg(feito, foco.st === 'cancelado' ? 'rota prevista (cancelado)' : `rota feita · ${kmTxt(foco.km)} em ${foco.dur} min`); }
+  }
+  if (opts.novo) { linhas = traco(rota(L, [opts.novo.x, opts.novo.y]), falta, 4, 'stroke-dasharray:8 7'); legenda = leg(falta, `rota prevista · ${kmTxt(opts.novo.km)}`, 1); }
+  const svg = `<svg class="ruas" viewBox="${vb.join(' ')}" preserveAspectRatio="none">
+    <rect x="40" y="46" width="13" height="15" rx="1" style="fill:var(--map-park)"/><rect x="84" y="6" width="10" height="11" rx="1" style="fill:var(--map-park)"/>
+    <path d="M0,62 C18,56 30,68 50,64 S80,52 100,58" style="stroke:var(--map-water);stroke-width:12;fill:none" vector-effect="non-scaling-stroke"/>
+    ${[8, 35, 66, 92].map(y => rua(`M0,${y} L100,${y}`, 3)).join('')}${[10, 35, 62, 88].map(x => rua(`M${x},0 L${x},100`, 3)).join('')}
+    ${[20, 50, 80].map(y => rua(`M0,${y} L100,${y}`, 6)).join('')}${[22, 48, 74].map(x => rua(`M${x},0 L${x},100`, 6)).join('')}
+    ${rua('M0,98 L100,8', 9)}${linhas}</svg>`;
+  let mk = '';
+  const filtra = p => !S.filtro || (S.filtro === 'atrasado' ? p.prazo != null && p.prazo < 0 : p.st === S.filtro);
+  if (foco || opts.novo !== undefined) {
+    mk += `<div class="mk pd p" style="left:${tx(L[0])}%;top:${ty(L[1])}%" data-act="toast" data-msg="${LOJA.nome} · coleta fixa"><div class="pin"><span>P</span></div><span class="nm">${LOJA.curto}</span></div>`;
+  }
+  if (foco) {
+    mk += `<div class="mk pd d" style="left:${tx(foco.dx)}%;top:${ty(foco.dy)}%" data-act="toast" data-msg="Entrega · ${foco.rua}"><div class="pin"><span>D</span></div><span class="nm">${nome(foco) || foco.bairro}</span></div>`;
+    const m = D.motos.find(x => x.ped === foco.id);
+    if (m && ativo(foco)) {
+      mk += `<div class="mk moto" style="left:${tx(m.x)}%;top:${ty(m.y)}%"><img src="${capSrc(m.st)}" alt=""><span class="nm" style="background:oklch(0.55 0.15 255);color:#fff">${m.nome}</span></div>`;
+      mk += `<div class="eta" style="left:${tx(m.x)}%;top:${ty(m.y) - 9}%">${foco.st === 'rota' ? 'chega em ' + foco.min + ' min' : 'na loja em ~5 min'}</div>`;
+    }
+    D.motos.filter(x => x.ped !== foco.id).forEach(x => { mk += `<div class="mk moto dim" style="left:${tx(x.x)}%;top:${ty(x.y)}%"><img src="${capSrc(x.st)}" alt=""></div>`; });
+  } else if (opts.novo !== undefined) {
+    if (opts.novo) mk += `<div class="mk pd d novo" style="left:${tx(opts.novo.x)}%;top:${ty(opts.novo.y)}%"><div class="pin"><span>D</span></div><span class="nm">${S.novo.nome || opts.novo.bairro}</span></div>`;
+  } else {
+    mk += `<div class="mk loja" style="left:${tx(L[0])}%;top:${ty(L[1])}%" data-act="toast" data-msg="${LOJA.nome}"><img src="${IMG}loja-pin.png" alt=""><span class="nm">${LOJA.curto}</span></div>`;
+    ativos().forEach(p => {
+      const m = D.motos.find(x => x.ped === p.id);
+      const rot = m && opts.rotulos !== false ? `<span class="rot ${tomPz(p) === 'g' ? '' : tomPz(p)}">${p.st === 'rota' ? '<i class="fa-solid fa-motorcycle"></i> ' : ''}${numTxt(p)} · ${m.nome}</span>` : '';
+      mk += `<div class="mk dest ${filtra(p) ? '' : 'dim'}" style="left:${tx(p.dx)}%;top:${ty(p.dy)}%" data-act="abrir" data-id="${p.id}" title="${numTxt(p)}"><i class="fa-solid fa-location-dot"></i>${rot}</div>`;
+    });
+    D.motos.forEach(x => {
+      const p = x.ped && ped(x.ped);
+      const dim = S.filtro && !(p && filtra(p)) && !(S.filtro === 'livre' && x.st === 'livre');
+      mk += `<div class="mk moto ${dim ? 'dim' : ''}" style="left:${tx(x.x)}%;top:${ty(x.y)}%" ${p ? `data-act="abrir" data-id="${p.id}"` : `data-act="toast" data-msg="${x.nome} · ${x.st === 'livre' ? 'livre' : 'em entrega de outra loja'}"`}><img src="${capSrc(x.st)}" alt="">${opts.rotulos === false ? '' : `<span class="nm">${x.nome}</span>`}</div>`;
+    });
+  }
+  const legBox = legenda && opts.legenda !== false ? `<div class="rota-leg" style="left:${opts.legEsq || 56}px">${legenda}</div>` : '';
+  const [il, ir2] = opts.ins || [0, 0];
+  return `<div class="mapa ${opts.marcar ? 'marcar' : ''}" ${opts.marcar ? 'data-act="marcar"' : ''}><div style="position:absolute;top:4%;bottom:2%;left:${il}%;right:${ir2}%">${svg}${mk}</div>${legBox}</div>`;
+}
+const zoomCtl = (esq = 12) => `<div class="mctl" style="left:${esq}px"><button data-act="toast" data-msg="Aproxima"><i class="fa-solid fa-plus"></i></button><button data-act="toast" data-msg="Afasta"><i class="fa-solid fa-minus"></i></button></div>`;
+
+/* ======================= peças do pedido ======================= */
+function cardPedido(p, cls = 'lp') {
+  const m = D.motos.find(x => x.ped === p.id);
+  const motoTxt = p.st === 'oferta' ? `<i class="fa-solid fa-tower-broadcast" style="color:var(--bad)"></i> procurando motoboy` : p.moto ? `<img src="${capSrc(ativo(p) ? p.st : 'x')}" alt="">${p.moto}` : `<i class="fa-solid fa-ban"></i> cancelado`;
+  return `<div class="${cls} ${S.ped === p.id && [3].includes(S.tela) ? 'sel' : ''} ${ativo(p) ? '' : 'fim'}" data-act="abrir" data-id="${p.id}">
+    <div class="l1"><b>${numTxt(p)}</b>${origem(p)}<span class="sp" style="flex:1"></span>${sit(p)}</div>
+    <div class="l2">${motoTxt} · ${nome(p) || 'Cliente'} · ${p.criado} ${pz(p)}</div></div>`;
+}
+function listaPedidos(cls) {
+  const at = ativos(), fim = D.pedidos.filter(p => !ativo(p));
+  const filtrados = S.filtro ? at.filter(p => S.filtro === 'atrasado' ? p.prazo != null && p.prazo < 0 : p.st === S.filtro) : at;
+  return `${filtrados.map(p => cardPedido(p, cls)).join('') || '<div class="muted" style="padding:16px;text-align:center">Nenhum pedido nesse filtro</div>'}
+    <div class="grupo-tit">Encerrados hoje</div>${fim.map(p => cardPedido(p, cls)).join('')}`;
+}
+function contagens(extra = '') {
+  const at = ativos();
+  const c = [['oferta', at.filter(p => p.st === 'oferta').length, 'sem motoboy', 1], ['atrasado', at.filter(p => p.prazo != null && p.prazo < 0).length, 'atrasado', 1], ['loja', at.filter(p => p.st === 'loja').length, 'indo à loja'], ['rota', at.filter(p => p.st === 'rota').length, 'a caminho'], ['livre', D.motos.filter(m => m.st === 'livre').length, 'motoboys livres']];
+  return `<div class="ov contagens" style="${extra}">${c.map(([k, n, t, al]) => `<button class="cont ${al && n ? 'alerta' : ''} ${S.filtro === k ? 'on' : ''}" data-act="filtro" data-k="${k}"><b>${n}</b> ${t}</button>`).join('')}</div>`;
+}
+function painelMotos(estilo) {
+  if (!S.motosAberto) return `<button class="ov btn" style="${estilo};box-shadow:var(--shadow-md)" data-act="motos"><i class="fa-solid fa-helmet-safety"></i> Motoboys <b>${D.motos.length}</b></button>`;
+  const meus = D.motos.filter(m => m.ped), outros = D.motos.filter(m => !m.ped);
+  return `<div class="ov painel" style="${estilo};width:230px">
+    <div class="ph"><b>Motoboys</b><span class="n">${D.motos.length} online</span><button class="icbtn" style="margin-left:auto;width:28px;height:28px" data-act="motos" title="Recolher"><i class="fa-solid fa-angles-left"></i></button></div>
+    <div class="lista" style="max-height:380px">${meus.map(m => `<div class="mr" data-act="abrir" data-id="${m.ped}" style="cursor:pointer"><img src="${capSrc(m.st)}" alt=""><div><b>${m.nome}</b><small>${numTxt(ped(m.ped))} · ${SIT[m.st].toLowerCase()}</small></div><span class="tag">seu</span></div>`).join('')}
+    ${outros.map(m => `<div class="mr"><img src="${capSrc(m.st)}" alt=""><div><b>${m.nome}</b><small>${m.st === 'livre' ? 'livre' : 'em outra entrega'}</small></div></div>`).join('')}</div></div>`;
+}
+function secMotoboy(p) {
+  if (p.st === 'cancelado') return `<div class="cm-sec"><div class="cm-l"><i class="fa-solid fa-ban"></i><div class="grow"><b>Pedido cancelado</b><small>Cancelado pelo iFood às 18:09 · não cobrado</small></div></div></div>`;
+  if (p.st === 'oferta') {
+    return `<div class="cm-oferta">
+      <div style="display:flex;gap:8px;align-items:center"><i class="fa-solid fa-tower-broadcast"></i><span>Procurando motoboy · rodada <span data-rod>${p.rodada}</span>/3</span><span style="margin-left:auto;font-family:var(--font-display);font-size:1.2rem" data-cd>${mmss(p.cd)}</span></div>
+      <div class="barra2"><span data-barra style="width:${p.cd / 50 * 100}%"></span></div>
+      <small>Os motoboys perto da loja estão recebendo o pedido. Você pode cancelar até alguém aceitar.</small>
+      ${S.cancel ? '' : `<button class="btn perigo" data-act="cancelar"><i class="fa-solid fa-ban"></i> Cancelar pedido</button>`}
+      ${S.cancel ? `<div class="confirma" style="background:var(--surface)"><span>Cancelar o pedido ${numTxt(p)}? Ele sai da tela dos motoboys.</span><div style="display:flex;gap:6px"><button class="btn perigo cheio peq" data-act="cancelar-ok">Sim, cancelar</button><button class="btn peq" data-act="cancelar-nao">Voltar</button></div></div>` : ''}
+    </div>`;
+  }
+  const fim = p.st === 'concluido';
+  return `<div class="cm-sec"><div class="cm-rot"><i class="fa-solid fa-helmet-safety"></i> Motoboy</div>
+    <div class="cm-moto"><img src="${capSrc(fim ? 'x' : p.st)}" alt=""><div class="grow"><b>${p.moto}</b><small>${fim ? 'Entregou às ' + p.fim + ' · ' + p.dur + ' min' : SIT[p.st] + (p.st === 'rota' ? ' · chega em ' + p.min + ' min' : ' · aceitou às ' + p.tl[1][1])}</small></div>
+    ${fim ? '' : `<button class="btn peq" data-act="conversar" data-moto="${p.moto}" data-id="${p.id}"><i class="fa-regular fa-comment"></i> Conversar</button>`}</div></div>`;
+}
+function secCobra(p) {
+  if (p.cobra.tipo === 'online') return `<div class="cm-cobra online"><i class="fa-solid fa-circle-check"></i><span>Pago online · nada a cobrar</span></div>`;
+  return `<div class="cm-cobra porta"><i class="fa-solid fa-hand-holding-dollar"></i><span>Cobrar na porta<br><small style="font-weight:500">${p.cobra.forma}</small></span><span class="val">${brl(p.cobra.valor)}</span></div>`;
+}
+function secCliente(p) {
+  return `<div class="cm-sec"><div class="cm-rot"><i class="fa-solid fa-location-dot"></i> Entrega</div>
+    <div class="cm-l"><i class="fa-solid fa-location-dot" style="color:var(--bad)"></i><div class="grow"><b>${p.rua}</b><small>${p.bairro}${p.compl ? ' · ' + p.compl : ''}</small>${p.ref ? `<small><i class="fa-solid fa-signs-post"></i> ${p.ref}</small>` : ''}</div></div>
+    ${p.obs ? `<div class="cm-obs"><i class="fa-solid fa-message"></i><span><b>Observação do cliente:</b> ${p.obs}</span></div>` : ''}</div>`;
+}
+function secCupom(p) {
+  if (!p.itens.length) return '';
+  return `<div class="cupom"><div class="cupom-cab"><i class="fa-solid fa-bag-shopping"></i><b>${qtdItens(p)} itens</b><span class="muted">· do ${p.origem === 'ifood' ? 'iFood' : 'sistema da loja'}</span></div>
+    ${p.itens.map(i => `<div class="pr"><span class="q">${i.q}×</span><div><b>${i.n}</b>${i.op ? `<small>${i.op}</small>` : ''}${i.ob ? `<span class="ob">Obs.: ${i.ob}</span>` : ''}</div></div>`).join('')}</div>`;
+}
+function secMais(p) {
+  const valor = p.valor || faixa(p.km);
+  return `<div class="mais ${S.mais ? 'aberto' : ''}"><button class="mais-bt" data-act="mais"><i class="fa-solid fa-ellipsis"></i><span class="grow"><b>Mais</b><small>Linha do tempo, valor da entrega e rastreio</small></span><i class="fa-solid fa-chevron-down"></i></button>
+    <div class="mais-corpo">
+      <div><div class="cm-rot" style="margin-bottom:6px"><i class="fa-solid fa-list-check"></i> Linha do tempo</div><div class="tl">${p.tl.map(([t, h, fut]) => `<div class="tl-i ${fut ? 'fut' : ''}"><span></span><span>${t}</span><span class="h">${h}</span></div>`).join('')}</div></div>
+      <div><div class="cm-rot" style="margin-bottom:6px"><i class="fa-solid fa-coins"></i> Entrega</div><div class="vals"><span>Distância</span><b>${kmTxt(p.km)}</b><span>${p.st === 'concluido' ? 'Valor da entrega' : 'Valor previsto'}</span><b>${p.st === 'cancelado' ? '—' : brl(valor)}</b><span>Criado</span><b>${p.criado}</b></div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn peq" data-act="toast" data-msg="Link de rastreio copiado: entregas.restaurantepro.com.br/~/track-order"><i class="fa-solid fa-link"></i> Copiar link de rastreio</button></div>
+    </div></div>`;
+}
+function folhaPedido(p, o = {}) {
+  const head = `<div class="fo-head">
+    ${o.voltarLista ? `<button class="fo-voltar" data-act="fechar"><i class="fa-solid fa-arrow-left"></i> Pedidos</button>` : ''}
+    <div class="fo-top"><span class="num">${numTxt(p)}</span>${origem(p)}${sit(p)}${pz(p)}${o.semX ? '' : `<button class="icbtn x" data-act="fechar" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>`}</div>
+    <div class="fo-para">${nome(p) ? 'para <b>' + nome(p) + '</b> · ' + p.bairro : 'Cliente · ' + p.rua}</div></div>`;
+  const corpo = `<div class="cm">${secMotoboy(p)}${secCobra(p)}${secCliente(p)}${secCupom(p)}${secMais(p)}</div>`;
+  if (o.cel) return `${head}<div style="padding:12px 0 0">${corpo}</div>`;
+  return `${head}<div class="fo-corpo">${corpo}</div>`;
+}
+
+/* ======================= novo pedido ======================= */
+function formNovo(o = {}) {
+  const n = S.novo, d = n.d;
+  const sugs = n.end && !d ? ENDERECOS.filter(e => (e.rua + ' ' + e.bairro).toLowerCase().includes(n.end.toLowerCase())).slice(0, 4) : [];
+  return `<div class="fo-head">
+    ${o.voltarLista ? `<button class="fo-voltar" data-act="ir" data-t="2"><i class="fa-solid fa-arrow-left"></i> Pedidos</button>` : ''}
+    <div class="fo-top"><span class="num">Novo pedido</span>${o.semX ? '' : `<button class="icbtn x" data-act="ir" data-t="2" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>`}</div>
+    <div class="fo-para">Só o destino: a coleta é sempre a loja.</div></div>
+  <div class="fo-corpo" style="${o.cel ? 'padding:12px 0' : ''}"><div class="cm">
+    <div class="coleta-fixa"><span class="badge b-rp">P</span><div><b>${LOJA.nome}</b><div class="muted">${LOJA.end}</div></div><i class="fa-solid fa-lock" title="Coleta fixa"></i></div>
+    <div><label class="rot">Nome do cliente</label><input class="campo" data-campo="nome" value="${n.nome}" placeholder="Ex.: Mariana Souza"></div>
+    <div style="position:relative"><label class="rot">Endereço de entrega</label>
+      <input class="campo ${n.erro && !d ? 'erro' : ''}" data-campo="end" value="${d ? d.rua + ' · ' + d.bairro : n.end}" placeholder="Digite a rua e o número" ${d ? 'readonly' : ''}>
+      ${d ? `<button class="btn peq" style="position:absolute;right:6px;top:28px" data-act="limpar-end">Trocar</button>` : ''}
+      <div class="sug" data-sug style="${sugs.length ? '' : 'display:none'}">${sugs.map(e => `<button data-act="escolher" data-i="${ENDERECOS.indexOf(e)}"><i class="fa-solid fa-location-dot" style="color:var(--bad);margin-top:3px"></i><span>${e.rua}<small>${e.bairro} · Ribeirão Preto</small></span></button>`).join('')}</div>
+      ${n.erro && !d ? '<div class="erro-txt">Marque o endereço: escolha uma sugestão, um salvo ou clique no mapa.</div>' : ''}
+    </div>
+    ${d ? '' : `<div><label class="rot">Endereços salvos</label><div class="salvos">${SALVOS.map(e => `<button class="fchip" data-act="escolher" data-i="${ENDERECOS.indexOf(e)}"><i class="fa-solid fa-bookmark" style="color:var(--brand-strong)"></i> ${e.rua.split(',')[0]}</button>`).join('')}</div></div>`}
+    <div class="form-grid"><div><label class="rot">Complemento</label><input class="campo" data-campo="compl" value="${n.compl}" placeholder="Apto, bloco"></div><div><label class="rot">Referência</label><input class="campo" data-campo="ref" value="${n.ref}" placeholder="Perto de…"></div></div>
+    ${d ? `<div class="estim"><i class="fa-solid fa-route"></i><span>${kmTxt(d.km)} da loja · faixa ${d.km <= 3 ? 'até 3 km' : 'até 5 km'}</span><b>${brl(faixa(d.km))}</b></div>` : `<div class="muted" style="font-size:13px"><i class="fa-solid fa-hand-pointer"></i> Ou clique no mapa para marcar o ponto da entrega.</div>`}
+    <button class="btn marca grande" data-act="criar"><i class="fa-solid fa-motorcycle"></i> Chamar motoboy</button>
+  </div></div>`;
+}
+
+/* ======================= conversas ======================= */
+function cvLista() {
+  return `${D.conversas.map(c => `<div class="cv-item ${S.conv === c.id && S.cvAberta ? 'on' : ''}" data-act="conv" data-id="${c.id}"><img src="${capSrc((D.motos.find(m => m.nome === c.moto) || {}).st)}" alt=""><div class="grow"><b>${c.moto}</b>${c.ped ? ` <span class="muted" style="font-size:12px">· ${numTxt(ped(c.ped))}</span>` : ''}<small>${c.msgs[c.msgs.length - 1][0] === 'eu' ? 'Você: ' : ''}${c.msgs[c.msgs.length - 1][1]}</small></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="h">${c.h}</span>${c.nl ? `<span class="nl">${c.nl}</span>` : ''}</div></div>`).join('')}
+  <div style="padding:12px 14px"><button class="btn" style="width:100%" data-act="toast" data-msg="Abre a lista dos motoboys do mapa para começar uma conversa"><i class="fa-solid fa-pen-to-square"></i> Nova conversa</button></div>`;
+}
+function cvChat(o = {}) {
+  const c = D.conversas.find(x => x.id === S.conv);
+  const m = D.motos.find(x => x.nome === c.moto) || {};
+  return `<div class="cv-cab">${o.voltar ? `<button class="icbtn" data-act="cv-voltar"><i class="fa-solid fa-arrow-left"></i></button>` : ''}<img src="${capSrc(m.st)}" alt=""><div style="flex:1"><b>${c.moto}</b><small>${m.st === 'livre' ? 'livre' : m.ped ? SIT[m.st] + ' · ' + numTxt(ped(m.ped)) : 'online'}</small></div>${c.ped ? `<button class="btn peq" data-act="abrir" data-id="${c.ped}">Ver ${numTxt(ped(c.ped))}</button>` : ''}${o.fechar ? `<button class="icbtn" data-act="cv-fechar"><i class="fa-solid fa-xmark"></i></button>` : ''}</div>
+    <div class="cv-msgs" data-msgs><span class="dia">Hoje</span>${c.msgs.map(([q, t, h]) => `<div class="msg ${q === 'eu' ? 'eu' : ''}">${t}<small>${h}</small></div>`).join('')}</div>
+    <div class="cv-input"><input class="campo" data-campo="msg" placeholder="Escreva para ${c.moto}…" value="${c.rasc || ''}"><button class="btn marca" data-act="enviar"><i class="fa-solid fa-paper-plane"></i></button></div>`;
+}
+function cvPainelCompacto(o = {}) {
+  if (S.cvAberta) return `<div style="display:flex;flex-direction:column;flex:1;min-height:0">${cvChat({ voltar: true, fechar: o.fechar })}</div>`;
+  return `<div class="ph"><b>Conversas</b>${naoLidas() ? `<span class="n" style="background:var(--bad);color:#fff">${naoLidas()} novas</span>` : ''}${o.fechar ? `<button class="icbtn" style="margin-left:auto" data-act="cv-fechar"><i class="fa-solid fa-xmark"></i></button>` : ''}</div><div class="lista">${cvLista()}</div>`;
+}
+
+/* ======================= molduras (desktop) ======================= */
+function avatarMenu() {
+  return `<span class="dd-wrap"><button class="avatar" data-act="dd" title="${LOJA.usuario}">MA</button>${S.dd ? `<div class="dd"><div class="dd-cab"><b>${LOJA.usuario}</b><small>${LOJA.email}</small></div>
+    <button data-act="ir" data-t="10"><i class="fa-solid fa-gear"></i> Configurações</button>
+    <button data-act="tema"><i class="fa-solid fa-moon"></i> Tema escuro</button>
+    <button class="perigo" data-act="toast" data-msg="Sair do portal"><i class="fa-solid fa-person-running"></i> Sair</button></div>` : ''}</span>`;
+}
+const cvBtn = (alvo = 'ir6') => `<button class="icbtn" data-act="${alvo}" title="Conversas"><i class="fa-regular fa-comments"></i>${naoLidas() ? `<span class="contador">${naoLidas()}</span>` : ''}</button>`;
+function moldura(v, conteudo, extra = '') {
+  const sec = secaoDa(S.tela);
+  const logo = `<div class="logo"><div class="ic">${LOJA.ini}</div><div><b>${LOJA.curto}</b><small>Portal da loja · ${LOJA.central}</small></div></div>`;
+  if (v === 'a') {
+    return `<div class="app desk va">
+      <header class="ch">${logo}<div class="busca" style="margin-left:24px"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Buscar pedido pelo número ou cliente" data-act="nada"></div>
+        <div class="right">${cvBtn()}<span style="font-size:13px;text-align:right;line-height:1.2"><b>${LOJA.usuario}</b><br><span class="muted">${LOJA.curto}</span></span>${avatarMenu()}</div></header>
+      <aside class="rail"><div class="rail-in">
+        <div class="tit">Operação</div>
+        ${SECOES.slice(0, 4).map(s => `<a class="${sec === s.k ? 'on' : ''} ${s.k === 'novo' && sec !== 'novo' ? 'tinta' : ''}" data-act="ir" data-t="${s.tela}"><span class="q">${ic(s.ic)}${s.k === 'conversas' && naoLidas() ? `<span class="contador">${naoLidas()}</span>` : ''}</span>${s.t}</a>`).join('')}
+        <div class="tit">Dinheiro</div>
+        ${SECOES.slice(4, 6).map(s => `<a class="${sec === s.k ? 'on' : ''}" data-act="ir" data-t="${s.tela}"><span class="q">${ic(s.ic)}</span>${s.t}</a>`).join('')}
+        <div style="flex:1"></div>
+        ${SECOES.slice(6).map(s => `<a class="${sec === s.k ? 'on' : ''}" data-act="ir" data-t="${s.tela}" style="margin-bottom:10px"><span class="q">${ic(s.ic)}</span>${s.t}</a>`).join('')}
+      </div></aside>
+      <main class="sheet">${conteudo}</main>${extra}</div>`;
+  }
+  if (v === 'b') {
+    const titulo = { inicio: 'Início', pedidos: 'Pedidos', novo: 'Novo pedido', conversas: 'Pedidos', extrato: 'Extrato', financeiro: 'Financeiro', config: 'Configurações' }[sec];
+    return `<div class="app desk vb">
+      <header class="ch"><button class="icbtn" data-act="gaveta" aria-label="Abrir menu" style="width:38px;height:38px"><i class="fa-solid fa-bars"></i></button>${logo}
+        <span style="width:1px;height:26px;background:var(--line);margin:0 4px"></span><b class="disp" style="font-size:1.35rem">${titulo}</b>
+        <div class="right"><button class="btn" data-act="ir" data-t="6" style="position:relative"><i class="fa-regular fa-comments"></i> Conversas${naoLidas() ? `<span class="contador">${naoLidas()}</span>` : ''}</button><button class="btn marca" data-act="ir" data-t="5"><i class="fa-solid fa-plus"></i> Novo pedido</button>${avatarMenu()}</div></header>
+      <main class="sheet">${conteudo}</main>${extra}${S.gaveta ? gavetaB() : ''}</div>`;
+  }
+  return `<div class="app desk vc">
+    <header class="ch">${logo}<nav class="seg" style="margin-left:22px">${SECOES.filter(s => ['inicio', 'pedidos', 'extrato', 'financeiro'].includes(s.k)).map(s => `<a class="${sec === s.k || (s.k === 'pedidos' && sec === 'conversas') ? 'on' : ''}" data-act="ir" data-t="${s.tela}">${ic(s.ic)} ${s.t}${s.k === 'pedidos' ? ` <span style="background:oklch(0 0 0 / 12%);border-radius:999px;padding:0 6px;font-size:11.5px">${ativos().length}</span>` : ''}</a>`).join('')}</nav>
+      <div class="right"><button class="btn marca" data-act="ir" data-t="5"><i class="fa-solid fa-plus"></i> Novo pedido</button>${cvBtn('ir6')}${avatarMenu()}</div></header>
+    <main class="sheet">${conteudo}</main>${extra}</div>`;
+}
+function gavetaB(cel) {
+  const at = ativos().length, sec = secaoDa(S.tela);
+  return `<div class="gv-fundo" data-act="gaveta"></div><nav class="gv" id="portal-gaveta">
+    <div class="gv-topo"><button class="icbtn x" data-act="gaveta"><i class="fa-solid fa-xmark"></i></button><div class="ini">${LOJA.ini}</div><b>${LOJA.nome}</b><small>${LOJA.end}</small></div>
+    <div class="gv-resumo"><div><b>${at}</b><small>em andamento</small></div><div><b>11</b><small>entregues hoje</small></div><div><b>${D.motos.length}</b><small>motoboys online</small></div></div>
+    <div class="gv-novo"><button class="btn marca grande" style="width:100%" data-act="ir" data-t="5"><i class="fa-solid fa-plus"></i> Novo pedido</button></div>
+    <div class="gv-menu">${SECOES.filter(s => s.k !== 'novo').map(s => `<a class="${sec === s.k ? 'on' : ''}" ${cel && !['pedidos', 'inicio'].includes(s.k) ? `data-act="toast" data-msg="Abre ${s.t} no celular"` : `data-act="ir" data-t="${cel ? (s.k === 'pedidos' ? 11 : 12) : s.tela}"`}><span class="circ" style="background:${s.cor}">${ic(s.ic)}</span>${s.t}${s.k === 'pedidos' ? `<span class="n">${at}</span>` : ''}${s.k === 'conversas' && naoLidas() ? `<span class="n" style="background:var(--bad);color:#fff">${naoLidas()}</span>` : ''}</a>`).join('')}</div>
+    <div class="gv-pe"><div class="linha"><div class="avatar">MA</div><div><b>${LOJA.usuario}</b><div class="muted" style="font-size:12px">${LOJA.email}</div></div></div>
+      <div class="linha"><i class="fa-solid fa-moon"></i> Tema escuro <button class="toggle ${document.documentElement.hasAttribute('data-theme-dark') ? 'on' : ''}" data-act="tema"></button></div>
+      <button class="btn perigo" data-act="toast" data-msg="Sair do portal"><i class="fa-solid fa-person-running"></i> Sair</button></div></nav>`;
+}
+
+/* ======================= telas (desktop) ======================= */
+function barraPedidos(v, vista) {
+  return `<div class="barra"><h1>Pedidos</h1><span class="aovivo-sel">ao vivo</span>
+    <nav class="seg claro" style="margin-left:6px"><a class="${vista === 'mapa' ? 'on' : ''}" data-act="ir" data-t="2">${ic('map')} Mapa</a><a class="${vista === 'tabela' ? 'on' : ''}" data-act="ir" data-t="4">${ic('table-list')} Tabela</a></nav>
+    <span class="sp"></span>${v === 'a' ? `<button class="btn marca" data-act="ir" data-t="5"><i class="fa-solid fa-plus"></i> Novo pedido</button>` : ''}</div>`;
+}
+// conteúdo do mapa de pedidos; modo: 'lista' | 'pedido' | 'novo' | 'conversas'
+function telaMapa(v, modo) {
+  const p = ped(S.ped);
+  const foco = modo === 'pedido' ? { foco: p.id } : modo === 'novo' ? { novo: S.novo.d, marcar: true } : {};
+  if (v === 'a') {
+    let s = mapa({ ...foco, ins: modo === 'lista' ? [19, 29] : modo === 'pedido' ? [4, 36] : [2, 36] }) + zoomCtl();
+    s += modo === 'lista' ? painelMotos('left:12px;top:12px') : modo === 'pedido' ? `<button class="ov btn" style="left:12px;top:12px;box-shadow:var(--shadow-md)" data-act="motos-abrir"><i class="fa-solid fa-helmet-safety"></i> Motoboys <b>${D.motos.length}</b></button>` : '';
+    if (modo === 'lista') s += contagens('left:50%;transform:translateX(-62%)');
+    if (modo === 'novo' && !S.novo.d) s += `<div class="ov dica-mapa" style="left:40%">${ic('hand-pointer')} Clique no mapa para marcar a entrega</div>`;
+    if (modo === 'pedido' && S.de === 'tabela') s += `<button class="ov voltar-pill" style="left:150px;top:12px" data-act="ir" data-t="4"><i class="fa-solid fa-arrow-left"></i> Voltar para a Tabela</button>`;
+    if (modo === 'pedido' && S.de === 'inicio') s += `<button class="ov voltar-pill" style="left:150px;top:12px" data-act="ir" data-t="1"><i class="fa-solid fa-arrow-left"></i> Voltar para o Início</button>`;
+    const painel = modo === 'pedido' ? `<div class="ov painel fo" style="right:12px;top:12px;bottom:12px;width:440px">${folhaPedido(p)}</div>`
+      : modo === 'novo' ? `<div class="ov painel fo" style="right:12px;top:12px;bottom:12px;width:440px">${formNovo()}</div>`
+      : `<div class="ov painel" style="right:12px;top:12px;bottom:12px;width:370px"><div class="ph"><b>Pedidos</b><span class="n">${ativos().length} em andamento</span></div><div class="lista">${listaPedidos('lp')}</div></div>`;
+    return barraPedidos(v, 'mapa').replace('<h1>Pedidos</h1>', `<h1>${modo === 'novo' ? 'Novo pedido' : 'Pedidos'}</h1>`) + `<div class="area">${s}${painel}</div>`;
+  }
+  if (v === 'b') {
+    const col = modo === 'novo' ? `<div class="col-lista fo">${formNovo({ semX: false })}</div>`
+      : `<div class="col-lista"><div class="ph"><b>Pedidos</b><span class="n">${ativos().length} em andamento</span></div><div class="filtros">${[['', 'Todos'], ['oferta', 'Sem motoboy'], ['loja', 'Indo à loja'], ['rota', 'A caminho']].map(([k, t]) => `<button class="fchip ${(S.filtro || '') === k ? 'on' : ''}" data-act="filtro" data-k="${k}">${t}</button>`).join('')}</div><div class="lista">${listaPedidos('lp')}</div></div>`;
+    let m = mapa({ ...foco, ins: modo === 'pedido' ? [3, 44] : modo === 'conversas' ? [3, 46] : [3, 3] }) + zoomCtl();
+    if (modo !== 'novo') m += contagens('left:12px') ;
+    if (modo === 'novo' && !S.novo.d) m += `<div class="ov dica-mapa">${ic('hand-pointer')} Clique no mapa para marcar a entrega</div>`;
+    if (modo === 'pedido') m += `<div class="ov painel fo" style="right:12px;top:12px;bottom:12px;width:430px">${folhaPedido(p)}</div>`;
+    if (modo === 'pedido' && S.de === 'tabela') m += `<button class="ov voltar-pill" style="left:12px;top:58px" data-act="ir" data-t="4"><i class="fa-solid fa-arrow-left"></i> Voltar para a Tabela</button>`;
+    if (modo === 'conversas') m += `<div class="cv-gaveta">${cvPainelCompacto({ fechar: true })}</div>`;
+    return (modo === 'novo' ? '' : barraPedidos(v, 'mapa')) + `<div class="area" style="display:grid;grid-template-columns:${modo === 'novo' ? 440 : 360}px 1fr"><div style="display:flex;min-height:0">${col}</div><div style="position:relative">${m}</div></div>`;
+  }
+  if (v === 's') {
+    const aberto = modo !== 'lista';
+    let s = mapa({ ...foco, ins: aberto ? [31, 36] : [31, 3], legEsq: 404 }) + zoomCtl(404);
+    s += `<div class="ov painel" style="left:12px;top:12px;bottom:12px;width:380px"><div class="ph" style="gap:10px"><b style="font-size:1.5rem">Pedidos</b><span class="aovivo-sel">ao vivo</span><nav class="seg claro" style="margin-left:auto"><a class="on" data-act="ir" data-t="2">${ic('map')}</a><a data-act="ir" data-t="4" title="Tabela">${ic('table-list')}</a></nav></div><div class="lista">${listaPedidos('lp')}</div></div>`;
+    if (!aberto) {
+      s += contagens('left:404px');
+      s += `<button class="ov btn" style="right:12px;top:12px;box-shadow:var(--shadow-md)" data-act="toast" data-msg="Lista dos ${D.motos.length} motoboys online"><i class="fa-solid fa-helmet-safety"></i> ${D.motos.length} motoboys online</button>`;
+    }
+    const dir = modo === 'pedido' ? folhaPedido(p) : modo === 'novo' ? formNovo() : modo === 'conversas' ? cvPainelCompacto({ fechar: true }) : '';
+    if (dir) s += `<div class="ov painel fo" style="right:12px;top:12px;bottom:12px;width:440px">${dir}</div>`;
+    if (modo === 'novo' && !S.novo.d) s += `<div class="ov dica-mapa" style="left:47%">${ic('hand-pointer')} Clique no mapa para marcar a entrega</div>`;
+    if (modo === 'pedido' && S.de === 'tabela') s += `<button class="ov voltar-pill" style="left:404px;top:12px" data-act="ir" data-t="4"><i class="fa-solid fa-arrow-left"></i> Voltar para a Tabela</button>`;
+    if (modo === 'pedido' && S.de === 'inicio') s += `<button class="ov voltar-pill" style="left:404px;top:12px" data-act="ir" data-t="1"><i class="fa-solid fa-arrow-left"></i> Voltar para o Início</button>`;
+    return `<div class="area">${s}</div>`;
+  }
+  // C
+  let s = mapa({ ...foco, ins: modo === 'lista' ? [31, 3] : [36, 3], legEsq: modo === 'lista' ? 404 : 464 }) + zoomCtl(modo === 'lista' ? 404 : 464);
+  const esq = modo === 'pedido' ? folhaPedido(p, { voltarLista: true, semX: true })
+    : modo === 'novo' ? formNovo({ voltarLista: true, semX: true })
+    : `<div class="ph" style="gap:10px"><b style="font-size:1.5rem">Pedidos</b><span class="aovivo-sel">ao vivo</span><nav class="seg claro" style="margin-left:auto"><a class="on" data-act="ir" data-t="2">${ic('map')}</a><a data-act="ir" data-t="4" title="Tabela">${ic('table-list')}</a></nav></div><div class="lista">${listaPedidos('lp')}</div>`;
+  s += `<div class="ov painel fo" style="left:12px;top:12px;bottom:12px;width:${modo === 'lista' ? 380 : 440}px">${esq}</div>`;
+  if (modo !== 'novo') s += contagens(`left:${modo === 'lista' ? 404 : 464}px`);
+  if (modo === 'lista') s += `<button class="ov btn" style="right:12px;top:12px;box-shadow:var(--shadow-md)" data-act="toast" data-msg="Lista dos ${D.motos.length} motoboys online"><i class="fa-solid fa-helmet-safety"></i> ${D.motos.length} motoboys online</button>`;
+  if (modo === 'novo' && !S.novo.d) s += `<div class="ov dica-mapa" style="left:66%">${ic('hand-pointer')} Clique no mapa para marcar a entrega</div>`;
+  if (modo === 'pedido' && S.de === 'tabela') s += `<button class="ov voltar-pill" style="right:12px;top:12px" data-act="ir" data-t="4"><i class="fa-solid fa-arrow-left"></i> Voltar para a Tabela</button>`;
+  return `<div class="area">${s}</div>`;
+}
+function telaTabela(v) {
+  const abas = { andamento: D.pedidos.filter(ativo), concluidos: D.pedidos.filter(p => p.st === 'concluido'), cancelados: D.pedidos.filter(p => p.st === 'cancelado') };
+  const lista = abas[S.tabAba];
+  const linhas = lista.map(x => `<tr class="row" data-act="abrir-tabela" data-id="${x.id}"><td><b class="num">${numTxt(x)}</b></td><td>${origem(x)}</td><td>${nome(x) || '<span class="muted">—</span>'}</td><td>${x.rua}<div class="muted" style="font-size:12px">${x.bairro}</div></td>
+    <td>${x.moto ? `<img src="${capSrc(ativo(x) ? x.st : 'x')}" alt="">${x.moto}` : x.st === 'oferta' ? '<span style="color:var(--bad);font-weight:600">procurando</span>' : '—'}</td><td>${sit(x)}</td><td>${pz(x)}</td><td>${x.criado}</td></tr>`).join('');
+  const corpo = `<div class="abas">${[['andamento', 'Em andamento'], ['concluidos', 'Concluídos'], ['cancelados', 'Cancelados']].map(([k, t]) => `<a class="${S.tabAba === k ? 'on' : ''}" data-act="aba" data-k="${k}">${t}<span>${abas[k].length}</span></a>`).join('')}</div>
+    <div class="tb-box"><table class="tb"><thead><tr><th>Pedido</th><th>Origem</th><th>Cliente</th><th>Entrega</th><th>Motoboy</th><th>Situação</th><th>Prazo</th><th>Criado</th></tr></thead><tbody>${linhas || '<tr><td colspan="8" class="muted" style="text-align:center;padding:30px">Nenhum pedido aqui</td></tr>'}</tbody></table></div>
+    <p class="muted" style="font-size:12.5px;margin-top:10px">${ic('hand-pointer')} Clique numa linha para abrir o pedido no mapa.</p>`;
+  if (v === 'c' || v === 's') return `<div class="pag"><div class="tt"><h1>Pedidos</h1><span class="aovivo-sel">ao vivo</span><nav class="seg claro"><a data-act="ir" data-t="2">${ic('map')} Mapa</a><a class="on">${ic('table-list')} Tabela</a></nav><span class="sp"></span><div class="busca" style="width:240px"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Buscar pedido"></div></div>${corpo}</div>`;
+  return barraPedidos(v, 'tabela') + `<div class="pag">${corpo}</div>`;
+}
+function numsHoje(cel) {
+  const at = ativos();
+  return [['Pedidos hoje', '18', '+3 que ontem', 4], ['Em andamento', at.length, `${at.filter(p => p.st === 'oferta').length} sem motoboy`, 2], ['Entregues', '11', 'hoje', 4], ['No prazo', '91%', '10 de 11', 4], ['Tempo médio', '28 min', 'do pedido à entrega', 4], ['A pagar no ciclo', 'R$ 504', 'desde 20/10 · 42 entregas', 8]]
+    .map(([t, n, sub, tela], i) => `<div class="num-c ${i === 5 ? 'dinheiro' : ''}" ${cel ? `data-act="toast" data-msg="${t}: abre a tela no celular"` : `data-act="ir" data-t="${tela}"`}><small>${t}</small><b>${n}</b><span>${sub}</span></div>`).join('');
+}
+function aoVivo() {
+  return `<div class="painel"><div class="ph"><b>Ao vivo</b><span class="n">${ativos().length}</span><span class="muted" style="margin-left:auto;font-size:12.5px">clique para abrir</span></div><div class="lista">${ativos().map(p => cardPedido(p, 'lp')).join('')}</div></div>`;
+}
+function telaInicio(v) {
+  if (v === 'a') return `<div class="pag"><div class="tt"><h1>Início</h1><nav class="seg claro"><a class="on">Hoje</a><a data-act="toast" data-msg="Últimos 7 dias">7 dias</a><a data-act="toast" data-msg="Últimos 30 dias">30 dias</a></nav><span class="sp"></span><button class="btn marca" data-act="ir" data-t="5"><i class="fa-solid fa-plus"></i> Novo pedido</button></div>
+    <div class="nums">${numsHoje()}</div><div class="aovivo">${aoVivo()}<div class="mini-mapa">${mapa({})}</div></div></div>`;
+  if (v === 'b' || v === 's') return `<div class="pag"><div class="heroi"><div><h1>Boa noite, ${LOJA.curto}!</h1><p>${ativos().length} pedidos em andamento · 1 procurando motoboy · ${D.motos.length} motoboys online</p></div><button class="btn tinta grande" data-act="ir" data-t="5"><i class="fa-solid fa-plus"></i> Novo pedido</button></div>
+    <div class="nums">${numsHoje()}</div><div class="aovivo" style="height:440px">${aoVivo()}<div class="mini-mapa">${mapa({})}</div></div></div>`;
+  return `<div class="pag" style="padding:14px"><div class="inicio-c"><div style="display:flex;flex-direction:column;gap:10px;min-height:0">
+      <div class="tt" style="margin:0"><h1>Hoje</h1><span class="muted">sáb, 25/10</span></div>
+      <div class="numsv">${numsHoje()}</div>
+      <button class="btn marca grande" data-act="ir" data-t="5"><i class="fa-solid fa-plus"></i> Novo pedido</button></div>
+    <div class="mini-mapa">${mapa({ ins: [2, 36] })}<div class="ov painel" style="right:12px;top:12px;bottom:12px;width:360px">${aoVivo().replace('<div class="painel">', '<div style="display:flex;flex-direction:column;min-height:0;height:100%">')}</div></div></div></div>`;
+}
+function telaConversas(v) {
+  if (v === 'a') return `<div class="cv-wrap"><div class="cv-lista"><div class="ph"><b style="font-size:1.5rem">Conversas</b>${naoLidas() ? `<span class="n" style="background:var(--bad);color:#fff">${naoLidas()} novas</span>` : ''}</div><div class="lista">${cvLista()}</div></div><div class="cv-chat">${cvChat()}</div></div>`;
+  if (v === 'b' || v === 's') return telaMapa(v, 'conversas');
+  return telaMapa('c', 'lista');
+}
+function extratoDados() { return S.extTodos ? EXTRATO : EXTRATO.slice(0, 10); }
+function telaExtrato(v) {
+  const per = { hoje: ['25/10/2026', '25/10/2026', 3], semana: ['20/10/2026', '25/10/2026', 16], mes: ['01/10/2026', '25/10/2026', 16] }[S.ext];
+  const dados = EXTRATO.slice(0, per[2]);
+  const total = dados.reduce((s, e) => s + e[5], 0), km = dados.reduce((s, e) => s + e[3], 0);
+  const vis = S.extTodos ? dados : dados.slice(0, 10);
+  const selo = k => ({ canc: '<span class="selo amar">Cancelado pelo iFood (cobrado)</span>', junto: '<span class="selo azul">2ª entrega</span>', chuva: '<span class="selo azul">Chuva ×1,2</span>' })[k];
+  return `<div class="pag"><div class="tt"><h1>Extrato</h1><nav class="seg claro">${[['hoje', 'Hoje'], ['semana', 'Esta semana'], ['mes', 'Este mês']].map(([k, t]) => `<a class="${S.ext === k ? 'on' : ''}" data-act="ext" data-k="${k}">${t}</a>`).join('')}</nav><span class="sp"></span><button class="btn" data-act="toast" data-msg="Atualizado">${ic('rotate')} Atualizar</button><button class="btn marca" data-act="toast" data-msg="extrato-bella-massa.csv baixado">${ic('download')} Baixar CSV</button></div>
+    <div class="filtro-linha"><div><label class="rot">De</label><input class="campo" value="${per[0]}"></div><div><label class="rot">Até</label><input class="campo" value="${per[1]}"></div><span class="muted" style="font-size:12.5px;padding-bottom:10px">Até 3 meses por consulta.</span></div>
+    <div class="kpis"><div class="kpi"><div><small>Entregas</small><b>${dados.length}</b></div><span class="ico">${ic('circle-check')}</span></div><div class="kpi"><div><small>Km rodados</small><b>${km.toFixed(1).replace('.', ',')}</b></div><span class="ico">${ic('route')}</span></div><div class="kpi"><div><small>Valor a pagar</small><b>${brl(total)}</b></div><span class="ico">${ic('file-invoice-dollar')}</span></div></div>
+    <div class="tb-box"><table class="tb"><thead><tr><th>Concluído</th><th>Pedido</th><th>Destino</th><th class="r">Km</th><th>Faixa</th><th class="r">Valor</th><th></th></tr></thead>
+    <tbody>${vis.map(e => `<tr><td>${e[0]}</td><td><b class="num">${e[1]}</b></td><td>${e[2]}</td><td class="r">${e[3].toFixed(1).replace('.', ',')}</td><td>${e[4]}</td><td class="r"><b>${brl(e[5])}</b></td><td>${e[6].map(selo).join('')}</td></tr>`).join('')}</tbody></table></div>
+    ${dados.length > vis.length ? `<div style="text-align:center;padding:14px"><button class="btn" data-act="ext-todos">Mostrar mais ${dados.length - vis.length}</button></div>` : ''}</div>`;
+}
+const SITF = { paga: 'Paga', aberta: 'Em aberto', parcial: 'Parcial', vencida: 'Vencida', cancelada: 'Cancelada' };
+function telaFinanceiro(v) {
+  return `<div class="pag"><div class="tt"><h1>Financeiro</h1><span class="sp"></span><span class="muted" style="font-size:13px">Faturas emitidas pela ${LOJA.central}</span></div>
+    <div class="ciclo"><span class="ico" style="width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand-text);font-size:22px">${ic('hourglass-half')}</span><div><small>Ciclo em andamento · desde 20/10</small><div class="grande">${brl(504)}</div><small>42 entregas até agora · entram na próxima fatura</small></div><span class="sp" style="flex:1"></span><button class="btn" data-act="ir" data-t="7">${ic('receipt')} Ver no extrato</button></div>
+    <div class="tb-box"><table class="tb"><thead><tr><th>Fatura</th><th>Período</th><th>Vencimento</th><th class="r">Valor</th><th class="r">Recebido</th><th class="r">Em aberto</th><th>Situação</th></tr></thead>
+    <tbody>${FATURAS.map(f => `<tr class="row" data-act="fatura" data-id="${f.id}"><td><b class="num">${f.id}</b></td><td>${f.per}</td><td>${f.venc}</td><td class="r">${brl(f.total)}</td><td class="r">${f.sit === 'cancelada' ? '—' : brl(f.rec)}</td><td class="r"><b>${f.sit === 'cancelada' ? '—' : brl(f.total - f.rec)}</b></td><td><span class="badge f-${f.sit}">${SITF[f.sit]}</span></td></tr>`).join('')}</tbody></table></div>
+    <p class="muted" style="font-size:12.5px;margin-top:10px">${ic('hand-pointer')} Clique numa fatura para ver os itens, baixar o CSV ou imprimir.</p></div>`;
+}
+function telaFatura(v) {
+  const f = FATURAS.find(x => x.id === S.fatura);
+  const itens = EXTRATO.slice(0, 9).map((e, i) => [e[0].slice(0, 5), e[1], e[3], e[2], e[6].includes('canc') ? 'Cancelado pelo iFood (cobrado)' : e[6].includes('junto') ? '2ª entrega' : '', e[5]]);
+  return `<div class="pag"><div class="tt"><button class="btn" data-act="ir" data-t="8">${ic('arrow-left')} Financeiro</button><span class="sp"></span><button class="btn" data-act="toast" data-msg="${f.id}.csv baixado">${ic('download')} CSV</button><button class="btn marca" data-act="toast" data-msg="Abre a impressão (salvar como PDF)">${ic('print')} Imprimir / salvar PDF</button></div>
+    <div class="doc"><div class="doc-top"><div><small class="muted">${LOJA.central}</small><h2>Fatura ${f.id}</h2><span class="badge f-${f.sit}" style="margin-top:6px">${SITF[f.sit]}</span></div><div style="text-align:right"><b>${LOJA.nome}</b><div class="muted">${LOJA.end}</div></div></div>
+    <div class="doc-meta"><div><small>Período</small><b>${f.per}</b></div><div><small>Vencimento</small><b>${f.venc}/2026</b></div><div><small>Emitida em</small><b>${f.emit}/2026</b></div><div><small>Entregas</small><b>${f.n}</b></div></div>
+    <table class="tb"><thead><tr><th>Data</th><th>Pedido</th><th class="r">Km</th><th>Destino</th><th>Descrição</th><th class="r">Valor</th></tr></thead><tbody>${itens.map(i => `<tr><td>${i[0]}</td><td><b>${i[1]}</b></td><td class="r">${i[2].toFixed(1).replace('.', ',')}</td><td>${i[3]}</td><td>${i[4] ? `<span class="selo ${i[4].startsWith('Canc') ? 'amar' : 'azul'}">${i[4]}</span>` : ''}</td><td class="r">${brl(i[5])}</td></tr>`).join('')}<tr><td colspan="6" class="muted" style="text-align:center">… mais ${f.n - 9} entregas</td></tr></tbody></table>
+    <div class="totais"><span>Total</span><b class="g">${brl(f.total)}</b><span>Recebido</span><b>${brl(f.rec)}</b><span>Em aberto</span><b style="color:${f.total - f.rec ? 'var(--bad)' : 'inherit'}">${brl(f.total - f.rec)}</b></div></div></div>`;
+}
+function telaConfig(v) {
+  const conta = `<div class="card" style="max-width:720px"><div class="foto"><div class="avatar">MA</div><div><b>Foto</b><div class="muted" style="font-size:12.5px">PNG, JPG ou WEBP até 5 MB</div></div><button class="btn" style="margin-left:auto" data-act="toast" data-msg="Escolher foto">${ic('camera')} Trocar foto</button></div>
+    <div class="form-grid"><div><label class="rot">Nome</label><input class="campo" value="${LOJA.usuario}"></div><div><label class="rot">E-mail (login)</label><input class="campo" value="${LOJA.email}" readonly></div>
+    <div><label class="rot">Fuso horário</label><select class="campo"><option>Brasília (America/Sao_Paulo)</option></select></div><div><label class="rot">Senha</label><input class="campo" value="Fale com a central para trocar" readonly></div></div>
+    <div style="margin-top:16px;display:flex;justify-content:flex-end"><button class="btn marca" data-act="salvar">${ic('check')} Salvar</button></div></div>`;
+  const membros = `<div class="tb-box" style="max-width:820px"><table class="tb"><thead><tr><th>Nome</th><th>E-mail</th><th>Situação</th></tr></thead><tbody>${MEMBROS.map(m => `<tr><td><b>${m[0]}</b></td><td>${m[1]}</td><td><span class="badge ${m[2] === 'Ativo' ? 's-concluido' : 's-cancelado'}">${m[2]}</span></td></tr>`).join('')}</tbody></table></div><p class="muted" style="font-size:12.5px">${ic('circle-info')} Para incluir ou tirar alguém, fale com a ${LOJA.central}.</p>`;
+  const loja = `<div class="card" style="max-width:720px;display:flex;flex-direction:column;gap:10px"><div class="coleta-fixa"><span class="badge b-rp">P</span><div><b>${LOJA.nome}</b><div class="muted">${LOJA.end}</div></div><i class="fa-solid fa-lock"></i></div><p class="muted" style="margin:0;font-size:13px">O endereço da loja é a coleta de todos os pedidos. Para mudar, fale com a central.</p><div class="cm-sec"><div class="cm-l">${ic('plug')}<div class="grow"><b>iFood</b><small>Loja vinculada · os pedidos chegam sozinhos</small></div><span class="badge s-concluido">Ligado</span></div></div></div>`;
+  return `<div class="pag"><div class="tt"><h1>Configurações</h1></div><div class="abas" style="margin-bottom:14px">${[['conta', 'Minha conta'], ['loja', 'Loja'], ['membros', 'Membros']].map(([k, t]) => `<a class="${S.cfg === k ? 'on' : ''}" data-act="cfg" data-k="${k}">${t}</a>`).join('')}</div>${{ conta, membros, loja }[S.cfg]}</div>`;
+}
+function telaDesk(v) {
+  const t = S.tela;
+  let c, extra = '';
+  if (t === 1) c = telaInicio(v);
+  else if (t === 2) c = telaMapa(v, 'lista');
+  else if (t === 3) c = telaMapa(v, 'pedido');
+  else if (t === 4) c = telaTabela(v);
+  else if (t === 5) c = telaMapa(v, 'novo');
+  else if (t === 6) { c = telaConversas(v); if (v === 'c') extra = `<div class="cv-pop" style="top:58px;right:58px">${cvPainelCompacto({ fechar: true })}</div>`; }
+  else if (t === 7) c = telaExtrato(v);
+  else if (t === 8) c = telaFinanceiro(v);
+  else if (t === 9) c = telaFatura(v);
+  else c = telaConfig(v);
+  return moldura(v, c, extra);
+}
+
+/* ======================= celular ======================= */
+function celTopo(v, titulo) {
+  if (v === 'a') return `<div class="m-top"><div class="logo"><div class="ic">${LOJA.ini}</div></div><h2>${titulo}</h2><span class="sp"></span>${cvBtn('cel-cv')}</div>`;
+  if (v === 'b') return `<div class="m-top"><button class="icbtn" data-act="gaveta"><i class="fa-solid fa-bars"></i></button><h2>${titulo}</h2><span class="sp"></span><button class="avatar" data-act="gaveta">MA</button></div>`;
+  return `<div class="m-top"><div class="logo"><div class="ic">${LOJA.ini}</div><div><b>${LOJA.curto}</b></div></div><span class="sp"></span>${cvBtn('cel-cv')}<button class="avatar" data-act="cel-menu">MA</button></div>
+    <nav class="m-abas-topo">${[['Início', 12], ['Pedidos', 11], ['Extrato', 0], ['Financeiro', 0], ['Configurações', 0]].map(([t, n]) => n ? `<a class="${S.tela === n ? 'on' : ''}" data-act="ir" data-t="${n}">${t}</a>` : `<a data-act="toast" data-msg="Abre ${t} no celular">${t}</a>`).join('')}</nav>`;
+}
+function celRodape(v) {
+  if (v === 'a') return `<nav class="doca"><a class="${S.tela === 12 ? 'on' : ''}" data-act="ir" data-t="12">${ic('house')}${S.tela === 12 ? ' Início' : ''}</a><a class="${S.tela === 11 ? 'on' : ''}" data-act="ir" data-t="11">${ic('box')}${S.tela === 11 ? ' Pedidos' : ''}</a><a class="mais-novo" data-act="toast" data-msg="Abre o Novo pedido (tela 5 no celular)">${ic('plus')}</a><a data-act="cel-cv">${ic('comments', 'fa-regular')}${naoLidas() ? `<span class="contador">${naoLidas()}</span>` : ''}</a><a data-act="cel-menu">${ic('ellipsis')}</a></nav>`;
+  if (v === 'b') return `<nav class="abas-areia">${[['house', 'Início', 12], ['box', 'Pedidos', 11]].map(([i, t, n]) => `<a class="${S.tela === n ? 'on' : ''}" data-act="ir" data-t="${n}"><span class="q">${ic(i)}</span>${t}</a>`).join('')}<a class="novo" data-act="toast" data-msg="Abre o Novo pedido"><span class="q">${ic('plus')}</span>Novo</a><a data-act="cel-cv"><span class="q">${ic('comments', 'fa-regular')}</span>Conversas${naoLidas() ? `<span class="contador">${naoLidas()}</span>` : ''}</a><a data-act="toast" data-msg="Abre o Extrato no celular"><span class="q">${ic('receipt')}</span>Extrato</a></nav>`;
+  return `<div class="barra-novo"><button class="btn marca" data-act="toast" data-msg="Abre o Novo pedido">${ic('plus')} Novo pedido</button></div>`;
+}
+function celMenu(v) {
+  if (!S.cel.menu) return '';
+  if (v === 'b') return gavetaB(true);
+  const grade = [['Extrato', 'receipt', 7, 'oklch(0.55 0.15 300)'], ['Financeiro', 'file-invoice-dollar', 8, 'oklch(0.6 0.13 190)'], ['Conversas', 'comments', 6, 'oklch(0.6 0.15 150)'], ['Configurações', 'gear', 10, 'oklch(0.5 0.02 60)'], ['Pedidos (tabela)', 'table-list', 4, 'oklch(0.68 0.17 56)'], ['Novo pedido', 'plus', 5, 'oklch(0.3 0.02 60)']].filter(g => !((v === 'c' || v === 's') && ['Extrato', 'Financeiro'].includes(g[0])));
+  return `<div class="sh-fundo" data-act="cel-menu"></div><div class="sh"><div class="alca"></div>
+    <div class="sh-conta"><div class="avatar">MA</div><div style="flex:1"><b>${LOJA.usuario}</b><div class="muted" style="font-size:12.5px">${LOJA.nome}</div></div></div>
+    <div class="sh-grade">${grade.map(([t, i, n, cor]) => `<a data-act="toast" data-msg="Abre ${t} (tela ${n} no celular)"><span class="circ" style="background:${cor}">${ic(i)}</span>${t}</a>`).join('')}</div>
+    <div class="sh-linha">${ic('moon')} Tema escuro <button class="toggle ${document.documentElement.hasAttribute('data-theme-dark') ? 'on' : ''}" data-act="tema"></button></div>
+    <div class="sh-linha" style="color:var(--bad)" data-act="toast" data-msg="Sair do portal">${ic('person-running')} Sair</div></div>`;
+}
+function celPedidos(v) {
+  const p = S.cel.ped ? ped(S.cel.ped) : null;
+  const alt = p ? 'alta' : S.cel.folha;
+  const base = v === 'a' ? 84 : v === 'b' ? 0 : 80;
+  const h = { baixa: 130, media: 330, alta: 600 }[alt];
+  const corpo = p ? folhaPedido(p, { cel: true, semX: true, voltarLista: true }).replace('data-act="fechar"', 'data-act="cel-fechar"')
+    : `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${['oferta', 'atrasado', 'loja', 'rota'].map(k => { const n = k === 'atrasado' ? ativos().filter(x => x.prazo != null && x.prazo < 0).length : ativos().filter(x => x.st === k).length; return `<button class="cont ${S.filtro === k ? 'on' : ''}" style="box-shadow:none;border-color:var(--line);padding:4px 10px" data-act="filtro" data-k="${k}"><b>${n}</b> ${{ oferta: 'sem motoboy', atrasado: 'atrasado', loja: 'à loja', rota: 'a caminho' }[k]}</button>`; }).join('')}</div>
+       <div style="display:flex;flex-direction:column;gap:8px">${ativos().filter(x => !S.filtro || (S.filtro === 'atrasado' ? x.prazo != null && x.prazo < 0 : x.st === S.filtro)).map(x => cardPedido(x, 'm-card').replace('data-act="abrir"', 'data-act="cel-abrir"')).join('')}</div>`;
+  return `<div class="m-corpo">${mapa(p ? { foco: p.id, legenda: false } : { rotulos: true })}
+    <div class="folha-b" style="height:${h}px;bottom:${base}px;${base ? 'border-radius:20px;left:8px;right:8px;' : ''}"><div class="alca" data-act="cel-folha"></div>
+    ${p ? '' : `<div style="display:flex;align-items:center;gap:8px;padding:0 14px 8px"><b class="disp" style="font-size:1.4rem">Pedidos</b><span class="aovivo-sel">ao vivo</span><span class="muted" style="margin-left:auto;font-size:12.5px">${ativos().length} em andamento</span></div>`}
+    <div class="fb-corpo">${corpo}</div></div></div>`;
+}
+function celInicio(v) {
+  return `<div class="m-corpo"><div class="m-rol" style="${v === 'b' ? 'padding-bottom:16px' : ''}">
+    ${v === 'b' ? `<div class="heroi" style="padding:14px 16px;margin:0"><div><h1 style="font-size:1.6rem">Boa noite!</h1><p style="font-size:13px">${ativos().length} em andamento · ${D.motos.length} motoboys online</p></div></div>` : `<div style="display:flex;align-items:baseline;gap:8px"><b class="disp" style="font-size:1.5rem">Hoje</b><span class="muted">sáb, 25/10</span></div>`}
+    <div class="m-nums">${numsHoje(true)}</div>
+    ${v === 'a' ? `<button class="btn marca grande" data-act="toast" data-msg="Abre o Novo pedido">${ic('plus')} Novo pedido</button>` : ''}
+    <div style="display:flex;align-items:center;gap:8px"><b class="disp" style="font-size:1.35rem">Ao vivo</b><span class="aovivo-sel"></span></div>
+    ${ativos().map(x => cardPedido(x, 'm-card').replace('data-act="abrir"', 'data-act="cel-ir-pedido"')).join('')}
+    <div class="m-mini">${mapa({ rotulos: false })}</div></div></div>`;
+}
+function telaCelular(v) {
+  const titulo = S.tela === 11 ? 'Pedidos' : 'Início';
+  const c = S.tela === 11 ? celPedidos(v) : celInicio(v);
+  return `<div class="app phone v${v}">${celTopo(v, titulo)}${c}${v === 'b' ? celRodape(v) : ''}${v !== 'b' ? celRodape(v) : ''}${celMenu(v)}</div>`;
+}
+
+/* ======================= render ======================= */
+function tela(v) { return S.tela >= 11 ? telaCelular(v) : telaDesk(v); }
+function chips() {
+  $('#vchips').innerHTML = `<button class="chip cmp ${S.v === 'cmp' ? 'on' : ''}" data-act="v" data-k="cmp">Comparar por tela</button> ` + Object.entries(VARS).map(([k, t]) => `<button class="chip ${S.v === k ? 'on' : ''}" data-act="v" data-k="${k}">${t}</button>`).join(' ');
+  $('#tchips').innerHTML = Object.entries(TELAS).map(([k, t]) => `<button class="chip ${S.tela == k ? 'on' : ''}" data-act="tela" data-k="${k}">${t}</button>`).join(' ');
+  $('#desc').innerHTML = DESC[S.v] + `<br><span style="color:#fdba74">Tela ${S.tela}:</span> ${TDESC[S.tela]}`;
+}
+function render() {
+  chips();
+  const st = $('#stage');
+  const cel = S.tela >= 11;
+  const fc = cel ? 'frame phone' : 'frame';
+  if (S.v === 'cmp') {
+    const largura = (st.clientWidth - 48 - 32) / 3;
+    const z = cel ? Math.min(1, largura / 410) : largura / 1366;
+    st.innerHTML = `<div class="cmpgrid">${Object.entries(VARS).map(([k, t]) => `<div class="cmpcol"><h3>${t}</h3><div class="${fc}" style="zoom:${z.toFixed(3)}">${tela(k)}</div></div>`).join('')}</div>`;
+  } else {
+    const z = cel ? 1 : Math.min(1, (st.clientWidth - 48) / 1366);
+    st.innerHTML = `<div class="single"><div class="${fc}" style="zoom:${z.toFixed(3)}">${tela(S.v)}</div></div>`;
+  }
+  document.querySelectorAll('[data-msgs]').forEach(m => m.scrollTop = m.scrollHeight);
+}
+
+/* ======================= interação ======================= */
+function ir(t) {
+  S.tela = t; S.dd = false; S.gaveta = false; S.cel.menu = false; S.cancel = false;
+  if (t === 2 || t === 4) S.de = null;
+  if (t === 6) { S.cvAberta = S.v === 'a' || S.cvAberta; }
+}
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) { if (S.dd && !e.target.closest('.dd')) { S.dd = false; render(); } return; }
+  const a = el.dataset.act;
+  if (a === 'nada') return;
+  switch (a) {
+    case 'v': S.v = el.dataset.k; break;
+    case 'tela': ir(+el.dataset.k); if (S.tela === 3 && !S.ped) S.ped = 'p1'; break;
+    case 'ir': ir(+el.dataset.t); break;
+    case 'abrir': S.ped = el.dataset.id; S.mais = false; S.cancel = false; S.de = S.tela === 1 ? 'inicio' : null; S.tela = 3; S.dd = false; S.gaveta = false; break;
+    case 'abrir-tabela': S.ped = el.dataset.id; S.mais = false; S.cancel = false; S.de = 'tabela'; S.tela = 3; break;
+    case 'fechar': S.tela = 2; S.de = null; break;
+    case 'mais': S.mais = !S.mais; break;
+    case 'cancelar': S.cancel = true; break;
+    case 'cancelar-nao': S.cancel = false; break;
+    case 'cancelar-ok': { const p = ped(S.ped); p.st = 'cancelado'; p.tl = [p.tl[0], ['Cancelado pela loja', '19:36']]; S.cancel = false; toast(`Pedido ${numTxt(p)} cancelado. Saiu da tela dos motoboys.`); break; }
+    case 'filtro': S.filtro = S.filtro === el.dataset.k || !el.dataset.k ? null : el.dataset.k; break;
+    case 'motos': S.motosAberto = !S.motosAberto; break;
+    case 'motos-abrir': S.tela = 2; S.motosAberto = true; break;
+    case 'aba': S.tabAba = el.dataset.k; break;
+    case 'gaveta': if (S.tela >= 11) S.cel.menu = !S.cel.menu; else S.gaveta = !S.gaveta; break;
+    case 'dd': S.dd = !S.dd; break;
+    case 'ir6': ir(6); S.cvAberta = false; break;
+    case 'conv': { S.conv = el.dataset.id; S.cvAberta = true; const c = D.conversas.find(x => x.id === S.conv); c.nl = 0; break; }
+    case 'cv-voltar': S.cvAberta = false; break;
+    case 'cv-fechar': S.tela = 2; break;
+    case 'conversar': { const c = D.conversas.find(x => x.moto === el.dataset.moto); if (c) { S.conv = c.id; c.nl = 0; c.rasc = `Pedido ${numTxt(ped(el.dataset.id))}: `; } S.cvAberta = true; if (S.tela >= 11) { toast('Abre a conversa com ' + el.dataset.moto); return; } S.tela = 6; break; }
+    case 'enviar': {
+      const inp = el.closest('.cv-input').querySelector('input');
+      const t = inp.value.trim();
+      if (!t) { inp.classList.add('erro'); inp.focus(); return; }
+      const c = D.conversas.find(x => x.id === S.conv); c.msgs.push(['eu', t, '19:37']); c.h = '19:37'; c.rasc = '';
+      render();
+      setTimeout(() => { c.msgs.push(['ele', 'Ok! 👍', '19:37']); render(); }, 1400);
+      return;
+    }
+    case 'escolher': { const e2 = ENDERECOS[+el.dataset.i]; S.novo.d = e2; S.novo.erro = false; break; }
+    case 'limpar-end': S.novo.d = null; S.novo.end = ''; break;
+    case 'marcar': {
+      if (e.target.closest('.mk')) return;
+      const r = el.firstElementChild.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width * 100, y = (e.clientY - r.top) / r.height * 100;
+      const km = Math.max(0.8, Math.hypot(x - LOJA.x, y - LOJA.y) / 10);
+      S.novo.d = { rua: 'Ponto marcado no mapa', bairro: 'confira o número com o cliente', x, y, km: Math.round(km * 10) / 10 }; S.novo.erro = false;
+      break;
+    }
+    case 'criar': {
+      if (!S.novo.d) { S.novo.erro = true; break; }
+      const d = S.novo.d, id = 'p' + Date.now();
+      D.pedidos.unshift({ id, num: 'RP' + Math.random().toString(36).slice(2, 6).toUpperCase(), origem: 'portal', st: 'oferta', moto: null, cliente: S.novo.nome || '', rua: d.rua, bairro: d.bairro, compl: S.novo.compl, ref: S.novo.ref, obs: '', cobra: { tipo: 'online' }, itens: [], prazo: null, criado: '19:37', km: d.km, min: Math.round(d.km * 3.2), dx: d.x, dy: d.y, rodada: 1, cd: 50, tl: [['Pedido criado no portal', '19:37'], ['Oferta aos motoboys perto da loja', '19:37'], ['Motoboy aceita', '', 1], ['Entregue', '', 1]] });
+      S.novo = S0().novo; S.ped = id; S.tela = 3; S.de = null;
+      toast('Pedido criado. Os motoboys perto da loja já estão recebendo.');
+      break;
+    }
+    case 'ext': S.ext = el.dataset.k; S.extTodos = false; break;
+    case 'ext-todos': S.extTodos = true; break;
+    case 'fatura': S.fatura = el.dataset.id; S.tela = 9; break;
+    case 'cfg': S.cfg = el.dataset.k; break;
+    case 'salvar': toast('Conta salva'); return;
+    case 'tema': { const esc = !document.documentElement.hasAttribute('data-theme-dark'); $('#tema').value = esc ? 'entregas-escuro' : 'entregas'; aplicaTema(); S.dd = false; break; }
+    case 'cel-folha': S.cel.folha = { baixa: 'media', media: 'alta', alta: 'baixa' }[S.cel.folha]; break;
+    case 'cel-abrir': S.cel.ped = el.dataset.id; S.mais = false; S.cancel = false; S.ped = el.dataset.id; break;
+    case 'cel-ir-pedido': S.tela = 11; S.cel.ped = el.dataset.id; S.ped = el.dataset.id; S.mais = false; break;
+    case 'cel-fechar': S.cel.ped = null; break;
+    case 'cel-menu': S.cel.menu = !S.cel.menu; break;
+    case 'cel-cv': toast('Abre as Conversas (no celular, a tela 6 em página cheia)'); return;
+    case 'reiniciar': D = DADOS0(); Object.assign(S, S0()); break;
+    case 'toast': toast(el.dataset.msg); return;
+  }
+  render();
+});
+document.addEventListener('input', e => {
+  const c = e.target.dataset && e.target.dataset.campo;
+  if (!c) return;
+  if (c === 'msg') { const cv = D.conversas.find(x => x.id === S.conv); cv.rasc = e.target.value; e.target.classList.remove('erro'); return; }
+  S.novo[c] = e.target.value;
+  if (c === 'end') {
+    const box = e.target.parentElement.querySelector('[data-sug]');
+    const sugs = e.target.value ? ENDERECOS.filter(x => (x.rua + ' ' + x.bairro).toLowerCase().includes(e.target.value.toLowerCase())).slice(0, 4) : [];
+    box.style.display = sugs.length ? '' : 'none';
+    box.innerHTML = sugs.map(x => `<button data-act="escolher" data-i="${ENDERECOS.indexOf(x)}"><i class="fa-solid fa-location-dot" style="color:var(--bad);margin-top:3px"></i><span>${x.rua}<small>${x.bairro} · Ribeirão Preto</small></span></button>`).join('');
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.dataset && e.target.dataset.campo === 'msg') { e.target.closest('.cv-input').querySelector('[data-act="enviar"]').click(); return; }
+  if (e.key === 'Escape') { if (S.gaveta || S.dd || S.cel.menu) { S.gaveta = false; S.dd = false; S.cel.menu = false; } else if (S.tela === 3) S.tela = 2; render(); }
+});
+function aplicaTema() {
+  const v = $('#tema').value;
+  $('#theme').href = '../themes/' + v + '.css';
+  document.body.classList.toggle('dark-chrome', v.includes('escuro'));
+  document.documentElement.toggleAttribute('data-theme-dark', v.includes('escuro'));
+}
+$('#tema').addEventListener('change', () => { aplicaTema(); render(); });
+// relógio da oferta (rodadas de 50 s)
+setInterval(() => {
+  D.pedidos.filter(p => p.st === 'oferta').forEach(p => {
+    p.cd = p.cd <= 0 ? 50 : p.cd - 1;
+    if (p.cd === 50) p.rodada = p.rodada >= 3 ? 1 : p.rodada + 1;
+  });
+  const p = ped(S.ped) || ped(S.cel.ped || '');
+  if (!p || p.st !== 'oferta') return;
+  document.querySelectorAll('[data-cd]').forEach(x => x.textContent = mmss(p.cd));
+  document.querySelectorAll('[data-rod]').forEach(x => x.textContent = p.rodada);
+  document.querySelectorAll('[data-barra]').forEach(x => x.style.width = (p.cd / 50 * 100) + '%');
+}, 1000);
+window.addEventListener('resize', render);
+const q = new URLSearchParams(location.search);
+if (q.get('v')) S.v = q.get('v');
+if (q.get('tela')) S.tela = +q.get('tela');
+if (q.get('ped')) S.ped = q.get('ped');
+render();
+</script>
+</body>
+</html>

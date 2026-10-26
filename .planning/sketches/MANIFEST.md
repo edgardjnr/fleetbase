@@ -20,6 +20,10 @@ Pedido aberto no console (sketch 008, 2026-10-25): o clique no pedido, em qualqu
 no portal (rota no mapa), com o conteúdo da Comanda do motoboy (app, sketch 007 B) e as ações do painel do Fleetbase
 no "Mais".
 
+Portal da loja unificado (sketch 009, 2026-10-25): todas as telas do `/customer-portal` refeitas no padrão do console
+(moldura areia, mapa com painéis, pedido aberto em folha, doca no celular, tokens da marca Entregas), com o Início
+virando um painel da loja. O que varia é o menu: igual ao console (trilho), gaveta ☰ ou abas no topo.
+
 ## Reference Points
 - O próprio portal em produção (https://entregas.restaurantepro.com.br/customer-portal).
 - Mesmas telas em A, B e C, com "comparar por tela" (preferência do Edgard).
@@ -36,3 +40,4 @@ no "Mais".
 | 006 | moldura-do-console | Como o cabeçalho do console e o menu lateral do Fleet-Ops ficam nas cores do painel, no claro e no escuro? | **C** (moldura em L cor de areia; folha do conteúdo com canto arredondado; módulos em barra segmentada; trilho de ícones em quadradinhos, ativo em laranja; lista direta com títulos de grupo) | console, cabeçalho, menu, sidebar, tema, mobile |
 | 007 | console-no-celular | Como fica o console inteiro no celular, na marca Entregas, com um rodapé que substitui a barra do Fleetbase? | **B** Doca flutuante | console, mobile, rodapé, navegação, tema |
 | 008 | pedido-aberto-no-console | Como o pedido abre no console (Mapa, Tabela, Painel e celular) com a rota no mapa e a folha no estilo Comanda do motoboy? | **A** (folha do portal: o clique leva ao mapa com a folha à direita e a pílula Voltar; rota do motoboy pelas ruas, feito em cinza e falta em laranja; comanda com cliente, cobrança, 0800, cupom, motoboy e loja; ações do Fleetbase no Mais) | console, pedido, detalhe, comanda, cliente, mobile |
+| 009 | portal-da-loja-unificado | Como o portal da loja (/customer-portal) fica no padrão do /fleet-ops em todas as telas (12, desktop e celular)? | **S** (síntese: Início da B; telas 2 a 12 da C, com abas no cabeçalho, mapa cheio e lista à esquerda; pedido aberto, novo pedido e Conversas sempre numa folha à direita) | portal-da-loja, layout, menu, pedidos, financeiro, conversas, mobile |
