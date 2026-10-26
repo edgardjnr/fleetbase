@@ -61,6 +61,16 @@ export function dataDoDia(dia) {
     return partes ? new Date(Number(partes[1]), Number(partes[2]) - 1, Number(partes[3])) : null;
 }
 
+/**
+ * ISO do servidor ('2026-10-27T14:30:00-03:00') → { data: '27/10/2026', dia: '27/10', hora: '14:30' }, pela hora ESCRITA
+ * no ISO (o servidor já manda no fuso da empresa; new Date() converteria para o fuso do navegador). null se inválido.
+ */
+export function quandoDoIso(iso) {
+    const partes = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(String(iso ?? ''));
+
+    return partes ? { data: `${partes[3]}/${partes[2]}/${partes[1]}`, dia: `${partes[3]}/${partes[2]}`, hora: `${partes[4]}:${partes[5]}` } : null;
+}
+
 const FORMATADORES = new Map();
 
 /**
@@ -194,6 +204,11 @@ export function podeEstornar(lancamento) {
         return false;
     }
     if (lancamento.fatura?.numero) {
+        return false;
+    }
+    // saque Pix pelo app: o servidor não deixa estornar à mão (em andamento, a rotina resolve; concluído, só com ajuste;
+    // falho, já foi estornado sozinho)
+    if (lancamento.pagamento?.saque) {
         return false;
     }
     if (lancamento.tipo === 'pagamento' || lancamento.tipo === 'recebimento') {
@@ -428,25 +443,39 @@ export function diaAoTrocarDeCiclo(ciclo, diaAtual) {
     return 0;
 }
 
-const ROTA_DO_PEDIDO ='operations.orders.index.details';
+const ROTA_DO_PEDIDO = 'operations.orders.index.details';
 const ROTA_DA_FATURA = 'financeiro.fatura';
+const ROTA_DOS_SAQUES = 'financeiro.saques';
 const ATENCAO = {
     fatura_vencida: { icone: 'circle-exclamation', cor: 'text-red-600 dark:text-red-400', rota: ROTA_DA_FATURA },
     rascunho: { icone: 'file-pen', cor: 'text-yellow-600 dark:text-yellow-400', rota: ROTA_DA_FATURA },
     email_nao_enviado: { icone: 'envelope', cor: 'text-yellow-600 dark:text-yellow-400', rota: ROTA_DA_FATURA },
     sem_loja: { icone: 'store-slash', cor: 'text-gray-500 dark:text-gray-400', rota: ROTA_DO_PEDIDO },
     sem_valor: { icone: 'ruler', cor: 'text-gray-500 dark:text-gray-400', rota: ROTA_DO_PEDIDO },
+    // saque Pix pelo app (Saques::atencao no servidor): abrem a tela Saques Pix já filtrada
+    saque_falhou: { icone: 'circle-exclamation', cor: 'text-red-600 dark:text-red-400', rota: ROTA_DOS_SAQUES, consulta: { situacao: 'falhou' } },
+    saque_parado: { icone: 'hourglass-half', cor: 'text-yellow-600 dark:text-yellow-400', rota: ROTA_DOS_SAQUES, consulta: { situacao: '' } },
 };
 
 /**
- * Item da lista "Atenção" do painel → { tipo, icone, cor, chave, params, rota, modelo } para o template (rota relativa ao
- * engine; fatura → financeiro.fatura com o uuid, pedido → detalhes do pedido com o public_id). Tipo desconhecido: null.
- * `f` = formatadores(idioma).
+ * Item da lista "Atenção" do painel → { tipo, icone, cor, chave, params, rota, modelo, consulta? } para o template (rota
+ * relativa ao engine; fatura → financeiro.fatura com o uuid, pedido → detalhes do pedido com o public_id, saque Pix →
+ * financeiro.saques sem modelo e com o filtro em `consulta`). Tipo desconhecido: null. `f` = formatadores(idioma).
  */
 export function itemDeAtencao(item, f) {
     const config = ATENCAO[item?.tipo];
     if (!config) {
         return null;
+    }
+    const base = { tipo: item.tipo, icone: config.icone, cor: config.cor, chave: `${PREFIXO}.painel.atencao.${item.tipo}`, rota: config.rota };
+    if (config.rota === ROTA_DOS_SAQUES) {
+        const desde = quandoDoIso(item.desde);
+        return {
+            ...base,
+            modelo: null,
+            consulta: { ...config.consulta },
+            params: { valor: f.valor(item.valor), motoboy: item.motoboy ?? '', motivo: item.motivo || '—', hora: desde?.hora ?? '', dia: desde?.dia ?? '' },
+        };
     }
     const ehPedido = config.rota === ROTA_DO_PEDIDO;
     // sem o id não há link (o LinkTo sem o modelo quebra a tela inteira): o item sai da lista
@@ -458,15 +487,7 @@ export function itemDeAtencao(item, f) {
         ? { numero: item.numero || item.pedido }
         : { numero: item.numero ?? '', loja: item.loja ?? '', valor: f.valor(item.valor), vencimento: f.dia(item.vencimento) };
 
-    return {
-        tipo: item.tipo,
-        icone: config.icone,
-        cor: config.cor,
-        chave: `${PREFIXO}.painel.atencao.${item.tipo}`,
-        params,
-        rota: config.rota,
-        modelo,
-    };
+    return { ...base, params, modelo };
 }
 
 const dataBr = (data) => {
