@@ -27,6 +27,12 @@ final class Saque
     /** Minutos até a rotina procurar no Asaas o saque que ficou sem transfer_id (a API caiu no meio do envio). */
     public const MINUTOS_SEM_TRANSFERENCIA = 5;
 
+    /**
+     * Minutos até a rotina tratar como órfão o saque cujo transfer_id dá 404 no Asaas: procura pelo externalReference
+     * (achou, adota; não achou, falha e devolve). Antes disso, um 404 só espera.
+     */
+    public const MINUTOS_ORFAO = 30;
+
     /** Minutos em que a validação aceita um saque (ou o teste) ainda sem transfer_id gravado. */
     public const MINUTOS_DA_VALIDACAO = 2;
 
