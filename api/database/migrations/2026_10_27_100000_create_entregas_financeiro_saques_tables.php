@@ -33,6 +33,9 @@ return new class extends Migration
             $table->timestamp('validacao_confirmada_em')->nullable();
             $table->string('teste_transfer_id', 64)->nullable();
             $table->timestamp('teste_pedido_em')->nullable();
+            $table->char('teste_pedido_por', 36)->nullable();
+            $table->unsignedTinyInteger('testes_no_dia')->default(0); // testes da validação pedidos em testes_dia (máx. 5)
+            $table->date('testes_dia')->nullable();                   // dia de Brasília (Financeiro::hoje)
             $table->boolean('saque_ligado')->default(false);
             $table->decimal('minimo', 10, 2)->default(10);
             $table->decimal('maximo_dia', 10, 2)->default(500);

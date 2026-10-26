@@ -3,6 +3,7 @@
 namespace App\Support\Entregas\Saques;
 
 use App\Support\Entregas\Financeiro\ChavePix;
+use App\Support\Entregas\Financeiro\Financeiro;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -22,6 +23,9 @@ final class ConexaoAsaas
     public const TAMANHO_MINIMO_DA_CHAVE = 20;
 
     public const VALOR_DO_TESTE = 1.0;
+
+    /** Testes da validação por central por dia (de Brasília). */
+    public const TESTES_POR_DIA = 5;
 
     public const CAMINHO_DA_VALIDACAO = '/v1/entregas/asaas/validar-saque';
 
@@ -172,8 +176,12 @@ final class ConexaoAsaas
         return $token;
     }
 
-    /** Manda R$ 1,00 para a chave Pix do admin; a validação do Entregas precisa recusar (e aí confirma). */
-    public static function testarValidacao(string $companyUuid, $tipo, $chavePix): object
+    /**
+     * Manda R$ 1,00 para a chave Pix do admin; a validação do Entregas precisa recusar (e aí confirma). Um teste por vez
+     * (o anterior ainda sem resposta da validação segura por MINUTOS_DA_VALIDACAO) e no máximo TESTES_POR_DIA por dia
+     * (de Brasília); grava e loga quem pediu, com a chave Pix escondida.
+     */
+    public static function testarValidacao(string $companyUuid, $tipo, $chavePix, ?string $usuarioUuid): object
     {
         $conexao = static::daEmpresa($companyUuid);
         if (!$conexao) {
@@ -192,9 +200,31 @@ final class ConexaoAsaas
         }
 
         $agora = now()->format('Y-m-d H:i:s');
-        DB::table(Saque::CONEXOES)->where('company_uuid', $companyUuid)->update([
-            'teste_pedido_em' => $agora, 'teste_transfer_id' => null, 'validacao_confirmada_em' => null, 'updated_at' => $agora,
-        ]);
+        $hoje  = Financeiro::hoje($companyUuid);
+        DB::transaction(function () use ($companyUuid, $usuarioUuid, $agora, $hoje) {
+            // a linha travada: dois pedidos ao mesmo tempo não passam juntos pelo "um por vez" nem pela contagem do dia
+            $linha = DB::table(Saque::CONEXOES)->where('company_uuid', $companyUuid)->lockForUpdate()->first();
+            if (!$linha) {
+                throw new \InvalidArgumentException('Conecte a conta Asaas primeiro.');
+            }
+            $recente = now()->subMinutes(Saque::MINUTOS_DA_VALIDACAO)->format('Y-m-d H:i:s');
+            if ($linha->validacao_confirmada_em === null && $linha->teste_pedido_em !== null && (string) $linha->teste_pedido_em > $recente) {
+                throw new \InvalidArgumentException('Espere o resultado do teste anterior.');
+            }
+            $testes = (string) $linha->testes_dia === $hoje ? (int) $linha->testes_no_dia : 0;
+            if ($testes >= static::TESTES_POR_DIA) {
+                throw new \InvalidArgumentException('Limite de testes de hoje atingido.');
+            }
+            DB::table(Saque::CONEXOES)->where('company_uuid', $companyUuid)->update([
+                'teste_pedido_em'         => $agora,
+                'teste_pedido_por'        => $usuarioUuid,
+                'teste_transfer_id'       => null,
+                'validacao_confirmada_em' => null,
+                'testes_no_dia'           => $testes + 1,
+                'testes_dia'              => $hoje,
+                'updated_at'              => $agora,
+            ]);
+        });
         $resposta = (new AsaasCliente($chave))->transferirPix(static::VALOR_DO_TESTE, $pix['chave'], Saque::TIPOS_ASAAS[$pix['tipo']], 'Teste da validação de saque do Entregas', 'teste:' . Str::uuid());
         $id       = $resposta->dados['id'] ?? null;
         if ($resposta->ok() && is_string($id) && $id !== '') {
@@ -205,7 +235,7 @@ final class ConexaoAsaas
         } elseif (!$resposta->ok()) {
             throw new \InvalidArgumentException($resposta->mensagem('O Asaas recusou o teste.'));
         }
-        Log::info('[entregas] saque: teste da validação pedido', ['empresa' => $companyUuid, 'transfer' => $id]);
+        Log::info('[entregas] saque: teste da validação pedido', ['empresa' => $companyUuid, 'por' => $usuarioUuid, 'transfer' => $id, 'chave' => Saque::chaveEscondida($pix['chave'], $pix['tipo'])]);
 
         return static::daEmpresa($companyUuid);
     }

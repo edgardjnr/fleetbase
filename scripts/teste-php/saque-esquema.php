@@ -29,12 +29,13 @@ function colunas(\Illuminate\Database\Schema\Blueprint $blueprint): array
 
 confere(array_keys(Schema::$criadas) === ['entregas_asaas_conexoes', 'entregas_saques'], 'cria as duas tabelas');
 $conexoes = colunas(Schema::$criadas['entregas_asaas_conexoes']);
-foreach (['company_uuid', 'chave_cifrada', 'conta_nome', 'conta_documento', 'wallet_id', 'conectada_por', 'conectada_em', 'token_hash', 'token_gerado_em', 'validacao_confirmada_em', 'teste_transfer_id', 'teste_pedido_em', 'saque_ligado', 'minimo', 'maximo_dia', 'saques_dia', 'taxa', 'atualizada_por'] as $nome) {
+foreach (['company_uuid', 'chave_cifrada', 'conta_nome', 'conta_documento', 'wallet_id', 'conectada_por', 'conectada_em', 'token_hash', 'token_gerado_em', 'validacao_confirmada_em', 'teste_transfer_id', 'teste_pedido_em', 'teste_pedido_por', 'testes_no_dia', 'testes_dia', 'saque_ligado', 'minimo', 'maximo_dia', 'saques_dia', 'taxa', 'atualizada_por'] as $nome) {
     confere(isset($conexoes[$nome]), "entregas_asaas_conexoes.{$nome}");
 }
 confere(array_key_exists('unique', $conexoes['company_uuid']->modificadores), 'uma conexão por empresa');
 confere($conexoes['chave_cifrada']->tipo === 'text', 'chave cifrada em text');
 confere(array_key_exists('unique', $conexoes['token_hash']->modificadores) && ($conexoes['token_hash']->argumentos[1] ?? null) === 64, 'token: só o hash (64), único');
+confere($conexoes['testes_no_dia']->tipo === 'unsignedTinyInteger' && ($conexoes['testes_no_dia']->modificadores['default'][0] ?? null) === 0 && $conexoes['testes_dia']->tipo === 'date' && array_key_exists('nullable', $conexoes['testes_dia']->modificadores) && ($conexoes['teste_pedido_por']->argumentos[1] ?? null) === 36, 'teste da validação: quem pediu e a contagem do dia (começa em 0)');
 confere(($conexoes['saque_ligado']->modificadores['default'][0] ?? null) === false, 'saque nasce desligado');
 confere(($conexoes['minimo']->modificadores['default'][0] ?? null) === 10 && ($conexoes['maximo_dia']->modificadores['default'][0] ?? null) === 500 && ($conexoes['saques_dia']->modificadores['default'][0] ?? null) === 3 && ($conexoes['taxa']->modificadores['default'][0] ?? null) === 0, 'padrões: mínimo 10, máximo/dia 500, 3 saques/dia, taxa 0');
 
@@ -53,7 +54,7 @@ echo '== Banco em memória' . PHP_EOL;
 reiniciarFinanceiro();
 \Illuminate\Support\Facades\DB::table('entregas_asaas_conexoes')->insert(['company_uuid' => 'empresa-1', 'chave_cifrada' => 'x', 'wallet_id' => 'w']);
 $linha = linhasDe('entregas_asaas_conexoes')[0];
-confere($linha['saque_ligado'] === false && $linha['minimo'] === 10 && $linha['saques_dia'] === 3, 'o banco em memória lê a migration nova (padrões aplicados)');
+confere($linha['saque_ligado'] === false && $linha['minimo'] === 10 && $linha['saques_dia'] === 3 && $linha['testes_no_dia'] === 0, 'o banco em memória lê a migration nova (padrões aplicados)');
 
 echo '== Configuração' . PHP_EOL;
 $servicos = file_get_contents('/repo/api/config/services.php');

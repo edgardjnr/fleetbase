@@ -14,7 +14,9 @@ use App\Support\Entregas\Saques\ErroDoAsaas;
 use Fleetbase\Models\CompanyUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Teste\Http as HttpFalso;
+use Teste\Relogio;
 use Teste\UsuarioDoSaque;
 
 function mensagem(callable $fazer): ?string
@@ -93,18 +95,49 @@ confere(mensagem(fn () => ConexaoAsaas::gerarToken('empresa-9')) === 'Conecte a 
 
 echo '== Teste da validação' . PHP_EOL;
 confere(mensagem(fn () => ConexaoAsaas::configurar('empresa-1', ['saque_ligado' => true], 'user-admin')) === 'Teste a validação de saque antes de ligar.', 'não liga sem a validação testada');
-confere(mensagem(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '123')) === 'Chave Pix inválida para o tipo escolhido.', 'teste: chave Pix inválida');
+confere(mensagem(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '123', 'user-admin')) === 'Chave Pix inválida para o tipo escolhido.', 'teste: chave Pix inválida');
 $antes = count(HttpFalso::$chamadas);
 asaas(200, ['id' => 'tra_teste', 'status' => 'PENDING']);
-ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '123.456.789-01');
+ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '123.456.789-01', 'user-admin');
 $c = HttpFalso::$chamadas[$antes];
 confere($c['metodo'] === 'POST' && $c['url'] === 'https://asaas.teste/v3/transfers' && $c['dados']['value'] === 1.0 && $c['dados']['pixAddressKey'] === '12345678901' && $c['dados']['pixAddressKeyType'] === 'CPF' && str_starts_with($c['dados']['externalReference'], 'teste:'), 'teste: R$ 1,00 para a chave do admin: ' . json_encode($c['dados']));
 confere(($c['headers']['access_token'] ?? null) === 'chave-nova-da-mesma-conta-999', 'teste: com a chave da central decifrada');
 confere(conexao()->teste_transfer_id === 'tra_teste' && conexao()->teste_pedido_em === '2026-10-27 10:00:00' && conexao()->validacao_confirmada_em === null, 'teste pedido: id gravado, validação ainda não confirmada');
+confere(conexao()->teste_pedido_por === 'user-admin' && (int) conexao()->testes_no_dia === 1 && conexao()->testes_dia === '2026-10-27', 'teste pedido: quem pediu e a contagem do dia');
+confere(end(Log::$registros) === ['info', '[entregas] saque: teste da validação pedido', ['empresa' => 'empresa-1', 'por' => 'user-admin', 'transfer' => 'tra_teste', 'chave' => '*******8901']], 'log: quem pediu e a chave escondida: ' . json_encode(end(Log::$registros), JSON_UNESCAPED_UNICODE));
+Relogio::$agora = '2026-10-27 10:02:00';
 asaas(400, ['errors' => [['description' => 'Saldo insuficiente.']]]);
-confere(mensagem(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901')) === 'Saldo insuficiente.', 'teste recusado pelo Asaas: a mensagem dele');
+confere(mensagem(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901', 'user-admin')) === 'Saldo insuficiente.', 'teste recusado pelo Asaas: a mensagem dele');
+Relogio::$agora = '2026-10-27 10:04:00';
 HttpFalso::$respostas[] = 'conexao';
-confere(excecao(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901')) instanceof ErroDoAsaas, 'teste sem resposta: ErroDoAsaas');
+confere(excecao(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901', 'user-admin')) instanceof ErroDoAsaas, 'teste sem resposta: ErroDoAsaas');
+
+echo '== Teste da validação: um por vez e no máximo 5 por dia' . PHP_EOL;
+centralComSaque(['validacao_confirmada_em' => null, 'saque_ligado' => false]);
+/** Pede o teste às $quando (com a resposta $id do Asaas, se vier): null se passou, a mensagem se recusou. */
+function testar(string $quando, ?string $id = null): ?string
+{
+    Relogio::$agora = $quando;
+    if ($id !== null) {
+        asaas(200, ['id' => $id, 'status' => 'PENDING']);
+    }
+    $chamadas = count(HttpFalso::$chamadas);
+    $erro     = mensagem(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901', 'user-admin'));
+    if ($erro !== null && count(HttpFalso::$chamadas) !== $chamadas) {
+        return 'chamou o Asaas: ' . $erro;
+    }
+
+    return $erro;
+}
+confere(testar('2026-10-27 10:00:00', 'tra_1') === null, '1º teste do dia');
+confere(testar('2026-10-27 10:01:59') === 'Espere o resultado do teste anterior.' && (int) conexao()->testes_no_dia === 1 && conexao()->teste_transfer_id === 'tra_1', 'outro teste antes de 2 min, sem a validação confirmar: recusado sem chamar o Asaas');
+DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-1')->update(['validacao_confirmada_em' => '2026-10-27 10:00:30']);
+confere(testar('2026-10-27 10:01:59', 'tra_2') === null && (int) conexao()->testes_no_dia === 2, 'validação confirmada: pode testar de novo logo');
+confere(testar('2026-10-27 10:04:00', 'tra_3') === null, '3º: o anterior sem resposta há 2 min já não segura');
+confere(testar('2026-10-27 10:06:00', 'tra_4') === null && testar('2026-10-27 10:08:00', 'tra_5') === null && (int) conexao()->testes_no_dia === 5, '4º e 5º');
+confere(testar('2026-10-27 23:59:00') === 'Limite de testes de hoje atingido.' && (int) conexao()->testes_no_dia === 5 && conexao()->teste_transfer_id === 'tra_5', '6º no mesmo dia: recusado sem chamar o Asaas');
+confere(testar('2026-10-28 00:00:30', 'tra_6') === null && (int) conexao()->testes_no_dia === 1 && conexao()->testes_dia === '2026-10-28', 'dia seguinte (Brasília): a contagem recomeça');
+confere(conexao()->teste_pedido_por === 'user-admin', 'quem pediu fica gravado');
 
 echo '== Limites e ligar' . PHP_EOL;
 DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-1')->update(['validacao_confirmada_em' => '2026-10-27 10:00:05']);
