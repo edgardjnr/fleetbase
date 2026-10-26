@@ -680,8 +680,11 @@ function cardPedido(p, cls = 'lp') {
     <div class="l1"><b>${numTxt(p)}</b>${origem(p)}<span class="sp" style="flex:1"></span>${sit(p)}</div>
     <div class="l2">${motoTxt} · ${nome(p) || 'Cliente'} · ${p.criado} ${pz(p)}</div></div>`;
 }
+// ordem da lista: quem vence o prazo de entrega primeiro fica em cima (os atrasados no topo, o mais atrasado antes);
+// sem prazo vai para o fim, o mais antigo antes
+const porPrazo = (a, b) => (a.prazo == null) - (b.prazo == null) || (a.prazo ?? 0) - (b.prazo ?? 0) || a.criado.localeCompare(b.criado);
 function listaPedidos(cls) {
-  const at = ativos(), fim = D.pedidos.filter(p => !ativo(p));
+  const at = ativos().sort(porPrazo), fim = D.pedidos.filter(p => !ativo(p));
   const filtrados = S.filtro ? at.filter(p => S.filtro === 'atrasado' ? p.prazo != null && p.prazo < 0 : p.st === S.filtro) : at;
   return `${filtrados.map(p => cardPedido(p, cls)).join('') || '<div class="muted" style="padding:16px;text-align:center">Nenhum pedido nesse filtro</div>'}
     <div class="grupo-tit">Encerrados hoje</div>${fim.map(p => cardPedido(p, cls)).join('')}`;
@@ -876,7 +879,7 @@ function telaMapa(v, modo) {
     // S: a lista de Pedidos fica à direita; o que abre (pedido, novo pedido, Conversas) entra no lugar dela e, ao fechar, a lista volta
     const aberto = modo !== 'lista';
     let s = mapa({ ...foco, ins: aberto ? [3, 36] : [3, 31], legEsq: 56 }) + zoomCtl(12);
-    const lista = `<div class="ph" style="gap:10px"><b style="font-size:1.5rem">Pedidos</b><span class="aovivo-sel">ao vivo</span><nav class="seg claro" style="margin-left:auto"><a class="on" data-act="ir" data-t="2">${ic('map')}</a><a data-act="ir" data-t="4" title="Tabela">${ic('table-list')}</a></nav></div><div class="lista">${listaPedidos('lp')}</div>`;
+    const lista = `<div class="ph" style="gap:10px"><b style="font-size:1.5rem">Pedidos</b><span class="aovivo-sel">ao vivo</span><nav class="seg claro" style="margin-left:auto"><a class="on" data-act="ir" data-t="2">${ic('map')}</a><a data-act="ir" data-t="4" title="Tabela">${ic('table-list')}</a></nav></div><div class="grupo-tit" style="display:flex;gap:6px;align-items:center">${ic('arrow-down-short-wide')} Em andamento · vence primeiro em cima</div><div class="lista">${listaPedidos('lp')}</div>`;
     const dir = modo === 'pedido' ? folhaPedido(p) : modo === 'novo' ? formNovo() : modo === 'conversas' ? cvPainelCompacto({ fechar: true }) : lista;
     s += `<div class="ov painel fo" style="right:12px;top:12px;bottom:12px;width:${aberto ? 440 : 380}px">${dir}</div>`;
     if (!aberto) {
@@ -1020,7 +1023,7 @@ function celPedidos(v) {
   const h = { baixa: 130, media: 330, alta: 600 }[alt];
   const corpo = p ? folhaPedido(p, { cel: true, semX: true, voltarLista: true }).replace('data-act="fechar"', 'data-act="cel-fechar"')
     : `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${['oferta', 'atrasado', 'loja', 'rota'].map(k => { const n = k === 'atrasado' ? ativos().filter(x => x.prazo != null && x.prazo < 0).length : ativos().filter(x => x.st === k).length; return `<button class="cont ${S.filtro === k ? 'on' : ''}" style="box-shadow:none;border-color:var(--line);padding:4px 10px" data-act="filtro" data-k="${k}"><b>${n}</b> ${{ oferta: 'sem motoboy', atrasado: 'atrasado', loja: 'à loja', rota: 'a caminho' }[k]}</button>`; }).join('')}</div>
-       <div style="display:flex;flex-direction:column;gap:8px">${ativos().filter(x => !S.filtro || (S.filtro === 'atrasado' ? x.prazo != null && x.prazo < 0 : x.st === S.filtro)).map(x => cardPedido(x, 'm-card').replace('data-act="abrir"', 'data-act="cel-abrir"')).join('')}</div>`;
+       <div style="display:flex;flex-direction:column;gap:8px">${ativos().sort(porPrazo).filter(x => !S.filtro || (S.filtro === 'atrasado' ? x.prazo != null && x.prazo < 0 : x.st === S.filtro)).map(x => cardPedido(x, 'm-card').replace('data-act="abrir"', 'data-act="cel-abrir"')).join('')}</div>`;
   return `<div class="m-corpo">${mapa(p ? { foco: p.id, legenda: false } : { rotulos: true })}
     <div class="folha-b" style="height:${h}px;bottom:${base}px;${base ? 'border-radius:20px;left:8px;right:8px;' : ''}"><div class="alca" data-act="cel-folha"></div>
     ${p ? '' : `<div style="display:flex;align-items:center;gap:8px;padding:0 14px 8px"><b class="disp" style="font-size:1.4rem">Pedidos</b><span class="aovivo-sel">ao vivo</span><span class="muted" style="margin-left:auto;font-size:12.5px">${ativos().length} em andamento</span></div>`}

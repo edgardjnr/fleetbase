@@ -117,6 +117,10 @@ tela".
   - Ao vivo à esquerda e o mapa à direita.
 - **Pedidos (telas 2 a 5):** o mapa vai de ponta a ponta, com a lista de pedidos flutuando **à direita** (380 px). As
   contagens que filtram e o "N motoboys online" ficam no canto de cima à esquerda.
+- **Ordem da lista** (pedido do Edgard em 2026-10-26, "pra facilitar ver os atrasados"): **quem vence o prazo de entrega
+  primeiro fica em cima**. Os atrasados vão para o topo, o mais atrasado antes. Pedido sem prazo vai para o fim, o mais
+  antigo antes. Os encerrados de hoje vêm embaixo, separados. A mesma ordem vale na lista do celular.
+  - Na implementação, ordenar pelo `meta.entregas_prazo_em` (o mesmo do cronômetro do card), não pela criação.
 - **Tudo o que abre fica à direita, numa folha de 440 px, no lugar da lista** (pedido do Edgard em 2026-10-26: "quando
   abrir algo que sobrepõe ele, ele some, e depois volta"):
   - o pedido aberto (comanda do 008 A);
