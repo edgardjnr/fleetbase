@@ -64,6 +64,7 @@ return new class extends Migration
             $table->unsignedBigInteger('taxa_lancamento_id')->nullable();
             $table->string('comprovante_url', 500)->nullable();  // transactionReceiptUrl do Asaas (só endereço *.asaas.com)
             $table->timestamp('aprovado_em')->nullable();        // a validação de saque do Asaas aprovou (ValidacaoDeSaque)
+            $table->string('aprovado_transfer_id', 64)->nullable(); // a transferência aprovada (uma só por saque)
             $table->timestamp('concluido_em')->nullable();
             $table->timestamps();
             $table->index(['company_uuid', 'situacao'], 'ent_saq_situacao');

@@ -12,14 +12,17 @@ use Illuminate\Support\Facades\Log;
  * decisão vai ao log (sem o token).
  *
  * Aprova só o saque nosso em andamento, e a validação NUNCA grava o transfer_id (quem grava é o envio, com o id da
- * resposta do NOSSO POST; uma transferência criada por quem tem a chave de API não pode "tomar" um saque):
+ * resposta do NOSSO POST; uma transferência criada por quem tem a chave de API não pode "tomar" um saque). Em todo
+ * caminho, `operationType`, se vier, tem de ser PIX.
  * - por id: o saque em andamento da central com este transfer_id, valor igual e, se o pedido trouxer, a mesma chave Pix
  *   (e o mesmo externalReference);
  * - sem id gravado (o Asaas chamou antes de recebermos a resposta do POST), só um saque "enviando" sem id dos últimos
- *   2 min: (a) o pedido traz o externalReference dele ("saque:<uuid>"), com valor igual (e chave igual, se vier); ou
- *   (b) sem externalReference: um único candidato com o mesmo valor e o pedido traz a chave Pix, igual à do saque (o
- *   dinheiro iria para o próprio motoboy). Mais de um candidato ou sem chave para conferir: recusa.
- * Ao aprovar, grava `aprovado_em` no saque (a conclusão sem ele vai ao log como crítica).
+ *   2 min, escolhido (a) pelo externalReference dele ("saque:<uuid>") ou (b) sem externalReference, por ser o único
+ *   candidato com o mesmo valor. O externalReference só ESCOLHE (quem tem a chave de API pode copiá-lo): a aprovação
+ *   exige sempre o valor igual e a chave Pix no pedido, não mascarada e igual à do saque (o dinheiro iria para o próprio
+ *   motoboy). Mais de um candidato, sem chave ou chave mascarada: recusa.
+ * Uma aprovação por saque: grava `aprovado_em` e `aprovado_transfer_id` juntos, só se o saque não foi aprovado para
+ * outra transferência (senão recusa e Log::critical). A conclusão sem aprovação vai ao log como crítica.
  */
 final class ValidacaoDeSaque
 {
@@ -55,6 +58,11 @@ final class ValidacaoDeSaque
 
         $chaveDeles = static::texto($transfer['bankAccount']['pixAddressKey'] ?? null) ?? static::texto($transfer['pixAddressKey'] ?? null);
         $referencia = static::texto($transfer['externalReference'] ?? null);
+        $operacao   = $transfer['operationType'] ?? null;
+        if ($operacao !== null && $operacao !== 'PIX') {
+            // TED, conta Asaas, etc.: o saque do motoboy é sempre Pix
+            return static::decisao($empresa, $id, false, 'Transferência não é Pix.');
+        }
 
         $saque = DB::table(Saque::TABELA)->where('company_uuid', $empresa)->where('transfer_id', $id)->whereIn('situacao', Saque::EM_ANDAMENTO)->first();
         if ($saque) {
@@ -75,9 +83,10 @@ final class ValidacaoDeSaque
             ->all();
 
         if ($referencia !== null) {
+            // o externalReference só escolhe o candidato; quem aprova é a chave Pix (semIdEAprovar)
             foreach ($candidatos as $candidato) {
                 if ((string) $candidato->external_reference === $referencia) {
-                    return static::conferirEAprovar($empresa, $id, $candidato, $valor, $chaveDeles);
+                    return static::semIdEAprovar($empresa, $id, $candidato, $valor, $chaveDeles);
                 }
             }
 
@@ -88,12 +97,14 @@ final class ValidacaoDeSaque
         if (count($mesmoValor) !== 1) {
             return static::decisao($empresa, $id, false, 'Transferência não reconhecida pelo Entregas.');
         }
-        if ($chaveDeles === null) {
-            // sem o id nem o externalReference, só a chave garante que o dinheiro vai para o motoboy
-            return static::decisao($empresa, $id, false, 'Transferência sem chave Pix para conferir.', (string) $mesmoValor[0]->uuid);
-        }
 
-        return static::conferirEAprovar($empresa, $id, $mesmoValor[0], $valor, $chaveDeles);
+        return static::semIdEAprovar($empresa, $id, $mesmoValor[0], $valor, $chaveDeles);
+    }
+
+    /** A chave veio com parte escondida pelo Asaas ("*"): não dá para comparar. */
+    public static function mascarada(string $chave): bool
+    {
+        return str_contains($chave, '*');
     }
 
     /** A nossa chave e a do Asaas são a mesma (telefone: as duas como 55 + DDD + número, comparadas inteiras). */
@@ -129,7 +140,7 @@ final class ValidacaoDeSaque
             && $valor === Saque::centavos(ConexaoAsaas::VALOR_DO_TESTE);
     }
 
-    /** Valor igual e, se o pedido trouxe a chave Pix, a mesma chave: APPROVED (e grava aprovado_em); senão, recusa. */
+    /** Valor igual e, se o pedido trouxe a chave Pix, a mesma chave: aprova (uma vez por saque); senão, recusa. */
     private static function conferirEAprovar(string $empresa, string $id, object $saque, int $valor, ?string $chaveDeles): array
     {
         if (Saque::centavos($saque->valor) !== $valor) {
@@ -138,10 +149,62 @@ final class ValidacaoDeSaque
         if ($chaveDeles !== null && !static::mesmaChave((string) $saque->chave_pix, (string) $saque->tipo_chave, $chaveDeles)) {
             return static::decisao($empresa, $id, false, 'Chave Pix diferente da cadastrada.', (string) $saque->uuid);
         }
-        $agora = now()->format('Y-m-d H:i:s');
-        DB::table(Saque::TABELA)->where('id', $saque->id)->update(['aprovado_em' => $agora, 'updated_at' => $agora]);
 
-        return static::decisao($empresa, $id, true, 'Saque do motoboy.', (string) $saque->uuid);
+        return static::aprovar($empresa, $id, $saque);
+    }
+
+    /**
+     * Sem o id gravado, nada prova que a transferência é a nossa: valor igual e a chave Pix no pedido, inteira (não
+     * mascarada) e igual à do saque; senão, recusa.
+     */
+    private static function semIdEAprovar(string $empresa, string $id, object $saque, int $valor, ?string $chaveDeles): array
+    {
+        if (Saque::centavos($saque->valor) !== $valor) {
+            return static::decisao($empresa, $id, false, 'Valor diferente do saque pedido.', (string) $saque->uuid);
+        }
+        if ($chaveDeles === null) {
+            return static::decisao($empresa, $id, false, 'Transferência sem chave Pix para conferir.', (string) $saque->uuid);
+        }
+        if (static::mascarada($chaveDeles)) {
+            return static::decisao($empresa, $id, false, 'Chave Pix mascarada; não dá para conferir.', (string) $saque->uuid);
+        }
+        if (!static::mesmaChave((string) $saque->chave_pix, (string) $saque->tipo_chave, $chaveDeles)) {
+            return static::decisao($empresa, $id, false, 'Chave Pix diferente da cadastrada.', (string) $saque->uuid);
+        }
+
+        return static::aprovar($empresa, $id, $saque);
+    }
+
+    /**
+     * APPROVED, uma transferência por saque: grava aprovado_em e aprovado_transfer_id juntos, só se o saque ainda está em
+     * andamento e não foi aprovado para outra transferência (a mesma de novo, o Asaas repetindo a pergunta, aprova).
+     * Já aprovado para outra: recusa e Log::critical.
+     */
+    private static function aprovar(string $empresa, string $id, object $saque): array
+    {
+        $agora = now()->format('Y-m-d H:i:s');
+        $feito = DB::table(Saque::TABELA)
+            ->where('id', $saque->id)
+            ->whereIn('situacao', Saque::EM_ANDAMENTO)
+            ->where(fn ($q) => $q->whereNull('aprovado_transfer_id')->orWhere('aprovado_transfer_id', $id))
+            ->update(['aprovado_em' => $agora, 'aprovado_transfer_id' => $id, 'updated_at' => $agora]);
+        if ($feito > 0) {
+            return static::decisao($empresa, $id, true, 'Saque do motoboy.', (string) $saque->uuid);
+        }
+
+        // o MySQL conta só linhas que mudaram: relê para saber por que não gravou
+        $atual    = DB::table(Saque::TABELA)->where('id', $saque->id)->first();
+        $aprovada = $atual->aprovado_transfer_id ?? null;
+        if ($atual && in_array($atual->situacao, Saque::EM_ANDAMENTO, true) && $aprovada !== null && (string) $aprovada === $id) {
+            return static::decisao($empresa, $id, true, 'Saque do motoboy.', (string) $saque->uuid);
+        }
+        if ($aprovada !== null && (string) $aprovada !== $id) {
+            Log::critical('[entregas] saque: validação de outra transferência para saque já aprovado', ['empresa' => $empresa, 'saque' => (string) $saque->uuid, 'aprovada' => (string) $aprovada, 'transfer' => $id]);
+
+            return static::decisao($empresa, $id, false, 'Saque já aprovado para outra transferência.', (string) $saque->uuid);
+        }
+
+        return static::decisao($empresa, $id, false, 'Transferência não reconhecida pelo Entregas.', (string) $saque->uuid);
     }
 
     /** O texto aparado, ou null se não é texto ou está vazio. */

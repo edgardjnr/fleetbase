@@ -40,12 +40,13 @@ confere(($conexoes['saque_ligado']->modificadores['default'][0] ?? null) === fal
 confere(($conexoes['minimo']->modificadores['default'][0] ?? null) === 10 && ($conexoes['maximo_dia']->modificadores['default'][0] ?? null) === 500 && ($conexoes['saques_dia']->modificadores['default'][0] ?? null) === 3 && ($conexoes['taxa']->modificadores['default'][0] ?? null) === 0, 'padrões: mínimo 10, máximo/dia 500, 3 saques/dia, taxa 0');
 
 $saques = colunas(Schema::$criadas['entregas_saques']);
-foreach (['uuid', 'company_uuid', 'driver_uuid', 'valor', 'taxa', 'chave_pix', 'tipo_chave', 'situacao', 'motivo_falha', 'motivo_asaas', 'transfer_id', 'external_reference', 'asaas_status', 'pagamento_uuid', 'taxa_lancamento_id', 'comprovante_url', 'aprovado_em', 'concluido_em'] as $nome) {
+foreach (['uuid', 'company_uuid', 'driver_uuid', 'valor', 'taxa', 'chave_pix', 'tipo_chave', 'situacao', 'motivo_falha', 'motivo_asaas', 'transfer_id', 'external_reference', 'asaas_status', 'pagamento_uuid', 'taxa_lancamento_id', 'comprovante_url', 'aprovado_em', 'aprovado_transfer_id', 'concluido_em'] as $nome) {
     confere(isset($saques[$nome]), "entregas_saques.{$nome}");
 }
 confere(array_key_exists('unique', $saques['uuid']->modificadores) && array_key_exists('unique', $saques['transfer_id']->modificadores) && array_key_exists('nullable', $saques['transfer_id']->modificadores), 'uuid único; transfer_id único e nulo até o Asaas responder');
 confere(($saques['valor']->argumentos ?? null) === ['valor', 10, 2], 'valor decimal(10,2)');
 confere($saques['aprovado_em']->tipo === 'timestamp' && array_key_exists('nullable', $saques['aprovado_em']->modificadores), 'aprovado_em: timestamp nulo (a validação ainda não aprovou)');
+confere($saques['aprovado_transfer_id']->tipo === 'string' && ($saques['aprovado_transfer_id']->argumentos[1] ?? null) === 64 && array_key_exists('nullable', $saques['aprovado_transfer_id']->modificadores) && !array_key_exists('unique', $saques['aprovado_transfer_id']->modificadores), 'aprovado_transfer_id: string(64) nula (a transferência aprovada; uma por saque)');
 
 $motoboys = colunas(Schema::$alteradas['entregas_motoboys_financeiro'][0] ?? new \Illuminate\Database\Schema\Blueprint());
 confere(isset($motoboys['saque_bloqueado'], $motoboys['pix_alterada_em'], $motoboys['pix_alterada_por']), 'motoboy: bloqueio e troca da chave Pix');

@@ -433,9 +433,13 @@ final class Saques
             return false;
         }
         Log::info('[entregas] saque: concluído', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'valor' => round((float) $saque->valor, 2)]);
-        if ((static::recarregar($saque)->aprovado_em ?? null) === null) {
+        $atual = static::recarregar($saque);
+        if (($atual->aprovado_em ?? null) === null) {
             // o dinheiro saiu sem a nossa validação ter aprovado: a validação foi desligada no Asaas, ou algo pior
-            Log::critical('[entregas] saque: concluído sem a aprovação da validação', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'transfer' => $saque->transfer_id ?? null]);
+            Log::critical('[entregas] saque: concluído sem a aprovação da validação', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'transfer' => $atual->transfer_id ?? null]);
+        } elseif (($atual->aprovado_transfer_id ?? null) !== null && (string) $atual->aprovado_transfer_id !== (string) ($atual->transfer_id ?? '')) {
+            // a validação aprovou uma transferência e concluiu outra: confira à mão no Asaas
+            Log::critical('[entregas] saque: concluído com a aprovação de outra transferência', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'transfer' => $atual->transfer_id ?? null, 'aprovada' => (string) $atual->aprovado_transfer_id]);
         }
         static::avisar($saque, new SaqueConcluido((string) $saque->uuid, (float) $saque->valor));
 
