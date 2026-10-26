@@ -2,11 +2,14 @@
 
 namespace App\Support\Entregas\Saques;
 
+use App\Notifications\Entregas\SaqueConcluido;
+use App\Notifications\Entregas\SaqueNaoConcluido;
 use App\Support\Entregas\Financeiro\ChavePix;
 use App\Support\Entregas\Financeiro\ExtratoDaConta;
 use App\Support\Entregas\Financeiro\Financeiro;
 use App\Support\Entregas\Financeiro\Lancamentos;
 use App\Support\Entregas\Financeiro\Pagamentos;
+use Fleetbase\FleetOps\Models\Driver;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -209,6 +212,159 @@ final class Saques
     public static function recarregar(object $saque): object
     {
         return DB::table(Saque::TABELA)->where('id', $saque->id)->first() ?? $saque;
+    }
+
+    /**
+     * Manda o saque ao Asaas (depois do commit do pedido): decifra a chave, confere a wallet fixada e cria a transferência
+     * Pix com a chave do banco e o externalReference estável. Antes do POST, qualquer problema falha e reembolsa (nada
+     * saiu). No POST: id → processando (ou já concluído/falho); recusa 4xx → falha e reembolsa; sem resposta, 5xx ou 200
+     * sem id → fica "enviando" e a rotina procura pelo externalReference. Devolve o saque relido.
+     */
+    public static function enviar(object $saque): object
+    {
+        $conexao = ConexaoAsaas::daEmpresa((string) $saque->company_uuid);
+        $chave   = $conexao ? Cofre::decifrar((string) $conexao->chave_cifrada) : null;
+        if ($chave === null) {
+            static::falhar($saque, 'Saque Pix indisponível no momento. Avise a central.');
+
+            return static::recarregar($saque);
+        }
+
+        $asaas     = new AsaasCliente($chave);
+        $carteiras = $asaas->carteiras();
+        if (!$carteiras->ok()) {
+            static::falhar($saque, $carteiras->semResposta() ? 'O Asaas não respondeu. Tente de novo.' : 'A chave do Asaas da central foi recusada. Avise a central.');
+
+            return static::recarregar($saque);
+        }
+        if (AsaasCliente::walletDa($carteiras) !== (string) $conexao->wallet_id) {
+            Log::warning('[entregas] saque: a chave do Asaas é de outra carteira', ['empresa' => $saque->company_uuid]);
+            static::falhar($saque, 'A chave do Asaas não é mais da conta conectada. Avise a central.');
+
+            return static::recarregar($saque);
+        }
+
+        $resposta = $asaas->transferirPix(
+            Saque::reais(Saque::centavos($saque->valor)),
+            (string) $saque->chave_pix,
+            Saque::TIPOS_ASAAS[(string) $saque->tipo_chave] ?? '',
+            Saque::DESCRICAO_NO_ASAAS,
+            (string) $saque->external_reference
+        );
+        $id = $resposta->dados['id'] ?? null;
+        if ($resposta->ok() && is_string($id) && $id !== '') {
+            static::registrarTransferencia($saque, $resposta->dados);
+        } elseif ($resposta->ok() || $resposta->semResposta()) {
+            Log::warning('[entregas] saque: envio sem confirmação do Asaas; a rotina confere', ['saque' => $saque->uuid, 'status' => $resposta->status]);
+        } else {
+            static::falhar($saque, $resposta->mensagem('O Asaas recusou a transferência.'));
+        }
+
+        return static::recarregar($saque);
+    }
+
+    /** Aplica o status de uma transferência do Asaas ao saque. true se ele terminou agora (concluído ou falho). */
+    public static function aplicarStatus(object $saque, array $dados): bool
+    {
+        $status   = strtoupper((string) ($dados['status'] ?? ''));
+        $situacao = Saque::situacaoDoAsaas($status);
+        if ($situacao === Saque::CONCLUIDO) {
+            $url = $dados['transactionReceiptUrl'] ?? null;
+
+            return static::concluir($saque, is_string($url) && $url !== '' ? mb_substr($url, 0, 500) : null);
+        }
+        if ($situacao === Saque::FALHOU) {
+            $motivo = is_string($dados['failReason'] ?? null) && trim($dados['failReason']) !== ''
+                ? trim($dados['failReason'])
+                : ($status === 'CANCELLED' ? 'Transferência cancelada no Asaas.' : 'Transferência não concluída pelo Asaas.');
+
+            return static::falhar($saque, $motivo, $status);
+        }
+        if ($status !== '') {
+            DB::table(Saque::TABELA)->where('id', $saque->id)->update(['asaas_status' => mb_substr($status, 0, 30), 'updated_at' => now()->format('Y-m-d H:i:s')]);
+        }
+
+        return false;
+    }
+
+    /** Conclui o saque em andamento (guarda o comprovante do Asaas) e avisa o motoboy. false se ele não estava em andamento. */
+    public static function concluir(object $saque, ?string $comprovante): bool
+    {
+        $agora = now()->format('Y-m-d H:i:s');
+        $feito = DB::table(Saque::TABELA)
+            ->where('id', $saque->id)
+            ->whereIn('situacao', Saque::EM_ANDAMENTO)
+            ->update(['situacao' => Saque::CONCLUIDO, 'asaas_status' => 'DONE', 'comprovante_url' => $comprovante, 'concluido_em' => $agora, 'updated_at' => $agora]);
+        if ($feito < 1) {
+            return false;
+        }
+        Log::info('[entregas] saque: concluído', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'valor' => round((float) $saque->valor, 2)]);
+        static::avisar($saque, new SaqueConcluido((string) $saque->uuid, (float) $saque->valor));
+
+        return true;
+    }
+
+    /**
+     * Falha o saque em andamento e, na mesma transação, estorna o pagamento (motivo "Pagamento estornado", que o app
+     * reconhece) e a taxa; depois avisa o motoboy. false se ele não estava em andamento (nada muda, nada é estornado).
+     */
+    public static function falhar(object $saque, string $motivo, ?string $statusDoAsaas = null): bool
+    {
+        $feito = DB::transaction(function () use ($saque, $motivo, $statusDoAsaas) {
+            $agora = now()->format('Y-m-d H:i:s');
+            $n     = DB::table(Saque::TABELA)
+                ->where('id', $saque->id)
+                ->whereIn('situacao', Saque::EM_ANDAMENTO)
+                ->update([
+                    'situacao'     => Saque::FALHOU,
+                    'motivo_falha' => mb_substr($motivo, 0, 255),
+                    'asaas_status' => $statusDoAsaas !== null && $statusDoAsaas !== '' ? mb_substr($statusDoAsaas, 0, 30) : null,
+                    'updated_at'   => $agora,
+                ]);
+            if ($n < 1) {
+                return false;
+            }
+            $pagamento = $saque->pagamento_uuid ? Pagamentos::porUuid((string) $saque->company_uuid, (string) $saque->pagamento_uuid) : null;
+            if ($pagamento) {
+                Pagamentos::estornar($pagamento, null);
+            }
+            $taxa = $saque->taxa_lancamento_id ? Lancamentos::porId((string) $saque->company_uuid, (int) $saque->taxa_lancamento_id) : null;
+            if ($taxa) {
+                Lancamentos::estornar($taxa, null, Saque::MOTIVO_TAXA_DEVOLVIDA);
+            }
+
+            return true;
+        });
+        if (!$feito) {
+            return false;
+        }
+        Log::info('[entregas] saque: não concluído, valor devolvido', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'motivo' => $motivo]);
+        static::avisar($saque, new SaqueNaoConcluido((string) $saque->uuid, (float) $saque->valor, $motivo));
+
+        return true;
+    }
+
+    /** Grava o id da transferência (o da validação, se ela chegou antes, fica) e passa a processando; aplica o status. */
+    private static function registrarTransferencia(object $saque, array $dados): void
+    {
+        $agora = now()->format('Y-m-d H:i:s');
+        DB::table(Saque::TABELA)->where('id', $saque->id)->whereNull('transfer_id')->update(['transfer_id' => (string) $dados['id'], 'updated_at' => $agora]);
+        DB::table(Saque::TABELA)->where('id', $saque->id)->where('situacao', Saque::ENVIANDO)->update(['situacao' => Saque::PROCESSANDO, 'updated_at' => $agora]);
+        if (($dados['authorized'] ?? null) === false) {
+            Log::warning('[entregas] saque: transferência aguardando autorização no Asaas (token)', ['saque' => $saque->uuid]);
+        }
+        static::aplicarStatus(static::recarregar($saque), $dados);
+    }
+
+    /** Push ao motoboy do saque; uma falha só vai ao log. */
+    private static function avisar(object $saque, object $notificacao): void
+    {
+        try {
+            $motoboy = Driver::where('company_uuid', (string) $saque->company_uuid)->where('uuid', (string) $saque->driver_uuid)->first();
+            $motoboy?->notify($notificacao);
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] saque: push não saiu', ['saque' => $saque->uuid ?? null, 'erro' => get_class($e)]);
+        }
     }
 
     private static function liberadoNaCentral(?object $conexao): bool
