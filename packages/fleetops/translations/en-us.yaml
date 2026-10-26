@@ -1271,6 +1271,8 @@ fleet-ops:
                     situacao: Status
                     comprovante: Receipt
                     ver-comprovante: View in Asaas
+                    selo-asaas: Asaas
+                    motivo-do-asaas: Asaas text, as it was sent
                     vazio: No withdrawals in the last 30 days.
                     configurar: Set up Pix withdrawal
                 motoboys:

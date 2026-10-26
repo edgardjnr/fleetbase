@@ -129,9 +129,18 @@ test('situação do saque: chave, selo e linha da tabela', () => {
     });
     assert.deepEqual(linha, {
         id: 'u1', quando: '27/10 10:00', motoboyId: 'driver_1', motoboy: 'João Silva', valor: 50, taxa: 1.5,
-        status: 'error', chave: `${S}.situacoes.falhou`, motivo: 'Saldo insuficiente.', comprovante: null,
+        status: 'error', chave: `${S}.situacoes.falhou`, motivo: 'Saldo insuficiente.', doAsaas: false, comprovante: null,
     });
     assert.equal(linhaDoSaque({ situacao: 'concluido', motivo: 'x' }).motivo, '', 'motivo só no que falhou');
+
+    // motivo_asaas (só no console): selo "Asaas" quando a falha veio do Asaas
+    const doAsaas = linhaDoSaque({ situacao: 'falhou', motivo: 'Chave Pix inexistente', motivo_asaas: 'Chave Pix inexistente' });
+    assert.equal(doAsaas.motivo, 'Chave Pix inexistente');
+    assert.equal(doAsaas.doAsaas, true);
+    assert.equal(linhaDoSaque({ situacao: 'falhou', motivo: 'Saldo insuficiente.', motivo_asaas: null }).doAsaas, false, 'motivo nosso: sem selo');
+    assert.equal(linhaDoSaque({ situacao: 'falhou', motivo: 'Saldo insuficiente.' }).doAsaas, false, 'sem o campo: sem selo');
+    assert.equal(linhaDoSaque({ situacao: 'falhou', motivo: 'x', motivo_asaas: '  ' }).doAsaas, false, 'texto vazio: sem selo');
+    assert.equal(linhaDoSaque({ situacao: 'concluido', motivo_asaas: 'x' }).doAsaas, false, 'selo só no que falhou');
     assert.equal(linhaDoSaque({ situacao: 'concluido', comprovante_url: 'https://www.asaas.com/comprovantes/1' }).comprovante, 'https://www.asaas.com/comprovantes/1');
     assert.equal(linhaDoSaque({ motoboy: null }).motoboyId, null);
     assert.equal(linhaDoSaque({ criado_em: null }).quando, '');

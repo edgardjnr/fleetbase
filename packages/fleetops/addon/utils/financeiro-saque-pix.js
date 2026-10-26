@@ -145,9 +145,14 @@ export function consultaDosSaques(situacao) {
     return SITUACOES_DO_SAQUE.includes(situacao) ? { situacao } : {};
 }
 
-/** Saque da API (Saques::publico + motoboy) → linha da tabela da tela Saques Pix. */
+/**
+ * Saque da API (Saques::publico com $console + motoboy) → linha da tabela da tela Saques Pix. No console, `motivo` já é o
+ * texto do Asaas quando a falha veio dele, e `motivo_asaas` vem à parte (null quando não veio): `doAsaas` liga o selo
+ * "Asaas" junto do motivo.
+ */
 export function linhaDoSaque(saque) {
     const quando = quandoDoIso(saque?.criado_em);
+    const falhou = saque?.situacao === 'falhou';
 
     return {
         id: saque?.id,
@@ -157,7 +162,8 @@ export function linhaDoSaque(saque) {
         valor: Number(saque?.valor) || 0,
         taxa: Number(saque?.taxa) || 0,
         ...seloDoSaque(saque),
-        motivo: saque?.situacao === 'falhou' ? saque?.motivo ?? '' : '',
+        motivo: falhou ? saque?.motivo ?? '' : '',
+        doAsaas: falhou && typeof saque?.motivo_asaas === 'string' && saque.motivo_asaas.trim() !== '',
         comprovante: linkSeguro(saque?.comprovante_url),
     };
 }

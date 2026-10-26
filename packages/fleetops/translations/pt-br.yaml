@@ -1271,6 +1271,8 @@ fleet-ops:
           situacao: Situação
           comprovante: Comprovante
           ver-comprovante: Ver no Asaas
+          selo-asaas: Asaas
+          motivo-do-asaas: Texto do Asaas, como ele mandou
           vazio: Nenhum saque nos últimos 30 dias.
           configurar: Configurar o saque Pix
         motoboys:

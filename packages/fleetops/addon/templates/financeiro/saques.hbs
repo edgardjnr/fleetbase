@@ -48,7 +48,12 @@
                                     <td class="py-2">
                                         <Badge @status={{saque.status}} @hideStatusDot={{true}}>{{t saque.chave}}</Badge>
                                         {{#if saque.motivo}}
-                                            <div class="text-xs text-gray-500 dark:text-gray-400">{{saque.motivo}}</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                {{#if saque.doAsaas}}
+                                                    <span class="inline-block rounded px-1 mr-1 text-[10px] font-semibold uppercase bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" title={{t "fleet-ops.ui.financeiro.saque-pix.saques.motivo-do-asaas"}}>{{t "fleet-ops.ui.financeiro.saque-pix.saques.selo-asaas"}}</span>
+                                                {{/if}}
+                                                {{saque.motivo}}
+                                            </div>
                                         {{/if}}
                                     </td>
                                     <td class="py-2 whitespace-nowrap">
