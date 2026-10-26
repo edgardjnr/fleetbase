@@ -2,6 +2,7 @@
 
 namespace App\Support\Entregas\Financeiro;
 
+use App\Support\Entregas\Saques\Saques;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -13,7 +14,8 @@ use Illuminate\Support\Facades\DB;
  *   nesse mês;
  * - pagamentos: os 5 mais recentes (data, depois a ordem de registro), estornados incluídos (`estornado: true`), sem
  *   comprovante nem observação interna (o recibo completo é o GET pagamentos/{id});
- * - pix: {chave, tipo} (ChavePix) ou null.
+ * - pix: {chave, tipo} (ChavePix) ou null;
+ * - saque: o bloco do saque Pix (Saques::situacaoDoMotoboy), só quando a central liberou o saque.
  */
 final class Carteira
 {
@@ -41,7 +43,7 @@ final class Carteira
             }
         }
 
-        return [
+        $carteira = [
             'a_receber'       => ExtratoDaConta::saldo($companyUuid, Financeiro::CONTA_MOTOBOY, $motoboyUuid),
             'mes'             => $mes,
             'recebido_no_mes' => round($recebido / 100, 2),
@@ -54,6 +56,13 @@ final class Carteira
             ], array_slice($pagamentos, 0, static::ULTIMOS_PAGAMENTOS)),
             'pix'             => ChavePix::doMotoboy($companyUuid, $motoboyUuid),
         ];
+        // saque Pix pelo app: o bloco só vem quando a central liberou o saque (sem ele, o app não mostra o botão)
+        $saque = Saques::situacaoDoMotoboy($companyUuid, $motoboyUuid);
+        if ($saque !== null) {
+            $carteira['saque'] = $saque;
+        }
+
+        return $carteira;
     }
 
     private static function centavos($valor): int

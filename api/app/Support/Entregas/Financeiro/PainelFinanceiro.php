@@ -2,6 +2,7 @@
 
 namespace App\Support\Entregas\Financeiro;
 
+use App\Support\Entregas\Saques\Saques;
 use Fleetbase\FleetOps\Models\Vendor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -145,6 +146,10 @@ final class PainelFinanceiro
             $atencao[] = $item;
         }
         foreach (static::semValor($companyUuid, $lancador) as $item) {
+            $atencao[] = $item;
+        }
+        // saque Pix pelo app: saque que falhou nas últimas 24 h e saque parado há mais de 1 h
+        foreach (Saques::atencao($companyUuid) as $item) {
             $atencao[] = $item;
         }
 

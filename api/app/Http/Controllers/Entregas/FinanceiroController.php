@@ -13,6 +13,7 @@ use App\Support\Entregas\Financeiro\Lancamentos;
 use App\Support\Entregas\Financeiro\PainelFinanceiro;
 use App\Support\Entregas\Financeiro\Pagamentos;
 use App\Support\Entregas\Saques\Saque;
+use App\Support\Entregas\Saques\Saques;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
@@ -395,6 +396,15 @@ class FinanceiroController extends Controller
         $pagamento = Pagamentos::porUuid($empresa, $id);
         if (!$pagamento) {
             return $this->erro('Pagamento não encontrado.', 404);
+        }
+        // o pagamento de um saque Pix pelo app não se estorna à mão: em andamento, a rotina resolve; concluído, o dinheiro já
+        // saiu (corrige-se com ajuste); falho, já foi estornado sozinho
+        if ($saque = Saques::doPagamento($empresa, $id)) {
+            return $this->erro(match ((string) $saque->situacao) {
+                Saque::CONCLUIDO => 'O dinheiro do saque já saiu; corrija com um ajuste.',
+                Saque::FALHOU    => 'Este saque não foi concluído e o pagamento já foi estornado.',
+                default          => 'Saque em andamento.',
+            });
         }
         if (!Pagamentos::estornar($pagamento, $this->usuario($request))) {
             return $this->erro('Este pagamento já foi estornado.', 409);

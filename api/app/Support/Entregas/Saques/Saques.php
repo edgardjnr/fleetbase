@@ -189,6 +189,78 @@ final class Saques
             ->first();
     }
 
+    /** O saque cujo pagamento é este (null se não é de saque, ou se a tabela ainda não existe: API antes da migration). */
+    public static function doPagamento(string $companyUuid, string $pagamentoUuid): ?object
+    {
+        try {
+            return DB::table(Saque::TABELA)->where('company_uuid', $companyUuid)->where('pagamento_uuid', $pagamentoUuid)->first();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /** {situacao, comprovante_url} do saque deste pagamento, para o extrato e o recibo; null se não é de saque. */
+    public static function marcaDoPagamento(object $pagamento): ?array
+    {
+        if (($pagamento->criado_por ?? null) !== null || ($pagamento->forma ?? null) !== 'pix') {
+            return null;
+        }
+        $saque = static::doPagamento((string) $pagamento->company_uuid, (string) $pagamento->uuid);
+
+        return $saque ? ['situacao' => (string) $saque->situacao, 'comprovante_url' => $saque->comprovante_url] : null;
+    }
+
+    /**
+     * Os avisos do saque no "Atenção" do painel do Financeiro: saque_falhou (últimas 24 h) e saque_parado (em andamento há
+     * mais de 1 h), até 20 de cada. Desligado ou com o banco sem a tabela: nada.
+     */
+    public static function atencao(string $companyUuid): array
+    {
+        if (!Saque::ligada()) {
+            return [];
+        }
+        try {
+            $falhos = DB::table(Saque::TABELA)
+                ->where('company_uuid', $companyUuid)
+                ->where('situacao', Saque::FALHOU)
+                ->where('updated_at', '>=', now()->subHours(24)->format('Y-m-d H:i:s'))
+                ->orderBy('id', 'desc')
+                ->limit(Saque::LIMITE_NO_PAINEL)
+                ->get()
+                ->all();
+            $parados = DB::table(Saque::TABELA)
+                ->where('company_uuid', $companyUuid)
+                ->whereIn('situacao', Saque::EM_ANDAMENTO)
+                ->where('created_at', '<=', now()->subMinutes(Saque::MINUTOS_PARADO)->format('Y-m-d H:i:s'))
+                ->orderBy('id')
+                ->limit(Saque::LIMITE_NO_PAINEL)
+                ->get()
+                ->all();
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] saque: painel sem os avisos de saque', ['empresa' => $companyUuid, 'erro' => get_class($e)]);
+
+            return [];
+        }
+
+        $nomes = [];
+        $uuids = array_values(array_unique(array_map(fn ($s) => (string) $s->driver_uuid, array_merge($falhos, $parados))));
+        if ($uuids) {
+            foreach (Driver::withTrashed()->where('company_uuid', $companyUuid)->whereIn('uuid', $uuids)->get() as $motoboy) {
+                $nomes[(string) $motoboy->uuid] = $motoboy->name;
+            }
+        }
+
+        $itens = [];
+        foreach ($falhos as $saque) {
+            $itens[] = ['tipo' => 'saque_falhou', 'saque' => (string) $saque->uuid, 'motoboy' => $nomes[(string) $saque->driver_uuid] ?? null, 'valor' => round((float) $saque->valor, 2), 'motivo' => $saque->motivo_falha];
+        }
+        foreach ($parados as $saque) {
+            $itens[] = ['tipo' => 'saque_parado', 'saque' => (string) $saque->uuid, 'motoboy' => $nomes[(string) $saque->driver_uuid] ?? null, 'valor' => round((float) $saque->valor, 2), 'desde' => Saque::iso($saque->created_at, $companyUuid)];
+        }
+
+        return $itens;
+    }
+
     /** O saque no formato do app e do console: {id, valor, taxa, situacao, motivo, chave, tipo_chave, comprovante_url, criado_em, concluido_em}. */
     public static function publico(object $saque): array
     {
