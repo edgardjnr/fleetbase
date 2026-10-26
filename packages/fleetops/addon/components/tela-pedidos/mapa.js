@@ -70,8 +70,9 @@ export default class TelaPedidosMapaComponent extends TelaDePedidosBase {
         if (!this.selecionado) return null;
         const doAoVivo = this.aoVivo.pedidos.find((p) => p.id === this.selecionado);
         if (doAoVivo) return doAoVivo;
-        const daComanda = this.comandaDoPedido?.pedido;
-        return daComanda ?? null;
+        const comanda = this.comandaDoPedido;
+        // o pedido da comanda não traz o `ifood` do Ao vivo (o "#" do número vem dele)
+        return comanda?.pedido ? { ...comanda.pedido, ifood: comanda.origem === 'ifood' } : null;
     }
 
     /** Muda quando o pedido muda no Ao vivo: aí a comanda é relida. */

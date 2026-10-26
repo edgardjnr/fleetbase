@@ -131,9 +131,20 @@ export default class TelaPedidosMapaLeafletComponent extends Component {
         this.enquadrar();
     }
 
+    get temPedidoAberto() {
+        return this.pedidos.some((p) => p.selecionado);
+    }
+
     /** Enquadra todos uma vez, quando chegam os primeiros pontos; depois quem mexe é a pessoa. */
     @action enquadrar() {
-        if (!this.mapa || this.enquadrado || !this.mapa.getSize().y) return;
+        if (!this.mapa || !this.mapa.getSize().y) return;
+        // com um pedido aberto (inclusive vindo direto pela URL), quem enquadra é o focar, na rota dele
+        if (this.temPedidoAberto) {
+            this.enquadrado = true;
+            this.focar();
+            return;
+        }
+        if (this.enquadrado) return;
         const pontos = [...this.motoboys.map((m) => [m.latitude, m.longitude]), ...this.pedidos.map((p) => [p.latitude, p.longitude])];
         if (!pontos.length) return;
         this.mapa.fitBounds(pontos, { ...this.#padding(), maxZoom: 14 });
