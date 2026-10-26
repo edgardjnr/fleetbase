@@ -341,7 +341,8 @@ class FinanceiroController extends Controller
      * POST financeiro/pagamentos (multipart): conta_tipo, conta (public_id), valor ("150.50" ou "150,50"), forma, data,
      * observacao_interna e o arquivo em `comprovante` (ou `file`); um campo `fatura` é ignorado. → {pagamento, saldo}.
      * Valor acima do saldo vira adiantamento. Pagamento ao motoboy manda o push "Pagamento registrado" (falha no push
-     * não desfaz o pagamento).
+     * não desfaz o pagamento). Motoboy com saque Pix em andamento: 422 (conferido numa transação com a linha do motoboy
+     * travada, como no Saques::pedir: um pedido de saque ao mesmo tempo espera este pagamento, e vice-versa).
      */
     public function registrarPagamento(Request $request)
     {
@@ -357,10 +358,6 @@ class FinanceiroController extends Controller
         $conta = $id !== '' ? ($this->contas($contaTipo, [$id])[$id] ?? null) : null;
         if (!$conta) {
             return $this->erro($contaTipo === Financeiro::CONTA_MOTOBOY ? 'Motoboy não encontrado.' : 'Loja não encontrada.', 404);
-        }
-        if ($contaTipo === Financeiro::CONTA_MOTOBOY && static::saqueEmAndamento($this->empresa(), $conta)) {
-            // o saque já reservou o saldo e pode cair a qualquer momento: um pagamento à mão agora pagaria em dobro
-            return $this->erro('Há um saque Pix em andamento para este motoboy; espere ele terminar.');
         }
         if (static::milharSemCentavos($request->input('valor'))) {
             return $this->erro(static::MILHAR_SEM_CENTAVOS);
@@ -383,9 +380,22 @@ class FinanceiroController extends Controller
         }
 
         $empresa = $this->empresa();
+        $usuario = $this->usuario($request);
         try {
-            $pagamento = Pagamentos::registrar($empresa, $contaTipo, $conta, $valor, (string) $request->input('forma'),
-                (string) $request->input('data'), $arquivo ?: null, $observacao, $this->usuario($request));
+            // transação externa (a do Pagamentos::registrar vira savepoint): a conferência do saque e o pagamento juntos
+            $pagamento = DB::transaction(function () use ($empresa, $contaTipo, $conta, $valor, $request, $arquivo, $observacao, $usuario) {
+                if ($contaTipo === Financeiro::CONTA_MOTOBOY) {
+                    // a linha do motoboy travada, como no Saques::pedir: um saque pedido agora espera este pagamento
+                    Saques::linhaDoMotoboy($empresa, $conta, true);
+                    if (static::saqueEmAndamento($empresa, $conta)) {
+                        // o saque já reservou o saldo e pode cair a qualquer momento: um pagamento à mão agora pagaria em dobro
+                        throw new \InvalidArgumentException(static::SAQUE_EM_ANDAMENTO);
+                    }
+                }
+
+                return Pagamentos::registrar($empresa, $contaTipo, $conta, $valor, (string) $request->input('forma'),
+                    (string) $request->input('data'), $arquivo ?: null, $observacao, $usuario);
+            });
         } catch (\InvalidArgumentException $e) {
             return $this->erro($e->getMessage());
         }
@@ -493,6 +503,9 @@ class FinanceiroController extends Controller
 
     /** Mensagem do valor no formato de milhar com ponto e sem vírgula ("1.500"), que viraria 1,50. */
     public const MILHAR_SEM_CENTAVOS = 'Valor ambíguo: para mil e quinhentos, escreva 1500 ou 1.500,00 (vírgula antes dos centavos).';
+
+    /** Pagamento à mão a motoboy com saque Pix em andamento (422). */
+    public const SAQUE_EM_ANDAMENTO = 'Há um saque Pix em andamento para este motoboy; espere ele terminar.';
 
     /**
      * Texto no formato de milhar com ponto e sem vírgula ("1.500", "-2.000", "12.345"): ambíguo (1,50 ou 1.500?), é
@@ -620,10 +633,6 @@ class FinanceiroController extends Controller
         return [$texto, null];
     }
 
-    /**
-     * [public_id => uuid] das contas da empresa encontradas (motoboys ou lojas). O motoboy excluído (soft delete) também
-     * (o acerto final: pagamento e lançamento depois da exclusão).
-     */
     /** O motoboy tem saque Pix em andamento (enviando ou processando); API antes da migration do saque: false. */
     protected static function saqueEmAndamento(string $companyUuid, string $driverUuid): bool
     {
@@ -634,6 +643,10 @@ class FinanceiroController extends Controller
         }
     }
 
+    /**
+     * [public_id => uuid] das contas da empresa encontradas (motoboys ou lojas). O motoboy excluído (soft delete) também
+     * (o acerto final: pagamento e lançamento depois da exclusão).
+     */
     protected function contas(string $contaTipo, array $ids): array
     {
         $consulta = $contaTipo === Financeiro::CONTA_MOTOBOY ? Driver::withTrashed()->where('company_uuid', $this->empresa()) : Vendor::where('company_uuid', $this->empresa());
