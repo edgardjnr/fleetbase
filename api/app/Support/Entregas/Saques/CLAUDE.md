@@ -167,6 +167,13 @@ houver) e `saque_parado` (1 h). `Saques::publico($saque)` (app) traz `motivo` = 
   o selo "Asaas" junto do motivo.
 - Teste: `saque-console.php`.
 
+## App do motoboy
+
+Telas, desbloqueio do aparelho, uuid do envio, acompanhamento e pushes: item "Saque Pix pelo app" em
+`api/app/Http/Controllers/Entregas/CLAUDE.md` (cópia no `CLAUDE.md` do `entregas-navigator`). Plano:
+`docs/superpowers/plans/2026-10-26-saque-pix-asaas-app.md`. O app nunca recebe a chave Pix inteira do saque (o
+`Saques::publico` já a esconde); a da carteira (`pix`) é a do cadastro, que ele já via.
+
 ## Testes
 
 `PHP_WASM_DIR=/c/tmp/php-wasm node scripts/teste-php/rodar.mjs scripts/teste-php/<teste>.php`: `saque-esquema`,
