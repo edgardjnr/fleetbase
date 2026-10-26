@@ -77,6 +77,18 @@ Config::$valores['services.entregas.saque'] = null;
 confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50)) === recusa('Saque Pix desligado no Entregas.'), 'chave geral desligada: recusa tudo');
 Config::$valores['services.entregas.saque'] = '1';
 
+echo '== Chave de telefone: comparada inteira (55 + DDD + número)' . PHP_EOL;
+foreach (['+5511999994321' => true, '5511999994321' => true, '11999994321' => true, '+55 (11) 99999-4321' => true, '4321' => false, '1' => false, '' => false, '999994321' => false, '5521999994321' => false, '115511999994321' => false] as $deles => $esperado) {
+    confere(ValidacaoDeSaque::mesmaChave('11999994321', 'telefone', (string) $deles) === $esperado, 'nossa 11999994321, deles "' . $deles . '": ' . ($esperado ? 'mesma' : 'diferente'));
+}
+confere(ValidacaoDeSaque::mesmaChave('5511999994321', 'telefone', '11999994321') && ValidacaoDeSaque::mesmaChave('1133334444', 'telefone', '+551133334444'), 'cadastro com 55 ou fixo de 10 dígitos: também');
+confere(!ValidacaoDeSaque::mesmaChave('', 'telefone', '') && !ValidacaoDeSaque::mesmaChave('', 'cpf', ''), 'vazias: nunca são a mesma');
+confere(ValidacaoDeSaque::mesmaChave('123.456.789-01', 'cpf', '12345678901') && !ValidacaoDeSaque::mesmaChave('12345678901', 'cpf', '2345678901'), 'CPF: sem pontuação, comparado inteiro');
+centralComSaque();
+saqueEnviado('driver-1', U1, 50, ['id' => 'tra_1', 'status' => 'PENDING']);
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50, '4321')) === recusa('Chave Pix diferente da cadastrada.'), 'pedido com só o final do telefone: recusado');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50, '1')) === recusa('Chave Pix diferente da cadastrada.'), 'pedido com um dígito: recusado');
+
 echo '== O Asaas chamou antes de gravarmos o id: pelo externalReference' . PHP_EOL;
 centralComSaque();
 $s = Saques::pedir('empresa-1', 'driver-1', U2, 30)['saque'];

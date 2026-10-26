@@ -96,20 +96,24 @@ final class ValidacaoDeSaque
         return static::conferirEAprovar($empresa, $id, $mesmoValor[0], $valor, $chaveDeles);
     }
 
-    /** A nossa chave e a do Asaas são a mesma (telefone: uma termina com a outra, por causa do +55). */
+    /** A nossa chave e a do Asaas são a mesma (telefone: as duas como 55 + DDD + número, comparadas inteiras). */
     public static function mesmaChave(string $nossa, string $tipo, string $deles): bool
     {
-        $limpa = fn (string $chave) => strtolower((string) preg_replace('/[\s.\-\/()+]/', '', $chave));
-        $a     = $limpa($nossa);
-        $b     = $limpa($deles);
-        if ($a === '' || $b === '') {
-            return false;
-        }
-        if ($tipo === 'telefone') {
-            return str_ends_with($b, $a) || str_ends_with($a, $b);
-        }
+        $limpa = $tipo === 'telefone'
+            ? fn (string $chave) => static::telefone($chave)
+            : fn (string $chave) => strtolower((string) preg_replace('/[\s.\-\/()+]/', '', $chave));
+        $a = $limpa($nossa);
+        $b = $limpa($deles);
 
-        return $a === $b;
+        return $a !== '' && $a === $b;
+    }
+
+    /** Só os dígitos; com 10 ou 11 (DDD + número, sem o país) ganha o "55" na frente. */
+    public static function telefone(string $chave): string
+    {
+        $digitos = (string) preg_replace('/\D/', '', $chave);
+
+        return in_array(strlen($digitos), [10, 11], true) ? '55' . $digitos : $digitos;
     }
 
     /** O teste da central: o id gravado ou, sem ele, R$ 1,00 até 2 min depois de o teste ser pedido. */
