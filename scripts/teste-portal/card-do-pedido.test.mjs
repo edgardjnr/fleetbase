@@ -10,6 +10,8 @@ test('nome do cliente: o nome do Local de entrega (iFood, RestaurantePro ou digi
     assert.equal(nomeDoCliente({ name: 'Mariana S.', street1: 'R. Haddock Lobo, 595' }), 'Mariana S.');
     assert.equal(nomeDoCliente({ name: '  JOÃO PEREIRA ', street1: 'Al. Santos, 1800' }), 'JOÃO PEREIRA');
     assert.equal(nomeDoCliente({ name: 'Cliente iFood' }), 'Cliente iFood');
+    // o Fleetbase monta o address como "NOME - RUA, ..." (pedido do iFood #5138)
+    assert.equal(nomeDoCliente({ name: 'CAIO DINIZ SALLES', street1: 'R. RUBEM UBIDA, 150', address: 'CAIO DINIZ SALLES - R. RUBEM UBIDA, 150, APTO 72, RIBEIRÃO PRETO, SP, 14021575, BRAZIL' }), 'CAIO DINIZ SALLES');
 });
 
 test('nome do cliente: sem nome, ou com o próprio endereço no lugar do nome, nada', () => {

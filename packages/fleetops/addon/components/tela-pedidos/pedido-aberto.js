@@ -6,6 +6,7 @@ import { task } from 'ember-concurrency';
 import { formatadores } from '../../utils/financeiro';
 import { ehPedidoIfood } from '../../utils/pedido-ifood';
 import { nomeEmCaixaNormal, cupomDosItens } from '../../utils/pedido-aberto';
+import { horaLocal } from '../../utils/tela-de-pedidos';
 
 const P = 'fleet-ops.ui.tela-pedidos.pedido-aberto';
 // as mesmas relações do painel antigo do Fleetbase (rota operations.orders.index.details), para as ações do "Mais"
@@ -156,10 +157,9 @@ export default class TelaPedidosPedidoAbertoComponent extends Component {
         return !this.encerrado && !!this.pedido?.motoboy_id;
     }
 
+    /** HH:MM em Brasília (horaLocal: o Intl do console resolve o fuso como UTC). */
     hora(iso) {
-        const data = iso ? new Date(iso) : null;
-        if (!data || Number.isNaN(data.getTime())) return '';
-        return new Intl.DateTimeFormat(this.intl.primaryLocale || 'pt-BR', { hour: '2-digit', minute: '2-digit' }).format(data);
+        return horaLocal(iso);
     }
 
     /* ---------- Mais ---------- */

@@ -102,6 +102,10 @@ final class ComandaDaCentral
                 continue;
             }
             $endereco = mb_strtolower($endereco, 'UTF-8');
+            // o address do Local vem como "NOME - RUA, 123, ...": o nome na frente é o do cliente, não a rua
+            if (str_starts_with($endereco, $comparavel . ' - ')) {
+                continue;
+            }
             if ($endereco === $comparavel || str_starts_with($endereco, $comparavel) || str_starts_with($comparavel, $endereco)) {
                 return null;
             }

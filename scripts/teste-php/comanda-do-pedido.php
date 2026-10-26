@@ -220,6 +220,8 @@ confere(ComandaDaCentral::nomeDoCliente($local(['name' => 'rua das flores, 123']
 confere(ComandaDaCentral::nomeDoCliente($local(['name' => 'RUA DAS FLORES'])) === null, 'rua que começa com o nome = sem nome');
 confere(ComandaDaCentral::nomeDoCliente($local(['name' => ' Mariana Souza '])) === 'Mariana Souza', 'nome de verdade, cru e sem espaços sobrando');
 confere(ComandaDaCentral::nomeDoCliente(null) === null, 'sem Local = sem nome');
+confere(ComandaDaCentral::nomeDoCliente($local(['name' => 'CAIO DINIZ SALLES', 'street1' => 'R. RUBEM UBIDA, 150', 'address' => 'CAIO DINIZ SALLES - R. RUBEM UBIDA, 150, APTO 72, RIBEIRÃO PRETO, SP, 14021575, BRAZIL'])) === 'CAIO DINIZ SALLES', 'address "NOME - RUA" (como o Fleetbase monta) mantém o nome');
+confere(ComandaDaCentral::nomeDoCliente($local(['name' => 'R. RUBEM UBIDA, 150', 'street1' => 'R. RUBEM UBIDA, 150', 'address' => 'R. RUBEM UBIDA, 150 - R. RUBEM UBIDA, 150, BRAZIL'])) === null, 'nome igual à rua continua sem nome, mesmo com o address "NOME - RUA"');
 cenario([], ['name' => 'CLIENTE IFOOD']);
 confere(comanda('order_1')->dados['cliente']['nome'] === null, 'na resposta: "CLIENTE IFOOD" vira null');
 

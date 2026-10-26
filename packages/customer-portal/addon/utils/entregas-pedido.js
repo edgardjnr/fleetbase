@@ -111,8 +111,11 @@ export function nomeDoCliente(local) {
     }
 
     const comparavel = (texto) => (typeof texto === 'string' ? texto.trim().toLowerCase() : '');
-    const enderecos = [local.street1, local.address].map(comparavel).filter((texto) => texto !== '');
     const nomeComparavel = nome.toLowerCase();
+    // o address do Local vem como "NOME - RUA, 123, ...": o nome na frente é o do cliente, não a rua
+    const enderecos = [local.street1, local.address]
+        .map(comparavel)
+        .filter((texto) => texto !== '' && !texto.startsWith(`${nomeComparavel} - `));
 
     return enderecos.some((endereco) => endereco === nomeComparavel || endereco.startsWith(nomeComparavel) || nomeComparavel.startsWith(endereco)) ? null : nome;
 }
