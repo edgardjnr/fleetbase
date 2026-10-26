@@ -631,6 +631,42 @@ customer-portal:
         label: Mercadorias de varejo
         description: Mercadorias de consumo ou varejo em geral.
     entregas:
+      s:
+        portal-da-loja: "Portal da loja"
+        ir-ao-inicio: "Ir para o Início"
+        menu: "Menu do portal"
+        conta: "Minha conta"
+        ao-vivo: "ao vivo"
+        ao-vivo-titulo: "Ao vivo"
+        filtrar: "Filtrar os pedidos"
+        motoboys-no-mapa: "motoboys no mapa"
+        altura-da-lista: "Mudar a altura da lista"
+        ordem-por-prazo: "Em andamento · vence primeiro em cima"
+        limpar-filtro: "Limpar filtro"
+        nada-no-filtro: "Nenhum pedido nesse filtro"
+        para: "para"
+        contagem:
+          sem: "sem motoboy"
+          atrasado: "atrasados"
+          loja: "indo à loja"
+          caminho: "a caminho"
+        saudacao:
+          bom-dia: "Bom dia, {nome}!"
+          boa-tarde: "Boa tarde, {nome}!"
+          boa-noite: "Boa noite, {nome}!"
+        inicio:
+          resumo: "{andamento, plural, =0 {Nenhum pedido em andamento} one {1 pedido em andamento} other {# pedidos em andamento}} · {procurando, plural, =0 {todos com motoboy} one {1 procurando motoboy} other {# procurando motoboy}} · {online} motoboys online"
+          hoje: "hoje"
+          pedidos-hoje: "Pedidos hoje"
+          em-andamento: "Em andamento"
+          sem-motoboy: "{n} sem motoboy"
+          entregues: "Entregues"
+          no-prazo: "No prazo"
+          no-prazo-detalhe: "dos entregues hoje"
+          tempo-medio: "Tempo médio"
+          tempo-medio-detalhe: "do aceite à entrega"
+          a-pagar: "A pagar no ciclo"
+          entregas-no-ciclo: "{n, plural, one {1 entrega} other {# entregas}} no ciclo"
       card:
         portal: "Portal"
         procurando-motoboy: "procurando motoboy"

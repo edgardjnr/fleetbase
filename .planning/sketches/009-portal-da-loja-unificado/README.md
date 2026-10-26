@@ -135,3 +135,12 @@ tela".
 - **Rótulo do alfinete com a loja** (pedido do Edgard em 2026-10-26, para todos os mapas: console, portal e app):
   embaixo do "#4821 · Carlos", uma segunda linha com o nome da loja do pedido. No portal, é sempre a própria loja. Já
   implementado no código (console, portal e app), fora do sketch.
+
+## Implementação (2026-10-26)
+A S foi implantada no `packages/customer-portal` (ver "Desenho S" em `packages/customer-portal/CLAUDE.md`). Diferenças
+do sketch:
+- **Cobrança na porta:** fica fora da folha do pedido no portal, porque o portal não recebe esse dado. O corpo da folha
+  continua o detalhe de antes, com o cabeçalho no estilo da comanda.
+- **Rota feito/falta:** o portal segue com P → D e o motoboy do pedido. O traçado em trechos é só do console.
+- **Extrato:** sem os atalhos Hoje/Esta semana/Este mês. As páginas Extrato, Financeiro, Fatura e Configurações
+  ganharam o visual da marca (tokens `--pi-*`), sem mudar o conteúdo.

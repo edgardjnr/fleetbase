@@ -9,8 +9,15 @@ import { mesmaLista, motoboysDosPedidos } from '../utils/pedidos-no-mapa';
  */
 export default class EntregasMapaDaLojaService extends Service {
     @tracked porPedido = {};
+    // quantos motoboys estão no mapa (as contagens da tela Pedidos, sketch 009 S)
+    @tracked motoboysNoMapa = 0;
 
     atualizar(pedidos, motoboys) {
+        const total = Array.isArray(motoboys) ? motoboys.length : 0;
+        if (total !== this.motoboysNoMapa) {
+            this.motoboysNoMapa = total;
+        }
+
         const novo = motoboysDosPedidos(pedidos, motoboys);
 
         if (!mesmaLista(novo, this.porPedido)) {
@@ -20,6 +27,7 @@ export default class EntregasMapaDaLojaService extends Service {
 
     limpar() {
         this.porPedido = {};
+        this.motoboysNoMapa = 0;
     }
 
     motoboyDoPedido(publicId) {

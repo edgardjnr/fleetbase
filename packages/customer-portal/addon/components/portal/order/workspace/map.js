@@ -9,6 +9,7 @@ import { motoboyDoPedido, motoboysValidos } from '../../../../utils/motoboys-no-
 import { INTERVALO_MAPA_MS, espera } from '../../../../utils/entregas-pedido';
 import { ALFINETE, classeDoRotulo, emEntrega, lojaNoAlfinete, mesmaLista, pedidosValidos, rotuloNoAlfinete, semOPedidoAberto, tempoDesde } from '../../../../utils/pedidos-no-mapa';
 import { PIN_DA_LOJA, lojaNoMapa, mostrarPinDaLoja } from '../../../../utils/loja-no-mapa';
+import { passaNoFiltro, situacaoDoPedido } from '../../../../utils/portal-da-loja';
 
 export default class PortalOrderWorkspaceMapComponent extends Component {
     @service customerPortalOrderRoutePreview;
@@ -70,8 +71,16 @@ export default class PortalOrderWorkspaceMapComponent extends Component {
     }
 
     // Entregas: o pedido aberto no detalhe já mostra P e D pela rota: o alfinete dele sai
+    // Com o filtro das contagens da tela Pedidos (sketch 009 S), só os alfinetes que passam nele
     get alfinetes() {
-        return semOPedidoAberto(this.pedidosNoMapa, this.args.selectedOrder?.public_id ?? null);
+        const alfinetes = semOPedidoAberto(this.pedidosNoMapa, this.args.selectedOrder?.public_id ?? null);
+        const filtro = this.args.filtro;
+
+        if (!filtro) {
+            return alfinetes;
+        }
+
+        return alfinetes.filter((pedido) => passaNoFiltro(situacaoDoPedido({ status: pedido.status, aceito: pedido.aceito === true, prazoEm: pedido.prazo_em }, this.relogio), filtro));
     }
 
     // Entregas: o pin da loja, menos quando o mapa já mostra a coleta pelo P (pedido aberto ou novo pedido)

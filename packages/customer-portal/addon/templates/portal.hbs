@@ -1,62 +1,15 @@
+{{!-- Entregas: a moldura do portal no desenho do sketch 009 S: o topo com as abas (Portal::Topo) em todas as telas e o
+     conteúdo numa folha de cantos arredondados. Sem menu lateral nem gaveta (☰). No celular, o Novo pedido vira a barra
+     fixa embaixo (some na própria tela do novo pedido e na tela Pedidos, onde a folha de baixo já tem o botão) --}}
 <Portal::Container>
-    <div class="portal-topbar">
-        <div class="portal-topbar-account">
-            {{!-- Entregas: ☰ do menu: abre a gaveta Portal::Gaveta, o único menu do portal (em todas as telas) --}}
-            <button
-                type="button"
-                class="portal-menu-toggle"
-                aria-label={{t "customer-portal.ui.entregas.menu.abrir"}}
-                aria-expanded={{if this.gavetaAberta "true" "false"}}
-                aria-controls="portal-gaveta"
-                {{on "click" this.alternarMenu}}
-            >
-                <FaIcon @icon="bars" />
-            </button>
-            <div class="portal-account-mark">
-                <FaIcon @icon="building-user" />
-            </div>
-            <div class="min-w-0">
-                <div class="portal-account-eyebrow">{{this.accountTypeLabel}}</div>
-                <div class="portal-account-name">{{this.accountName}}</div>
-            </div>
-        </div>
-        <div class="portal-topbar-actions">
-            <BasicDropdown class="portal-user-menu" @renderInPlace={{true}} as |dd|>
-                <dd.Trigger class="portal-user-trigger">
-                    <Image
-                        src={{this.currentUser.avatarUrl}}
-                        @fallbackSrc="/images/entregas/padrao/static/no-avatar.png"
-                        alt={{this.currentUser.name}}
-                        class="portal-user-avatar"
-                    />
-                    <div class="hidden sm:flex flex-col min-w-0 text-left">
-                        <span class="portal-user-name">{{this.currentUser.name}}</span>
-                        <span class="portal-user-email">{{this.accountEmail}}</span>
-                    </div>
-                    <FaIcon @icon="caret-down" class="text-gray-400 text-xs" />
-                </dd.Trigger>
-                <dd.Content>
-                    <div class="next-dd-menu">
-                        <div class="px-1">
-                            <Layout::Sidebar::Item class="next-dd-item" @route="customer-portal.portal.settings.account" @icon="gear">{{t "customer-portal.ui.nav.account-settings"}}</Layout::Sidebar::Item>
-                        </div>
-                        <Layout::Header::DarkModeToggle />
-                        <div class="next-dd-menu-seperator"></div>
-                        <div class="px-1">
-                            <Layout::Sidebar::Item class="next-dd-item" @onClick={{this.invalidateSession}} @icon="person-running">{{t "customer-portal.ui.nav.logout"}}</Layout::Sidebar::Item>
-                        </div>
-                    </div>
-                </dd.Content>
-            </BasicDropdown>
-        </div>
-    </div>
-    {{!-- Entregas: sem a coluna do menu (Portal::Sidebar); o menu é a gaveta abaixo --}}
+    <Portal::Topo @nomeDaConta={{this.accountName}} @email={{this.accountEmail}} @onSair={{this.invalidateSession}} />
     <Portal::Main>
-        {{!-- Entregas: o menu do portal (sketch 003, B), opaco e por cima da tela --}}
-        {{#if this.gavetaAberta}}
-            <Portal::Gaveta @nomeDaConta={{this.accountName}} @email={{this.accountEmail}} @onFechar={{this.fecharGaveta}} @onSair={{this.invalidateSession}} />
-        {{/if}}
         <Portal::Section>{{outlet}}</Portal::Section>
     </Portal::Main>
+    {{#if this.mostrarBarraNovo}}
+        <div class="ps-barra-novo">
+            <LinkTo @route="portal.orders.new" class="ps-btn ps-btn-marca"><FaIcon @icon="plus" /><span>{{t "customer-portal.ui.order.new-order"}}</span></LinkTo>
+        </div>
+    {{/if}}
     <Portal::Footer />
 </Portal::Container>

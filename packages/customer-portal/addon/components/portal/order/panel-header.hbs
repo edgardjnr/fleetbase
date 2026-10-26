@@ -1,33 +1,16 @@
-<div class="px-4 py-2">
-    <div class="flex flex-1 flex-row items-start justify-between">
-        <div class="flex flex-row space-x-3 min-w-0">
-            <div class="pt-1 flex-shrink-0">
-                <div class="rounded-md bg-white p-1">
-                    {{#if this.qrCode}}
-                        <img src={{concat "data:image/png;base64," this.qrCode}} class="w-12 h-12" alt={{this.trackingNumber}} />
-                    {{else}}
-                        <div class="w-12 h-12 flex items-center justify-center text-blue-500">
-                            <FaIcon @icon="qrcode" />
-                        </div>
-                    {{/if}}
-                </div>
+{{!-- Entregas: cabeçalho do pedido aberto no desenho do sketch 009 S (a folha da comanda, como no console): o número em
+     destaque, a origem, a situação e o cronômetro do prazo; embaixo, "para <cliente>" e a hora. Sem o QR code --}}
+<div class="ps-folha-cab">
+    <div class="ps-folha-linha">
+        <span class="ps-folha-num {{unless this.numero 'sem-numero'}}">{{if this.numero (concat "#" this.numero) this.trackingNumber}}</span>
+        <Portal::Order::SeloDeOrigem @notas={{this.resource.notes}} @idInterno={{this.resource.internal_id}} />
+        <Badge @status={{@resource.status}} />
+        {{#if this.cronometro}}
+            <div class="portal-order-card-prazo" title={{t "customer-portal.ui.entregas.card.prazo"}}>
+                <Badge @type={{this.tipoDoPrazo}} @icon="clock">{{this.cronometro.texto}}</Badge>
             </div>
-            <div class="flex flex-col min-w-0">
-                <div class="font-semibold truncate">{{this.trackingNumber}}</div>
-                <div class="flex flex-row flex-wrap gap-1">
-                    <Badge @status={{@resource.status}} />
-                    <Portal::Order::SeloDeOrigem @notas={{this.resource.notes}} @idInterno={{this.resource.internal_id}} />
-                    {{#if @resource.dispatched_at}}
-                        <Badge @status="dispatched">{{t "customer-portal.ui.order.dispatched-at" date=this.dispatchedAt}}</Badge>
-                    {{/if}}
-                </div>
-                <div class="mt-1">
-                    <div class="text-xs text-gray-400 dark:text-gray-500">{{t "customer-portal.ui.order.date-created" date=this.createdAt}}</div>
-                    <div class="text-xs text-gray-400 dark:text-gray-500">{{t "customer-portal.ui.order.type-value" type=(smart-humanize @resource.type)}}</div>
-                </div>
-            </div>
-        </div>
-        <div class="next-view-header-right">
+        {{/if}}
+        <div class="ps-folha-acoes">
             <Layout::Resource::Panel::HeaderActions
                 @resource={{@resource}}
                 @saveTask={{@saveTask}}
@@ -39,5 +22,11 @@
                 @onPressCancel={{@onPressCancel}}
             />
         </div>
+    </div>
+    <div class="ps-folha-para">
+        {{#if this.cliente}}
+            {{t "customer-portal.ui.entregas.s.para"}} <b>{{this.cliente}}</b> ·
+        {{/if}}
+        <span class="ps-folha-hora">{{t "customer-portal.ui.order.date-created" date=this.createdAt}}</span>
     </div>
 </div>

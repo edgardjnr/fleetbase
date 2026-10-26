@@ -631,6 +631,42 @@ customer-portal:
         label: Retail Goods
         description: General consumer or retail merchandise.
     entregas:
+      s:
+        portal-da-loja: "Store portal"
+        ir-ao-inicio: "Go to Home"
+        menu: "Portal menu"
+        conta: "My account"
+        ao-vivo: "live"
+        ao-vivo-titulo: "Live"
+        filtrar: "Filter orders"
+        motoboys-no-mapa: "couriers on the map"
+        altura-da-lista: "Change the list height"
+        ordem-por-prazo: "In progress · due first on top"
+        limpar-filtro: "Clear filter"
+        nada-no-filtro: "No orders in this filter"
+        para: "for"
+        contagem:
+          sem: "no courier"
+          atrasado: "late"
+          loja: "going to the store"
+          caminho: "on the way"
+        saudacao:
+          bom-dia: "Good morning, {nome}!"
+          boa-tarde: "Good afternoon, {nome}!"
+          boa-noite: "Good evening, {nome}!"
+        inicio:
+          resumo: "{andamento, plural, =0 {No orders in progress} one {1 order in progress} other {# orders in progress}} · {procurando, plural, =0 {all with a courier} one {1 looking for a courier} other {# looking for a courier}} · {online} couriers online"
+          hoje: "today"
+          pedidos-hoje: "Orders today"
+          em-andamento: "In progress"
+          sem-motoboy: "{n} without a courier"
+          entregues: "Delivered"
+          no-prazo: "On time"
+          no-prazo-detalhe: "of today's deliveries"
+          tempo-medio: "Average time"
+          tempo-medio-detalhe: "from acceptance to delivery"
+          a-pagar: "Due this cycle"
+          entregas-no-ciclo: "{n, plural, one {1 delivery} other {# deliveries}} this cycle"
       card:
         portal: "Portal"
         procurando-motoboy: "looking for a courier"

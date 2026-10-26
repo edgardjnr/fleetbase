@@ -1,7 +1,6 @@
 import Controller from '@ember/controller';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
-import { tracked } from '@glimmer/tracking';
 
 export default class PortalController extends Controller {
     @service universe;
@@ -11,24 +10,10 @@ export default class PortalController extends Controller {
     @service intl;
     @service hostRouter;
 
-    // Entregas: um menu só, em todas as telas: a gaveta Portal::Gaveta, aberta pelo ☰ da barra superior (sketch 003, B).
-    // A coluna fixa do menu saiu (2026-10-21)
-    @tracked gavetaAberta = false;
-
-    constructor() {
-        super(...arguments);
-        // a gaveta fecha ao trocar de tela (clique num item do menu, inclusive o da própria tela)
-        this.hostRouter.on('routeDidChange', () => {
-            this.gavetaAberta = false;
-        });
-    }
-
-    @action alternarMenu() {
-        this.gavetaAberta = !this.gavetaAberta;
-    }
-
-    @action fecharGaveta() {
-        this.gavetaAberta = false;
+    // Entregas: a barra fixa do Novo pedido no celular (sketch 009 S) fica fora da própria tela do novo pedido e da tela
+    // Pedidos (a folha de baixo do mapa já tem o botão); no desktop o CSS a esconde e o botão fica no topo
+    get mostrarBarraNovo() {
+        return !(this.hostRouter.currentRouteName ?? '').startsWith('customer-portal.portal.orders');
     }
 
     get accountName() {

@@ -1,0 +1,57 @@
+{{!-- Entregas: o topo do portal (sketch 009 S): a loja, as abas, o Novo pedido, as Conversas e o avatar. No celular, as
+     abas descem para uma segunda linha que rola para o lado, e o Novo pedido vira a barra fixa embaixo (portal.hbs) --}}
+<header class="ps-topo">
+    <LinkTo @route="portal.home" class="ps-marca" aria-label={{t "customer-portal.ui.entregas.s.ir-ao-inicio"}}>
+        <span class="ps-marca-ic" aria-hidden="true">{{this.iniciais}}</span>
+        <span class="ps-marca-texto">
+            <b>{{@nomeDaConta}}</b>
+            <small>{{t "customer-portal.ui.entregas.s.portal-da-loja"}}</small>
+        </span>
+    </LinkTo>
+
+    <nav class="ps-abas" aria-label={{t "customer-portal.ui.entregas.s.menu"}}>
+        <LinkTo @route="portal.home" class="ps-aba"><FaIcon @icon="house" /><span>{{t "customer-portal.ui.nav.dashboard"}}</span></LinkTo>
+        <LinkTo @route="portal.orders" class="ps-aba">
+            <FaIcon @icon="box" /><span>{{t "customer-portal.ui.nav.orders"}}</span>
+            {{#if this.emAndamento}}<span class="ps-aba-n">{{this.emAndamento}}</span>{{/if}}
+        </LinkTo>
+        <LinkTo @route="portal.extrato" class="ps-aba"><FaIcon @icon="receipt" /><span>{{t "customer-portal.ui.entregas.statement"}}</span></LinkTo>
+        <LinkTo @route="portal.financeiro" class="ps-aba {{if this.naFatura 'active'}}"><FaIcon @icon="file-invoice-dollar" /><span>{{t "customer-portal.ui.entregas.financeiro.menu"}}</span></LinkTo>
+    </nav>
+
+    <div class="ps-topo-dir">
+        <LinkTo @route="portal.orders.new" class="ps-btn ps-btn-marca ps-topo-novo"><FaIcon @icon="plus" /><span>{{t "customer-portal.ui.order.new-order"}}</span></LinkTo>
+        <button
+            type="button"
+            class="ps-icbtn {{if this.entregasConversas.aberta 'is-ativo'}}"
+            title={{t "customer-portal.ui.entregas.chat-title"}}
+            aria-label={{t "customer-portal.ui.entregas.chat-title"}}
+            aria-pressed={{if this.entregasConversas.aberta "true" "false"}}
+            {{on "click" this.abrirConversas}}
+        >
+            <FaIcon @icon="comments" />
+            {{#if this.naoLidas}}<span class="ps-contador">{{this.naoLidas}}</span>{{/if}}
+        </button>
+        <BasicDropdown class="ps-avatar-menu" @renderInPlace={{true}} @horizontalPosition="right" as |dd|>
+            <dd.Trigger class="ps-avatar-gatilho" aria-label={{t "customer-portal.ui.entregas.s.conta"}}>
+                <Image src={{this.currentUser.avatarUrl}} @fallbackSrc="/images/entregas/padrao/static/no-avatar.png" alt={{@nomeDaConta}} class="ps-avatar" />
+            </dd.Trigger>
+            <dd.Content class="ps-avatar-conteudo">
+                <div class="next-dd-menu">
+                    <div class="ps-avatar-cab">
+                        <b>{{@nomeDaConta}}</b>
+                        <small>{{@email}}</small>
+                    </div>
+                    <div class="px-1">
+                        <Layout::Sidebar::Item class="next-dd-item" @route="customer-portal.portal.settings.account" @icon="gear">{{t "customer-portal.ui.nav.account-settings"}}</Layout::Sidebar::Item>
+                    </div>
+                    <Layout::Header::DarkModeToggle />
+                    <div class="next-dd-menu-seperator"></div>
+                    <div class="px-1">
+                        <Layout::Sidebar::Item class="next-dd-item" @onClick={{@onSair}} @icon="person-running">{{t "customer-portal.ui.nav.logout"}}</Layout::Sidebar::Item>
+                    </div>
+                </div>
+            </dd.Content>
+        </BasicDropdown>
+    </div>
+</header>

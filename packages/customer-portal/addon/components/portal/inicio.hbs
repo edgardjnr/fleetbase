@@ -1,0 +1,59 @@
+{{!-- Entregas: o Início do portal da loja (sketch 009 S; ver inicio.js) --}}
+<div class="ps-inicio">
+    <section class="ps-heroi">
+        <div class="ps-heroi-texto">
+            <h1>{{t (concat "customer-portal.ui.entregas.s.saudacao." this.saudacao) nome=@nome}}</h1>
+            <p>{{t "customer-portal.ui.entregas.s.inicio.resumo" andamento=this.emAndamento.length procurando=this.procurando online=this.numeros.motoboysOnline}}</p>
+        </div>
+        <LinkTo @route="portal.orders.new" class="ps-btn ps-btn-tinta ps-btn-grande"><FaIcon @icon="plus" /><span>{{t "customer-portal.ui.order.new-order"}}</span></LinkTo>
+    </section>
+
+    <section class="ps-numeros" aria-label={{t "customer-portal.ui.entregas.s.inicio.hoje"}}>
+        <LinkTo @route="portal.orders" @query={{hash view="table"}} class="ps-num">
+            <small>{{t "customer-portal.ui.entregas.s.inicio.pedidos-hoje"}}</small><b>{{this.numeros.pedidosHoje}}</b>
+        </LinkTo>
+        <LinkTo @route="portal.orders" @query={{hash view="map"}} class="ps-num">
+            <small>{{t "customer-portal.ui.entregas.s.inicio.em-andamento"}}</small><b>{{this.numeros.emAndamento}}</b>
+            {{#if this.procurando}}<span class="ps-num-alerta">{{t "customer-portal.ui.entregas.s.inicio.sem-motoboy" n=this.procurando}}</span>{{/if}}
+        </LinkTo>
+        <LinkTo @route="portal.extrato" class="ps-num">
+            <small>{{t "customer-portal.ui.entregas.s.inicio.entregues"}}</small><b>{{this.numeros.entregues}}</b><span>{{t "customer-portal.ui.entregas.s.inicio.hoje"}}</span>
+        </LinkTo>
+        <div class="ps-num">
+            <small>{{t "customer-portal.ui.entregas.s.inicio.no-prazo"}}</small><b>{{this.numeros.noPrazo}}</b><span>{{t "customer-portal.ui.entregas.s.inicio.no-prazo-detalhe"}}</span>
+        </div>
+        <div class="ps-num">
+            <small>{{t "customer-portal.ui.entregas.s.inicio.tempo-medio"}}</small><b>{{this.numeros.tempoMedio}}</b><span>{{t "customer-portal.ui.entregas.s.inicio.tempo-medio-detalhe"}}</span>
+        </div>
+        <LinkTo @route="portal.financeiro" class="ps-num ps-num-dinheiro">
+            <small>{{t "customer-portal.ui.entregas.s.inicio.a-pagar"}}</small><b>{{this.numeros.aPagar}}</b><span>{{this.detalheDoCiclo}}</span>
+        </LinkTo>
+    </section>
+
+    <section class="ps-aovivo">
+        <div class="ps-cartao ps-aovivo-lista">
+            <header class="ps-cartao-cab">
+                <h2>{{t "customer-portal.ui.entregas.s.ao-vivo-titulo"}}</h2>
+                <span class="ps-lista-n">{{this.emAndamento.length}}</span>
+                <span class="ps-ao-vivo">{{t "customer-portal.ui.entregas.s.ao-vivo"}}</span>
+            </header>
+            <div class="ps-lista-corpo">
+                {{#each this.emAndamento as |order|}}
+                    <Portal::Order::ListCard @order={{order}} />
+                {{else}}
+                    <div class="portal-empty-state compact">
+                        {{#if this.carregou}}
+                            <div class="portal-empty-state-title">{{t "customer-portal.ui.entregas.no-orders-in-progress"}}</div>
+                            <p>{{t "customer-portal.ui.entregas.no-orders-in-progress-text"}}</p>
+                        {{else}}
+                            <Spinner />
+                        {{/if}}
+                    </div>
+                {{/each}}
+            </div>
+        </div>
+        <div class="ps-cartao ps-aovivo-mapa">
+            <Portal::Order::Workspace::Map @orders={{this.pedidos}} />
+        </div>
+    </section>
+</div>

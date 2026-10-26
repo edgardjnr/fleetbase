@@ -1,7 +1,8 @@
 <?php
 
-// Resumo do dia na gaveta do menu do portal da loja (ResumoDoDiaDaLoja): pedidos em andamento e entregues hoje da loja
-// e os motoboys online da empresa. Só a loja da sessão; "hoje" no horário de Brasília.
+// Números de hoje do portal da loja (ResumoDoDiaDaLoja; Início e a antiga gaveta): pedidos em andamento, entregues hoje,
+// pedidos de hoje, % no prazo e tempo médio da loja e os motoboys online da empresa. Só a loja da sessão; "hoje" no
+// horário de Brasília.
 // Uso: PHP_WASM_DIR=<pasta> node scripts/teste-php/rodar.mjs scripts/teste-php/resumo-do-dia.php
 
 namespace Illuminate\Support {
@@ -77,7 +78,20 @@ namespace Teste {
             return $this;
         }
 
-        public function pluck($coluna): Colecao { return new Colecao(array_map(fn ($linha) => $linha->$coluna ?? null, array_values($this->linhas))); }
+        public function pluck($coluna, $chave = null): Colecao
+        {
+            if ($chave === null) {
+                return new Colecao(array_map(fn ($linha) => $linha->$coluna ?? null, array_values($this->linhas)));
+            }
+            $mapa = [];
+            foreach ($this->linhas as $linha) {
+                $mapa[(string) ($linha->$chave ?? '')] = $linha->$coluna ?? null;
+            }
+
+            return new Colecao($mapa);
+        }
+
+        public function get(array $colunas = ['*']): Colecao { return new Colecao(array_values($this->linhas)); }
         public function count(): int { return count($this->linhas); }
     }
 
@@ -112,6 +126,8 @@ namespace {
 
     require '/repo/api/app/Support/Entregas/StatusDoPedido.php';
     require '/repo/api/app/Support/Entregas/SituacaoDoMotoboy.php';
+    require '/repo/api/app/Support/Entregas/PrazoDaEntrega.php';
+    require '/repo/api/app/Support/Entregas/Painel/AgregadorDoPainel.php';
     require '/repo/api/app/Support/Entregas/ResumoDoDiaDaLoja.php';
 
     // como na produção: o PHP no fuso do app (America/Sao_Paulo), o mesmo da sessão do MySQL
@@ -132,10 +148,12 @@ namespace {
         echo ($ok ? 'PASSA ' : 'FALHA ') . $caso . PHP_EOL;
     }
 
-    function pedido(string $id, ?string $status, string $dono, string $atualizado, ?string $rastreio = null, string $empresa = EMPRESA): object
+    function pedido(string $id, ?string $status, string $dono, string $atualizado, ?string $rastreio = null, string $empresa = EMPRESA, ?string $criado = null, ?string $aceito = null, ?string $prazo = null): object
     {
         return (object) ['public_id' => $id, 'company_uuid' => $empresa, 'status' => $status, 'customer_uuid' => $dono,
-            'updated_at' => new Carbon($atualizado), 'tracking_number_uuid' => $rastreio];
+            'updated_at' => new Carbon($atualizado), 'tracking_number_uuid' => $rastreio,
+            'created_at' => new Carbon($criado ?? '2026-10-20 10:00:00'), 'started_at' => $aceito ? new Carbon($aceito) : null,
+            'dispatched_at' => null, 'meta' => $prazo ? ['entregas_prazo_em' => $prazo] : []];
     }
 
     function conclusao(string $rastreio, string $quando, string $empresa = EMPRESA, ?string $apagado = null): object
@@ -147,7 +165,7 @@ namespace {
 
     Order::$todos = [
         // em andamento
-        pedido('o_criado', 'created', 'vendor-a', '2026-10-21 00:10:00'),
+        pedido('o_criado', 'created', 'vendor-a', '2026-10-21 00:10:00', null, EMPRESA, '2026-10-21 00:09:00'),
         pedido('o_a_caminho', 'enroute', 'contato-a', '2026-10-20 23:50:00'),
         pedido('o_velho', 'started', 'vendor-a', '2026-10-20 12:00:00'),
         pedido('o_outra_loja', 'started', 'vendor-b', '2026-10-21 00:10:00'),
@@ -155,8 +173,10 @@ namespace {
         pedido('o_cancelado', 'canceled', 'vendor-a', '2026-10-21 00:10:00'),
         pedido('o_sem_status', null, 'vendor-a', '2026-10-21 00:10:00'),
         // entregues
-        pedido('o_hoje', 'completed', 'vendor-a', '2026-10-21 00:20:00', 'rastreio-hoje'),
-        pedido('o_hoje_contato', 'completed', 'contato-a', '2026-10-21 00:25:00', 'rastreio-hoje-2'),
+        // no prazo (00:15 antes das 00:20), 20 min do aceite à conclusão; criado ontem
+        pedido('o_hoje', 'completed', 'vendor-a', '2026-10-21 00:20:00', 'rastreio-hoje', EMPRESA, '2026-10-20 23:40:00', '2026-10-20 23:55:00', '2026-10-21T00:20:00-03:00'),
+        // atrasado (00:01 depois das 00:00), 40 min do aceite; criado hoje
+        pedido('o_hoje_contato', 'completed', 'contato-a', '2026-10-21 00:25:00', 'rastreio-hoje-2', EMPRESA, '2026-10-21 00:00:30', '2026-10-20 23:21:00', '2026-10-21T00:00:00-03:00'),
         pedido('o_ontem_tarde', 'completed', 'vendor-a', '2026-10-21 00:05:00', 'rastreio-ontem'),
         pedido('o_hoje_outra_loja', 'completed', 'vendor-b', '2026-10-21 00:20:00', 'rastreio-b'),
         pedido('o_conclusao_apagada', 'completed', 'vendor-a', '2026-10-21 00:20:00', 'rastreio-apagado'),
@@ -181,18 +201,23 @@ namespace {
 
     echo '== ResumoDoDiaDaLoja::contar' . PHP_EOL;
     $resumo = ResumoDoDiaDaLoja::contar(EMPRESA, $donos);
-    confere(array_keys($resumo) === ['em_andamento', 'entregues_hoje', 'motoboys_online'], 'só os três números, nesta ordem');
+    confere(array_keys($resumo) === ['em_andamento', 'entregues_hoje', 'motoboys_online', 'pedidos_hoje', 'no_prazo', 'tempo_medio_min'], 'só os seis números, nesta ordem');
     confere($resumo['em_andamento'] === 3, 'em andamento: os não encerrados da loja e do contato mexidos nas últimas 12 h (veio ' . $resumo['em_andamento'] . ')');
     confere($resumo['entregues_hoje'] === 2, 'entregues hoje: concluídos da loja e do contato com a conclusão de hoje em Brasília (veio ' . $resumo['entregues_hoje'] . ')');
     confere($resumo['motoboys_online'] === 2, 'motoboys online: os da empresa (veio ' . $resumo['motoboys_online'] . ')');
+    confere($resumo['pedidos_hoje'] === 2, 'pedidos hoje: os da loja e do contato criados hoje em Brasília, em qualquer situação (veio ' . $resumo['pedidos_hoje'] . ')');
+    confere($resumo['no_prazo'] === 50, 'no prazo: 1 de 2 entregues hoje dentro do prazo (veio ' . var_export($resumo['no_prazo'], true) . ')');
+    confere($resumo['tempo_medio_min'] === 30, 'tempo médio: média de 20 e 40 min do aceite à conclusão (veio ' . var_export($resumo['tempo_medio_min'], true) . ')');
 
     echo '== Sem donos (usuário sem loja nem contato)' . PHP_EOL;
     $vazio = ResumoDoDiaDaLoja::contar(EMPRESA, []);
-    confere($vazio['em_andamento'] === 0 && $vazio['entregues_hoje'] === 0, 'sem donos, nenhum pedido conta (não vira "todos os pedidos")');
+    confere($vazio['em_andamento'] === 0 && $vazio['entregues_hoje'] === 0 && $vazio['pedidos_hoje'] === 0, 'sem donos, nenhum pedido conta (não vira "todos os pedidos")');
+    confere($vazio['no_prazo'] === null && $vazio['tempo_medio_min'] === null, 'sem entregues, no prazo e tempo médio vazios (null, não 0)');
 
     echo '== Nenhuma conclusão hoje' . PHP_EOL;
     DB::$tabelas['tracking_statuses'] = [conclusao('rastreio-ontem', '2026-10-20 23:59:00')];
-    confere(ResumoDoDiaDaLoja::contar(EMPRESA, $donos)['entregues_hoje'] === 0, 'sem conclusão hoje, zero');
+    $semHoje = ResumoDoDiaDaLoja::contar(EMPRESA, $donos);
+    confere($semHoje['entregues_hoje'] === 0 && $semHoje['no_prazo'] === null, 'sem conclusão hoje, zero e sem % no prazo');
 
     echo PHP_EOL . "FALHAS: {$falhas}" . PHP_EOL;
 }
