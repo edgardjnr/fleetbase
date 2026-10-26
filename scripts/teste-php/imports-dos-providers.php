@@ -16,6 +16,7 @@ $arquivos = array_merge(
     glob($app . '/Support/Entregas/Integracao/*.php'),
     glob($app . '/Support/Entregas/Financeiro/*.php'),
     glob($app . '/Support/Entregas/Sistema/*.php'),
+    glob($app . '/Support/Entregas/Saques/*.php'),
     [
         $app . '/Jobs/Entregas/AvancarOferta.php',
         $app . '/Jobs/Entregas/AvancarDistribuicao.php',
@@ -54,6 +55,14 @@ $arquivos = array_merge(
         $app . '/Http/Controllers/Entregas/ComprovantesController.php',
         $app . '/Notifications/Entregas/PagamentoRegistrado.php',
         $app . '/Notifications/Entregas/AvisosDoMotoboy.php',
+        // saque Pix pelo app (Asaas)
+        $app . '/Http/Controllers/Entregas/SaquesController.php',
+        $app . '/Http/Controllers/Entregas/SaquePixController.php',
+        $app . '/Http/Controllers/Entregas/ValidacaoAsaasController.php',
+        $app . '/Console/Commands/Entregas/SaquesConferir.php',
+        $app . '/Notifications/Entregas/SaqueConcluido.php',
+        $app . '/Notifications/Entregas/SaqueNaoConcluido.php',
+        $app . '/Notifications/Entregas/PixDeSaqueAlterado.php',
         // prazo de entrega (cronômetro); o GravarPrazoDoPedido entra pelo glob de Listeners/Entregas
         $app . '/Support/Entregas/PrazoDaEntrega.php',
         $app . '/Support/Entregas/PedidosNoMapa.php',

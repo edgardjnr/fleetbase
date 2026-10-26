@@ -22,6 +22,9 @@ use App\Http\Controllers\Entregas\PagamentoMotoboysController;
 use App\Http\Controllers\Entregas\PedidoAbertoController;
 use App\Http\Controllers\Entregas\PainelInicialController;
 use App\Http\Controllers\Entregas\PortalLojaController;
+use App\Http\Controllers\Entregas\SaquePixController;
+use App\Http\Controllers\Entregas\SaquesController;
+use App\Http\Controllers\Entregas\ValidacaoAsaasController;
 use App\Http\Middleware\AvisarOnlineDoMotoboy;
 use App\Http\Middleware\BarrarAceiteDePedidoEncerrado;
 use App\Http\Middleware\BarrarOrganizacaoParaNaoAdmin;
@@ -107,6 +110,10 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('entregas-motoboy-rota', fn (Request $request) => Limit::perMinute(120)->by('entregas-motoboy-rota:' . (session('user') ?: $request->ip())));
         // distribuição de pedidos abertos: a recusa da oferta pelo app (30 por minuto por motoboy)
         RateLimiter::for('entregas-motoboy-recusa', fn (Request $request) => Limit::perMinute(30)->by('entregas-motoboy-recusa:' . (session('user') ?: $request->ip())));
+        // saque Pix pelo app: pedir e acompanhar (o app consulta a cada 3 s por até 1 min), 30 por minuto por motoboy
+        RateLimiter::for('entregas-motoboy-saque', fn (Request $request) => Limit::perMinute(30)->by('entregas-motoboy-saque:' . (session('user') ?: $request->ip())));
+        // validação de saque do Asaas (sem usuário): 120 por minuto por IP
+        RateLimiter::for('entregas-asaas-validacao', fn (Request $request) => Limit::perMinute(120)->by('entregas-asaas-validacao:' . $request->ip()));
 
         // Entregas RestaurantePro: dados do pedido iFood no app (cada card de pedido aberto e os detalhes, relidos a cada
         // mudança do pedido), até 120 chamadas por minuto por motoboy, num balde separado do entregas-motoboy: assim a lista
@@ -191,6 +198,17 @@ class RouteServiceProvider extends ServiceProvider
                         Route::put('financeiro/multiplicadores/{id}', [MultiplicadoresController::class, 'alterar']);
                         Route::post('financeiro/multiplicadores/{id}/encerrar', [MultiplicadoresController::class, 'encerrar']);
                         Route::delete('financeiro/multiplicadores/{id}', [MultiplicadoresController::class, 'apagar']);
+
+                        // saque Pix do motoboy pelo app (SaquePixController; admin do sistema ou da organização): conta Asaas
+                        // da central, validação de saque, limites, lista dos saques e bloqueio por motoboy
+                        Route::get('financeiro/saque-pix', [SaquePixController::class, 'situacao']);
+                        Route::put('financeiro/saque-pix', [SaquePixController::class, 'configurar']);
+                        Route::post('financeiro/saque-pix/conexao', [SaquePixController::class, 'conectar'])->middleware('throttle:10,1');
+                        Route::delete('financeiro/saque-pix/conexao', [SaquePixController::class, 'desconectar'])->middleware('throttle:10,1');
+                        Route::post('financeiro/saque-pix/token', [SaquePixController::class, 'gerarToken']);
+                        Route::post('financeiro/saque-pix/teste', [SaquePixController::class, 'testar'])->middleware('throttle:10,1');
+                        Route::get('financeiro/saques', [SaquePixController::class, 'saques']);
+                        Route::put('financeiro/motoboys/{id}/saque', [SaquePixController::class, 'bloquear']);
 
                         // corridas do sistema (relatório do dono, todas as organizações): CorridasDoSistemaController, só o
                         // administrador do sistema (negarSeNaoDonoDoSistema)
@@ -302,6 +320,22 @@ class RouteServiceProvider extends ServiceProvider
                     ->middleware(['signed', 'throttle:60,1'])
                     ->group(function () {
                         Route::get('{uuid}', [ComprovantesController::class, 'mostrar'])->name(Pagamentos::ROTA_DO_COMPROVANTE);
+                    });
+
+                // Entregas RestaurantePro: saque Pix do motoboy pelo app (SaquesController), com o token dele
+                Route::prefix('v1/entregas/motoboy')
+                    ->middleware(['fleetbase.api', 'throttle:entregas-motoboy-saque'])
+                    ->group(function () {
+                        Route::post('saques', [SaquesController::class, 'pedir']);
+                        Route::get('saques/{id}', [SaquesController::class, 'mostrar']);
+                    });
+
+                // Entregas RestaurantePro: validação de saque do Asaas (o Asaas pergunta antes de cada transferência), sem token
+                // de usuário: a central é achada pelo token do cabeçalho asaas-access-token (ValidacaoDeSaque)
+                Route::prefix('v1/entregas/asaas')
+                    ->middleware(['throttle:entregas-asaas-validacao'])
+                    ->group(function () {
+                        Route::post('validar-saque', [ValidacaoAsaasController::class, 'validar']);
                     });
 
                 // Entregas RestaurantePro: traçado loja → cliente e situação do motoboy no mapa do pedido do app (MotoboyController@rota)
