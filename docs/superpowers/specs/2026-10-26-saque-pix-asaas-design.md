@@ -100,12 +100,17 @@ Card "Saque Pix (Asaas)" em Financeiro → Configurações, em três passos.
   `REFUSED` ("Teste do Entregas"); ao receber o pedido com o token certo, grava `validacao_confirmada_em`. A tela
   consulta o resultado por até 60 s: "Recusada pelo Entregas ✓", ou "O Asaas não chamou o Entregas: confira a URL e o
   token" (se a validação não estiver configurada, o R$ 1 cai na conta do próprio admin).
+- Limites do teste: **um por vez** (com o anterior ainda sem resposta da validação há menos de 2 min → 422 "Espere o
+  resultado do teste anterior.") e **no máximo 5 por dia** (dia de Brasília → 422 "Limite de testes de hoje atingido.").
+  Grava quem pediu (`teste_pedido_por`) e loga com a chave Pix escondida. Se o Asaas recusar o teste ou não responder,
+  a validação e o teste voltam ao que eram: um teste que falha não desliga o saque de uma central já confirmada.
 
 ### 3. Ligar o saque
 
 - Interruptor travado até os passos 1 e 2 (`validacao_confirmada_em` preenchido).
 - Configurações (padrões): `minimo` R$ 10,00; `maximo_dia` R$ 500,00; `saques_dia` 3; `taxa` R$ 0,00. Validação:
-  mínimo ≥ R$ 1,00; máximo do dia ≥ mínimo; saques por dia de 1 a 20; taxa de R$ 0 a R$ 10, menor que o mínimo.
+  mínimo ≥ R$ 2,00 (acima do R$ 1,00 do teste, para não se confundirem); máximo do dia ≥ mínimo; saques por dia de 1 a
+  20; taxa de R$ 0 a R$ 10, menor que o mínimo; valores de 0 a 9.999.999,99.
 
 ## Fluxo do saque
 
@@ -230,7 +235,8 @@ Migration nova (`*_entregas_saques_*`):
 - `entregas_motoboys_financeiro`: + `saque_bloqueado` (bool, padrão falso), `pix_alterada_em`, `pix_alterada_por`.
 
 Classes em `App\Support\Entregas\Saques`: `Cofre` (cifra/decifra com o secret), `AsaasCliente` (único ponto de HTTP com
-o Asaas, base `services.entregas.asaas_url`, padrão `https://api.asaas.com/v3`), `ConexaoAsaas`, `Saques` (disponível,
+o Asaas, base `services.entregas.asaas_url`, padrão `https://api.asaas.com/v3`; só `https://` e sem seguir
+redirecionamento, para o `access_token` não ir a outro endereço), `ConexaoAsaas`, `Saques` (disponível,
 pedido, reserva, transferência, reembolso), `ValidacaoDeSaque`, `AcompanhamentoDeSaques`. Controllers em
 `api/app/Http/Controllers/Entregas/` (`SaquesController` do app, `SaquePixController` do console,
 `ValidacaoAsaasController` público). Rotas no `RouteServiceProvider` (o `imports-dos-providers.php` confere).

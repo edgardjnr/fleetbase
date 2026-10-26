@@ -30,6 +30,21 @@
 - **Motivo do estorno no reembolso:** o estorno automático do pagamento de um saque que falhou usa o motivo padrão do `Pagamentos::estornar` ("Pagamento estornado"), e não "Saque não concluído". O app do motoboy reconhece o estorno de pagamento por esse texto (`MOTIVO_DO_PAGAMENTO_ESTORNADO` em `entregas-navigator/src/utils/extrato.ts`). O motivo da falha fica em `entregas_saques.motivo_falha` e vai no push. A Tarefa 14 atualiza o spec.
 - **Taxa sem `pagamento_uuid`:** a taxa é um `ajuste` negativo ligado ao saque por `entregas_saques.taxa_lancamento_id`. Com `pagamento_uuid`, o extrato a mostraria como pagamento.
 
+## Correções da revisão (depois da Task 10)
+
+O código das Tasks 1–10 abaixo é o do plano original; o ramo `saque-pix` já tem estas correções (um commit cada, com
+teste), e as Tasks 11–16 contam com elas:
+
+- `ConexaoAsaas::testarValidacao($empresa, $tipo, $chave, ?string $usuarioUuid)`: um teste por vez, no máximo
+  `TESTES_POR_DIA` (5) por dia de Brasília (colunas `teste_pedido_por`, `testes_no_dia`, `testes_dia` na migration),
+  quem pediu e a chave escondida no log; teste que falha volta ao estado anterior; secret trocado → 422 "Conecte a chave
+  de novo".
+- Mínimo por saque ≥ R$ 2,00 (`ConexaoAsaas::MINIMO_POR_SAQUE`); limites numéricos finitos de 0 a 9.999.999,99.
+- `AsaasCliente`: só base `https://` e `allow_redirects` false; `#[\SensitiveParameter]` na chave.
+- `desconectar` e `Saques::pedir` travam a linha da conexão (`lockForUpdate`) na transação; dois `conectar` ao mesmo
+  tempo viram troca. A rotina só adota pelo `externalReference` saque ainda em andamento.
+- Testes: o banco em memória anota os `lockForUpdate` em `Teste\Banco::$travas` ([tabela, dentro de transação?]).
+
 ## Mapa dos arquivos
 
 | Arquivo | Responsabilidade |
@@ -3586,6 +3601,8 @@ $r = $console->gerarToken(doAdmin());
 confere($r->status === 200 && strlen($r->dados['token']) === 48 && $r->dados['url'] === 'https://entregas-api.teste/v1/entregas/asaas/validar-saque' && $r->dados['conexao']['token_gerado'] === true, 'token: aparece só aqui, com a URL');
 asaas(200, ['id' => 'tra_teste', 'status' => 'PENDING']);
 confere($console->testar(doAdmin(['tipo' => 'cpf', 'chave' => '12345678901']))->dados['teste_pedido_em'] === '2026-10-27T10:00:00-03:00', 'teste pedido');
+confere(\App\Support\Entregas\Saques\ConexaoAsaas::daEmpresa('empresa-1')->teste_pedido_por === 'user-admin', 'teste: grava quem pediu');
+confere($console->testar(doAdmin(['tipo' => 'cpf', 'chave' => '12345678901']))->dados === ['errors' => ['Espere o resultado do teste anterior.']], 'outro teste antes do resultado: 422');
 confere($console->configurar(doAdmin(['saque_ligado' => true]))->dados === ['errors' => ['Teste a validação de saque antes de ligar.']], 'ligar antes do teste confirmar: 422');
 \Illuminate\Support\Facades\DB::table('entregas_asaas_conexoes')->update(['validacao_confirmada_em' => '2026-10-27 10:00:05']);
 $r = $console->configurar(doAdmin(['saque_ligado' => true, 'minimo' => 15]));
@@ -3823,14 +3840,19 @@ class SaquePixController extends Controller
         ]);
     }
 
-    /** POST financeiro/saque-pix/teste {tipo, chave}: R$ 1,00 para a chave do admin, que a validação precisa recusar. */
+    /**
+     * POST financeiro/saque-pix/teste {tipo, chave}: R$ 1,00 para a chave do admin, que a validação precisa recusar. Um
+     * teste por vez e no máximo 5 por dia (422 "Espere o resultado do teste anterior." / "Limite de testes de hoje
+     * atingido."); grava e loga quem pediu.
+     */
     public function testar(Request $request)
     {
-        if (!AdminDaCentral::usuario($request)) {
+        $usuario = AdminDaCentral::usuario($request);
+        if (!$usuario) {
             return $this->negado();
         }
 
-        return $this->tentar(fn () => ConexaoAsaas::testarValidacao($this->empresa(), $request->input('tipo'), $request->input('chave')));
+        return $this->tentar(fn () => ConexaoAsaas::testarValidacao($this->empresa(), $request->input('tipo'), $request->input('chave'), (string) $usuario->uuid));
     }
 
     /** PUT financeiro/saque-pix {saque_ligado?, minimo?, maximo_dia?, saques_dia?, taxa?}. */
@@ -4213,19 +4235,30 @@ central**. Spec: `docs/superpowers/specs/2026-10-26-saque-pix-asaas-design.md`; 
 
 - **Chave de API do Asaas:** `entregas_asaas_conexoes.chave_cifrada`, AES-256-GCM (`Cofre`). A chave que cifra é o
   Docker secret `entregas_saque_chave` (`/run/secrets/…`, `services.entregas.saque_chave_arquivo`), só na API e no
-  agendador. Sem o secret: conectar 503, envio falha e devolve, a rotina não consulta.
+  agendador. Sem o secret: conectar 503, envio falha e devolve, a rotina não consulta. Secret trocado depois de conectar
+  (a chave gravada não decifra): testar responde 422 pedindo para conectar a chave de novo.
 - **Token da validação:** só o sha256 (`token_hash`), mostrado uma vez no `POST financeiro/saque-pix/token`.
-- Nunca em log ou resposta: a chave, o token e a chave Pix inteira (`Saque::chaveEscondida`).
+- Nunca em log ou resposta: a chave, o token e a chave Pix inteira (`Saque::chaveEscondida`). A chave tem
+  `#[\SensitiveParameter]` (`AsaasCliente::__construct`, `Cofre::cifrar`, `ConexaoAsaas::conectar`): some do stack trace.
+- **Só https:** o `AsaasCliente` não chama base sem `https://` (`ASAAS_API_URL` errada: status 0 e warning
+  "ASAAS_API_URL precisa ser https") e não segue redirecionamento (`allow_redirects` false: o `access_token` iria junto).
 
 ## Camadas
 
-1. Chave Pix e valor sempre do banco; saldo recalculado com a linha do motoboy travada (`lockForUpdate`).
+1. Chave Pix e valor sempre do banco; saldo recalculado com a linha do motoboy travada (`lockForUpdate`). O pedido relê a
+   conexão travada na mesma transação (central desligada ou desconectada no meio: recusa); desconectar trava a mesma linha
+   antes de conferir saque em andamento. Dois "conectar" ao mesmo tempo: o segundo vira troca (a wallet tem de bater).
 2. **Validação de saque do Asaas obrigatória** (`ValidacaoDeSaque`, `POST v1/entregas/asaas/validar-saque`): só o saque
    nosso em andamento com o mesmo `transfer.id`, valor e chave recebe APPROVED; o teste de R$ 1,00 é recusado e confirma
-   (`validacao_confirmada_em`). Sem ela, o saque não liga.
+   (`validacao_confirmada_em`). Sem ela, o saque não liga. **Teste:** um por vez (o anterior sem resposta da validação
+   segura por 2 min: "Espere o resultado do teste anterior."), no máximo 5 por dia de Brasília (`testes_no_dia`,
+   `testes_dia`: "Limite de testes de hoje atingido."), com quem pediu (`teste_pedido_por`) e a chave Pix escondida no
+   log. Teste que o Asaas recusa ou não responde volta a validação e o teste ao que eram: não desliga o saque de uma
+   central já confirmada (se a validação confirmou durante a chamada, responde sem erro).
 3. Wallet fixada ao conectar e conferida antes de cada transferência.
 4. Troca da chave Pix (`ChavePix::salvar` devolve true): `pix_alterada_em/_por`, 24 h sem saque, push `PixDeSaqueAlterado`.
-5. Limites da central (mínimo, máximo/dia, saques/dia, taxa), um saque por vez, uuid do app como idempotência.
+5. Limites da central (mínimo **≥ R$ 2,00**, para nenhum saque se confundir com o teste de R$ 1,00; máximo/dia; saques/dia;
+   taxa; valores de 0 a 9.999.999,99), um saque por vez, uuid do app como idempotência.
 6. Bloqueio por motoboy (`saque_bloqueado`).
 
 ## Fluxo
@@ -4236,7 +4269,7 @@ central**. Spec: `docs/superpowers/specs/2026-10-26-saque-pix-asaas-design.md`; 
   (`externalReference` = `saque:<uuid>`). Antes do POST, qualquer problema falha e devolve. No POST: id → processando;
   4xx → falha e devolve; sem resposta/5xx/200 sem id → fica `enviando` (a rotina procura).
 - `entregas:saques-conferir` (todo minuto, `AcompanhamentoDeSaques`): `GET /transfers/{id}`; sem id há 5 min, procura
-  pelo `externalReference` (até 500 recentes): achou adota, não achou falha. Erro de rede nunca falha.
+  pelo `externalReference` (até 500 recentes): achou adota (só se ainda em andamento), não achou falha. Erro de rede nunca falha.
 - **Falha** (`Saques::falhar`): `Pagamentos::estornar` (motivo "Pagamento estornado", que o app reconhece) + estorno da
   taxa ("Taxa do saque devolvida") + push `SaqueNaoConcluido`. **Conclusão**: comprovante do Asaas + push `SaqueConcluido`.
 - O pagamento de saque não se estorna à mão (`FinanceiroController@estornarPagamento`: 422).
@@ -4282,7 +4315,7 @@ temporário).
 - `Fleetbase\Models\CompanyUser::hasRole` e o papel "Administrator" (AdminDaCentral).
 - `users.password` acessível no model do usuário (senha do conectar/desconectar) e o `Hash::check`.
 - `Driver::notify` e o `CanalFcmEntregas` (pushes).
-- `Illuminate\Http\Client` (`Http::withHeaders()->acceptJson()->timeout()`), usado pelo `AsaasCliente`.
+- `Illuminate\Http\Client` (`Http::withHeaders()->withOptions(['allow_redirects' => false])->acceptJson()->timeout()`), usado pelo `AsaasCliente`.
 ```
 
 - [ ] **Step 2: Índice da raiz**
@@ -4381,7 +4414,7 @@ Passos manuais com o Edgard, na ordem. Nada aqui é feito sem o OK dele.
 - [ ] **Step 1:** Na VPS: `openssl rand -base64 32 | docker secret create entregas_saque_chave -` e `docker secret ls`.
 - [ ] **Step 2:** Push da `main` e `bash deploy/atualizar.sh` (api e console). A migration roda no `deploy.sh`.
 - [ ] **Step 3:** Portainer → Stacks → entregas → Editor: colar o `docker-stack.yml` novo, `ENTREGAS_SAQUE=1` e `ASAAS_API_URL=https://api-sandbox.asaas.com/v3` no env, "Re-pull image" **desligado**, Update the stack. Conferir: `docker exec $(docker ps -q -f name=entregas_application) ls /run/secrets/` mostra `entregas_saque_chave`.
-- [ ] **Step 4:** Com uma conta de **sandbox** do Asaas: no console, conectar a chave de sandbox, gerar o token, configurar a validação no Asaas sandbox (Integrações → Mecanismos de segurança → URL `https://entregas-api.restaurantepro.com.br/v1/entregas/asaas/validar-saque` + token), testar a validação (R$ 1,00 recusado), ligar o saque com mínimo R$ 1.
+- [ ] **Step 4:** Com uma conta de **sandbox** do Asaas: no console, conectar a chave de sandbox, gerar o token, configurar a validação no Asaas sandbox (Integrações → Mecanismos de segurança → URL `https://entregas-api.restaurantepro.com.br/v1/entregas/asaas/validar-saque` + token), testar a validação (R$ 1,00 recusado), ligar o saque com mínimo R$ 2 (o menor permitido).
 - [ ] **Step 5:** Com um motoboy de teste (não da Terraço), APK do plano 3: saldo de teste por lançamento manual, saque de R$ 1 a R$ 5, ver "Caiu no seu Pix" e o comprovante. Testar: chave de telefone (formato com/sem 55), saque recusado (sem saldo no sandbox), troca de chave Pix (carência e push), bloqueio, limite do dia. Conferir nos logs (`docker service logs entregas_application | grep '\[entregas\] saque'`) que nenhum segredo aparece.
 - [ ] **Step 6:** Anotar em `api/app/Support/Entregas/Saques/CLAUDE.md` o formato do telefone que funcionou e se apareceu `authorized: false`.
 - [ ] **Step 7:** Produção: desconectar a conta de sandbox, trocar `ASAAS_API_URL` para vazio (produção) no stack, a central conecta a chave real, configura a validação real, testa e liga. Primeiro saque real com um motoboy avisado e valor pequeno.
