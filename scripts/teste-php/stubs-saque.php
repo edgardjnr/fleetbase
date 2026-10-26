@@ -95,7 +95,7 @@ namespace {
         reiniciarSaque();
         $antes = '2026-10-26 09:00:00';
         \Illuminate\Support\Facades\DB::table('entregas_asaas_conexoes')->insert(array_merge([
-            'company_uuid' => 'empresa-1', 'chave_cifrada' => \App\Support\Entregas\Saques\Cofre::cifrar(CHAVE_ASAAS),
+            'company_uuid' => 'empresa-1', 'chave_cifrada' => \App\Support\Entregas\Saques\Cofre::cifrar(CHAVE_ASAAS, 'empresa-1'),
             'conta_nome' => 'Central Teste', 'conta_documento' => '12345678000199', 'wallet_id' => 'wallet-1',
             'conectada_por' => 'user-admin', 'conectada_em' => $antes, 'token_hash' => hash('sha256', TOKEN_DE_TESTE),
             'token_gerado_em' => $antes, 'validacao_confirmada_em' => $antes, 'saque_ligado' => true,

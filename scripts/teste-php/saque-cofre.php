@@ -1,6 +1,7 @@
 <?php
 
-// Saque Pix: o Cofre (AES-256-GCM com a chave do Docker secret) e as funções puras do Saque.
+// Saque Pix: o Cofre (AES-256-GCM com a chave do Docker secret, amarrado à central pelo dado autenticado) e as funções
+// puras do Saque.
 // Uso: PHP_WASM_DIR=<pasta> node scripts/teste-php/rodar.mjs scripts/teste-php/saque-cofre.php
 
 require __DIR__ . '/stubs-saque.php';
@@ -13,24 +14,27 @@ use Teste\Config;
 echo '== Cofre' . PHP_EOL;
 reiniciarSaque();
 confere(Cofre::disponivel(), 'com o secret: disponível');
-$cifrado = Cofre::cifrar(CHAVE_ASAAS);
+$cifrado = Cofre::cifrar(CHAVE_ASAAS, 'empresa-1');
 confere(str_starts_with($cifrado, 'v1:') && !str_contains($cifrado, CHAVE_ASAAS) && !str_contains(base64_decode(substr($cifrado, 3)), CHAVE_ASAAS), 'cifrado: v1:..., sem a chave em claro');
-confere(Cofre::decifrar($cifrado) === CHAVE_ASAAS, 'decifra de volta');
-confere(Cofre::cifrar('x') !== Cofre::cifrar('x'), 'cada cifra sai diferente (nonce aleatório)');
+confere(Cofre::decifrar($cifrado, 'empresa-1') === CHAVE_ASAAS, 'decifra de volta (mesma central)');
+confere(Cofre::decifrar($cifrado, 'empresa-2') === null, 'o cifrado de uma central NÃO decifra como de outra (linha copiada no banco)');
+confere(Cofre::decifrar($cifrado, '') === null, 'contexto vazio: null');
+confere(excecao(fn () => Cofre::cifrar('x', '')) instanceof \InvalidArgumentException, 'cifrar sem contexto: recusa');
+confere(Cofre::cifrar('x', 'empresa-1') !== Cofre::cifrar('x', 'empresa-1'), 'cada cifra sai diferente (nonce aleatório)');
 $bytes = base64_decode(substr($cifrado, 3));
 $adulterado = 'v1:' . base64_encode(substr($bytes, 0, -1) . chr(ord(substr($bytes, -1)) ^ 1));
-confere(Cofre::decifrar($adulterado) === null, 'texto adulterado: null (a tag do GCM não confere)');
-confere(Cofre::decifrar('lixo') === null && Cofre::decifrar('v1:@@@') === null && Cofre::decifrar(null) === null && Cofre::decifrar('') === null, 'lixo, vazio ou null: null');
+confere(Cofre::decifrar($adulterado, 'empresa-1') === null, 'texto adulterado: null (a tag do GCM não confere)');
+confere(Cofre::decifrar('lixo', 'empresa-1') === null && Cofre::decifrar('v1:@@@', 'empresa-1') === null && Cofre::decifrar(null, 'empresa-1') === null && Cofre::decifrar('', 'empresa-1') === null, 'lixo, vazio ou null: null');
 
 file_put_contents(CHAVE_DO_COFRE, base64_encode(str_repeat('z', 32)));
-confere(Cofre::decifrar($cifrado) === null, 'outra chave no secret: não decifra');
+confere(Cofre::decifrar($cifrado, 'empresa-1') === null, 'outra chave no secret: não decifra');
 file_put_contents(CHAVE_DO_COFRE, 'curta');
 confere(!Cofre::disponivel(), 'secret que não é base64 de 32 bytes: indisponível');
 unlink(CHAVE_DO_COFRE);
 confere(!Cofre::disponivel(), 'sem o arquivo do secret: indisponível');
-$erro = excecao(fn () => Cofre::cifrar('x'));
+$erro = excecao(fn () => Cofre::cifrar('x', 'empresa-1'));
 confere($erro instanceof CofreIndisponivel && $erro->getMessage() === 'Saque Pix indisponível: chave de criptografia não configurada no servidor.', 'sem o secret, cifrar lança CofreIndisponivel com a mensagem do spec');
-confere(Cofre::decifrar($cifrado) === null, 'sem o secret, decifrar devolve null');
+confere(Cofre::decifrar($cifrado, 'empresa-1') === null, 'sem o secret, decifrar devolve null');
 Config::$valores['services.entregas.saque_chave_arquivo'] = '';
 confere(!Cofre::disponivel(), 'caminho vazio: indisponível');
 

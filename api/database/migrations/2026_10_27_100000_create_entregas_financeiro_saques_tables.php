@@ -22,7 +22,7 @@ return new class extends Migration
         Schema::create('entregas_asaas_conexoes', function (Blueprint $table) {
             $table->id();
             $table->char('company_uuid', 36)->unique();
-            $table->text('chave_cifrada');                        // Cofre::cifrar: v1:base64(iv + tag + cifra)
+            $table->text('chave_cifrada');                        // Cofre::cifrar(chave, company_uuid): v1:base64(iv + tag + cifra)
             $table->string('conta_nome', 255)->nullable();
             $table->string('conta_documento', 20)->nullable();    // só os dígitos do CPF/CNPJ da conta
             $table->string('wallet_id', 64);                      // fixada ao conectar; conferida antes de cada saque

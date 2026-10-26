@@ -67,7 +67,8 @@ asaas(200, ['name' => 'Central Teste', 'cpfCnpj' => '12.345.678/0001-99']);
 asaas(200, ['data' => [['id' => 'wallet-1']]]);
 $c = ConexaoAsaas::conectar('empresa-1', '  ' . CHAVE_ASAAS . ' ', 'user-admin');
 confere($c->wallet_id === 'wallet-1' && $c->conta_nome === 'Central Teste' && $c->conta_documento === '12345678000199' && $c->conectada_por === 'user-admin' && $c->conectada_em === '2026-10-27 10:00:00', 'conectada: wallet, nome, documento (dígitos), quem e quando');
-confere(Cofre::decifrar($c->chave_cifrada) === CHAVE_ASAAS, 'a chave (sem os espaços) decifra');
+confere(Cofre::decifrar($c->chave_cifrada, 'empresa-1') === CHAVE_ASAAS, 'a chave (sem os espaços) decifra');
+confere(Cofre::decifrar($c->chave_cifrada, 'empresa-2') === null, 'e só como da empresa-1 (amarrada à central)');
 confere(!str_contains(json_encode(linhasDe('entregas_asaas_conexoes')), CHAVE_ASAAS), 'no banco, só a chave cifrada');
 $pub = ConexaoAsaas::publico($c, 'empresa-1');
 confere(!str_contains(json_encode($pub), 'v1:') && !array_key_exists('chave_cifrada', $pub) && !array_key_exists('token_hash', $pub), 'público: nada da chave nem do token');
@@ -81,11 +82,11 @@ echo '== Trocar a chave' . PHP_EOL;
 asaas(200, ['name' => 'Outra Central']);
 asaas(200, ['data' => [['id' => 'wallet-2']]]);
 confere(mensagem(fn () => ConexaoAsaas::conectar('empresa-1', 'chave-de-outra-conta-0000', 'user-admin')) === 'Esta chave é de outra conta Asaas. Para mudar de conta, desconecte e conecte de novo.', 'chave de outra conta: recusada');
-confere(Cofre::decifrar(conexao()->chave_cifrada) === CHAVE_ASAAS, 'a chave antiga continua');
+confere(Cofre::decifrar(conexao()->chave_cifrada, 'empresa-1') === CHAVE_ASAAS, 'a chave antiga continua');
 asaas(200, ['name' => 'Central Teste']);
 asaas(200, ['data' => [['id' => 'wallet-1']]]);
 ConexaoAsaas::conectar('empresa-1', 'chave-nova-da-mesma-conta-999', 'user-2');
-confere(Cofre::decifrar(conexao()->chave_cifrada) === 'chave-nova-da-mesma-conta-999' && conexao()->conectada_por === 'user-2' && count(linhasDe('entregas_asaas_conexoes')) === 1, 'mesma conta: troca a chave, uma linha só');
+confere(Cofre::decifrar(conexao()->chave_cifrada, 'empresa-1') === 'chave-nova-da-mesma-conta-999' && conexao()->conectada_por === 'user-2' && count(linhasDe('entregas_asaas_conexoes')) === 1, 'mesma conta: troca a chave, uma linha só');
 
 echo '== Dois conectar ao mesmo tempo' . PHP_EOL;
 $guardada = linhasDe('entregas_asaas_conexoes');
@@ -93,7 +94,7 @@ $guardada = linhasDe('entregas_asaas_conexoes');
 function outroConectaAntes(string $wallet): void
 {
     \Teste\Banco::$antesDeInserir['entregas_asaas_conexoes'] = fn () => DB::table('entregas_asaas_conexoes')->insert([
-        'company_uuid' => 'empresa-7', 'chave_cifrada' => Cofre::cifrar('chave-do-outro-pedido-0000'), 'wallet_id' => $wallet,
+        'company_uuid' => 'empresa-7', 'chave_cifrada' => Cofre::cifrar('chave-do-outro-pedido-0000', 'empresa-7'), 'wallet_id' => $wallet,
         'conectada_por' => 'user-2', 'conectada_em' => '2026-10-27 09:59:59', 'created_at' => '2026-10-27 09:59:59', 'updated_at' => '2026-10-27 09:59:59',
     ]);
 }
@@ -102,13 +103,13 @@ asaas(200, ['name' => 'Central Sete']);
 asaas(200, ['data' => [['id' => 'wallet-7']]]);
 $erro = excecao(fn () => ConexaoAsaas::conectar('empresa-7', CHAVE_ASAAS, 'user-admin'));
 $sete = ConexaoAsaas::daEmpresa('empresa-7');
-confere($erro === null && Cofre::decifrar($sete->chave_cifrada) === CHAVE_ASAAS && $sete->conectada_por === 'user-admin' && count(DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-7')->get()) === 1, 'mesma conta: vira troca da chave, uma linha só' . ($erro ? ': ' . get_class($erro) . ' ' . $erro->getMessage() : ''));
+confere($erro === null && Cofre::decifrar($sete->chave_cifrada, 'empresa-7') === CHAVE_ASAAS && $sete->conectada_por === 'user-admin' && count(DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-7')->get()) === 1, 'mesma conta: vira troca da chave, uma linha só' . ($erro ? ': ' . get_class($erro) . ' ' . $erro->getMessage() : ''));
 confere((end(Log::$registros)[2] ?? null) === ['empresa' => 'empresa-7', 'wallet' => 'wallet-7', 'por' => 'user-admin', 'troca' => true], 'log: troca');
 DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-7')->delete();
 outroConectaAntes('wallet-8');
 asaas(200, ['name' => 'Central Sete']);
 asaas(200, ['data' => [['id' => 'wallet-7']]]);
-confere(mensagem(fn () => ConexaoAsaas::conectar('empresa-7', CHAVE_ASAAS, 'user-admin')) === 'Esta chave é de outra conta Asaas. Para mudar de conta, desconecte e conecte de novo.' && Cofre::decifrar(ConexaoAsaas::daEmpresa('empresa-7')->chave_cifrada) === 'chave-do-outro-pedido-0000', 'outra conta: recusada, fica a do outro pedido');
+confere(mensagem(fn () => ConexaoAsaas::conectar('empresa-7', CHAVE_ASAAS, 'user-admin')) === 'Esta chave é de outra conta Asaas. Para mudar de conta, desconecte e conecte de novo.' && Cofre::decifrar(ConexaoAsaas::daEmpresa('empresa-7')->chave_cifrada, 'empresa-7') === 'chave-do-outro-pedido-0000', 'outra conta: recusada, fica a do outro pedido');
 DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-7')->delete();
 confere(linhasDe('entregas_asaas_conexoes') === $guardada, 'empresa-1 intacta');
 

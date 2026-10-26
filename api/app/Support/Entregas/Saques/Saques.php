@@ -312,7 +312,7 @@ final class Saques
     public static function enviar(object $saque): object
     {
         $conexao = ConexaoAsaas::daEmpresa((string) $saque->company_uuid);
-        $chave   = $conexao ? Cofre::decifrar((string) $conexao->chave_cifrada) : null;
+        $chave   = $conexao ? Cofre::decifrar((string) $conexao->chave_cifrada, (string) $saque->company_uuid) : null;
         if ($chave === null) {
             static::falhar($saque, 'Saque Pix indisponível no momento. Avise a central.');
 

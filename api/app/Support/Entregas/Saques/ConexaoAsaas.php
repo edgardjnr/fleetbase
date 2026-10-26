@@ -126,7 +126,7 @@ final class ConexaoAsaas
         $agora  = now()->format('Y-m-d H:i:s');
         $nome   = trim((string) ($dados['name'] ?? $dados['companyName'] ?? ''));
         $campos = [
-            'chave_cifrada'   => Cofre::cifrar($chave),
+            'chave_cifrada'   => Cofre::cifrar($chave, $companyUuid),
             'conta_nome'      => $nome !== '' ? mb_substr($nome, 0, 255) : null,
             'conta_documento' => preg_replace('/\D/', '', (string) ($dados['cpfCnpj'] ?? '')) ?: null,
             'wallet_id'       => $carteira,
@@ -211,7 +211,7 @@ final class ConexaoAsaas
         if (isset($pix['erro'])) {
             throw new \InvalidArgumentException($pix['erro']);
         }
-        $chave = Cofre::decifrar((string) $conexao->chave_cifrada);
+        $chave = Cofre::decifrar((string) $conexao->chave_cifrada, $companyUuid);
         if ($chave === null) {
             if (Cofre::disponivel()) {
                 // o secret existe mas não abre a chave gravada: foi trocado depois de conectar

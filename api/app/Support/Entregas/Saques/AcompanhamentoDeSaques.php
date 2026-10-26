@@ -42,7 +42,7 @@ final class AcompanhamentoDeSaques
     private static function daEmpresa(string $empresa, array $saques): int
     {
         $conexao = ConexaoAsaas::daEmpresa($empresa);
-        $chave   = $conexao ? Cofre::decifrar((string) $conexao->chave_cifrada) : null;
+        $chave   = $conexao ? Cofre::decifrar((string) $conexao->chave_cifrada, $empresa) : null;
         if ($chave === null) {
             Log::warning('[entregas] saque: sem a chave do Asaas para acompanhar', ['empresa' => $empresa, 'saques' => count($saques)]);
 
