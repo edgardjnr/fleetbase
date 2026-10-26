@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Log;
  * Aprova só o saque nosso em andamento, e a validação NUNCA grava o transfer_id (quem grava é o envio, com o id da
  * resposta do NOSSO POST; uma transferência criada por quem tem a chave de API não pode "tomar" um saque). Em todo
  * caminho, `operationType`, se vier, tem de ser PIX.
- * - por id: o saque em andamento da central com este transfer_id, valor igual e, se o pedido trouxer, a mesma chave Pix
- *   (e o mesmo externalReference);
+ * - por id: o saque em andamento da central com este transfer_id, valor igual e, se o pedido trouxer a chave Pix
+ *   inteira, a mesma chave (mascarada, com "*", conta como não veio) e o mesmo externalReference;
  * - sem id gravado (o Asaas chamou antes de recebermos a resposta do POST), só um saque "enviando" sem id dos últimos
  *   2 min, escolhido (a) pelo externalReference dele ("saque:<uuid>") ou (b) sem externalReference, por ser o único
  *   candidato com o mesmo valor. O externalReference só ESCOLHE (quem tem a chave de API pode copiá-lo): a aprovação
@@ -148,13 +148,16 @@ final class ValidacaoDeSaque
             && $valor === Saque::centavos(ConexaoAsaas::VALOR_DO_TESTE);
     }
 
-    /** Valor igual e, se o pedido trouxe a chave Pix, a mesma chave: aprova (uma vez por saque); senão, recusa. */
+    /**
+     * Pelo id (o do nosso POST): valor igual e, se o pedido trouxe a chave Pix inteira, a mesma chave: aprova (uma vez por
+     * saque); senão, recusa. Chave mascarada ("*") conta como não veio: o id já prova que a transferência é a nossa.
+     */
     private static function conferirEAprovar(string $empresa, string $id, object $saque, int $valor, ?string $chaveDeles): array
     {
         if (Saque::centavos($saque->valor) !== $valor) {
             return static::decisao($empresa, $id, false, 'Valor diferente do saque pedido.', (string) $saque->uuid);
         }
-        if ($chaveDeles !== null && !static::mesmaChave((string) $saque->chave_pix, (string) $saque->tipo_chave, $chaveDeles)) {
+        if ($chaveDeles !== null && !static::mascarada($chaveDeles) && !static::mesmaChave((string) $saque->chave_pix, (string) $saque->tipo_chave, $chaveDeles)) {
             return static::decisao($empresa, $id, false, 'Chave Pix diferente da cadastrada.', (string) $saque->uuid);
         }
 

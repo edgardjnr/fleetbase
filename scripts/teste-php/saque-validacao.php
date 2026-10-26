@@ -187,6 +187,21 @@ DB::table('entregas_saques')->where('uuid', U1)->update(['aprovado_transfer_id' 
 confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50)) === recusa('Saque já aprovado para outra transferência.'), 'por id, saque já aprovado para outra: RECUSADA');
 confere(saqueDoBanco(U1)->aprovado_transfer_id === 'tra_OUTRA', 'e a aprovação não muda');
 
+echo '== Segunda revisão, N6: chave mascarada ("*")' . PHP_EOL;
+centralComSaque();
+saqueEnviado('driver-1', U1, 50, ['id' => 'tra_1', 'status' => 'PENDING', 'value' => 50, 'externalReference' => 'saque:' . U1]);
+confere(ValidacaoDeSaque::mascarada('(11) *****-4321') && ValidacaoDeSaque::mascarada('jo***@hotmail.com') && !ValidacaoDeSaque::mascarada('11999994321'), 'mascarada: a chave que tem "*"');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50, '(11) *****-4321')) === aprovado(), 'PoC E: por id, chave mascarada conta como não veio (id e valor conferem): APPROVED');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50, '(21) *****-7777')) === aprovado(), 'por id, outra chave mascarada: também não dá para comparar, segue pelo id');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, ['type' => 'TRANSFER', 'transfer' => ['id' => 'tra_1', 'value' => 50]]) === aprovado(), 'PoC E: por id, sem externalReference e sem chave: APPROVED');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, ['type' => 'TRANSFER', 'transfer' => ['id' => 'tra_1', 'value' => '50.00']]) === aprovado(), 'PoC E: valor em texto "50.00": APPROVED');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50, '21988887777')) === recusa('Chave Pix diferente da cadastrada.'), 'por id, chave inteira diferente: continua recusada');
+centralComSaque();
+Saques::pedir('empresa-1', 'driver-1', U2, 30);
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_9', 30, '(11) *****-4321')) === recusa('Chave Pix mascarada; não dá para conferir.'), 'sem id (único candidato pelo valor), chave mascarada: RECUSADA');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_9', 30, '(11) *****-4321', 'TRANSFER', 'saque:' . U2)) === recusa('Chave Pix mascarada; não dá para conferir.'), 'sem id (pelo externalReference), chave mascarada: RECUSADA');
+confere(saqueDoBanco(U2)->aprovado_em === null, 'e não aprova o saque');
+
 echo '== Envio: o id do POST é o que vale' . PHP_EOL;
 centralComSaque();
 $s = Saques::pedir('empresa-1', 'driver-1', U1, 50)['saque'];
