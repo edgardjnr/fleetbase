@@ -30,16 +30,24 @@ central**. Spec: `docs/superpowers/specs/2026-10-26-saque-pix-asaas-design.md`; 
    antes de conferir saque em andamento. Dois "conectar" ao mesmo tempo: o segundo vira troca (a wallet tem de bater).
 2. **Validação de saque do Asaas obrigatória** (`ValidacaoDeSaque`, `POST v1/entregas/asaas/validar-saque`). **A
    validação nunca grava o `transfer_id`**: quem grava é o envio, com o id da resposta do NOSSO POST (uma transferência
-   criada por quem tem a chave de API não "toma" um saque). Aprova:
+   criada por quem tem a chave de API não "toma" um saque). Em todo caminho, `transfer.operationType`, **se vier**, tem
+   de ser `PIX` (senão "Transferência não é Pix."; se não vier, segue). Aprova:
    - **por id:** o saque em andamento da central com `transfer_id` = `transfer.id`, valor igual e, se o pedido trouxer, a
-     mesma chave Pix (`transfer.bankAccount.pixAddressKey` ou `transfer.pixAddressKey`, não vazia) e o mesmo
-     `externalReference`;
-   - **sem id** (o Asaas chamou antes da resposta do POST), só saques `enviando` sem id criados há até 2 min: (a) o pedido
-     traz `transfer.externalReference` = `saque:<uuid>` de um deles, valor igual (e chave igual, se vier); ou (b) sem
-     `externalReference`, exatamente **um** candidato com o mesmo valor **e** o pedido traz a chave Pix, igual à dele (o
-     dinheiro iria para o próprio motoboy). Dois candidatos do mesmo valor ou sem chave: recusa.
-   - Telefone comparado inteiro: as duas chaves viram 55 + DDD + número (10 ou 11 dígitos ganham "55"), `===`.
-   - Ao aprovar, grava `entregas_saques.aprovado_em`.
+     mesma chave Pix (`transfer.bankAccount.pixAddressKey` ou `transfer.pixAddressKey`, não vazia; **mascarada**, com
+     `*`, conta como não veio) e o mesmo `externalReference`;
+   - **sem id** (o Asaas chamou antes da resposta do POST), só saques `enviando` sem id criados há até 2 min. O candidato
+     é escolhido (a) pelo `transfer.externalReference` = `saque:<uuid>` dele ou (b) sem `externalReference`, por ser o
+     **único** com o mesmo valor. **O `externalReference` só escolhe** (quem tem a chave de API pode copiá-lo): a
+     aprovação exige sempre valor igual **e** a chave Pix no pedido, não mascarada e igual à do saque (o dinheiro iria
+     para o próprio motoboy). Sem chave ("Transferência sem chave Pix para conferir."), chave mascarada ("Chave Pix
+     mascarada; não dá para conferir."), dois candidatos do mesmo valor: recusa.
+   - Chave comparada inteira, normalizada pelo tipo (`ValidacaoDeSaque::mesmaChave`, também na rotina): telefone, as duas
+     como 55 + DDD + número (10 ou 11 dígitos ganham "55"); CPF/CNPJ, só os dígitos; e-mail, só aparado e em minúsculas
+     (`joao.silva@` ≠ `joaosilva@`); aleatória, minúsculas sem espaços.
+   - **Uma aprovação por saque:** grava `aprovado_em` e `aprovado_transfer_id` juntos, num `update … where id = ? and
+     (aprovado_transfer_id is null or aprovado_transfer_id = <id>)` (o Asaas repetindo a pergunta da mesma transferência
+     aprova de novo). Já aprovado para outra transferência: recusa "Saque já aprovado para outra transferência." e
+     `Log::critical`.
 
    O teste de R$ 1,00 é recusado e confirma (`validacao_confirmada_em`). Sem ela, o saque não liga. **Teste:** um por vez
    (o anterior sem resposta da validação segura por 2 min: "Espere o resultado do teste anterior."), no máximo 5 por dia
@@ -52,11 +60,14 @@ central**. Spec: `docs/superpowers/specs/2026-10-26-saque-pix-asaas-design.md`; 
 5. Limites da central (mínimo **≥ R$ 2,00**, para nenhum saque se confundir com o teste de R$ 1,00; máximo/dia; saques/dia;
    taxa; valores de 0 a 9.999.999,99), um saque por vez, uuid do app como idempotência.
 6. Bloqueio por motoboy (`saque_bloqueado`).
-7. **Conclusão conferida** (`Saques::confere`, dentro do `aplicarStatus`): só conclui ou falha se `value` (quando vem) e
-   `externalReference` (quando vem) batem com o saque; senão `Log::critical('[entregas] saque: transferência não confere
-   com o saque')` e nada muda (o saque fica parado e aparece no painel).
+7. **Conclusão conferida** (`Saques::confere`, dentro do `aplicarStatus`): só conclui ou falha se, cada um quando vem,
+   `value`, `externalReference`, a chave Pix (não mascarada, com a mesma comparação da validação) e o `operationType`
+   (`PIX`) batem com o saque; senão `Log::critical('[entregas] saque: transferência não confere com o saque')` e nada
+   muda (o saque fica parado e aparece no painel).
 8. Pagamento à mão (`FinanceiroController@registrarPagamento`) a motoboy com saque em andamento: 422 "Há um saque Pix em
-   andamento para este motoboy; espere ele terminar.".
+   andamento para este motoboy; espere ele terminar." (`SAQUE_EM_ANDAMENTO`). A conferência e o `Pagamentos::registrar`
+   rodam numa transação externa com a linha do motoboy travada (`Saques::linhaDoMotoboy(..., true)`), como no
+   `Saques::pedir`: um pedido de saque ao mesmo tempo espera o pagamento, e vice-versa.
 
 ## Fluxo
 
@@ -71,11 +82,18 @@ central**. Spec: `docs/superpowers/specs/2026-10-26-saque-pix-asaas-design.md`; 
   - qualquer outra coisa (sem resposta, 5xx, 200 sem id, 409, 429, 4xx sem `errors`) → fica `enviando` (a rotina procura).
 - `entregas:saques-conferir` (todo minuto, `AcompanhamentoDeSaques`), cada saque no seu try/catch (warning "acompanhamento
   do saque falhou" com o saque e a classe do erro; os outros seguem):
-  - com id: `GET /transfers/{id}` e aplica o status. **404 há mais de 30 min** (`Saque::MINUTOS_ORFAO`): procura pelo
-    `externalReference`; achou e confere, adota (troca o `transfer_id`, `Log::critical`) e aplica; não achou, falha
-    "Transferência não encontrada no Asaas.". 404 recente ou outro erro: espera.
+  - com id: `GET /transfers/{id}` e aplica o status; a resposta OK limpa `nao_encontrado_desde` (e `alerta_critico_em`).
+    **Órfão (404):** o primeiro 404 grava `nao_encontrado_desde` (warning "transferência não encontrada no Asaas"). Com o
+    saque criado há mais de 30 min (`Saque::MINUTOS_ORFAO`), procura pelo `externalReference`; achou e confere, adota
+    (troca o `transfer_id`, `Log::critical`) e aplica. Não achou: **nunca falha sozinho** (o dinheiro pode ter saído):
+    fica em andamento ("saque parado" no painel) e, com 404 seguidos há mais de 6 h (`Saque::HORAS_ORFAO`),
+    `Log::critical` "transferência não encontrada no Asaas há horas; conferir à mão" **uma vez** (marca
+    `alerta_critico_em`). Outro erro: espera (sem mexer na marca do 404).
   - sem id há 5 min: procura pelo `externalReference` (até 500 recentes); achou e confere, adota (só se ainda em
     andamento); não achou, falha "Saque interrompido antes de chegar ao Asaas.". Erro de rede nunca falha.
+  - **mais de uma transferência com o `externalReference` do saque** (`transferenciasRecentes` guarda uma lista por
+    referência): só adota a de id = `aprovado_transfer_id`; sem ela (ou com uma só que não é a aprovada, havendo
+    aprovação), `Log::critical` e não adota nem falha (fica parado, aparece no painel).
   - adoção de saque que já terminou (falho e devolvido): `Log::critical` "transferência no Asaas para saque que não está
     em andamento" e nada muda: confira à mão (o dinheiro pode ter saído duas vezes).
 - **Falha** (`Saques::falhar`): `Pagamentos::estornar` (motivo "Pagamento estornado", que o app reconhece) + estorno da
@@ -84,14 +102,35 @@ central**. Spec: `docs/superpowers/specs/2026-10-26-saque-pix-asaas-design.md`; 
   agora." (`Saque::MOTIVO_FALHA_DO_ASAAS`; é o que o push e o app mostram). Motivos nossos só em `motivo_falha`.
 - **Conclusão** (`Saques::concluir`): comprovante só se `transactionReceiptUrl` casar `#^https://([a-z0-9-]+\.)*asaas\.com/#i`
   (`Saque::comprovante`; senão null) + push `SaqueConcluido`. Sem `aprovado_em`: `Log::critical` "concluído sem a
-  aprovação da validação" (conclui mesmo assim: o dinheiro saiu).
+  aprovação da validação"; com `aprovado_transfer_id` diferente do `transfer_id`: `Log::critical` "concluído com a
+  aprovação de outra transferência" (conclui mesmo assim: o dinheiro saiu).
 - O pagamento de saque não se estorna à mão (`FinanceiroController@estornarPagamento`: 422).
 
 ## Logs críticos (`Log::critical`, todos com `[entregas] saque:`)
 
 Qualquer um deles pede olhar à mão no Asaas: "id da transferência diferente do gravado", "id da transferência já usado
-por outro saque", "transferência não confere com o saque", "concluído sem a aprovação da validação", "transferência do
-saque trocada pela achada no Asaas", "transferência no Asaas para saque que não está em andamento".
+por outro saque", "transferência não confere com o saque", "concluído sem a aprovação da validação", "concluído com a
+aprovação de outra transferência", "validação de outra transferência para saque já aprovado", "transferências no Asaas
+com o externalReference do saque e nenhuma é a aprovada", "transferência do saque trocada pela achada no Asaas",
+"transferência no Asaas para saque que não está em andamento", "transferência não encontrada no Asaas há horas;
+conferir à mão".
+
+## Resolver à mão um saque parado
+
+Não há ação no console nem comando próprio (o ideal futuro é uma ação "Resolver saque" no console, só para o admin, com
+senha e log). Hoje: o admin confere no painel do Asaas da central (Transferências, busca por `saque:<uuid>` ou pelo
+`transfer_id`) e quem tem acesso à VPS resolve **um saque por vez**, com o uuid em mãos e cuidado:
+
+- **A transferência existe no Asaas (com outro id):** grave o id certo e deixe a rotina conferir e aplicar o status
+  (`Saques::confere` continua valendo):
+  `UPDATE entregas_saques SET transfer_id = '<id do Asaas>', nao_encontrado_desde = NULL, alerta_critico_em = NULL,
+  updated_at = NOW() WHERE uuid = '<uuid>' AND situacao IN ('enviando', 'processando');` (1 linha).
+- **Nada saiu no Asaas:** falhe e devolva pelo código, nunca só por SQL (o estorno do pagamento e da taxa vai junto, na
+  mesma transação, e o motoboy recebe o push): no container da API, `php artisan tinker` e
+  `App\Support\Entregas\Saques\Saques::falhar(DB::table('entregas_saques')->where('uuid', '<uuid>')->first(),
+  'Transferência não encontrada no Asaas.');` (devolve `true` se falhou agora; `false` se já não estava em andamento).
+- **Saiu e está DONE, mas não confere** (valor, chave, `operationType`): é caso de investigação (chave de API vazada?),
+  não de SQL. Desligue o saque da central e troque a chave do Asaas antes de mexer no saque.
 
 ## Interruptores
 
@@ -132,7 +171,8 @@ houver) e `saque_parado` (1 h). `Saques::publico($saque)` (app) traz `motivo` = 
 
 `PHP_WASM_DIR=/c/tmp/php-wasm node scripts/teste-php/rodar.mjs scripts/teste-php/<teste>.php`: `saque-esquema`,
 `saque-cofre`, `saque-asaas`, `saque-conexao`, `saque-avisos`, `saque-pix-alterada`, `saque-pedido`, `saque-envio`,
-`saque-validacao` (inclui os PoCs 1 e 2 da revisão de segurança), `saque-acompanhamento` (inclui o PoC 3),
+`saque-validacao` (inclui os PoCs 1 e 2 da revisão de segurança e os A, D e E da segunda revisão),
+`saque-acompanhamento` (inclui o PoC 3 e os B, C e F da segunda revisão),
 `saque-financeiro`, `saque-console`, `saque-controllers`, `saque-implantacao` (stubs em `stubs-saque.php`: Http falso
 com a fila `asaas(status, corpo)`, Hash "hash:<senha>", CompanyUser, secret em arquivo temporário; o `Log` falso de
 `stubs-ifood.php` tem `critical`).
@@ -145,8 +185,13 @@ com a fila `asaas(status, corpo)`, Hash "hash:<senha>", CompanyUser, secret em a
 - Sem `externalReference` no pedido da validação e com dois saques `enviando` do mesmo valor ao mesmo tempo, a validação
   recusa os dois (por segurança). Se o sandbox mostrar que o pedido não traz o `externalReference` e o Asaas chama antes
   da resposta do POST, isso vira recusa real em horário de pico: rever.
-- Um saque que a conclusão não confere (valor ou `externalReference`) fica `processando` para sempre, com log crítico a
-  cada minuto, até alguém resolver à mão. É de propósito.
+- Um saque que a conclusão não confere (valor, `externalReference`, chave ou `operationType`), ou com mais de uma
+  transferência com o `externalReference` e nenhuma aprovada, fica em andamento para sempre, com log crítico a cada
+  minuto, até alguém resolver à mão ("Resolver à mão um saque parado"). O órfão (404) também fica, mas com um log
+  crítico só. É de propósito: nunca devolver o valor de um saque cujo dinheiro pode ter saído.
+- Sem o `transfer_id` e sem a chave Pix inteira no pedido da validação, a validação recusa (mesmo com o
+  `externalReference` certo). Se o sandbox mostrar que o Asaas chama antes da resposta do POST **e** manda a chave
+  mascarada ou não manda, todo saque nesse caminho é recusado: rever.
 - O MySQL conta só linhas que mudaram no `update`: `gravarTransferencia` relê o saque quando volta 0 antes de concluir que
   ele não está em andamento.
 
@@ -159,7 +204,13 @@ com a fila `asaas(status, corpo)`, Hash "hash:<senha>", CompanyUser, secret em a
   responder) ou depois? Define qual caminho (por id ou sem id) é o normal.
 - **Endpoint fora do ar:** se a nossa validação não responder (timeout, 5xx, 429 do limite), o Asaas recusa a
   transferência, aprova, ou tenta de novo? E repete a chamada para o mesmo `transfer.id`?
-- **Ordem do `GET /transfers`:** mais recentes primeiro? O filtro `externalReference` funciona? (A rotina lê até 500.)
+- **Ordem do `GET /transfers`:** mais recentes primeiro? O filtro `externalReference` funciona? (A rotina lê até 500 e
+  guarda todas as de cada `externalReference`; a ordem não decide mais qual vale, mas um saque antigo pode cair fora da
+  janela.)
+- **Chave mascarada no payload:** a validação e o `GET /transfers/{id}` trazem a chave Pix inteira ou com `*` (ex.
+  `(11) *****-4321`)? Mascarada, o caminho por id ignora e o caminho sem id recusa.
+- **`operationType` no payload:** a validação e o `GET /transfers/{id}` trazem `operationType` (`PIX`)? Sem ele, a
+  conferência segue sem esse campo.
 - **Desligar a validação sem percebermos:** se a central tirar a validação no Asaas, as transferências saem sem nos
   perguntar; o único sinal é o log crítico "concluído sem a aprovação da validação". Ver se há como consultar pela API se
   a validação está ativa.
