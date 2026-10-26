@@ -72,7 +72,8 @@ final class AcompanhamentoDeSaques
             $achada = $recentes[(string) $saque->external_reference] ?? null;
             if ($achada) {
                 $agora = now()->format('Y-m-d H:i:s');
-                DB::table(Saque::TABELA)->where('id', $saque->id)->whereNull('transfer_id')->update(['transfer_id' => (string) $achada['id'], 'situacao' => Saque::PROCESSANDO, 'updated_at' => $agora]);
+                // só se ainda em andamento: um saque que falhou no meio (valor já devolvido) não volta a processar
+                DB::table(Saque::TABELA)->where('id', $saque->id)->whereNull('transfer_id')->whereIn('situacao', Saque::EM_ANDAMENTO)->update(['transfer_id' => (string) $achada['id'], 'situacao' => Saque::PROCESSANDO, 'updated_at' => $agora]);
                 $terminaram += Saques::aplicarStatus(Saques::recarregar($saque), $achada) ? 1 : 0;
                 continue;
             }

@@ -54,6 +54,19 @@ confere(count(HttpFalso::$chamadas) === 1 && HttpFalso::$chamadas[0]['url'] === 
 confere(saqueDoBanco(UA)->situacao === 'processando' && saqueDoBanco(UA)->transfer_id === 'tra_a' && saqueDoBanco(UA)->asaas_status === 'BANK_PROCESSING', 'achado pelo externalReference: adotado');
 confere(saqueDoBanco(UB)->situacao === 'falhou' && saqueDoBanco(UB)->motivo_falha === 'Saque interrompido antes de chegar ao Asaas.', 'não achado: falha e devolve');
 
+echo '== Terminou no meio da busca: não é adotado' . PHP_EOL;
+centralComSaque();
+Saques::pedir('empresa-1', 'driver-1', UC, 10);
+Relogio::$agora = '2026-10-27 10:06:00';
+HttpFalso::responderCom(function () {
+    // outro processo dá o saque por falho (e devolve o valor) enquanto a rotina lista as transferências
+    Saques::falhar(saqueDoBanco(UC), 'Falhou em outro processo.');
+
+    return [200, ['data' => [['id' => 'tra_c', 'externalReference' => 'saque:' . UC, 'status' => 'DONE', 'value' => 10]], 'hasMore' => false]];
+});
+AcompanhamentoDeSaques::conferir();
+confere(saqueDoBanco(UC)->situacao === 'falhou' && saqueDoBanco(UC)->transfer_id === null && saqueDoBanco(UC)->motivo_falha === 'Falhou em outro processo.', 'o falho (já devolvido) não volta a processando nem conclui: ' . json_encode(saqueDoBanco(UC)));
+
 echo '== Lista fora do ar: espera' . PHP_EOL;
 centralComSaque();
 Saques::pedir('empresa-1', 'driver-1', UC, 10);
