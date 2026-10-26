@@ -1,0 +1,91 @@
+<section class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+    <header class="flex flex-wrap items-center gap-2">
+        <span class="text-xs uppercase text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.passo" numero=1}}</span>
+        <h3 class="text-sm font-semibold dark:text-white">{{t "fleet-ops.ui.financeiro.saque-pix.conta.titulo"}}</h3>
+        {{#if @etapas.conectada}}
+            <Badge @status="success" @hideStatusDot={{true}}>{{t "fleet-ops.ui.financeiro.saque-pix.feito"}}</Badge>
+        {{/if}}
+    </header>
+    <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.conta.ajuda"}}</p>
+
+    {{#if @etapas.conectada}}
+        <dl class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.conta.nome"}}</dt>
+                <dd class="dark:text-gray-100">{{or this.conta.nome "—"}}</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.conta.documento"}}</dt>
+                <dd class="font-mono dark:text-gray-100">{{or this.conta.documento "—"}}</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.conta.wallet"}}</dt>
+                <dd class="font-mono break-all dark:text-gray-100">{{this.conta.wallet}}</dd>
+            </div>
+        </dl>
+        {{#if this.conectadaEm}}
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro.saque-pix.conta.conectada-em" quando=this.conectadaEm}}</p>
+        {{/if}}
+        {{#unless this.modo}}
+            <div class="flex flex-wrap gap-2">
+                <Button @size="xs" @icon="key" @text={{t "fleet-ops.ui.financeiro.saque-pix.conta.trocar"}} @onClick={{fn this.abrir "trocar"}} />
+                <Button @size="xs" @type="danger" @icon="link-slash" @text={{t "fleet-ops.ui.financeiro.saque-pix.conta.desconectar"}} @onClick={{fn this.abrir "desconectar"}} />
+            </div>
+        {{/unless}}
+    {{/if}}
+
+    {{#if this.mostrarFormulario}}
+        {{#if (eq this.modo "trocar")}}
+            <p class="text-xs text-yellow-700 dark:text-yellow-300">{{t "fleet-ops.ui.financeiro.saque-pix.conta.trocar-ajuda"}}</p>
+        {{/if}}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.saque-pix.conta.chave"}} @helpText={{t "fleet-ops.ui.financeiro.saque-pix.conta.chave-ajuda"}} @wrapperClass="mb-0" as |id|>
+                <input
+                    id={{id}}
+                    type="password"
+                    autocomplete="off"
+                    spellcheck="false"
+                    class="form-input form-input-sm w-full font-mono"
+                    value={{this.chave}}
+                    disabled={{this.semCofre}}
+                    {{on "input" (fn this.setCampo "chave")}}
+                />
+            </InputGroup>
+            <InputGroup @name={{t "fleet-ops.ui.financeiro.saque-pix.conta.senha"}} @helpText={{t "fleet-ops.ui.financeiro.saque-pix.conta.senha-ajuda"}} @wrapperClass="mb-0" as |id|>
+                <input id={{id}} type="password" autocomplete="current-password" class="form-input form-input-sm w-full" value={{this.senha}} {{on "input" (fn this.setCampo "senha")}} />
+            </InputGroup>
+        </div>
+        <div class="flex items-center gap-2">
+            <Button
+                @type="primary"
+                @size="sm"
+                @icon={{if @etapas.conectada "save" "plug"}}
+                @text={{if @etapas.conectada (t "fleet-ops.ui.financeiro.saque-pix.conta.salvar-troca") (t "fleet-ops.ui.financeiro.saque-pix.conta.conectar")}}
+                @disabled={{this.semCofre}}
+                @isLoading={{this.conectar.isRunning}}
+                @onClick={{perform this.conectar}}
+            />
+            {{#if this.modo}}
+                <Button @size="sm" @text={{t "fleet-ops.ui.financeiro.saque-pix.conta.cancelar"}} @onClick={{this.fechar}} />
+            {{/if}}
+        </div>
+    {{/if}}
+
+    {{#if (eq this.modo "desconectar")}}
+        <div class="text-sm rounded-md px-3 py-2 bg-red-50 text-red-800 dark:bg-red-900 dark:text-red-100">{{t "fleet-ops.ui.financeiro.saque-pix.conta.desconectar-ajuda"}}</div>
+        <InputGroup @name={{t "fleet-ops.ui.financeiro.saque-pix.conta.senha"}} @wrapperClass="mb-0" as |id|>
+            <input id={{id}} type="password" autocomplete="current-password" class="form-input form-input-sm w-full md:w-1/2" value={{this.senha}} {{on "input" (fn this.setCampo "senha")}} />
+        </InputGroup>
+        <div class="flex items-center gap-2">
+            <Button
+                @type="danger"
+                @size="sm"
+                @icon="link-slash"
+                @text={{t "fleet-ops.ui.financeiro.saque-pix.conta.confirmar-desconexao"}}
+                @isLoading={{this.desconectar.isRunning}}
+                @onClick={{perform this.desconectar}}
+            />
+            <Button @size="sm" @text={{t "fleet-ops.ui.financeiro.saque-pix.conta.cancelar"}} @onClick={{this.fechar}} />
+        </div>
+    {{/if}}
+</section>
