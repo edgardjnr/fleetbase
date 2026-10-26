@@ -553,7 +553,7 @@ const DESC = {
   a: '<b>A: Igual ao console.</b> A moldura do console (sketch 006 C) na loja: cabeçalho areia com a loja, a busca de pedido, as Conversas e o avatar; trilho de ícones à esquerda (abre por cima ao passar o mouse; Novo pedido em tinta) e o conteúdo numa folha de canto arredondado. Pedidos é o /fleet-ops da loja: mapa cheio, Motoboys à esquerda, Pedidos à direita e o pedido aberto numa folha de 440 px. Conversas vira uma tela. Celular com a doca flutuante (007 B).',
   b: '<b>B: Moldura com gaveta.</b> A mesma moldura areia, mas sem trilho: o ☰ abre a gaveta "Marca da loja" (sketch 003 B, nas cores novas), com o resumo de hoje, o Novo pedido e o menu. O conteúdo ganha a largura toda. Em Pedidos, a lista fica fixa à esquerda (como hoje no portal) e o pedido aberto flutua à direita do mapa. Conversas abrem numa gaveta à direita, como hoje. Celular com o ☰ e as abas na areia (007 A).',
   c: '<b>C: Abas no topo.</b> Sem menu lateral: as seções (Início, Pedidos, Extrato, Financeiro) ficam na barra segmentada do cabeçalho, com o botão laranja Novo pedido e o ícone de Conversas com as não lidas; Configurações e o tema ficam no avatar. Em Pedidos, o mapa vai de ponta a ponta e a lista flutua à esquerda; o pedido aberto entra no lugar da lista ("← Pedidos"). Conversas num balão do cabeçalho. Celular com abas no topo e a barra Novo pedido embaixo.',
-  s: '<b>S: Síntese (escolha do Edgard).</b> O Início é o da B (faixa laranja com a saudação e o Novo pedido, números de hoje, ao vivo e mapa). Da tela 2 à 12 é a C: abas no cabeçalho, mapa de ponta a ponta e a lista de pedidos flutuando à esquerda. <b>Tudo o que abre fica à direita:</b> o pedido aberto, o novo pedido e as Conversas abrem numa folha de 440 px à direita, e a lista continua à vista na esquerda. No celular, a C (abas no topo e a barra Novo pedido).',
+  s: '<b>S: Síntese (escolha do Edgard).</b> O Início é o da B (faixa laranja com a saudação e o Novo pedido, números de hoje, ao vivo e mapa). Da tela 2 à 12 é a C: abas no cabeçalho e mapa de ponta a ponta, com a <b>lista de Pedidos à direita</b>. <b>Tudo o que abre fica à direita, no lugar da lista:</b> o pedido aberto, o novo pedido e as Conversas abrem numa folha de 440 px; ao fechar (✕ ou Esc), a lista volta. No celular, a C (abas no topo e a barra Novo pedido).',
   cmp: '<b>Comparar por tela.</b> A mesma tela nas três variantes, lado a lado. Troque a tela na linha acima; os cliques valem para as três.',
 };
 const TDESC = {
@@ -873,18 +873,19 @@ function telaMapa(v, modo) {
     return (modo === 'novo' ? '' : barraPedidos(v, 'mapa')) + `<div class="area" style="display:grid;grid-template-columns:${modo === 'novo' ? 440 : 360}px 1fr"><div style="display:flex;min-height:0">${col}</div><div style="position:relative">${m}</div></div>`;
   }
   if (v === 's') {
+    // S: a lista de Pedidos fica à direita; o que abre (pedido, novo pedido, Conversas) entra no lugar dela e, ao fechar, a lista volta
     const aberto = modo !== 'lista';
-    let s = mapa({ ...foco, ins: aberto ? [31, 36] : [31, 3], legEsq: 404 }) + zoomCtl(404);
-    s += `<div class="ov painel" style="left:12px;top:12px;bottom:12px;width:380px"><div class="ph" style="gap:10px"><b style="font-size:1.5rem">Pedidos</b><span class="aovivo-sel">ao vivo</span><nav class="seg claro" style="margin-left:auto"><a class="on" data-act="ir" data-t="2">${ic('map')}</a><a data-act="ir" data-t="4" title="Tabela">${ic('table-list')}</a></nav></div><div class="lista">${listaPedidos('lp')}</div></div>`;
+    let s = mapa({ ...foco, ins: aberto ? [3, 36] : [3, 31], legEsq: 56 }) + zoomCtl(12);
+    const lista = `<div class="ph" style="gap:10px"><b style="font-size:1.5rem">Pedidos</b><span class="aovivo-sel">ao vivo</span><nav class="seg claro" style="margin-left:auto"><a class="on" data-act="ir" data-t="2">${ic('map')}</a><a data-act="ir" data-t="4" title="Tabela">${ic('table-list')}</a></nav></div><div class="lista">${listaPedidos('lp')}</div>`;
+    const dir = modo === 'pedido' ? folhaPedido(p) : modo === 'novo' ? formNovo() : modo === 'conversas' ? cvPainelCompacto({ fechar: true }) : lista;
+    s += `<div class="ov painel fo" style="right:12px;top:12px;bottom:12px;width:${aberto ? 440 : 380}px">${dir}</div>`;
     if (!aberto) {
-      s += contagens('left:404px');
-      s += `<button class="ov btn" style="right:12px;top:12px;box-shadow:var(--shadow-md)" data-act="toast" data-msg="Lista dos ${D.motos.length} motoboys online"><i class="fa-solid fa-helmet-safety"></i> ${D.motos.length} motoboys online</button>`;
+      s += contagens('left:12px');
+      s += `<button class="ov btn" style="left:12px;top:58px;box-shadow:var(--shadow-md)" data-act="toast" data-msg="Lista dos ${D.motos.length} motoboys online"><i class="fa-solid fa-helmet-safety"></i> ${D.motos.length} motoboys online</button>`;
     }
-    const dir = modo === 'pedido' ? folhaPedido(p) : modo === 'novo' ? formNovo() : modo === 'conversas' ? cvPainelCompacto({ fechar: true }) : '';
-    if (dir) s += `<div class="ov painel fo" style="right:12px;top:12px;bottom:12px;width:440px">${dir}</div>`;
-    if (modo === 'novo' && !S.novo.d) s += `<div class="ov dica-mapa" style="left:47%">${ic('hand-pointer')} Clique no mapa para marcar a entrega</div>`;
-    if (modo === 'pedido' && S.de === 'tabela') s += `<button class="ov voltar-pill" style="left:404px;top:12px" data-act="ir" data-t="4"><i class="fa-solid fa-arrow-left"></i> Voltar para a Tabela</button>`;
-    if (modo === 'pedido' && S.de === 'inicio') s += `<button class="ov voltar-pill" style="left:404px;top:12px" data-act="ir" data-t="1"><i class="fa-solid fa-arrow-left"></i> Voltar para o Início</button>`;
+    if (modo === 'novo' && !S.novo.d) s += `<div class="ov dica-mapa" style="left:33%">${ic('hand-pointer')} Clique no mapa para marcar a entrega</div>`;
+    if (modo === 'pedido' && S.de === 'tabela') s += `<button class="ov voltar-pill" style="left:12px;top:12px" data-act="ir" data-t="4"><i class="fa-solid fa-arrow-left"></i> Voltar para a Tabela</button>`;
+    if (modo === 'pedido' && S.de === 'inicio') s += `<button class="ov voltar-pill" style="left:12px;top:12px" data-act="ir" data-t="1"><i class="fa-solid fa-arrow-left"></i> Voltar para o Início</button>`;
     return `<div class="area">${s}</div>`;
   }
   // C

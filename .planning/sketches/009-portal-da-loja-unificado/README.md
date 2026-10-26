@@ -115,13 +115,15 @@ tela".
   - faixa laranja com "Boa noite, <loja>!", o resumo e o Novo pedido;
   - os 6 números de hoje, cada um levando à sua tela;
   - Ao vivo à esquerda e o mapa à direita.
-- **Pedidos (telas 2 a 5):** o mapa vai de ponta a ponta, com a lista de pedidos flutuando à esquerda (380 px), as
-  contagens que filtram e o "N motoboys online".
-- **Tudo o que abre fica à direita, numa folha de 440 px, e a lista continua à vista:**
+- **Pedidos (telas 2 a 5):** o mapa vai de ponta a ponta, com a lista de pedidos flutuando **à direita** (380 px). As
+  contagens que filtram e o "N motoboys online" ficam no canto de cima à esquerda.
+- **Tudo o que abre fica à direita, numa folha de 440 px, no lugar da lista** (pedido do Edgard em 2026-10-26: "quando
+  abrir algo que sobrepõe ele, ele some, e depois volta"):
   - o pedido aberto (comanda do 008 A);
   - o Novo pedido;
   - as Conversas.
-  - Com a folha aberta, somem as contagens e o mapa se encaixa entre a lista e a folha.
+  - Com a folha aberta, a lista e as contagens somem e o mapa se encaixa na área livre à esquerda. Ao fechar (✕ ou Esc),
+    a lista volta.
 - **Tabela, Extrato, Financeiro, Fatura e Configurações:** páginas da C. O clique na linha da Tabela abre o pedido no
   mapa com a pílula "Voltar para a Tabela".
 - **Celular (telas 11 e 12):** a C, com as abas no topo, a barra Novo pedido embaixo, o mapa com a folha de baixo e o
