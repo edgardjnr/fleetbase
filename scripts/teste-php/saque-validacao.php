@@ -1,11 +1,14 @@
 <?php
 
 // Saque Pix: a validação de saque do Asaas (ValidacaoDeSaque::decidir). Só o saque nosso em andamento, com o mesmo id,
-// valor e chave, é aprovado; o teste da central é recusado e confirma a configuração.
+// valor e chave, é aprovado; sem o id gravado, só pelo externalReference ou pela chave Pix de um único candidato. A
+// validação nunca grava o transfer_id (quem grava é o envio, com o id do nosso POST), e a conclusão confere a
+// transferência com o saque. O teste da central é recusado e confirma a configuração.
 // Uso: PHP_WASM_DIR=<pasta> node scripts/teste-php/rodar.mjs scripts/teste-php/saque-validacao.php
 
 require __DIR__ . '/stubs-saque.php';
 
+use App\Support\Entregas\Saques\AcompanhamentoDeSaques;
 use App\Support\Entregas\Saques\ConexaoAsaas;
 use App\Support\Entregas\Saques\Saques;
 use App\Support\Entregas\Saques\ValidacaoDeSaque;
@@ -16,10 +19,16 @@ use Teste\Relogio;
 
 const U1 = 'aaaaaaaa-0000-4000-8000-000000000001';
 const U2 = 'aaaaaaaa-0000-4000-8000-000000000002';
+const U3 = 'aaaaaaaa-0000-4000-8000-000000000003';
 
-function pedidoDoAsaas(string $id, $valor, ?string $chave = '+5511999994321', string $tipo = 'TRANSFER'): array
+function pedidoDoAsaas(string $id, $valor, ?string $chave = '+5511999994321', string $tipo = 'TRANSFER', ?string $referencia = null): array
 {
-    return ['type' => $tipo, 'transfer' => ['object' => 'transfer', 'id' => $id, 'value' => $valor, 'status' => 'PENDING', 'operationType' => 'PIX', 'bankAccount' => ['pixAddressKey' => $chave]]];
+    $transfer = ['object' => 'transfer', 'id' => $id, 'value' => $valor, 'status' => 'PENDING', 'operationType' => 'PIX', 'bankAccount' => ['pixAddressKey' => $chave]];
+    if ($referencia !== null) {
+        $transfer['externalReference'] = $referencia;
+    }
+
+    return ['type' => $tipo, 'transfer' => $transfer];
 }
 
 function recusa(string $motivo): array
@@ -27,11 +36,28 @@ function recusa(string $motivo): array
     return [200, ['status' => 'REFUSED', 'refuseReason' => $motivo]];
 }
 
-echo '== Saque nosso' . PHP_EOL;
+function aprovado(): array
+{
+    return [200, ['status' => 'APPROVED']];
+}
+
+/** As mensagens dos logs críticos desde o último reinício. */
+function criticos(): array
+{
+    return array_values(array_map(fn ($r) => $r[1], array_filter(Log::$registros, fn ($r) => $r[0] === 'critical')));
+}
+
+echo '== Saque nosso (caminho por id: o id veio do nosso POST)' . PHP_EOL;
 centralComSaque();
 saqueEnviado('driver-1', U1, 50, ['id' => 'tra_1', 'status' => 'PENDING']);
-confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50)) === [200, ['status' => 'APPROVED']], 'id, valor e chave (com +55) conferem: APPROVED');
-confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50, null)) === [200, ['status' => 'APPROVED']], 'sem a chave no pedido: confere id e valor');
+confere(saqueDoBanco(U1)->aprovado_em === null, 'antes da validação: sem aprovado_em');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50)) === aprovado(), 'id, valor e chave (com +55) conferem: APPROVED');
+confere(saqueDoBanco(U1)->aprovado_em === '2026-10-27 10:00:00', 'aprovado: grava aprovado_em no saque');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50, null)) === aprovado(), 'sem a chave no pedido: confere id e valor');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50, '', 'TRANSFER')) === aprovado(), 'chave vazia no pedido: como se não viesse');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, ['type' => 'TRANSFER', 'transfer' => ['id' => 'tra_1', 'value' => 50, 'pixAddressKey' => '21988887777']]) === recusa('Chave Pix diferente da cadastrada.'), 'chave em transfer.pixAddressKey também é conferida');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50, null, 'TRANSFER', 'saque:' . U1)) === aprovado(), 'com o externalReference dele: APPROVED');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50, null, 'TRANSFER', 'saque:outro')) === recusa('Transferência não reconhecida pelo Entregas.'), 'com outro externalReference: recusado');
 $log = json_encode(Log::$registros, JSON_UNESCAPED_UNICODE);
 confere(str_contains($log, '[entregas] saque: validação') && str_contains($log, 'APPROVED') && !str_contains($log, TOKEN_DE_TESTE), 'decisão no log, sem o token');
 
@@ -51,16 +77,97 @@ Config::$valores['services.entregas.saque'] = null;
 confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50)) === recusa('Saque Pix desligado no Entregas.'), 'chave geral desligada: recusa tudo');
 Config::$valores['services.entregas.saque'] = '1';
 
-echo '== O Asaas chamou antes de gravarmos o id' . PHP_EOL;
+echo '== O Asaas chamou antes de gravarmos o id: pelo externalReference' . PHP_EOL;
 centralComSaque();
 $s = Saques::pedir('empresa-1', 'driver-1', U2, 30)['saque'];
-confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_9', 30)) === [200, ['status' => 'APPROVED']], 'saque "enviando" recente, mesmo valor: aprovado');
-confere(Saques::recarregar($s)->transfer_id === 'tra_9', 'e o id fica gravado nele');
-confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_10', 30)) === recusa('Transferência não reconhecida pelo Entregas.'), 'outro id para o mesmo saque: recusado');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_9', 30, '+5511999994321', 'TRANSFER', 'saque:' . U2)) === aprovado(), 'externalReference do saque "enviando", mesmo valor e chave: aprovado');
+confere(Saques::recarregar($s)->transfer_id === null && Saques::recarregar($s)->aprovado_em === '2026-10-27 10:00:00', 'a validação NÃO grava o transfer_id (só aprovado_em)');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_9', 30, null, 'TRANSFER', 'saque:' . U2)) === aprovado(), 'externalReference certo, sem chave no pedido: aprovado (ele carrega o uuid do app)');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_9', 30, null, 'TRANSFER', 'saque:' . U3)) === recusa('Transferência não reconhecida pelo Entregas.'), 'externalReference de saque que não existe: recusado');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_9', 29.99, null, 'TRANSFER', 'saque:' . U2)) === recusa('Valor diferente do saque pedido.'), 'externalReference certo, valor diferente: recusado');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_9', 30, '21988887777', 'TRANSFER', 'saque:' . U2)) === recusa('Chave Pix diferente da cadastrada.'), 'externalReference certo, chave diferente: recusado');
+Relogio::$agora = '2026-10-27 10:02:01';
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_9', 30, '+5511999994321', 'TRANSFER', 'saque:' . U2)) === recusa('Transferência não reconhecida pelo Entregas.'), 'mais de 2 min depois: recusado');
+
+echo '== O Asaas chamou antes de gravarmos o id: sem externalReference' . PHP_EOL;
 centralComSaque();
-Saques::pedir('empresa-1', 'driver-1', U2, 30);
+$s = Saques::pedir('empresa-1', 'driver-1', U2, 30)['saque'];
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_9', 30)) === aprovado(), 'um só candidato com o mesmo valor e a chave dele: aprovado');
+confere(Saques::recarregar($s)->transfer_id === null, 'e o transfer_id continua vazio');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_10', 30, null)) === recusa('Transferência sem chave Pix para conferir.'), 'sem chave no pedido: recusado (nada garante o destino)');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_10', 30, '21988887777')) === recusa('Chave Pix diferente da cadastrada.'), 'chave de outra pessoa: recusado');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_10', 31)) === recusa('Transferência não reconhecida pelo Entregas.'), 'valor de nenhum candidato: recusado');
 Relogio::$agora = '2026-10-27 10:02:01';
 confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_9', 30)) === recusa('Transferência não reconhecida pelo Entregas.'), 'mais de 2 min depois: recusado');
+
+echo '== PoC 1 do revisor: transferência do atacante pelo valor' . PHP_EOL;
+centralComSaque();
+$s = Saques::pedir('empresa-1', 'driver-1', U1, 50)['saque'];
+$atacante = ['type' => 'TRANSFER', 'transfer' => ['id' => 'tra_ATACANTE', 'value' => 50, 'operationType' => 'TED', 'bankAccount' => ['agency' => '1', 'account' => '2', 'pixAddressKey' => null]]];
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, $atacante) === recusa('Transferência sem chave Pix para conferir.'), 'TED do atacante com o mesmo valor, sem chave: RECUSADA');
+confere(Saques::recarregar($s)->transfer_id === null && Saques::recarregar($s)->aprovado_em === null, 'e não toma o saque (nem id, nem aprovado_em)');
+$real = ['type' => 'TRANSFER', 'transfer' => ['id' => 'tra_REAL', 'value' => 50, 'operationType' => 'PIX', 'bankAccount' => ['pixAddressKey' => '+5511999994321']]];
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, $real) === aprovado(), 'a nossa (chave do motoboy): aprovada');
+asaas(200, ['data' => [['id' => 'wallet-1']]]);
+asaas(200, ['id' => 'tra_REAL', 'status' => 'PENDING', 'value' => 50, 'externalReference' => 'saque:' . U1]);
+$s = Saques::enviar($s);
+confere($s->transfer_id === 'tra_REAL' && $s->situacao === 'processando', 'o envio grava o id do NOSSO POST');
+asaas(200, ['id' => 'tra_REAL', 'status' => 'DONE', 'value' => 50, 'externalReference' => 'saque:' . U1, 'transactionReceiptUrl' => 'https://www.asaas.com/comprovantes/real']);
+AcompanhamentoDeSaques::conferir();
+$s = Saques::recarregar($s);
+confere($s->situacao === 'concluido' && $s->comprovante_url === 'https://www.asaas.com/comprovantes/real' && criticos() === [], 'a rotina conclui a nossa, sem log crítico');
+
+echo '== Envio: o id do POST é o que vale' . PHP_EOL;
+centralComSaque();
+$s = Saques::pedir('empresa-1', 'driver-1', U1, 50)['saque'];
+DB::table('entregas_saques')->where('uuid', U1)->update(['transfer_id' => 'tra_OUTRO']);
+asaas(200, ['data' => [['id' => 'wallet-1']]]);
+asaas(200, ['id' => 'tra_POST', 'status' => 'PENDING']);
+$s = Saques::enviar($s);
+confere($s->transfer_id === 'tra_POST' && $s->situacao === 'processando', 'outro id gravado antes: fica o do POST');
+confere(criticos() === ['[entregas] saque: id da transferência diferente do gravado'], 'e vai ao log como crítico');
+
+echo '== PoC 2 do revisor: dois saques "enviando" do mesmo valor' . PHP_EOL;
+centralComSaque();
+motoboyComSaldo('driver-2', 'Maria', 100.0, '21988887777');
+$sb = Saques::pedir('empresa-1', 'driver-2', U2, 50)['saque'];
+$sa = Saques::pedir('empresa-1', 'driver-1', U1, 50)['saque'];
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_A', 50)) === recusa('Transferência não reconhecida pelo Entregas.'), 'sem externalReference e dois candidatos com o mesmo valor: recusado');
+confere(ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_A', 50, '+5511999994321', 'TRANSFER', 'saque:' . U1)) === aprovado(), 'com o externalReference: aprova o certo');
+confere(Saques::recarregar($sb)->transfer_id === null && Saques::recarregar($sb)->aprovado_em === null && Saques::recarregar($sa)->transfer_id === null, 'nenhum ganha transfer_id na validação; o outro nem é aprovado');
+asaas(200, ['data' => [['id' => 'wallet-1']]]);
+asaas(200, ['id' => 'tra_A', 'status' => 'PENDING']);
+$x = excecao(fn () => Saques::enviar($sa));
+confere($x === null && saqueDoBanco(U1)->transfer_id === 'tra_A' && saqueDoBanco(U1)->situacao === 'processando', 'enviar(A) grava tra_A sem erro' . ($x ? ': ' . get_class($x) : ''));
+confere(saqueDoBanco(U2)->transfer_id === null && saqueDoBanco(U2)->situacao === 'enviando', 'B continua sem id');
+
+echo '== Id do POST já usado por outro saque: sem 500, fica para a rotina' . PHP_EOL;
+DB::table('entregas_saques')->where('uuid', U1)->update(['situacao' => 'concluido']);
+asaas(200, ['data' => [['id' => 'wallet-1']]]);
+asaas(200, ['id' => 'tra_A', 'status' => 'PENDING']);
+$x = excecao(fn () => Saques::enviar($sb));
+confere($x === null && saqueDoBanco(U2)->situacao === 'enviando' && saqueDoBanco(U2)->transfer_id === null, 'chave única: o saque fica "enviando"' . ($x ? ': ' . get_class($x) : ''));
+confere(in_array('[entregas] saque: id da transferência já usado por outro saque', criticos(), true), 'e vai ao log como crítico');
+
+echo '== Conclusão: a transferência precisa conferir com o saque' . PHP_EOL;
+centralComSaque();
+saqueEnviado('driver-1', U1, 50, ['id' => 'tra_1', 'status' => 'PENDING']);
+asaas(200, ['id' => 'tra_1', 'status' => 'DONE', 'value' => 49]);
+AcompanhamentoDeSaques::conferir();
+confere(saqueDoBanco(U1)->situacao === 'processando' && criticos() === ['[entregas] saque: transferência não confere com o saque'], 'valor diferente: não conclui, log crítico');
+asaas(200, ['id' => 'tra_1', 'status' => 'FAILED', 'value' => 50, 'externalReference' => 'saque:outro']);
+AcompanhamentoDeSaques::conferir();
+confere(saqueDoBanco(U1)->situacao === 'processando' && count(criticos()) === 2, 'externalReference diferente: não falha (nem devolve), log crítico');
+asaas(200, ['id' => 'tra_1', 'status' => 'DONE', 'value' => 50, 'externalReference' => null]);
+AcompanhamentoDeSaques::conferir();
+confere(saqueDoBanco(U1)->situacao === 'concluido', 'externalReference null e valor igual: conclui');
+confere(end(Log::$registros)[1] === '[entregas] saque: concluído sem a aprovação da validação' && end(Log::$registros)[0] === 'critical', 'concluído sem aprovado_em: log crítico (a validação foi desligada no Asaas?)');
+centralComSaque();
+saqueEnviado('driver-1', U1, 50, ['id' => 'tra_1', 'status' => 'PENDING']);
+ValidacaoDeSaque::decidir(TOKEN_DE_TESTE, pedidoDoAsaas('tra_1', 50));
+asaas(200, ['id' => 'tra_1', 'status' => 'DONE', 'value' => 50, 'externalReference' => 'saque:' . U1]);
+AcompanhamentoDeSaques::conferir();
+confere(saqueDoBanco(U1)->situacao === 'concluido' && criticos() === [], 'aprovado pela validação: conclui sem log crítico');
 
 echo '== Teste da central' . PHP_EOL;
 centralComSaque(['validacao_confirmada_em' => null, 'saque_ligado' => false, 'teste_transfer_id' => 'tra_teste', 'teste_pedido_em' => '2026-10-27 09:59:58']);

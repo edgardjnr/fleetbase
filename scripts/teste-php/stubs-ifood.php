@@ -113,6 +113,7 @@ namespace Illuminate\Support\Facades {
         public static function info($mensagem, array $contexto = []) { self::$registros[] = ['info', $mensagem, $contexto]; }
         public static function warning($mensagem, array $contexto = []) { self::$registros[] = ['warning', $mensagem, $contexto]; }
         public static function error($mensagem, array $contexto = []) { self::$registros[] = ['error', $mensagem, $contexto]; }
+        public static function critical($mensagem, array $contexto = []) { self::$registros[] = ['critical', $mensagem, $contexto]; }
     }
 
     class Http

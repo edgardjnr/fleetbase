@@ -335,9 +335,39 @@ final class Saques
         return static::recarregar($saque);
     }
 
-    /** Aplica o status de uma transferência do Asaas ao saque. true se ele terminou agora (concluído ou falho). */
+    /**
+     * A transferência do Asaas é a deste saque: o valor (quando vem) e o externalReference (quando vem) batem. Se não
+     * batem, Log::critical e false: quem chama não muda nada (o saque fica parado e aparece no painel).
+     */
+    public static function confere(object $saque, array $dados): bool
+    {
+        $valor      = $dados['value'] ?? null;
+        $referencia = $dados['externalReference'] ?? null;
+        $valorBate  = $valor === null || (is_numeric($valor) && Saque::centavos($valor) === Saque::centavos($saque->valor));
+        $refBate    = $referencia === null || $referencia === '' || (string) $referencia === (string) $saque->external_reference;
+        if ($valorBate && $refBate) {
+            return true;
+        }
+        Log::critical('[entregas] saque: transferência não confere com o saque', [
+            'empresa'  => $saque->company_uuid,
+            'saque'    => $saque->uuid,
+            'transfer' => is_scalar($dados['id'] ?? null) ? (string) $dados['id'] : null,
+            'valor'    => $valorBate ? 'confere' : 'diferente',
+            'externalReference' => $refBate ? 'confere' : 'diferente',
+        ]);
+
+        return false;
+    }
+
+    /**
+     * Aplica o status de uma transferência do Asaas ao saque (só se ela confere com o saque: valor e externalReference).
+     * true se ele terminou agora (concluído ou falho).
+     */
     public static function aplicarStatus(object $saque, array $dados): bool
     {
+        if (!static::confere($saque, $dados)) {
+            return false;
+        }
         $status   = strtoupper((string) ($dados['status'] ?? ''));
         $situacao = Saque::situacaoDoAsaas($status);
         if ($situacao === Saque::CONCLUIDO) {
@@ -371,6 +401,10 @@ final class Saques
             return false;
         }
         Log::info('[entregas] saque: concluído', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'valor' => round((float) $saque->valor, 2)]);
+        if ((static::recarregar($saque)->aprovado_em ?? null) === null) {
+            // o dinheiro saiu sem a nossa validação ter aprovado: a validação foi desligada no Asaas, ou algo pior
+            Log::critical('[entregas] saque: concluído sem a aprovação da validação', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'transfer' => $saque->transfer_id ?? null]);
+        }
         static::avisar($saque, new SaqueConcluido((string) $saque->uuid, (float) $saque->valor));
 
         return true;
@@ -416,16 +450,55 @@ final class Saques
         return true;
     }
 
-    /** Grava o id da transferência (o da validação, se ela chegou antes, fica) e passa a processando; aplica o status. */
+    /**
+     * O id da resposta do NOSSO POST é o que vale: grava o transfer_id (se outro já estava gravado, Log::critical e fica o
+     * do POST) e passa a processando; aplica o status. Id já usado por outro saque (chave única): Log::critical e o saque
+     * fica "enviando" para a rotina (sem erro para o app).
+     */
     private static function registrarTransferencia(object $saque, array $dados): void
     {
-        $agora = now()->format('Y-m-d H:i:s');
-        DB::table(Saque::TABELA)->where('id', $saque->id)->whereNull('transfer_id')->update(['transfer_id' => (string) $dados['id'], 'updated_at' => $agora]);
-        DB::table(Saque::TABELA)->where('id', $saque->id)->where('situacao', Saque::ENVIANDO)->update(['situacao' => Saque::PROCESSANDO, 'updated_at' => $agora]);
+        $id      = (string) $dados['id'];
+        $gravado = static::recarregar($saque)->transfer_id ?? null;
+        if ($gravado !== null && (string) $gravado !== $id) {
+            Log::critical('[entregas] saque: id da transferência diferente do gravado', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'gravado' => (string) $gravado, 'do_post' => $id]);
+        }
+        if (!static::gravarTransferencia($saque, $id)) {
+            return;
+        }
         if (($dados['authorized'] ?? null) === false) {
             Log::warning('[entregas] saque: transferência aguardando autorização no Asaas (token)', ['saque' => $saque->uuid]);
         }
         static::aplicarStatus(static::recarregar($saque), $dados);
+    }
+
+    /**
+     * Grava o transfer_id no saque ainda em andamento e o passa a processando. false se ele não estava em andamento ou se o
+     * id já é de outro saque (chave única: Log::critical, nada muda).
+     */
+    public static function gravarTransferencia(object $saque, string $id): bool
+    {
+        try {
+            $feito = DB::table(Saque::TABELA)
+                ->where('id', $saque->id)
+                ->whereIn('situacao', Saque::EM_ANDAMENTO)
+                ->update(['transfer_id' => $id, 'situacao' => Saque::PROCESSANDO, 'updated_at' => now()->format('Y-m-d H:i:s')]);
+        } catch (QueryException $e) {
+            Log::critical('[entregas] saque: id da transferência já usado por outro saque', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'transfer' => $id]);
+
+            return false;
+        }
+        if ($feito > 0) {
+            return true;
+        }
+        $atual = static::recarregar($saque);
+        if (in_array($atual->situacao ?? null, Saque::EM_ANDAMENTO, true) && (string) ($atual->transfer_id ?? '') === $id) {
+            // o MySQL conta só linhas que mudaram: já estava gravado assim
+            return true;
+        }
+        // o saque já terminou (falho e devolvido, ou concluído) e há uma transferência dele no Asaas: confira à mão
+        Log::critical('[entregas] saque: transferência no Asaas para saque que não está em andamento', ['empresa' => $saque->company_uuid, 'saque' => $saque->uuid, 'situacao' => $atual->situacao ?? null, 'transfer' => $id]);
+
+        return false;
     }
 
     /** Push ao motoboy do saque; uma falha só vai ao log. */
