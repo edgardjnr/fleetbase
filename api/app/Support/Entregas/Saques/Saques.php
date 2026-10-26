@@ -289,8 +289,9 @@ final class Saques
     /**
      * Manda o saque ao Asaas (depois do commit do pedido): decifra a chave, confere a wallet fixada e cria a transferência
      * Pix com a chave do banco e o externalReference estável. Antes do POST, qualquer problema falha e reembolsa (nada
-     * saiu). No POST: id → processando (ou já concluído/falho); recusa 4xx → falha e reembolsa; sem resposta, 5xx ou 200
-     * sem id → fica "enviando" e a rotina procura pelo externalReference. Devolve o saque relido.
+     * saiu). No POST: id → processando (ou já concluído/falho); recusa clara (400/401/403/404/422 com `errors` no corpo)
+     * → falha e reembolsa; qualquer outra coisa (sem resposta, 5xx, 200 sem id, outro 4xx, 4xx sem `errors`) → fica
+     * "enviando" e a rotina procura pelo externalReference. Devolve o saque relido.
      */
     public static function enviar(object $saque): object
     {
@@ -326,13 +327,25 @@ final class Saques
         $id = $resposta->dados['id'] ?? null;
         if ($resposta->ok() && is_string($id) && $id !== '') {
             static::registrarTransferencia($saque, $resposta->dados);
-        } elseif ($resposta->ok() || $resposta->semResposta()) {
-            Log::warning('[entregas] saque: envio sem confirmação do Asaas; a rotina confere', ['saque' => $saque->uuid, 'status' => $resposta->status]);
-        } else {
+        } elseif (static::recusaClara($resposta)) {
             static::falhar($saque, $resposta->mensagem('O Asaas recusou a transferência.'));
+        } else {
+            // sem resposta, 5xx, 200 sem id, 409, 429, 4xx sem `errors`...: pode ter saído; a rotina procura
+            Log::warning('[entregas] saque: envio sem confirmação do Asaas; a rotina confere', ['saque' => $saque->uuid, 'status' => $resposta->status]);
         }
 
         return static::recarregar($saque);
+    }
+
+    /** Status em que o Asaas recusa sem criar a transferência, e só com a lista `errors` no corpo: aí falha e devolve. */
+    public const RECUSAS_DO_ASAAS = [400, 401, 403, 404, 422];
+
+    /** O Asaas recusou com certeza (status de recusa e `errors` no corpo): nada saiu. */
+    private static function recusaClara(RespostaAsaas $resposta): bool
+    {
+        $erros = $resposta->dados['errors'] ?? null;
+
+        return in_array($resposta->status, static::RECUSAS_DO_ASAAS, true) && is_array($erros) && $erros !== [];
     }
 
     /**

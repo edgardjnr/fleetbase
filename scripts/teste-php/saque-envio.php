@@ -77,6 +77,29 @@ asaas(200, ['data' => [['id' => 'wallet-1']]]);
 asaas(200, ['status' => 'PENDING']);
 confere(Saques::enviar($s)->situacao === 'enviando', '200 sem id: também fica enviando');
 
+echo '== 4xx ambíguo: fica enviando (só a recusa clara devolve)' . PHP_EOL;
+foreach ([
+    '429 com errors'        => [429, ['errors' => [['description' => 'Muitas requisições.']]]],
+    '409 com errors'        => [409, ['errors' => [['description' => 'Conflito.']]]],
+    '400 sem corpo'         => [400, null],
+    '422 com errors vazio'  => [422, ['errors' => []]],
+    '404 sem errors'        => [404, ['message' => 'Not Found']],
+] as $caso => [$status, $corpo]) {
+    centralComSaque();
+    $s = pedido(50);
+    asaas(200, ['data' => [['id' => 'wallet-1']]]);
+    asaas($status, $corpo);
+    $s = Saques::enviar($s);
+    confere($s->situacao === 'enviando' && saldo() === 50.0, $caso . ': fica enviando, nada devolvido (a rotina confere)');
+}
+foreach ([400, 401, 403, 404, 422] as $status) {
+    centralComSaque();
+    $s = pedido(50);
+    asaas(200, ['data' => [['id' => 'wallet-1']]]);
+    asaas($status, ['errors' => [['code' => 'invalid', 'description' => 'Recusado.']]]);
+    confere(Saques::enviar($s)->situacao === 'falhou' && saldo() === 100.0, $status . ' com errors: falha e devolve');
+}
+
 echo '== Antes do POST: falha e reembolsa' . PHP_EOL;
 centralComSaque();
 $s = pedido(50);
