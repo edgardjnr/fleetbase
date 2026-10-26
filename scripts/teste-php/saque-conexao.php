@@ -11,6 +11,7 @@ use App\Support\Entregas\Saques\Cofre;
 use App\Support\Entregas\Saques\CofreIndisponivel;
 use App\Support\Entregas\Saques\ConexaoAsaas;
 use App\Support\Entregas\Saques\ErroDoAsaas;
+use App\Support\Entregas\Saques\Saques;
 use Fleetbase\Models\CompanyUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -138,6 +139,40 @@ confere(testar('2026-10-27 10:06:00', 'tra_4') === null && testar('2026-10-27 10
 confere(testar('2026-10-27 23:59:00') === 'Limite de testes de hoje atingido.' && (int) conexao()->testes_no_dia === 5 && conexao()->teste_transfer_id === 'tra_5', '6º no mesmo dia: recusado sem chamar o Asaas');
 confere(testar('2026-10-28 00:00:30', 'tra_6') === null && (int) conexao()->testes_no_dia === 1 && conexao()->testes_dia === '2026-10-28', 'dia seguinte (Brasília): a contagem recomeça');
 confere(conexao()->teste_pedido_por === 'user-admin', 'quem pediu fica gravado');
+
+echo '== Teste que falha não desliga o saque' . PHP_EOL;
+centralComSaque();
+/** A validação e o teste da central como estão no banco. */
+function estadoDoTeste(): array
+{
+    $c = conexao();
+
+    return [$c->validacao_confirmada_em, $c->teste_transfer_id, $c->teste_pedido_em, $c->teste_pedido_por];
+}
+$confirmada = estadoDoTeste();
+asaas(400, ['errors' => [['description' => 'Saldo insuficiente.']]]);
+confere(mensagem(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901', 'user-admin')) === 'Saldo insuficiente.', 'central ligada e confirmada, teste recusado (400): a mensagem do Asaas');
+confere(estadoDoTeste() === $confirmada && Saques::situacaoDoMotoboy('empresa-1', 'driver-1') !== null && (int) conexao()->testes_no_dia === 1, 'a validação continua confirmada e o saque liberado (o teste conta no dia): ' . json_encode(estadoDoTeste()));
+Relogio::$agora = '2026-10-27 10:00:10';
+HttpFalso::$respostas[] = 'conexao';
+confere(excecao(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901', 'user-admin')) instanceof ErroDoAsaas, 'teste sem resposta: ErroDoAsaas');
+confere(estadoDoTeste() === $confirmada && Saques::situacaoDoMotoboy('empresa-1', 'driver-1') !== null, 'sem resposta: idem');
+DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-1')->update(['validacao_confirmada_em' => null, 'teste_transfer_id' => 'tra_antigo', 'teste_pedido_em' => '2026-10-27 09:00:00', 'teste_pedido_por' => 'user-2']);
+asaas(400, ['errors' => [['description' => 'Saldo insuficiente.']]]);
+excecao(fn () => ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901', 'user-admin'));
+confere(estadoDoTeste() === [null, 'tra_antigo', '2026-10-27 09:00:00', 'user-2'], 'teste anterior sem resposta: volta a ele: ' . json_encode(estadoDoTeste()));
+
+echo '== Teste recusado que a validação confirmou durante a chamada' . PHP_EOL;
+centralComSaque(['validacao_confirmada_em' => null, 'saque_ligado' => false]);
+HttpFalso::responderCom(function () {
+    // a validação do Asaas chega (e confirma) antes de o POST /transfers responder com a recusa
+    DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-1')->update(['validacao_confirmada_em' => '2026-10-27 10:00:01']);
+
+    return [400, ['errors' => [['description' => 'Transferência recusada pelo mecanismo de validação.']]]];
+});
+$c = null;
+$erro = excecao(function () use (&$c) { $c = ConexaoAsaas::testarValidacao('empresa-1', 'cpf', '12345678901', 'user-admin'); });
+confere($erro === null && $c?->validacao_confirmada_em === '2026-10-27 10:00:01' && $c->teste_pedido_em === '2026-10-27 10:00:00', 'sem erro: devolve a conexão com a validação confirmada' . ($erro ? ': ' . $erro->getMessage() : ''));
 
 echo '== Limites e ligar' . PHP_EOL;
 DB::table('entregas_asaas_conexoes')->where('company_uuid', 'empresa-1')->update(['validacao_confirmada_em' => '2026-10-27 10:00:05']);

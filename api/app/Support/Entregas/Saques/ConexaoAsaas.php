@@ -201,7 +201,7 @@ final class ConexaoAsaas
 
         $agora = now()->format('Y-m-d H:i:s');
         $hoje  = Financeiro::hoje($companyUuid);
-        DB::transaction(function () use ($companyUuid, $usuarioUuid, $agora, $hoje) {
+        $anterior = DB::transaction(function () use ($companyUuid, $usuarioUuid, $agora, $hoje) {
             // a linha travada: dois pedidos ao mesmo tempo não passam juntos pelo "um por vez" nem pela contagem do dia
             $linha = DB::table(Saque::CONEXOES)->where('company_uuid', $companyUuid)->lockForUpdate()->first();
             if (!$linha) {
@@ -224,20 +224,51 @@ final class ConexaoAsaas
                 'testes_dia'              => $hoje,
                 'updated_at'              => $agora,
             ]);
+
+            return $linha;
         });
         $resposta = (new AsaasCliente($chave))->transferirPix(static::VALOR_DO_TESTE, $pix['chave'], Saque::TIPOS_ASAAS[$pix['tipo']], 'Teste da validação de saque do Entregas', 'teste:' . Str::uuid());
         $id       = $resposta->dados['id'] ?? null;
         if ($resposta->ok() && is_string($id) && $id !== '') {
             // whereNull: se a validação chegou antes e já gravou o id, fica o dela
             DB::table(Saque::CONEXOES)->where('company_uuid', $companyUuid)->whereNull('teste_transfer_id')->update(['teste_transfer_id' => $id]);
-        } elseif ($resposta->semResposta()) {
-            throw new ErroDoAsaas('O Asaas não respondeu. Tente de novo.');
         } elseif (!$resposta->ok()) {
+            if ($confirmada = static::desfazerTeste($companyUuid, $anterior, $agora)) {
+                return $confirmada;
+            }
+            if ($resposta->semResposta()) {
+                throw new ErroDoAsaas('O Asaas não respondeu. Tente de novo.');
+            }
             throw new \InvalidArgumentException($resposta->mensagem('O Asaas recusou o teste.'));
         }
         Log::info('[entregas] saque: teste da validação pedido', ['empresa' => $companyUuid, 'por' => $usuarioUuid, 'transfer' => $id, 'chave' => Saque::chaveEscondida($pix['chave'], $pix['tipo'])]);
 
         return static::daEmpresa($companyUuid);
+    }
+
+    /**
+     * O teste não saiu (recusa ou sem resposta): volta a validação e o teste ao que eram antes, para um teste que falha não
+     * desligar o saque de uma central já confirmada. Se a validação confirmou durante a chamada (o Asaas a chama antes de
+     * responder), não desfaz e devolve a conexão: quem chamou responde sem erro.
+     */
+    private static function desfazerTeste(string $companyUuid, object $anterior, string $pedidoEm): ?object
+    {
+        $voltou = DB::table(Saque::CONEXOES)
+            ->where('company_uuid', $companyUuid)
+            ->where('teste_pedido_em', $pedidoEm)
+            ->whereNull('validacao_confirmada_em')
+            ->update([
+                'validacao_confirmada_em' => $anterior->validacao_confirmada_em,
+                'teste_transfer_id'       => $anterior->teste_transfer_id,
+                'teste_pedido_em'         => $anterior->teste_pedido_em,
+                'teste_pedido_por'        => $anterior->teste_pedido_por,
+            ]);
+        if ($voltou > 0) {
+            return null;
+        }
+        $linha = static::daEmpresa($companyUuid);
+
+        return $linha && $linha->validacao_confirmada_em !== null ? $linha : null;
     }
 
     /** Limites e o interruptor da central. Ligar exige a validação testada; desligar sempre pode. */
