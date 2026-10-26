@@ -11,6 +11,7 @@ use App\Notifications\Entregas\SaqueNaoConcluido;
 use App\Support\Entregas\Financeiro\ExtratoDaConta;
 use App\Support\Entregas\Financeiro\Lancamentos;
 use App\Support\Entregas\Financeiro\Pagamentos;
+use App\Support\Entregas\Saques\Saque;
 use App\Support\Entregas\Saques\Saques;
 use Fleetbase\FleetOps\Models\Driver;
 use Illuminate\Support\Facades\DB;
@@ -46,10 +47,32 @@ confere(Driver::$avisos === [], 'processando: sem push ainda');
 
 echo '== DONE na hora' . PHP_EOL;
 centralComSaque();
-$s = saqueEnviado('driver-1', U1, 20, ['id' => 'tra_2', 'status' => 'DONE', 'transactionReceiptUrl' => 'https://asaas.teste/comprovantes/2']);
-confere($s->situacao === 'concluido' && $s->comprovante_url === 'https://asaas.teste/comprovantes/2' && $s->concluido_em === '2026-10-27 10:00:00' && $s->asaas_status === 'DONE', 'concluído com o comprovante');
+$s = saqueEnviado('driver-1', U1, 20, ['id' => 'tra_2', 'status' => 'DONE', 'transactionReceiptUrl' => 'https://www.asaas.com/comprovantes/2']);
+confere($s->situacao === 'concluido' && $s->comprovante_url === 'https://www.asaas.com/comprovantes/2' && $s->concluido_em === '2026-10-27 10:00:00' && $s->asaas_status === 'DONE', 'concluído com o comprovante');
 confere(ultimoAviso() instanceof SaqueConcluido && ultimoAviso()->message === 'Seu saque de R$ 20,00 caiu no Pix.', 'push de concluído');
 confere(saldo() === 80.0, 'o saldo continua descontado');
+
+echo '== Comprovante só de endereço do Asaas' . PHP_EOL;
+foreach ([
+    'https://www.asaas.com/comprovantes/2'      => 'https://www.asaas.com/comprovantes/2',
+    'https://asaas.com/c/2'                     => 'https://asaas.com/c/2',
+    'https://sandbox.asaas.com/c/2'             => 'https://sandbox.asaas.com/c/2',
+    'HTTPS://WWW.ASAAS.COM/c/2'                 => 'HTTPS://WWW.ASAAS.COM/c/2',
+    'http://www.asaas.com/c/2'                  => null,
+    'https://asaas.com.golpe.com/c/2'           => null,
+    'https://golpeasaas.com/c/2'                => null,
+    'https://golpe.com/?u=https://asaas.com/'   => null,
+    'https://www.asaas.com@golpe.com/c/2'       => null,
+    'javascript:alert(1)//asaas.com/'           => null,
+    'https://www.asaas.com'                     => null,
+    ''                                          => null,
+] as $url => $esperado) {
+    confere(Saque::comprovante($url) === $esperado, 'comprovante "' . $url . '": ' . ($esperado === null ? 'descartado' : 'aceito'));
+}
+confere(Saque::comprovante(null) === null && Saque::comprovante(123) === null && Saque::comprovante('https://www.asaas.com/' . str_repeat('x', 500)) === null, 'null, número ou maior que 500: descartado');
+centralComSaque();
+$s = saqueEnviado('driver-1', U1, 20, ['id' => 'tra_2', 'status' => 'DONE', 'transactionReceiptUrl' => 'https://golpe.com/comprovante']);
+confere($s->situacao === 'concluido' && $s->comprovante_url === null, 'DONE com comprovante de fora do Asaas: conclui (o dinheiro saiu) sem o link');
 
 echo '== Recusado pelo Asaas' . PHP_EOL;
 centralComSaque();

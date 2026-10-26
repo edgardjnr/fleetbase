@@ -43,7 +43,7 @@ centralComSaque();
 $s = saqueEnviado('driver-1', U1, 50, ['id' => 'tra_1', 'status' => 'PENDING']);
 $r = estornar((string) $s->pagamento_uuid);
 confere($r->status === 422 && $r->dados === ['errors' => ['Saque em andamento.']], 'em andamento: 422');
-Saques::concluir($s, 'https://asaas.teste/c/1');
+Saques::concluir($s, 'https://www.asaas.com/c/1');
 $r = estornar((string) $s->pagamento_uuid);
 confere($r->status === 422 && $r->dados === ['errors' => ['O dinheiro do saque já saiu; corrija com um ajuste.']], 'concluído: 422');
 confere(Pagamentos::porUuid('empresa-1', (string) $s->pagamento_uuid)->estornado_em === null, 'o pagamento continua valendo');
@@ -53,12 +53,12 @@ confere(estornar((string) $comum->uuid)->status === 200, 'pagamento comum: estor
 echo '== Extrato e recibo marcam o saque' . PHP_EOL;
 $publico = ExtratoDaConta::montar('empresa-1', 'motoboy', 'driver-1', '2026-10-01', '2026-10-31', true);
 $linha   = linhaDoPagamento($publico, (string) $s->pagamento_uuid);
-confere(($linha['pagamento']['saque'] ?? null) === ['situacao' => 'concluido', 'comprovante_url' => 'https://asaas.teste/c/1'], 'extrato do app: pagamento com o saque: ' . json_encode($linha['pagamento'] ?? null));
+confere(($linha['pagamento']['saque'] ?? null) === ['situacao' => 'concluido', 'comprovante_url' => 'https://www.asaas.com/c/1'], 'extrato do app: pagamento com o saque: ' . json_encode($linha['pagamento'] ?? null));
 confere(!array_key_exists('saque', linhaDoPagamento($publico, (string) $comum->uuid)['pagamento'] ?? ['saque' => 1]), 'pagamento comum: sem a chave saque');
 $console = ExtratoDaConta::montar('empresa-1', 'motoboy', 'driver-1', '2026-10-01', '2026-10-31', false);
 confere((linhaDoPagamento($console, (string) $s->pagamento_uuid)['pagamento']['saque']['situacao'] ?? null) === 'concluido', 'extrato do console: também');
 $recibo = ExtratoDaConta::pagamento(Pagamentos::porUuid('empresa-1', (string) $s->pagamento_uuid));
-confere(($recibo['saque'] ?? null) === ['situacao' => 'concluido', 'comprovante_url' => 'https://asaas.teste/c/1'], 'recibo: o saque');
+confere(($recibo['saque'] ?? null) === ['situacao' => 'concluido', 'comprovante_url' => 'https://www.asaas.com/c/1'], 'recibo: o saque');
 confere(!array_key_exists('saque', ExtratoDaConta::pagamento(Pagamentos::porUuid('empresa-1', (string) $comum->uuid))), 'recibo comum: sem saque');
 
 echo '== Carteira do app' . PHP_EOL;

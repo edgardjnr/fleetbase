@@ -400,9 +400,7 @@ final class Saques
         $status   = strtoupper((string) ($dados['status'] ?? ''));
         $situacao = Saque::situacaoDoAsaas($status);
         if ($situacao === Saque::CONCLUIDO) {
-            $url = $dados['transactionReceiptUrl'] ?? null;
-
-            return static::concluir($saque, is_string($url) && $url !== '' ? mb_substr($url, 0, 500) : null);
+            return static::concluir($saque, $dados['transactionReceiptUrl'] ?? null);
         }
         if ($situacao === Saque::FALHOU) {
             if (is_string($dados['failReason'] ?? null) && trim($dados['failReason']) !== '') {
@@ -419,10 +417,14 @@ final class Saques
         return false;
     }
 
-    /** Conclui o saque em andamento (guarda o comprovante do Asaas) e avisa o motoboy. false se ele não estava em andamento. */
-    public static function concluir(object $saque, ?string $comprovante): bool
+    /**
+     * Conclui o saque em andamento (guarda o comprovante do Asaas, só se o endereço for *.asaas.com) e avisa o motoboy.
+     * false se ele não estava em andamento.
+     */
+    public static function concluir(object $saque, $comprovante): bool
     {
-        $agora = now()->format('Y-m-d H:i:s');
+        $comprovante = Saque::comprovante($comprovante);
+        $agora       = now()->format('Y-m-d H:i:s');
         $feito = DB::table(Saque::TABELA)
             ->where('id', $saque->id)
             ->whereIn('situacao', Saque::EM_ANDAMENTO)

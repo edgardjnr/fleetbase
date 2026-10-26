@@ -100,6 +100,19 @@ final class Saque
         return str_repeat('*', max(0, mb_strlen($chave) - 4)) . mb_substr($chave, -4);
     }
 
+    /**
+     * O endereço do comprovante, só se for https num domínio do Asaas (asaas.com ou um subdomínio dele), até 500
+     * caracteres; outra coisa vira null (o app e o console abrem o link: nada de endereço de terceiros).
+     */
+    public static function comprovante($url): ?string
+    {
+        if (!is_string($url) || strlen($url) > 500 || !preg_match('#^https://([a-z0-9-]+\.)*asaas\.com/#i', $url)) {
+            return null;
+        }
+
+        return $url;
+    }
+
     /** 'Y-m-d H:i:s' gravado em hora de Brasília → ISO 8601 no fuso da empresa (null fica null). */
     public static function iso(?string $quando, string $companyUuid): ?string
     {
