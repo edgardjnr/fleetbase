@@ -10,7 +10,7 @@
     </LinkTo>
 
     <nav class="ps-abas" aria-label={{t "customer-portal.ui.entregas.s.menu"}}>
-        <LinkTo @route="portal.home" class="ps-aba"><FaIcon @icon="house" /><span>{{t "customer-portal.ui.nav.dashboard"}}</span></LinkTo>
+        <LinkTo @route="portal.home" class="ps-aba"><FaIcon @icon="house" /><span>{{t "customer-portal.ui.entregas.s.inicio-aba"}}</span></LinkTo>
         <LinkTo @route="portal.orders" class="ps-aba">
             <FaIcon @icon="box" /><span>{{t "customer-portal.ui.nav.orders"}}</span>
             {{#if this.emAndamento}}<span class="ps-aba-n">{{this.emAndamento}}</span>{{/if}}

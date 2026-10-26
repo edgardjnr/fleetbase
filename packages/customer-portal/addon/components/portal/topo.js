@@ -39,7 +39,8 @@ export default class PortalTopoComponent extends Component {
     get emAndamento() {
         const n = numeroDoResumo(this.resumo?.em_andamento);
 
-        return n === '–' ? null : n;
+        // sem pedido em andamento (ou sem o número), a aba fica sem a contagem
+        return n === '–' || n === '0' ? null : n;
     }
 
     get naoLidas() {

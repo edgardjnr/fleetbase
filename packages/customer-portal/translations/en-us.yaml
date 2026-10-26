@@ -632,6 +632,7 @@ customer-portal:
         description: General consumer or retail merchandise.
     entregas:
       s:
+        inicio-aba: "Home"
         portal-da-loja: "Store portal"
         ir-ao-inicio: "Go to Home"
         menu: "Portal menu"

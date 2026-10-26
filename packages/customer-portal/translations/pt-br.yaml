@@ -632,6 +632,7 @@ customer-portal:
         description: Mercadorias de consumo ou varejo em geral.
     entregas:
       s:
+        inicio-aba: "Início"
         portal-da-loja: "Portal da loja"
         ir-ao-inicio: "Ir para o Início"
         menu: "Menu do portal"
