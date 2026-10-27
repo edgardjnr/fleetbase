@@ -35,6 +35,11 @@ confere(C::papel('user', true) === 'motoboy', 'type user com cadastro de motoboy
 confere(C::papel('admin', true) === 'motoboy', 'admin com cadastro de motoboy: motoboy');
 confere(C::papel('customer', true) === 'loja', 'usuário de loja continua loja');
 confere(C::papel(null) === 'central', 'sem tipo: central');
+// na conversa com a central, quem não é loja é a central (motoboy com o papel Administrator entra como central)
+confere(C::papel('user', true, true) === 'central', 'conversa com a central: type user com cadastro de motoboy é central');
+confere(C::papel('driver', false, true) === 'central', 'conversa com a central: driver é central');
+confere(C::papel('admin', false, true) === 'central', 'conversa com a central: admin é central');
+confere(C::papel('customer', false, true) === 'loja', 'conversa com a central: usuário de loja continua loja');
 
 echo '== textoValido' . PHP_EOL;
 confere(C::textoValido('  oi  ') === 'oi', 'sem espaços nas pontas');

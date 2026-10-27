@@ -240,9 +240,11 @@ class ConversasDaLoja
         $dosOutros = $mensagens->filter(fn ($mensagem) => $mensagem->sender_uuid !== $eu->uuid)->pluck('uuid')->all();
         static::marcarComoLidas($canal, $eu, $dosOutros);
 
-        $motoboys = static::motoboysEntre($mensagens->map(fn ($mensagem) => $mensagem->sender?->user_uuid)->all());
+        // na conversa com a central, o cadastro de motoboy não muda o papel (ver papel): sem a consulta
+        $comACentral = static::tipoDoCanal($canal->meta) === 'central';
+        $motoboys    = $comACentral ? [] : static::motoboysEntre($mensagens->map(fn ($mensagem) => $mensagem->sender?->user_uuid)->all());
 
-        return $mensagens->map(fn ($mensagem) => static::formatar($mensagem, $eu, $motoboys))->all();
+        return $mensagens->map(fn ($mensagem) => static::formatar($mensagem, $eu, $motoboys, $comACentral))->all();
     }
 
     /** Grava a mensagem do usuário e avisa os outros participantes (como o sendMessage do core). */
@@ -266,7 +268,9 @@ class ConversasDaLoja
 
         $mensagem->load('sender.user');
 
-        return static::formatar($mensagem, $eu, static::motoboysEntre([$mensagem->sender?->user_uuid]));
+        $comACentral = static::tipoDoCanal($canal->meta) === 'central';
+
+        return static::formatar($mensagem, $eu, $comACentral ? [] : static::motoboysEntre([$mensagem->sender?->user_uuid]), $comACentral);
     }
 
     /** Os usuários ativos da loja (Contact `customer` com VendorPersonnel ativo, como o LojaDoUsuario). */
@@ -315,12 +319,17 @@ class ConversasDaLoja
 
     /**
      * O papel de quem escreveu: loja (customer), motoboy (driver ou com cadastro de motoboy) ou central (o resto). Em
-     * produção os motoboys ficam com `type = user` (2026-10-27): o cadastro de motoboy decide.
+     * produção os motoboys ficam com `type = user` (2026-10-27): o cadastro de motoboy decide. Na conversa com a central,
+     * quem não é loja é a central (um motoboy com o papel Administrator está lá como central).
      */
-    public static function papel(?string $tipoDoUsuario, bool $temCadastroDeMotoboy = false): string
+    public static function papel(?string $tipoDoUsuario, bool $temCadastroDeMotoboy = false, bool $conversaComACentral = false): string
     {
         if ($tipoDoUsuario === 'customer') {
             return 'loja';
+        }
+
+        if ($conversaComACentral) {
+            return 'central';
         }
 
         return $tipoDoUsuario === 'driver' || $temCadastroDeMotoboy ? 'motoboy' : 'central';
@@ -474,7 +483,7 @@ class ConversasDaLoja
         return $usuarios ? Driver::whereIn('user_uuid', $usuarios)->pluck('user_uuid')->map(fn ($uuid) => (string) $uuid)->all() : [];
     }
 
-    protected static function formatar(ChatMessage $mensagem, ChatParticipant $eu, array $motoboys = []): array
+    protected static function formatar(ChatMessage $mensagem, ChatParticipant $eu, array $motoboys = [], bool $comACentral = false): array
     {
         $autor = $mensagem->sender?->user;
 
@@ -482,7 +491,7 @@ class ConversasDaLoja
             'id'    => $mensagem->public_id,
             'texto' => $mensagem->content,
             'em'    => static::data($mensagem->created_at),
-            'autor' => ['nome' => $autor?->name, 'papel' => static::papel($autor?->type, in_array((string) $autor?->uuid, $motoboys, true))],
+            'autor' => ['nome' => $autor?->name, 'papel' => static::papel($autor?->type, in_array((string) $autor?->uuid, $motoboys, true), $comACentral)],
             'minha' => $mensagem->sender_uuid === $eu->uuid,
         ];
     }
