@@ -701,7 +701,7 @@ customer-portal:
       chat-with-courier: "Chat with the courier"
       chat-pick-courier: "Couriers on the map right now."
       chat-no-couriers: "No couriers on the map right now."
-      chat-empty: "No chats yet. Tap New chat to talk to a courier."
+      chat-empty: "To talk to a courier, tap New chat."
       chat-no-messages: "No messages"
       chat-start: "Write the first message to the courier."
       chat-placeholder: "Write a message"

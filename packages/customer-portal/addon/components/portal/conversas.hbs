@@ -79,9 +79,10 @@
                             {{#if item.naoLidas}}<span class="portal-conversas-badge">{{item.naoLidas}}</span>{{/if}}
                         </span>
                     </button>
-                {{else}}
-                    <div class="portal-conversas-empty">{{t "customer-portal.ui.entregas.chat-empty"}}</div>
                 {{/each}}
+                {{#if this.semConversaComMotoboy}}
+                    <div class="portal-conversas-empty">{{t "customer-portal.ui.entregas.chat-empty"}}</div>
+                {{/if}}
             </div>
         {{/if}}
     </aside>

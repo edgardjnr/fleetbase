@@ -14,6 +14,7 @@ import {
     registrarUltimas,
     ultimasDosOutros,
     itensDaLista,
+    semConversaComMotoboy,
 } from '../../packages/customer-portal/addon/utils/conversas.js';
 
 const msg = (id, em, texto = id) => ({ id, em, texto });
@@ -125,4 +126,12 @@ test('lista: a conversa com a central sempre no topo, mesmo antes de existir', (
 
     const antigo = { id: 'm3' };
     assert.deepEqual(itensDaLista([antigo]), [fixa, antigo], 'servidor sem tipo: conversa com motoboy');
+});
+
+test('lista: o aviso de nenhuma conversa conta só as com motoboy', () => {
+    assert.equal(semConversaComMotoboy([]), true);
+    assert.equal(semConversaComMotoboy(null), true);
+    assert.equal(semConversaComMotoboy([{ id: 'c', tipo: 'central' }]), true, 'só a central: o aviso aparece');
+    assert.equal(semConversaComMotoboy([{ id: 'c', tipo: 'central' }, { id: 'm1', tipo: 'motoboy' }]), false);
+    assert.equal(semConversaComMotoboy([{ id: 'm3' }]), false, 'servidor sem tipo: conversa com motoboy');
 });

@@ -1,7 +1,7 @@
 import Component from '@glimmer/component';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
-import { MAX_CARACTERES, itensDaLista, resumo } from '../../utils/conversas';
+import { MAX_CARACTERES, itensDaLista, resumo, semConversaComMotoboy } from '../../utils/conversas';
 
 // Entregas: a gaveta do chat da loja com os motoboys e com a central (tela Pedidos). Três vistas, todas pelo serviço entregas-conversas:
 // a lista de conversas, os motoboys do mapa (Nova conversa) e a conversa aberta. O estado e as leituras ficam no serviço,
@@ -59,6 +59,11 @@ export default class PortalConversasComponent extends Component {
                 naoLidas: Number(conversa.nao_lidas) || 0,
             };
         });
+    }
+
+    /** A lista sempre tem a Central: o aviso de como começar aparece abaixo dela enquanto não há conversa com motoboy. */
+    get semConversaComMotoboy() {
+        return semConversaComMotoboy(this.conversas.conversas);
     }
 
     get mensagens() {

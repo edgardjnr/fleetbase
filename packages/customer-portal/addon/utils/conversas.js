@@ -114,3 +114,8 @@ export function itensDaLista(conversas) {
 
     return [central, ...lista.filter((conversa) => conversa.tipo !== 'central')];
 }
+
+/** Sem nenhuma conversa com motoboy: a gaveta mostra, abaixo da Central, como começar uma (Nova conversa). */
+export function semConversaComMotoboy(conversas) {
+    return !(conversas ?? []).some((conversa) => conversa && conversa.tipo !== 'central');
+}
