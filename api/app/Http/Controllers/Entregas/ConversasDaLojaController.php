@@ -30,8 +30,7 @@ class ConversasDaLojaController extends PortalLojaController
      */
     public function abrir(Request $request)
     {
-        $loja  = $this->lojaDaSessao();
-        $donos = $this->donosDosPedidos($loja);
+        $loja = $this->lojaDaSessao();
 
         // a conversa da loja com a central (uma por loja)
         if ($request->boolean('central')) {
@@ -43,6 +42,8 @@ class ConversasDaLojaController extends PortalLojaController
             return response()->json(['conversa' => ConversasDaLoja::item($canal, (string) session('user'))]);
         }
 
+        // os donos dos pedidos só servem para achar o motoboy (mapa ou pedido da loja)
+        $donos   = $this->donosDosPedidos($loja);
         $idOpaco = $request->input('motoboy');
         $pedido  = $request->input('pedido');
 

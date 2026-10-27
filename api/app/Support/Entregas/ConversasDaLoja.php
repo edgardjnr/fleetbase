@@ -37,7 +37,10 @@ class ConversasDaLoja
 
     public const META_MOTOBOY = 'entregas_conversa_motoboy';
 
-    /** Marca da conversa da loja com a central no `meta` (o valor é o uuid da loja, como em META_LOJA). */
+    /**
+     * Marca da conversa da loja com a central no `meta` (o valor é o uuid da loja, como em META_LOJA). Não confundir com
+     * ChatComACentral::CHAVE_META (`entregas_chat_central`), a do outro canal: motoboy ↔ central, valor = uuid do Driver.
+     */
     public const META_CENTRAL = 'entregas_conversa_central';
 
     public const MAX_CARACTERES = 1000;
