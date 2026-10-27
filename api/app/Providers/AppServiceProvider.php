@@ -20,6 +20,7 @@ use App\Notifications\Entregas\CanalFcmEntregas;
 use App\Notifications\Entregas\Email\CanalEmailEntregas;
 use App\Support\Entregas\ChatComACentral;
 use App\Support\Entregas\ConexaoDoStorefront;
+use App\Support\Entregas\ConversasDaLoja;
 use App\Support\Entregas\Distribuicao\TrocaDoListenerDoDespacho;
 use App\Support\Entregas\FusoDoServidor;
 use App\Support\Entregas\ImagensPadrao;
@@ -134,12 +135,16 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Entregas: a cada mensagem nova na conversa do motoboy com a central, o canal volta a ter a central e só ela além do
-     * motoboy (ver ChatComACentral::aoCriarMensagem). Roda antes do notifyParticipants do core, que já avisa quem entrou.
+     * Entregas: a cada mensagem nova, as conversas com a central se arrumam antes do notifyParticipants do core, que já
+     * avisa quem entrou: a do motoboy volta a ter a central e só ela além dele (ChatComACentral::aoCriarMensagem) e a da
+     * loja ganha quem falta da loja e da central (ConversasDaLoja::aoCriarMensagem). Cada uma só age no próprio canal.
      */
     protected function arrumarConversasComACentral(): void
     {
-        ChatMessage::created(fn ($mensagem) => ChatComACentral::aoCriarMensagem($mensagem));
+        ChatMessage::created(function ($mensagem) {
+            ChatComACentral::aoCriarMensagem($mensagem);
+            ConversasDaLoja::aoCriarMensagem($mensagem);
+        });
     }
 
     /**

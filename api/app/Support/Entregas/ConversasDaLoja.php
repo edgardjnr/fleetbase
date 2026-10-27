@@ -19,9 +19,11 @@ use Illuminate\Support\Facades\Log;
  * docs/superpowers/specs/2026-10-04-chat-da-loja-design.md.
  *
  * Uma conversa por par loja × motoboy, por cima do chat do Fleetbase: o canal é marcado no `meta` (META_LOJA = uuid do
- * Vendor, META_MOTOBOY = uuid do Driver) e tem só o motoboy e os usuários ativos da loja (decisão do Edgard em
- * 2026-10-04: a central não entra sozinha, nem pelo app nem pelo portal; pode ser adicionada depois pelo chat do console,
- * e quem já está no canal continua). Quem falta da loja ou o motoboy entra a cada abertura. A mensagem nasce como no core
+ * Vendor, META_MOTOBOY = uuid do Driver) e tem só o motoboy e os usuários ativos da loja (decisão do Edgard em 2026-10-04:
+ * a central não entra sozinha nessa conversa; pode ser adicionada depois pelo chat do console, e quem já está no canal
+ * continua). Quem falta da loja ou o motoboy entra a cada abertura. A conversa da loja com a central (2026-10-27,
+ * abrirComACentral) é outro canal, um por loja: META_LOJA e META_CENTRAL no `meta`, os usuários ativos da loja e a
+ * central (ChatComACentral::usuariosDaCentral), completado ao abrir e a cada mensagem nova. A mensagem nasce como no core
  * (ChatMessage::create + notifyParticipants): o motoboy recebe no app (socket e push) e a loja no portal.
  *
  * A loja nunca usa as rotas de chat do Fleetbase (a de participantes lista todos os usuários da empresa) e as respostas
@@ -87,6 +89,68 @@ class ConversasDaLoja
         });
     }
 
+    /**
+     * A conversa da loja com a central, criada ou completada agora; null se a empresa não tem ninguém na central. Um canal
+     * por loja, com os usuários ativos da loja e a central (ChatComACentral::usuariosDaCentral: quem abre o console).
+     */
+    public static function abrirComACentral(Vendor $loja, string $usuario): ?ChatChannel
+    {
+        $empresa = (string) $loja->company_uuid;
+        $central = $empresa !== '' ? ChatComACentral::usuariosDaCentral($empresa, '') : [];
+
+        if ($empresa === '' || $usuario === '' || empty($central)) {
+            return null;
+        }
+
+        $quemDeveEstar = static::participantesComACentral($usuario, static::usuariosDaLoja($loja), $central);
+
+        return Cache::lock(static::travaDaCentral($loja->uuid), 15)->block(10, function () use ($loja, $empresa, $usuario, $quemDeveEstar) {
+            $canal = ChatChannel::where('company_uuid', $empresa)
+                ->where('meta->' . static::META_CENTRAL, $loja->uuid)
+                ->first();
+
+            if (!$canal) {
+                // o ChatChannel do core põe o criador (o usuário da loja) como participante
+                $canal = ChatChannel::create([
+                    'company_uuid'    => $empresa,
+                    'created_by_uuid' => $usuario,
+                    'name'            => static::nomeDaCentral($loja->name),
+                    'meta'            => static::metaDaCentral($loja->uuid),
+                ]);
+            }
+
+            static::completar($canal, $quemDeveEstar);
+
+            return $canal->refresh();
+        });
+    }
+
+    /**
+     * A cada mensagem nova (ChatMessage::created), a conversa da loja com a central ganha quem falta da loja e da central
+     * (inclusive quem saiu), antes do notifyParticipants do core. Ninguém sai: quem a central adicionou pelo console fica.
+     * Só age na conversa com a central; nunca lança (a mensagem já está gravada).
+     */
+    public static function aoCriarMensagem(ChatMessage $mensagem): void
+    {
+        try {
+            // outra instância do canal: a relação da mensagem fica sem carregar, e o core lê os participantes já completos
+            $canal  = ChatChannel::where('uuid', $mensagem->chat_channel_uuid)->first();
+            $doMeta = $canal ? static::lojaDaCentralNoMeta($canal->meta) : null;
+            $loja   = $doMeta ? Vendor::where('uuid', $doMeta)->first() : null;
+
+            if (!$canal || !$loja) {
+                return;
+            }
+
+            Cache::lock(static::travaDaCentral($loja->uuid), 15)->block(10, function () use ($canal, $loja) {
+                $central = ChatComACentral::usuariosDaCentral((string) $canal->company_uuid, '');
+                static::completar($canal, static::participantesComACentral('', static::usuariosDaLoja($loja), $central));
+            });
+        } catch (\Throwable $erro) {
+            Log::warning('[entregas] conversa da loja com a central: falha ao completar os participantes', ['canal' => $mensagem->chat_channel_uuid, 'erro' => $erro->getMessage()]);
+        }
+    }
+
     /** Um canal da loja pelo public_id; null se não existe ou é de outra loja. */
     public static function daLoja(Vendor $loja, string $id): ?ChatChannel
     {
@@ -99,7 +163,7 @@ class ConversasDaLoja
     /**
      * As conversas da loja, a de mensagem mais recente primeiro.
      *
-     * @return array<int, array{id: string, motoboy: array{nome: ?string, foto: ?string}, ultima: ?array, nao_lidas: int, atualizada_em: ?string}>
+     * @return array<int, array{id: string, tipo: string, motoboy: array{nome: ?string, foto: ?string}, ultima: ?array, nao_lidas: int, atualizada_em: ?string}>
      */
     public static function listar(Vendor $loja, string $usuario): array
     {
@@ -128,9 +192,12 @@ class ConversasDaLoja
             $ultima  = static::mensagensDo($canal)->latest()->orderByDesc('id')->first();
             $motoboy = $motoboys->get(data_get($canal->meta, static::META_MOTOBOY));
 
+            $tipo = static::tipoDoCanal($canal->meta);
+
             $lista[] = [
                 'id'            => $canal->public_id,
-                'motoboy'       => ['nome' => $motoboy?->name, 'foto' => $motoboy?->photo_url],
+                'tipo'          => $tipo,
+                'motoboy'       => $tipo === 'central' ? ['nome' => null, 'foto' => null] : ['nome' => $motoboy?->name, 'foto' => $motoboy?->photo_url],
                 'ultima'        => $ultima ? [
                     'texto' => $ultima->content,
                     'em'    => static::data($ultima->created_at),
@@ -318,6 +385,25 @@ class ConversasDaLoja
     public static function meta(string $loja, string $motoboy): array
     {
         return [static::META_LOJA => $loja, static::META_MOTOBOY => $motoboy];
+    }
+
+    /** Quem falta no canal entra (como o abrir das conversas com motoboy). */
+    protected static function completar(ChatChannel $canal, array $quemDeveEstar): void
+    {
+        $presentes = ChatParticipant::where('chat_channel_uuid', $canal->uuid)->pluck('user_uuid')->all();
+
+        foreach (ChatComACentral::quemFalta($quemDeveEstar, $presentes) as $quem) {
+            ChatParticipant::create([
+                'company_uuid'      => $canal->company_uuid,
+                'user_uuid'         => $quem,
+                'chat_channel_uuid' => $canal->uuid,
+            ]);
+        }
+    }
+
+    protected static function travaDaCentral(string $loja): string
+    {
+        return "entregas:conversa-loja-central:{$loja}";
     }
 
     /** O participante do usuário no canal; entra agora se ainda não está (usuário de loja criado depois do canal). */
