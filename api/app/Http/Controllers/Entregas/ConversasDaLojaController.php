@@ -40,7 +40,7 @@ class ConversasDaLojaController extends PortalLojaController
                 return $this->erro(422, 'A central não está disponível para conversa agora.');
             }
 
-            return response()->json(['conversa' => static::itemDaLista($loja, $canal)]);
+            return response()->json(['conversa' => ConversasDaLoja::item($canal, (string) session('user'))]);
         }
 
         $idOpaco = $request->input('motoboy');
@@ -74,7 +74,7 @@ class ConversasDaLojaController extends PortalLojaController
             return $this->erro(422, 'Não foi possível abrir a conversa com este motoboy.');
         }
 
-        return response()->json(['conversa' => static::itemDaLista($loja, $canal)]);
+        return response()->json(['conversa' => ConversasDaLoja::item($canal, (string) session('user'))]);
     }
 
     public function mensagens(string $id)
@@ -100,12 +100,6 @@ class ConversasDaLojaController extends PortalLojaController
         }
 
         return response()->json(['mensagem' => ConversasDaLoja::enviar($canal, (string) session('user'), $texto)]);
-    }
-
-    /** O canal no formato da lista (GET loja/conversas). */
-    protected static function itemDaLista($loja, $canal): ?array
-    {
-        return collect(ConversasDaLoja::listar($loja, (string) session('user')))->firstWhere('id', $canal->public_id);
     }
 
     protected function erro(int $status, string $mensagem)

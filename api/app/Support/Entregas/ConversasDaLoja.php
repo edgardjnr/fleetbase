@@ -45,7 +45,7 @@ class ConversasDaLoja
     /** Mensagens devolvidas por leitura (as mais recentes). */
     public const MENSAGENS_POR_LEITURA = 50;
 
-    /** Conversas devolvidas na lista (as de mensagem mais recente). */
+    /** Conversas com motoboy devolvidas na lista (as de mensagem mais recente); a com a central vem sempre, além delas. */
     public const CONVERSAS_NA_LISTA = 50;
 
     /** O canal da loja com o motoboy, criado ou completado agora; null se o motoboy não tem usuário. */
@@ -165,7 +165,8 @@ class ConversasDaLoja
     }
 
     /**
-     * As conversas da loja, a de mensagem mais recente primeiro.
+     * As conversas da loja, a de mensagem mais recente primeiro: as CONVERSAS_NA_LISTA com motoboy mais recentes e sempre
+     * a com a central, mesmo mais antiga (o item fixo "Central" do portal precisa do id e das não lidas dela).
      *
      * @return array<int, array{id: string, tipo: string, motoboy: array{nome: ?string, foto: ?string}, ultima: ?array, nao_lidas: int, atualizada_em: ?string}>
      */
@@ -180,7 +181,7 @@ class ConversasDaLoja
         }
 
         // o nome e a foto do motoboy leem o usuário dele: carregados de uma vez
-        $motoboys = Driver::whereIn('uuid', $canais->map(fn ($canal) => data_get($canal->meta, static::META_MOTOBOY))->filter()->values())
+        $motoboys = Driver::whereIn('uuid', $canais->map(fn ($canal) => static::motoboyDoCanal($canal))->filter()->values())
             ->with('user')
             ->get()
             ->keyBy('uuid');
@@ -190,32 +191,31 @@ class ConversasDaLoja
             ->get()
             ->keyBy('chat_channel_uuid');
 
-        $lista = [];
+        $comACentral = [];
+        $comMotoboy  = [];
         foreach ($canais as $canal) {
-            $eu      = $meus->get($canal->uuid);
-            $ultima  = static::mensagensDo($canal)->latest()->orderByDesc('id')->first();
-            $motoboy = $motoboys->get(data_get($canal->meta, static::META_MOTOBOY));
+            $doMotoboy = static::motoboyDoCanal($canal);
+            $item      = static::montarItem($canal, $meus->get($canal->uuid), $doMotoboy ? $motoboys->get($doMotoboy) : null);
 
-            $tipo = static::tipoDoCanal($canal->meta);
-
-            $lista[] = [
-                'id'            => $canal->public_id,
-                'tipo'          => $tipo,
-                'motoboy'       => $tipo === 'central' ? ['nome' => null, 'foto' => null] : ['nome' => $motoboy?->name, 'foto' => $motoboy?->photo_url],
-                'ultima'        => $ultima ? [
-                    'texto' => $ultima->content,
-                    'em'    => static::data($ultima->created_at),
-                    'minha' => $eu !== null && $ultima->sender_uuid === $eu->uuid,
-                ] : null,
-                'nao_lidas'     => $eu ? static::naoLidas($canal, $eu) : 0,
-                'atualizada_em' => static::data($ultima?->created_at ?? $canal->created_at),
-            ];
+            if ($item['tipo'] === 'central') {
+                $comACentral[] = $item;
+            } else {
+                $comMotoboy[] = $item;
+            }
         }
 
-        // ISO 8601 no mesmo fuso: a ordem do texto é a ordem do tempo
-        usort($lista, fn ($a, $b) => strcmp((string) $b['atualizada_em'], (string) $a['atualizada_em']));
+        // o corte vale só para as conversas com motoboy
+        return static::ordenar(array_merge($comACentral, array_slice(static::ordenar($comMotoboy), 0, static::CONVERSAS_NA_LISTA)));
+    }
 
-        return array_slice($lista, 0, static::CONVERSAS_NA_LISTA);
+    /** Uma conversa no formato da lista (o do listar), sem passar pelo corte: a resposta do POST loja/conversas. */
+    public static function item(ChatChannel $canal, string $usuario): array
+    {
+        $doMotoboy = static::motoboyDoCanal($canal);
+        $motoboy   = $doMotoboy ? Driver::where('uuid', $doMotoboy)->with('user')->first() : null;
+        $eu        = ChatParticipant::where('chat_channel_uuid', $canal->uuid)->where('user_uuid', $usuario)->first();
+
+        return static::montarItem($canal, $eu, $motoboy);
     }
 
     /**
@@ -426,6 +426,46 @@ class ConversasDaLoja
                 $participante->delete();
             }
         }
+    }
+
+    /** O uuid do motoboy de uma conversa com motoboy; null na conversa com a central. */
+    protected static function motoboyDoCanal(ChatChannel $canal): ?string
+    {
+        if (static::tipoDoCanal($canal->meta) === 'central') {
+            return null;
+        }
+
+        $motoboy = data_get($canal->meta, static::META_MOTOBOY);
+
+        return is_string($motoboy) && $motoboy !== '' ? $motoboy : null;
+    }
+
+    /** O item da lista de uma conversa, com o participante do usuário (null = não está no canal) e o motoboy já lidos. */
+    protected static function montarItem(ChatChannel $canal, ?ChatParticipant $eu, ?Driver $motoboy): array
+    {
+        $ultima = static::mensagensDo($canal)->latest()->orderByDesc('id')->first();
+        $tipo   = static::tipoDoCanal($canal->meta);
+
+        return [
+            'id'            => $canal->public_id,
+            'tipo'          => $tipo,
+            'motoboy'       => $tipo === 'central' ? ['nome' => null, 'foto' => null] : ['nome' => $motoboy?->name, 'foto' => $motoboy?->photo_url],
+            'ultima'        => $ultima ? [
+                'texto' => $ultima->content,
+                'em'    => static::data($ultima->created_at),
+                'minha' => $eu !== null && $ultima->sender_uuid === $eu->uuid,
+            ] : null,
+            'nao_lidas'     => $eu ? static::naoLidas($canal, $eu) : 0,
+            'atualizada_em' => static::data($ultima?->created_at ?? $canal->created_at),
+        ];
+    }
+
+    /** A de mensagem mais recente primeiro (ISO 8601 no mesmo fuso: a ordem do texto é a ordem do tempo). */
+    protected static function ordenar(array $itens): array
+    {
+        usort($itens, fn ($a, $b) => strcmp((string) $b['atualizada_em'], (string) $a['atualizada_em']));
+
+        return $itens;
     }
 
     protected static function travaDaCentral(string $loja): string

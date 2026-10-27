@@ -10,6 +10,7 @@ namespace {
     require __DIR__ . '/../../api/app/Support/Entregas/ConversasDaLoja.php';
 
     use App\Support\Entregas\ConversasDaLoja as C;
+    use Fleetbase\FleetOps\Models\Driver;
     use Fleetbase\FleetOps\Models\Vendor;
     use Fleetbase\Models\ChatChannel;
     use Fleetbase\Models\ChatMessage;
@@ -111,6 +112,40 @@ namespace {
     C::aoCriarMensagem(new ChatMessage(['chat_channel_uuid' => 'canal-de-fora']));
     confere(ativos('canal-de-fora') === ['admin-de-fora'], 'canal de outra empresa com a loja no meta: intacto');
     confere(Log::$linhas === [], 'sem aviso no log');
+
+    echo '== item' . PHP_EOL;
+    montarEmpresa();
+    $terraco = Vendor::where('uuid', 'terraco')->first();
+    $canal   = C::abrirComACentral($terraco, 'loja');
+    $item    = C::item($canal, 'loja');
+    confere(array_keys($item) === ['id', 'tipo', 'motoboy', 'ultima', 'nao_lidas', 'atualizada_em'], 'formato do item da lista');
+    confere($item['id'] === $canal->public_id && $item['tipo'] === 'central', 'conversa com a central: id e tipo central');
+    confere($item['motoboy'] === ['nome' => null, 'foto' => null], 'conversa com a central: motoboy sem nome nem foto');
+    confere($item['ultima'] === null && $item['nao_lidas'] === 0, 'sem mensagem: sem última e sem não lidas');
+    $daCentral = ChatParticipant::where('chat_channel_uuid', $canal->uuid)->where('user_uuid', 'edgard')->first();
+    ChatMessage::create(['chat_channel_uuid' => $canal->uuid, 'sender_uuid' => $daCentral->uuid, 'content' => 'Oi, loja', 'created_at' => '2026-10-27T10:00:00-03:00']);
+    $item = C::item($canal, 'loja');
+    confere($item['ultima'] === ['texto' => 'Oi, loja', 'em' => '2026-10-27T10:00:00-03:00', 'minha' => false], 'a mensagem da central é a última');
+    confere($item['nao_lidas'] === 1 && $item['atualizada_em'] === '2026-10-27T10:00:00-03:00', 'uma não lida e a hora dela');
+    $doRoger = C::abrir($terraco, Driver::where('uuid', 'drv-roger')->first(), 'loja');
+    $item    = C::item($doRoger, 'loja');
+    confere($item['tipo'] === 'motoboy' && $item['motoboy'] === ['nome' => 'Roger', 'foto' => null], 'conversa com o motoboy: tipo motoboy e o nome dele');
+
+    echo '== listar: a conversa com a central sempre vem' . PHP_EOL;
+    $lista = C::listar($terraco, 'loja');
+    confere(array_column($lista, 'id') === [$canal->public_id, $doRoger->public_id], 'a central (mensagem mais recente) e o Roger: ' . implode(',', array_column($lista, 'id')));
+    confere($lista[0] === C::item($canal, 'loja'), 'o item da lista é o mesmo do item()');
+    confere(C::listar(Vendor::where('uuid', 'outra-loja')->first(), 'loja-2') === [], 'outra loja: nada desta');
+    for ($i = 0; $i <= C::CONVERSAS_NA_LISTA; $i++) {
+        $canalDoMotoboy = ChatChannel::create(['company_uuid' => 'empresa', 'created_by_uuid' => 'loja', 'meta' => C::meta('terraco', "drv-x{$i}")]);
+        ChatMessage::create(['chat_channel_uuid' => $canalDoMotoboy->uuid, 'sender_uuid' => 'outro', 'content' => "m{$i}", 'created_at' => sprintf('2026-10-27T11:%02d:00-03:00', $i)]);
+    }
+    $lista = C::listar($terraco, 'loja');
+    $comMotoboy = array_values(array_filter($lista, fn ($item) => $item['tipo'] === 'motoboy'));
+    confere(count($comMotoboy) === C::CONVERSAS_NA_LISTA, 'as ' . C::CONVERSAS_NA_LISTA . ' conversas com motoboy mais recentes');
+    confere(end($lista)['id'] === $canal->public_id && end($lista)['tipo'] === 'central', 'a conversa com a central vem, mesmo mais antiga, no fim');
+    confere(count(array_filter($lista, fn ($item) => $item['tipo'] === 'central')) === 1, 'uma vez só');
+    confere(!in_array($doRoger->public_id, array_column($lista, 'id'), true) && $comMotoboy[0]['ultima']['texto'] === 'm' . C::CONVERSAS_NA_LISTA, 'a mais antiga com motoboy fica fora; a mais recente em cima');
 
     echo '== aoCriarMensagem nunca lança' . PHP_EOL;
     montarEmpresa();

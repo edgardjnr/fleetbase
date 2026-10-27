@@ -1,8 +1,20 @@
 <?php
 
-// Banco em memória do chat (ChatComACentral, ConversasDaLoja) para os testes de php-wasm: Collection, Cache, Log e os
-// modelos do core e do Fleet-Ops que o chat usa. A empresa montada em \Teste\montarEmpresa() é a da produção em
+// Banco em memória do chat (ChatComACentral, ConversasDaLoja) para os testes de php-wasm: data_get, Collection, Carbon,
+// Cache, Log e os modelos do core e do Fleet-Ops que o chat usa. A empresa montada em \Teste\montarEmpresa() é a da produção em
 // 2026-10-27 (motoboys com `type = user`). Usado por chat-central-banco.php e conversas-com-a-central.php.
+
+namespace {
+    // data_get() do Laravel: só um nível, o que o chat usa
+    if (!function_exists('data_get')) {
+        function data_get($alvo, $chave, $padrao = null)
+        {
+            $alvo = is_object($alvo) ? (array) $alvo : $alvo;
+
+            return is_array($alvo) && array_key_exists($chave, $alvo) ? $alvo[$chave] : $padrao;
+        }
+    }
+}
 
 namespace Illuminate\Support {
     class Collection implements \IteratorAggregate, \Countable
@@ -25,16 +37,25 @@ namespace Illuminate\Support {
 
             return new static($saida);
         }
-        public function filter(callable $funcao): static { return new static(array_filter($this->itens, $funcao)); }
-        public function keyBy(callable $funcao): static
+        public function filter(?callable $funcao = null): static { return new static($funcao ? array_filter($this->itens, $funcao) : array_filter($this->itens)); }
+        public function keyBy(callable|string $funcao): static
         {
             $saida = [];
             foreach ($this->itens as $item) {
-                $saida[$funcao($item)] = $item;
+                // texto = nome do campo, como no Laravel
+                $saida[is_string($funcao) ? $item->$funcao : $funcao($item)] = $item;
             }
 
             return new static($saida);
         }
+    }
+
+    /** As datas do chat nos testes já vêm em ISO 8601 com o fuso. */
+    class Carbon extends \DateTimeImmutable
+    {
+        public static function parse($data): static { return new static((string) $data); }
+        public static function now(): static { return new static(); }
+        public function toIso8601String(): string { return $this->format('Y-m-d\TH:i:sP'); }
     }
 }
 
@@ -109,6 +130,34 @@ namespace Teste {
             return $this;
         }
 
+        /** A subconsulta (select) chega como Collection; array também vale. */
+        public function whereNotIn(string $coluna, $valores): static
+        {
+            $valores      = $valores instanceof Collection ? $valores->all() : $valores;
+            $this->linhas = array_filter($this->linhas, fn ($linha) => !in_array(static::valor($linha, $coluna), $valores, true));
+
+            return $this;
+        }
+
+        // as relações não são simuladas
+        public function with($relacoes): static { return $this; }
+        public function without($relacoes): static { return $this; }
+
+        /** A mais recente primeiro (as datas dos testes são ISO 8601 no mesmo fuso: a ordem do texto é a do tempo). */
+        public function latest(string $coluna = 'created_at'): static
+        {
+            usort($this->linhas, fn ($a, $b) => strcmp((string) static::valor($b, $coluna), (string) static::valor($a, $coluna)));
+
+            return $this;
+        }
+
+        // só o desempate do latest(): os testes não repetem horário
+        public function orderByDesc(string $coluna): static { return $this; }
+
+        /** Como subconsulta do whereNotIn: os valores da coluna. */
+        public function select(string $coluna): Collection { return $this->pluck($coluna); }
+
+        public function count(): int { return count($this->linhas); }
         public function get(): Collection { return new Collection(array_values($this->linhas)); }
         public function first() { return array_values($this->linhas)[0] ?? null; }
         public function pluck(string $coluna): Collection { return $this->get()->pluck($coluna); }
@@ -133,6 +182,7 @@ namespace Teste {
             $this->uuid ??= static::class . '-' . (count(static::$linhas) + 1);
         }
 
+        public static function query(): Consulta { return new Consulta(static::class); }
         public static function where(...$argumentos): Consulta { return (new Consulta(static::class))->where(...$argumentos); }
         public static function whereIn(...$argumentos): Consulta { return (new Consulta(static::class))->whereIn(...$argumentos); }
 
@@ -167,9 +217,10 @@ namespace Fleetbase\Models {
         public static array $linhas = [];
         public static ?string $explodir = null;
 
-        /** Como o core: o criador do canal entra como participante. */
+        /** Como o core: o canal ganha um public_id e o criador entra como participante. */
         public static function create(array $atributos): static
         {
+            $atributos['public_id'] ??= 'chat_' . (count(static::$linhas) + 1);
             $canal = parent::create($atributos);
             ChatParticipant::create(['company_uuid' => $canal->company_uuid, 'user_uuid' => $canal->created_by_uuid, 'chat_channel_uuid' => $canal->uuid]);
 
@@ -183,6 +234,11 @@ namespace Fleetbase\Models {
     }
 
     class ChatMessage extends \Teste\Modelo
+    {
+        public static array $linhas = [];
+    }
+
+    class ChatReceipt extends \Teste\Modelo
     {
         public static array $linhas = [];
     }
@@ -218,8 +274,10 @@ namespace Teste {
     use Fleetbase\Models\ChatChannel;
     use Fleetbase\Models\ChatMessage;
     use Fleetbase\Models\ChatParticipant;
+    use Fleetbase\Models\ChatReceipt;
     use Fleetbase\Models\CompanyUser;
     use Fleetbase\Models\User;
+    use Illuminate\Support\Facades\Cache;
     use Illuminate\Support\Facades\Log;
 
     /**
@@ -228,10 +286,10 @@ namespace Teste {
      */
     function montarEmpresa(): void
     {
-        User::$linhas = CompanyUser::$linhas = ChatChannel::$linhas = ChatParticipant::$linhas = ChatMessage::$linhas = [];
+        User::$linhas = CompanyUser::$linhas = ChatChannel::$linhas = ChatParticipant::$linhas = ChatMessage::$linhas = ChatReceipt::$linhas = [];
         Driver::$linhas = Vendor::$linhas = VendorPersonnel::$linhas = Contact::$linhas = [];
         ChatChannel::$explodir = null;
-        Log::$linhas = [];
+        Log::$linhas = Cache::$travas = [];
 
         $usuarios = [
             // uuid, tipo, motoboy (null = não; 'excluido' = cadastro excluído), papéis na empresa
