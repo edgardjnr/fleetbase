@@ -1,5 +1,6 @@
-{{!-- Entregas: gaveta do chat da loja com os motoboys (serviço entregas-conversas). A conversa é só da loja e do
-     motoboy (a central pode ser adicionada depois pelo chat do console); o motoboy responde pela aba Conversas do app --}}
+{{!-- Entregas: gaveta do chat da loja (serviço entregas-conversas). Com o motoboy, a conversa é só da loja e dele (a
+     central pode ser adicionada depois pelo chat do console); com a central (item fixo no topo), a loja e a central, que
+     responde pelo chat do console. O motoboy responde pela aba Conversas do app --}}
 {{#if this.conversas.aberta}}
     <aside class="portal-conversas" aria-label={{t "customer-portal.ui.entregas.chat-title"}}>
         <header class="portal-conversas-header">
@@ -43,7 +44,7 @@
                             <div class="portal-conversas-message-time">{{format-date-fns mensagem.em "dd/MM HH:mm"}}</div>
                         </div>
                     {{else}}
-                        <div class="portal-conversas-empty">{{t "customer-portal.ui.entregas.chat-start"}}</div>
+                        <div class="portal-conversas-empty">{{this.textoInicial}}</div>
                     {{/each}}
                 {{/if}}
             </div>
@@ -65,9 +66,9 @@
             </div>
             <div class="portal-conversas-body">
                 {{#each this.itens as |item|}}
-                    <button type="button" class="portal-conversas-item" {{on "click" (fn this.conversas.escolherConversa item.conversa "")}}>
+                    <button type="button" class="portal-conversas-item" disabled={{and item.central this.conversas.abrirComACentral.isRunning}} {{on "click" (fn this.abrirItem item)}}>
                         <span class="portal-conversas-avatar">
-                            {{#if item.foto}}<img src={{item.foto}} alt="" />{{else}}<FaIcon @icon="motorcycle" />{{/if}}
+                            {{#if item.central}}<FaIcon @icon="headset" />{{else if item.foto}}<img src={{item.foto}} alt="" />{{else}}<FaIcon @icon="motorcycle" />{{/if}}
                         </span>
                         <span class="portal-conversas-item-text">
                             <span class="portal-conversas-item-name">{{item.nome}}</span>

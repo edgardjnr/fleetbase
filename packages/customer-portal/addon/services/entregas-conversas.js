@@ -7,7 +7,7 @@ import { INTERVALO_CONVERSA_MS, INTERVALO_LISTA_CONVERSAS_MS, mesclarMensagens, 
 import { prepararSom, tocarSomDeMensagem } from '../utils/som-de-mensagem';
 
 /**
- * Entregas: o chat da loja com os motoboys (int/v1/entregas/loja/conversas*, App\Http\Controllers\Entregas\ConversasDaLojaController).
+ * Entregas: o chat da loja com os motoboys e com a central (int/v1/entregas/loja/conversas*, App\Http\Controllers\Entregas\ConversasDaLojaController).
  * Desenho: docs/superpowers/specs/2026-10-04-chat-da-loja-design.md.
  *
  * Estado compartilhado entre o botão Conversas do cabeçalho da tela Pedidos (total de não lidas), a gaveta
@@ -173,6 +173,11 @@ export default class EntregasConversasService extends Service {
         } catch (error) {
             this.notifications.serverError(error);
         }
+    }
+
+    /** Abre (ou cria) a conversa da loja com a central. */
+    @task *abrirComACentral() {
+        yield this.abrir({ central: true });
     }
 
     /** Abre (ou cria) a conversa com o motoboy escolhido no mapa (id opaco). */
