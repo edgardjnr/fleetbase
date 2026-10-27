@@ -29,7 +29,13 @@ export default class SocketService extends Service {
         return socketClusterClient.create(socketConfig);
     }
 
-    async listen(channelId, callback) {
+    /**
+     * Entregas: `options.aceitarJaInscrito` faz o callback valer também quando outra parte do console já se inscreveu no
+     * canal. Sem ela, o `listener('subscribe').once()` espera um "inscrito" que não vem de novo e o callback nunca é
+     * ligado: o sino (notification-tray) se inscreve no `user.<id>` antes da bandeja de mensagens, e a bandeja não ouvia
+     * nada desse canal. O padrão continua o do Fleetbase (quem chama de novo para o mesmo canal não ganha outro ouvinte).
+     */
+    async listen(channelId, callback, options = {}) {
         later(
             this,
             async () => {
@@ -39,7 +45,9 @@ export default class SocketService extends Service {
                 this.channels.pushObject(channel);
 
                 // Listen to channel for events
-                await channel.listener('subscribe').once();
+                if (!(options.aceitarJaInscrito && channel.state === 'subscribed')) {
+                    await channel.listener('subscribe').once();
+                }
 
                 // Listen for channel subscription
                 (async () => {

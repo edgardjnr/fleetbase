@@ -87,57 +87,82 @@ export default class ChatTrayComponent extends Component {
         return 'Untitled Chat';
     }
 
+    // Entregas: as conversas já escutadas pela bandeja (public_id). Cada uma é escutada uma vez só: com o
+    // `aceitarJaInscrito`, escutar de novo ligaria outro ouvinte ao mesmo canal
+    canaisEscutados = new Set();
+    // Entregas: as mensagens que já tocaram o aviso (o core manda o mesmo aviso duas vezes no canal do usuário)
+    mensagensAvisadas = new Set();
+
     listenAllChatChannels(channels) {
         channels.forEach((chatChannelRecord) => {
+            if (this.canaisEscutados.has(chatChannelRecord.public_id)) {
+                return;
+            }
+
+            this.canaisEscutados.add(chatChannelRecord.public_id);
             this.listenChatChannel(chatChannelRecord);
         });
     }
 
     async listenUserChannel() {
-        this.socket.listen(`user.${this.currentUser.id}`, (socketEvent) => {
-            const { event, data } = socketEvent;
-            switch (event) {
-                case 'chat.added_participant':
-                case 'chat.participant_added':
-                case 'chat_participant.created': {
-                    // Entregas: entrou numa conversa que outra pessoa criou ou completou (a loja abrindo a conversa com a
-                    // central, ou a central voltando ao canal por uma mensagem nova): passa a escutar o canal dela, senão
-                    // as mensagens só apareciam depois de recarregar a página; e toca o aviso se ela já chegou com mensagem.
-                    // O aviso que chega a quem entrou é o `chat.added_participant` do core (ChatParticipantAdded, no
-                    // `user.<quem entrou>`); o `chat_participant.created` vai ao `user.<quem estava na sessão>`
-                    const naoLidasAntes = this.unreadCount;
-                    this.reloadChannels({ relisten: true }).then(() => {
-                        if (this.unreadCount > naoLidasAntes) {
-                            this.notificationSound.play().catch(noop);
-                        }
-                    });
+        // Entregas: o sino (notification-tray) se inscreve antes no mesmo canal; sem o `aceitarJaInscrito`, nada daqui rodava
+        this.socket.listen(`user.${this.currentUser.id}`, (socketEvent) => this.aoEventoDoUsuario(socketEvent), { aceitarJaInscrito: true });
+    }
+
+    aoEventoDoUsuario(socketEvent) {
+        const { event, data } = socketEvent;
+        switch (event) {
+            case 'chat_participent.chat_message_received': {
+                // Entregas: mensagem nova para mim em qualquer conversa (o core só manda a quem recebe, nunca a quem
+                // enviou; o nome tem o "participent" do core). É daqui que sai o aviso sonoro: chega mesmo na conversa em
+                // que acabei de entrar, antes de a bandeja escutar o canal dela
+                const mensagem = data?.id ?? data?.public_id ?? data?.uuid;
+                if (mensagem && this.mensagensAvisadas.has(mensagem)) {
                     break;
                 }
-                case 'chat.removed_participant':
-                case 'chat.participant_removed':
-                case 'chat_participant.deleted':
-                    this.reloadChannels();
-                    this.closeChannelIfRemovedFromParticipants(data);
-                    break;
-                case 'chat_channel.created':
-                    this.reloadChannels({ relisten: true });
-                    this.openNewChannelAsParticipant(data);
-                    break;
-                case 'chat_channel.deleted':
-                    this.reloadChannels({ relisten: true });
-                    this.closeChannelIfOpen(data);
-                    break;
+
+                if (mensagem) {
+                    this.mensagensAvisadas.add(mensagem);
+                }
+
+                this.notificationSound.play().catch(noop);
+                this.reloadChannels({ relisten: true });
+                break;
             }
-        });
+            case 'chat.added_participant':
+            case 'chat.participant_added':
+            case 'chat_participant.created':
+                // Entregas: entrei numa conversa que outra pessoa criou ou completou (a loja abrindo a conversa com a
+                // central, ou a central voltando ao canal por uma mensagem nova): passa a escutar o canal dela, senão
+                // ela só aparecia depois de recarregar a página
+                this.reloadChannels({ relisten: true });
+                break;
+            case 'chat.removed_participant':
+            case 'chat.participant_removed':
+            case 'chat_participant.deleted':
+                this.reloadChannels();
+                this.closeChannelIfRemovedFromParticipants(data);
+                break;
+            case 'chat_channel.created':
+                this.reloadChannels({ relisten: true });
+                this.openNewChannelAsParticipant(data);
+                break;
+            case 'chat_channel.deleted':
+                this.reloadChannels({ relisten: true });
+                this.closeChannelIfOpen(data);
+                break;
+        }
     }
 
     async listenChatChannel(chatChannelRecord) {
+        // Entregas: com o `aceitarJaInscrito`, a bandeja ouve a conversa mesmo se a janela dela se inscreveu antes
         this.socket.listen(`chat.${chatChannelRecord.public_id}`, (socketEvent) => {
             const { event, data } = socketEvent;
             switch (event) {
                 case 'chat_message.created':
+                    // Entregas: o aviso sonoro sai do `chat_participent.chat_message_received` do canal do usuário
+                    // (aoEventoDoUsuario), que só chega a quem recebe; aqui só atualiza a lista
                     this.reloadChannels();
-                    this.playSoundForIncomingMessage(chatChannelRecord, data);
                     break;
                 case 'chat.added_participant':
                     this.reloadChannels();
@@ -159,7 +184,7 @@ export default class ChatTrayComponent extends Component {
                     this.reloadChannels({ relisten: true });
                     break;
             }
-        });
+        }, { aceitarJaInscrito: true });
     }
 
     @action openChannel(chatChannelRecord) {
@@ -289,14 +314,6 @@ export default class ChatTrayComponent extends Component {
             this.reloadChannels({ relisten: true });
         } catch (error) {
             this.notifications.error(error.message ?? this.intl.t('ember-ui.chat-tray.unable-to-create'));
-        }
-    }
-
-    playSoundForIncomingMessage(chatChannelRecord, data) {
-        const sender = this.getSenderFromParticipants(chatChannelRecord);
-        const isNotSender = sender ? sender.id !== data.sender_uuid : false;
-        if (isNotSender) {
-            this.notificationSound.play();
         }
     }
 
