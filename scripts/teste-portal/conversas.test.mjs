@@ -13,6 +13,7 @@ import {
     textoValido,
     registrarUltimas,
     ultimasDosOutros,
+    itensDaLista,
 } from '../../packages/customer-portal/addon/utils/conversas.js';
 
 const msg = (id, em, texto = id) => ({ id, em, texto });
@@ -109,4 +110,19 @@ test('últimas dos outros: da lista (sem as minhas) e da conversa aberta', () =>
         { id: 'c1', em: '2026-10-04T10:00:00-03:00' },
         { id: 'c9', em: '2026-10-04T10:02:00-03:00' },
     ]);
+});
+
+test('lista: a conversa com a central sempre no topo, mesmo antes de existir', () => {
+    const fixa = { id: null, tipo: 'central', motoboy: { nome: null, foto: null }, ultima: null, nao_lidas: 0 };
+
+    assert.deepEqual(itensDaLista([]), [fixa]);
+    assert.deepEqual(itensDaLista(null), [fixa]);
+
+    const m1 = { id: 'm1', tipo: 'motoboy' };
+    const m2 = { id: 'm2', tipo: 'motoboy' };
+    const central = { id: 'c', tipo: 'central', nao_lidas: 2 };
+    assert.deepEqual(itensDaLista([m1, central, m2]), [central, m1, m2], 'a central sobe; os motoboys ficam na ordem do servidor');
+
+    const antigo = { id: 'm3' };
+    assert.deepEqual(itensDaLista([antigo]), [fixa, antigo], 'servidor sem tipo: conversa com motoboy');
 });

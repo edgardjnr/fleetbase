@@ -1,4 +1,4 @@
-// Entregas: funções puras do chat da loja com os motoboys (serviço entregas-conversas e componente Portal::Conversas).
+// Entregas: funções puras do chat da loja no portal, com os motoboys e com a central (serviço entregas-conversas e componente Portal::Conversas).
 // Sem imports, para os testes rodarem com o Node: node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/*.test.mjs
 // O servidor é o App\Support\Entregas\ConversasDaLoja (mesmo limite de texto).
 
@@ -102,4 +102,15 @@ export function ultimasDosOutros(conversas, conversaAberta = null, mensagens = [
     }
 
     return itens;
+}
+
+/**
+ * A lista da gaveta: a conversa com a central (tipo `central`) sempre no topo, mesmo antes de existir (sem id: tocar
+ * abre a conversa), e as dos motoboys depois, na ordem do servidor. Item sem `tipo` (servidor antigo) é de motoboy.
+ */
+export function itensDaLista(conversas) {
+    const lista = (conversas ?? []).filter(Boolean);
+    const central = lista.find((conversa) => conversa.tipo === 'central') ?? { id: null, tipo: 'central', motoboy: { nome: null, foto: null }, ultima: null, nao_lidas: 0 };
+
+    return [central, ...lista.filter((conversa) => conversa.tipo !== 'central')];
 }
