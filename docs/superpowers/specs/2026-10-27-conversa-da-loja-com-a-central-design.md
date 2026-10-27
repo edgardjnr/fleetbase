@@ -15,10 +15,12 @@ No portal da loja, a loja abre uma conversa com a central sozinha. Até aqui a l
   `entregas_conversa_motoboy`. Por ter a marca da loja, o canal já passa pelo `ConversasDaLoja::daLoja` (mensagens,
   envio e o limitador `entregas-loja-conversas` sem mudança) e só a loja dona o enxerga. A busca do canal com motoboy
   exige a marca do motoboy, então os dois tipos nunca se confundem.
-- **Participantes:** quem abriu, os usuários ativos da loja (`ConversasDaLoja::usuariosDaLoja`) e **todos os usuários do
-  console da organização** (tipo `admin` ou `user`, a mesma regra do `ChatComACentral::usuariosDaCentral`; decisão do
-  Edgard). Motoboy (`driver`) e usuário de loja (`customer`) nunca entram pelo lado da central. Quem falta entra a cada
-  abertura (`ChatComACentral::quemFalta`). Trava no cache (Redis) por loja contra dois canais com dois toques seguidos.
+- **Participantes:** quem abriu, os usuários ativos da loja (`ConversasDaLoja::usuariosDaLoja`) e **a central inteira**
+  (decisão do Edgard): `ChatComACentral::usuariosDaCentral`, quem abre o console (corrigido em bed171ff: em produção os
+  motoboys têm `type = user`, então o cadastro de motoboy decide). Motoboy e usuário de loja nunca entram pelo lado da
+  central. Trava no cache (Redis) por loja contra dois canais com dois toques seguidos.
+- **O canal se arruma ao abrir e a cada mensagem nova**, como o do motoboy com a central (`ChatMessage::created`): quem
+  falta da loja ou da central entra (inclusive quem saiu) e quem sobra (motoboy, usuário de outra loja) sai.
 - **Nome do canal:** "Loja · <nome da loja>" (só "Loja" sem nome). É o que a central vê no chat do console, onde
   responde. A mensagem nasce como as outras (`ChatMessage::create` + `notifyParticipants()`): o console é avisado pelo
   chat dele; o portal lê na consulta periódica (5 s com a conversa aberta, 20 s a lista).
