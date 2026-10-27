@@ -4,6 +4,7 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
 import { situacaoDoIfood } from '../../utils/vinculo-ifood';
+import { cobrancaParaEnviar, errosDaCobranca, formatarDocumento, mascararDocumento, modeloDaLoja, MODELO_PADRAO, TAMANHO_MAXIMO_DO_CAMPO } from '../../utils/documento-da-loja';
 
 const ENDPOINT = 'entregas/lojas';
 const TAMANHO_MINIMO_SENHA = 8;
@@ -27,6 +28,19 @@ const dentroDoBrasil = (valor, [minimo, maximo]) => Number.isFinite(valor) && va
 const tamanhoDaSenha = (senha) => Array.from(String(senha ?? '')).length;
 const emTexto = (valor) => (valor === null || valor === undefined ? '' : String(valor));
 
+// erros da cobrança (utils/documento-da-loja) → texto; chaves por extenso para o i18n-check enxergar
+const DICAS_DA_COBRANCA = {
+    'modelo-invalido': 'fleet-ops.ui.lojas.cobranca.modelo-invalido',
+    'documento-invalido': 'fleet-ops.ui.lojas.cobranca.documento-invalido',
+    'documento-obrigatorio': 'fleet-ops.ui.lojas.cobranca.documento-obrigatorio',
+};
+
+// Entregas: modelo de cobrança da loja (pós-pago = fatura; pré-pago = crédito da carteira por Pix) e o CPF/CNPJ dela
+const cobrancaDoRascunho = (loja) => ({
+    modelo: modeloDaLoja(loja),
+    documento: loja?.cobranca?.documento ? formatarDocumento(loja.cobranca.documento) : '',
+});
+
 const lojaNova = () => ({
     id: null,
     nome: '',
@@ -40,13 +54,15 @@ const lojaNova = () => ({
     country: 'BR',
     latitude: '',
     longitude: '',
+    modelo: MODELO_PADRAO,
+    documento: '',
 });
 
 // loja do servidor → rascunho de edição (tudo como texto, como é digitado)
 const rascunhoDaLoja = (loja) => {
     const endereco = loja.endereco;
     if (!endereco) {
-        return { ...lojaNova(), id: loja.id, nome: emTexto(loja.nome), telefone: emTexto(loja.telefone) };
+        return { ...lojaNova(), id: loja.id, nome: emTexto(loja.nome), telefone: emTexto(loja.telefone), ...cobrancaDoRascunho(loja) };
     }
 
     return {
@@ -62,6 +78,7 @@ const rascunhoDaLoja = (loja) => {
         country: emTexto(endereco.country) || 'BR',
         latitude: emTexto(endereco.latitude),
         longitude: emTexto(endereco.longitude),
+        ...cobrancaDoRascunho(loja),
     };
 };
 
@@ -119,8 +136,33 @@ export default class ManagementLojasController extends Controller {
         return Boolean(loja) && dentroDoBrasil(numero(loja.latitude), LIMITE_LATITUDE) && dentroDoBrasil(numero(loja.longitude), LIMITE_LONGITUDE);
     }
 
+    /** Documento já gravado da loja em edição (só dígitos) ou null: no pré-pago, o campo vazio mantém este. */
+    get documentoGravado() {
+        if (!this.editando?.id) {
+            return null;
+        }
+        return this.lojas.find((loja) => loja.id === this.editando.id)?.cobranca?.documento ?? null;
+    }
+
+    get errosDaCobranca() {
+        return this.editando ? errosDaCobranca(this.editando, this.documentoGravado) : [];
+    }
+
+    get preEmEdicao() {
+        return this.editando?.modelo === 'pre';
+    }
+
+    /** Campo do documento vazio com um documento gravado: o servidor mantém o gravado (mostrado mascarado). */
+    get documentoGravadoMascarado() {
+        return this.editando && !texto(this.editando.documento) && this.documentoGravado ? mascararDocumento(this.documentoGravado) : '';
+    }
+
+    get tamanhoMaximoDoDocumento() {
+        return TAMANHO_MAXIMO_DO_CAMPO;
+    }
+
     get podeSalvarLoja() {
-        return this.camposObrigatoriosPreenchidos && this.coordenadasValidas;
+        return this.camposObrigatoriosPreenchidos && this.coordenadasValidas && this.errosDaCobranca.length === 0;
     }
 
     /** O que ainda falta para salvar a loja (vazio quando pode salvar). */
@@ -131,6 +173,9 @@ export default class ManagementLojasController extends Controller {
         }
         if (!this.coordenadasValidas) {
             dicas.push(this.intl.t('fleet-ops.ui.lojas.invalid-coordinates'));
+        }
+        for (const erro of this.errosDaCobranca) {
+            dicas.push(this.intl.t(DICAS_DA_COBRANCA[erro] ?? DICAS_DA_COBRANCA['documento-invalido']));
         }
         return dicas;
     }
@@ -195,6 +240,24 @@ export default class ManagementLojasController extends Controller {
 
     @action setCampoLoja(campo, event) {
         this.editando = { ...this.editando, [campo]: event.target.value };
+    }
+
+    /** Ao sair do campo, o documento completo ganha a pontuação (o que vai ao servidor continua só com os dígitos). */
+    @action formatarDocumentoDigitado(event) {
+        const formatado = formatarDocumento(event.target.value);
+        if (formatado !== event.target.value) {
+            this.editando = { ...this.editando, documento: formatado };
+        }
+    }
+
+    /** Modelo de cobrança do card: 'pre' ou 'pos'. */
+    @action modeloDoCard(loja) {
+        return modeloDaLoja(loja);
+    }
+
+    /** Documento do card, com o começo e o fim escondidos. */
+    @action documentoMascarado(loja) {
+        return mascararDocumento(loja?.cobranca?.documento);
     }
 
     /** Colar "lat, lng" (como o Google Maps copia) num dos dois campos preenche os dois. */
@@ -348,6 +411,8 @@ export default class ManagementLojasController extends Controller {
                 latitude: numero(loja.latitude),
                 longitude: numero(loja.longitude),
             },
+            // Entregas: modelo de cobrança; documento só com dígitos, vazio = null (o servidor mantém o gravado)
+            cobranca: cobrancaParaEnviar(loja),
         };
 
         try {

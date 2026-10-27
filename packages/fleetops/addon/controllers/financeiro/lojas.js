@@ -4,7 +4,19 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { task } from 'ember-concurrency';
 import { formatadores } from '../../utils/financeiro';
-import { corDaFatura, dataBr, filtrarFaturas, numeroOuRascunho, opcoesDeDia, rotuloDaFatura, textoDoCiclo, validarCiclo } from '../../utils/financeiro-faturas';
+import {
+    carteiraDaLoja,
+    corDaFatura,
+    dataBr,
+    ehPrePaga,
+    filtrarFaturas,
+    lojasPosPagas,
+    numeroOuRascunho,
+    opcoesDeDia,
+    rotuloDaFatura,
+    textoDoCiclo,
+    validarCiclo,
+} from '../../utils/financeiro-faturas';
 
 const ENDPOINT = 'entregas/financeiro';
 const PREFIXO = 'fleet-ops.ui.financeiro-lojas';
@@ -17,6 +29,8 @@ const ABAS = ['faturas', 'lojas', 'ciclo'];
  * - Faturas: rascunhos, emitidas e canceladas, com filtro de situação e loja (no cliente; a lista vem inteira);
  * - Lojas: saldo, em aberto, vencido, não faturado e o ciclo de cobrança (editável na própria linha);
  * - Ciclo em andamento: o período atual de cada loja e o que ainda não foi faturado.
+ * Loja pré-paga (`modelo: 'pre'`) não tem fatura: na aba Lojas mostra o crédito da carteira (−saldo) no lugar de em
+ * aberto/vencido/não faturado/ciclo, e fica fora do "Gerar fatura" e do Ciclo em andamento (o servidor recusa com 422).
  * A API (int/v1/entregas/financeiro/*) só atende administradores.
  */
 export default class FinanceiroLojasController extends Controller {
@@ -55,6 +69,11 @@ export default class FinanceiroLojasController extends Controller {
 
     get faturasFiltradas() {
         return filtrarFaturas(this.faturas, { situacao: this.filtroSituacao, loja: this.filtroLoja || null });
+    }
+
+    /** As lojas que recebem fatura (sem as pré-pagas): Ciclo em andamento e "Gerar fatura". */
+    get lojasPosPagas() {
+        return lojasPosPagas(this.lojas);
     }
 
     get totalEmAbertoFiltrado() {
@@ -122,6 +141,21 @@ export default class FinanceiroLojasController extends Controller {
         this[campo] = event.target.value;
     }
 
+    @action prePaga(loja) {
+        return ehPrePaga(loja);
+    }
+
+    /** Carteira da loja pré-paga: "Crédito R$ X" (−saldo) ou "Devendo R$ X". */
+    @action textoDaCarteira(loja) {
+        const { situacao, valor } = carteiraDaLoja(loja);
+        const texto = this.valor(valor);
+        return situacao === 'devendo' ? this.intl.t('fleet-ops.ui.financeiro-lojas.carteira-devendo', { valor: texto }) : this.intl.t('fleet-ops.ui.financeiro-lojas.carteira-credito', { valor: texto });
+    }
+
+    @action carteiraDevendo(loja) {
+        return carteiraDaLoja(loja).situacao === 'devendo';
+    }
+
     @action abrirFatura(fatura) {
         return this.hostRouter.transitionTo('console.fleet-ops.financeiro.fatura', fatura.id);
     }
@@ -172,8 +206,9 @@ export default class FinanceiroLojasController extends Controller {
     /** "Gerar fatura": rascunho à mão (loja + período), para o caso fora do ciclo. Abre a fatura gerada para conferir. */
     @action gerarFatura(loja = null) {
         this.modalsManager.show('modals/gerar-fatura', {
-            lojas: this.lojas,
-            loja: loja?.id ?? null,
+            // loja pré-paga não recebe fatura (o servidor responde 422): fica fora da escolha
+            lojas: this.lojasPosPagas,
+            loja: loja && !ehPrePaga(loja) ? loja.id : null,
             onGerada: (fatura) => {
                 if (fatura?.id) {
                     this.abrirFatura(fatura);

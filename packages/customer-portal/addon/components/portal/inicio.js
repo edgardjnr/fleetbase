@@ -6,6 +6,7 @@ import { arrayFor, valueFor } from '../../utils/model-access';
 import { pedidosEmAndamento, espera } from '../../utils/entregas-pedido';
 import { prazoDoPedido } from '../../utils/entregas-cronometro';
 import { numerosDoInicio, ordenarPorPrazo, saudacao, situacaoDoPedido } from '../../utils/portal-da-loja';
+import { ehPrePaga } from '../../utils/carteira-da-loja';
 
 /** O Início relê os números e os pedidos a cada 30 s, com a aba à vista (espera crescente em erro). */
 const INTERVALO_MS = 30000;
@@ -15,7 +16,8 @@ const INTERVALO_MS = 30000;
  * o Novo pedido; os seis números de hoje (pedidos hoje, em andamento, entregues, no prazo, tempo médio e a pagar no
  * ciclo), cada um levando à sua tela; e o Ao vivo, com a lista dos pedidos em andamento (na ordem do prazo, como na tela
  * Pedidos) e o mapa com os motoboys. Números de `entregas/loja/resumo-do-dia` e do `ciclo_atual` de
- * `entregas/loja/financeiro`.
+ * `entregas/loja/financeiro`. Na loja pré-paga, o sexto número é o crédito disponível (o `carteira` do resumo do dia,
+ * levando à Minha carteira), e o Financeiro deixa de ser lido.
  */
 export default class PortalInicioComponent extends Component {
     @service fetch;
@@ -39,9 +41,11 @@ export default class PortalInicioComponent extends Component {
 
         while (!this.isDestroying) {
             if (!document.hidden) {
+                // a loja pré-paga (pelo último resumo) não tem ciclo de fatura: o número vem do próprio resumo
+                const prePaga = ehPrePaga(this.resumo);
                 const [resumo, financeiro, pedidos] = yield Promise.all([
                     this.fetch.get('entregas/loja/resumo-do-dia').catch(() => undefined),
-                    this.fetch.get('entregas/loja/financeiro').catch(() => undefined),
+                    prePaga ? Promise.resolve(undefined) : this.fetch.get('entregas/loja/financeiro').catch(() => undefined),
                     this.customerPortalOrderActions.atualizarPedidos.perform({}).catch(() => undefined),
                 ]);
                 if (this.isDestroying) {

@@ -474,6 +474,7 @@ namespace Teste {
         public function withBody($corpo, $tipo = 'application/json') { $this->opcoes['corpo'] = $corpo; return $this; }
         public function get($url, $query = []) { return $this->enviar('GET', $url, $query); }
         public function post($url, $dados = []) { return $this->enviar('POST', $url, $dados); }
+        public function delete($url, $dados = []) { return $this->enviar('DELETE', $url, null); }
         // send('POST', $url) sem opções = POST sem corpo (as ações de logística do iFood); dados = null
         public function send($metodo, $url, array $opcoes = []) { return $this->enviar(strtoupper($metodo), $url, $opcoes['json'] ?? null); }
 

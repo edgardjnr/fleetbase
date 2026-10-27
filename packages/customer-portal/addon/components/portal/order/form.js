@@ -6,9 +6,11 @@ import { later } from '@ember/runloop';
 import { timeout } from 'ember-concurrency';
 import { isBlank } from '@ember/utils';
 import config from 'ember-get-config';
+import { resumoDaCarteira } from '../../../utils/carteira-da-loja';
 
 export default class PortalOrderFormComponent extends Component {
     @service customerPortalOrderActions;
+    @service fetch;
     @service customerPortalOrderCreation;
     @service customerPortalOrderValidation;
     @service customerPayment;
@@ -20,6 +22,8 @@ export default class PortalOrderFormComponent extends Component {
     @service urlSearchParams;
 
     @tracked lastQuotedRevision = null;
+    /** Entregas: loja pré-paga sem crédito (o servidor vai recusar o pedido): o aviso no topo com o link da carteira. */
+    @tracked semCredito = false;
 
     get draft() {
         return this.customerPortalOrderCreation.draft ?? this.args.model?.draft;
@@ -61,6 +65,7 @@ export default class PortalOrderFormComponent extends Component {
 
     @action async initialize() {
         this.showCompletingPaymentDialog();
+        this.conferirCredito();
 
         try {
             const paymentConfig = await this.customerPortalOrderActions.loadPaymentConfig.perform();
@@ -75,6 +80,19 @@ export default class PortalOrderFormComponent extends Component {
 
         await this.checkForCheckoutSession();
         await this.refreshServiceQuotes();
+    }
+
+    // Entregas: só avisa; o botão continua liberado e quem decide é o servidor (422 "Crédito insuficiente...", que aparece
+    // no aviso de erro do submit). Sem resposta, sem aviso
+    async conferirCredito() {
+        try {
+            const resumo = await this.fetch.get('entregas/loja/resumo-do-dia');
+            if (!this.isDestroying && !this.isDestroyed) {
+                this.semCredito = resumoDaCarteira(resumo?.carteira)?.podePedir === false;
+            }
+        } catch {
+            // sem o resumo: nada a avisar
+        }
     }
 
     @action async refreshServiceQuotes() {

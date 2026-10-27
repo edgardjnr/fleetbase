@@ -256,6 +256,11 @@ unset($porComando['entregas:saques-conferir']);
 $corridasDoSistema = $porComando['entregas:corridas-conferir'] ?? null;
 unset($porComando['entregas:corridas-conferir']);
 confere($corridasDoSistema !== null, 'entregas:corridas-conferir agendado (detalhes no corridas-do-sistema.php)');
+// a recarga da loja pré-paga roda sem when (um Pix já gerado precisa virar crédito com a chave desligada)
+$recargas = $porComando['entregas:recargas-conferir'] ?? null;
+unset($porComando['entregas:recargas-conferir']);
+confere($recargas !== null && isset($recargas['everyMinute']) && ($recargas['withoutOverlapping'][0] ?? null) === 5 && isset($recargas['runInBackground'])
+    && ($recargas['appendOutputTo'] ?? null) === ['/proc/1/fd/1'] && !isset($recargas['when']), 'entregas:recargas-conferir: a cada minuto, withoutOverlapping(5), em segundo plano, sem when()');
 confere(array_keys($porComando) === ['entregas:ifood-polling', 'entregas:ifood-agendados', 'entregas:ifood-acompanhar', 'entregas:ifood-tokens'], 'os quatro comandos agendados');
 confere(isset($porComando['entregas:ifood-polling']['everyThirtySeconds']) && isset($porComando['entregas:ifood-agendados']['everyMinute']) && isset($porComando['entregas:ifood-acompanhar']['everyThirtySeconds']) && isset($porComando['entregas:ifood-tokens']['everyThirtyMinutes']), 'a cada 30 s, a cada minuto, a cada 30 s e a cada 30 min');
 foreach ($porComando as $comando => $chamadas) {

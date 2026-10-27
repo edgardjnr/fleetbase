@@ -14,6 +14,7 @@ use App\Support\Entregas\ItensDoPedido;
 use App\Support\Entregas\LojaDoUsuario;
 use App\Support\Entregas\MotoboysNoMapaDaLoja;
 use App\Support\Entregas\PedidosNoMapa;
+use App\Support\Entregas\PrePago\CarteiraDaLoja;
 use App\Support\Entregas\ResumoDoDiaDaLoja;
 use App\Support\Entregas\StatusDoPedido;
 use App\Support\Entregas\ValorDaEntrega;
@@ -199,12 +200,18 @@ class PortalLojaController extends Controller
         ]);
     }
 
-    /** Resumo do dia na gaveta do menu: pedidos em andamento e entregues hoje da loja, e os motoboys online (só números). */
+    /**
+     * Resumo do dia do topo e do Início: pedidos em andamento e entregues hoje da loja, os motoboys online (só números) e
+     * a `carteira` (CarteiraDaLoja::resumo: o modelo de cobrança e, na pré-paga, o crédito), que troca a aba Financeiro
+     * pela Minha carteira.
+     */
     public function resumoDoDia()
     {
         $vendor = $this->lojaDaSessao();
 
-        return response()->json(ResumoDoDiaDaLoja::contar(session('company'), $this->donosDosPedidos($vendor)));
+        return response()->json(ResumoDoDiaDaLoja::contar(session('company'), $this->donosDosPedidos($vendor)) + [
+            'carteira' => CarteiraDaLoja::resumo((string) session('company'), (string) $vendor->uuid),
+        ]);
     }
 
     /**

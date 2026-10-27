@@ -8,6 +8,10 @@ Telas do console: `packages/fleetops/CLAUDE.md` ("Financeiro"). Portal: `package
 
 **Registro + saque Pix pelo app:** o pagamento feito pela central continua só registro (o dinheiro sai pelo app do banco). O motoboy pode sacar o saldo pelo app quando a central conecta o Asaas e liga o saque (`api/app/Support/Entregas/Saques/CLAUDE.md`): o saque vira um pagamento Pix do sistema, que não se estorna à mão.
 
+**Loja pré-paga** (2026-10-27): a loja escolhida como pré-paga no cadastro não recebe fatura (rascunho recusado e pulado
+pela rotina); recarrega a carteira por Pix no portal, e cada recarga paga vira um recebimento Pix na conta dela. Regras:
+`api/app/Support/Entregas/PrePago/CLAUDE.md`.
+
 ## Regras
 
 - **Livro próprio, sem Models:** `DB::table` nas tabelas `entregas_*`, serviços aqui, controllers em `api/app/Http/Controllers/Entregas/`. O MySQL devolve decimal como texto (`(float)`) e booleano como 0/1; o servidor sempre devolve `round((float) …, 2)`.

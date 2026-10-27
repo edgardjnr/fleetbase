@@ -134,8 +134,8 @@ namespace {
     confere($lojas[1] === [
         'id' => 'vendor_a', 'nome' => 'Pizzaria Ficticia', 'saldo' => 22.0, 'em_aberto' => 0.0, 'vencido' => 0.0, 'nao_faturado' => 22.0,
         'ciclo' => ['ciclo' => 'semanal', 'dia_fechamento' => 0, 'prazo_dias' => 3, 'padrao' => true],
-        'ciclo_atual' => ['inicio' => '2026-10-12', 'fim' => '2026-10-18'], 'email' => 'ze@pizzaria.test',
-    ], 'formato Lojas: saldo, não faturado, ciclo padrão, ciclo em andamento e e-mail');
+        'ciclo_atual' => ['inicio' => '2026-10-12', 'fim' => '2026-10-18'], 'email' => 'ze@pizzaria.test', 'modelo' => 'pos',
+    ], 'formato Lojas: saldo, não faturado, ciclo padrão, ciclo em andamento, e-mail e modelo (pós-pago)');
     confere($lojas[0]['email'] === null && $lojas[0]['saldo'] === 0.0, 'loja sem e-mail e sem lançamentos');
 
     $r = api()->salvarCiclo(req(['ciclo' => 'mensal', 'dia_fechamento' => 0, 'prazo_dias' => 5]), 'vendor_a');

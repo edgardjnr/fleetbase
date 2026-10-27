@@ -93,6 +93,9 @@ x-api-env: &api-env
   # do Docker secret entregas_saque_chave (só application e scheduler). O ensaio usa https://api-sandbox.asaas.com/v3
   ENTREGAS_SAQUE: ${ENTREGAS_SAQUE:-}
   ASAAS_API_URL: ${ASAAS_API_URL:-https://api.asaas.com/v3}
+  # loja pré-paga: 1 deixa a loja recarregar a carteira por Pix no portal (cobrança na mesma conta Asaas da central do
+  # saque Pix; precisa do secret entregas_saque_chave). Vazio = sem o botão; a conferência dos Pix já gerados segue
+  ENTREGAS_RECARGA: ${ENTREGAS_RECARGA:-}
   # IP fixo de saída da VPS, mostrado no card "Saque Pix (Asaas)" do console (lista de IPs do Asaas). Vazio = o card pede
   # o IP a quem administra o Entregas
   ENTREGAS_IP_DE_SAIDA: ${ENTREGAS_IP_DE_SAIDA:-}

@@ -22,6 +22,9 @@ import {
     validarAjuste,
     validarCiclo,
     validarGerarFatura,
+    ehPrePaga,
+    lojasPosPagas,
+    carteiraDaLoja,
 } from '../../packages/fleetops/addon/utils/financeiro-faturas.js';
 
 const emitida = (extra = {}) => ({ id: 'f1', numero: 'FAT-0031', situacao: 'emitida', pagamento: 'aberta', vencida: false, loja: { id: 'vendor_a', nome: 'Pizzaria' }, ...extra });
@@ -301,4 +304,25 @@ test('aviso do reenviar sem envio segue o motivo do servidor', () => {
     assert.equal(chaveDoNaoEnvio('desligado'), 'email-nao-enviado-desligado');
     assert.equal(chaveDoNaoEnvio('falha'), 'email-nao-enviado-falha');
     assert.equal(chaveDoNaoEnvio(undefined), 'email-nao-enviado-falha', 'servidor antigo, sem motivo: o aviso genérico (não culpa a loja)');
+});
+
+test('loja pré-paga: só modelo "pre"; sem modelo, pós-pago', () => {
+    assert.equal(ehPrePaga({ modelo: 'pre' }), true);
+    assert.equal(ehPrePaga({ modelo: 'pos' }), false);
+    assert.equal(ehPrePaga({}), false);
+    assert.equal(ehPrePaga(null), false);
+});
+
+test('lojas pós-pagas: tira as pré-pagas (Gerar fatura e Ciclo em andamento)', () => {
+    const lojas = [{ id: 'a', modelo: 'pos' }, { id: 'b', modelo: 'pre' }, { id: 'c' }];
+    assert.deepEqual(lojasPosPagas(lojas).map((loja) => loja.id), ['a', 'c']);
+    assert.deepEqual(lojasPosPagas(null), []);
+});
+
+test('carteira da loja pré-paga: crédito = −saldo; saldo positivo = devendo', () => {
+    assert.deepEqual(carteiraDaLoja({ saldo: -50 }), { situacao: 'credito', valor: 50 });
+    assert.deepEqual(carteiraDaLoja({ saldo: '-12.50' }), { situacao: 'credito', valor: 12.5 });
+    assert.deepEqual(carteiraDaLoja({ saldo: 0 }), { situacao: 'credito', valor: 0 });
+    assert.deepEqual(carteiraDaLoja({ saldo: null }), { situacao: 'credito', valor: 0 });
+    assert.deepEqual(carteiraDaLoja({ saldo: 20 }), { situacao: 'devendo', valor: 20 });
 });

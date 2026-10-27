@@ -85,6 +85,10 @@ return [
         // saque Pix do motoboy pelo app, pela conta Asaas da central (App\Support\Entregas\Saques): 1 liga as rotas do app,
         // a validação de saque e o entregas:saques-conferir; vazio = nada de saque (o app não mostra o botão)
         'saque' => env('ENTREGAS_SAQUE'),
+        // loja pré-paga: recarga da carteira por Pix na mesma conta Asaas da central (App\Support\Entregas\PrePago): 1 deixa
+        // a loja pedir o Pix no portal; vazio = o botão some. A conferência dos Pix já gerados (entregas:recargas-conferir)
+        // e o crédito das corridas rodam sempre
+        'recarga' => env('ENTREGAS_RECARGA'),
         // arquivo do Docker secret com a chave (base64 de 32 bytes) que cifra a chave de API do Asaas das centrais. Fora do
         // banco de propósito: o backup do MySQL e um acesso ao banco só mostram texto cifrado
         'saque_chave_arquivo' => env('ENTREGAS_SAQUE_CHAVE_ARQUIVO', '/run/secrets/entregas_saque_chave'),

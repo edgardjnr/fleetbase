@@ -2,6 +2,7 @@
 
 namespace App\Support\Entregas\Financeiro;
 
+use App\Support\Entregas\PrePago\PrePago;
 use Fleetbase\FleetOps\Models\Vendor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -72,6 +73,9 @@ final class Faturas
         static::exigirData($fim, 'Data de fim inválida.');
         if ($inicio > $fim) {
             throw new \InvalidArgumentException('O início do período precisa ser antes do fim.');
+        }
+        if (PrePago::ehPrePaga($companyUuid, $vendorUuid)) {
+            throw new \InvalidArgumentException('Loja pré-paga não recebe fatura: as corridas saem do crédito da carteira.');
         }
 
         return DB::transaction(function () use ($companyUuid, $vendorUuid, $inicio, $fim) {
@@ -488,7 +492,8 @@ final class Faturas
         foreach (DB::table(static::TABELA_DOS_CICLOS)->where('company_uuid', $companyUuid)->get() as $linha) {
             $ciclos[(string) $linha->vendor_uuid] = $linha;
         }
-        $hoje = Financeiro::hoje($companyUuid);
+        $hoje      = Financeiro::hoje($companyUuid);
+        $prePagas  = PrePago::lojasPrePagas($companyUuid);
 
         $linhas = [];
         foreach ($vendors as $vendor) {
@@ -505,6 +510,8 @@ final class Faturas
                 'ciclo'        => $config,
                 'ciclo_atual'  => CicloDeCobranca::periodoQueContem($config, $hoje),
                 'email'        => static::emailDaLoja($companyUuid, $vendor),
+                // pré-pago: sem fatura; o crédito da carteira é −saldo
+                'modelo'       => isset($prePagas[$uuid]) ? PrePago::PRE : PrePago::POS,
             ];
         }
         usort($linhas, fn ($a, $b) => strcasecmp($a['nome'], $b['nome']));

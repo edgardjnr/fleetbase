@@ -43,6 +43,8 @@ export default buildRoutes(function () {
         this.route('fatura', { path: '/financeiro/:id' });
         // Entregas: a loja conecta sozinha os sistemas dela (iFood, RestaurantePro…); `?sistema=<id>` abre a conexão
         this.route('integracoes');
+        // Entregas: a Minha carteira da loja pré-paga (crédito e recarga por Pix); antes de `virtual`, o catch-all
+        this.route('carteira');
         this.route('virtual', { path: '/:slug' });
     });
 });

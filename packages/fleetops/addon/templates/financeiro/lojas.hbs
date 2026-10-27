@@ -100,23 +100,34 @@
                                 <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100 {{if (eq this.cicloEditando.lojaId loja.id) 'bg-blue-50 dark:bg-blue-900'}}">
                                     <td class="py-2">
                                         <LinkTo @route="financeiro.loja" @model={{loja.id}} class="text-blue-600 dark:text-blue-400 hover:underline">{{loja.nome}}</LinkTo>
-                                        {{#unless loja.email}}
+                                        {{#if (this.prePaga loja)}}
+                                            <span class="ml-1 text-xs font-medium rounded px-2 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">{{t
+                                                    "fleet-ops.ui.financeiro-lojas.pre-pago"
+                                                }}</span>
+                                        {{else if (not loja.email)}}
                                             <div class="text-xs text-yellow-700 dark:text-yellow-300">{{t "fleet-ops.ui.financeiro-lojas.sem-email"}}</div>
-                                        {{/unless}}
-                                    </td>
-                                    <td class="py-2 text-right whitespace-nowrap font-semibold">{{this.valor loja.saldo}}</td>
-                                    <td class="py-2 text-right whitespace-nowrap">{{this.valor loja.em_aberto}}</td>
-                                    <td class="py-2 text-right whitespace-nowrap {{if (gt loja.vencido 0) 'font-semibold text-red-700 dark:text-red-300'}}">{{this.valor loja.vencido}}</td>
-                                    <td class="py-2 text-right whitespace-nowrap">{{this.valor loja.nao_faturado}}</td>
-                                    <td class="py-2">
-                                        {{this.textoDoCiclo loja.ciclo}}
-                                        {{#if loja.ciclo.padrao}}
-                                            <span class="text-xs text-gray-500 dark:text-gray-400">({{t "fleet-ops.ui.financeiro-lojas.padrao"}})</span>
                                         {{/if}}
                                     </td>
-                                    <td class="py-2 text-right whitespace-nowrap">
-                                        <Button @size="xs" @icon="pen-to-square" @text={{t "fleet-ops.ui.financeiro-lojas.editar-ciclo"}} @onClick={{fn this.editarCiclo loja}} />
-                                    </td>
+                                    {{#if (this.prePaga loja)}}
+                                        {{! Entregas: loja pré-paga não tem fatura nem ciclo: o crédito da carteira (−saldo) ou o que ela deve }}
+                                        <td class="py-2 text-right whitespace-nowrap font-semibold {{if (this.carteiraDevendo loja) 'text-red-700 dark:text-red-300'}}">{{this.textoDaCarteira loja}}</td>
+                                        <td colspan="4" class="py-2 text-xs text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.pre-pago-ajuda"}}</td>
+                                        <td class="py-2"></td>
+                                    {{else}}
+                                        <td class="py-2 text-right whitespace-nowrap font-semibold">{{this.valor loja.saldo}}</td>
+                                        <td class="py-2 text-right whitespace-nowrap">{{this.valor loja.em_aberto}}</td>
+                                        <td class="py-2 text-right whitespace-nowrap {{if (gt loja.vencido 0) 'font-semibold text-red-700 dark:text-red-300'}}">{{this.valor loja.vencido}}</td>
+                                        <td class="py-2 text-right whitespace-nowrap">{{this.valor loja.nao_faturado}}</td>
+                                        <td class="py-2">
+                                            {{this.textoDoCiclo loja.ciclo}}
+                                            {{#if loja.ciclo.padrao}}
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">({{t "fleet-ops.ui.financeiro-lojas.padrao"}})</span>
+                                            {{/if}}
+                                        </td>
+                                        <td class="py-2 text-right whitespace-nowrap">
+                                            <Button @size="xs" @icon="pen-to-square" @text={{t "fleet-ops.ui.financeiro-lojas.editar-ciclo"}} @onClick={{fn this.editarCiclo loja}} />
+                                        </td>
+                                    {{/if}}
                                 </tr>
                                 {{#if (eq this.cicloEditando.lojaId loja.id)}}
                                     <tr class="dark:text-gray-100">
@@ -185,7 +196,8 @@
                 {{/if}}
             {{else}}
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">{{t "fleet-ops.ui.financeiro-lojas.ciclo-andamento-ajuda"}}</p>
-                {{#if this.lojas.length}}
+                {{! Entregas: só as pós-pagas (a pré-paga não tem fatura nem ciclo) }}
+                {{#if this.lojasPosPagas.length}}
                     <table class="table w-full text-sm">
                         <thead>
                             <tr class="text-left text-gray-500 dark:text-gray-400">
@@ -197,7 +209,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {{#each this.lojas key="id" as |loja|}}
+                            {{#each this.lojasPosPagas key="id" as |loja|}}
                                 <tr class="border-t border-gray-100 dark:border-gray-800 dark:text-gray-100">
                                     <td class="py-2">
                                         <LinkTo @route="financeiro.loja" @model={{loja.id}} class="text-blue-600 dark:text-blue-400 hover:underline">{{loja.nome}}</LinkTo>
@@ -223,7 +235,11 @@
                 {{else if this.carregar.isRunning}}
                     <Spinner />
                 {{else if this.carregado}}
-                    <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.sem-lojas"}}</p>
+                    {{#if this.lojas.length}}
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.sem-lojas-pos"}}</p>
+                    {{else}}
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.financeiro-lojas.sem-lojas"}}</p>
+                    {{/if}}
                 {{/if}}
             {{/if}}
         </TabNavigation>

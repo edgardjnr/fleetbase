@@ -1,0 +1,177 @@
+{{!-- Entregas: a Minha carteira da loja pré-paga (ver controllers/portal/carteira.js). Cores só pelos tokens --pi-* (bloco
+     "Minha carteira" do customer-portal-engine.css): vale para o tema escuro e para o celular --}}
+<Portal::ContentWrapper class="portal-page-card entregas-carteira">
+    <div class="portal-section-header">
+        <div>
+            <h1>{{t "customer-portal.ui.entregas.carteira.title"}}</h1>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <Button @icon="rotate" @text={{t "customer-portal.ui.entregas.refresh"}} @onClick={{this.atualizar}} @isLoading={{this.carregar.isRunning}} />
+        </div>
+    </div>
+
+    {{#if this.posPaga}}
+        {{! Entregas: loja pós-paga que abriu /carteira pela URL: ela paga por fatura }}
+        <div class="portal-empty-state portal-table-empty-state mt-5">
+            <div class="portal-empty-state-icon"><FaIcon @icon="file-invoice-dollar" /></div>
+            <div class="portal-empty-state-title">{{t "customer-portal.ui.entregas.carteira.pos-paga"}}</div>
+            <LinkTo @route="portal.financeiro" class="ps-btn mt-3">{{t "customer-portal.ui.entregas.carteira.ver-financeiro"}}</LinkTo>
+        </div>
+    {{else if this.carteira}}
+        <div class="entregas-carteira-grade mt-4 transition-opacity {{if this.atualizando 'opacity-60'}}">
+            <section class="entregas-carteira-saldo {{if this.semCredito 'is-sem-credito'}}" aria-live="polite">
+                <div class="entregas-carteira-rotulo"><FaIcon @icon="wallet" /><span>{{t "customer-portal.ui.entregas.carteira.disponivel"}}</span></div>
+                <div class="entregas-carteira-valor">{{this.dinheiro this.carteira.disponivel}}</div>
+                {{#if this.detalheDoSaldo}}
+                    <div class="entregas-carteira-detalhe">{{this.detalheDoSaldo}}</div>
+                {{/if}}
+                {{#if this.semCredito}}
+                    <div class="entregas-carteira-alerta is-erro" role="alert">
+                        <FaIcon @icon="triangle-exclamation" />
+                        <span>{{t "customer-portal.ui.entregas.carteira.sem-credito"}}</span>
+                    </div>
+                {{/if}}
+                {{#if this.devido}}
+                    <div class="entregas-carteira-alerta is-aviso">
+                        <FaIcon @icon="circle-info" />
+                        <span>{{t "customer-portal.ui.entregas.carteira.devendo" valor=(this.dinheiro this.devido)}}</span>
+                    </div>
+                {{/if}}
+                <LinkTo @route="portal.extrato" class="entregas-carteira-link">
+                    <FaIcon @icon="receipt" /><span>{{t "customer-portal.ui.entregas.carteira.ver-extrato"}}</span>
+                </LinkTo>
+            </section>
+
+            <section class="entregas-carteira-recarga">
+                <h2><FaIcon @icon="qrcode" /><span>{{t "customer-portal.ui.entregas.carteira.recarregar"}}</span></h2>
+
+                {{#if this.aguardando}}
+                    {{! Entregas: o Pix na tela; a confirmação chega pela consulta de 5 s (controllers/portal/carteira.js) }}
+                    <div class="entregas-pix">
+                        {{#if this.imagemDoQr}}
+                            <img class="entregas-pix-qr" src={{this.imagemDoQr}} alt={{t "customer-portal.ui.entregas.carteira.qr-alt"}} width="220" height="220" />
+                        {{/if}}
+                        <div class="entregas-pix-info">
+                            <div class="entregas-pix-valor">{{this.valorDaRecarga}}</div>
+                            {{#if this.tempo}}
+                                <div class="entregas-pix-tempo {{if this.tempo.expirou 'is-expirou'}}">
+                                    <FaIcon @icon="clock" />
+                                    {{#if this.tempo.expirou}}
+                                        <span>{{t "customer-portal.ui.entregas.carteira.venceu-conferindo"}}</span>
+                                    {{else}}
+                                        <span>{{t "customer-portal.ui.entregas.carteira.expira-em" tempo=this.tempo.texto}}</span>
+                                    {{/if}}
+                                </div>
+                            {{/if}}
+                            <p class="entregas-pix-instrucao">{{t "customer-portal.ui.entregas.carteira.instrucao"}}</p>
+                        </div>
+                        {{#if this.copiaECola}}
+                            <label class="entregas-pix-codigo" for="entregas-pix-copia-e-cola">
+                                <span>{{t "customer-portal.ui.entregas.carteira.copia-e-cola"}}</span>
+                                <input
+                                    id="entregas-pix-copia-e-cola"
+                                    class="form-input"
+                                    type="text"
+                                    readonly
+                                    value={{this.copiaECola}}
+                                    {{on "focus" this.selecionar}}
+                                />
+                            </label>
+                        {{/if}}
+                        <div class="entregas-pix-acoes">
+                            {{#if this.copiaECola}}
+                                <Button @type="primary" @icon="copy" @text={{t "customer-portal.ui.entregas.carteira.copiar"}} @onClick={{this.copiar}} />
+                            {{/if}}
+                            <Button @icon="xmark" @text={{t "customer-portal.ui.entregas.carteira.cancelar"}} @onClick={{this.pedirCancelamento}} @isLoading={{this.cancelar.isRunning}} />
+                        </div>
+                    </div>
+                {{else if this.recargaAtual}}
+                    {{! Entregas: o servidor ainda está gerando o Pix no Asaas (situação criando) }}
+                    <div class="entregas-pix-gerando" role="status">
+                        <Spinner />
+                        <span>{{t "customer-portal.ui.entregas.carteira.gerando"}}</span>
+                    </div>
+                {{else}}
+                    <form class="entregas-carteira-form" {{on "submit" this.enviar}}>
+                        <div class="entregas-carteira-atalhos">
+                            {{#each this.atalhos as |valor|}}
+                                <button type="button" class="ps-btn" disabled={{not this.recargaLigada}} {{on "click" (fn this.escolherAtalho valor)}}>{{this.dinheiro valor}}</button>
+                            {{/each}}
+                        </div>
+                        <label class="entregas-carteira-campo" for="entregas-carteira-valor">
+                            <span>{{t "customer-portal.ui.entregas.carteira.valor"}}</span>
+                            <input
+                                id="entregas-carteira-valor"
+                                class="form-input"
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                placeholder={{t "customer-portal.ui.entregas.carteira.valor-placeholder"}}
+                                value={{this.valorTexto}}
+                                disabled={{not this.recargaLigada}}
+                                aria-invalid={{if this.erroDoValor "true" "false"}}
+                                {{on "input" this.digitarValor}}
+                            />
+                        </label>
+                        <div class="entregas-carteira-limites">
+                            {{t "customer-portal.ui.entregas.carteira.limites" minimo=(this.dinheiro this.carteira.recarga.minimo) maximo=(this.dinheiro this.carteira.recarga.maximo)}}
+                        </div>
+                        {{#if this.erroDoValor}}
+                            <div class="entregas-carteira-erro" role="alert">{{this.erroDoValor}}</div>
+                        {{/if}}
+                        {{#unless this.recargaLigada}}
+                            <div class="entregas-carteira-alerta is-aviso">
+                                <FaIcon @icon="circle-info" />
+                                <span>{{t "customer-portal.ui.entregas.carteira.indisponivel"}}</span>
+                            </div>
+                        {{/unless}}
+                        <Button @type="primary" @buttonType="submit" @icon="qrcode" @text={{t "customer-portal.ui.entregas.carteira.gerar"}} @isLoading={{this.gerar.isRunning}} @disabled={{not this.podeGerar}} />
+                    </form>
+                {{/if}}
+            </section>
+        </div>
+
+        <section class="entregas-carteira-historico mt-5 transition-opacity {{if this.atualizando 'opacity-60'}}">
+            <h2>{{t "customer-portal.ui.entregas.carteira.ultimas"}}</h2>
+            <div class="next-table-wrapper no-scroll h-auto table-fluid portal-table-panel">
+                <table class="table portal-table">
+                    <thead>
+                        <tr>
+                            <th class="text-left">{{t "customer-portal.ui.entregas.carteira.data"}}</th>
+                            <th class="text-right">{{t "customer-portal.ui.entregas.carteira.valor-coluna"}}</th>
+                            <th class="text-left">{{t "customer-portal.ui.entregas.carteira.situacao-coluna"}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each this.recargas as |linha|}}
+                            <tr>
+                                <td class="whitespace-nowrap">{{linha.data}}</td>
+                                <td class="text-right whitespace-nowrap font-semibold tabular-nums">{{linha.valor}}</td>
+                                <td class="whitespace-nowrap"><span class={{linha.classe}}>{{linha.rotulo}}</span></td>
+                            </tr>
+                        {{else}}
+                            <tr>
+                                <td colspan="3">
+                                    <div class="portal-empty-state portal-table-empty-state">
+                                        <div class="portal-empty-state-icon"><FaIcon @icon="wallet" /></div>
+                                        <div class="portal-empty-state-title">{{t "customer-portal.ui.entregas.carteira.nenhuma"}}</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {{else if this.carregar.isRunning}}
+        <div class="portal-empty-state portal-table-empty-state mt-5">
+            <Spinner />
+        </div>
+    {{else}}
+        {{! Entregas: a consulta falhou (o aviso do erro já apareceu); sobra o atalho para tentar de novo }}
+        <div class="portal-empty-state portal-table-empty-state mt-5">
+            <div class="portal-empty-state-icon"><FaIcon @icon="wallet" /></div>
+            <Button @icon="rotate" @text={{t "customer-portal.ui.entregas.refresh"}} @onClick={{this.atualizar}} />
+        </div>
+    {{/if}}
+</Portal::ContentWrapper>

@@ -213,6 +213,29 @@ export function validarGerarFatura({ loja, inicio, fim } = {}) {
     return [];
 }
 
+/** Linha de `GET financeiro/lojas` de loja pré-paga (`modelo: 'pre'`): sem fatura, as corridas saem do crédito da carteira. */
+export function ehPrePaga(loja) {
+    return loja?.modelo === 'pre';
+}
+
+/** Só as lojas pós-pagas (as que recebem fatura): "Gerar fatura" e Ciclo em andamento. Sem `modelo`, pós-pago. */
+export function lojasPosPagas(lojas) {
+    return (lojas ?? []).filter((loja) => !ehPrePaga(loja));
+}
+
+/**
+ * Carteira da loja pré-paga a partir do saldo da conta (positivo = a loja deve; negativo = crédito):
+ * `{ situacao: 'credito', valor }` com crédito ou zerada, `{ situacao: 'devendo', valor }` com saldo positivo. O valor
+ * é sempre positivo (o crédito é −saldo).
+ */
+export function carteiraDaLoja(loja) {
+    const saldo = Number(loja?.saldo) || 0;
+    if (saldo > 0) {
+        return { situacao: 'devendo', valor: saldo };
+    }
+    return { situacao: 'credito', valor: saldo === 0 ? 0 : -saldo };
+}
+
 /** A corrida já tem o ajuste "Não cobrar" (ajuste negativo do mesmo pedido) entre os itens da fatura. */
 export function jaNaoCobrado(item, itens) {
     const pedido = item?.pedido?.id;
