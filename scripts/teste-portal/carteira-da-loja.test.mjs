@@ -23,7 +23,7 @@ const carteiraPre = (campos = {}) => ({
     disponivel: 120,
     minimo_para_pedir: 8,
     pode_pedir: true,
-    recarga: { ligada: true, minimo: 10, maximo: 5000 },
+    recarga: { ligada: true, minimo: 100, maximo: 5000 },
     ...campos,
 });
 
@@ -46,7 +46,7 @@ test('números da carteira: decimais em texto viram número; pós-paga é null',
         disponivel: 119.5,
         minimoParaPedir: 8,
         podePedir: true,
-        recarga: { ligada: true, minimo: 10, maximo: 5000 },
+        recarga: { ligada: true, minimo: 100, maximo: 5000 },
     });
 });
 
@@ -55,7 +55,7 @@ test('números da carteira: pode pedir só fica false quando o servidor diz; lim
     assert.equal(resumoDaCarteira(carteiraPre({ pode_pedir: undefined })).podePedir, true);
 
     const semRecarga = resumoDaCarteira({ modelo: 'pre', credito: 0 });
-    assert.deepEqual(semRecarga.recarga, { ligada: false, minimo: 10, maximo: 5000 }, 'sem a informação: recarga desligada');
+    assert.deepEqual(semRecarga.recarga, { ligada: false, minimo: 100, maximo: 5000 }, 'sem a informação: recarga desligada');
     assert.equal(semRecarga.disponivel, null);
     assert.equal(resumoDaCarteira(carteiraPre({ recarga: { ligada: 'sim', minimo: 20, maximo: 1000 } })).recarga.ligada, false, 'só true liga');
 });
@@ -89,15 +89,15 @@ test('valor digitado: o que não dá para ler é null', () => {
 });
 
 test('limites da recarga: mínimo e máximo da carteira, com o padrão sem eles', () => {
-    const recarga = { ligada: true, minimo: 10, maximo: 5000 };
-    assert.equal(problemaDoValor(10, recarga), null);
+    const recarga = { ligada: true, minimo: 100, maximo: 5000 };
+    assert.equal(problemaDoValor(100, recarga), null);
     assert.equal(problemaDoValor(5000, recarga), null);
-    assert.deepEqual(problemaDoValor(9.99, recarga), { chave: 'minimo', limite: 10 });
+    assert.deepEqual(problemaDoValor(99.99, recarga), { chave: 'minimo', limite: 100 });
     assert.deepEqual(problemaDoValor(5000.01, recarga), { chave: 'maximo', limite: 5000 });
     assert.deepEqual(problemaDoValor(null, recarga), { chave: 'invalido' });
     assert.deepEqual(problemaDoValor(NaN, recarga), { chave: 'invalido' });
     assert.deepEqual(problemaDoValor(30, { minimo: 50, maximo: 100 }), { chave: 'minimo', limite: 50 });
-    assert.deepEqual(problemaDoValor(6000, undefined), { chave: 'maximo', limite: 5000 }, 'sem limites: 10 a 5000');
+    assert.deepEqual(problemaDoValor(6000, undefined), { chave: 'maximo', limite: 5000 }, 'sem limites: 100 a 5000');
     assert.ok(ATALHOS.every((valor) => problemaDoValor(valor, recarga) === null), 'os atalhos cabem nos limites padrão');
 });
 

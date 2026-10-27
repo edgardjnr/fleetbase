@@ -29,7 +29,7 @@ final class PrePago
     public const EM_ANDAMENTO = [self::CRIANDO, self::AGUARDANDO];
 
     /** Limites de uma recarga, em reais. */
-    public const VALOR_MINIMO = 10.0;
+    public const VALOR_MINIMO = 100.0;
     public const VALOR_MAXIMO = 5000.0;
 
     /** Recargas pedidas por loja por dia (de Brasília): segura quem tenta encher o Asaas da central de cobranças. */

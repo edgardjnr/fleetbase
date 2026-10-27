@@ -62,7 +62,7 @@ Telas: console em `packages/fleetops/CLAUDE.md` (Lojas e Financeiro → Lojas e 
   404 "Recarga não encontrada.". A resposta nunca traz `payment_id`, `cliente_id`, wallet nem o texto do Asaas (a loja vê
   "Não foi possível gerar o Pix agora…"; o motivo do Asaas vai para o log). A imagem do QR só é gravada se for base64
   (vira `data:image/png;base64,…` no portal).
-- **Limites:** recarga de R$ 10,00 a R$ 5.000,00 (`PrePago::VALOR_MINIMO/MAXIMO`); uma em andamento por loja (carteira
+- **Limites:** recarga de R$ 100,00 a R$ 5.000,00 (`PrePago::VALOR_MINIMO/MAXIMO`; o mínimo de R$ 100 é decisão do Edgard de 2026-10-27, o primeiro teste foi de R$ 10); uma em andamento por loja (carteira
   travada na transação); até 10 por loja por dia de Brasília; `throttle:entregas-loja-recarga` (6/min por usuário e 20/min
   por IP) no pedir e no cancelar; `throttle:entregas-loja-carteira` (60/min por usuário) nas leituras. A consulta do
   portal ao Asaas é reivindicada num `update` condicional do `consultada_em` (`reivindicarConsulta`): pedidos em paralelo
@@ -136,12 +136,12 @@ pix: {copia_e_cola, imagem} | null}` (`pix` só na aguardando).
    possível gerar o Pix agora").
 4. Cadastro da loja: "Pré-pago" + CPF/CNPJ. Ensaio no sandbox (`ASAAS_API_URL=https://api-sandbox.asaas.com/v3`): o sandbox
    tem "Confirmar pagamento" na cobrança, que vira `RECEIVED`.
-5. Conferir: recarga de R$ 10 numa loja de teste (o Terraço é loja real: combine antes), o crédito na carteira e no
+5. Conferir: recarga de R$ 100 numa loja de teste (o Terraço é loja real: combine antes), o crédito na carteira e no
    extrato, o bloqueio sem crédito e `node scripts/teste-isolamento-lojas.mjs`.
 
 ## A confirmar no sandbox
 
-- O valor mínimo de cobrança Pix do Asaas (usamos R$ 10) e se a cobrança vencida no mesmo dia ainda aceita Pix (o QR é
+- Se a cobrança vencida no mesmo dia ainda aceita Pix (o QR é
   apagado aos 30 min de qualquer jeito).
 - Se o `GET /payments?externalReference=` filtra mesmo (o código filtra de novo na resposta).
 - **Estorno do Pix pela central ou MED** depois de creditado: não é acompanhado. Se a central devolver uma recarga no

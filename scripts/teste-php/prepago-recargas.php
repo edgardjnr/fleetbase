@@ -98,7 +98,7 @@ confere(!str_contains($log, CHAVE_ASAAS) && !str_contains($log, CNPJ_DA_LOJA), '
 
 echo '== Pedir: recusas' . PHP_EOL;
 lojaPrePaga();
-confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 9.99, null)) === 'A recarga mínima é de R$ 10,00.', 'abaixo do mínimo');
+confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 99.99, null)) === 'A recarga mínima é de R$ 100,00.', 'abaixo do mínimo (R$ 100,00)');
 confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 5000.01, null)) === 'A recarga máxima é de R$ 5.000,00.', 'acima do máximo');
 foreach ([null, '', 'abc', -10, 0, '10.999', '1e3', INF, NAN, [10]] as $valor) {
     confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', $valor, null)) === 'Informe o valor da recarga.', 'valor inválido: ' . json_encode(is_float($valor) && !is_finite($valor) ? (string) $valor : $valor));
@@ -106,34 +106,34 @@ foreach ([null, '', 'abc', -10, 0, '10.999', '1e3', INF, NAN, [10]] as $valor) {
 confere(HttpFalso::$chamadas === [] && DB::table('entregas_recargas')->count() === 0, 'recusa antes de chamar o Asaas e sem gravar');
 confere(Recargas::valorEmCentavos('150,50') === 15050 && Recargas::valorEmCentavos(' 75 ') === 7500 && Recargas::valorEmCentavos(20.1) === 2010, 'valores aceitos');
 \Teste\Config::$valores['services.entregas.recarga'] = '';
-confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 50, null)) === 'Recarga por Pix indisponível no momento.', 'ENTREGAS_RECARGA desligada');
+confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 150, null)) === 'Recarga por Pix indisponível no momento.', 'ENTREGAS_RECARGA desligada');
 \Teste\Config::$valores['services.entregas.recarga'] = '1';
-confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-b', 'Burger', 50, null)) === 'Esta loja não usa a carteira pré-paga.', 'loja pós-paga');
+confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-b', 'Burger', 150, null)) === 'Esta loja não usa a carteira pré-paga.', 'loja pós-paga');
 DB::table('entregas_asaas_conexoes')->delete();
-confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 50, null)) === 'A central ainda não ligou a recarga por Pix. Fale com a central.', 'central sem a conta Asaas');
+confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 150, null)) === 'A central ainda não ligou a recarga por Pix. Fale com a central.', 'central sem a conta Asaas');
 lojaPrePaga();
 unlink(CHAVE_DO_COFRE);
 $erro = null;
 try {
-    Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 50, null);
+    Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 150, null);
 } catch (\App\Support\Entregas\Saques\CofreIndisponivel $e) {
     $erro = 'cofre';
 }
 confere($erro === 'cofre', 'sem o secret do Cofre: CofreIndisponivel (503)');
 lojaPrePaga();
 file_put_contents(CHAVE_DO_COFRE, base64_encode(str_repeat('z', 32)));
-confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 50, null)) === 'Recarga por Pix indisponível no momento. Fale com a central.' && HttpFalso::$chamadas === [], 'secret trocado (a chave gravada não abre): recusa sem chamar o Asaas');
+confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 150, null)) === 'Recarga por Pix indisponível no momento. Fale com a central.' && HttpFalso::$chamadas === [], 'secret trocado (a chave gravada não abre): recusa sem chamar o Asaas');
 
 echo '== Uma por vez, limite do dia e cliente reaproveitado' . PHP_EOL;
 lojaPrePaga();
-recargaAguardando(50);
-confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 80, null)) === 'Já há um Pix de recarga aguardando pagamento.', 'segunda com uma aguardando: recusa');
+recargaAguardando(150);
+confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 180, null)) === 'Já há um Pix de recarga aguardando pagamento.', 'segunda com uma aguardando: recusa');
 confere(in_array(['entregas_carteiras_lojas', true], \Teste\Banco::$travas, true), 'a carteira da loja é travada dentro da transação');
 confere(in_array(['entregas_asaas_conexoes', true], \Teste\Banco::$travas, true), 'a conexão Asaas é relida travada (o desconectar espera, e vice-versa)');
 Relogio::$agora = '2026-10-27 10:00:20';
 $antiga = DB::table('entregas_recargas')->where('situacao', 'aguardando')->first();
 $chamadas = count(HttpFalso::$chamadas);
-asaas(200, cobranca('pay_1', 50, $antiga->external_reference));
+asaas(200, cobranca('pay_1', 150, $antiga->external_reference));
 Recargas::conferir($antiga, true);
 Recargas::conferir($antiga, true);
 Recargas::conferir($antiga, true);
@@ -141,46 +141,46 @@ confere(count(HttpFalso::$chamadas) === $chamadas + 1, 'três perguntas do porta
 HttpFalso::$respostas = [];
 DB::table('entregas_recargas')->update(['situacao' => 'expirada']);
 HttpFalso::$chamadas = [];
-$r2 = recargaAguardando(80, false, 'pay_2');
+$r2 = recargaAguardando(180, false, 'pay_2');
 confere($r2->situacao === 'aguardando' && $r2->cliente_id === 'cus_1' && !in_array('POST https://asaas.teste/v3/customers', array_map(fn ($c) => $c['metodo'] . ' ' . $c['url'], HttpFalso::$chamadas), true), 'mesma wallet e mesmo documento: o cliente do Asaas é reaproveitado');
 DB::table('entregas_recargas')->update(['situacao' => 'expirada']);
 for ($i = 0; $i < 8; $i++) {
     DB::table('entregas_recargas')->insert(['uuid' => sprintf('bbbbbbbb-0000-4000-8000-%012d', $i), 'company_uuid' => 'empresa-1', 'loja_uuid' => 'vendor-a', 'valor' => 10, 'situacao' => 'falhou', 'external_reference' => 'recarga:x' . $i, 'wallet_id' => 'wallet-1', 'created_at' => '2026-10-27 08:00:00', 'updated_at' => '2026-10-27 08:00:00']);
 }
-confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 50, null)) === 'Limite de recargas de hoje atingido.', '10 no dia: recusa');
+confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 150, null)) === 'Limite de recargas de hoje atingido.', '10 no dia: recusa');
 DB::table('entregas_recargas')->where('situacao', 'falhou')->update(['created_at' => '2026-10-26 23:00:00']);
-confere(recusa(fn () => recargaAguardando(50, false, 'pay_3')) === null, 'as de ontem não contam');
+confere(recusa(fn () => recargaAguardando(150, false, 'pay_3')) === null, 'as de ontem não contam');
 lojaPrePaga();
 DB::table('entregas_carteiras_lojas')->update(['documento' => '52998224725']);
 HttpFalso::$chamadas = [];
 DB::table('entregas_carteiras_lojas')->update(['asaas_cliente_id' => 'cus_velho', 'asaas_cliente_wallet' => 'wallet-1', 'asaas_cliente_documento' => CNPJ_DA_LOJA]);
-recargaAguardando(50);
+recargaAguardando(150);
 confere(HttpFalso::$chamadas[1]['url'] === 'https://asaas.teste/v3/customers' && HttpFalso::$chamadas[1]['dados']['cpfCnpj'] === '52998224725', 'documento trocado: cliente novo no Asaas');
 
 echo '== Pedir: Asaas com problema' . PHP_EOL;
 lojaPrePaga();
 asaas(200, ['data' => [['id' => 'wallet-OUTRA']]]);
-$r = Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 50, null);
+$r = Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 150, null);
 confere($r->situacao === 'falhou' && $r->motivo_falha === Recargas::MOTIVO_SEM_PIX && count(HttpFalso::$chamadas) === 1, 'chave de outra wallet: falha antes de criar a cobrança');
 lojaPrePaga();
 asaas(200, ['data' => [['id' => 'wallet-1']]]);
 asaas(400, ['errors' => [['code' => 'invalid_cpfCnpj', 'description' => 'O CPF/CNPJ informado é inválido.']]]);
-$r = Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 50, null);
+$r = Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 150, null);
 confere($r->situacao === 'falhou' && count(HttpFalso::$chamadas) === 2, 'cliente recusado: falha sem criar a cobrança');
 lojaPrePaga();
 asaas(200, ['data' => [['id' => 'wallet-1']]]);
 asaas(200, ['id' => 'cus_1']);
 asaas(400, ['errors' => [['code' => 'invalid_action', 'description' => 'Sua conta não possui chave Pix cadastrada.']]]);
-$r = Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 50, null);
+$r = Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 150, null);
 confere($r->situacao === 'falhou' && $r->motivo_falha === Recargas::MOTIVO_SEM_PIX, 'cobrança recusada (conta sem chave Pix): falha, e a loja vê a frase nossa');
 confere(in_array('[entregas] recarga: o Asaas recusou a cobrança', logs('warning'), true) && str_contains(json_encode(Log::$registros, JSON_UNESCAPED_UNICODE), 'Sua conta não possui chave Pix'), 'o motivo do Asaas vai para o log');
 lojaPrePaga();
 asaas(200, ['data' => [['id' => 'wallet-1']]]);
 asaas(200, ['id' => 'cus_1']);
 HttpFalso::$respostas[] = 'conexao';
-$r = Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 50, null);
+$r = Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 150, null);
 confere($r->situacao === 'criando' && $r->payment_id === null, 'POST da cobrança sem resposta: fica criando (a cobrança pode ter nascido)');
-confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 50, null)) === 'Já há um Pix de recarga aguardando pagamento.', 'e segura outra até a rotina resolver');
+confere(recusa(fn () => Recargas::pedir('empresa-1', 'vendor-a', 'Pizzaria', 150, null)) === 'Já há um Pix de recarga aguardando pagamento.', 'e segura outra até a rotina resolver');
 lojaPrePaga();
 asaas(200, ['data' => [['id' => 'wallet-1']]]);
 asaas(200, ['id' => 'cus_1']);
@@ -431,9 +431,9 @@ lojaPrePaga();
 $r1 = recargaAguardando(100);
 DB::table('entregas_carteiras_lojas')->insert(['company_uuid' => 'empresa-1', 'loja_uuid' => 'vendor-b', 'modelo' => 'pre', 'documento' => '52998224725', 'asaas_cliente_id' => 'cus_2', 'asaas_cliente_wallet' => 'wallet-1', 'asaas_cliente_documento' => '52998224725', 'created_at' => '2026-10-27 09:00:00', 'updated_at' => '2026-10-27 09:00:00']);
 asaas(200, ['data' => [['id' => 'wallet-1']]]);
-HttpFalso::$respostas[] = fn () => [200, cobranca('pay_2', 30, DB::table('entregas_recargas')->orderBy('id', 'desc')->value('external_reference'), 'PENDING', ['customer' => 'cus_2'])];
+HttpFalso::$respostas[] = fn () => [200, cobranca('pay_2', 130, DB::table('entregas_recargas')->orderBy('id', 'desc')->value('external_reference'), 'PENDING', ['customer' => 'cus_2'])];
 asaas(200, ['encodedImage' => QR_IMAGEM, 'payload' => QR_PAYLOAD]);
-$r2 = Recargas::pedir('empresa-1', 'vendor-b', 'Burger', 30, null);
+$r2 = Recargas::pedir('empresa-1', 'vendor-b', 'Burger', 130, null);
 Relogio::$agora = '2026-10-27 10:05:00';
 // a primeira (r1) vem paga, mas o banco falha ao gravar o recebimento; a segunda (r2) grava normal
 HttpFalso::$respostas[] = function () use ($r1) {
@@ -444,7 +444,7 @@ HttpFalso::$respostas[] = function () use ($r1) {
 HttpFalso::$respostas[] = function () use ($r2) {
     unset(\Teste\Banco::$falhar['entregas_pagamentos']);
 
-    return [200, cobranca('pay_2', 30, $r2->external_reference, 'RECEIVED', ['customer' => 'cus_2'])];
+    return [200, cobranca('pay_2', 130, $r2->external_reference, 'RECEIVED', ['customer' => 'cus_2'])];
 };
 (new RecargasConferir())->handle();
 confere(Recargas::recarregar($r1)->situacao === 'aguardando' && Recargas::recarregar($r2)->situacao === 'paga' && in_array('[entregas] recarga: conferência falhou', logs('warning'), true), 'falha numa recarga não para as outras');

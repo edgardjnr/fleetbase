@@ -143,7 +143,7 @@ namespace {
     confere(CarteiraDaLoja::resumo('empresa-1', 'vendor-a') === ['modelo' => 'pos'] && CarteiraDaLoja::motivoDoBloqueio('empresa-1', 'vendor-a') === null, 'pós-pago: só o modelo, nunca bloqueia');
     PrePago::definir('empresa-1', 'vendor-a', 'pre', '11222333000181', 'user-admin');
     $c = CarteiraDaLoja::resumo('empresa-1', 'vendor-a');
-    confere($c === ['modelo' => 'pre', 'credito' => 0.0, 'reservado' => 0.0, 'disponivel' => 0.0, 'minimo_para_pedir' => 8.0, 'pode_pedir' => false, 'recarga' => ['ligada' => true, 'minimo' => 10.0, 'maximo' => 5000.0]], 'pré sem crédito: ' . json_encode($c));
+    confere($c === ['modelo' => 'pre', 'credito' => 0.0, 'reservado' => 0.0, 'disponivel' => 0.0, 'minimo_para_pedir' => 8.0, 'pode_pedir' => false, 'recarga' => ['ligada' => true, 'minimo' => 100.0, 'maximo' => 5000.0]], 'pré sem crédito: ' . json_encode($c));
     confere(CarteiraDaLoja::motivoDoBloqueio('empresa-1', 'vendor-a') === 'Crédito insuficiente. Recarregue a carteira (Minha carteira) para pedir entregas.', 'sem crédito: bloqueia o pedido novo');
     recebimento('vendor-a', 50);
     corrida('vendor-a', 'pedido-1', 12.5);
@@ -196,14 +196,14 @@ namespace {
     $portal = new CarteiraDaLojaController();
     $r = $portal->index();
     confere($r->status === 200 && $r->dados === ['carteira' => ['modelo' => 'pos'], 'em_andamento' => null, 'recargas' => []], 'loja pós-paga: só o modelo');
-    $r = $portal->pedir(new Request(['valor' => 50]));
+    $r = $portal->pedir(new Request(['valor' => 150]));
     confere($r->status === 422 && $r->dados === ['errors' => ['Esta loja não usa a carteira pré-paga.']] && HttpFalso::$chamadas === [], 'pós-paga pedindo Pix: 422 sem chamar o Asaas');
     PrePago::definir('empresa-1', 'vendor-a', 'pre', '11222333000181', 'user-admin');
     asaas(200, ['data' => [['id' => 'wallet-1']]]);
     asaas(200, ['id' => 'cus_1']);
-    HttpFalso::$respostas[] = fn () => [200, ['id' => 'pay_1', 'customer' => 'cus_1', 'value' => 50, 'billingType' => 'PIX', 'status' => 'PENDING', 'externalReference' => DB::table('entregas_recargas')->value('external_reference')]];
+    HttpFalso::$respostas[] = fn () => [200, ['id' => 'pay_1', 'customer' => 'cus_1', 'value' => 150, 'billingType' => 'PIX', 'status' => 'PENDING', 'externalReference' => DB::table('entregas_recargas')->value('external_reference')]];
     asaas(200, ['encodedImage' => 'iVBORw0KGgo=', 'payload' => '000201pix']);
-    $r = $portal->pedir(new Request(['valor' => '50,00']));
+    $r = $portal->pedir(new Request(['valor' => '150,00']));
     $recarga = $r->dados['recarga'] ?? [];
     confere($r->status === 201 && $recarga['situacao'] === 'aguardando' && $recarga['pix'] === ['copia_e_cola' => '000201pix', 'imagem' => 'iVBORw0KGgo='] && ($r->dados['carteira']['modelo'] ?? null) === 'pre', 'pedir: 201 com o QR e a carteira: ' . json_encode($r->dados));
     confere(DB::table('entregas_recargas')->value('pedida_por') === 'usuario-a', 'quem pediu fica gravado');
@@ -236,10 +236,10 @@ namespace {
     comoUsuario('usuario-a');
     asaas(200, ['data' => [['id' => 'wallet-1']]]);
     asaas(400, ['errors' => [['description' => 'Conta sem chave Pix.']]]);
-    $r = $portal->pedir(new Request(['valor' => 30]));
+    $r = $portal->pedir(new Request(['valor' => 130]));
     confere($r->status === 502 && $r->dados === ['errors' => ['Não foi possível gerar o Pix agora. Tente de novo ou fale com a central.']], 'o Asaas não gerou: 502 com a frase nossa (o texto do Asaas não vai para a loja)');
     unlink(CHAVE_DO_COFRE);
-    confere($portal->pedir(new Request(['valor' => 30]))->status === 503, 'sem o secret: 503');
+    confere($portal->pedir(new Request(['valor' => 130]))->status === 503, 'sem o secret: 503');
 
     echo '== Cadastro da loja (LojasController)' . PHP_EOL;
     iniciar();

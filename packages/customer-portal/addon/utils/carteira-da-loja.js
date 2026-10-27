@@ -6,13 +6,13 @@
  */
 
 /** Atalhos de valor do "Recarregar via Pix", em reais. */
-export const ATALHOS = [50, 100, 200, 500];
+export const ATALHOS = [100, 200, 300, 500];
 
 /** Intervalo da consulta da recarga enquanto o Pix está sendo gerado ou na tela (o servidor consulta o Asaas a cada 5 s). */
 export const INTERVALO_DO_PIX_MS = 5000;
 
 /** Limites padrão de uma recarga (PrePago::VALOR_MINIMO e VALOR_MAXIMO), quando a resposta não traz os da central. */
-export const MINIMO_PADRAO = 10;
+export const MINIMO_PADRAO = 100;
 export const MAXIMO_PADRAO = 5000;
 
 /**
