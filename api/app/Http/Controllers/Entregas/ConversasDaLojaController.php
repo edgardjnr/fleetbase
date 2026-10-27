@@ -24,11 +24,24 @@ class ConversasDaLojaController extends PortalLojaController
         return response()->json(['conversas' => ConversasDaLoja::listar($loja, (string) session('user'))]);
     }
 
-    /** Abre a conversa com um motoboy: `motoboy` = id opaco do mapa do portal, ou `pedido` = public_id de um pedido da loja. */
+    /**
+     * Abre a conversa: `central` = true (a conversa da loja com a central), `motoboy` = id opaco do mapa do portal ou
+     * `pedido` = public_id de um pedido da loja.
+     */
     public function abrir(Request $request)
     {
         $loja  = $this->lojaDaSessao();
         $donos = $this->donosDosPedidos($loja);
+
+        // a conversa da loja com a central (uma por loja)
+        if ($request->boolean('central')) {
+            $canal = ConversasDaLoja::abrirComACentral($loja, (string) session('user'));
+            if (!$canal) {
+                return $this->erro(422, 'A central não está disponível para conversa agora.');
+            }
+
+            return response()->json(['conversa' => static::itemDaLista($loja, $canal)]);
+        }
 
         $idOpaco = $request->input('motoboy');
         $pedido  = $request->input('pedido');
@@ -61,9 +74,7 @@ class ConversasDaLojaController extends PortalLojaController
             return $this->erro(422, 'Não foi possível abrir a conversa com este motoboy.');
         }
 
-        $conversa = collect(ConversasDaLoja::listar($loja, (string) session('user')))->firstWhere('id', $canal->public_id);
-
-        return response()->json(['conversa' => $conversa]);
+        return response()->json(['conversa' => static::itemDaLista($loja, $canal)]);
     }
 
     public function mensagens(string $id)
@@ -89,6 +100,12 @@ class ConversasDaLojaController extends PortalLojaController
         }
 
         return response()->json(['mensagem' => ConversasDaLoja::enviar($canal, (string) session('user'), $texto)]);
+    }
+
+    /** O canal no formato da lista (GET loja/conversas). */
+    protected static function itemDaLista($loja, $canal): ?array
+    {
+        return collect(ConversasDaLoja::listar($loja, (string) session('user')))->firstWhere('id', $canal->public_id);
     }
 
     protected function erro(int $status, string $mensagem)
