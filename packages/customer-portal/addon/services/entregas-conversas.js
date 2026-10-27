@@ -1,7 +1,7 @@
 import Service, { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
-import { race, restartableTask, task, timeout, waitForEvent } from 'ember-concurrency';
+import { dropTask, race, restartableTask, task, timeout, waitForEvent } from 'ember-concurrency';
 import { espera } from '../utils/entregas-pedido';
 import { INTERVALO_CONVERSA_MS, INTERVALO_LISTA_CONVERSAS_MS, mesclarMensagens, prefixoDoPedido, registrarUltimas, textoValido, totalNaoLidas, ultimasDosOutros } from '../utils/conversas';
 import { prepararSom, tocarSomDeMensagem } from '../utils/som-de-mensagem';
@@ -175,8 +175,8 @@ export default class EntregasConversasService extends Service {
         }
     }
 
-    /** Abre (ou cria) a conversa da loja com a central. */
-    @task *abrirComACentral() {
+    /** Abre (ou cria) a conversa da loja com a central; um toque duplo, mesmo fora da gaveta, faz um pedido só. */
+    @dropTask *abrirComACentral() {
         yield this.abrir({ central: true });
     }
 
