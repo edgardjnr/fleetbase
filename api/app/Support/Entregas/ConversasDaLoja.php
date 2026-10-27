@@ -136,7 +136,8 @@ class ConversasDaLoja
             // outra instância do canal: a relação da mensagem fica sem carregar, e o core lê os participantes já completos
             $canal  = ChatChannel::where('uuid', $mensagem->chat_channel_uuid)->first();
             $doMeta = $canal ? static::lojaDaCentralNoMeta($canal->meta) : null;
-            $loja   = $doMeta ? Vendor::where('uuid', $doMeta)->first() : null;
+            // o console grava o `meta` que vem na requisição: só vale a loja da mesma empresa do canal
+            $loja = $doMeta ? Vendor::where('uuid', $doMeta)->where('company_uuid', $canal->company_uuid)->first() : null;
 
             if (!$canal || !$loja) {
                 return;

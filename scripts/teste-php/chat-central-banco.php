@@ -69,6 +69,11 @@ namespace {
     ChatChannel::create(['uuid' => 'canal-sem-motoboy', 'company_uuid' => 'empresa', 'created_by_uuid' => 'edgard', 'meta' => [C::CHAVE_META => 'drv-que-nao-existe']]);
     C::aoCriarMensagem(new ChatMessage(['chat_channel_uuid' => 'canal-sem-motoboy']));
     confere(ativos('canal-sem-motoboy') === ['edgard'], 'motoboy do meta não existe: intacto');
+    // o console grava o meta que vem na requisição: um canal de outra empresa pode apontar para um motoboy desta
+    ChatChannel::create(['uuid' => 'canal-de-fora', 'company_uuid' => 'outra', 'created_by_uuid' => 'admin-de-fora', 'meta' => [C::CHAVE_META => 'drv-junior']]);
+    ChatParticipant::create(['company_uuid' => 'outra', 'user_uuid' => 'roger', 'chat_channel_uuid' => 'canal-de-fora']);
+    C::aoCriarMensagem(new ChatMessage(['chat_channel_uuid' => 'canal-de-fora']));
+    confere(ativos('canal-de-fora') === ['admin-de-fora', 'roger'], 'canal de outra empresa com o motoboy no meta: intacto');
     C::aoCriarMensagem(new ChatMessage(['chat_channel_uuid' => 'canal-que-nao-existe']));
     confere(Log::$linhas === [], 'canal que não existe: nada, sem aviso');
 

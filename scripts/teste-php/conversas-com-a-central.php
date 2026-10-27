@@ -91,6 +91,10 @@ namespace {
     ChatChannel::create(['uuid' => 'canal-sem-loja', 'company_uuid' => 'empresa', 'created_by_uuid' => 'edgard', 'meta' => C::metaDaCentral('loja-que-nao-existe')]);
     C::aoCriarMensagem(new ChatMessage(['chat_channel_uuid' => 'canal-sem-loja']));
     confere(ativos('canal-sem-loja') === ['edgard'], 'loja do meta não existe: intacta');
+    // o console grava o meta que vem na requisição: um canal de outra empresa pode apontar para uma loja desta
+    ChatChannel::create(['uuid' => 'canal-de-fora', 'company_uuid' => 'outra', 'created_by_uuid' => 'admin-de-fora', 'meta' => C::metaDaCentral('terraco')]);
+    C::aoCriarMensagem(new ChatMessage(['chat_channel_uuid' => 'canal-de-fora']));
+    confere(ativos('canal-de-fora') === ['admin-de-fora'], 'canal de outra empresa com a loja no meta: intacto');
     confere(Log::$linhas === [], 'sem aviso no log');
 
     echo '== aoCriarMensagem nunca lança' . PHP_EOL;

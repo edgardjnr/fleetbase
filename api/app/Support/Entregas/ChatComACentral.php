@@ -83,7 +83,8 @@ class ChatComACentral
             // outra instância do canal: a relação da mensagem fica sem carregar, e o core lê os participantes já arrumados
             $canal   = ChatChannel::where('uuid', $mensagem->chat_channel_uuid)->first();
             $doMeta  = $canal ? static::motoboyDoMeta($canal->meta) : null;
-            $motoboy = $doMeta ? Driver::where('uuid', $doMeta)->first() : null;
+            // o console grava o `meta` que vem na requisição: só vale o motoboy da mesma empresa do canal
+            $motoboy = $doMeta ? Driver::where('uuid', $doMeta)->where('company_uuid', $canal->company_uuid)->first() : null;
             $usuario = (string) ($motoboy?->user_uuid ?? '');
 
             if (!$canal || $usuario === '') {
