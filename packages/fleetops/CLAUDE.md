@@ -194,6 +194,9 @@ A com os lados invertidos, `.planning/sketches/005-tela-de-pedidos/`). As vistas
     - Motoboy com Trocar, ou a oferta com Atribuir (só admin), ou "Entregue por X às HH:MM" / "Cancelado".
     - Cobrança, endereço com complemento e referência, observação do cliente, produtos em cupom e a loja da coleta.
     - **Sem 0800 nem localizador**: só o motoboy do pedido recebe (regra do servidor).
+    - **Os blocos do corpo não encolhem** (`.tp-pa-corpo > * { flex-shrink: 0 }` no `tela-de-pedidos.css`): quem
+      rola é o corpo. Sem isso, com a comanda mais alta que a folha, a lista do Trocar/Atribuir (`overflow: hidden`,
+      que zera o mínimo do item flex) era espremida a 2 px e parecia não abrir (2026-10-26).
     - **"Mais"**: linha do tempo (`tracking-status-text`), rota e valores (só admin) e o que era do painel do
       Fleetbase: os painéis iFood, Integração e Distribuição (`Order::Details::*`) e as ações (editar rota, editar
       detalhes, atualizar status, tirar o motoboy, etiqueta, metadados, cancelar fora do iFood, excluir). O pedido do

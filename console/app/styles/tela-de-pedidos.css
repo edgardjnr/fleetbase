@@ -186,6 +186,9 @@
 .tela-pedidos .tp-pa-oferta { background: var(--pi-vermelho-claro); color: var(--pi-vermelho); border-radius: 12px; padding: 11px 13px; display: flex; flex-direction: column; gap: 10px; font-weight: 700; }
 .tela-pedidos .tp-pa-oferta-linha { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
 .tela-pedidos .tp-pa-oferta .tp-botao { justify-content: center; }
+/* os blocos da folha não encolhem: quem rola é o corpo. Com a comanda longa, a lista de candidatos (overflow: hidden,
+   que zera o mínimo do item flex) era espremida a 2 px e o Trocar/Atribuir parecia não abrir. */
+.tela-pedidos .tp-pa-corpo > * { flex-shrink: 0; }
 .tela-pedidos .tp-pa .tp-candidatos { margin-top: -4px; }
 .tela-pedidos .tp-pa-cobranca { display: flex; align-items: center; gap: 10px; border-radius: 12px; padding: 10px 13px; font-weight: 600; }
 .tela-pedidos .tp-pa-cobranca > span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
