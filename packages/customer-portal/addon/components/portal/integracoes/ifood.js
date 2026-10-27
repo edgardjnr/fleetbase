@@ -146,11 +146,15 @@ export default class PortalIntegracoesIfoodComponent extends Component {
         this.lojasDoIfood = [];
     }
 
-    // a contagem do código só anda enquanto há um código na tela
+    // a contagem do código só anda enquanto há um código válido na tela; vencido, o relógio para
     ligarRelogio() {
         clearInterval(this.relogio);
         this.relogio = setInterval(() => {
             this.agora = Date.now();
+            if (this.segundos === 0) {
+                clearInterval(this.relogio);
+                this.relogio = null;
+            }
         }, 1000);
     }
 }

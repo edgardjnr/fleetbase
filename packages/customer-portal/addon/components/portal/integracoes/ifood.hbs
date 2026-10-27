@@ -8,20 +8,6 @@
                 <p>{{t "customer-portal.ui.entregas.integracoes.ifood.pronto-texto"}}</p>
             </div>
         </div>
-
-        {{#if this.confirmandoSaida}}
-            <div class="ps-int-confirmar" role="alert">
-                <p>{{t "customer-portal.ui.entregas.integracoes.ifood.confirmar-saida"}}</p>
-                <div class="ps-int-botoes">
-                    <Button @type="danger" @icon="link-slash" @text={{t "customer-portal.ui.entregas.integracoes.desconectar"}} @isLoading={{this.desconectar.isRunning}} @onClick={{perform this.desconectar}} />
-                    <Button @text={{t "customer-portal.ui.entregas.integracoes.manter"}} @disabled={{this.desconectar.isRunning}} @onClick={{this.cancelarSaida}} />
-                </div>
-            </div>
-        {{else}}
-            <div class="ps-int-botoes">
-                <Button @icon="link-slash" @text={{t "customer-portal.ui.entregas.integracoes.desconectar"}} @onClick={{this.pedirConfirmacao}} />
-            </div>
-        {{/if}}
     {{else if (not this.disponivel)}}
         <p class="ps-int-aviso">{{t "customer-portal.ui.entregas.integracoes.indisponivel-texto"}}</p>
     {{else}}
@@ -98,6 +84,23 @@
                     </div>
                 </li>
             </ol>
+        {{/if}}
+    {{/if}}
+
+    {{! Entregas: conectada ou com a conexão caída (vínculo perdido), a loja pode desconectar, mesmo com o iFood desligado no servidor }}
+    {{#if (or this.conectada (eq this.estado "atencao"))}}
+        {{#if this.confirmandoSaida}}
+            <div class="ps-int-confirmar" role="alert">
+                <p>{{t "customer-portal.ui.entregas.integracoes.ifood.confirmar-saida"}}</p>
+                <div class="ps-int-botoes">
+                    <Button @type="danger" @icon="link-slash" @text={{t "customer-portal.ui.entregas.integracoes.desconectar"}} @isLoading={{this.desconectar.isRunning}} @onClick={{perform this.desconectar}} />
+                    <Button @text={{t "customer-portal.ui.entregas.integracoes.manter"}} @disabled={{this.desconectar.isRunning}} @onClick={{this.cancelarSaida}} />
+                </div>
+            </div>
+        {{else}}
+            <div class="ps-int-botoes">
+                <Button @icon="link-slash" @text={{t "customer-portal.ui.entregas.integracoes.desconectar"}} @onClick={{this.pedirConfirmacao}} />
+            </div>
         {{/if}}
     {{/if}}
 </div>

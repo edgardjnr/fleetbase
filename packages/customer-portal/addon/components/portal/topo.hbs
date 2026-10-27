@@ -17,7 +17,7 @@
         </LinkTo>
         <LinkTo @route="portal.extrato" class="ps-aba"><FaIcon @icon="receipt" /><span>{{t "customer-portal.ui.entregas.statement"}}</span></LinkTo>
         <LinkTo @route="portal.financeiro" class="ps-aba {{if this.naFatura 'active'}}"><FaIcon @icon="file-invoice-dollar" /><span>{{t "customer-portal.ui.entregas.financeiro.menu"}}</span></LinkTo>
-        <LinkTo @route="portal.integracoes" class="ps-aba"><FaIcon @icon="plug" /><span>{{t "customer-portal.ui.entregas.integracoes.menu"}}</span></LinkTo>
+        <LinkTo @route="portal.integracoes" @query={{hash sistema=null}} class="ps-aba"><FaIcon @icon="plug" /><span>{{t "customer-portal.ui.entregas.integracoes.menu"}}</span></LinkTo>
     </nav>
 
     <div class="ps-topo-dir">

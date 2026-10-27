@@ -853,11 +853,11 @@ customer-portal:
           loja-no-ifood: "Loja no iFood: {loja}"
           aguardando: "Cole a chave no {sistema} para terminar."
           atencao: A conexão caiu. Conecte de novo.
-          ultimo-pedido:
-            agora: Último pedido agora há pouco
-            minutos: "Último pedido há {n} min"
-            horas: "Último pedido há {n} h"
-            dias: "{n, plural, one {Último pedido há # dia} other {Último pedido há # dias}}"
+          ultimo-contato:
+            agora: Último contato agora há pouco
+            minutos: "Último contato há {n} min"
+            horas: "Último contato há {n} h"
+            dias: "{n, plural, one {Último contato há # dia} other {Último contato há # dias}}"
         sistemas:
           ifood:
             descricao: Os pedidos de entrega do iFood da sua loja chegam direto aos motoboys.

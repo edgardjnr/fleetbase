@@ -1,11 +1,8 @@
 import Route from '@ember/routing/route';
 
 export default class PortalIntegracoesRoute extends Route {
-    // Entregas: `?sistema=ifood` abre direto a conexão daquele sistema (link que dá para mandar à loja)
-    queryParams = {
-        sistema: { replace: true },
-    };
-
+    // Entregas: `?sistema=ifood` abre direto a conexão daquele sistema (link que dá para mandar à loja). Sem `replace`:
+    // o voltar do navegador (e do Android) volta da conexão para a lista
     // Entregas: a lista dos sistemas começa ao abrir a tela; a loja vem da sessão do usuário
     setupController(controller) {
         super.setupController(...arguments);

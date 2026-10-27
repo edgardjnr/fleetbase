@@ -194,8 +194,8 @@ echo '== Rotas e portal' . PHP_EOL;
 $rotas = file_get_contents('/repo/api/app/Providers/RouteServiceProvider.php');
 foreach ([
     "Route::get('loja/integracoes', [IntegracoesDaLojaController::class, 'index'])->middleware('throttle:60,1');",
-    "Route::post('loja/integracoes/ifood/codigo', [IntegracoesDaLojaController::class, 'ifoodCodigo'])->middleware('throttle:entregas-ifood-vinculo');",
-    "Route::post('loja/integracoes/ifood/vincular', [IntegracoesDaLojaController::class, 'ifoodVincular'])->middleware('throttle:entregas-ifood-vinculo');",
+    "Route::post('loja/integracoes/ifood/codigo', [IntegracoesDaLojaController::class, 'ifoodCodigo'])->middleware('throttle:10,1');",
+    "Route::post('loja/integracoes/ifood/vincular', [IntegracoesDaLojaController::class, 'ifoodVincular'])->middleware('throttle:10,1');",
     "Route::delete('loja/integracoes/ifood', [IntegracoesDaLojaController::class, 'ifoodDesvincular'])->middleware('throttle:10,1');",
     "Route::post('loja/integracoes/{id}/chave', [IntegracoesDaLojaController::class, 'gerarChave'])->middleware('throttle:10,1');",
     "Route::delete('loja/integracoes/{id}/chave', [IntegracoesDaLojaController::class, 'revogarChave'])->middleware('throttle:10,1');",

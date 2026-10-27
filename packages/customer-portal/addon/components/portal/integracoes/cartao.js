@@ -40,7 +40,8 @@ export default class PortalIntegracoesCartaoComponent extends Component {
         return this.intl.t(`${BASE}.selo.${this.selo}`);
     }
 
-    // a linha embaixo do selo: a loja no iFood, o último pedido do sistema por chave ou o que falta fazer
+    // a linha embaixo do selo: a loja no iFood, o último contato do sistema por chave (ultimo_uso_em: qualquer chamada com a
+    // chave, não só pedido) ou o que falta fazer
     get detalhe() {
         const integracao = this.args.integracao ?? {};
 
@@ -49,7 +50,7 @@ export default class PortalIntegracoesCartaoComponent extends Component {
                 return this.intl.t(`${BASE}.detalhe.loja-no-ifood`, { loja: integracao.loja_no_ifood });
             }
             const uso = tempoDesde(integracao.ultimo_uso_em, Date.now());
-            return uso ? this.intl.t(`${BASE}.detalhe.ultimo-pedido.${uso.unidade}`, { n: uso.n }) : '';
+            return uso ? this.intl.t(`${BASE}.detalhe.ultimo-contato.${uso.unidade}`, { n: uso.n }) : '';
         }
         if (this.selo === 'aguardando') {
             return this.intl.t(`${BASE}.detalhe.aguardando`, { sistema: this.nome });

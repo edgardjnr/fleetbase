@@ -853,11 +853,11 @@ customer-portal:
           loja-no-ifood: "iFood store: {loja}"
           aguardando: "Paste the key in {sistema} to finish."
           atencao: The connection dropped. Connect again.
-          ultimo-pedido:
-            agora: Last order just now
-            minutos: "Last order {n} min ago"
-            horas: "Last order {n} h ago"
-            dias: "{n, plural, one {Last order # day ago} other {Last order # days ago}}"
+          ultimo-contato:
+            agora: Last contact just now
+            minutos: "Last contact {n} min ago"
+            horas: "Last contact {n} h ago"
+            dias: "{n, plural, one {Last contact # day ago} other {Last contact # days ago}}"
         sistemas:
           ifood:
             descricao: Your store's iFood delivery orders go straight to the couriers.
