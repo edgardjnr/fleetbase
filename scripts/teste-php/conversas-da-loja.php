@@ -30,6 +30,9 @@ confere(C::papel('customer') === 'loja', 'usuário de loja (customer)');
 confere(C::papel('driver') === 'motoboy', 'motoboy (driver)');
 confere(C::papel('admin') === 'central', 'admin: central');
 confere(C::papel('user') === 'central', 'usuário do console: central');
+confere(C::papel('user', true) === 'motoboy', 'type user com cadastro de motoboy (como em produção): motoboy');
+confere(C::papel('admin', true) === 'motoboy', 'admin com cadastro de motoboy: motoboy');
+confere(C::papel('customer', true) === 'loja', 'usuário de loja continua loja');
 confere(C::papel(null) === 'central', 'sem tipo: central');
 
 echo '== textoValido' . PHP_EOL;

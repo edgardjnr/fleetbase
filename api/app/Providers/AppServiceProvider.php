@@ -18,6 +18,7 @@ use App\Listeners\Entregas\ObservadorDosPedidosIfood;
 use App\Listeners\Entregas\ObservadorFinanceiroDosPedidos;
 use App\Notifications\Entregas\CanalFcmEntregas;
 use App\Notifications\Entregas\Email\CanalEmailEntregas;
+use App\Support\Entregas\ChatComACentral;
 use App\Support\Entregas\ConexaoDoStorefront;
 use App\Support\Entregas\Distribuicao\TrocaDoListenerDoDespacho;
 use App\Support\Entregas\FusoDoServidor;
@@ -33,6 +34,7 @@ use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Place;
 use Fleetbase\FleetOps\Models\Vehicle;
+use Fleetbase\Models\ChatMessage;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Events\TransactionBeginning;
@@ -128,6 +130,16 @@ class AppServiceProvider extends ServiceProvider
         $this->registrarCorridasDoSistema();
         $this->gravarPrazoDosPedidos();
         $this->imagensPadraoLocais();
+        $this->arrumarConversasComACentral();
+    }
+
+    /**
+     * Entregas: a cada mensagem nova na conversa do motoboy com a central, o canal volta a ter a central e só ela além do
+     * motoboy (ver ChatComACentral::aoCriarMensagem). Roda antes do notifyParticipants do core, que já avisa quem entrou.
+     */
+    protected function arrumarConversasComACentral(): void
+    {
+        ChatMessage::created(fn ($mensagem) => ChatComACentral::aoCriarMensagem($mensagem));
     }
 
     /**

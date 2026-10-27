@@ -110,6 +110,7 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
   - front: serviço `entregas-conversas` (lista a cada 20 s na tela Pedidos, inclusive com a aba oculta; conversa aberta a cada 5 s, pausada com a aba oculta; espera crescente em erro), componente `Portal::Conversas`, funções puras em `utils/conversas.js`;
   - **aviso sonoro** de mensagem nova de outra pessoa (`utils/som-de-mensagem.js`, Web Audio, sem arquivo), uma vez por mensagem e nunca na primeira leitura; o navegador só libera o som depois do primeiro clique ou tecla na página;
   - no desenho S, o `.portal-conversas` perde o `position: fixed` dentro de `.ps-lado-conversas` (a folha da direita); fora dele, a regra antiga (gaveta em `z-index: 1250`) continua no CSS;
+  - o papel do autor de cada mensagem (loja, motoboy ou central) vem do `ConversasDaLoja::papel`: `customer` é loja; `driver` **ou quem tem cadastro de motoboy** é motoboy (em produção os motoboys ficam com `type = user`; correção de 2026-10-27, antes saíam como "central"); o resto é central;
   - testes: `scripts/teste-php/conversas-da-loja.php`, `mapa-da-loja.php` (`motoboyDoIdOpaco`) e `scripts/teste-portal/conversas.test.mjs`.
 - **Pedido da central:** no formulário do operador, escolher uma loja como cliente põe a coleta no Local da loja e a trava.
   - **Escolha a loja, não o usuário dela.** O contato do usuário também aparece como cliente. Com ele, a coleta não trava e o pedido fica fora do extrato.

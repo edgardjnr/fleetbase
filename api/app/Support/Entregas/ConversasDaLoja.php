@@ -166,7 +166,9 @@ class ConversasDaLoja
         $dosOutros = $mensagens->filter(fn ($mensagem) => $mensagem->sender_uuid !== $eu->uuid)->pluck('uuid')->all();
         static::marcarComoLidas($canal, $eu, $dosOutros);
 
-        return $mensagens->map(fn ($mensagem) => static::formatar($mensagem, $eu))->all();
+        $motoboys = static::motoboysEntre($mensagens->map(fn ($mensagem) => $mensagem->sender?->user_uuid)->all());
+
+        return $mensagens->map(fn ($mensagem) => static::formatar($mensagem, $eu, $motoboys))->all();
     }
 
     /** Grava a mensagem do usuário e avisa os outros participantes (como o sendMessage do core). */
@@ -190,7 +192,7 @@ class ConversasDaLoja
 
         $mensagem->load('sender.user');
 
-        return static::formatar($mensagem, $eu);
+        return static::formatar($mensagem, $eu, static::motoboysEntre([$mensagem->sender?->user_uuid]));
     }
 
     /** Os usuários ativos da loja (Contact `customer` com VendorPersonnel ativo, como o LojaDoUsuario). */
@@ -237,14 +239,17 @@ class ConversasDaLoja
         return $partes ? implode(' · ', $partes) : 'Conversa';
     }
 
-    /** O papel de quem escreveu, pelo tipo do usuário: loja (customer), motoboy (driver) ou central (o resto). */
-    public static function papel(?string $tipoDoUsuario): string
+    /**
+     * O papel de quem escreveu: loja (customer), motoboy (driver ou com cadastro de motoboy) ou central (o resto). Em
+     * produção os motoboys ficam com `type = user` (2026-10-27): o cadastro de motoboy decide.
+     */
+    public static function papel(?string $tipoDoUsuario, bool $temCadastroDeMotoboy = false): string
     {
-        return match ($tipoDoUsuario) {
-            'customer' => 'loja',
-            'driver'   => 'motoboy',
-            default    => 'central',
-        };
+        if ($tipoDoUsuario === 'customer') {
+            return 'loja';
+        }
+
+        return $tipoDoUsuario === 'driver' || $temCadastroDeMotoboy ? 'motoboy' : 'central';
     }
 
     /** O texto aceito (sem espaços nas pontas, de 1 a MAX_CARACTERES caracteres) ou null. */
@@ -307,7 +312,15 @@ class ConversasDaLoja
         }
     }
 
-    protected static function formatar(ChatMessage $mensagem, ChatParticipant $eu): array
+    /** Os usuários da lista com cadastro de motoboy (o Driver usa SoftDeletes: o excluído não conta), numa consulta só. */
+    protected static function motoboysEntre(array $usuarios): array
+    {
+        $usuarios = array_values(array_unique(array_filter(array_map('strval', $usuarios))));
+
+        return $usuarios ? Driver::whereIn('user_uuid', $usuarios)->pluck('user_uuid')->map(fn ($uuid) => (string) $uuid)->all() : [];
+    }
+
+    protected static function formatar(ChatMessage $mensagem, ChatParticipant $eu, array $motoboys = []): array
     {
         $autor = $mensagem->sender?->user;
 
@@ -315,7 +328,7 @@ class ConversasDaLoja
             'id'    => $mensagem->public_id,
             'texto' => $mensagem->content,
             'em'    => static::data($mensagem->created_at),
-            'autor' => ['nome' => $autor?->name, 'papel' => static::papel($autor?->type)],
+            'autor' => ['nome' => $autor?->name, 'papel' => static::papel($autor?->type, in_array((string) $autor?->uuid, $motoboys, true))],
             'minha' => $mensagem->sender_uuid === $eu->uuid,
         ];
     }
