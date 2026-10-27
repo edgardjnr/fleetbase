@@ -41,6 +41,8 @@ export default buildRoutes(function () {
         // Entregas: faturas da loja e o ciclo em andamento; o detalhe da fatura é também a página de impressão
         this.route('financeiro');
         this.route('fatura', { path: '/financeiro/:id' });
+        // Entregas: a Minha carteira da loja pré-paga (crédito e recarga por Pix); antes de `virtual`, o catch-all
+        this.route('carteira');
         this.route('virtual', { path: '/:slug' });
     });
 });

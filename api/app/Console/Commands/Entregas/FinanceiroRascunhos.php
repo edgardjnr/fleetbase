@@ -6,6 +6,7 @@ use App\Support\Entregas\Financeiro\CicloDeCobranca;
 use App\Support\Entregas\Financeiro\Faturas;
 use App\Support\Entregas\Financeiro\Financeiro;
 use App\Support\Entregas\Financeiro\Lancamentos;
+use App\Support\Entregas\PrePago\PrePago;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -32,9 +33,15 @@ class FinanceiroRascunhos extends Command
             return self::SUCCESS;
         }
 
-        $dias = [];
+        $dias     = [];
+        $prePagas = [];
         foreach (static::lojasComLancamentoSemFatura() as [$companyUuid, $vendorUuid]) {
             try {
+                // loja pré-paga não recebe fatura (as corridas saem do crédito da carteira)
+                $prePagas[$companyUuid] ??= PrePago::lojasPrePagas($companyUuid);
+                if (isset($prePagas[$companyUuid][$vendorUuid])) {
+                    continue;
+                }
                 $dias[$companyUuid] ??= static::ultimosDias($companyUuid);
                 $config              = Faturas::configDaLoja($companyUuid, $vendorUuid);
                 foreach ($dias[$companyUuid] as $dia) {

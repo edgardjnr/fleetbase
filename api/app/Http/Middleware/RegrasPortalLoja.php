@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use App\Support\Entregas\Ifood\PedidosIfood;
 use App\Support\Entregas\LojaDoUsuario;
+use App\Support\Entregas\PrePago\CarteiraDaLoja;
+use App\Support\Entregas\PrePago\PrePago;
 use App\Support\Entregas\StatusDoPedido;
 use App\Support\Entregas\TravaDoPedido;
 use Closure;
@@ -15,6 +17,7 @@ use Fleetbase\LaravelMysqlSpatial\Types\Point;
 use Fleetbase\Models\User;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\ParameterBag;
 
@@ -22,6 +25,7 @@ use Symfony\Component\HttpFoundation\ParameterBag;
  * Entregas RestaurantePro: regras de negócio das rotas do portal da loja (customer-portal/int/v1/*)
  * para o usuário de loja que o ProtegerPortalLoja identificou (o PHP do portal vem do Composer).
  *
+ * - Novo pedido da loja pré-paga sem crédito: 422 (CarteiraDaLoja::motivoDoBloqueio).
  * - Novo pedido: a coleta é sempre o Local da loja (o que vier na requisição é descartado); o destino
  *   tem de ser um endereço salvo da loja com coordenadas, a 30 m ou mais da coleta (o km da cobrança sai
  *   delas); criado o pedido, ele é despachado como pedido aberto (adhoc) aos motoboys próximos, como faz a central.
@@ -67,6 +71,10 @@ class RegrasPortalLoja
      * salvo não se edita pelo portal, o ponto errado voltaria nos pedidos seguintes.
      */
     public const DISTANCIA_MINIMA_DA_COLETA_METROS = 30;
+
+    /** Trava da carteira da loja pré-paga no pedido novo (Redis, como a TravaDoPedido): validade e espera, em segundos. */
+    public const VALIDADE_DA_TRAVA_DA_CARTEIRA = 30;
+    public const ESPERA_DA_TRAVA_DA_CARTEIRA   = 10;
 
     public function handle(Request $request, Closure $next)
     {
@@ -138,13 +146,39 @@ class RegrasPortalLoja
         $entrada->set('pickup', $coleta->uuid);
         $entrada->set('dropoff', $destino->uuid);
 
-        $resposta = $next($request);
+        $criar = function () use ($request, $next, $vendor, $usuario) {
+            $resposta = $next($request);
+            if ($resposta->isSuccessful()) {
+                $this->despacharParaMotoboys((string) $resposta->getContent(), $vendor, $usuario);
+            }
 
-        if ($resposta->isSuccessful()) {
-            $this->despacharParaMotoboys((string) $resposta->getContent(), $vendor, $usuario);
+            return $resposta;
+        };
+
+        return $this->criarComCredito((string) $usuario->company_uuid, (string) $vendor->uuid, $criar);
+    }
+
+    /**
+     * Loja pré-paga: o pedido só sai com crédito para pelo menos a entrega mais barata (CarteiraDaLoja). Conferir e criar
+     * com a trava da carteira da loja: o pedido criado já reserva crédito, então dois pedidos seguidos não passam com o
+     * crédito de um. Loja pós-paga: cria direto.
+     */
+    protected function criarComCredito(string $empresa, string $lojaUuid, Closure $criar)
+    {
+        if (!PrePago::ehPrePaga($empresa, $lojaUuid)) {
+            return $criar();
         }
+        try {
+            return Cache::lock('entregas:carteira:' . $lojaUuid, static::VALIDADE_DA_TRAVA_DA_CARTEIRA)->block(static::ESPERA_DA_TRAVA_DA_CARTEIRA, function () use ($empresa, $lojaUuid, $criar) {
+                if ($semCredito = CarteiraDaLoja::motivoDoBloqueio($empresa, $lojaUuid)) {
+                    return $this->erro(422, $semCredito);
+                }
 
-        return $resposta;
+                return $criar();
+            });
+        } catch (LockTimeoutException $e) {
+            return $this->erro(409, 'Outro pedido da loja está sendo criado. Tente de novo em alguns segundos.');
+        }
     }
 
     /** Pedido aberto (adhoc) para os motoboys próximos da loja, como a central faz. */

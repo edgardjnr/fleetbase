@@ -25,9 +25,21 @@
         <div class="ps-num">
             <small>{{t "customer-portal.ui.entregas.s.inicio.tempo-medio"}}</small><b>{{this.numeros.tempoMedio}}</b><span>{{t "customer-portal.ui.entregas.s.inicio.tempo-medio-detalhe"}}</span>
         </div>
-        <LinkTo @route="portal.financeiro" class="ps-num ps-num-dinheiro">
-            <small>{{t "customer-portal.ui.entregas.s.inicio.a-pagar"}}</small><b>{{this.numeros.aPagar}}</b><span>{{this.detalheDoCiclo}}</span>
-        </LinkTo>
+        {{#if this.numeros.prePaga}}
+            {{! Entregas: a loja pré-paga vê o crédito disponível da carteira no lugar do a pagar no ciclo }}
+            <LinkTo @route="portal.carteira" class="ps-num ps-num-dinheiro">
+                <small>{{t "customer-portal.ui.entregas.s.inicio.credito-disponivel"}}</small><b>{{this.numeros.creditoDisponivel}}</b>
+                {{#if this.numeros.semCredito}}
+                    <span class="ps-num-alerta">{{t "customer-portal.ui.entregas.s.inicio.recarregue"}}</span>
+                {{else}}
+                    <span>{{t "customer-portal.ui.entregas.s.inicio.na-carteira"}}</span>
+                {{/if}}
+            </LinkTo>
+        {{else}}
+            <LinkTo @route="portal.financeiro" class="ps-num ps-num-dinheiro">
+                <small>{{t "customer-portal.ui.entregas.s.inicio.a-pagar"}}</small><b>{{this.numeros.aPagar}}</b><span>{{this.detalheDoCiclo}}</span>
+            </LinkTo>
+        {{/if}}
     </section>
 
     <section class="ps-aovivo">

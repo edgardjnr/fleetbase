@@ -7,6 +7,10 @@ central**. Spec: `docs/superpowers/specs/2026-10-26-saque-pix-asaas-design.md`; 
 `docs/superpowers/plans/2026-10-26-saque-pix-asaas-api.md`. Modelo: o pagamento de freelancers do RestaurantePro
 (`restaurantepro-main`, edge `freelancer-payout`).
 
+A mesma conexão Asaas recebe também os **Pix de recarga das lojas pré-pagas** (cobranças, não transferências: a validação
+de saque não as vê). Por isso o desconectar recusa com recarga criando ou aguardando. Ver
+`api/app/Support/Entregas/PrePago/CLAUDE.md`.
+
 ## Segredos
 
 - **Chave de API do Asaas:** `entregas_asaas_conexoes.chave_cifrada`, AES-256-GCM (`Cofre`). A chave que cifra é o

@@ -268,6 +268,21 @@ fleet-ops:
                 chave-copiar: Click the key to copy it.
                 chave-onde: 'In RestaurantePro: Delivery settings → "Delivered by" → Entregas RestaurantePro → paste the key and connect.'
                 ja-copiei: I copied it
+            cobranca:
+                titulo: Billing
+                label: 'Billing:'
+                modelo: Billing model
+                pos: Postpaid (invoice)
+                pre: Prepaid (Pix credit)
+                ajuda: 'Postpaid: deliveries go on the invoice and the store pays later. Prepaid: the store tops up its wallet by Pix in the portal and each delivery is taken from the credit; without credit, the portal does not allow new orders (iFood orders keep coming in and the balance goes negative).'
+                ajuda-pre: 'The top-up Pix goes to the central office Asaas account, the same one used for courier Pix withdrawals: it must be connected in Finance → Settings. The CPF or CNPJ is required, because the Pix is issued in the store name.'
+                documento: CPF or CNPJ
+                documento-gravado: 'Left blank, the saved document stays ({documento}).'
+                documento-invalido: Invalid CPF or CNPJ.
+                documento-obrigatorio: 'Enter the store CPF or CNPJ: the top-up Pix is issued in its name.'
+                modelo-invalido: Choose the billing model (prepaid or postpaid).
+                selo-pre: Prepaid
+                selo-pos: Postpaid
         financeiro-lojas:
             admin-only: Finance is for administrators only.
             title: Stores and invoices
@@ -305,6 +320,11 @@ fleet-ops:
             registrar-recebimento: Record payment received
             sem-faturas: No invoices match this filter.
             sem-lojas: No stores registered.
+            sem-lojas-pos: No postpaid stores. Prepaid stores have no invoice or cycle.
+            pre-pago: Prepaid
+            pre-pago-ajuda: 'Prepaid, no invoice: deliveries are taken from the wallet credit.'
+            carteira-credito: 'Credit {valor}'
+            carteira-devendo: 'Owes {valor}'
             sem-email: No e-mail to receive the invoice
             editar-ciclo: Edit cycle
             ciclo-de: 'Billing cycle of {nome}'

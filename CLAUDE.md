@@ -23,6 +23,7 @@ Este arquivo traz só o que vale em qualquer parte do repo. Os detalhes ficam nu
 | E-mails em pt-BR | `api/app/Notifications/Entregas/Email/CLAUDE.md` |
 | Financeiro: extrato e pagamento dos motoboys, faturas das lojas, painel | `api/app/Support/Entregas/Financeiro/CLAUDE.md` |
 | Saque Pix do motoboy pelo app (Asaas da central, chave cifrada, validação de saque) | `api/app/Support/Entregas/Saques/CLAUDE.md` |
+| Loja pré-paga: carteira recarregada por Pix no portal (Asaas da central), crédito e bloqueio sem crédito | `api/app/Support/Entregas/PrePago/CLAUDE.md` |
 | Corridas do sistema: relatório do dono (todas as organizações) e preço por central | `api/app/Support/Entregas/Sistema/CLAUDE.md` |
 | Painel inicial do console: números do período, Ao vivo, Atribuir e a comanda do pedido (folha do console) | `api/app/Support/Entregas/Painel/CLAUDE.md` |
 | Fleet-Ops: telas ocultas, pagamento e cobrança, mapa ao vivo, tela de pedidos (`/fleet-ops`) | `packages/fleetops/CLAUDE.md` |

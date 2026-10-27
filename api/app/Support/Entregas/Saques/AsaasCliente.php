@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Entregas RestaurantePro: o único ponto de HTTP com o Asaas (base `services.entregas.asaas_url`), com a chave de API da
- * central já decifrada (Cofre). Nunca lança: falha de rede vira RespostaAsaas com status 0. O log leva só o caminho e a
+ * central já decifrada (Cofre): o saque Pix do motoboy (transferências) e a recarga da loja pré-paga (cobranças Pix). Nunca lança: falha de rede vira RespostaAsaas com status 0. O log leva só o caminho e a
  * classe do erro, nunca a chave. Só https (outra base nem chama: status 0) e sem seguir redirecionamento (o access_token
  * iria junto).
  */
@@ -52,6 +52,52 @@ class AsaasCliente
         return $this->chamar('GET', '/transfers?offset=' . $offset . '&limit=' . $limite);
     }
 
+    /** Cliente da cobrança da recarga da loja pré-paga (o Asaas exige CPF/CNPJ); sem avisos do Asaas para a loja. */
+    public function criarCliente(string $nome, string $documento, string $referencia): RespostaAsaas
+    {
+        return $this->chamar('POST', '/customers', [
+            'name'                 => $nome,
+            'cpfCnpj'              => $documento,
+            'externalReference'    => $referencia,
+            'notificationDisabled' => true,
+        ]);
+    }
+
+    /** Cobrança Pix (a recarga da loja pré-paga); o QR code sai no qrCodePix. */
+    public function criarCobrancaPix(string $cliente, float $valor, string $vencimento, string $descricao, string $referencia): RespostaAsaas
+    {
+        return $this->chamar('POST', '/payments', [
+            'customer'          => $cliente,
+            'billingType'       => 'PIX',
+            'value'             => round($valor, 2),
+            'dueDate'           => $vencimento,
+            'description'       => $descricao,
+            'externalReference' => $referencia,
+        ]);
+    }
+
+    public function qrCodePix(string $id): RespostaAsaas
+    {
+        return $this->chamar('GET', '/payments/' . rawurlencode($id) . '/pixQrCode');
+    }
+
+    public function cobranca(string $id): RespostaAsaas
+    {
+        return $this->chamar('GET', '/payments/' . rawurlencode($id));
+    }
+
+    /** As cobranças com este externalReference (a recarga que ficou sem o id do Asaas). */
+    public function cobrancasDaReferencia(string $referencia): RespostaAsaas
+    {
+        return $this->chamar('GET', '/payments?externalReference=' . rawurlencode($referencia) . '&limit=10');
+    }
+
+    /** Apaga (cancela) a cobrança: o QR code deixa de valer. A cobrança já paga o Asaas não apaga. */
+    public function apagarCobranca(string $id): RespostaAsaas
+    {
+        return $this->chamar('DELETE', '/payments/' . rawurlencode($id));
+    }
+
     /** A wallet da conta: o primeiro item do GET /wallets; null se não veio. */
     public static function walletDa(RespostaAsaas $resposta): ?string
     {
@@ -76,7 +122,11 @@ class AsaasCliente
                 ->withOptions(['allow_redirects' => false])
                 ->acceptJson()
                 ->timeout(static::TEMPO_LIMITE);
-            $resposta = $metodo === 'POST' ? $pedido->post($url, $dados ?? []) : $pedido->get($url);
+            $resposta = match ($metodo) {
+                'POST'   => $pedido->post($url, $dados ?? []),
+                'DELETE' => $pedido->delete($url),
+                default  => $pedido->get($url),
+            };
         } catch (\Throwable $e) {
             Log::warning('[entregas] saque: Asaas sem resposta', ['caminho' => strtok($caminho, '?'), 'erro' => get_class($e)]);
 

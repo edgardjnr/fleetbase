@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Entregas;
 use App\Http\Controllers\Controller;
 use App\Support\Entregas\Ifood\ClienteIfood;
 use App\Support\Entregas\Ifood\VinculosIfood;
+use App\Support\Entregas\PrePago\PrePago;
 use Fleetbase\FleetOps\Exceptions\CustomerUserConflictException;
 use Fleetbase\FleetOps\Exceptions\UserAlreadyExistsException;
 use Fleetbase\FleetOps\Models\Contact;
@@ -42,6 +43,9 @@ class LojasController extends Controller
     /** Situação do iFood das lojas da listagem, lida de uma vez no index (uuid do Vendor => resumo). */
     protected array $resumosIfood = [];
 
+    /** Modelo de cobrança das lojas da listagem, lido de uma vez no index (uuid do Vendor => linha de entregas_carteiras_lojas). */
+    protected array $carteiras = [];
+
     public function index(Request $request)
     {
         if ($erro = $this->negarSeNaoAdmin($request)) {
@@ -53,6 +57,8 @@ class LojasController extends Controller
         $lojas->loadMissing('vendorPersonnel.contact.anyUser');
         // o vínculo com o iFood de todas as lojas, de uma vez
         $this->resumosIfood = VinculosIfood::resumos($lojas->pluck('uuid')->all());
+        // o modelo de cobrança (pré/pós-pago) de todas as lojas, de uma vez
+        $this->carteiras = $this->carteirasDaEmpresa();
 
         return response()->json([
             'lojas'        => $lojas->map(fn ($vendor) => $this->formatar($vendor))->values(),
@@ -68,19 +74,24 @@ class LojasController extends Controller
         }
         $dados = $this->validarLoja($request);
 
-        $vendor = DB::transaction(function () use ($dados) {
-            $vendor = Vendor::create([
-                'company_uuid' => session('company'),
-                'name'         => $dados['nome'],
-                'phone'        => $dados['telefone'] ?? null,
-                'type'         => static::TIPO_LOJA,
-                'status'       => 'active',
-            ]);
-            $place = $this->salvarEndereco($vendor, null, $dados);
-            $vendor->update(['place_uuid' => $place->uuid]);
+        try {
+            $vendor = DB::transaction(function () use ($dados, $request) {
+                $vendor = Vendor::create([
+                    'company_uuid' => session('company'),
+                    'name'         => $dados['nome'],
+                    'phone'        => $dados['telefone'] ?? null,
+                    'type'         => static::TIPO_LOJA,
+                    'status'       => 'active',
+                ]);
+                $place = $this->salvarEndereco($vendor, null, $dados);
+                $vendor->update(['place_uuid' => $place->uuid]);
+                $this->salvarCobranca($vendor, $dados, $request);
 
-            return $vendor;
-        });
+                return $vendor;
+            });
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['errors' => [$e->getMessage()]], 422);
+        }
 
         return response()->json(['loja' => $this->formatar($vendor->refresh())]);
     }
@@ -93,14 +104,19 @@ class LojasController extends Controller
         $vendor = $this->acharLoja($id);
         $dados  = $this->validarLoja($request);
 
-        DB::transaction(function () use ($vendor, $dados) {
-            $vendor->update(['name' => $dados['nome'], 'phone' => $dados['telefone'] ?? null]);
-            $atual = $vendor->place_uuid ? Place::where('uuid', $vendor->place_uuid)->first() : null;
-            $place = $this->salvarEndereco($vendor, $atual, $dados);
-            if ($vendor->place_uuid !== $place->uuid) {
-                $vendor->update(['place_uuid' => $place->uuid]);
-            }
-        });
+        try {
+            DB::transaction(function () use ($vendor, $dados, $request) {
+                $vendor->update(['name' => $dados['nome'], 'phone' => $dados['telefone'] ?? null]);
+                $atual = $vendor->place_uuid ? Place::where('uuid', $vendor->place_uuid)->first() : null;
+                $place = $this->salvarEndereco($vendor, $atual, $dados);
+                if ($vendor->place_uuid !== $place->uuid) {
+                    $vendor->update(['place_uuid' => $place->uuid]);
+                }
+                $this->salvarCobranca($vendor, $dados, $request);
+            });
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['errors' => [$e->getMessage()]], 422);
+        }
 
         return response()->json(['loja' => $this->formatar($vendor->refresh())]);
     }
@@ -254,7 +270,12 @@ class LojasController extends Controller
             'endereco.country'      => ['nullable', 'string', 'size:2'],
             'endereco.latitude'     => ['required', 'numeric', 'between:-34,6', 'not_in:0'],
             'endereco.longitude'    => ['required', 'numeric', 'between:-74,-34', 'not_in:0'],
+            // modelo de cobrança (só o administrador do sistema chega aqui): sem o campo, fica como está
+            'cobranca.modelo'       => ['nullable', 'in:pos,pre'],
+            'cobranca.documento'    => ['nullable', 'string', 'max:20'],
         ], [
+            'cobranca.modelo.in'          => 'Escolha o modelo de cobrança: pré-pago ou pós-pago.',
+            'cobranca.documento.max'      => 'CPF ou CNPJ inválido.',
             'endereco.latitude.required'  => 'Informe a latitude do endereço da loja.',
             'endereco.latitude.numeric'   => 'A latitude precisa ser um número.',
             'endereco.latitude.between'   => 'Latitude fora do Brasil: confira se latitude e longitude não estão trocadas.',
@@ -366,7 +387,47 @@ class LojasController extends Controller
             ])->values(),
             // vínculo com o iFood: situacao (vinculada | vinculo_perdido | null), nome da loja no iFood e merchant_id; nunca os tokens
             'ifood'    => $this->resumoIfood($vendor),
+            // modelo de cobrança: pos (faturas) ou pre (carteira recarregada por Pix) e o CPF/CNPJ (só dígitos) da loja
+            'cobranca' => $this->cobrancaDaLoja($vendor),
         ];
+    }
+
+    /** Grava o modelo de cobrança e o documento, só quando a tela mandou o modelo (\InvalidArgumentException → 422). */
+    protected function salvarCobranca(Vendor $vendor, array $dados, Request $request): void
+    {
+        $modelo = $dados['cobranca']['modelo'] ?? null;
+        if ($modelo === null) {
+            return;
+        }
+        $usuario = Auth::getUserFromSession($request);
+        PrePago::definir((string) session('company'), (string) $vendor->uuid, $modelo, $dados['cobranca']['documento'] ?? null, $usuario?->uuid);
+    }
+
+    protected function cobrancaDaLoja(Vendor $vendor): array
+    {
+        // no index, as linhas já lidas; no store/update (uma loja), a linha relida depois de gravar
+        $linha = $this->carteiras[$vendor->uuid] ?? ($this->carteiras === [] ? $this->carteirasDaEmpresa()[$vendor->uuid] ?? null : null);
+
+        return [
+            'modelo'    => ($linha->modelo ?? null) === PrePago::PRE ? PrePago::PRE : PrePago::POS,
+            'documento' => $linha->documento ?? null,
+        ];
+    }
+
+    /** As linhas de entregas_carteiras_lojas da empresa (loja_uuid => linha); sem a tabela, nenhuma. */
+    protected function carteirasDaEmpresa(): array
+    {
+        try {
+            $linhas = DB::table(PrePago::CARTEIRAS)->where('company_uuid', session('company'))->get();
+        } catch (\Throwable $e) {
+            return [];
+        }
+        $porLoja = [];
+        foreach ($linhas as $linha) {
+            $porLoja[(string) $linha->loja_uuid] = $linha;
+        }
+
+        return $porLoja;
     }
 
     protected function resumoIfood(Vendor $vendor): array

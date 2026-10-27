@@ -268,6 +268,21 @@ fleet-ops:
         chave-copiar: Clique na chave para copiar.
         chave-onde: 'No RestaurantePro: Configurações de delivery → "Entregas por" → Entregas RestaurantePro → cole a chave e conecte.'
         ja-copiei: Já copiei
+      cobranca:
+        titulo: Cobrança
+        label: 'Cobrança:'
+        modelo: Modelo de cobrança
+        pos: Pós-pago (fatura)
+        pre: Pré-pago (crédito por Pix)
+        ajuda: 'Pós-pago: as corridas entram na fatura e a loja paga depois. Pré-pago: a loja recarrega a carteira por Pix no portal e cada corrida sai do crédito; sem crédito, o portal não deixa criar pedido novo (os pedidos do iFood continuam entrando e o saldo fica negativo).'
+        ajuda-pre: 'O Pix da recarga cai na conta Asaas da central, a mesma do saque Pix dos motoboys: ela precisa estar conectada em Financeiro → Configurações. O CPF ou CNPJ é obrigatório, porque o Pix sai no nome da loja.'
+        documento: CPF ou CNPJ
+        documento-gravado: 'Em branco, continua o documento gravado ({documento}).'
+        documento-invalido: CPF ou CNPJ inválido.
+        documento-obrigatorio: 'Informe o CPF ou CNPJ da loja: o Pix da recarga sai no nome dela.'
+        modelo-invalido: Escolha o modelo de cobrança (pré-pago ou pós-pago).
+        selo-pre: Pré-pago
+        selo-pos: Pós-pago
     financeiro-lojas:
       admin-only: O financeiro é só para administradores.
       title: Lojas e faturas
@@ -305,6 +320,11 @@ fleet-ops:
       registrar-recebimento: Registrar recebimento
       sem-faturas: Nenhuma fatura com esse filtro.
       sem-lojas: Nenhuma loja cadastrada.
+      sem-lojas-pos: Nenhuma loja pós-paga. As pré-pagas não têm fatura nem ciclo.
+      pre-pago: Pré-pago
+      pre-pago-ajuda: 'Pré-pago, sem fatura: as corridas saem do crédito da carteira.'
+      carteira-credito: 'Crédito {valor}'
+      carteira-devendo: 'Devendo {valor}'
       sem-email: Sem e-mail para receber a fatura
       editar-ciclo: Editar ciclo
       ciclo-de: 'Ciclo de cobrança de {nome}'

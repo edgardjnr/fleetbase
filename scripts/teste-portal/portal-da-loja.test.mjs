@@ -81,4 +81,23 @@ test('números do Início: textos prontos, "–" sem dado', () => {
     assert.deepEqual([vazio.pedidosHoje, vazio.noPrazo, vazio.tempoMedio, vazio.aPagar, vazio.entregasDoCiclo], ['–', '–', '–', '–', null]);
     assert.equal(numerosDoInicio({ no_prazo: null, tempo_medio_min: null }, { valor: 0, entregas: 0 }).noPrazo, '–', 'sem entregue com prazo');
     assert.equal(numerosDoInicio({}, { valor: 0, entregas: 0 }).aPagar.replace(/\s/g, ' '), 'R$ 0,00', 'ciclo zerado mostra R$ 0,00');
+    assert.deepEqual([vazio.prePaga, vazio.creditoDisponivel, vazio.semCredito], [false, '–', false], 'sem resumo: pós-paga');
+});
+
+test('números do Início: a loja pré-paga mostra o crédito disponível; a pós-paga continua no ciclo', () => {
+    const pos = numerosDoInicio({ pedidos_hoje: 3, carteira: { modelo: 'pos' } }, { valor: 40, entregas: 4 });
+    assert.equal(pos.prePaga, false);
+    assert.equal(pos.aPagar.replace(/\s/g, ' '), 'R$ 40,00');
+    assert.equal(pos.semCredito, false);
+
+    const pre = numerosDoInicio({ pedidos_hoje: 3, carteira: { modelo: 'pre', credito: 120, reservado: 20, disponivel: '100.50', pode_pedir: true } }, null);
+    assert.equal(pre.prePaga, true);
+    assert.equal(pre.creditoDisponivel.replace(/\s/g, ' '), 'R$ 100,50');
+    assert.equal(pre.semCredito, false);
+    assert.equal(pre.pedidosHoje, '3', 'os outros números não mudam');
+
+    const semCredito = numerosDoInicio({ carteira: { modelo: 'pre', credito: -12, reservado: 0, disponivel: -12, pode_pedir: false } }, null);
+    assert.equal(semCredito.creditoDisponivel.replace(/\s/g, ' '), '-R$ 12,00');
+    assert.equal(semCredito.semCredito, true);
+    assert.equal(numerosDoInicio({ carteira: { modelo: 'pre' } }, null).creditoDisponivel, '–', 'pré-paga sem o número');
 });

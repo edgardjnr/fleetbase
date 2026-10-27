@@ -4,6 +4,7 @@ namespace App\Support\Entregas\Saques;
 
 use App\Support\Entregas\Financeiro\ChavePix;
 use App\Support\Entregas\Financeiro\Financeiro;
+use App\Support\Entregas\PrePago\PrePago;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -166,9 +167,23 @@ final class ConexaoAsaas
             if ($emAndamento) {
                 throw new \InvalidArgumentException('Há saque em andamento; espere ele terminar.');
             }
+            // sem a chave, ninguém confere o Pix de recarga de uma loja pré-paga (o dinheiro entraria sem crédito)
+            if (static::temRecargaEmAndamento($companyUuid)) {
+                throw new \InvalidArgumentException('Há Pix de recarga de loja aguardando pagamento; espere ele expirar.');
+            }
             DB::table(Saque::CONEXOES)->where('company_uuid', $companyUuid)->delete();
         });
         Log::info('[entregas] saque: conta Asaas desconectada', ['empresa' => $companyUuid, 'por' => $usuarioUuid]);
+    }
+
+    /** Recarga de loja pré-paga criando ou aguardando na central (sem a tabela, API antes da migration: nenhuma). */
+    private static function temRecargaEmAndamento(string $companyUuid): bool
+    {
+        try {
+            return DB::table(PrePago::RECARGAS)->where('company_uuid', $companyUuid)->whereIn('situacao', PrePago::EM_ANDAMENTO)->exists();
+        } catch (QueryException $e) {
+            return false;
+        }
     }
 
     /** Gera o token da validação (devolvido só aqui). Token novo apaga a validação testada e desliga o saque. */

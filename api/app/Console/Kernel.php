@@ -61,6 +61,9 @@ class Kernel extends ConsoleKernel
         $schedule->command('entregas:financeiro-rascunhos')->dailyAt('00:30')->when(fn () => Financeiro::ligada())->withoutOverlapping(30)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
         // saque Pix do motoboy: acompanha no Asaas as transferências em andamento (AcompanhamentoDeSaques)
         $schedule->command('entregas:saques-conferir')->everyMinute()->when(fn () => Saque::ligada())->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
+        // loja pré-paga: confere no Asaas os Pix de recarga (RecargasConferir). Sem when(): roda mesmo com ENTREGAS_RECARGA
+        // desligada, porque um Pix já gerado precisa virar crédito
+        $schedule->command('entregas:recargas-conferir')->everyMinute()->withoutOverlapping(5)->runInBackground()->appendOutputTo(static::SAIDA_DO_CONTAINER);
 
         // corridas do sistema (relatório do dono, todas as organizações): grava as que o observador não gravou e, na
         // primeira vez (até a importação terminar inteira), o histórico (CorridasConferir). Sem when(): não depende da chave

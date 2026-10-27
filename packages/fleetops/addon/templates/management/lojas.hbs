@@ -141,6 +141,59 @@
                     </div>
 
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">{{t "fleet-ops.ui.lojas.coordinates-help"}}</p>
+
+                    {{! Entregas: modelo de cobrança (pós-pago = fatura; pré-pago = crédito da carteira por Pix) e o CPF/CNPJ da loja. Regras no servidor: api/app/Support/Entregas/PrePago }}
+                    <fieldset class="mt-5 border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <legend class="text-sm font-semibold dark:text-white pr-2">{{t "fleet-ops.ui.lojas.cobranca.titulo"}}</legend>
+                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                            <div class="md:col-span-4 space-y-2" role="radiogroup" aria-label={{t "fleet-ops.ui.lojas.cobranca.modelo"}}>
+                                <label class="flex items-start gap-2 text-sm dark:text-gray-100 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="entregas-cobranca-modelo"
+                                        value="pos"
+                                        class="form-radio mt-0.5"
+                                        checked={{eq this.editando.modelo "pos"}}
+                                        {{on "change" (fn this.setCampoLoja "modelo")}}
+                                    />
+                                    <span>{{t "fleet-ops.ui.lojas.cobranca.pos"}}</span>
+                                </label>
+                                <label class="flex items-start gap-2 text-sm dark:text-gray-100 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="entregas-cobranca-modelo"
+                                        value="pre"
+                                        class="form-radio mt-0.5"
+                                        checked={{eq this.editando.modelo "pre"}}
+                                        {{on "change" (fn this.setCampoLoja "modelo")}}
+                                    />
+                                    <span>{{t "fleet-ops.ui.lojas.cobranca.pre"}}</span>
+                                </label>
+                            </div>
+                            <InputGroup @name={{t "fleet-ops.ui.lojas.cobranca.documento"}} @required={{this.preEmEdicao}} @wrapperClass="mb-0 md:col-span-2" as |id|>
+                                <input
+                                    id={{id}}
+                                    type="text"
+                                    inputmode="numeric"
+                                    maxlength={{this.tamanhoMaximoDoDocumento}}
+                                    autocomplete="off"
+                                    placeholder="00.000.000/0000-00"
+                                    class="form-input form-input-sm w-full"
+                                    value={{this.editando.documento}}
+                                    {{on "input" (fn this.setCampoLoja "documento")}}
+                                    {{on "blur" this.formatarDocumentoDigitado}}
+                                />
+                            </InputGroup>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">{{t "fleet-ops.ui.lojas.cobranca.ajuda"}}</p>
+                        {{#if this.preEmEdicao}}
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{t "fleet-ops.ui.lojas.cobranca.ajuda-pre"}}</p>
+                        {{/if}}
+                        {{#if this.documentoGravadoMascarado}}
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{t "fleet-ops.ui.lojas.cobranca.documento-gravado" documento=this.documentoGravadoMascarado}}</p>
+                        {{/if}}
+                    </fieldset>
+
                     {{#each this.dicasLoja as |dica|}}
                         <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-1">{{dica}}</p>
                     {{/each}}
@@ -205,6 +258,18 @@
                                         <span class="text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.ifood.none"}}</span>
                                     {{/if}}
                                 {{/let}}
+                            </div>
+                            {{! Entregas: modelo de cobrança ("Pré-pago" com o CPF/CNPJ mascarado, ou "Pós-pago") }}
+                            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                                <span class="text-gray-500 dark:text-gray-400">{{t "fleet-ops.ui.lojas.cobranca.label"}}</span>
+                                {{#if (eq (this.modeloDoCard loja) "pre")}}
+                                    <span class="font-medium rounded px-2 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">{{t "fleet-ops.ui.lojas.cobranca.selo-pre"}}</span>
+                                    {{#if loja.cobranca.documento}}
+                                        <span class="font-mono text-gray-600 dark:text-gray-300">{{this.documentoMascarado loja}}</span>
+                                    {{/if}}
+                                {{else}}
+                                    <span class="font-medium rounded px-2 py-0.5 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200">{{t "fleet-ops.ui.lojas.cobranca.selo-pos"}}</span>
+                                {{/if}}
                             </div>
                             {{! Entregas: integração de pedidos de outros sistemas (RestaurantePro…): chave da loja, situação e falha do último aviso }}
                             <Loja::Integracao @loja={{loja}} />

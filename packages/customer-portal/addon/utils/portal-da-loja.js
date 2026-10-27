@@ -4,6 +4,7 @@
  * (scripts/teste-portal/portal-da-loja.test.mjs).
  */
 import { numeroDoResumo } from './gaveta-do-menu';
+import { resumoDaCarteira } from './carteira-da-loja';
 
 /** Status do pedido que já saiu da loja: o SituacaoDoMotoboy::STATUS_EM_ENTREGA do servidor (o capacete vermelho). */
 export const STATUS_EM_ENTREGA = ['enroute', 'picked_up', 'dropping_off', 'in_progress'];
@@ -122,14 +123,21 @@ function inteiro(valor) {
 /**
  * Os seis números do Início (resposta de `entregas/loja/resumo-do-dia` e o `ciclo_atual` de `entregas/loja/financeiro`),
  * já como texto. Sem dado: "–". O `detalhe` de cada um é a chave de tradução e os parâmetros, montados no componente.
+ * Na loja pré-paga (`resumo.carteira.modelo === 'pre'`), o sexto número é o crédito disponível (`creditoDisponivel`, do
+ * `resumo.carteira.disponivel`) em vez do a pagar no ciclo; `semCredito` acende quando o servidor disse que ela não pode
+ * pedir.
  */
 export function numerosDoInicio(resumo, ciclo) {
     const noPrazo = inteiro(resumo?.no_prazo);
     const tempo = inteiro(resumo?.tempo_medio_min);
     const valor = Number(ciclo?.valor);
     const entregasDoCiclo = inteiro(ciclo?.entregas);
+    const carteira = resumoDaCarteira(resumo?.carteira);
 
     return {
+        prePaga: carteira !== null,
+        creditoDisponivel: carteira && carteira.disponivel !== null ? REAIS.format(carteira.disponivel) : '–',
+        semCredito: carteira !== null && !carteira.podePedir,
         pedidosHoje: numeroDoResumo(resumo?.pedidos_hoje),
         emAndamento: numeroDoResumo(resumo?.em_andamento),
         entregues: numeroDoResumo(resumo?.entregues_hoje),

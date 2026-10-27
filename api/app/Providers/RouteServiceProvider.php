@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\Entregas\CarteiraDaLojaController;
 use App\Http\Controllers\Entregas\ComprovantesController;
 use App\Http\Controllers\Entregas\ConversasDaLojaController;
 use App\Http\Controllers\Entregas\CorridasDoSistemaController;
@@ -104,6 +105,15 @@ class RouteServiceProvider extends ServiceProvider
         // Entregas RestaurantePro: chat da loja com os motoboys no portal (a lista a cada 20 s e a conversa aberta a cada 5 s, por
         // aba), até 120 chamadas por minuto por usuário, num balde separado das outras rotas da loja
         RateLimiter::for('entregas-loja-conversas', fn (Request $request) => Limit::perMinute(120)->by('entregas-loja-conversas:' . (session('user') ?: $request->ip())));
+
+        // Entregas RestaurantePro: "Minha carteira" da loja pré-paga. A leitura (o portal pergunta a cada 5 s com o QR na
+        // tela) até 60 por minuto por usuário; pedir e cancelar o Pix, cada um cria ou apaga uma cobrança no Asaas da
+        // central, até 6 por minuto por usuário e 20 por minuto por IP
+        RateLimiter::for('entregas-loja-carteira', fn (Request $request) => Limit::perMinute(60)->by('entregas-loja-carteira:' . (session('user') ?: $request->ip())));
+        RateLimiter::for('entregas-loja-recarga', fn (Request $request) => [
+            Limit::perMinute(6)->by('entregas-loja-recarga:' . (session('user') ?: $request->ip())),
+            Limit::perMinute(20)->by('entregas-loja-recarga-ip:' . $request->ip()),
+        ]);
 
         // Entregas RestaurantePro: traçado da rota no mapa do pedido do app (cada card de pedido da lista pede o seu), até 120
         // chamadas por minuto por motoboy, num balde separado do entregas-motoboy (ganhos e valor)
@@ -278,6 +288,11 @@ class RouteServiceProvider extends ServiceProvider
                         // Financeiro da loja: ciclo em andamento e faturas emitidas e canceladas; o detalhe de uma fatura (uuid)
                         Route::get('loja/financeiro', [PortalLojaController::class, 'financeiro'])->middleware('throttle:60,1');
                         Route::get('loja/faturas/{id}', [PortalLojaController::class, 'fatura'])->middleware('throttle:60,1');
+                        // "Minha carteira" da loja pré-paga: crédito, recarga por Pix (cobrança no Asaas da central) e cancelamento
+                        Route::get('loja/carteira', [CarteiraDaLojaController::class, 'index'])->middleware('throttle:entregas-loja-carteira');
+                        Route::get('loja/carteira/recargas/{id}', [CarteiraDaLojaController::class, 'mostrar'])->middleware('throttle:entregas-loja-carteira');
+                        Route::post('loja/carteira/recargas', [CarteiraDaLojaController::class, 'pedir'])->middleware('throttle:entregas-loja-recarga');
+                        Route::delete('loja/carteira/recargas/{id}', [CarteiraDaLojaController::class, 'cancelar'])->middleware('throttle:entregas-loja-recarga');
 
                         // chat da loja com os motoboys (a central participa; o motoboy conversa pelo app)
                         Route::middleware('throttle:entregas-loja-conversas')->group(function () {
