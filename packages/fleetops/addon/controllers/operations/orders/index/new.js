@@ -70,8 +70,12 @@ export default class OperationsOrdersIndexNewController extends Controller {
             // Trigger created event
             this.universe.trigger('fleet-ops.order.created', createdOrder);
 
-            // Order creation completed
-            yield this.hostRouter.transitionTo('console.fleet-ops.operations.orders.index.details', createdOrder);
+            // Entregas: abre direto no mapa com a folha do pedido (sketch 008). Ir à rota de detalhes fazia o beforeModel
+            // dela redirecionar, e o yield recebia o TransitionAborted da transição trocada: o pedido era criado, mas o
+            // salvar mostrava "TransitionAborted" no lugar do aviso de sucesso.
+            yield this.hostRouter.transitionTo('console.fleet-ops.operations.orders.index', {
+                queryParams: { layout: 'map', pedido: createdOrder.public_id, de: null },
+            });
             this.notifications.success(this.intl.t('common.resource-created-success-name', { resource: this.intl.t('resource.order'), resourceName: createdOrder.tracking }));
         } catch (err) {
             console.error(err);

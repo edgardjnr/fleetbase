@@ -180,8 +180,12 @@ A com os lados invertidos, `.planning/sketches/005-tela-de-pedidos/`). As vistas
     (query params `pedido` e `de` do controller; a rota tira os dois da consulta da lista).
     - A rota antiga do detalhe do Fleetbase (`operations.orders.index.details`) **redireciona** para lá no
       `beforeModel`. Assim valem todos os lugares que abriam o painel: Tabela, Quadro, Início, avisos (pedido sem
-      motoboy, ação recusada pelo iFood), Financeiro e o pedido novo. O `de` sai da transição
+      motoboy, ação recusada pelo iFood) e Financeiro. O `de` sai da transição
       (`origemDaTransicao`); o Quadro e o Início já mandam o `de` direto.
+    - **Quem espera a transição (`yield`/`await transitionTo`) não pode ir à rota de detalhes:** o redirecionamento
+      troca a transição e a promessa rejeita com `TransitionAborted`. Foi o que aconteceu no salvar do pedido novo
+      (2026-10-26: o pedido era criado, mas aparecia "TransitionAborted" no lugar do aviso de sucesso). Por isso o
+      `controllers/operations/orders/index/new.js` vai direto a `orders.index` com `?layout=map&pedido=<public_id>`.
     - A pílula "Voltar para a Tabela/o Quadro/o Início" (`voltarDoPedido`) volta à origem. O X fecha e fica no mapa.
       Trocar de vista fecha o pedido.
   - **Folha** (`tela-pedidos/pedido-aberto.*`, 440 px no lugar do painel Pedidos; no celular, dentro da folha de baixo,
