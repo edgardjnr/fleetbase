@@ -8,6 +8,9 @@ Extensões e bibliotecas incorporadas ao repo (eram submódulos; as cópias orig
 
 - **Mensagem lida** (2026-10-20): o recibo de leitura sai quando a mensagem aparece 90% na janela, ou ocupa 90% da altura dela no caso de mensagem longa (`ember-ui/addon/utils/chat-mensagem-vista.js`, usado no `components/chat-window/message.js`). O Fleetbase pedia 100% (`threshold: 1.0`), e a última mensagem ficava a fração de pixel da borda (99,66%): sem recibo, o ícone de não lida ficava aceso com a conversa aberta. O ícone apaga pelo evento `chat_receipt.created` do socket (conferido em produção). Teste: `scripts/teste-portal/chat-mensagem-vista.test.mjs`.
 
+- **Conversa nova sem aviso** (2026-10-27): a bandeja (`ember-ui/addon/components/chat-tray.js`) só escutava o canal `chat.<public_id>` das conversas que já existiam ao carregar a página (e das criadas pelo próprio usuário). Quando outra pessoa punha o usuário numa conversa (a loja abrindo a conversa com a central, ou a central voltando ao canal por uma mensagem nova, ver `ChatComACentral`/`ConversasDaLoja`), o `chat_participant.created` chegava no `user.<id>` e recarregava a lista, mas sem escutar o canal novo: nenhuma mensagem dela avisava até o Ctrl+R. Agora esse evento recarrega com `relisten: true` e toca o aviso se as não lidas subiram.
+- **Janela que fecha sozinha** (2026-10-27): a `chat-window` fechava em 300 ms quando o usuário não estava nos participantes do registro em memória, que pode estar velho (a central saiu e voltou ao canal). Agora ela recarrega os participantes (`reloadParticipants`) antes de decidir; só fecha se o servidor confirmar, com o warning `[entregas] chat: fora dos participantes da conversa; janela fechada` no console do navegador.
+
 ## Tradução pt-BR (convenções)
 
 O objetivo é que nenhum texto de interface apareça em inglês com pt-BR selecionado. O inglês continua funcionando.

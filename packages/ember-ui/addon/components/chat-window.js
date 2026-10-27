@@ -49,18 +49,35 @@ export default class ChatWindowComponent extends Component {
         super(...arguments);
         this.channel = channel;
         this.sender = this.getSenderFromParticipants(channel);
-        // if not participant close window
-        if (!this.sender) {
-            return later(
-                this,
-                () => {
-                    this.chat.closeChannel(channel);
-                },
-                300
-            );
+        if (this.sender) {
+            this.iniciar();
+            return;
         }
 
-        this.listenChatChannel(channel);
+        // Entregas: a lista em memória pode estar velha (ex.: a central voltou à conversa por uma mensagem nova da loja);
+        // antes de fechar a janela, confere os participantes no servidor. Sem isso, a conversa "não abria" até o Ctrl+R
+        channel
+            .reloadParticipants()
+            .then(() => {
+                if (this.isDestroying || this.isDestroyed) {
+                    return;
+                }
+
+                this.sender = this.getSenderFromParticipants(channel);
+                if (this.sender) {
+                    this.iniciar();
+                } else {
+                    console.warn('[entregas] chat: fora dos participantes da conversa; janela fechada', channel.public_id);
+                    this.chat.closeChannel(channel);
+                }
+            })
+            .catch(() => {
+                later(this, () => this.chat.closeChannel(channel), 300);
+            });
+    }
+
+    iniciar() {
+        this.listenChatChannel(this.channel);
         this.loadAvailableUsers.perform();
         this.chat.on('chat.closed', this.handleChatClosed.bind(this));
         this.isVisible = true;
