@@ -826,6 +826,86 @@ customer-portal:
         canceled-notice: Esta fatura foi cancelada. As entregas dela voltam para a próxima fatura.
         overdue-notice: "Esta fatura venceu em {data} e ainda tem {valor} em aberto."
         printed-at: "Impresso em {data}"
+      integracoes:
+        menu: Integrações
+        titulo: Integrações
+        subtitulo: Conecte os sistemas da sua loja. Os pedidos de entrega chegam sozinhos aos motoboys, sem digitar nada.
+        total-conectadas: "{n, plural, =0 {Nenhuma conectada} one {# conectada} other {# conectadas}}"
+        rodape: Você mesmo conecta e desconecta quando quiser. Na dúvida, fale com a central.
+        voltar: Todas as integrações
+        conectar: Conectar
+        desconectar: Desconectar
+        manter: Manter conectada
+        indisponivel-texto: Esta integração não está disponível agora. Fale com a central.
+        selo:
+          conectada: Conectada
+          aguardando: Falta um passo
+          atencao: Precisa de atenção
+          desconectada: Não conectada
+          indisponivel: Indisponível
+        acao:
+          gerenciar: Gerenciar
+          continuar: Continuar
+          reconectar: Conectar de novo
+          conectar: Conectar
+          ver: Ver
+        detalhe:
+          loja-no-ifood: "Loja no iFood: {loja}"
+          aguardando: "Cole a chave no {sistema} para terminar."
+          atencao: A conexão caiu. Conecte de novo.
+          ultimo-pedido:
+            agora: Último pedido agora há pouco
+            minutos: "Último pedido há {n} min"
+            horas: "Último pedido há {n} h"
+            dias: "{n, plural, one {Último pedido há # dia} other {Último pedido há # dias}}"
+        sistemas:
+          ifood:
+            descricao: Os pedidos de entrega do iFood da sua loja chegam direto aos motoboys.
+          restaurantepro:
+            descricao: Os pedidos de delivery do cardápio do RestaurantePro chegam direto aos motoboys.
+            onde-colar: 'No RestaurantePro, abra Configurações de delivery → "Entregas por" → Entregas RestaurantePro, cole a chave e toque em Conectar.'
+        ifood:
+          passo-1: 1. Gere o código de conexão
+          passo-1-texto: O código vale 10 minutos.
+          gerar-codigo: Gerar código
+          vence-em: "Vale por mais {tempo}"
+          venceu: O código venceu. Gere outro.
+          novo-codigo: Gerar outro código
+          abrir-portal: Abrir o Portal do Parceiro iFood
+          passo-2: 2. Autorize no iFood
+          passo-2-texto: No Portal do Parceiro, entre com a conta da sua loja e autorize o Entregas RestaurantePro. O iFood mostra um código de autorização. Copie esse código.
+          passo-3: 3. Cole aqui o código de autorização
+          autorizacao-exemplo: Código de autorização do iFood
+          escolher: Sua conta do iFood tem mais de uma loja. Qual delas é esta?
+          caiu: A conexão com o iFood caiu e os pedidos pararam de chegar. Faça os passos abaixo para conectar de novo.
+          pronto-titulo: Conectada ao iFood
+          pronto-texto: Os pedidos de entrega do iFood da sua loja chegam sozinhos aos motoboys. Você continua aceitando e cancelando pedidos no Gestor de Pedidos do iFood.
+          confirmar-saida: Os pedidos do iFood param de chegar ao Entregas. Para voltar, você vai precisar conectar de novo. Desconectar?
+          conectada: iFood conectado. Os próximos pedidos já chegam aqui.
+          desconectada: iFood desconectado.
+        chave:
+          passo-1: 1. Gere a chave da sua loja
+          passo-1-texto: "A chave liga o {sistema} à sua loja no Entregas."
+          gerar: Gerar chave
+          gerada: "Chave terminada em {final} gerada."
+          passo-2: "2. Cole a chave no {sistema}"
+          passo-3: 3. Pronto
+          passo-3-texto: "O {sistema} conecta sozinho e esta tela passa a mostrar Conectada."
+          onde-colar-padrao: "Cole a chave na tela de integrações do {sistema}."
+          onde-colar-titulo: "Onde colar no {sistema}"
+          copie-agora: "Copie a chave agora: ela não aparece de novo. Clique nela para copiar."
+          esperando: "Esperando o {sistema} conectar…"
+          ja-colei: Já colei a chave
+          perdeu: Perdeu a chave? Gere outra. A anterior para de funcionar na hora.
+          pronto-titulo: "Conectada ao {sistema}"
+          pronto-texto: "Os pedidos de delivery do {sistema} chegam sozinhos aos motoboys."
+          final: "Chave terminada em {final}"
+          falha-aviso: "O {sistema} não recebeu a última atualização de um pedido ({motivo}). Se continuar, fale com a central."
+          gerar-outra: Gerar outra chave
+          confirmar-gerar: "A chave atual para de funcionar na hora, e o {sistema} para de mandar pedidos até você colar a nova. Gerar outra?"
+          confirmar-saida: "O {sistema} para de mandar pedidos ao Entregas. Para voltar, gere uma chave nova e cole no {sistema}. Desconectar?"
+          conectada: "{sistema} conectado. Os próximos pedidos já chegam aqui."
+          desconectada: "{sistema} desconectado."
 
 menu-text:
   customer-portal:

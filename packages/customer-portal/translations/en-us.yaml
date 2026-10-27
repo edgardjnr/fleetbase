@@ -826,6 +826,86 @@ customer-portal:
         canceled-notice: This invoice was canceled. Its deliveries go back into the next invoice.
         overdue-notice: "This invoice was due on {data} and still has {valor} outstanding."
         printed-at: "Printed on {data}"
+      integracoes:
+        menu: Integrations
+        titulo: Integrations
+        subtitulo: Connect your store's systems. Delivery orders reach the couriers on their own, with no typing.
+        total-conectadas: "{n, plural, =0 {None connected} one {# connected} other {# connected}}"
+        rodape: You connect and disconnect whenever you want. If in doubt, contact the dispatch center.
+        voltar: All integrations
+        conectar: Connect
+        desconectar: Disconnect
+        manter: Keep connected
+        indisponivel-texto: This integration is not available right now. Contact the dispatch center.
+        selo:
+          conectada: Connected
+          aguardando: One step left
+          atencao: Needs attention
+          desconectada: Not connected
+          indisponivel: Unavailable
+        acao:
+          gerenciar: Manage
+          continuar: Continue
+          reconectar: Reconnect
+          conectar: Connect
+          ver: View
+        detalhe:
+          loja-no-ifood: "iFood store: {loja}"
+          aguardando: "Paste the key in {sistema} to finish."
+          atencao: The connection dropped. Connect again.
+          ultimo-pedido:
+            agora: Last order just now
+            minutos: "Last order {n} min ago"
+            horas: "Last order {n} h ago"
+            dias: "{n, plural, one {Last order # day ago} other {Last order # days ago}}"
+        sistemas:
+          ifood:
+            descricao: Your store's iFood delivery orders go straight to the couriers.
+          restaurantepro:
+            descricao: Delivery orders from the RestaurantePro menu go straight to the couriers.
+            onde-colar: 'In RestaurantePro, open Delivery settings → "Delivered by" → Entregas RestaurantePro, paste the key and tap Connect.'
+        ifood:
+          passo-1: 1. Generate the connection code
+          passo-1-texto: The code is valid for 10 minutes.
+          gerar-codigo: Generate code
+          vence-em: "Valid for {tempo} more"
+          venceu: The code expired. Generate another one.
+          novo-codigo: Generate another code
+          abrir-portal: Open the iFood Partner Portal
+          passo-2: 2. Authorize on iFood
+          passo-2-texto: In the Partner Portal, sign in with your store's account and authorize Entregas RestaurantePro. iFood shows an authorization code. Copy that code.
+          passo-3: 3. Paste the authorization code here
+          autorizacao-exemplo: iFood authorization code
+          escolher: Your iFood account has more than one store. Which one is this?
+          caiu: The iFood connection dropped and orders stopped arriving. Follow the steps below to connect again.
+          pronto-titulo: Connected to iFood
+          pronto-texto: Your store's iFood delivery orders reach the couriers on their own. You still accept and cancel orders in the iFood Order Manager.
+          confirmar-saida: iFood orders will stop arriving at Entregas. To bring them back, you will need to connect again. Disconnect?
+          conectada: iFood connected. The next orders will arrive here.
+          desconectada: iFood disconnected.
+        chave:
+          passo-1: 1. Generate your store's key
+          passo-1-texto: "The key links {sistema} to your store on Entregas."
+          gerar: Generate key
+          gerada: "Key ending in {final} generated."
+          passo-2: "2. Paste the key in {sistema}"
+          passo-3: 3. Done
+          passo-3-texto: "{sistema} connects on its own and this screen shows Connected."
+          onde-colar-padrao: "Paste the key in the {sistema} integrations screen."
+          onde-colar-titulo: "Where to paste it in {sistema}"
+          copie-agora: "Copy the key now: it will not be shown again. Click it to copy."
+          esperando: "Waiting for {sistema} to connect…"
+          ja-colei: I pasted the key
+          perdeu: Lost the key? Generate another one. The previous one stops working right away.
+          pronto-titulo: "Connected to {sistema}"
+          pronto-texto: "Delivery orders from {sistema} reach the couriers on their own."
+          final: "Key ending in {final}"
+          falha-aviso: "{sistema} did not receive the latest update of an order ({motivo}). If it keeps happening, contact the dispatch center."
+          gerar-outra: Generate another key
+          confirmar-gerar: "The current key stops working right away, and {sistema} stops sending orders until you paste the new one. Generate another?"
+          confirmar-saida: "{sistema} will stop sending orders to Entregas. To come back, generate a new key and paste it in {sistema}. Disconnect?"
+          conectada: "{sistema} connected. The next orders will arrive here."
+          desconectada: "{sistema} disconnected."
 
 menu-text:
   customer-portal:

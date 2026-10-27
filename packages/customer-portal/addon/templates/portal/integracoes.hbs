@@ -1,0 +1,47 @@
+{{!-- Entregas: Integrações da loja (ver o controller). Sem `?sistema`, os cartões; com ele, a conexão daquele sistema --}}
+<Portal::ContentWrapper class="portal-page-card ps-int">
+    {{#if this.aberta}}
+        <button type="button" class="ps-int-voltar" {{on "click" this.voltar}}>
+            <FaIcon @icon="arrow-left" /><span>{{t "customer-portal.ui.entregas.integracoes.voltar"}}</span>
+        </button>
+
+        <div class="ps-int-detalhe">
+            <Portal::Integracoes::Cartao @integracao={{this.aberta}} @destaque={{true}} />
+
+            {{#if (eq this.aberta.fluxo "ifood")}}
+                <Portal::Integracoes::Ifood @integracao={{this.aberta}} @onMudou={{this.mudou}} />
+            {{else if (eq this.aberta.fluxo "chave")}}
+                <Portal::Integracoes::Chave @integracao={{this.aberta}} @onMudou={{this.mudou}} @onAtualizar={{perform this.reler}} />
+            {{else}}
+                <p class="ps-int-aviso">{{t "customer-portal.ui.entregas.integracoes.indisponivel-texto"}}</p>
+            {{/if}}
+        </div>
+    {{else}}
+        <div class="portal-section-header">
+            <div>
+                <h1>{{t "customer-portal.ui.entregas.integracoes.titulo"}}</h1>
+                <p class="ps-int-sub">{{t "customer-portal.ui.entregas.integracoes.subtitulo"}}</p>
+            </div>
+            {{#if this.integracoes}}
+                <span class="ps-int-total">{{t "customer-portal.ui.entregas.integracoes.total-conectadas" n=this.conectadas}}</span>
+            {{/if}}
+        </div>
+
+        {{#if this.integracoes}}
+            <div class="ps-int-grade">
+                {{#each this.cartoes key="id" as |integracao|}}
+                    <Portal::Integracoes::Cartao @integracao={{integracao}} @onAbrir={{this.abrir}} />
+                {{/each}}
+            </div>
+            <p class="ps-int-rodape"><FaIcon @icon="circle-info" /> {{t "customer-portal.ui.entregas.integracoes.rodape"}}</p>
+        {{else if this.carregar.isRunning}}
+            <div class="portal-empty-state portal-table-empty-state mt-5"><Spinner /></div>
+        {{else}}
+            {{! Entregas: a consulta falhou (o aviso do erro já apareceu); sobra o atalho para tentar de novo }}
+            <div class="portal-empty-state portal-table-empty-state mt-5">
+                <div class="portal-empty-state-icon"><FaIcon @icon="plug" /></div>
+                <Button @icon="rotate" @text={{t "customer-portal.ui.entregas.refresh"}} @onClick={{this.atualizar}} />
+            </div>
+        {{/if}}
+    {{/if}}
+</Portal::ContentWrapper>

@@ -1,0 +1,95 @@
+{{!-- Entregas: conexão de um sistema pela chave da loja (ver chave.js) --}}
+<div class="ps-int-fluxo">
+    {{#if this.chave}}
+        <div class="ps-int-chave">
+            <p class="ps-int-alerta" role="alert"><FaIcon @icon="triangle-exclamation" /> {{t "customer-portal.ui.entregas.integracoes.chave.copie-agora"}}</p>
+            <ClickToCopy @value={{this.chave}} class="ps-int-chave-valor">
+                <FaIcon @icon="copy" /><span>{{this.chave}}</span>
+            </ClickToCopy>
+            <p class="ps-int-passo-titulo">{{t "customer-portal.ui.entregas.integracoes.chave.onde-colar-titulo" sistema=this.nome}}</p>
+            <p>{{this.ondeColar}}</p>
+            <div class="ps-int-esperando"><Spinner /> <span>{{t "customer-portal.ui.entregas.integracoes.chave.esperando" sistema=this.nome}}</span></div>
+            <div class="ps-int-botoes">
+                <Button @icon="check" @text={{t "customer-portal.ui.entregas.integracoes.chave.ja-colei"}} @onClick={{this.fecharChave}} />
+            </div>
+        </div>
+    {{else if (eq this.estado "conectada")}}
+        <div class="ps-int-pronto">
+            <FaIcon @icon="circle-check" />
+            <div>
+                <b>{{t "customer-portal.ui.entregas.integracoes.chave.pronto-titulo" sistema=this.sistemaConectado}}</b>
+                <p>{{t "customer-portal.ui.entregas.integracoes.chave.pronto-texto" sistema=this.nome}}</p>
+                {{#if @integracao.chave_final}}
+                    <p class="ps-int-miudo">{{t "customer-portal.ui.entregas.integracoes.chave.final" final=@integracao.chave_final}}</p>
+                {{/if}}
+            </div>
+        </div>
+        {{#if @integracao.ultima_falha_aviso}}
+            <p class="ps-int-alerta"><FaIcon @icon="triangle-exclamation" /> {{t "customer-portal.ui.entregas.integracoes.chave.falha-aviso" sistema=this.nome motivo=@integracao.ultima_falha_aviso}}</p>
+        {{/if}}
+    {{else if (eq this.estado "aguardando")}}
+        <ol class="ps-int-passos">
+            <li class="ps-int-passo is-feito">
+                <b class="ps-int-passo-titulo">{{t "customer-portal.ui.entregas.integracoes.chave.passo-1"}}</b>
+                <p>{{t "customer-portal.ui.entregas.integracoes.chave.gerada" final=@integracao.chave_final}}</p>
+            </li>
+            <li class="ps-int-passo is-atual">
+                <b class="ps-int-passo-titulo">{{t "customer-portal.ui.entregas.integracoes.chave.passo-2" sistema=this.nome}}</b>
+                <p>{{this.ondeColar}}</p>
+            </li>
+            <li class="ps-int-passo">
+                <b class="ps-int-passo-titulo">{{t "customer-portal.ui.entregas.integracoes.chave.passo-3"}}</b>
+                <div class="ps-int-esperando"><Spinner /> <span>{{t "customer-portal.ui.entregas.integracoes.chave.esperando" sistema=this.nome}}</span></div>
+            </li>
+        </ol>
+        <p class="ps-int-miudo">{{t "customer-portal.ui.entregas.integracoes.chave.perdeu"}}</p>
+    {{else if (not this.disponivel)}}
+        <p class="ps-int-aviso">{{t "customer-portal.ui.entregas.integracoes.indisponivel-texto"}}</p>
+    {{else}}
+        <ol class="ps-int-passos">
+            <li class="ps-int-passo is-atual">
+                <b class="ps-int-passo-titulo">{{t "customer-portal.ui.entregas.integracoes.chave.passo-1"}}</b>
+                <p>{{t "customer-portal.ui.entregas.integracoes.chave.passo-1-texto" sistema=this.nome}}</p>
+                <div class="ps-int-botoes">
+                    <Button @type="primary" @icon="key" @text={{t "customer-portal.ui.entregas.integracoes.chave.gerar"}} @isLoading={{this.gerar.isRunning}} @onClick={{perform this.gerar}} />
+                </div>
+            </li>
+            <li class="ps-int-passo">
+                <b class="ps-int-passo-titulo">{{t "customer-portal.ui.entregas.integracoes.chave.passo-2" sistema=this.nome}}</b>
+                <p>{{this.ondeColar}}</p>
+            </li>
+            <li class="ps-int-passo">
+                <b class="ps-int-passo-titulo">{{t "customer-portal.ui.entregas.integracoes.chave.passo-3"}}</b>
+                <p>{{t "customer-portal.ui.entregas.integracoes.chave.passo-3-texto" sistema=this.nome}}</p>
+            </li>
+        </ol>
+    {{/if}}
+
+    {{! Entregas: gerar outra chave e desconectar, quando já há uma chave (a confirmação fica na própria tela) }}
+    {{#if (and (not this.chave) (or (eq this.estado "conectada") (eq this.estado "aguardando")))}}
+        {{#if (eq this.confirmando "gerar")}}
+            <div class="ps-int-confirmar" role="alert">
+                <p>{{t "customer-portal.ui.entregas.integracoes.chave.confirmar-gerar" sistema=this.nome}}</p>
+                <div class="ps-int-botoes">
+                    <Button @type="primary" @icon="key" @text={{t "customer-portal.ui.entregas.integracoes.chave.gerar-outra"}} @isLoading={{this.gerar.isRunning}} @onClick={{perform this.gerar}} />
+                    <Button @text={{t "customer-portal.ui.entregas.integracoes.manter"}} @disabled={{this.gerar.isRunning}} @onClick={{this.cancelarConfirmacao}} />
+                </div>
+            </div>
+        {{else if (eq this.confirmando "desconectar")}}
+            <div class="ps-int-confirmar" role="alert">
+                <p>{{t "customer-portal.ui.entregas.integracoes.chave.confirmar-saida" sistema=this.nome}}</p>
+                <div class="ps-int-botoes">
+                    <Button @type="danger" @icon="link-slash" @text={{t "customer-portal.ui.entregas.integracoes.desconectar"}} @isLoading={{this.desconectar.isRunning}} @onClick={{perform this.desconectar}} />
+                    <Button @text={{t "customer-portal.ui.entregas.integracoes.manter"}} @disabled={{this.desconectar.isRunning}} @onClick={{this.cancelarConfirmacao}} />
+                </div>
+            </div>
+        {{else}}
+            <div class="ps-int-botoes">
+                {{#if this.disponivel}}
+                    <Button @icon="key" @text={{t "customer-portal.ui.entregas.integracoes.chave.gerar-outra"}} @onClick={{fn this.pedirConfirmacao "gerar"}} />
+                {{/if}}
+                <Button @icon="link-slash" @text={{t "customer-portal.ui.entregas.integracoes.desconectar"}} @onClick={{fn this.pedirConfirmacao "desconectar"}} />
+            </div>
+        {{/if}}
+    {{/if}}
+</div>

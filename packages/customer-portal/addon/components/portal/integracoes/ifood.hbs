@@ -1,0 +1,103 @@
+{{!-- Entregas: conexão do iFood pela própria loja (ver ifood.js) --}}
+<div class="ps-int-fluxo">
+    {{#if this.conectada}}
+        <div class="ps-int-pronto">
+            <FaIcon @icon="circle-check" />
+            <div>
+                <b>{{t "customer-portal.ui.entregas.integracoes.ifood.pronto-titulo"}}</b>
+                <p>{{t "customer-portal.ui.entregas.integracoes.ifood.pronto-texto"}}</p>
+            </div>
+        </div>
+
+        {{#if this.confirmandoSaida}}
+            <div class="ps-int-confirmar" role="alert">
+                <p>{{t "customer-portal.ui.entregas.integracoes.ifood.confirmar-saida"}}</p>
+                <div class="ps-int-botoes">
+                    <Button @type="danger" @icon="link-slash" @text={{t "customer-portal.ui.entregas.integracoes.desconectar"}} @isLoading={{this.desconectar.isRunning}} @onClick={{perform this.desconectar}} />
+                    <Button @text={{t "customer-portal.ui.entregas.integracoes.manter"}} @disabled={{this.desconectar.isRunning}} @onClick={{this.cancelarSaida}} />
+                </div>
+            </div>
+        {{else}}
+            <div class="ps-int-botoes">
+                <Button @icon="link-slash" @text={{t "customer-portal.ui.entregas.integracoes.desconectar"}} @onClick={{this.pedirConfirmacao}} />
+            </div>
+        {{/if}}
+    {{else if (not this.disponivel)}}
+        <p class="ps-int-aviso">{{t "customer-portal.ui.entregas.integracoes.indisponivel-texto"}}</p>
+    {{else}}
+        {{#if (eq this.estado "atencao")}}
+            <p class="ps-int-alerta" role="alert"><FaIcon @icon="triangle-exclamation" /> {{t "customer-portal.ui.entregas.integracoes.ifood.caiu"}}</p>
+        {{/if}}
+
+        {{#if this.escolhendo}}
+            <div class="ps-int-passo is-atual">
+                <b class="ps-int-passo-titulo">{{t "customer-portal.ui.entregas.integracoes.ifood.escolher"}}</b>
+                <div class="ps-int-lojas">
+                    {{#each this.lojasDoIfood key="id" as |lojaDoIfood|}}
+                        <Button @icon="store" @text={{lojaDoIfood.nome}} @isLoading={{this.escolher.isRunning}} @disabled={{this.escolher.isRunning}} @onClick={{perform this.escolher lojaDoIfood}} />
+                    {{/each}}
+                </div>
+                <Button @size="sm" @icon="rotate" @text={{t "customer-portal.ui.entregas.integracoes.ifood.novo-codigo"}} @onClick={{perform this.gerarCodigo}} />
+            </div>
+        {{else}}
+            <ol class="ps-int-passos">
+                <li class="ps-int-passo {{if this.codigo 'is-feito' 'is-atual'}}">
+                    <b class="ps-int-passo-titulo">{{t "customer-portal.ui.entregas.integracoes.ifood.passo-1"}}</b>
+                    <p>{{t "customer-portal.ui.entregas.integracoes.ifood.passo-1-texto"}}</p>
+                    {{#if this.codigo}}
+                        <div class="ps-int-codigo">
+                            <span class="ps-int-codigo-valor">{{this.codigo.codigo}}</span>
+                            {{#if this.venceu}}
+                                <span class="ps-int-codigo-tempo is-vencido">{{t "customer-portal.ui.entregas.integracoes.ifood.venceu"}}</span>
+                            {{else}}
+                                <span class="ps-int-codigo-tempo">{{t "customer-portal.ui.entregas.integracoes.ifood.vence-em" tempo=this.tempo}}</span>
+                            {{/if}}
+                        </div>
+                        <div class="ps-int-botoes">
+                            {{#if (and this.codigo.link (not this.venceu))}}
+                                <a href={{this.codigo.link}} target="_blank" rel="noopener noreferrer" class="ps-btn ps-btn-marca">
+                                    <FaIcon @icon="arrow-up-right-from-square" /><span>{{t "customer-portal.ui.entregas.integracoes.ifood.abrir-portal"}}</span>
+                                </a>
+                            {{/if}}
+                            <Button @size="sm" @icon="rotate" @text={{t "customer-portal.ui.entregas.integracoes.ifood.novo-codigo"}} @isLoading={{this.gerarCodigo.isRunning}} @onClick={{perform this.gerarCodigo}} />
+                        </div>
+                    {{else}}
+                        <div class="ps-int-botoes">
+                            <Button @type="primary" @icon="key" @text={{t "customer-portal.ui.entregas.integracoes.ifood.gerar-codigo"}} @isLoading={{this.gerarCodigo.isRunning}} @onClick={{perform this.gerarCodigo}} />
+                        </div>
+                    {{/if}}
+                </li>
+
+                <li class="ps-int-passo {{if (and this.codigo (not this.venceu)) 'is-atual'}}">
+                    <b class="ps-int-passo-titulo">{{t "customer-portal.ui.entregas.integracoes.ifood.passo-2"}}</b>
+                    <p>{{t "customer-portal.ui.entregas.integracoes.ifood.passo-2-texto"}}</p>
+                </li>
+
+                <li class="ps-int-passo {{if (and this.codigo (not this.venceu)) 'is-atual'}}">
+                    <label for="ps-int-ifood-autorizacao" class="ps-int-passo-titulo">{{t "customer-portal.ui.entregas.integracoes.ifood.passo-3"}}</label>
+                    <div class="ps-int-campo">
+                        <input
+                            id="ps-int-ifood-autorizacao"
+                            type="text"
+                            class="form-input"
+                            autocomplete="off"
+                            spellcheck="false"
+                            placeholder={{t "customer-portal.ui.entregas.integracoes.ifood.autorizacao-exemplo"}}
+                            value={{this.autorizacao}}
+                            disabled={{or (not this.codigo) this.venceu}}
+                            {{on "input" this.setAutorizacao}}
+                        />
+                        <Button
+                            @type="primary"
+                            @icon="link"
+                            @text={{t "customer-portal.ui.entregas.integracoes.conectar"}}
+                            @disabled={{not this.podeConectar}}
+                            @isLoading={{this.conectar.isRunning}}
+                            @onClick={{perform this.conectar}}
+                        />
+                    </div>
+                </li>
+            </ol>
+        {{/if}}
+    {{/if}}
+</div>

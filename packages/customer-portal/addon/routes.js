@@ -41,6 +41,8 @@ export default buildRoutes(function () {
         // Entregas: faturas da loja e o ciclo em andamento; o detalhe da fatura é também a página de impressão
         this.route('financeiro');
         this.route('fatura', { path: '/financeiro/:id' });
+        // Entregas: a loja conecta sozinha os sistemas dela (iFood, RestaurantePro…); `?sistema=<id>` abre a conexão
+        this.route('integracoes');
         this.route('virtual', { path: '/:slug' });
     });
 });

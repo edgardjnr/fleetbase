@@ -1,0 +1,27 @@
+{{!-- Entregas: cartão de um sistema na tela Integrações (ver cartao.js) --}}
+{{#if @onAbrir}}
+    <button type="button" class="ps-int-cartao is-{{this.selo}}" {{on "click" this.abrir}}>
+        <span class="ps-int-logo is-{{this.id}}" aria-hidden="true">{{this.iniciais}}</span>
+        <span class="ps-int-corpo">
+            <b class="ps-int-nome">{{this.nome}}</b>
+            {{#if this.descricao}}<span class="ps-int-descricao">{{this.descricao}}</span>{{/if}}
+            <span class="ps-int-situacao">
+                <span class="ps-int-selo is-{{this.selo}}">{{this.textoDoSelo}}</span>
+                {{#if this.detalhe}}<span class="ps-int-detalhe-txt">{{this.detalhe}}</span>{{/if}}
+            </span>
+        </span>
+        <span class="ps-int-acao">{{this.acao}}<FaIcon @icon="chevron-right" /></span>
+    </button>
+{{else}}
+    <div class="ps-int-cartao is-{{this.selo}} {{if @destaque 'is-destaque'}}">
+        <span class="ps-int-logo is-{{this.id}}" aria-hidden="true">{{this.iniciais}}</span>
+        <span class="ps-int-corpo">
+            <b class="ps-int-nome">{{this.nome}}</b>
+            {{#if this.descricao}}<span class="ps-int-descricao">{{this.descricao}}</span>{{/if}}
+            <span class="ps-int-situacao">
+                <span class="ps-int-selo is-{{this.selo}}">{{this.textoDoSelo}}</span>
+                {{#if this.detalhe}}<span class="ps-int-detalhe-txt">{{this.detalhe}}</span>{{/if}}
+            </span>
+        </span>
+    </div>
+{{/if}}
