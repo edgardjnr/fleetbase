@@ -97,11 +97,14 @@ export default class ChatTrayComponent extends Component {
         this.socket.listen(`user.${this.currentUser.id}`, (socketEvent) => {
             const { event, data } = socketEvent;
             switch (event) {
+                case 'chat.added_participant':
                 case 'chat.participant_added':
                 case 'chat_participant.created': {
                     // Entregas: entrou numa conversa que outra pessoa criou ou completou (a loja abrindo a conversa com a
                     // central, ou a central voltando ao canal por uma mensagem nova): passa a escutar o canal dela, senão
-                    // as mensagens só apareciam depois de recarregar a página; e toca o aviso se ela já chegou com mensagem
+                    // as mensagens só apareciam depois de recarregar a página; e toca o aviso se ela já chegou com mensagem.
+                    // O aviso que chega a quem entrou é o `chat.added_participant` do core (ChatParticipantAdded, no
+                    // `user.<quem entrou>`); o `chat_participant.created` vai ao `user.<quem estava na sessão>`
                     const naoLidasAntes = this.unreadCount;
                     this.reloadChannels({ relisten: true }).then(() => {
                         if (this.unreadCount > naoLidasAntes) {
@@ -110,6 +113,7 @@ export default class ChatTrayComponent extends Component {
                     });
                     break;
                 }
+                case 'chat.removed_participant':
                 case 'chat.participant_removed':
                 case 'chat_participant.deleted':
                     this.reloadChannels();
