@@ -10,6 +10,7 @@ use Fleetbase\Models\ChatChannel;
 use Fleetbase\Models\ChatMessage;
 use Fleetbase\Models\ChatParticipant;
 use Fleetbase\Models\ChatReceipt;
+use Fleetbase\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -23,7 +24,8 @@ use Illuminate\Support\Facades\Log;
  * a central não entra sozinha nessa conversa; pode ser adicionada depois pelo chat do console, e quem já está no canal
  * continua). Quem falta da loja ou o motoboy entra a cada abertura. A conversa da loja com a central (2026-10-27,
  * abrirComACentral) é outro canal, um por loja: META_LOJA e META_CENTRAL no `meta`, os usuários ativos da loja e a
- * central (ChatComACentral::usuariosDaCentral), completado ao abrir e a cada mensagem nova. A mensagem nasce como no core
+ * central (ChatComACentral::usuariosDaCentral), completado ao abrir e a cada mensagem nova; dele sai só o usuário de loja
+ * que não está mais ativo nela (quem a central adicionar pelo console fica). A mensagem nasce como no core
  * (ChatMessage::create + notifyParticipants): o motoboy recebe no app (socket e push) e a loja no portal.
  *
  * A loja nunca usa as rotas de chat do Fleetbase (a de participantes lista todos os usuários da empresa) e as respostas
@@ -127,8 +129,9 @@ class ConversasDaLoja
 
     /**
      * A cada mensagem nova (ChatMessage::created), a conversa da loja com a central ganha quem falta da loja e da central
-     * (inclusive quem saiu), antes do notifyParticipants do core. Ninguém sai: quem a central adicionou pelo console fica.
-     * Só age na conversa com a central; nunca lança (a mensagem já está gravada).
+     * (inclusive quem saiu), antes do notifyParticipants do core. Sai só o usuário de loja que não está mais ativo nela
+     * (ver completar): quem a central adicionou pelo console fica. Só age na conversa com a central de uma loja da mesma
+     * empresa do canal; nunca lança (a mensagem já está gravada).
      */
     public static function aoCriarMensagem(ChatMessage $mensagem): void
     {
@@ -388,17 +391,31 @@ class ConversasDaLoja
         return [static::META_LOJA => $loja, static::META_MOTOBOY => $motoboy];
     }
 
-    /** Quem falta no canal entra (como o abrir das conversas com motoboy). */
+    /**
+     * Arruma a conversa com a central: quem falta entra e sai só o usuário de loja (`customer`) que não está em
+     * $quemDeveEstar (inativo na loja ou de outra loja), com soft delete do participante. O resto que estiver lá fica
+     * (quem a central adicionou pelo console).
+     */
     protected static function completar(ChatChannel $canal, array $quemDeveEstar): void
     {
-        $presentes = ChatParticipant::where('chat_channel_uuid', $canal->uuid)->pluck('user_uuid')->all();
+        $presentes = ChatParticipant::where('chat_channel_uuid', $canal->uuid)->get();
+        $uuids     = $presentes->pluck('user_uuid')->all();
 
-        foreach (ChatComACentral::quemFalta($quemDeveEstar, $presentes) as $quem) {
+        foreach (ChatComACentral::quemFalta($quemDeveEstar, $uuids) as $quem) {
             ChatParticipant::create([
                 'company_uuid'      => $canal->company_uuid,
                 'user_uuid'         => $quem,
                 'chat_channel_uuid' => $canal->uuid,
             ]);
+        }
+
+        $daLoja = $uuids ? User::whereIn('uuid', $uuids)->where('type', 'customer')->pluck('uuid')->map(fn ($uuid) => (string) $uuid)->all() : [];
+        $sobram = ChatComACentral::quemSai($daLoja, $quemDeveEstar);
+
+        foreach ($presentes as $participante) {
+            if (in_array((string) $participante->user_uuid, $sobram, true)) {
+                $participante->delete();
+            }
         }
     }
 

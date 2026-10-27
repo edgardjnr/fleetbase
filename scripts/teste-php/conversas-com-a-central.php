@@ -83,6 +83,21 @@ namespace {
     C::aoCriarMensagem(new ChatMessage(['chat_channel_uuid' => $canal->uuid]));
     confere(count(ChatParticipant::$linhas) === $antes, 'segunda mensagem: nada muda');
 
+    echo '== sai só o usuário de loja que não está mais ativo nela' . PHP_EOL;
+    foreach (['abrir', 'mensagem'] as $quando) {
+        montarEmpresa();
+        $terraco = Vendor::where('uuid', 'terraco')->first();
+        $canal   = C::abrirComACentral($terraco, 'loja');
+        foreach (['loja-inativa', 'loja-2', 'roger'] as $posto) {
+            ChatParticipant::create(['company_uuid' => 'empresa', 'user_uuid' => $posto, 'chat_channel_uuid' => $canal->uuid]);
+        }
+        $quando === 'abrir' ? C::abrirComACentral($terraco, 'loja') : C::aoCriarMensagem(new ChatMessage(['chat_channel_uuid' => $canal->uuid]));
+        confere(!in_array('loja-inativa', ativos($canal->uuid), true), "{$quando}: usuário inativo da loja sai");
+        confere(!in_array('loja-2', ativos($canal->uuid), true), "{$quando}: usuário de outra loja sai");
+        confere(in_array('roger', ativos($canal->uuid), true), "{$quando}: motoboy posto pela central fica");
+        confere(in_array('edgard', ativos($canal->uuid), true) && in_array('loja', ativos($canal->uuid), true), "{$quando}: a central e a loja ficam");
+    }
+
     echo '== aoCriarMensagem: outros canais ficam como estão' . PHP_EOL;
     montarEmpresa();
     ChatChannel::create(['uuid' => 'canal-motoboy', 'company_uuid' => 'empresa', 'created_by_uuid' => 'loja', 'meta' => C::meta('terraco', 'drv-roger')]);
