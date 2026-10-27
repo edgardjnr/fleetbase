@@ -33,6 +33,9 @@ class ConversasDaLoja
 
     public const META_MOTOBOY = 'entregas_conversa_motoboy';
 
+    /** Marca da conversa da loja com a central no `meta` (o valor é o uuid da loja, como em META_LOJA). */
+    public const META_CENTRAL = 'entregas_conversa_central';
+
     public const MAX_CARACTERES = 1000;
 
     /** Mensagens devolvidas por leitura (as mais recentes). */
@@ -262,6 +265,53 @@ class ConversasDaLoja
         $texto = trim($texto);
 
         return $texto !== '' && mb_strlen($texto) <= static::MAX_CARACTERES ? $texto : null;
+    }
+
+    /** A marca da conversa da loja com a central: a da loja (META_LOJA, para o daLoja e a lista) e a da central. */
+    public static function metaDaCentral(string $loja): array
+    {
+        return [static::META_LOJA => $loja, static::META_CENTRAL => $loja];
+    }
+
+    /** Nome da conversa com a central, como a central a vê no chat do console. */
+    public static function nomeDaCentral(?string $loja): string
+    {
+        $loja = trim((string) $loja);
+
+        return $loja === '' ? 'Loja' : "Loja · {$loja}";
+    }
+
+    /** O uuid da loja de uma conversa com a central pelo `meta` (array, objeto ou texto JSON); null se não é com a central. */
+    public static function lojaDaCentralNoMeta(mixed $meta): ?string
+    {
+        if (is_string($meta)) {
+            $meta = json_decode($meta, true);
+        }
+
+        $meta = is_object($meta) ? (array) $meta : $meta;
+        $loja = is_array($meta) ? ($meta[static::META_CENTRAL] ?? null) : null;
+
+        return is_string($loja) && $loja !== '' ? $loja : null;
+    }
+
+    /** O `tipo` da conversa na lista do portal: com a central ou com um motoboy. */
+    public static function tipoDoCanal(mixed $meta): string
+    {
+        return static::lojaDaCentralNoMeta($meta) !== null ? 'central' : 'motoboy';
+    }
+
+    /**
+     * Quem a conversa com a central precisa ter: quem abriu (vazio numa mensagem nova), os usuários ativos da loja e a
+     * central, sem repetir e sem vazios.
+     *
+     * @param array<int, string> $daLoja
+     * @param array<int, string> $central
+     *
+     * @return array<int, string>
+     */
+    public static function participantesComACentral(string $quemAbriu, array $daLoja, array $central): array
+    {
+        return ChatComACentral::quemFalta(array_merge([$quemAbriu], $daLoja, $central), []);
     }
 
     /** A marca do canal no `meta`. */

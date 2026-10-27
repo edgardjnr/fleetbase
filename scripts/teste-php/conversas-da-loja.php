@@ -4,6 +4,7 @@
 // escreveu, texto aceito e a marca do canal no meta). A busca e a gravação no banco usam os models do core e não rodam aqui.
 // Uso: PHP_WASM_DIR=<pasta> node scripts/teste-php/rodar.mjs scripts/teste-php/conversas-da-loja.php
 
+require __DIR__ . '/../../api/app/Support/Entregas/ChatComACentral.php';
 require __DIR__ . '/../../api/app/Support/Entregas/ConversasDaLoja.php';
 
 use App\Support\Entregas\ConversasDaLoja as C;
@@ -53,5 +54,21 @@ confere(C::participantes('', ['', 'u-loja'], 'u-moto') === ['u-loja', 'u-moto'],
 
 echo '== meta' . PHP_EOL;
 confere(C::meta('v-1', 'd-1') === ['entregas_conversa_loja' => 'v-1', 'entregas_conversa_motoboy' => 'd-1'], 'marca do canal: loja e motoboy');
+
+echo '== conversa com a central' . PHP_EOL;
+confere(C::META_CENTRAL === 'entregas_conversa_central', 'marca da conversa com a central');
+confere(C::metaDaCentral('v') === [C::META_LOJA => 'v', C::META_CENTRAL => 'v'], 'meta: loja e central com o uuid da loja');
+confere(C::nomeDaCentral('Terraço') === 'Loja · Terraço', 'nome: Loja · <loja>');
+confere(C::nomeDaCentral('  ') === 'Loja', 'sem nome: só Loja');
+confere(C::nomeDaCentral(null) === 'Loja', 'nome nulo: só Loja');
+confere(C::lojaDaCentralNoMeta([C::META_LOJA => 'v', C::META_CENTRAL => 'v']) === 'v', 'loja pelo meta em array');
+confere(C::lojaDaCentralNoMeta((object) [C::META_CENTRAL => 'v']) === 'v', 'loja pelo meta em objeto');
+confere(C::lojaDaCentralNoMeta(json_encode([C::META_CENTRAL => 'v'])) === 'v', 'loja pelo meta em texto JSON');
+confere(C::lojaDaCentralNoMeta(C::meta('v', 'm')) === null, 'conversa com motoboy: não é da central');
+confere(C::lojaDaCentralNoMeta(null) === null, 'sem meta');
+confere(C::tipoDoCanal(C::metaDaCentral('v')) === 'central', 'tipo central');
+confere(C::tipoDoCanal(C::meta('v', 'm')) === 'motoboy', 'tipo motoboy');
+confere(C::participantesComACentral('u1', ['u1', 'u2'], ['a', 'u2', '']) === ['u1', 'u2', 'a'], 'participantes: quem abriu, loja e central, sem repetir nem vazio');
+confere(C::participantesComACentral('', ['u1'], ['a']) === ['u1', 'a'], 'sem quem abriu (mensagem nova)');
 
 echo PHP_EOL . "FALHAS: {$falhas}" . PHP_EOL;
