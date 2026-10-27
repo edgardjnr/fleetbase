@@ -1,7 +1,8 @@
 <?php
 
-// Conversa da loja com a central (ConversasDaLoja::abrirComACentral e aoCriarMensagem) com o banco em memória
-// (stubs-chat.php): quem entra, o canal reaproveitado, a arrumação a cada mensagem e os canais que ficam como estão.
+// Conversa da loja com a central (ConversasDaLoja::abrirComACentral, aoCriarMensagem, item e listar) com o banco em
+// memória (stubs-chat.php): quem entra e quem sai, o canal reaproveitado e separado por loja, a arrumação a cada mensagem,
+// a trava, os canais que ficam como estão (inclusive pelo gancho do ChatComACentral) e a lista sempre com a central.
 // Uso: PHP_WASM_DIR=<pasta> node scripts/teste-php/rodar.mjs scripts/teste-php/conversas-com-a-central.php
 
 namespace {
@@ -9,6 +10,7 @@ namespace {
     require __DIR__ . '/../../api/app/Support/Entregas/ChatComACentral.php';
     require __DIR__ . '/../../api/app/Support/Entregas/ConversasDaLoja.php';
 
+    use App\Support\Entregas\ChatComACentral;
     use App\Support\Entregas\ConversasDaLoja as C;
     use Fleetbase\FleetOps\Models\Driver;
     use Fleetbase\FleetOps\Models\Vendor;
@@ -46,14 +48,42 @@ namespace {
     confere(!array_intersect(ativos($canal->uuid), ['junior', 'roger', 'edmar', 'davi']), 'nenhum motoboy');
     confere(!array_intersect(ativos($canal->uuid), ['loja-inativa', 'loja-2']), 'nem usuário inativo nem de outra loja');
     $denovo = C::abrirComACentral($terraco, 'loja');
-    confere($denovo === $canal && count(ChatChannel::$linhas) === 1, 'segunda abertura: o mesmo canal');
+    confere($denovo->uuid === $canal->uuid && count(ChatChannel::$linhas) === 1, 'segunda abertura: o mesmo canal');
     confere(ativos($canal->uuid) === $esperados, 'sem participante repetido');
 
     echo '== a outra loja tem a conversa dela' . PHP_EOL;
     $outra      = Vendor::where('uuid', 'outra-loja')->first();
     $daOutra    = C::abrirComACentral($outra, 'loja-2');
-    confere($daOutra !== $canal && count(ChatChannel::$linhas) === 2, 'canal separado');
+    confere($daOutra->uuid !== $canal->uuid && count(ChatChannel::$linhas) === 2, 'canal separado');
     confere(ativos($daOutra->uuid) === ordenado(array_merge(['loja-2'], \Teste\CENTRAL)), 'com a loja dela e a central');
+    confere(C::daLoja($terraco, $canal->public_id)?->uuid === $canal->uuid, 'daLoja: a loja acha a conversa dela com a central');
+    confere(C::daLoja($outra, $canal->public_id) === null, 'daLoja: outra loja não acha a conversa do Terraço com a central');
+
+    echo '== abrir com motoboy não reaproveita a conversa com a central' . PHP_EOL;
+    $doRoger = C::abrir($terraco, Driver::where('uuid', 'drv-roger')->first(), 'loja');
+    confere($doRoger->uuid !== $canal->uuid && (array) $doRoger->meta === C::meta('terraco', 'drv-roger'), 'canal novo, marcado com o motoboy');
+    confere(ativos($doRoger->uuid) === ['loja', 'roger'], 'só a loja e o motoboy');
+    confere(ativos($canal->uuid) === $esperados, 'a conversa com a central fica como estava');
+
+    echo '== a trava do abrir e a da mensagem nova são a mesma' . PHP_EOL;
+    \Illuminate\Support\Facades\Cache::$travas = [];
+    C::abrirComACentral($terraco, 'loja');
+    $doAbrir = \Illuminate\Support\Facades\Cache::$travas;
+    \Illuminate\Support\Facades\Cache::$travas = [];
+    C::aoCriarMensagem(new ChatMessage(['chat_channel_uuid' => $canal->uuid]));
+    confere($doAbrir === ['entregas:conversa-loja-central:terraco'] && \Illuminate\Support\Facades\Cache::$travas === $doAbrir, 'a mesma chave: ' . implode(',', $doAbrir));
+
+    echo '== o gancho do motoboy com a central não mexe na conversa da loja com a central' . PHP_EOL;
+    $antes = ativos($canal->uuid);
+    ChatParticipant::create(['company_uuid' => 'empresa', 'user_uuid' => 'roger', 'chat_channel_uuid' => $canal->uuid]);
+    ChatComACentral::aoCriarMensagem(new ChatMessage(['chat_channel_uuid' => $canal->uuid]));
+    confere(ativos($canal->uuid) === ordenado(array_merge($antes, ['roger'])), 'ninguém sai nem entra');
+
+    echo '== o gancho da loja não mexe na conversa do motoboy com a central' . PHP_EOL;
+    ChatChannel::create(['uuid' => 'canal-junior', 'company_uuid' => 'empresa', 'created_by_uuid' => 'junior', 'meta' => [ChatComACentral::CHAVE_META => 'drv-junior']]);
+    ChatParticipant::create(['company_uuid' => 'empresa', 'user_uuid' => 'edgard', 'chat_channel_uuid' => 'canal-junior']);
+    C::aoCriarMensagem(new ChatMessage(['chat_channel_uuid' => 'canal-junior']));
+    confere(ativos('canal-junior') === ['edgard', 'junior'], 'intacta');
 
     echo '== empresa sem central' . PHP_EOL;
     montarEmpresa();
