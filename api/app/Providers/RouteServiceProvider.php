@@ -13,6 +13,7 @@ use App\Http\Controllers\Entregas\IfoodLojasController;
 use App\Http\Controllers\Entregas\IfoodPedidosController;
 use App\Http\Controllers\Entregas\IntegracaoController;
 use App\Http\Controllers\Entregas\IntegracaoLojasController;
+use App\Http\Controllers\Entregas\IntegracoesDaLojaController;
 use App\Http\Controllers\Entregas\LiderController;
 use App\Http\Controllers\Entregas\LojasController;
 use App\Http\Controllers\Entregas\MapaController;
@@ -278,6 +279,14 @@ class RouteServiceProvider extends ServiceProvider
                         // Financeiro da loja: ciclo em andamento e faturas emitidas e canceladas; o detalhe de uma fatura (uuid)
                         Route::get('loja/financeiro', [PortalLojaController::class, 'financeiro'])->middleware('throttle:60,1');
                         Route::get('loja/faturas/{id}', [PortalLojaController::class, 'fatura'])->middleware('throttle:60,1');
+                        // Integrações da loja (IntegracoesDaLojaController): a própria loja conecta o iFood (o mesmo vínculo da
+                        // tela Lojas, com o limitador dele) e os sistemas que mandam pedidos pela chave da loja (RestaurantePro)
+                        Route::get('loja/integracoes', [IntegracoesDaLojaController::class, 'index'])->middleware('throttle:60,1');
+                        Route::post('loja/integracoes/ifood/codigo', [IntegracoesDaLojaController::class, 'ifoodCodigo'])->middleware('throttle:entregas-ifood-vinculo');
+                        Route::post('loja/integracoes/ifood/vincular', [IntegracoesDaLojaController::class, 'ifoodVincular'])->middleware('throttle:entregas-ifood-vinculo');
+                        Route::delete('loja/integracoes/ifood', [IntegracoesDaLojaController::class, 'ifoodDesvincular'])->middleware('throttle:10,1');
+                        Route::post('loja/integracoes/{id}/chave', [IntegracoesDaLojaController::class, 'gerarChave'])->middleware('throttle:10,1');
+                        Route::delete('loja/integracoes/{id}/chave', [IntegracoesDaLojaController::class, 'revogarChave'])->middleware('throttle:10,1');
 
                         // chat da loja com os motoboys (a central participa; o motoboy conversa pelo app)
                         Route::middleware('throttle:entregas-loja-conversas')->group(function () {
