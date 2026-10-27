@@ -124,7 +124,7 @@ Cada restaurante entra em `https://entregas.restaurantepro.com.br/customer-porta
   - Só ligar depois de um APK novo em todos os celulares: o Driver criado com o token do motoboy e o `useFleetbase` síncrono no `entregas-navigator`.
   - Os passos e a checagem com `curl` estão no docblock do `RestringirChaveDoApp.php`.
 - **Riscos conhecidos:**
-  - o socket não autentica a inscrição nos canais `company.*`;
+  - o socket não autentica a inscrição nos canais `company.*` nem `chat_channel.<public_id>`: quem guardou o public_id de uma conversa (ex.: usuário de loja desligado) poderia continuar recebendo as mensagens dela pelo socket (o portal não usa o socket; vale para as conversas com motoboy e com a central);
   - a chave `flb_live_` do APK funciona enquanto a restrição estiver desligada;
   - o login por SMS não limita tentativas e o código de 6 dígitos não expira. Quem extrai a chave pode chegar a um token de motoboy, que lista os pedidos de todas as lojas;
   - o upload do core aceita `disk`/`path` de usuários que não são de loja;

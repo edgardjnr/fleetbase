@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\Log;
  * Entregas RestaurantePro: a conversa do motoboy com a central, aberta pelo botão "Chat" do cartão do cliente nos
  * detalhes do pedido no app (MotoboyController@chatComACentral).
  *
- * O cliente do pedido é a loja (Vendor), que não tem usuário de chat, e o portal da loja não tem chat: por isso o botão
- * fala com a central. Um canal por motoboy, reaproveitado (marcado no `meta`), só com o motoboy e a central.
+ * Usada quando o pedido não tem loja (nem pelo cliente nem pelo Local de coleta); com loja, o botão abre a conversa
+ * com a loja (ConversasDaLoja). A conversa da loja com a central é outro canal (ConversasDaLoja::abrirComACentral). Um canal por motoboy, reaproveitado (marcado no `meta`), só com o motoboy e a central.
  *
  * A central é quem abre o console (a regra do BarrarMotoboyNoConsole): usuário `admin`, ou `user` sem cadastro de
  * motoboy, ou quem tem cadastro de motoboy e o papel Administrator na empresa. O `type` sozinho não basta: em produção os

@@ -407,6 +407,10 @@ class ConversasDaLoja
      * Arruma a conversa com a central: quem falta entra e sai só o usuário de loja (`customer`) que não está em
      * $quemDeveEstar (inativo na loja ou de outra loja), com soft delete do participante. O resto que estiver lá fica
      * (quem a central adicionou pelo console).
+     *
+     * A ordem de $quemDeveEstar importa: o ChatParticipantObserver do core grava o ChatLog com o participante da sessão
+     * (ChatParticipant::current, que não aceita null). No abrir, quem abriu vem primeiro e entra antes dos outros; no
+     * gancho, a sessão é de quem enviou, que já está no canal. Chamar daqui sem sessão (job, comando) pode dar erro.
      */
     protected static function completar(ChatChannel $canal, array $quemDeveEstar): void
     {
