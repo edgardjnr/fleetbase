@@ -11,7 +11,7 @@ No portal da loja, a loja abre uma conversa com a central sozinha. Até aqui a l
 
 - **Um canal por loja com a central**, criado na primeira abertura pela loja (não antes, para o console não ganhar
   conversas vazias) e reaproveitado depois.
-- **Marca no `meta`:** `entregas_conversa_loja` = uuid do Vendor e `entregas_conversa_central` = `true`, sem
+- **Marca no `meta`:** `entregas_conversa_loja` = uuid do Vendor e `entregas_conversa_central` = uuid do Vendor, sem
   `entregas_conversa_motoboy`. Por ter a marca da loja, o canal já passa pelo `ConversasDaLoja::daLoja` (mensagens,
   envio e o limitador `entregas-loja-conversas` sem mudança) e só a loja dona o enxerga. A busca do canal com motoboy
   exige a marca do motoboy, então os dois tipos nunca se confundem.
@@ -19,8 +19,12 @@ No portal da loja, a loja abre uma conversa com a central sozinha. Até aqui a l
   (decisão do Edgard): `ChatComACentral::usuariosDaCentral`, quem abre o console (corrigido em bed171ff: em produção os
   motoboys têm `type = user`, então o cadastro de motoboy decide). Motoboy e usuário de loja nunca entram pelo lado da
   central. Trava no cache (Redis) por loja contra dois canais com dois toques seguidos.
-- **O canal se arruma ao abrir e a cada mensagem nova**, como o do motoboy com a central (`ChatMessage::created`): quem
-  falta da loja ou da central entra (inclusive quem saiu) e quem sobra (motoboy, usuário de outra loja) sai.
+- **O canal ganha quem falta ao abrir e a cada mensagem nova** (`ChatMessage::created`): quem falta da loja ou da
+  central entra (inclusive quem saiu). Sai só o usuário de loja (`customer`) que não está mais ativo nela (inativo ou de
+  outra loja); o resto fica, inclusive quem a central adicionar pelo console. O gancho só age com a loja do `meta` da
+  mesma empresa do canal (o console grava o `meta` que vem na requisição).
+- **Papel do autor:** na conversa com a central, quem não é loja aparece como "central" (um motoboy com o papel
+  Administrator está lá como central).
 - **Nome do canal:** "Loja · <nome da loja>" (só "Loja" sem nome). É o que a central vê no chat do console, onde
   responde. A mensagem nasce como as outras (`ChatMessage::create` + `notifyParticipants()`): o console é avisado pelo
   chat dele; o portal lê na consulta periódica (5 s com a conversa aberta, 20 s a lista).
@@ -31,9 +35,10 @@ No portal da loja, a loja abre uma conversa com a central sozinha. Até aqui a l
 ## API
 
 - `POST int/v1/entregas/loja/conversas` aceita `{ "central": true }`, além de `motoboy` (id opaco do mapa) e `pedido`.
-  Responde `{ conversa }` no mesmo formato da lista.
+  Responde `{ conversa }` no mesmo formato da lista (`ConversasDaLoja::item`, sem passar pelo corte da lista).
 - `GET int/v1/entregas/loja/conversas`: cada item ganha `tipo` (`"central"` ou `"motoboy"`). No da central,
-  `motoboy` vem `{ nome: null, foto: null }`. A ordem continua pela mensagem mais recente.
+  `motoboy` vem `{ nome: null, foto: null }`. A ordem continua pela mensagem mais recente; o corte de 50 vale só para as
+  conversas com motoboy, e a da central vem sempre, mesmo mais antiga.
 - Código: `ConversasDaLoja::abrirComACentral(Vendor $loja, string $usuario): ?ChatChannel` e `nomeDaCentral()`;
   `listar` monta o `tipo`; o `ConversasDaLojaController@abrir` ganha o ramo `central`.
 

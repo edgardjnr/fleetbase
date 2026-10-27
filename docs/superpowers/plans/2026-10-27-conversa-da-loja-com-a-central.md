@@ -1071,7 +1071,7 @@ Em `en-us.yaml`, logo depois de `      chat-role-central: "Dispatcher"`:
 
 ```bash
 node scripts/i18n-check.cjs console dev-engine ember-core ember-ui fleetops fleetops-data iam-engine customer-portal; echo "exit $?"
-P=$(ls -d console/node_modules/.pnpm/@babel+parser@7*/node_modules/@babel/parser | head -1)
+P=./$(ls -d console/node_modules/.pnpm/@babel+parser@7*/node_modules/@babel/parser | head -1)
 for f in packages/customer-portal/addon/services/entregas-conversas.js packages/customer-portal/addon/components/portal/conversas.js packages/customer-portal/addon/utils/conversas.js; do
   node -e "require('$P').parse(require('fs').readFileSync('$f','utf8'),{sourceType:'module',plugins:['decorators-legacy','classProperties']}); console.log('OK $f')"
 done
