@@ -9,11 +9,18 @@ require __DIR__ . '/stubs-integracao.php';
 
 use App\Support\Entregas\Integracao\CobrancaDaIntegracao;
 use App\Support\Entregas\Integracao\DadosDaIntegracaoDoMotoboy;
+use App\Support\Entregas\PedidoRecusado;
+use App\Support\Entregas\Portal\ChamadoDaLoja;
+use App\Support\Entregas\Portal\CriadorDoChamado;
 use App\Support\Entregas\Portal\PedidosDoPortal;
 use Fleetbase\FleetOps\Models\Order;
+use Fleetbase\FleetOps\Models\Payload;
 use Fleetbase\FleetOps\Models\Place;
+use Fleetbase\FleetOps\Models\Vendor;
 use Fleetbase\LaravelMysqlSpatial\Types\Point;
 use Teste\Banco;
+use Teste\Trava;
+
 
 /** Uma linha da entregas_portal_pedidos (dados fictícios), com $campos por cima. */
 function linhaDoPortal(array $campos = []): void
@@ -38,6 +45,40 @@ function localDoCliente(array $campos = []): Place
     Place::$todos[] = $lugar;
 
     return $lugar;
+}
+
+/** Os dados validados de um chamado (o corpo do painel), com $mudancas por cima. */
+function dadosDoChamado(array $mudancas = []): array
+{
+    $r = ChamadoDaLoja::validar(array_replace_recursive([
+        'chave'      => '6f1c0e8a-2b1d-4c3e-9a7f-0d5b8c2e4f10',
+        'cliente'    => ['nome' => 'Mariana Souza', 'telefone' => '(16) 99999-0000'],
+        'entrega'    => ['rua' => 'Rua Olinda, 45', 'bairro' => 'Centro', 'cidade' => 'Ribeirão Preto', 'uf' => 'SP', 'cep' => '14010-000', 'latitude' => -21.18, 'longitude' => -47.81, 'complemento' => 'Ap 12', 'referencia' => 'Perto da praça'],
+        'cobranca'   => ['forma' => 'dinheiro', 'valor' => '58,90', 'troco_para' => '100'],
+        'observacao' => 'Tocar o interfone',
+    ], $mudancas));
+
+    return $r['dados'] ?? throw new \RuntimeException('chamado de teste inválido: ' . implode(' ', $r['erros']));
+}
+
+function lojaA(): Vendor
+{
+    return Vendor::where('uuid', 'vendor-a')->first();
+}
+
+function coletaA(): Place
+{
+    return Place::where('uuid', 'place-loja')->first();
+}
+
+/** Chama e devolve [linha, pedido, novo]; uma recusa volta como PedidoRecusado. */
+function chamar(array $mudancas = [], ?Place $coleta = null)
+{
+    try {
+        return (new CriadorDoChamado())->criar(lojaA(), $coleta ?? coletaA(), dadosDoChamado($mudancas), 'usuario-da-loja');
+    } catch (PedidoRecusado $e) {
+        return $e;
+    }
 }
 
 $raiz = dirname(__DIR__, 2);
@@ -103,5 +144,59 @@ linhaDoPortal();
 $resumo = PedidosDoPortal::resumo(new Order(['uuid' => 'order-1', 'public_id' => 'order_1', 'tracking' => 'RP123456']), PedidosDoPortal::doPedido('order-1'));
 confere($resumo === ['id' => 'order_1', 'numero' => 'RP123456', 'cliente' => 'Mariana Souza', 'endereco' => 'RUA OLINDA, 45 · Ap 12 · CENTRO', 'cobranca' => CobrancaDaIntegracao::texto('dinheiro', 5890, 10000)], 'id, rastreio, cliente, endereço e cobrança');
 confere(PedidosDoPortal::resumo(new Order(['uuid' => 'order-1', 'public_id' => 'order_1']), PedidosDoPortal::doPedido('order-1'))['numero'] === 'order_1', 'sem rastreio: o public_id');
+
+echo '== CriadorDoChamado: endereço novo' . PHP_EOL;
+reiniciarIntegracao();
+[$linha, $pedido, $novo] = chamar();
+$destino = Place::$criados[0] ?? null;
+confere($novo === true && count(Order::$criados) === 1 && count(Place::$criados) === 1, 'um pedido e um Local novos');
+confere($pedido->customer_uuid === 'vendor-a' && $pedido->customer_type === 'fleet-ops:vendor' && $pedido->company_uuid === 'empresa-1' && $pedido->empresaNaSessao === 'empresa-1', 'cliente = a loja, empresa na sessão');
+confere($pedido->type === 'transport' && $pedido->order_config_uuid === 'config-transport' && $pedido->adhocAoCriar === true && $pedido->status === 'dispatched', 'tipo transport, criado como pedido aberto e despachado');
+confere(!isset($pedido->notes) && ($pedido->meta['customer_portal']['created_by_uuid'] ?? null) === 'usuario-da-loja', 'sem notas (observação com # viraria selo); meta.customer_portal como o portal grava');
+confere($destino->owner_uuid === 'vendor-a' && $destino->owner_type === 'fleet-ops:vendor' && $destino->company_uuid === 'empresa-1', 'Local do cliente com dono = a loja');
+confere($destino->name === 'MARIANA SOUZA' && $destino->street1 === 'RUA OLINDA, 45' && $destino->street2 === 'AP 12' && $destino->neighborhood === 'CENTRO' && $destino->city === 'RIBEIRÃO PRETO' && $destino->province === 'SP' && $destino->postal_code === '14010-000' && $destino->country === 'BR', 'endereço em maiúsculas (com acento)');
+confere($destino->location->getLat() === -21.18 && $destino->location->getLng() === -47.81 && !isset($destino->phone), 'ponto marcado; o telefone não vai para o Local');
+$payload = Payload::$salvos[0];
+confere($payload->pickup->uuid === 'place-loja' && $payload->dropoff === $destino && $pedido->payload_uuid === $payload->uuid, 'coleta = Local da loja, entrega = o Local do cliente');
+confere($linha->order_uuid === $pedido->uuid && $linha->vendor_uuid === 'vendor-a' && $linha->company_uuid === 'empresa-1' && $linha->place_uuid === $destino->uuid && $linha->chave === '6f1c0e8a-2b1d-4c3e-9a7f-0d5b8c2e4f10', 'linha ligada ao pedido, ao Local e à chave');
+confere($linha->cliente_nome === 'Mariana Souza' && $linha->cliente_telefone === '16999990000' && $linha->complemento === 'Ap 12' && $linha->referencia === 'Perto da praça' && $linha->observacoes === 'Tocar o interfone', 'cliente, complemento, referência e observação na linha');
+confere($linha->cobranca_forma === 'dinheiro' && (int) $linha->cobranca_centavos === 5890 && (int) $linha->troco_para_centavos === 10000, 'cobrança na linha');
+confere($pedido->chamadas === ['saveQuietly', 'firstDispatchWithActivity'] && $pedido->travadoNoDespacho === [true] && Trava::$ocupadas === [], 'despachado como pedido aberto, com a trava, e a trava solta');
+confere(logou('[entregas] portal da loja: motoboy chamado', 'info') && logsSem(['Mariana', 'MARIANA', 'OLINDA', 'Olinda', '16999990000', 'interfone']), 'log sem nome, endereço, telefone nem observação');
+
+echo '== CriadorDoChamado: mesma chave' . PHP_EOL;
+[$repetida, $mesmo, $novo] = chamar(['cobranca' => ['valor' => '99']]);
+confere($novo === false && $mesmo === $pedido && $repetida->id === $linha->id && count(Order::$criados) === 1, 'a repetição devolve o mesmo pedido, sem criar outro');
+confere(logou('[entregas] portal da loja: chamado repetido', 'info'), 'log da repetição');
+
+echo '== CriadorDoChamado: mesmo cliente no mesmo ponto reaproveita o Local' . PHP_EOL;
+[$linha2, $pedido2, $novo2] = chamar(['chave' => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'cliente' => ['nome' => 'mariana souza '], 'entrega' => ['rua' => 'RUA OLINDA, 45', 'latitude' => -21.18009, 'complemento' => 'ap 12']]);
+confere($novo2 === true && count(Order::$criados) === 2 && count(Place::$criados) === 1 && $linha2->place_uuid === $destino->uuid, 'nome, rua e complemento iguais (sem diferença de caixa) e ponto a 10 m: o mesmo Local');
+confere(Payload::$salvos[1]->dropoff === $destino, 'a entrega do pedido novo é o Local de antes');
+[$linha3] = chamar(['chave' => 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'cliente' => ['nome' => 'Joana Souza']]);
+confere(count(Place::$criados) === 2 && $linha3->place_uuid !== $destino->uuid && $destino->name === 'MARIANA SOUZA', 'outro nome no mesmo telefone: Local novo, o antigo não muda');
+[$linha4] = chamar(['chave' => 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'entrega' => ['latitude' => -21.181]]);
+confere(count(Place::$criados) === 3 && $linha4->place_uuid !== $destino->uuid, 'mesmo cliente a mais de 30 m: Local novo');
+[$linha5] = chamar(['chave' => 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'cliente' => ['telefone' => '16988887777']]);
+confere(count(Place::$criados) === 4 && $linha5->place_uuid !== $destino->uuid, 'outro telefone: Local novo');
+
+echo '== CriadorDoChamado: recusas' . PHP_EOL;
+reiniciarIntegracao();
+$r = chamar(['entrega' => ['latitude' => -21.1776, 'longitude' => -47.8103]]);
+confere($r instanceof PedidoRecusado && $r->status === 422 && str_contains($r->getMessage(), 'mesmo lugar da loja') && Order::$criados === [] && Place::$criados === [], 'ponto a menos de 30 m da loja: 422, sem nada criado');
+$r = chamar(['entrega' => ['latitude' => -21.7, 'longitude' => -47.81]]);
+confere($r instanceof PedidoRecusado && $r->status === 422 && str_contains($r->getMessage(), 'mais de 50 km') && Order::$criados === [], 'ponto a mais de 50 km: 422');
+$semPonto = new Place(['uuid' => 'place-loja', 'company_uuid' => 'empresa-1', 'owner_uuid' => 'vendor-a', 'owner_type' => 'fleet-ops:vendor', 'location' => null]);
+$r = chamar([], $semPonto);
+confere($r instanceof PedidoRecusado && $r->status === 422 && str_contains($r->getMessage(), 'endereço de coleta') && logou('[entregas] portal da loja: loja sem local de coleta válido', 'warning'), 'loja sem coleta válida: 422 e warning');
+$deOutraLoja = new Place(['uuid' => 'place-x', 'company_uuid' => 'empresa-1', 'owner_uuid' => 'vendor-b', 'owner_type' => 'fleet-ops:vendor', 'location' => new Point(-21.1775, -47.8103)]);
+confere(chamar([], $deOutraLoja) instanceof PedidoRecusado, 'coleta com outro dono: recusa');
+
+echo '== CriadorDoChamado: falha no despacho' . PHP_EOL;
+reiniciarIntegracao();
+Order::$falharDespacho = true;
+[$linha, $pedido, $novo] = chamar();
+confere($novo === true && count(Order::$criados) === 1 && $linha !== null && $pedido->status === 'created', 'o pedido existe (status created, o da criação) mesmo com o despacho falhando');
+confere(logou('[entregas] portal da loja: falha ao despachar o pedido aos motoboys', 'error') && Trava::$ocupadas === [], 'erro no log (a central despacha à mão) e a trava solta');
 
 resumo();
