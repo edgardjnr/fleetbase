@@ -119,7 +119,7 @@ namespace {
         ['pedido' => 'order_sem-nome', 'numero' => 'order_sem-nome', 'aceito_em' => '2026-10-28T19:00:00-03:00', 'motoboy' => null],
         ['pedido' => 'order_rastreio', 'numero' => 'RP77', 'aceito_em' => '2026-10-28T18:00:00-03:00', 'motoboy' => 'Carlos'],
     ], 'só os da loja e do contato, com motoboy, aceitos nas últimas 2 h (inclusive), não apagados, o mais recente primeiro (' . json_encode($aceites) . ')');
-    confere(in_array('with driverAssigned,trackingNumber', end(Order::$consultas)->passos, true) && in_array('limit 50', end(Order::$consultas)->passos, true), 'carrega o motoboy e o rastreio numa consulta só; no máximo 50');
+    confere(in_array('with driverAssigned.user,trackingNumber', end(Order::$consultas)->passos, true) && in_array('limit 50', end(Order::$consultas)->passos, true), 'carrega o motoboy e o rastreio numa consulta só; no máximo 50');
     confere(!str_contains(json_encode($aceites), 'm-1') && !str_contains(json_encode($aceites), 'Souza'), 'nada de id do motoboy nem nome completo');
     confere(AceitesDaLoja::listar('empresa-a', []) === [], 'sem donos: lista vazia (não vira "todos os pedidos")');
 

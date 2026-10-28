@@ -33,7 +33,7 @@ class AceitesDaLoja
             ->whereNotNull('driver_assigned_uuid')
             ->whereNull('deleted_at')
             ->where('started_at', '>=', now()->subHours(static::HORAS)->format('Y-m-d H:i:s'))
-            ->with(['driverAssigned', 'trackingNumber'])
+            ->with(['driverAssigned.user', 'trackingNumber'])
             ->orderBy('started_at', 'desc')
             ->limit(static::LIMITE)
             ->get();
