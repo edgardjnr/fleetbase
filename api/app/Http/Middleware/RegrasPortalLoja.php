@@ -4,8 +4,8 @@ namespace App\Http\Middleware;
 
 use App\Support\Entregas\Ifood\PedidosIfood;
 use App\Support\Entregas\LojaDoUsuario;
-use App\Support\Entregas\PrePago\CarteiraDaLoja;
-use App\Support\Entregas\PrePago\PrePago;
+use App\Support\Entregas\PedidoRecusado;
+use App\Support\Entregas\PrePago\CreditoNoPedido;
 use App\Support\Entregas\SituacaoDoMotoboy;
 use App\Support\Entregas\StatusDoPedido;
 use App\Support\Entregas\TravaDoPedido;
@@ -19,7 +19,6 @@ use Fleetbase\LaravelMysqlSpatial\Types\Point;
 use Fleetbase\Models\User;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\ParameterBag;
 
@@ -73,9 +72,9 @@ class RegrasPortalLoja
      */
     public const DISTANCIA_MINIMA_DA_COLETA_METROS = 30;
 
-    /** Trava da carteira da loja pré-paga no pedido novo (Redis, como a TravaDoPedido): validade e espera, em segundos. */
-    public const VALIDADE_DA_TRAVA_DA_CARTEIRA = 30;
-    public const ESPERA_DA_TRAVA_DA_CARTEIRA   = 10;
+    /** Trava da carteira da loja pré-paga no pedido novo: a do CreditoNoPedido. */
+    public const VALIDADE_DA_TRAVA_DA_CARTEIRA = CreditoNoPedido::VALIDADE_DA_TRAVA;
+    public const ESPERA_DA_TRAVA_DA_CARTEIRA   = CreditoNoPedido::ESPERA_DA_TRAVA;
 
     public function handle(Request $request, Closure $next)
     {
@@ -159,26 +158,13 @@ class RegrasPortalLoja
         return $this->criarComCredito((string) $usuario->company_uuid, (string) $vendor->uuid, $criar);
     }
 
-    /**
-     * Loja pré-paga: o pedido só sai com crédito para pelo menos a entrega mais barata (CarteiraDaLoja). Conferir e criar
-     * com a trava da carteira da loja: o pedido criado já reserva crédito, então dois pedidos seguidos não passam com o
-     * crédito de um. Loja pós-paga: cria direto.
-     */
+    /** Loja pré-paga: o pedido só sai com crédito (CreditoNoPedido, a mesma regra do chamar motoboy); pós-paga: cria direto. */
     protected function criarComCredito(string $empresa, string $lojaUuid, Closure $criar)
     {
-        if (!PrePago::ehPrePaga($empresa, $lojaUuid)) {
-            return $criar();
-        }
         try {
-            return Cache::lock('entregas:carteira:' . $lojaUuid, static::VALIDADE_DA_TRAVA_DA_CARTEIRA)->block(static::ESPERA_DA_TRAVA_DA_CARTEIRA, function () use ($empresa, $lojaUuid, $criar) {
-                if ($semCredito = CarteiraDaLoja::motivoDoBloqueio($empresa, $lojaUuid)) {
-                    return $this->erro(422, $semCredito);
-                }
-
-                return $criar();
-            });
-        } catch (LockTimeoutException $e) {
-            return $this->erro(409, 'Outro pedido da loja está sendo criado. Tente de novo em alguns segundos.');
+            return CreditoNoPedido::criar($empresa, $lojaUuid, $criar);
+        } catch (PedidoRecusado $e) {
+            return $this->erro($e->status, $e->getMessage());
         }
     }
 

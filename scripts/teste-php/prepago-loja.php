@@ -296,6 +296,20 @@ namespace {
     \Teste\Trava::$ocupadas['entregas:carteira:vendor-a'] = true;
     $r = $metodo->invoke($regrasP, 'empresa-1', 'vendor-a', $criar);
     confere($r->status === 409 && $criados === 2, 'outro pedido da loja sendo criado (trava ocupada): 409 sem criar');
+    echo '== CreditoNoPedido (o mesmo do chamar motoboy)' . PHP_EOL;
+    unset(\Teste\Trava::$ocupadas['entregas:carteira:vendor-a']);
+    confere(\App\Support\Entregas\PrePago\CreditoNoPedido::criar('empresa-1', 'vendor-a', $criar) === 'criado' && $criados === 3, 'pré-paga com crédito: cria');
+    \Teste\Trava::$ocupadas['entregas:carteira:vendor-a'] = true;
+    $recusa = null;
+    try {
+        \App\Support\Entregas\PrePago\CreditoNoPedido::criar('empresa-1', 'vendor-a', $criar);
+    } catch (\App\Support\Entregas\PedidoRecusado $e) {
+        $recusa = $e;
+    }
+    confere($recusa !== null && $recusa->status === 409 && str_contains($recusa->getMessage(), 'Outro pedido da loja') && $criados === 3, 'trava ocupada: PedidoRecusado 409, sem criar');
+    unset(\Teste\Trava::$ocupadas['entregas:carteira:vendor-a']);
+    confere(\App\Support\Entregas\PrePago\CreditoNoPedido::criar('empresa-1', 'vendor-b', $criar) === 'criado' && $criados === 4, 'pós-paga: cria direto');
+    confere(\App\Http\Middleware\RegrasPortalLoja::VALIDADE_DA_TRAVA_DA_CARTEIRA === \App\Support\Entregas\PrePago\CreditoNoPedido::VALIDADE_DA_TRAVA, 'a validade da trava é uma só');
     $portalCtl = file_get_contents($raiz . '/api/app/Http/Controllers/Entregas/PortalLojaController.php');
     confere(str_contains($portalCtl, "'carteira' => CarteiraDaLoja::resumo((string) session('company'), (string) \$vendor->uuid)"), 'o resumo-do-dia traz a carteira (aba e Início do portal)');
     $proteger = file_get_contents($raiz . '/api/app/Http/Middleware/ProtegerPortalLoja.php');
