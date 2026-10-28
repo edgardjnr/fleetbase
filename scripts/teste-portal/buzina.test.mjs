@@ -42,5 +42,5 @@ test('registrarAceites: o que saiu da janela de 2 h não fica guardado; lista va
 });
 
 test('o arquivo da buzina fica em /sons (console/public, fora do fingerprint)', () => {
-    assert.equal(ARQUIVO_DA_BUZINA, '/sons/buzina.mp3');
+    assert.equal(ARQUIVO_DA_BUZINA, '/sons/buzina.wav');
 });

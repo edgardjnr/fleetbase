@@ -2,7 +2,7 @@
 // entregas/loja/aceites). Funções puras, testadas em scripts/teste-portal/buzina.test.mjs.
 
 /** O áudio da buzina: console/public/sons/ (fora do fingerprint, no console/ember-cli-build.js). */
-export const ARQUIVO_DA_BUZINA = '/sons/buzina.mp3';
+export const ARQUIVO_DA_BUZINA = '/sons/buzina.wav';
 
 /** As chaves dos aceites da resposta: o par pedido + aceito_em (a troca aceita grava outro aceito_em e toca de novo). */
 export function chavesDosAceites(resposta) {
