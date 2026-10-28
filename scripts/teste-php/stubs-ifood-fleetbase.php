@@ -517,6 +517,21 @@ namespace Fleetbase\FleetOps\Models {
 
         public function notify($notificacao): void { self::$avisos[] = [$this->public_id, $notificacao]; }
 
+        /** Com uma exceção, o update() lança (o banco falhou). */
+        public static ?\Throwable $falharAtualizacao = null;
+
+        public function update(array $valores): bool
+        {
+            if (self::$falharAtualizacao) {
+                throw self::$falharAtualizacao;
+            }
+            foreach ($valores as $campo => $valor) {
+                $this->$campo = $valor;
+            }
+
+            return true;
+        }
+
         // como o escopo global do SoftDeletes: where/whereIn não acham o excluído; withTrashed() acha todos
         public static function where($coluna, $valor = null) { return (new \Teste\ConsultaDeModelo(self::naoExcluidos()))->where($coluna, $valor); }
         public static function whereIn($coluna, array $valores) { return (new \Teste\ConsultaDeModelo(self::naoExcluidos()))->whereIn($coluna, $valores); }
@@ -636,6 +651,7 @@ namespace {
         \Fleetbase\FleetOps\Models\Order::$falharCancelamento = false;
         \Fleetbase\FleetOps\Models\Driver::$todos      = [];
         \Fleetbase\FleetOps\Models\Driver::$avisos     = [];
+        \Fleetbase\FleetOps\Models\Driver::$falharAtualizacao = null;
         \Fleetbase\FleetOps\Listeners\HandleOrderDispatched::$originais    = [];
         \Fleetbase\FleetOps\Listeners\HandleOrderDispatched::$proximos     = [];
         \Fleetbase\FleetOps\Listeners\HandleOrderDispatched::$semAtividade = false;

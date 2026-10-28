@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
  * portal ou pela API v1).
  *
  * Por quê: os dois caminhos vêm do Composer e não sabem um do outro. No cancelamento pelo portal da loja
- * (RegrasPortalLoja), a regra confere que nenhum motoboy aceitou e só depois o portal grava o status. No aceite
+ * (RegrasPortalLoja), a regra confere que o pedido não foi encerrado nem saiu para a entrega e só depois o portal grava o status. No aceite
  * pelo app (BarrarAceiteDePedidoEncerrado), a regra confere que o pedido não foi encerrado e só depois o
  * Fleet-Ops o inicia. Sem a trava, um aceite no mesmo instante entra entre a conferência e a gravação do
  * cancelamento, e o pedido cancelado fica iniciado; se for concluído, entra no pagamento dos motoboys e na

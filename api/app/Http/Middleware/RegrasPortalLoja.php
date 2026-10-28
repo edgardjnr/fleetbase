@@ -6,9 +6,11 @@ use App\Support\Entregas\Ifood\PedidosIfood;
 use App\Support\Entregas\LojaDoUsuario;
 use App\Support\Entregas\PrePago\CarteiraDaLoja;
 use App\Support\Entregas\PrePago\PrePago;
+use App\Support\Entregas\SituacaoDoMotoboy;
 use App\Support\Entregas\StatusDoPedido;
 use App\Support\Entregas\TravaDoPedido;
 use Closure;
+use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Place;
 use Fleetbase\FleetOps\Models\Vendor;
@@ -29,10 +31,12 @@ use Symfony\Component\HttpFoundation\ParameterBag;
  * - Novo pedido: a coleta é sempre o Local da loja (o que vier na requisição é descartado); o destino
  *   tem de ser um endereço salvo da loja com coordenadas, a 30 m ou mais da coleta (o km da cobrança sai
  *   delas); criado o pedido, ele é despachado como pedido aberto (adhoc) aos motoboys próximos, como faz a central.
- * - Cancelamento: só antes de um motoboy aceitar, conferido e feito com a trava do pedido (TravaDoPedido), a
- *   mesma do aceite no app; depois do portal, que só grava o status, grava a atividade e o evento do
- *   cancelamento e tira o pedido dos pedidos abertos do app do motoboy. Pedido do iFood nunca: 400 (o cancelamento é
- *   feito no iFood; RegrasDoPedidoIfood barra o mesmo na API v1 e no console).
+ * - Cancelamento: até o motoboy sair para a entrega (decisão de 2026-10-28; aceito e indo à loja ainda cancela, a
+ *   caminho do cliente não: lojaPodeCancelar), conferido e feito com a trava do pedido (TravaDoPedido), a mesma do
+ *   aceite no app; depois do portal, que só grava o status, grava a atividade e o evento do cancelamento (o
+ *   OrderCanceled avisa o motoboy atribuído), tira o pedido dos pedidos abertos do app do motoboy e limpa o pedido
+ *   atual dele. Pedido do iFood nunca: 400 (o cancelamento é feito no iFood; RegrasDoPedidoIfood barra o mesmo na
+ *   API v1 e no console).
  * - Endereços: gravados com as coordenadas marcadas no mapa (o servidor não geocodifica). Endereço
  *   salvo não muda pelo portal (nem por edição, nem sobrescrito por um cadastro com o mesmo nome e
  *   rua): pedidos já feitos usam esses endereços e o km da cobrança sai deles.
@@ -61,9 +65,6 @@ class RegrasPortalLoja
 
     /** Campos do endereço novo conferidos aqui (o PlaceController os lê por input()/only()/filled()). */
     public const CAMPOS_DO_ENDERECO = ['name', 'street1', 'address', 'latitude', 'longitude', 'location'];
-
-    /** Status em que a loja ainda pode cancelar, desde que nenhum motoboy tenha aceitado. */
-    public const STATUS_CANCELAVEIS = ['created', 'dispatched'];
 
     /**
      * Destino mais perto que isto da coleta é recusado. O km da cobrança da loja e do pagamento do motoboy sai
@@ -261,12 +262,13 @@ class RegrasPortalLoja
             return $next($request);
         }
 
-        if (in_array($pedido->status, StatusDoPedido::ENCERRADOS, true)) {
+        if (in_array(strtolower((string) $pedido->status), StatusDoPedido::ENCERRADOS, true)) {
             return $this->erro(422, 'Este pedido já foi encerrado.');
         }
 
-        if ($pedido->started || !in_array($pedido->status, static::STATUS_CANCELAVEIS, true)) {
-            return $this->erro(422, 'O motoboy já aceitou este pedido. Para cancelar, fale com a central.');
+        // aceito e indo à loja ainda cancela; a caminho do cliente, só a central
+        if (!static::lojaPodeCancelar($pedido)) {
+            return $this->erro(422, 'O motoboy já saiu para a entrega. Para cancelar, fale com a central.');
         }
 
         // o portal grava o status e responde {"order": ...}, que o front usa (a resposta é mantida)
@@ -280,11 +282,24 @@ class RegrasPortalLoja
     }
 
     /**
+     * A loja cancela enquanto o pedido não está encerrado e o motoboy ainda não saiu para a entrega (status fora de
+     * SituacaoDoMotoboy::STATUS_EM_ENTREGA): criado, despachado ou aceito e indo à loja (started). O front do portal
+     * tem a mesma regra (packages/customer-portal/addon/utils/entregas-pedido.js, lojaPodeCancelar): mude junto.
+     */
+    public static function lojaPodeCancelar(Order $pedido): bool
+    {
+        $status = strtolower((string) $pedido->status);
+
+        return !in_array($status, StatusDoPedido::ENCERRADOS, true) && !in_array($status, SituacaoDoMotoboy::STATUS_EM_ENTREGA, true);
+    }
+
+    /**
      * O cancelOrder do portal só grava status = canceled: não grava a atividade (tracking status), não dispara o
      * OrderCanceled (que avisa o motoboy atribuído e vai para o socket e para os webhooks) e deixa o pedido
      * despachado e aberto (adhoc), que é como o app do motoboy reconhece um pedido à espera de aceite (lista de
-     * pedidos abertos e card de aceitar). O pedido já está cancelado: uma falha aqui só vai para o log, e a
-     * resposta do portal vale do mesmo jeito.
+     * pedidos abertos e card de aceitar). Com motoboy atribuído (aceito, indo à loja), o OrderCanceled o avisa (push "O
+     * pedido X foi cancelado.", AvisosDoMotoboy) e o pedido atual dele é limpo. O pedido já está cancelado: uma falha
+     * aqui só vai para o log, e a resposta do portal vale do mesmo jeito.
      */
     protected function completarCancelamento(Order $pedido, User $usuario): void
     {
@@ -303,6 +318,31 @@ class RegrasPortalLoja
         } catch (\Throwable $e) {
             // com a exceção no contexto: o log grava a classe e o stack, e não só a mensagem
             Log::error('[entregas] portal da loja: falha ao registrar o cancelamento do pedido', ['pedido' => $pedido->public_id, 'erro' => $e->getMessage(), 'exception' => $e]);
+        }
+
+        $this->limparPedidoAtualDoMotoboy($pedido);
+    }
+
+    /**
+     * O drivers.current_job_uuid do motoboy atribuído, se aponta para este pedido (como o console ao desatribuir e o
+     * TrocaDoMotoboy::limparPedidoAtualDoAnterior): sem limpar, o mapa e as métricas do Fleet-Ops seguiriam contando o
+     * motoboy ocupado com o pedido cancelado. Fora do try do cancel(): limpa mesmo se ele falhar. Nunca desfaz o
+     * cancelamento (warning no log).
+     */
+    protected function limparPedidoAtualDoMotoboy(Order $pedido): void
+    {
+        $motoboyUuid = $pedido->driver_assigned_uuid ?: null;
+        if (!$motoboyUuid) {
+            return;
+        }
+
+        try {
+            $motoboy = Driver::where('company_uuid', $pedido->company_uuid)->where('uuid', $motoboyUuid)->first();
+            if ($motoboy && (string) $motoboy->current_job_uuid === (string) $pedido->uuid) {
+                $motoboy->update(['current_job_uuid' => null]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[entregas] portal da loja: pedido cancelado, mas o pedido atual do motoboy não foi limpo', ['pedido' => $pedido->public_id, 'erro' => get_class($e)]);
         }
     }
 
