@@ -16,11 +16,12 @@ const INTERVALO_DO_RESUMO_MS = 60000;
  * Entregas: o topo do portal da loja no desenho do sketch 009 S (variante C da moldura): a loja (iniciais, nome e
  * "Portal da loja"), as abas Início, Pedidos (com os em andamento), Extrato e Financeiro (na loja pré-paga, Minha
  * carteira), o Novo pedido, as Conversas com as não lidas e o avatar (Configurações, tema escuro e sair). Fica em todas
- * as telas do portal, então é ele quem acompanha a lista de conversas (o número de não lidas e o aviso sonoro) enquanto o
- * portal está aberto.
+ * as telas do portal, então é ele quem acompanha a lista de conversas (o número de não lidas e o aviso sonoro) e a buzina
+ * dos aceites (entregas-buzina) enquanto o portal está aberto.
  */
 export default class PortalTopoComponent extends Component {
     @service entregasConversas;
+    @service entregasBuzina;
     @service hostRouter;
     @service fetch;
     @service currentUser;
@@ -29,12 +30,14 @@ export default class PortalTopoComponent extends Component {
     constructor() {
         super(...arguments);
         this.entregasConversas.acompanharLista.perform();
+        this.entregasBuzina.acompanhar.perform();
         this.acompanharResumo.perform();
     }
 
     willDestroy() {
         super.willDestroy(...arguments);
         this.entregasConversas.encerrar();
+        this.entregasBuzina.encerrar();
     }
 
     get iniciais() {
