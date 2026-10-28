@@ -1,0 +1,20 @@
+{{! Entregas: mapa do ponto da entrega no "Chamar motoboy" (ver o JS) }}
+{{#if this.mostrarMapa}}
+    <div class="ps-cm-mapa {{unless this.temPonto 'is-sem-ponto'}}">
+        <LeafletMap
+            class="ps-cm-leaflet"
+            @lat={{this.latitude}}
+            @lng={{this.longitude}}
+            @zoom={{16}}
+            @zoomControl={{true}}
+            @doubleClickZoom={{false}}
+            @scrollWheelZoom="center"
+            @touchZoom="center"
+            @onLoad={{this.carregou}}
+            as |layers|
+        >
+            <layers.tile @url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        </LeafletMap>
+        <span class="ps-cm-pino" aria-hidden="true"><FaIcon @icon="location-dot" /></span>
+    </div>
+{{/if}}
