@@ -25,8 +25,8 @@ use Illuminate\Support\Facades\Log;
  * - recusar / vencer: a resposta da oferta pendente e o próximo passo;
  * - abrirATodos: fase `aberta` e o OrderPing comum a todos no raio (daí em diante vale o que já existe: reenvios e o
  *   aviso "sem motoboy");
- * - encerrar e registrarAceite: só gravação, sem a trava (rodam dentro de quem já a segura: o aceite no middleware, a
- *   TrocaDoMotoboy).
+ * - encerrar, registrarAceite e oferecerAoEscolhidoSemTrava: sem a trava (rodam dentro de quem já a segura: o aceite no
+ *   middleware, a TrocaDoMotoboy).
  *
  * iniciar, avancar, avancarOuAbrir, vencer, recusar, recusarOuDispensar, abrirATodos e mostrarATodos rodam sob a
  * TravaDoPedido (a mesma do aceite e do cancelamento) e relêem a distribuição com ela. A trava não é reentrante: dentro
@@ -282,6 +282,100 @@ class Distribuidor
         Distribuicoes::cancelarPendentes((int) $oferta->distribuicao_id);
         Distribuicoes::mudarFase((int) $oferta->distribuicao_id, Distribuicao::FASE_ENCERRADA, Distribuicao::ACEITA);
         Log::info('[entregas] distribuição: encerrada (aceita)', ['oferta' => $oferta->id] + $this->motoboyNoLog((string) $oferta->motoboy_uuid));
+    }
+
+    /**
+     * Sem a trava (a TrocaDoMotoboy já a segura): a troca ou a atribuição pela central ou pelo líder antes da coleta.
+     * Encerra a distribuição em curso do pedido (redespachada), cria outra e oferece primeiro ao motoboy escolhido (volta
+     * 1, rodada 1, lista fechada), mesmo fora do raio, ocupado ou com o GPS velho: quem escolheu foi a central ou o líder.
+     * Recusou ou venceu: o ciclo de sempre (com ou sem rodadas); o escolhido fica fora da volta 1 por já ter linha nela.
+     * Nunca lança: uma falha abre a todos (falha) com o alarme geral. Devolve a oferta, ou null (desligada ou falha).
+     */
+    public function oferecerAoEscolhidoSemTrava(Order $pedido, Driver $motoboy): ?object
+    {
+        if (!Distribuicao::ligada()) {
+            return null;
+        }
+        $distribuicao = null;
+        try {
+            $anterior = Distribuicoes::doPedido((string) $pedido->uuid);
+            if ($anterior) {
+                $this->encerrarSemTrava($anterior, Distribuicao::REDESPACHADA);
+            }
+            $distribuicao = Distribuicoes::criar($pedido);
+            Log::info('[entregas] distribuição: iniciada', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id, 'escolhido' => $motoboy->public_id]);
+            $linha = $this->linhaDoEscolhido($pedido, $motoboy);
+            Distribuicoes::gravarFila((int) $distribuicao->id, [$linha]);
+            $raio   = Distribuicao::emRodadas() ? Distribuicao::raioDaRodada(Distribuicao::raioBase($pedido), 1) : null;
+            $oferta = Distribuicoes::criarOferta($distribuicao, $linha, 1, 1, 1, $raio);
+            try {
+                AvancarOferta::agendar((int) $oferta->id);
+            } catch (\Throwable $e) {
+                // a fila fora do ar: a varredura vence a oferta (FOLGA_DA_VARREDURA_S depois do vence_em)
+                Log::warning('[entregas] distribuição: job da oferta não entrou na fila', ['oferta' => $oferta->id, 'erro' => get_class($e)]);
+            }
+            try {
+                $motoboy->notify(new OfertaDePedido($pedido, $linha['distancia_m'], Distribuicoes::data($oferta->vence_em), Distribuicao::segundosDaOferta()));
+            } catch (\Throwable $e) {
+                Log::warning('[entregas] distribuição: push da oferta falhou', ['oferta' => $oferta->id, 'erro' => get_class($e)]);
+            }
+            Log::info('[entregas] distribuição: oferta ao escolhido enviada', ['pedido' => $pedido->public_id, 'oferta' => $oferta->id, 'motoboy' => $motoboy->public_id, 'tempo_s' => $linha['tempo_s']]);
+
+            return $oferta;
+        } catch (\Throwable $erro) {
+            if (!$distribuicao) {
+                Log::warning('[entregas] distribuição: falha na oferta ao escolhido', ['pedido' => $pedido->public_id, 'erro' => get_class($erro)]);
+
+                return null;
+            }
+            try {
+                $this->abrirSemTrava($distribuicao, $pedido, Distribuicao::FALHA);
+                Log::warning('[entregas] distribuição: falha na oferta ao escolhido; aberta a todos', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id, 'erro' => get_class($erro)]);
+            } catch (\Throwable $e) {
+                $this->abrirPorFalha($distribuicao, $pedido->public_id, $erro);
+            }
+
+            return null;
+        }
+    }
+
+    /**
+     * A linha da fila do escolhido: com posição (e coleta com coordenada), o tempo até o cliente pela FilaDeCandidatos, com
+     * as paradas dele e o encaixe do ciclo; sem posição, tempo 0 e aproximado (a oferta sai assim mesmo).
+     */
+    protected function linhaDoEscolhido(Order $pedido, Driver $motoboy): array
+    {
+        $posicao = Pontos::de($motoboy->location);
+        $coleta  = Pontos::de($pedido->payload?->pickup?->location);
+        if ($posicao && $coleta) {
+            $uuid      = (string) $motoboy->uuid;
+            $empresa   = (string) $pedido->company_uuid;
+            $candidato = [
+                'motoboy'       => $motoboy,
+                'posicao'       => $posicao,
+                'distancia'     => Pontos::metros($posicao, $coleta),
+                'paradas'       => Candidatos::paradas($empresa, [$uuid])[$uuid] ?? [],
+                'corridas_hoje' => Candidatos::corridasHoje($empresa, [$uuid])[$uuid] ?? 0,
+            ];
+            $atraso = Distribuicao::emRodadas() ? Distribuicao::ATRASO_MAXIMO_EM_RODADAS_S : Distribuicao::ATRASO_MAXIMO_S;
+            $fila   = $this->fila->para($pedido, [$candidato], $atraso);
+            if ($fila !== []) {
+                return $fila[0];
+            }
+        }
+
+        return [
+            'motoboy_uuid'  => (string) $motoboy->uuid,
+            'public_id'     => (string) $motoboy->public_id,
+            'nome'          => (string) $motoboy->name,
+            'tempo_s'       => 0,
+            'encaixe'       => false,
+            'aproximado'    => true,
+            'livre'         => true,
+            'distancia_m'   => 0,
+            'corridas_hoje' => 0,
+            'desempate'     => false,
+        ];
     }
 
     /** Relê a distribuição e o pedido e avança. Só de dentro da trava. */
