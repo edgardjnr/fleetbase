@@ -70,13 +70,20 @@ export default class OperationsOrdersIndexNewController extends Controller {
             // Trigger created event
             this.universe.trigger('fleet-ops.order.created', createdOrder);
 
-            // Entregas: abre direto no mapa com a folha do pedido (sketch 008). Ir à rota de detalhes fazia o beforeModel
-            // dela redirecionar, e o yield recebia o TransitionAborted da transição trocada: o pedido era criado, mas o
-            // salvar mostrava "TransitionAborted" no lugar do aviso de sucesso.
-            yield this.hostRouter.transitionTo('console.fleet-ops.operations.orders.index', {
-                queryParams: { layout: 'map', pedido: createdOrder.public_id, de: null },
-            });
+            // Entregas: o pedido já foi criado; o aviso sai antes da transição. Abre direto no mapa com a folha do pedido
+            // (sketch 008). Ir à rota de detalhes fazia o beforeModel dela redirecionar; e a tela de pedidos ainda pode
+            // trocar a transição ao abrir a folha (layout e query params), o que rejeita a promessa com TransitionAborted
+            // (2026-10-28): esse caso não é erro, a navegação seguinte vale.
             this.notifications.success(this.intl.t('common.resource-created-success-name', { resource: this.intl.t('resource.order'), resourceName: createdOrder.tracking }));
+            try {
+                yield this.hostRouter.transitionTo('console.fleet-ops.operations.orders.index', {
+                    queryParams: { layout: 'map', pedido: createdOrder.public_id, de: null },
+                });
+            } catch (erroDaTransicao) {
+                if (erroDaTransicao?.name !== 'TransitionAborted') {
+                    throw erroDaTransicao;
+                }
+            }
         } catch (err) {
             console.error(err);
             debug('Error creating order: ' + err.message);
