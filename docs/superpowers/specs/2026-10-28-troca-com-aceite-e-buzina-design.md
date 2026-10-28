@@ -56,7 +56,9 @@ Dentro da `TravaDoPedido` (relê o pedido, como hoje):
 4. encerra a distribuição em curso do pedido, se houver, como `redespachada` (a oferta pendente de outro motoboy vira
    `cancelada`; o Aceitar atrasado dele leva o 409 de sempre).
 
-**Fora da trava** (ela não é reentrante; a `TrocaDoMotoboy` não pode chamar o `Distribuidor` lá dentro):
+Ainda **dentro da mesma trava**, por um método novo do `Distribuidor` que não a toma (como o `encerrar` e o
+`registrarAceite`; a trava não é reentrante). Fora dela, haveria um instante com o pedido aberto e sem distribuição, em
+que o aceite seria livre para qualquer motoboy com o card antigo:
 
 5. inicia a distribuição nova com a **oferta dirigida** ao escolhido: volta 1, rodada 1, lista fechada, prazo da oferta de
    sempre (50 s em rodadas, 30 s sem), push `OfertaDePedido`. A oferta vai a ele **mesmo fora do raio, ocupado ou com
@@ -65,6 +67,12 @@ Dentro da `TravaDoPedido` (relê o pedido, como hoje):
 7. log `[entregas] troca do motoboy: oferta dirigida` (pedido, anterior, escolhido, quem trocou; só ids).
 
 Se o passo 5 falhar, cai na reserva da distribuição (alarme geral, motivo `falha`), como o listener do despacho.
+
+Gravação do reset com `save()` (não `saveQuietly`): os observadores toleram (nenhum `OrderDriverAssigned` com motoboy
+nulo, nada vai ao iFood, a parte da atribuição do valor congelado é limpa) e o socket e os caches são avisados. Pesquisa
+de 2026-10-28: no intervalo, o iFood continua com o motoboy anterior; no aceite, sai o `assignDriver` do novo (o
+`goingToOrigin` não se repete; um 409 do iFood vira a recusa com aviso de sempre); valor, multiplicador e "entrega junto"
+(inclusive da loja) passam a ser os do novo no instante do aceite; nada é lançado no Financeiro no aceite.
 
 ### Depois da oferta dirigida
 
