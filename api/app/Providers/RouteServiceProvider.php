@@ -103,6 +103,10 @@ class RouteServiceProvider extends ServiceProvider
         // chamadas por minuto por usuário, num balde separado do throttle:60,1 que as outras rotas da loja dividem
         RateLimiter::for('entregas-loja-mapa', fn (Request $request) => Limit::perMinute(60)->by('entregas-loja-mapa:' . (session('user') ?: $request->ip())));
 
+        // Entregas RestaurantePro: buzina do portal da loja (cada aba do portal lê os aceites a cada 10 s, em qualquer tela),
+        // até 30 chamadas por minuto por usuário, num balde separado do throttle:60,1 das outras rotas da loja
+        RateLimiter::for('entregas-loja-aceites', fn (Request $request) => Limit::perMinute(30)->by('entregas-loja-aceites:' . (session('user') ?: $request->ip())));
+
         // Entregas RestaurantePro: chat da loja com os motoboys no portal (a lista a cada 20 s e a conversa aberta a cada 5 s, por
         // aba), até 120 chamadas por minuto por usuário, num balde separado das outras rotas da loja
         RateLimiter::for('entregas-loja-conversas', fn (Request $request) => Limit::perMinute(120)->by('entregas-loja-conversas:' . (session('user') ?: $request->ip())));
@@ -286,6 +290,7 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('loja/pedidos/{id}/motoboy', [PortalLojaController::class, 'motoboy'])->middleware('throttle:60,1');
                         Route::get('loja/pedidos/{id}/itens', [PortalLojaController::class, 'itens'])->middleware('throttle:60,1');
                         Route::get('loja/motoboys', [PortalLojaController::class, 'motoboysNoMapa'])->middleware('throttle:entregas-loja-mapa');
+                        Route::get('loja/aceites', [PortalLojaController::class, 'aceites'])->middleware('throttle:entregas-loja-aceites');
                         // Financeiro da loja: ciclo em andamento e faturas emitidas e canceladas; o detalhe de uma fatura (uuid)
                         Route::get('loja/financeiro', [PortalLojaController::class, 'financeiro'])->middleware('throttle:60,1');
                         Route::get('loja/faturas/{id}', [PortalLojaController::class, 'fatura'])->middleware('throttle:60,1');

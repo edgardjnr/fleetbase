@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Entregas;
 
 use App\Http\Controllers\Controller;
+use App\Support\Entregas\AceitesDaLoja;
 use App\Support\Entregas\CalculoEntregas;
 use App\Support\Entregas\Financeiro\Faturas;
 use App\Support\Entregas\Financeiro\FaturasDaLoja;
@@ -212,6 +213,17 @@ class PortalLojaController extends Controller
         return response()->json(ResumoDoDiaDaLoja::contar(session('company'), $this->donosDosPedidos($vendor)) + [
             'carteira' => CarteiraDaLoja::resumo((string) session('company'), (string) $vendor->uuid),
         ]);
+    }
+
+    /**
+     * Os aceites recentes dos pedidos da loja (AceitesDaLoja), para a buzina do portal, que lê a cada 10 s em qualquer
+     * tela (serviço entregas-buzina). Usuário sem loja: 404.
+     */
+    public function aceites()
+    {
+        $vendor = $this->lojaDaSessao();
+
+        return response()->json(['aceites' => AceitesDaLoja::listar((string) session('company'), $this->donosDosPedidos($vendor))]);
     }
 
     /**
