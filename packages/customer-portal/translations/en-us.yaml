@@ -967,6 +967,7 @@ customer-portal:
           desconhecida: "Processing"
       chamar:
         titulo: Call a rider
+        coleta: "Pickup at your store · {loja}"
         fechar: Close
         passo-de: "Step {atual} of 3"
         passos:
@@ -1006,6 +1007,7 @@ customer-portal:
           ja-pago: Already paid
           cobrar: Collect on delivery
           valor: Amount to collect
+          valor-placeholder: "0.00"
           troco-para: Change for
           forma: Method
           dinheiro: Cash

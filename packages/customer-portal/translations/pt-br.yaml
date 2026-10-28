@@ -967,6 +967,7 @@ customer-portal:
           desconhecida: "Em processamento"
       chamar:
         titulo: Chamar motoboy
+        coleta: "Coleta na sua loja · {loja}"
         fechar: Fechar
         passo-de: "Passo {atual} de 3"
         passos:
@@ -1006,6 +1007,7 @@ customer-portal:
           ja-pago: Já pago
           cobrar: Cobrar na entrega
           valor: Valor a cobrar
+          valor-placeholder: "0,00"
           troco-para: Troco para
           forma: Forma
           dinheiro: Dinheiro

@@ -1,0 +1,166 @@
+{{! Entregas: "Chamar motoboy" em 3 passos e o "Procurando motoboy" (ver o JS) }}
+<div class="ps-cm">
+    <header class="ps-cm-topo">
+        <div>
+            <h2 class="ps-cm-titulo">{{t "customer-portal.ui.entregas.chamar.titulo"}}</h2>
+            {{#if this.nomeDaLoja}}
+                <p class="ps-cm-subtitulo">{{t "customer-portal.ui.entregas.chamar.coleta" loja=this.nomeDaLoja}}</p>
+            {{/if}}
+        </div>
+        <button type="button" class="ps-cm-fechar" aria-label={{t "customer-portal.ui.entregas.chamar.fechar"}} {{on "click" this.fechar}}><FaIcon @icon="xmark" /></button>
+    </header>
+
+    {{#if (eq this.passo "chamado")}}
+        <div class="ps-cm-corpo ps-cm-procurando">
+            <div class="ps-cm-radar" aria-hidden="true"><FaIcon @icon="motorcycle" /></div>
+            <h3 class="ps-cm-pergunta">{{t "customer-portal.ui.entregas.chamar.procurando.titulo"}}</h3>
+            {{#if this.chamado}}
+                <div class="ps-cm-pronto">
+                    <span class="ps-cm-pronto-selo">{{t "customer-portal.ui.entregas.chamar.procurando.titulo"}}</span>
+                    <p class="ps-cm-pronto-nome">{{this.chamado.numero}} · {{this.chamado.cliente}}</p>
+                    {{#if this.chamado.endereco}}
+                        <p>{{this.chamado.endereco}}</p>
+                    {{/if}}
+                    <p>{{or this.chamado.cobranca (t "customer-portal.ui.entregas.chamar.procurando.ja-pago")}}</p>
+                </div>
+            {{/if}}
+            <p class="ps-cm-pronto-dica"><FaIcon @icon="circle-info" /><span>{{t "customer-portal.ui.entregas.chamar.procurando.dica"}}</span></p>
+        </div>
+        <footer class="ps-cm-rodape">
+            <button type="button" class="ps-btn ps-btn-grande" {{on "click" this.verNoMapa}}><FaIcon @icon="map-location-dot" /><span>{{t "customer-portal.ui.entregas.chamar.procurando.ver-no-mapa"}}</span></button>
+            <button type="button" class="ps-btn ps-btn-grande ps-btn-marca" {{on "click" this.novoPedido}}><FaIcon @icon="plus" /><span>{{t "customer-portal.ui.entregas.chamar.procurando.novo"}}</span></button>
+        </footer>
+    {{else}}
+        <ol class="ps-cm-passos" aria-label={{t "customer-portal.ui.entregas.chamar.passo-de" atual=this.numeroDoPasso}}>
+            <li class="{{if (eq this.passo 'cliente') 'is-atual'}} {{if this.passoFeitoCliente 'is-feito'}}"><span>{{t "customer-portal.ui.entregas.chamar.passos.cliente"}}</span></li>
+            <li class="{{if (eq this.passo 'endereco') 'is-atual'}} {{if this.passoFeitoEndereco 'is-feito'}}"><span>{{t "customer-portal.ui.entregas.chamar.passos.endereco"}}</span></li>
+            <li class="{{if (eq this.passo 'pagamento') 'is-atual'}}"><span>{{t "customer-portal.ui.entregas.chamar.passos.pagamento"}}</span></li>
+        </ol>
+
+        <div class="ps-cm-corpo">
+            {{#if (eq this.passo "cliente")}}
+                <h3 class="ps-cm-pergunta">{{t "customer-portal.ui.entregas.chamar.cliente.pergunta"}}</h3>
+                <label class="ps-cm-campo">
+                    <span>{{t "customer-portal.ui.entregas.chamar.cliente.telefone"}}</span>
+                    <Input @type="tel" @value={{this.telefone}} inputmode="tel" autocomplete="off" maxlength="20" placeholder={{t "customer-portal.ui.entregas.chamar.cliente.telefone-placeholder"}} {{on "input" this.aoDigitarTelefone}} />
+                </label>
+                {{#if this.avisoDoTelefone}}
+                    <p class="ps-cm-aviso">{{t "customer-portal.ui.entregas.chamar.cliente.telefone-invalido"}}</p>
+                {{else if this.buscarCliente.isRunning}}
+                    <p class="ps-cm-dica">{{t "customer-portal.ui.entregas.chamar.cliente.buscando"}}</p>
+                {{else}}
+                    <p class="ps-cm-dica">{{t "customer-portal.ui.entregas.chamar.cliente.dica"}}</p>
+                {{/if}}
+                {{#if this.cliente}}
+                    <div class="ps-cm-cliente">
+                        <span class="ps-cm-cliente-selo"><FaIcon @icon="clock-rotate-left" /> {{t "customer-portal.ui.entregas.chamar.cliente.ja-pediu" pedidos=this.cliente.pedidos}}</span>
+                        <p class="ps-cm-cliente-nome">{{this.cliente.nome}}</p>
+                        {{#if this.linhaDoEnderecoDoCliente}}
+                            <p>{{this.linhaDoEnderecoDoCliente}}</p>
+                        {{/if}}
+                        {{#if this.cliente.endereco.referencia}}
+                            <p class="ps-cm-dica">{{this.cliente.endereco.referencia}}</p>
+                        {{/if}}
+                        <div class="ps-cm-cliente-acoes">
+                            {{#if this.podeUsarEnderecoDoCliente}}
+                                <button type="button" class="ps-btn ps-btn-marca ps-cm-cresce" {{on "click" this.usarEnderecoDoCliente}}>{{t "customer-portal.ui.entregas.chamar.cliente.usar"}}</button>
+                            {{/if}}
+                            <button type="button" class="ps-btn" {{on "click" this.outroEndereco}}>{{t "customer-portal.ui.entregas.chamar.cliente.outro-endereco"}}</button>
+                        </div>
+                    </div>
+                {{/if}}
+                <label class="ps-cm-campo">
+                    <span>{{t "customer-portal.ui.entregas.chamar.cliente.nome"}}</span>
+                    <Input @value={{this.nome}} maxlength={{this.LIMITES.nome}} autocomplete="off" placeholder={{t "customer-portal.ui.entregas.chamar.cliente.nome-placeholder"}} />
+                </label>
+            {{else if (eq this.passo "endereco")}}
+                <h3 class="ps-cm-pergunta">{{t "customer-portal.ui.entregas.chamar.endereco.pergunta"}}</h3>
+                <p class="ps-cm-dica ps-cm-quem">{{this.nome}} · {{this.telefoneFormatado}}</p>
+                <div class="ps-cm-campo">
+                    <span>{{t "customer-portal.ui.entregas.chamar.endereco.rua"}}</span>
+                    <EnderecoGoogleInput
+                        @value={{this.endereco.rua}}
+                        @onSelect={{this.escolherSugestao}}
+                        @latitude={{this.centroDoMapa.latitude}}
+                        @longitude={{this.centroDoMapa.longitude}}
+                        @placeholder={{t "customer-portal.ui.entregas.chamar.endereco.rua-placeholder"}}
+                    />
+                </div>
+                {{#if this.ruaSemNumero}}
+                    <p class="ps-cm-aviso">{{t "customer-portal.ui.entregas.chamar.endereco.sem-numero"}}</p>
+                {{/if}}
+                <Portal::ChamarMotoboy::Ponto @latitude={{this.endereco.latitude}} @longitude={{this.endereco.longitude}} @centro={{this.centroDoMapa}} @onMudou={{this.moverPonto}} />
+                <p class="ps-cm-dica">
+                    {{#if this.temPonto}}{{t "customer-portal.ui.entregas.chamar.endereco.mapa-dica"}}{{else}}{{t "customer-portal.ui.entregas.chamar.endereco.sem-ponto"}}{{/if}}
+                </p>
+                <div class="ps-cm-duplo">
+                    <label class="ps-cm-campo">
+                        <span>{{t "customer-portal.ui.entregas.chamar.endereco.complemento"}}</span>
+                        <Input @value={{this.complemento}} maxlength={{this.LIMITES.complemento}} autocomplete="off" placeholder={{t "customer-portal.ui.entregas.chamar.endereco.complemento-placeholder"}} />
+                    </label>
+                    <label class="ps-cm-campo">
+                        <span>{{t "customer-portal.ui.entregas.chamar.endereco.referencia"}}</span>
+                        <Input @value={{this.referencia}} maxlength={{this.LIMITES.referencia}} autocomplete="off" placeholder={{t "customer-portal.ui.entregas.chamar.endereco.referencia-placeholder"}} />
+                    </label>
+                </div>
+            {{else}}
+                <div class="ps-cm-resumo-cliente">
+                    <div>
+                        <strong>{{this.nome}} · {{this.telefoneFormatado}}</strong>
+                        <p>{{this.linhaDoEndereco}}</p>
+                    </div>
+                    <button type="button" class="ps-cm-link" {{on "click" (fn this.irPara "endereco")}}>{{t "customer-portal.ui.entregas.chamar.pagamento.alterar"}}</button>
+                </div>
+                <h3 class="ps-cm-pergunta">{{t "customer-portal.ui.entregas.chamar.pagamento.pergunta"}}</h3>
+                <div class="ps-cm-segmento" role="group" aria-label={{t "customer-portal.ui.entregas.chamar.pagamento.pergunta"}}>
+                    <button type="button" class={{if (eq this.pago true) "is-ativo"}} aria-pressed={{if (eq this.pago true) "true" "false"}} {{on "click" (fn this.escolherPago true)}}>{{t "customer-portal.ui.entregas.chamar.pagamento.ja-pago"}}</button>
+                    <button type="button" class={{if (eq this.pago false) "is-ativo"}} aria-pressed={{if (eq this.pago false) "true" "false"}} {{on "click" (fn this.escolherPago false)}}>{{t "customer-portal.ui.entregas.chamar.pagamento.cobrar"}}</button>
+                </div>
+                {{#if this.cobrar}}
+                    <div class="ps-cm-duplo">
+                        <label class="ps-cm-campo">
+                            <span>{{t "customer-portal.ui.entregas.chamar.pagamento.valor"}}</span>
+                            <span class="ps-cm-reais"><Input @value={{this.valor}} inputmode="decimal" autocomplete="off" placeholder={{t "customer-portal.ui.entregas.chamar.pagamento.valor-placeholder"}} /></span>
+                        </label>
+                        {{#if this.emDinheiro}}
+                            <label class="ps-cm-campo">
+                                <span>{{t "customer-portal.ui.entregas.chamar.pagamento.troco-para"}}</span>
+                                <span class="ps-cm-reais"><Input @value={{this.trocoPara}} inputmode="decimal" autocomplete="off" placeholder={{t "customer-portal.ui.entregas.chamar.pagamento.valor-placeholder"}} /></span>
+                            </label>
+                        {{/if}}
+                    </div>
+                    <p class="ps-cm-rotulo">{{t "customer-portal.ui.entregas.chamar.pagamento.forma"}}</p>
+                    <div class="ps-cm-segmento ps-cm-fichas" role="group" aria-label={{t "customer-portal.ui.entregas.chamar.pagamento.forma"}}>
+                        <button type="button" class={{if (eq this.forma "dinheiro") "is-ativo"}} aria-pressed={{if (eq this.forma "dinheiro") "true" "false"}} {{on "click" (fn this.escolherForma "dinheiro")}}>{{t "customer-portal.ui.entregas.chamar.pagamento.dinheiro"}}</button>
+                        <button type="button" class={{if (eq this.forma "cartao") "is-ativo"}} aria-pressed={{if (eq this.forma "cartao") "true" "false"}} {{on "click" (fn this.escolherForma "cartao")}}>{{t "customer-portal.ui.entregas.chamar.pagamento.cartao"}}</button>
+                        <button type="button" class={{if (eq this.forma "pix") "is-ativo"}} aria-pressed={{if (eq this.forma "pix") "true" "false"}} {{on "click" (fn this.escolherForma "pix")}}>{{t "customer-portal.ui.entregas.chamar.pagamento.pix"}}</button>
+                    </div>
+                    {{#if this.trocoDoMotoboy}}
+                        <p class="ps-cm-troco">{{t "customer-portal.ui.entregas.chamar.pagamento.troco-do-motoboy" valor=this.trocoDoMotoboy}}</p>
+                    {{/if}}
+                    {{#if (eq this.problema "troco")}}
+                        <p class="ps-cm-aviso">{{t "customer-portal.ui.entregas.chamar.pagamento.troco-menor"}}</p>
+                    {{/if}}
+                {{/if}}
+                <label class="ps-cm-campo">
+                    <span>{{t "customer-portal.ui.entregas.chamar.pagamento.observacao"}}</span>
+                    <Textarea @value={{this.observacao}} rows="3" maxlength={{this.LIMITES.observacao}} placeholder={{t "customer-portal.ui.entregas.chamar.pagamento.observacao-placeholder"}} />
+                </label>
+            {{/if}}
+        </div>
+
+        <footer class="ps-cm-rodape">
+            {{#unless (eq this.passo "cliente")}}
+                <button type="button" class="ps-btn ps-btn-grande" {{on "click" this.voltar}}>{{t "customer-portal.ui.entregas.chamar.voltar"}}</button>
+            {{/unless}}
+            {{#if (eq this.passo "pagamento")}}
+                <button type="button" class="ps-btn ps-btn-grande ps-btn-marca ps-cm-cresce" disabled={{or (not this.podeContinuar) this.chamar.isRunning}} {{on "click" (perform this.chamar)}}>
+                    <FaIcon @icon="motorcycle" />
+                    <span>{{if this.chamar.isRunning (t "customer-portal.ui.entregas.chamar.chamando") (t "customer-portal.ui.entregas.chamar.chamar")}}</span>
+                </button>
+            {{else}}
+                <button type="button" class="ps-btn ps-btn-grande ps-btn-marca ps-cm-cresce" disabled={{not this.podeContinuar}} {{on "click" this.continuar}}>{{t "customer-portal.ui.entregas.chamar.continuar"}}</button>
+            {{/if}}
+        </footer>
+    {{/if}}
+</div>
