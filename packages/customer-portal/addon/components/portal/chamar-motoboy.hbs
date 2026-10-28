@@ -76,7 +76,7 @@
             {{else if (eq this.passo "endereco")}}
                 <h3 class="ps-cm-pergunta">{{t "customer-portal.ui.entregas.chamar.endereco.pergunta"}}</h3>
                 <p class="ps-cm-dica ps-cm-quem">{{this.nome}} · {{this.telefoneFormatado}}</p>
-                <div class="ps-cm-campo">
+                <label class="ps-cm-campo">
                     <span>{{t "customer-portal.ui.entregas.chamar.endereco.rua"}}</span>
                     <EnderecoGoogleInput
                         @value={{this.endereco.rua}}
@@ -85,13 +85,19 @@
                         @longitude={{this.centroDoMapa.longitude}}
                         @placeholder={{t "customer-portal.ui.entregas.chamar.endereco.rua-placeholder"}}
                     />
-                </div>
+                </label>
                 {{#if this.ruaSemNumero}}
                     <p class="ps-cm-aviso">{{t "customer-portal.ui.entregas.chamar.endereco.sem-numero"}}</p>
                 {{/if}}
                 <Portal::ChamarMotoboy::Ponto @latitude={{this.endereco.latitude}} @longitude={{this.endereco.longitude}} @centro={{this.centroDoMapa}} @onMudou={{this.moverPonto}} />
                 <p class="ps-cm-dica">
-                    {{#if this.temPonto}}{{t "customer-portal.ui.entregas.chamar.endereco.mapa-dica"}}{{else}}{{t "customer-portal.ui.entregas.chamar.endereco.sem-ponto"}}{{/if}}
+                    {{#if this.temPonto}}
+                        {{t "customer-portal.ui.entregas.chamar.endereco.mapa-dica"}}
+                    {{else if this.centroDoMapa}}
+                        {{t "customer-portal.ui.entregas.chamar.endereco.sem-ponto"}}
+                    {{else}}
+                        {{t "customer-portal.ui.entregas.chamar.endereco.sem-mapa"}}
+                    {{/if}}
                 </p>
                 <div class="ps-cm-duplo">
                     <label class="ps-cm-campo">
@@ -129,6 +135,11 @@
                             </label>
                         {{/if}}
                     </div>
+                    {{#if this.avisoDoValor}}
+                        <p class="ps-cm-aviso">{{t "customer-portal.ui.entregas.chamar.pagamento.valor-invalido"}}</p>
+                    {{else if this.valorInterpretado}}
+                        <p class="ps-cm-dica">{{t "customer-portal.ui.entregas.chamar.pagamento.cobrar-valor" valor=this.valorInterpretado}}</p>
+                    {{/if}}
                     <p class="ps-cm-rotulo">{{t "customer-portal.ui.entregas.chamar.pagamento.forma"}}</p>
                     <div class="ps-cm-segmento ps-cm-fichas" role="group" aria-label={{t "customer-portal.ui.entregas.chamar.pagamento.forma"}}>
                         <button type="button" class={{if (eq this.forma "dinheiro") "is-ativo"}} aria-pressed={{if (eq this.forma "dinheiro") "true" "false"}} {{on "click" (fn this.escolherForma "dinheiro")}}>{{t "customer-portal.ui.entregas.chamar.pagamento.dinheiro"}}</button>

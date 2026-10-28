@@ -978,6 +978,7 @@ customer-portal:
         voltar: Back
         chamar: Call a rider
         chamando: Calling…
+        sem-conexao: "No connection. Tap again: the order won't be duplicated."
         cliente:
           pergunta: Who is the delivery for?
           dica: "Start with the phone: if the customer ordered before, the address comes along."
@@ -997,6 +998,7 @@ customer-portal:
           sem-numero: Check the house number.
           mapa-dica: Drag the map to adjust the delivery point.
           sem-ponto: Pick a suggestion or drag the map to the delivery spot.
+          sem-mapa: Pick a suggestion from the list.
           complemento: Complement
           complemento-placeholder: Apt, block, house
           referencia: Landmark
@@ -1008,6 +1010,8 @@ customer-portal:
           cobrar: Collect on delivery
           valor: Amount to collect
           valor-placeholder: "0.00"
+          valor-invalido: "Invalid amount. Type it like this: 58.90."
+          cobrar-valor: "Collect {valor}"
           troco-para: Change for
           forma: Method
           dinheiro: Cash

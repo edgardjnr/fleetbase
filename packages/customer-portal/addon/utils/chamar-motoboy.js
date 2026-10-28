@@ -188,3 +188,13 @@ export function novaChave() {
     const h = [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
     return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
+
+/**
+ * O POST não teve resposta do servidor (rede caiu, proxy devolveu HTML): o fetch do ember-core lança TypeError ou
+ * "Error processing response…". A loja pode tocar de novo; a chave do painel faz a repetição devolver o mesmo pedido.
+ */
+export function erroSemResposta(erro) {
+    if (!erro) return false;
+    if (erro instanceof TypeError || erro?.name === 'TypeError') return true;
+    return String(erro?.message ?? '').startsWith('Error processing response');
+}

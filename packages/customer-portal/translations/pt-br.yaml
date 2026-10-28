@@ -978,6 +978,7 @@ customer-portal:
         voltar: Voltar
         chamar: Chamar motoboy
         chamando: Chamando…
+        sem-conexao: "Sem conexão. Toque de novo: o pedido não sai em dobro."
         cliente:
           pergunta: Para quem é a entrega?
           dica: "Comece pelo telefone: se o cliente já pediu, o endereço vem junto."
@@ -997,6 +998,7 @@ customer-portal:
           sem-numero: Confira o número da casa.
           mapa-dica: Arraste o mapa para ajustar o ponto da entrega.
           sem-ponto: Escolha uma sugestão ou arraste o mapa até o local da entrega.
+          sem-mapa: Escolha uma sugestão da lista.
           complemento: Complemento
           complemento-placeholder: Apto, bloco, casa
           referencia: Referência
@@ -1008,6 +1010,8 @@ customer-portal:
           cobrar: Cobrar na entrega
           valor: Valor a cobrar
           valor-placeholder: "0,00"
+          valor-invalido: "Valor inválido. Digite assim: 58,90."
+          cobrar-valor: "Cobrar {valor}"
           troco-para: Troco para
           forma: Forma
           dinheiro: Dinheiro

@@ -156,3 +156,13 @@ test('chave do chamado: uuid v4 (aceita pelo ChamadoDaLoja::PADRAO_DA_CHAVE)', (
     assert.match(chave, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     assert.notEqual(novaChave(), chave);
 });
+
+test('erro sem resposta do servidor (a rede caiu): o chamado pode ser repetido', async () => {
+    const { erroSemResposta } = await import('../../packages/customer-portal/addon/utils/chamar-motoboy.js');
+    assert.equal(erroSemResposta(new TypeError('Failed to fetch')), true);
+    assert.equal(erroSemResposta(new Error('Error processing response: Unexpected token <')), true);
+    assert.equal(erroSemResposta({ message: 'Error processing response' }), true);
+    assert.equal(erroSemResposta(new Error('Crédito insuficiente para o pedido.')), false);
+    assert.equal(erroSemResposta({ errors: ['Ponto a menos de 30 m da loja.'] }), false);
+    assert.equal(erroSemResposta(null), false);
+});

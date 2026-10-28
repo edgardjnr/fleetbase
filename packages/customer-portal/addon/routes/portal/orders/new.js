@@ -24,9 +24,11 @@ export default class PortalOrdersNewRoute extends Route {
         return { loja };
     }
 
-    // ao sair do painel (fechar ou "Ver no mapa"), a lista de pedidos é relida na hora, com o pedido chamado nela
+    // ao sair do painel (fechar, "Ver no mapa" ou outra aba), o rascunho sai (o P da loja não fica no mapa grande) e a lista
+    // de pedidos é relida na hora, com o pedido chamado nela
     resetController(controller, isExiting) {
         if (isExiting) {
+            this.customerPortalOrderCreation.reset();
             this.controllerFor('portal.orders').atualizarListaAgora?.();
         }
     }

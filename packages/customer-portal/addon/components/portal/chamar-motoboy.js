@@ -11,6 +11,7 @@ import {
     digitosDoTelefone,
     enderecoDaSugestao,
     enderecoDoCliente,
+    erroSemResposta,
     formatarReais,
     formatarTelefone,
     linhaDoEndereco,
@@ -55,6 +56,7 @@ export default class PortalChamarMotoboyComponent extends Component {
     @service notifications;
     @service hostRouter;
     @service customerPortalOrderCreation;
+    @service intl;
 
     LIMITES = LIMITES;
 
@@ -70,6 +72,8 @@ export default class PortalChamarMotoboyComponent extends Component {
     @tracked trocoPara = '';
     @tracked forma = 'dinheiro';
     @tracked observacao = '';
+    /** O nome que o "Já pediu antes" preencheu sozinho: trocou o telefone e ninguém mexeu nele, sai junto. */
+    nomeAutomatico = null;
     /** O "Já pediu antes" (loja/clientes), ou null. */
     @tracked cliente = null;
     /** A resposta do chamar-motoboy (a tela "Procurando motoboy"). */
@@ -160,6 +164,16 @@ export default class PortalChamarMotoboyComponent extends Component {
         return this.forma === 'dinheiro';
     }
 
+    /** "R$ 1.500,00": o valor como o servidor vai ler, abaixo do campo ("1.500" é milhar). */
+    get valorInterpretado() {
+        const centavos = centavosDoTexto(this.valor);
+        return centavos ? formatarReais(centavos) : null;
+    }
+
+    get avisoDoValor() {
+        return this.cobrar && String(this.valor ?? '').trim() !== '' && this.problema === 'valor';
+    }
+
     get trocoDoMotoboy() {
         if (!this.cobrar || !this.emDinheiro) return null;
         const troco = trocoDoMotoboy(centavosDoTexto(this.valor), centavosDoTexto(this.trocoPara));
@@ -168,6 +182,8 @@ export default class PortalChamarMotoboyComponent extends Component {
 
     @action aoDigitarTelefone(evento) {
         this.cliente = null;
+        if (this.nomeAutomatico !== null && this.nome === this.nomeAutomatico) this.nome = '';
+        this.nomeAutomatico = null;
         this.buscarCliente.perform(evento?.target?.value ?? this.telefone);
     }
 
@@ -181,6 +197,7 @@ export default class PortalChamarMotoboyComponent extends Component {
             this.cliente = resposta?.cliente ?? null;
             if (this.cliente?.nome && !String(this.nome).trim()) {
                 this.nome = this.cliente.nome;
+                this.nomeAutomatico = this.nome;
             }
         } catch {
             this.cliente = null;
@@ -193,12 +210,18 @@ export default class PortalChamarMotoboyComponent extends Component {
         this.endereco = new EnderecoDoChamado(salvo.endereco);
         this.complemento = salvo.complemento;
         this.referencia = salvo.referencia;
-        if (!String(this.nome).trim()) this.nome = this.cliente.nome ?? '';
+        if (!String(this.nome).trim()) {
+            this.nome = this.cliente.nome ?? '';
+            this.nomeAutomatico = this.nome;
+        }
         this.passo = 'pagamento';
     }
 
     @action outroEndereco() {
-        if (!String(this.nome).trim()) this.nome = this.cliente?.nome ?? '';
+        if (!String(this.nome).trim()) {
+            this.nome = this.cliente?.nome ?? '';
+            this.nomeAutomatico = this.nome;
+        }
         this.endereco = new EnderecoDoChamado();
         this.complemento = '';
         this.referencia = '';
@@ -243,7 +266,12 @@ export default class PortalChamarMotoboyComponent extends Component {
             this.chamado = resposta?.pedido ?? null;
             this.passo = 'chamado';
         } catch (erro) {
-            this.notifications.serverError(erro);
+            // sem resposta (rede): a chave do painel garante que tocar de novo não cria outro pedido
+            if (erroSemResposta(erro)) {
+                this.notifications.error(this.intl.t('customer-portal.ui.entregas.chamar.sem-conexao'));
+            } else {
+                this.notifications.serverError(erro);
+            }
         }
     }
 
@@ -260,6 +288,7 @@ export default class PortalChamarMotoboyComponent extends Component {
         this.chave = novaChave();
         this.telefone = '';
         this.nome = '';
+        this.nomeAutomatico = null;
         this.endereco = new EnderecoDoChamado();
         this.complemento = '';
         this.referencia = '';
