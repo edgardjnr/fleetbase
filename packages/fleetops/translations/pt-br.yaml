@@ -680,8 +680,10 @@ fleet-ops:
         botao: Atribuir
         enviar: Enviar
         ninguem-livre: Nenhum motoboy livre agora.
-        nota: A distribuição continua oferecendo até você escolher.
+        nota: O motoboy escolhido recebe a oferta para aceitar. Se recusar, a distribuição continua.
         enviado: Motoboy atribuído.
+        oferta-enviada: Oferta enviada a {nome}. Se recusar, o pedido volta para a fila.
+        oferta-sem-nome: Oferta enviada. Se o motoboy recusar, o pedido volta para a fila.
         km: '{km} km da loja'
         sem-local: sem posição da loja
       legenda:
@@ -746,7 +748,7 @@ fleet-ops:
       detalhe:
         fechar: Fechar
         trocar: Trocar motoboy
-        nota-troca: O motoboy atual recebe o aviso de que saiu do pedido.
+        nota-troca: Antes da coleta, o escolhido precisa aceitar; se recusar, o pedido volta para a fila. O motoboy atual sai do pedido e recebe o aviso.
       pedido-aberto:
         titulo: Pedido aberto
         ver-motoboys: Fechar o pedido e ver os motoboys

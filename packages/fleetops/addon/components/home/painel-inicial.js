@@ -20,6 +20,7 @@ import {
     motoboysParaAtribuir,
     barrasDoGrafico,
     mostrarAlerta,
+    avisoDaAtribuicao,
 } from '../../utils/painel-inicial';
 
 const INTERVALO_AO_VIVO_MS = 20000;
@@ -382,9 +383,10 @@ export default class HomePainelInicialComponent extends Component {
 
     @task({ drop: true }) *atribuir(pedidoId, motoboyId) {
         try {
-            yield this.fetch.post(`entregas/painel-inicial/pedidos/${pedidoId}/motoboy`, { motoboy: motoboyId });
+            const resposta = yield this.fetch.post(`entregas/painel-inicial/pedidos/${pedidoId}/motoboy`, { motoboy: motoboyId });
             this.atribuindo = null;
-            this.notifications.success(this.intl.t(`${P}.atribuir.enviado`));
+            const aviso = avisoDaAtribuicao(resposta);
+            this.notifications.success(this.intl.t(`${P}.${aviso.chave}`, { nome: aviso.nome }));
             yield this.carregarAoVivo.perform();
         } catch (error) {
             this.notifications.serverError(error);

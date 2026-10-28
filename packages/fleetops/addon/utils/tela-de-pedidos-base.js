@@ -7,7 +7,7 @@ import { formatadores } from './financeiro';
 import { cronometro } from './entregas-cronometro';
 import { CAPACETES } from './entregas-capacete';
 import { segundosRestantes } from './distribuicao';
-import { situacaoDoPedido, motoboysParaAtribuir } from './painel-inicial';
+import { situacaoDoPedido, motoboysParaAtribuir, avisoDaAtribuicao } from './painel-inicial';
 import { progressoDoPrazo } from './tela-de-pedidos';
 
 // Entregas: o pedido abre no mapa com a folha da comanda (sketch 008 A); `origem` é para onde volta o "Voltar"
@@ -121,9 +121,10 @@ export default class TelaDePedidosBase extends Component {
         evento?.stopPropagation?.();
         if (this.aoVivo.enviando) return;
         try {
-            await this.aoVivo.atribuir(pedidoId, motoboyId);
+            const resposta = await this.aoVivo.atribuir(pedidoId, motoboyId);
             this.atribuindo = null;
-            this.notifications.success(this.intl.t(`${PI}.atribuir.enviado`));
+            const aviso = avisoDaAtribuicao(resposta);
+            this.notifications.success(this.intl.t(`${PI}.${aviso.chave}`, { nome: aviso.nome }));
         } catch (error) {
             this.notifications.serverError(error);
         }

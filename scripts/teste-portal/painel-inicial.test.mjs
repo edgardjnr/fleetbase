@@ -13,6 +13,7 @@ import {
     motoboysParaAtribuir,
     barrasDoGrafico,
     mostrarAlerta,
+    avisoDaAtribuicao,
 } from '../../packages/fleetops/addon/utils/painel-inicial.js';
 
 const AGORA = Date.parse('2026-10-24T21:14:00-03:00');
@@ -112,4 +113,12 @@ test('mostrarAlerta: atrasado ou 2+ sem motoboy', () => {
     assert.equal(mostrarAlerta({ oferta: 1, atrasado: 0 }), false);
     assert.equal(mostrarAlerta({ oferta: 2, atrasado: 0 }), true);
     assert.equal(mostrarAlerta({ oferta: 0, atrasado: 1 }), true);
+});
+
+test('avisoDaAtribuicao: oferta ao escolhido ou troca direta', () => {
+    assert.deepEqual(avisoDaAtribuicao({ pedido: {}, oferta: { motoboy: 'driver_a', nome: ' Carlos ', vence_em: '2026-10-28T10:00:50-03:00' } }), { chave: 'atribuir.oferta-enviada', nome: 'Carlos' });
+    assert.deepEqual(avisoDaAtribuicao({ pedido: {}, oferta: { motoboy: 'driver_a', nome: '' } }), { chave: 'atribuir.oferta-sem-nome', nome: null });
+    assert.deepEqual(avisoDaAtribuicao({ pedido: {}, oferta: null }), { chave: 'atribuir.enviado', nome: null });
+    assert.deepEqual(avisoDaAtribuicao({ pedido: {} }), { chave: 'atribuir.enviado', nome: null });
+    assert.deepEqual(avisoDaAtribuicao(undefined), { chave: 'atribuir.enviado', nome: null });
 });

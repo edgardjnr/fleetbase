@@ -680,8 +680,10 @@ fleet-ops:
             botao: Assign
             enviar: Send
             ninguem-livre: No free driver right now.
-            nota: Dispatch keeps offering until you choose.
+            nota: The chosen driver gets the offer to accept. If they decline, dispatch keeps going.
             enviado: Driver assigned.
+            oferta-enviada: Offer sent to {nome}. If they decline, the order goes back to the queue.
+            oferta-sem-nome: Offer sent. If the driver declines, the order goes back to the queue.
             km: '{km} km from the store'
             sem-local: store location unknown
           legenda:
@@ -746,7 +748,7 @@ fleet-ops:
           detalhe:
             fechar: Close
             trocar: Change driver
-            nota-troca: The current driver is notified that they were removed from the order.
+            nota-troca: Before pickup, the chosen driver must accept; if they decline, the order goes back to the queue. The current driver is removed and notified.
           pedido-aberto:
             titulo: Open order
             ver-motoboys: Close the order and see the drivers

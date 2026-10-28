@@ -130,3 +130,18 @@ export function barrasDoGrafico(grafico, { hoje = false, horaAtual = 23 } = {}) 
 export function mostrarAlerta(contagem) {
     return (contagem?.atrasado ?? 0) > 0 || (contagem?.oferta ?? 0) >= ALERTA_SEM_MOTOBOY;
 }
+
+/**
+ * O aviso depois do Atribuir ou do Trocar (POST entregas/painel-inicial/pedidos/{id}/motoboy): com `oferta` na resposta,
+ * o pedido voltou à fila esperando o aceite do escolhido (TrocaDoMotoboy antes da coleta); sem ela, a troca foi direta.
+ * Devolve a chave (dentro de fleet-ops.ui.painel-inicial) e o nome do escolhido.
+ */
+export function avisoDaAtribuicao(resposta) {
+    const oferta = resposta?.oferta;
+    if (!oferta) {
+        return { chave: 'atribuir.enviado', nome: null };
+    }
+    const nome = typeof oferta.nome === 'string' ? oferta.nome.trim() : '';
+
+    return nome ? { chave: 'atribuir.oferta-enviada', nome } : { chave: 'atribuir.oferta-sem-nome', nome: null };
+}

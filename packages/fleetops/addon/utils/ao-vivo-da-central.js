@@ -68,12 +68,14 @@ export default class AoVivoDaCentral {
         }
     }
 
-    /** Atribui (ou troca) o motoboy do pedido pelo TrocaDoMotoboy (só admin; a API devolve 403 para os outros). */
+    /** Atribui (ou troca) o motoboy do pedido pelo TrocaDoMotoboy (só admin; a API devolve 403 para os outros). Devolve a resposta (com `oferta` quando o escolhido precisa aceitar). */
     async atribuir(pedidoId, motoboyId) {
         this.enviando = true;
         try {
-            await this.fetch.post(`entregas/painel-inicial/pedidos/${pedidoId}/motoboy`, { motoboy: motoboyId });
+            const resposta = await this.fetch.post(`entregas/painel-inicial/pedidos/${pedidoId}/motoboy`, { motoboy: motoboyId });
             await this.carregar();
+
+            return resposta;
         } finally {
             this.enviando = false;
         }
