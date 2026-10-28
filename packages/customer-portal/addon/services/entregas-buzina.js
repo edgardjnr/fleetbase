@@ -6,8 +6,11 @@ import { ARQUIVO_DA_BUZINA, registrarAceites } from '../utils/buzina';
 /** Leitura dos aceites (o limitador do servidor é de 30 por minuto); com erro, a espera cresce (espera). */
 const INTERVALO_MS = 10000;
 
-/** Os gestos que liberam o som. O pointerdown de toque não libera mídia no WebKit (iPhone/iPad): touchend e click liberam. */
-const GESTOS = ['pointerdown', 'touchend', 'click', 'keydown'];
+/**
+ * Os gestos que liberam o som: touchend (toque), click (mouse e toque) e keydown. Sem pointerdown: no iPhone/iPad ele chega
+ * antes do touchend, não libera mídia e mesmo assim o play mudo dá certo, e a destrava acabaria nele, sem liberar nada.
+ */
+const GESTOS = ['touchend', 'click', 'keydown'];
 
 /**
  * Entregas: a buzina de moto no portal da loja quando um motoboy aceita um pedido dela (spec
@@ -91,7 +94,7 @@ export default class EntregasBuzinaService extends Service {
             return;
         }
         this.destravar = () => {
-            // um toque dispara pointerdown, touchend e click: com a destrava em andamento, os outros esperam o resultado
+            // um toque dispara touchend e click: com a destrava em andamento, os outros esperam o resultado
             if (this.destravando) {
                 return;
             }
