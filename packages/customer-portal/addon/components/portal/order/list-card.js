@@ -1,7 +1,7 @@
 import Component from '@glimmer/component';
 import { cached } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
-import { CANCELAVEIS, nomeDoCliente, origemDoPedido } from '../../../utils/entregas-pedido';
+import { ESPERANDO_MOTOBOY, nomeDoCliente, origemDoPedido } from '../../../utils/entregas-pedido';
 import { TIPO_DO_BADGE, cronometroDoPedido } from '../../../utils/entregas-cronometro';
 import { capaceteDaSituacao } from '../../../utils/motoboys-no-mapa';
 
@@ -46,7 +46,7 @@ export default class PortalOrderListCardComponent extends Component {
         return this.order.scheduled_at ?? this.order.created_at;
     }
 
-    // o motoboy vem da consulta do mapa (só depois do aceite); antes dele, o pedido ainda cancelável espera um motoboy
+    // o motoboy vem da consulta do mapa (só depois do aceite); antes dele, o pedido criado ou despachado espera um motoboy
     get motoboy() {
         return this.entregasMapaDaLoja.motoboyDoPedido(this.order.public_id);
     }
@@ -56,7 +56,7 @@ export default class PortalOrderListCardComponent extends Component {
     }
 
     get procurandoMotoboy() {
-        return !this.motoboy && CANCELAVEIS.includes(this.order.status);
+        return !this.motoboy && ESPERANDO_MOTOBOY.includes(this.order.status);
     }
 
     // cronômetro do prazo de entrega: o relógio (serviço entregas-relogio) anda a cada 30 s. @cached: o template lê

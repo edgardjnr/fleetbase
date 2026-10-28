@@ -5,7 +5,7 @@ import { action } from '@ember/object';
 import { enqueueTask, race, task, timeout, waitForEvent } from 'ember-concurrency';
 import { arrayFor, valueFor } from '../../../utils/model-access';
 // Entregas: status, intervalos e situação do motoboy numa lista só, espelho da API
-import { CANCELAVEIS, ENCERRADOS, INTERVALO_MS, VOLTAS_DETALHE, espera, numeroIfood, situacao } from '../../../utils/entregas-pedido';
+import { ENCERRADOS, INTERVALO_MS, VOLTAS_DETALHE, espera, lojaPodeCancelar, numeroIfood, situacao } from '../../../utils/entregas-pedido';
 
 export default class PortalOrderDetailsComponent extends Component {
     @service customerPortalOrderActions;
@@ -45,9 +45,10 @@ export default class PortalOrderDetailsComponent extends Component {
         return this.order ? numeroIfood(valueFor(this.order, 'notes'), valueFor(this.order, 'internal_id')) : null;
     }
 
-    // Entregas: cancelamento só antes do aceite (depois dele o servidor recusa com 422); pedido do iFood nunca (400)
+    // Entregas: cancelamento até o motoboy sair para a entrega (aceito e indo à loja ainda cancela; a caminho do cliente o
+    // servidor recusa com 422); pedido do iFood nunca (400)
     get canCancel() {
-        return Boolean(this.order) && !this.numeroIfood && !valueFor(this.order, 'started') && CANCELAVEIS.includes(valueFor(this.order, 'status'));
+        return Boolean(this.order) && !this.numeroIfood && lojaPodeCancelar({ status: valueFor(this.order, 'status') });
     }
 
     // Entregas: pedido aberto que a loja já não cancela; o aviso fica no topo do painel, logo abaixo das ações
@@ -118,7 +119,7 @@ export default class PortalOrderDetailsComponent extends Component {
     }
 
     @action async confirmCancelOrder() {
-        // Entregas: o item fica desabilitado depois do aceite, mas o link ainda recebe Enter pelo teclado
+        // Entregas: o item fica desabilitado com o motoboy a caminho do cliente, mas o link ainda recebe Enter pelo teclado
         if (!this.canCancel) {
             return;
         }
@@ -137,7 +138,7 @@ export default class PortalOrderDetailsComponent extends Component {
             this.order = await this.customerPortalOrderActions.cancelOrder.perform(this.order);
             this.notifications.success(this.intl.t('customer-portal.ui.order.canceled'));
         } catch (error) {
-            // Entregas: a mensagem do servidor vem em pt-BR (422 depois do aceite, 409 com o pedido em atualização)
+            // Entregas: a mensagem do servidor vem em pt-BR (422 com o motoboy a caminho do cliente, 409 com o pedido em atualização)
             this.notifications.serverError(error);
         }
 

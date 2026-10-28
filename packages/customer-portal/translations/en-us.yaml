@@ -772,7 +772,7 @@ customer-portal:
       courier-waiting: Waiting for a courier to accept.
       courier-accepted: "{name} has the order."
       courier-assigned: "{name} was assigned and hasn't accepted yet."
-      cancel-locked: The courier already accepted. To cancel, contact the dispatcher.
+      cancel-locked: The driver is already on the way to the customer. To cancel, contact dispatch.
       cancel-ifood: "iFood order: cancel it in the iFood order manager."
       ifood-selo: "iFood #{numero}"
       origem-selo: "{sistema} #{numero}"

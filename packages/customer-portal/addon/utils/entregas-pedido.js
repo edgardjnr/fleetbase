@@ -1,11 +1,28 @@
-// Entregas: regras do pedido no portal da loja numa lista só. Os status espelham a API (App\Support\Entregas\StatusDoPedido
-// e App\Http\Middleware\RegrasPortalLoja): mude junto com o servidor.
+// Entregas: regras do pedido no portal da loja numa lista só. Os status espelham a API (App\Support\Entregas\StatusDoPedido,
+// App\Support\Entregas\SituacaoDoMotoboy e App\Http\Middleware\RegrasPortalLoja): mude junto com o servidor.
 
 /** Pedido encerrado (StatusDoPedido::ENCERRADOS): a loja não cancela e não vê mais o motoboy. */
 export const ENCERRADOS = ['completed', 'done', 'canceled', 'cancelled', 'order_canceled', 'expired'];
 
-/** Status em que a loja ainda cancela, se nenhum motoboy aceitou (RegrasPortalLoja::STATUS_CANCELAVEIS). */
-export const CANCELAVEIS = ['created', 'dispatched'];
+/** Pedido ainda à espera de um motoboy (o "procurando motoboy" do card, quando ninguém aceitou). Não é a regra do Cancelar. */
+export const ESPERANDO_MOTOBOY = ['created', 'dispatched'];
+
+/**
+ * Pedido que já saiu da loja, a caminho do cliente: cópia de App\Support\Entregas\SituacaoDoMotoboy::STATUS_EM_ENTREGA
+ * (mude junto com o servidor).
+ */
+export const STATUS_EM_ENTREGA = ['enroute', 'picked_up', 'dropping_off', 'in_progress'];
+
+/**
+ * A loja cancela até o motoboy sair para a entrega (decisão de 2026-10-28): pedido não encerrado e fora de STATUS_EM_ENTREGA
+ * (criado, despachado ou aceito e indo à loja). Status comparado em minúsculas; sem status, não. Mesma regra do servidor
+ * (RegrasPortalLoja::lojaPodeCancelar), que recusa com 422 de qualquer jeito. Recebe um objeto com `status`.
+ */
+export function lojaPodeCancelar(pedido) {
+    const status = typeof pedido?.status === 'string' ? pedido.status.toLowerCase() : '';
+
+    return status !== '' && !ENCERRADOS.includes(status) && !STATUS_EM_ENTREGA.includes(status);
+}
 
 /** Intervalo do acompanhamento do pedido aberto: o motoboy é consultado a cada volta. */
 export const INTERVALO_MS = 20000;
@@ -69,7 +86,7 @@ const NOTAS_DE_ORIGEM = /^([\p{L}\p{N} ._-]{1,40}?) #(\S+)/u;
  * Origem do pedido para o selo do portal: {ifood: true, sistema: 'iFood', numero} (notas "iFood #N"),
  * {ifood: false, sistema, numero} (pedido que a loja mandou pelo sistema dela, notas "<Sistema> #N") ou null. Nos dois
  * casos o internal_id precisa ser igual a N. O Cancelar não depende disto: no pedido da integração ele segue a regra do
- * portal (antes do aceite); no do iFood, o numeroIfood esconde.
+ * portal (até o motoboy sair para a entrega, lojaPodeCancelar); no do iFood, o numeroIfood esconde.
  */
 export function origemDoPedido(notas, idInterno) {
     if (typeof notas !== 'string' || idInterno === null || idInterno === undefined || idInterno === '') {
