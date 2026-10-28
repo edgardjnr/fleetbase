@@ -9,6 +9,7 @@ use App\Support\Entregas\Integracao\PedidosDaIntegracao;
 use App\Support\Entregas\Painel\ComandaDaCentral;
 use App\Support\Entregas\Painel\PainelInicial;
 use App\Support\Entregas\PedidosNoMapa;
+use App\Support\Entregas\Portal\PedidosDoPortal;
 use App\Support\Entregas\RotaDoPedido;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\Vendor;
@@ -62,6 +63,7 @@ class PedidoAbertoController extends Controller
             rota: $this->rota($rotas, $pedido),
             valor: $admin ? $this->valor($calculo, $pedido) : null,
             admin: $admin,
+            portal: PedidosDoPortal::doPedido($uuid),
         ));
     }
 

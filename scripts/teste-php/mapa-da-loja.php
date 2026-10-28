@@ -181,6 +181,11 @@ namespace App\Support\Entregas\Integracao {
     class PedidosDaIntegracao { public static array $linhas = []; public static function doPedido(?string $uuid): ?object { return static::$linhas[$uuid] ?? null; } }
 }
 
+namespace App\Support\Entregas\Portal {
+    // a linha do chamar motoboy do portal (entregas_portal_pedidos; o leitor real tem teste próprio em chamar-motoboy.php)
+    class PedidosDoPortal { public static array $linhas = []; public static function doPedido(?string $uuid): ?object { return static::$linhas[$uuid] ?? null; } }
+}
+
 namespace App\Support\Entregas {
     // dublê: a lista real tem teste próprio (pedidos-no-mapa.php)
     class PedidosNoMapa
@@ -427,6 +432,9 @@ namespace {
     confere($controller->itens('uuid-a9')->dados === ['itens' => [['quantidade' => 1, 'nome' => 'Lanche']], 'observacao' => null], 'pedido do sistema da loja (pelo uuid, encerrado também): os itens, sem observação vazia');
     Order::$todos[] = (object) ['company_uuid' => EMPRESA, 'customer_uuid' => 'contato-a', 'public_id' => 'order_a2', 'uuid' => 'uuid-a2', 'status' => 'created'];
     confere($controller->itens('order_a2')->dados === ['itens' => null, 'observacao' => null], 'pedido feito no portal (sem linha): itens null');
+    Order::$todos[] = (object) ['company_uuid' => EMPRESA, 'customer_uuid' => 'vendor-a', 'public_id' => 'order_a3', 'uuid' => 'uuid-a3', 'status' => 'created'];
+    \App\Support\Entregas\Portal\PedidosDoPortal::$linhas = ['uuid-a3' => (object) ['cliente_nome' => 'Mariana Souza', 'observacoes' => ' Tocar o interfone ']];
+    confere($controller->itens('order_a3')->dados === ['itens' => null, 'observacao' => 'Tocar o interfone'], 'pedido do chamar motoboy (linha do portal): sem itens, com a observação');
     try {
         $controller->itens('order_b1');
         confere(false, 'itens de pedido de outra loja: 404');

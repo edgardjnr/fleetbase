@@ -284,4 +284,12 @@ confere(str_contains($proteger, "'#^[A-Z]+ entregas/loja/.+$#'"), 'liberadas à 
 $ctl = file_get_contents($raiz . '/api/app/Http/Controllers/Entregas/ChamarMotoboyController.php');
 confere(str_contains($ctl, 'return CreditoNoPedido::criar($empresa, $lojaUuid, $criar);'), 'o crédito da loja pré-paga é o CreditoNoPedido');
 
+echo '== Leitores da linha do portal' . PHP_EOL;
+$motoboy = file_get_contents($raiz . '/api/app/Http/Controllers/Entregas/MotoboyController.php');
+confere(str_contains($motoboy, 'DadosDaIntegracaoDoMotoboy::resposta(PedidosDaIntegracao::doPedido((string) $pedido->uuid) ?? PedidosDoPortal::comoLinhaDaIntegracao(PedidosDoPortal::doPedido((string) $pedido->uuid)), $pedido, (string) $motoboy->uuid)'), 'app do motoboy: a linha do portal no formato da integração');
+$aberto = file_get_contents($raiz . '/api/app/Http/Controllers/Entregas/PedidoAbertoController.php');
+confere(str_contains($aberto, 'portal: PedidosDoPortal::doPedido($uuid),'), 'comanda da central: a linha do portal');
+$portal = file_get_contents($raiz . '/api/app/Http/Controllers/Entregas/PortalLojaController.php');
+confere(str_contains($portal, '?? PedidosDaIntegracao::doPedido((string) $pedido->uuid) ?? PedidosDoPortal::doPedido((string) $pedido->uuid);'), 'detalhe do portal: a observação do pedido chamado');
+
 resumo();

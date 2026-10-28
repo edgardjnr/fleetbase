@@ -210,6 +210,22 @@ confere($d['cobranca'] === null && $d['itens'] === null && $d['observacoes'] ===
 confere($d['numero'] === 'RP123456' && $d['pedido']['numero'] === 'RP123456', 'sem internal_id: o número de rastreio');
 confere($d['cliente']['nome'] === 'JOÃO' && $d['cliente']['complemento'] === 'FUNDOS' && $d['cliente']['referencia'] === null, 'complemento do street2 do Local');
 
+echo '== Pedido chamado pelo portal (linha do portal)' . PHP_EOL;
+cenario([], ['name' => 'MARIANA SOUZA', 'street2' => 'AP 12']);
+Banco::inserir('entregas_portal_pedidos', [
+    'company_uuid' => 'empresa-1', 'vendor_uuid' => 'vendor-a', 'order_uuid' => 'order-1', 'place_uuid' => 'place-cliente',
+    'chave' => '6f1c0e8a-2b1d-4c3e-9a7f-0d5b8c2e4f10', 'cliente_nome' => 'Mariana Souza', 'cliente_telefone' => '16999990000',
+    'complemento' => 'Ap 12', 'referencia' => 'Perto da praça', 'observacoes' => 'Tocar o interfone',
+    'cobranca_forma' => 'dinheiro', 'cobranca_centavos' => 5890, 'troco_para_centavos' => 10000,
+    'created_at' => '2026-10-24 20:30:00', 'updated_at' => '2026-10-24 20:30:00',
+], false);
+$d = comanda('order_1')->dados;
+confere($d['origem'] === 'portal' && $d['sistema'] === null && $d['teste'] === false, 'origem portal, sem sistema (o console não põe selo)');
+confere($d['numero'] === 'RP123456', 'número: o rastreio');
+confere($d['cobranca'] === ['texto' => CobrancaDaIntegracao::texto('dinheiro', 5890, 10000), 'centavos' => 5890, 'forma' => CobrancaDaIntegracao::forma('dinheiro'), 'troco_para_centavos' => 10000], 'cobrança igual à do app');
+confere($d['observacoes'] === 'Tocar o interfone' && $d['cliente']['complemento'] === 'Ap 12' && $d['cliente']['referencia'] === 'Perto da praça' && $d['itens'] === null, 'observação, complemento e referência da linha; sem produtos');
+confere(!str_contains(json($d), '16999990000'), 'sem o telefone do cliente');
+
 echo '== Nome do cliente (sem nome = null)' . PHP_EOL;
 $local = fn (array $campos) => (object) ($campos + ['street1' => 'RUA DAS FLORES, 123', 'address' => 'RUA DAS FLORES, 123 - CENTRO']);
 confere(ComandaDaCentral::nomeDoCliente($local(['name' => 'CLIENTE IFOOD'])) === null, '"CLIENTE IFOOD" = sem nome');

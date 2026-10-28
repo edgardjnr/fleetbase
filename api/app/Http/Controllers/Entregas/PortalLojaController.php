@@ -15,6 +15,7 @@ use App\Support\Entregas\ItensDoPedido;
 use App\Support\Entregas\LojaDoUsuario;
 use App\Support\Entregas\MotoboysNoMapaDaLoja;
 use App\Support\Entregas\PedidosNoMapa;
+use App\Support\Entregas\Portal\PedidosDoPortal;
 use App\Support\Entregas\PrePago\CarteiraDaLoja;
 use App\Support\Entregas\ResumoDoDiaDaLoja;
 use App\Support\Entregas\StatusDoPedido;
@@ -164,8 +165,8 @@ class PortalLojaController extends Controller
 
     /**
      * Os produtos do pedido (iFood ou sistema da loja), os mesmos que o motoboy vê na comanda (ItensDoPedido), e a
-     * observação do cliente. Só pedido da loja da sessão; pedido feito no portal (sem itens) ou antigo: itens null.
-     * Decisão do Edgard de 2026-10-24.
+     * observação do cliente. Só pedido da loja da sessão; pedido feito no portal (sem itens; a observação do chamar
+     * motoboy vem da entregas_portal_pedidos) ou antigo: itens null. Decisão do Edgard de 2026-10-24.
      */
     public function itens(string $id)
     {
@@ -176,7 +177,7 @@ class PortalLojaController extends Controller
             ->where(fn ($q) => $q->where('public_id', $id)->orWhere('uuid', $id))
             ->firstOrFail();
 
-        $linha = PedidosIfood::doPedido((string) $pedido->uuid) ?? PedidosDaIntegracao::doPedido((string) $pedido->uuid);
+        $linha = PedidosIfood::doPedido((string) $pedido->uuid) ?? PedidosDaIntegracao::doPedido((string) $pedido->uuid) ?? PedidosDoPortal::doPedido((string) $pedido->uuid);
         $observacao = $linha ? trim((string) ($linha->observacoes ?? '')) : '';
 
         return response()->json([

@@ -20,6 +20,7 @@ use App\Support\Entregas\Integracao\DadosDaIntegracaoDoMotoboy;
 use App\Support\Entregas\Integracao\PedidosDaIntegracao;
 use App\Support\Entregas\LiderDosMotoboys;
 use App\Support\Entregas\MotoboyDaSessao;
+use App\Support\Entregas\Portal\PedidosDoPortal;
 use App\Support\Entregas\RotaDoPedido;
 use App\Support\Entregas\SituacaoDoMotoboy;
 use App\Support\Entregas\StatusDoPedido;
@@ -274,7 +275,9 @@ class MotoboyController extends Controller
             return response()->json(['errors' => ['Pedido não encontrado.']], 404);
         }
 
-        return response()->json(DadosDaIntegracaoDoMotoboy::resposta(PedidosDaIntegracao::doPedido((string) $pedido->uuid), $pedido, (string) $motoboy->uuid));
+        // pedido chamado pelo portal da loja: a linha dele no formato da integração (cobrança, observação, telefone; selo
+        // "Portal" no app, sem APK novo)
+        return response()->json(DadosDaIntegracaoDoMotoboy::resposta(PedidosDaIntegracao::doPedido((string) $pedido->uuid) ?? PedidosDoPortal::comoLinhaDaIntegracao(PedidosDoPortal::doPedido((string) $pedido->uuid)), $pedido, (string) $motoboy->uuid));
     }
 
     public function concluirIfood(Request $request, string $id, ConclusaoIfood $conclusao)

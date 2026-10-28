@@ -40,6 +40,8 @@ final class ComandaDaCentral
      * @param mixed       $finalizadaEm entregas_corridas_finalizadas.finalizada_em (texto em Brasília), ou null
      * @param array|null  $rota         RotaDoPedido::doPedido, ou null
      * @param array|null  $valor        CalculoEntregas::valorDoPedido (só admin), ou null
+     * @param bool        $admin        o usuário da sessão é admin (vê os valores)
+     * @param object|null $portal       a linha da entregas_portal_pedidos (chamar motoboy do portal), ou null
      */
     public static function resposta(
         object $pedido,
@@ -52,24 +54,25 @@ final class ComandaDaCentral
         ?array $rota,
         ?array $valor,
         bool $admin,
+        ?object $portal = null,
     ): array {
         $status    = (string) ($pedido->status ?? '');
         $encerrado = in_array($status, StatusDoPedido::ENCERRADOS, true);
         $final     = in_array($status, static::STATUS_CONCLUIDO, true) ? 'concluido' : (in_array($status, StatusDoPedido::CANCELADOS, true) ? 'cancelado' : null);
-        $linha     = $ifood ?? $integracao;
+        $linha     = $ifood ?? $integracao ?? $portal;
         $motoboy   = $pedido->driverAssigned ?? null;
 
         return [
             'pedido'         => $noMapa,
             'encerrado'      => $encerrado,
             'situacao_final' => $final,
-            'origem'         => $ifood ? 'ifood' : ($integracao ? 'integracao' : null),
+            'origem'         => $ifood ? 'ifood' : ($integracao ? 'integracao' : ($portal ? 'portal' : null)),
             'sistema'        => $ifood ? null : static::texto($integracao->sistema ?? null),
             'numero'         => static::texto($linha->numero ?? null) ?? (string) ($noMapa['numero'] ?? $pedido->public_id ?? ''),
             'teste'          => (bool) ($ifood->teste ?? false),
             'cliente'        => static::cliente(static::destino($pedido), $linha),
             'observacoes'    => static::texto($linha->observacoes ?? null),
-            'cobranca'       => static::cobranca($ifood, $integracao),
+            'cobranca'       => static::cobranca($ifood, $integracao ?? $portal),
             'itens'          => $linha ? ItensDoPedido::doBanco($linha->itens ?? null, ['pedido' => $pedido->public_id ?? null]) : null,
             'loja'           => static::loja($loja, static::coleta($pedido)),
             'motoboy'        => $motoboy ? ['id' => (string) $motoboy->public_id, 'nome' => (string) ($motoboy->name ?? '')] : null,
