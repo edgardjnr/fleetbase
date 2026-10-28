@@ -1433,7 +1433,7 @@ confere($c->clientes(new Request(['telefone' => '16999990000']))->status === 403
 
 echo '== Rotas e liberação' . PHP_EOL;
 $rotas = file_get_contents($raiz . '/api/app/Providers/RouteServiceProvider.php');
-confere(str_contains($rotas, "Route::get('loja/clientes', [ChamarMotoboyController::class, 'clientes'])->middleware('throttle:60,1');"), 'GET loja/clientes, 60 por minuto');
+confere(str_contains($rotas, "Route::get('loja/clientes', [ChamarMotoboyController::class, 'clientes'])->middleware('throttle:entregas-loja-clientes');"), 'GET loja/clientes no limitador nomeado');
 confere(str_contains($rotas, "Route::post('loja/chamar-motoboy', [ChamarMotoboyController::class, 'chamar'])->middleware('throttle:entregas-loja-chamar');"), 'POST loja/chamar-motoboy no limitador nomeado');
 // o throttle sem nome divide um contador por usuário entre todas as rotas que o usam (o 60,1 da loja esgotaria um 20,1)
 $limitador = 'RateLimiter::for(\'entregas-loja-chamar\', fn (Request $request) => Limit::perMinute(20)->by(\'entregas-loja-chamar:\' . (session(\'user\') ?: $request->ip())));';
@@ -1560,7 +1560,7 @@ acrescente:
 
 ```php
                         // chamar motoboy (o painel de 3 passos do portal; spec 2026-10-28-chamar-motoboy-portal-design.md)
-                        Route::get('loja/clientes', [ChamarMotoboyController::class, 'clientes'])->middleware('throttle:60,1');
+                        Route::get('loja/clientes', [ChamarMotoboyController::class, 'clientes'])->middleware('throttle:entregas-loja-clientes');
                         Route::post('loja/chamar-motoboy', [ChamarMotoboyController::class, 'chamar'])->middleware('throttle:entregas-loja-chamar');
 ```
 
@@ -1570,6 +1570,7 @@ acrescente:
 
 ```php
         RateLimiter::for('entregas-loja-chamar', fn (Request $request) => Limit::perMinute(20)->by('entregas-loja-chamar:' . (session('user') ?: $request->ip())));
+        RateLimiter::for('entregas-loja-clientes', fn (Request $request) => Limit::perMinute(60)->by('entregas-loja-clientes:' . (session('user') ?: $request->ip())));
 ```
 
 - [ ] **Step 5: Rodar e ver passar**
@@ -3199,7 +3200,7 @@ a observação em amarelo, o complemento e, depois do aceite e a caminho do clie
 2. Na lista "**API do portal**", depois do item `aceites`, acrescente:
 
 ```markdown
-  - `chamar-motoboy` e `clientes` (`ChamarMotoboyController`, decisão de 2026-10-28): `POST loja/chamar-motoboy` (limitador `entregas-loja-chamar`, 20 por minuto por usuário) valida (`Portal\ChamadoDaLoja`: mensagens para a loja; telefone com DDD, só dígitos), devolve o pedido da mesma chave (200, sem passar pelo crédito), confere o crédito da pré-paga (`PrePago\CreditoNoPedido`, o mesmo do `RegrasPortalLoja`) e cria (`Portal\CriadorDoChamado`): coleta = Local da loja, ponto a 30 m ou mais e a até 50 km, Local do cliente reaproveitado (mesmo telefone, nome, rua e complemento, a até 30 m) ou novo com dono = a loja (direto, sem o `firstOrNew`; sem o telefone), pedido aberto sem notas, despacho com a `TravaDoPedido` → distribuição; 201 `{pedido: {id, numero, cliente, endereco, cobranca}}`. Cobrança, observação, telefone, complemento e referência ficam na **`entregas_portal_pedidos`** (`Portal\PedidosDoPortal`), não na da integração (o observador e o acompanhamento da integração mandariam avisos ao sistema da loja). `GET loja/clientes?telefone=` (`throttle:60,1`): o último pedido do telefone **na loja da sessão** (nome, contagem e endereço), telefone incompleto = `{cliente: null}`. Testes: `scripts/teste-php/chamar-motoboy.php` e `chamar-motoboy-validacao.php`;
+  - `chamar-motoboy` e `clientes` (`ChamarMotoboyController`, decisão de 2026-10-28): `POST loja/chamar-motoboy` (limitador `entregas-loja-chamar`, 20 por minuto por usuário) valida (`Portal\ChamadoDaLoja`: mensagens para a loja; telefone com DDD, só dígitos), devolve o pedido da mesma chave (200, sem passar pelo crédito), confere o crédito da pré-paga (`PrePago\CreditoNoPedido`, o mesmo do `RegrasPortalLoja`) e cria (`Portal\CriadorDoChamado`): coleta = Local da loja, ponto a 30 m ou mais e a até 50 km, Local do cliente reaproveitado (mesmo telefone, nome, rua e complemento, a até 30 m) ou novo com dono = a loja (direto, sem o `firstOrNew`; sem o telefone), pedido aberto sem notas, despacho com a `TravaDoPedido` → distribuição; 201 `{pedido: {id, numero, cliente, endereco, cobranca}}`. Cobrança, observação, telefone, complemento e referência ficam na **`entregas_portal_pedidos`** (`Portal\PedidosDoPortal`), não na da integração (o observador e o acompanhamento da integração mandariam avisos ao sistema da loja). `GET loja/clientes?telefone=` (limitador `entregas-loja-clientes`, 60 por minuto por usuário): o último pedido do telefone **na loja da sessão** (nome, contagem e endereço), telefone incompleto = `{cliente: null}`. Testes: `scripts/teste-php/chamar-motoboy.php` e `chamar-motoboy-validacao.php`;
 ```
 
 3. Em "`RegrasPortalLoja` (global)", no item do destino, acrescente ao fim: ` O POST orders continua com estas regras (compatibilidade), mas o front usa o `loja/chamar-motoboy` desde 2026-10-28; o crédito da pré-paga saiu para o `PrePago\CreditoNoPedido`.`

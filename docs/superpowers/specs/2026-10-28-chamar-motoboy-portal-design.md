@@ -121,7 +121,7 @@ front deixa de usá-lo.
 
 ### `GET int/v1/entregas/loja/clientes?telefone=`
 
-`ChamarMotoboyController@clientes`, `throttle:60,1`. Telefone normalizado pelo `ChamadoDaLoja::telefone`; inválido →
+`ChamarMotoboyController@clientes`, limitador nomeado `entregas-loja-clientes` (60 por minuto por usuário, balde próprio, como o `entregas-loja-mapa`). Telefone normalizado pelo `ChamadoDaLoja::telefone`; inválido →
 `{cliente: null}` (sem 422: o front pergunta enquanto a loja digita). Só os pedidos **da loja da sessão**
 (`company_uuid` + `vendor_uuid`); o telefone que só pediu em outra loja volta `null`.
 

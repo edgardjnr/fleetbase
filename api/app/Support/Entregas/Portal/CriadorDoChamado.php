@@ -43,7 +43,9 @@ class CriadorDoChamado
     /**
      * @return array{0: object, 1: Order, 2: bool} a linha, o pedido e se nasceu agora (false = a mesma chave)
      *
-     * @throws PedidoRecusado 422 coleta inválida ou ponto fora dos limites
+     * @throws PedidoRecusado 422 coleta inválida, ponto fora dos limites ou chave de um pedido apagado
+     * @throws \RuntimeException erro do banco ao gravar (genérico: a QueryException traz o SQL com nome, telefone e
+     *                           observação do cliente e não vai ao log nem encadeada)
      */
     public function criar(Vendor $vendor, ?Place $coleta, array $dados, string $usuarioUuid): array
     {
@@ -76,7 +78,10 @@ class CriadorDoChamado
             if ((string) $e->getCode() === '23000' && ($repetido = $this->repetido($vendor, $dados['chave']))) {
                 return $repetido;
             }
-            throw $e;
+            // só a classe e o SQLSTATE: a mensagem da QueryException traz o SQL com os valores (nome, telefone e observação
+            // do cliente), e o handler do Laravel logaria a exceção encadeada
+            Log::error('[entregas] portal da loja: falha ao gravar o chamado', ['erro' => get_class($e), 'sqlstate' => (string) $e->getCode(), 'loja' => $vendor->public_id]);
+            throw new \RuntimeException('falha ao gravar o chamado do portal da loja');
         }
 
         Log::info('[entregas] portal da loja: motoboy chamado', ['pedido' => $pedido->public_id, 'loja' => $vendor->public_id, 'endereco_reaproveitado' => $reaproveitado !== null]);
@@ -85,13 +90,21 @@ class CriadorDoChamado
         return [$linha, $pedido, true];
     }
 
-    /** O pedido que já nasceu com esta chave na loja, ou null. */
+    /**
+     * O pedido que já nasceu com esta chave na loja, ou null (chave nova).
+     *
+     * @throws PedidoRecusado 422 a chave tem linha, mas o pedido sumiu (apagado): gravar de novo bateria na chave única
+     */
     public function repetido(Vendor $vendor, string $chave): ?array
     {
-        $linha  = PedidosDoPortal::daChave((string) $vendor->uuid, $chave);
-        $pedido = $linha ? Order::where('uuid', $linha->order_uuid)->where('company_uuid', $vendor->company_uuid)->first() : null;
-        if (!$pedido) {
+        $linha = PedidosDoPortal::daChave((string) $vendor->uuid, $chave);
+        if (!$linha) {
             return null;
+        }
+        $pedido = Order::where('uuid', $linha->order_uuid)->where('company_uuid', $vendor->company_uuid)->first();
+        if (!$pedido) {
+            Log::warning('[entregas] portal da loja: chave de um pedido que não existe mais', ['loja' => $vendor->public_id]);
+            throw new PedidoRecusado(422, 'Atualize a página e tente de novo.');
         }
         Log::info('[entregas] portal da loja: chamado repetido', ['pedido' => $pedido->public_id, 'loja' => $vendor->public_id]);
 

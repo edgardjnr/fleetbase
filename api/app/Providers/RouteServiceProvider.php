@@ -124,6 +124,9 @@ class RouteServiceProvider extends ServiceProvider
         // usuário, num balde separado: o throttle sem nome conta por usuário em todas as rotas que o usam, e o 60,1 das outras
         // rotas da loja (lidas a cada poucos segundos) esgotaria um 20,1 antes de a loja chamar
         RateLimiter::for('entregas-loja-chamar', fn (Request $request) => Limit::perMinute(20)->by('entregas-loja-chamar:' . (session('user') ?: $request->ip())));
+        // o "Já pediu antes" do mesmo painel (uma leitura por telefone completo), até 60 por minuto por usuário, num balde
+        // separado do throttle:60,1 que as outras rotas da loja dividem
+        RateLimiter::for('entregas-loja-clientes', fn (Request $request) => Limit::perMinute(60)->by('entregas-loja-clientes:' . (session('user') ?: $request->ip())));
 
         // Entregas RestaurantePro: traçado da rota no mapa do pedido do app (cada card de pedido da lista pede o seu), até 120
         // chamadas por minuto por motoboy, num balde separado do entregas-motoboy (ganhos e valor)
@@ -297,7 +300,7 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('loja/motoboys', [PortalLojaController::class, 'motoboysNoMapa'])->middleware('throttle:entregas-loja-mapa');
                         Route::get('loja/aceites', [PortalLojaController::class, 'aceites'])->middleware('throttle:entregas-loja-aceites');
                         // chamar motoboy (o painel de 3 passos do portal; spec 2026-10-28-chamar-motoboy-portal-design.md)
-                        Route::get('loja/clientes', [ChamarMotoboyController::class, 'clientes'])->middleware('throttle:60,1');
+                        Route::get('loja/clientes', [ChamarMotoboyController::class, 'clientes'])->middleware('throttle:entregas-loja-clientes');
                         Route::post('loja/chamar-motoboy', [ChamarMotoboyController::class, 'chamar'])->middleware('throttle:entregas-loja-chamar');
                         // Financeiro da loja: ciclo em andamento e faturas emitidas e canceladas; o detalhe de uma fatura (uuid)
                         Route::get('loja/financeiro', [PortalLojaController::class, 'financeiro'])->middleware('throttle:60,1');

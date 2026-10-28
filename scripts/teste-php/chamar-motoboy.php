@@ -91,12 +91,17 @@ class ControllerDeTeste extends ChamarMotoboyController
     public ?Vendor $loja = null;
     public int $creditos = 0;
     public ?PedidoRecusado $recusa = null;
+    /** Roda dentro da conferência do crédito, antes da recusa (a requisição gêmea gravando no meio), ou null. */
+    public ?\Closure $antesDoCredito = null;
 
     protected function lojaDaSessao(): ?Vendor { return $this->loja; }
     protected function coletaDaLoja(Vendor $vendor): ?Place { return coletaA(); }
     protected function comCredito(string $empresa, string $lojaUuid, \Closure $criar)
     {
         $this->creditos++;
+        if ($this->antesDoCredito) {
+            ($this->antesDoCredito)();
+        }
         if ($this->recusa) {
             throw $this->recusa;
         }
@@ -244,6 +249,37 @@ Order::$falharDespacho = true;
 confere($novo === true && count(Order::$criados) === 1 && $linha !== null && $pedido->status === 'created', 'o pedido existe (status created, o da criação) mesmo com o despacho falhando');
 confere(logou('[entregas] portal da loja: falha ao despachar o pedido aos motoboys', 'error') && Trava::$ocupadas === [], 'erro no log (a central despacha à mão) e a trava solta');
 
+echo '== CriadorDoChamado: chave com o pedido apagado' . PHP_EOL;
+reiniciarIntegracao();
+linhaDoPortal(['order_uuid' => 'order-apagado']);
+$r = chamar();
+confere($r instanceof PedidoRecusado && $r->status === 422 && $r->getMessage() === 'Atualize a página e tente de novo.' && Order::$criados === [] && Place::$criados === [], 'linha da chave sem o pedido: 422 "Atualize a página", sem bater na chave única');
+$r = null;
+try {
+    (new CriadorDoChamado())->repetido(lojaA(), '6f1c0e8a-2b1d-4c3e-9a7f-0d5b8c2e4f10');
+} catch (PedidoRecusado $e) {
+    $r = $e;
+}
+confere($r?->status === 422, 'repetido lança a recusa (não devolve null)');
+confere((new CriadorDoChamado())->repetido(lojaA(), '99999999-9999-4999-8999-999999999999') === null, 'chave sem linha: null');
+
+echo '== CriadorDoChamado: erro do banco sem dados no log' . PHP_EOL;
+reiniciarIntegracao();
+// como o QueryException do Laravel: a mensagem traz o SQL com os valores
+Banco::$antesDeInserir['entregas_portal_pedidos'] = fn () => throw new \Teste\ErroDeBanco('SQLSTATE[HY000]: General error: 2006 MySQL server has gone away (SQL: insert into entregas_portal_pedidos (cliente_nome, cliente_telefone, observacoes) values (Mariana Souza, 16999990000, Tocar o interfone))', 'HY000', 2006);
+$erro = null;
+try {
+    chamar();
+} catch (\RuntimeException $e) {
+    $erro = $e;
+}
+confere($erro !== null && get_class($erro) === \RuntimeException::class && $erro->getPrevious() === null, 'relança um RuntimeException genérico, sem a QueryException encadeada');
+confere($erro !== null && !str_contains($erro->getMessage(), 'Mariana') && !str_contains($erro->getMessage(), 'insert'), 'a mensagem não traz o SQL nem os valores');
+$registro = array_values(array_filter(\Illuminate\Support\Facades\Log::$registros, fn ($r) => $r[1] === '[entregas] portal da loja: falha ao gravar o chamado'))[0] ?? null;
+confere(($registro[0] ?? null) === 'error' && ($registro[2] ?? null) === ['erro' => \Teste\ErroDeBanco::class, 'sqlstate' => 'HY000', 'loja' => 'vendor_a'], 'log de erro só com a classe, o SQLSTATE e a loja');
+confere(logsSem(['Mariana', 'MARIANA', '16999990000', 'interfone', 'insert into']), 'nenhum log com o SQL, o nome, o telefone ou a observação');
+confere(Order::$criados === [] && (Banco::$tabelas['entregas_portal_pedidos'] ?? []) === [], 'nada gravado (a transação desfez)');
+
 echo '== ChamarMotoboyController@chamar' . PHP_EOL;
 $c = controller();
 $r = $c->chamar(new Request(corpoDaTela()), new CriadorDoChamado());
@@ -256,7 +292,21 @@ $c->recusa = new PedidoRecusado(422, 'Crédito insuficiente. Recarregue a cartei
 $r         = $c->chamar(new Request(corpoDaTela(['chave' => 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'])), new CriadorDoChamado());
 confere($r->status === 422 && $r->dados === ['errors' => ['Crédito insuficiente. Recarregue a carteira.']] && count(Order::$criados) === 1, 'sem crédito: 422 com a mensagem, sem pedido');
 $c->recusa = null;
-$r         = $c->chamar(new Request(corpoDaTela(['chave' => 'ffffffff-ffff-4fff-8fff-ffffffffffff', 'entrega' => ['latitude' => -21.1776, 'longitude' => -47.8103]])), new CriadorDoChamado());
+// a requisição gêmea (mesma chave) criou o pedido enquanto esta conferia o crédito: a recusa (sem crédito, que o
+// próprio pedido gêmeo reservou, ou a trava ocupada) vira o pedido dela, 200
+foreach ([new PedidoRecusado(422, 'Crédito insuficiente. Recarregue a carteira.'), new PedidoRecusado(409, 'Outra operação está em andamento.')] as $recusa) {
+    $g                 = controller();
+    $g->antesDoCredito = function () { chamar(); };
+    $g->recusa         = $recusa;
+    $r                 = $g->chamar(new Request(corpoDaTela()), new CriadorDoChamado());
+    confere($r->status === 200 && $r->dados['pedido']['id'] === (Order::$criados[0]->public_id ?? '?') && count(Order::$criados) === 1, "recusa {$recusa->status} com o pedido gêmeo já criado: 200 com ele");
+}
+$g = controller();
+linhaDoPortal(['order_uuid' => 'order-apagado']);
+$r = $g->chamar(new Request(corpoDaTela()), new CriadorDoChamado());
+confere($r->status === 422 && $r->dados === ['errors' => ['Atualize a página e tente de novo.']] && $g->creditos === 0 && Order::$criados === [], 'chave com o pedido apagado: 422 "Atualize a página", sem passar pelo crédito');
+$c = controller();
+$r         = $c->chamar(new Request(corpoDaTela(['chave' => 'ffffffff-ffff-4fff-8fff-ffffffffffff','entrega' => ['latitude' => -21.1776, 'longitude' => -47.8103]])), new CriadorDoChamado());
 confere($r->status === 422 && str_contains($r->dados['errors'][0], 'mesmo lugar da loja'), 'recusa do criador: 422 com a mensagem');
 $c->loja = null;
 $r       = $c->chamar(new Request(corpoDaTela()), new CriadorDoChamado());
@@ -276,7 +326,9 @@ confere($c->clientes(new Request(['telefone' => '16999990000']))->status === 403
 
 echo '== Rotas e liberação' . PHP_EOL;
 $rotas = file_get_contents($raiz . '/api/app/Providers/RouteServiceProvider.php');
-confere(str_contains($rotas, "Route::get('loja/clientes', [ChamarMotoboyController::class, 'clientes'])->middleware('throttle:60,1');"), 'GET loja/clientes, 60 por minuto');
+confere(str_contains($rotas, "Route::get('loja/clientes', [ChamarMotoboyController::class, 'clientes'])->middleware('throttle:entregas-loja-clientes');"), 'GET loja/clientes no limitador nomeado');
+$limitador = 'RateLimiter::for(\'entregas-loja-clientes\', fn (Request $request) => Limit::perMinute(60)->by(\'entregas-loja-clientes:\' . (session(\'user\') ?: $request->ip())));';
+confere(str_contains($rotas, $limitador), 'limitador entregas-loja-clientes: 60 por minuto por usuário, balde próprio');
 confere(str_contains($rotas, "Route::post('loja/chamar-motoboy', [ChamarMotoboyController::class, 'chamar'])->middleware('throttle:entregas-loja-chamar');"), 'POST loja/chamar-motoboy no limitador nomeado');
 // o throttle sem nome divide um contador por usuário entre todas as rotas que o usam (o 60,1 da loja esgotaria um 20,1)
 $limitador = 'RateLimiter::for(\'entregas-loja-chamar\', fn (Request $request) => Limit::perMinute(20)->by(\'entregas-loja-chamar:\' . (session(\'user\') ?: $request->ip())));';

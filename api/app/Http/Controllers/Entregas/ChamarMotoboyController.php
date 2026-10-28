@@ -21,7 +21,8 @@ use Illuminate\Http\Request;
  * - GET loja/clientes?telefone=: o "Já pediu antes" (PedidosDoPortal::clienteDoTelefone), só da loja da sessão;
  *   telefone incompleto = {"cliente": null}.
  * - POST loja/chamar-motoboy: valida (ChamadoDaLoja), devolve o pedido da mesma chave (200) sem passar pelo crédito,
- *   confere o crédito da loja pré-paga (CreditoNoPedido) e cria e despacha (CriadorDoChamado): 201.
+ *   confere o crédito da loja pré-paga (CreditoNoPedido) e cria e despacha (CriadorDoChamado): 201. Recusado (sem
+ *   crédito, trava ocupada) com a mesma chave já gravada pela requisição gêmea: o pedido dela, 200.
  */
 class ChamarMotoboyController extends Controller
 {
@@ -59,10 +60,26 @@ class ChamarMotoboyController extends Controller
             [$linha, $pedido, $novo] = $criador->repetido($vendor, $dados['chave'])
                 ?? $this->comCredito((string) $vendor->company_uuid, (string) $vendor->uuid, fn () => $criador->criar($vendor, $this->coletaDaLoja($vendor), $dados, $usuario));
         } catch (PedidoRecusado $e) {
-            return response()->json(['errors' => [$e->getMessage()]], $e->status);
+            // a requisição gêmea (mesma chave) criou o pedido enquanto esta conferia o crédito: a recusa ("Crédito
+            // insuficiente", que o próprio pedido gêmeo reservou, ou a trava ocupada) não vale, vale o pedido dela
+            $gemeo = $this->gemeo($criador, $vendor, $dados['chave']);
+            if (!$gemeo) {
+                return response()->json(['errors' => [$e->getMessage()]], $e->status);
+            }
+            [$linha, $pedido, $novo] = $gemeo;
         }
 
         return response()->json(['pedido' => PedidosDoPortal::resumo($pedido, $linha)], $novo ? 201 : 200);
+    }
+
+    /** O pedido da mesma chave depois de uma recusa, ou null (sem ele ou com a chave recusada também). */
+    protected function gemeo(CriadorDoChamado $criador, Vendor $vendor, string $chave): ?array
+    {
+        try {
+            return $criador->repetido($vendor, $chave);
+        } catch (PedidoRecusado) {
+            return null;
+        }
     }
 
     protected function lojaDaSessao(): ?Vendor
