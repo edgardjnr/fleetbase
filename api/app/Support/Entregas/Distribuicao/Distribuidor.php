@@ -289,7 +289,9 @@ class Distribuidor
      * Encerra a distribuição em curso do pedido (redespachada), cria outra e oferece primeiro ao motoboy escolhido (volta
      * 1, rodada 1, lista fechada), mesmo fora do raio, ocupado ou com o GPS velho: quem escolheu foi a central ou o líder.
      * Recusou ou venceu: o ciclo de sempre (com ou sem rodadas); o escolhido fica fora da volta 1 por já ter linha nela.
-     * Nunca lança: uma falha abre a todos (falha) com o alarme geral. Devolve a oferta, ou null (desligada ou falha).
+     * Nunca lança: uma falha abre a todos (falha) com o alarme geral; antes de a distribuição nova existir, o alarme geral
+     * sai mesmo sem distribuição (o pedido já voltou à fila). A falha só na estimativa não derruba a oferta: tempo 0,
+     * aproximado. Devolve a oferta, ou null (desligada ou falha).
      */
     public function oferecerAoEscolhidoSemTrava(Order $pedido, Driver $motoboy): ?object
     {
@@ -324,7 +326,21 @@ class Distribuidor
             return $oferta;
         } catch (\Throwable $erro) {
             if (!$distribuicao) {
+                // a TrocaDoMotoboy já devolveu o pedido à fila: ele não pode ficar aberto e mudo
                 Log::warning('[entregas] distribuição: falha na oferta ao escolhido', ['pedido' => $pedido->public_id, 'erro' => get_class($erro)]);
+                $this->abrirAposFalha((string) $pedido->uuid, $erro); // a que ficou em ofertas: abre com o alarme geral
+                try {
+                    $emCurso = Distribuicoes::doPedido((string) $pedido->uuid);
+                } catch (\Throwable $e) {
+                    $emCurso = null; // sem como ler: o alarme geral, por segurança
+                }
+                if (!$emCurso) {
+                    try {
+                        $this->alarmeGeral($pedido);
+                    } catch (\Throwable $e) {
+                        Log::warning('[entregas] distribuição: alarme geral da oferta ao escolhido falhou', ['pedido' => $pedido->public_id, 'erro' => get_class($e)]);
+                    }
+                }
 
                 return null;
             }
@@ -348,19 +364,24 @@ class Distribuidor
         $posicao = Pontos::de($motoboy->location);
         $coleta  = Pontos::de($pedido->payload?->pickup?->location);
         if ($posicao && $coleta) {
-            $uuid      = (string) $motoboy->uuid;
-            $empresa   = (string) $pedido->company_uuid;
-            $candidato = [
-                'motoboy'       => $motoboy,
-                'posicao'       => $posicao,
-                'distancia'     => Pontos::metros($posicao, $coleta),
-                'paradas'       => Candidatos::paradas($empresa, [$uuid])[$uuid] ?? [],
-                'corridas_hoje' => Candidatos::corridasHoje($empresa, [$uuid])[$uuid] ?? 0,
-            ];
-            $atraso = Distribuicao::emRodadas() ? Distribuicao::ATRASO_MAXIMO_EM_RODADAS_S : Distribuicao::ATRASO_MAXIMO_S;
-            $fila   = $this->fila->para($pedido, [$candidato], $atraso);
-            if ($fila !== []) {
-                return $fila[0];
+            try {
+                $uuid      = (string) $motoboy->uuid;
+                $empresa   = (string) $pedido->company_uuid;
+                $candidato = [
+                    'motoboy'       => $motoboy,
+                    'posicao'       => $posicao,
+                    'distancia'     => Pontos::metros($posicao, $coleta),
+                    'paradas'       => Candidatos::paradas($empresa, [$uuid])[$uuid] ?? [],
+                    'corridas_hoje' => Candidatos::corridasHoje($empresa, [$uuid])[$uuid] ?? 0,
+                ];
+                $atraso = Distribuicao::emRodadas() ? Distribuicao::ATRASO_MAXIMO_EM_RODADAS_S : Distribuicao::ATRASO_MAXIMO_S;
+                $fila   = $this->fila->para($pedido, [$candidato], $atraso);
+                if ($fila !== []) {
+                    return $fila[0];
+                }
+            } catch (\Throwable $e) {
+                // a estimativa não derruba a oferta que a central ou o líder escolheu
+                Log::warning('[entregas] distribuição: estimativa da oferta ao escolhido falhou; tempo aproximado', ['pedido' => $pedido->public_id, 'motoboy' => $motoboy->public_id, 'erro' => get_class($e)]);
             }
         }
 
@@ -371,7 +392,7 @@ class Distribuidor
             'tempo_s'       => 0,
             'encaixe'       => false,
             'aproximado'    => true,
-            'livre'         => true,
+            'livre'         => false, // sem a estimativa, não se sabe se ele está livre (o painel não diz "livre")
             'distancia_m'   => 0,
             'corridas_hoje' => 0,
             'desempate'     => false,
@@ -643,7 +664,12 @@ class Distribuidor
         Distribuicoes::cancelarPendentes((int) $distribuicao->id);
         Distribuicoes::mudarFase((int) $distribuicao->id, Distribuicao::FASE_ABERTA, $motivo);
         Log::info('[entregas] distribuição: aberta a todos (' . $motivo . ')', ['pedido' => $pedido->public_id, 'distribuicao' => $distribuicao->id]);
+        $this->alarmeGeral($pedido);
+    }
 
+    /** O OrderPing comum a todos no raio (a falha no envio a um motoboy só registra; a da busca lança). */
+    protected function alarmeGeral(Order $pedido): void
+    {
         foreach (Candidatos::noRaio($pedido, false) as $candidato) {
             try {
                 $candidato['motoboy']->notify(new OrderPing($pedido, $candidato['distancia']));

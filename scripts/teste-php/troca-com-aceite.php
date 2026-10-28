@@ -116,6 +116,8 @@ $dist   = cenario([$ana], [$ana, $semGps]);
 $dist->oferecerAoEscolhidoSemTrava(pedidoDoCenario(), $semGps['motoboy']);
 $o = ofertas()[0];
 confere($o->motoboy_uuid === 'd-sem' && $o->tempo_estimado_s === 0 && (bool) $o->aproximado === true && avisos() === [['driver_sem', OfertaDePedido::class]], 'sem posição: oferta assim mesmo, tempo 0 aproximado');
+$linha = json_decode(distribuicoes()[0]->fila, true)[0];
+confere($linha['public_id'] === 'driver_sem' && $linha['livre'] === false, 'sem posição: a fila não o marca como livre (não se sabe se está)');
 
 echo '== Sem rodadas' . PHP_EOL;
 $dist   = cenario([$ana, $bruno], [$ana, $bruno], false);
@@ -130,13 +132,44 @@ $dist = cenario([$ana], [$ana, $bruno]);
 Config::$valores['services.entregas.distribuicao'] = '';
 confere($dist->oferecerAoEscolhidoSemTrava(pedidoDoCenario(), $bruno['motoboy']) === null && distribuicoes() === [] && avisos() === [], 'desligada: null, nada gravado, ninguém avisado');
 
-echo '== Falha: abre a todos com o alarme geral' . PHP_EOL;
+echo '== Estimativa falha: a oferta sai assim mesmo, com tempo aproximado' . PHP_EOL;
 $dist = cenario([$ana, $bruno], [$ana, $bruno]);
 Candidatos::$buscarParadas = fn () => throw new \RuntimeException('banco fora');
+$oferta = $dist->oferecerAoEscolhidoSemTrava(pedidoDoCenario(), $bruno['motoboy']);
+$o      = ofertas()[0] ?? null;
+confere($oferta !== null && $o?->motoboy_uuid === 'd-bruno' && $o->resposta === 'pendente' && $o->tempo_estimado_s === 0 && (bool) $o->aproximado === true, 'a oferta da central não cai: vai ao escolhido com tempo 0 aproximado');
+confere(distribuicoes()[0]->fase === 'ofertas' && avisos() === [['driver_bruno', OfertaDePedido::class]], 'sem alarme geral: só o push da oferta ao escolhido');
+confere(logou('estimativa da oferta ao escolhido falhou; tempo aproximado', 'warning') && logsSem(['banco fora']), 'log da estimativa que falhou, só com a classe do erro');
+
+echo '== Falha ao criar a oferta: abre a todos com o alarme geral' . PHP_EOL;
+$dist = cenario([$ana, $bruno], [$ana, $bruno]);
+\Teste\Banco::$falharComo['entregas_ofertas'] = ['HY000', 2006]; // o próximo insert (o criarOferta) lança, uma vez
 $oferta = $dist->oferecerAoEscolhidoSemTrava(pedidoDoCenario(), $bruno['motoboy']);
 $d      = distribuicoes()[0];
 confere($oferta === null && $d->fase === 'aberta' && $d->motivo === 'falha', 'a falha abre a distribuição (falha) e devolve null, sem lançar');
 confere(array_column(avisos(), 1) === [OrderPing::class, OrderPing::class], 'alarme geral a todos no raio');
 confere(logou('falha na oferta ao escolhido; aberta a todos', 'warning'), 'log da falha');
+
+echo '== Falha antes da distribuição nova: alarme geral (o pedido já foi devolvido à fila)' . PHP_EOL;
+$dist = cenario([$ana, $bruno], [$ana, $bruno]);
+\Teste\Banco::$falharComo['entregas_distribuicoes'] = ['HY000', 2006]; // o criar lança
+$oferta = $dist->oferecerAoEscolhidoSemTrava(pedidoDoCenario(), $bruno['motoboy']);
+confere($oferta === null && distribuicoes() === [] && ofertas() === [], 'criar lançou: null, sem lançar, nada gravado');
+confere(array_column(avisos(), 1) === [OrderPing::class, OrderPing::class], 'alarme geral a todos no raio: o pedido não fica aberto e mudo');
+confere(logou('falha na oferta ao escolhido', 'warning'), 'log da falha');
+
+$dist = cenario([$ana, $bruno], [$ana, $bruno]);
+$dist->iniciar(pedidoDoCenario());
+Driver::$avisos = [];
+\Teste\Banco::$falharComo['entregas_distribuicoes'] = ['HY000', 2006];
+$oferta = $dist->oferecerAoEscolhidoSemTrava(pedidoDoCenario(), $bruno['motoboy']);
+confere($oferta === null && count(distribuicoes()) === 1 && distribuicoes()[0]->motivo === 'redespachada' && ofertas()[0]->resposta === 'cancelada', 'com distribuição em curso: ela encerra (redespachada) e a nova não nasce');
+confere(array_column(avisos(), 1) === [OrderPing::class, OrderPing::class], 'alarme geral a todos no raio');
+
+$dist = cenario([$ana, $bruno], [$ana, $bruno]);
+\Teste\Banco::$falharAoConsultar['entregas_distribuicoes'] = new \RuntimeException('banco fora');
+$oferta = $dist->oferecerAoEscolhidoSemTrava(pedidoDoCenario(), $bruno['motoboy']);
+confere($oferta === null && array_column(avisos(), 1) === [OrderPing::class, OrderPing::class], 'nem a leitura da distribuição sai: null e alarme geral, sem lançar');
+\Teste\Banco::$falharAoConsultar = [];
 
 resumo(); // dos stubs: imprime "FALHAS: <n>"
