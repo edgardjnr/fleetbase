@@ -553,8 +553,8 @@ namespace Teste {
             self::$falharAoConsultar = [];
         }
 
-        /** O esquema das migrations do iFood e da distribuição: lê os arquivos uma vez, sem mexer no Schema::$criadas dos testes. */
-        private static function esquema(): array
+        /** O esquema das migrations do iFood e da distribuição: lê os arquivos uma vez, sem mexer no Schema::$criadas dos testes. Público: o teste da migration confere colunas, únicas e padrões. */
+        public static function esquema(): array
         {
             if (self::$esquema !== null) {
                 return self::$esquema;
@@ -567,6 +567,8 @@ namespace Teste {
                 glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_ifood_*_table.php') ?: [],
                 glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_distribuicao_*.php') ?: [],
                 glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_integracao_*_table.php') ?: [],
+                // a do chamar motoboy pelo portal da loja (entregas_portal_pedidos)
+                glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_portal_*_table.php') ?: [],
                 // as do financeiro: a das cinco tabelas (entregas_lancamentos, entregas_pagamentos, entregas_faturas...) e a dos multiplicadores (entregas_multiplicadores)
                 glob(dirname(__DIR__, 2) . '/api/database/migrations/*_entregas_financeiro_*.php') ?: [],
                 // as das corridas do sistema (entregas_corridas_finalizadas e entregas_precos_centrais)
