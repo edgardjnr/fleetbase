@@ -110,6 +110,9 @@ final class ChamadoDaLoja
             $valor = trim(str_replace(['R$', ' ', "\u{00A0}"], '', $valor));
             if (str_contains($valor, ',')) {
                 $valor = str_replace(['.', ','], ['', '.'], $valor);
+            } elseif (preg_match('/^\d{1,3}(\.\d{3})+$/', $valor)) {
+                // sem vírgula, "1.500" é milhar (R$ 1.500,00); "58.9" e "58.90" seguem decimais (o front faz igual)
+                $valor = str_replace('.', '', $valor);
             }
         }
         if (!is_numeric($valor)) {

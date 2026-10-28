@@ -61,6 +61,13 @@ test('valor em centavos e em reais', () => {
     assert.equal(centavosDoTexto('R$ 1.234,56'), 123456);
     assert.equal(centavosDoTexto('58.9'), 5890);
     assert.equal(centavosDoTexto('100'), 10000);
+    // sem vírgula, "1.500" e "12.345.678" são milhar; "58.9" e "58.90" seguem decimais
+    assert.equal(centavosDoTexto('1.500'), 150000);
+    assert.equal(centavosDoTexto('R$ 12.500'), 1250000);
+    assert.equal(centavosDoTexto('58.90'), 5890);
+    assert.equal(centavosDoTexto('1.5'), 150);
+    assert.equal(centavosDoTexto('1.5000'), 150);
+    assert.equal(centavosDoTexto('1.000.000'), null);
     assert.equal(centavosDoTexto(''), null);
     assert.equal(centavosDoTexto('abc'), null);
     assert.equal(centavosDoTexto('-5'), null);

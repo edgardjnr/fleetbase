@@ -58,6 +58,9 @@ $d = ChamadoDaLoja::validar(corpoDoChamado(['cobranca' => ['forma' => 'pago', 'v
 confere($d['cobranca_forma'] === 'pago' && $d['cobranca_centavos'] === 0 && $d['troco_para_centavos'] === null, 'já pago: nada a cobrar');
 $d = ChamadoDaLoja::validar(corpoDoChamado(['cobranca' => ['forma' => 'PIX', 'valor' => 'R$ 1.234,56', 'troco_para' => '2000']]))['dados'];
 confere($d['cobranca_forma'] === 'pix' && $d['cobranca_centavos'] === 123456 && $d['troco_para_centavos'] === null, 'pix com milhar; troco só em dinheiro (ignorado)');
+confere(ChamadoDaLoja::centavos('1.500') === 150000 && ChamadoDaLoja::centavos('R$ 12.500') === 1250000, 'sem vírgula, 1.500 é milhar');
+confere(ChamadoDaLoja::centavos('58.9') === 5890 && ChamadoDaLoja::centavos('58.90') === 5890 && ChamadoDaLoja::centavos('1.5000') === 150, 'ponto decimal segue decimal');
+confere(ChamadoDaLoja::centavos('1.000.000') === null, 'milhar acima de R$ 100 mil: recusa');
 $d = ChamadoDaLoja::validar(corpoDoChamado(['cobranca' => ['troco_para' => '58,90']]))['dados'];
 confere($d['troco_para_centavos'] === null, 'troco igual ao valor = sem troco');
 $d = ChamadoDaLoja::validar(corpoDoChamado(['cobranca' => ['troco_para' => '']]))['dados'];

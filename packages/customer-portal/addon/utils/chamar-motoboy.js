@@ -43,6 +43,8 @@ export function centavosDoTexto(texto) {
         let limpo = String(texto ?? '').replace(/R\$|\s/g, '');
         if (limpo === '') return null;
         if (limpo.includes(',')) limpo = limpo.replace(/\./g, '').replace(',', '.');
+        // sem vírgula, "1.500" é milhar (R$ 1.500,00), como no servidor; "58.9" e "58.90" seguem decimais
+        else if (/^\d{1,3}(\.\d{3})+$/.test(limpo)) limpo = limpo.replace(/\./g, '');
         centavos = /^\d+(\.\d+)?$/.test(limpo) ? Math.round(parseFloat(limpo) * 100) : null;
     }
     return centavos !== null && centavos <= VALOR_MAXIMO_CENTAVOS ? centavos : null;
