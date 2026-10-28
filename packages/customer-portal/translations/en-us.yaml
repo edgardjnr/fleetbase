@@ -965,6 +965,66 @@ customer-portal:
           cancelada: "Canceled"
           falhou: "Failed"
           desconhecida: "Processing"
+      chamar:
+        titulo: Call a rider
+        fechar: Close
+        passo-de: "Step {atual} of 3"
+        passos:
+          cliente: Customer
+          endereco: Address
+          pagamento: Payment
+        continuar: Continue
+        voltar: Back
+        chamar: Call a rider
+        chamando: Calling…
+        cliente:
+          pergunta: Who is the delivery for?
+          dica: "Start with the phone: if the customer ordered before, the address comes along."
+          telefone: Phone
+          telefone-placeholder: (16) 99999-0000
+          telefone-invalido: Type the phone with the area code.
+          buscando: Looking up the customer…
+          ja-pediu: "Ordered before · {pedidos, plural, one {# order} other {# orders}}"
+          usar: Use it and go to payment
+          outro-endereco: Another address
+          nome: Name
+          nome-placeholder: Customer name
+        endereco:
+          pergunta: Where to deliver?
+          rua: Street and number
+          rua-placeholder: Type the street and number
+          sem-numero: Check the house number.
+          mapa-dica: Drag the map to adjust the delivery point.
+          sem-ponto: Pick a suggestion or drag the map to the delivery spot.
+          complemento: Complement
+          complemento-placeholder: Apt, block, house
+          referencia: Landmark
+          referencia-placeholder: Near…
+        pagamento:
+          alterar: Change
+          pergunta: Has the customer already paid?
+          ja-pago: Already paid
+          cobrar: Collect on delivery
+          valor: Amount to collect
+          troco-para: Change for
+          forma: Method
+          dinheiro: Cash
+          cartao: Card
+          pix: Pix
+          troco-do-motoboy: "The rider takes {valor} in change"
+          troco-menor: Change must be for an amount greater than the charge.
+          observacao: Note for the rider
+          observacao-placeholder: "E.g.: ring the intercom, fragile cake"
+        procurando:
+          titulo: Looking for a rider
+          pedido: Order
+          cliente: Customer
+          endereco: Address
+          cobranca: Collect
+          ja-pago: Already paid
+          dica: You can cancel until the rider leaves for the delivery.
+          ver-no-mapa: See on the map
+          novo: New order
 
 menu-text:
   customer-portal:
