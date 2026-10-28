@@ -64,7 +64,8 @@ que o aceite seria livre para qualquer motoboy com o card antigo:
    sempre (50 s em rodadas, 30 s sem), push `OfertaDePedido`. A oferta vai a ele **mesmo fora do raio, ocupado ou com
    GPS velho** (a central ou o líder escolheu). O job de vencimento e a varredura são os de sempre;
 6. o anterior recebe o `PedidoPassadoParaOutro` (como hoje), depois do passo 5;
-7. log `[entregas] troca do motoboy: oferta dirigida` (pedido, anterior, escolhido, quem trocou; só ids).
+7. log `[entregas] troca do motoboy: oferta ao escolhido` (chaves `pedido`, `anterior`, `novo` = o escolhido, `lider` = quem
+   trocou e `oferta`; só ids).
 
 Se o passo 5 falhar, cai na reserva da distribuição (alarme geral, motivo `falha`), como o listener do despacho.
 
@@ -127,14 +128,16 @@ loja da sessão, como as outras `loja/*`):
 ### Portal
 
 - Serviço `entregas-buzina` iniciado no layout do portal (vale em qualquer tela): lê `loja/aceites` a cada **10 s**,
-  para com a aba oculta e lê na volta.
+  **também com a aba em segundo plano** (decisão: o operador fica no gestor do iFood em outra aba; o navegador pode
+  espaçar o timer da aba oculta).
 - Chave do aceite: `pedido + aceito_em`. A troca aceita grava outro `started_at` e toca de novo; a troca direta depois
   da coleta não muda o `started_at` e não toca.
 - **A primeira leitura não toca** (só guarda as chaves). Depois, cada chave nova toca a buzina **uma vez** (vários aceites
   na mesma leitura: um toque só).
-- Áudio: arquivo do Edgard nos assets do engine do portal (caminho definido no plano), tocado com `HTMLAudioElement`. O
-  navegador só libera o som depois do primeiro clique ou tecla na página: o serviço "destrava" o áudio no primeiro gesto,
-  como o `som-de-mensagem.js`. Sem som liberado ou com erro no `play()`, não faz nada.
+- Áudio: arquivo do Edgard em `console/public/sons/buzina.mp3` (fora do fingerprint), tocado com `HTMLAudioElement`. O
+  navegador só libera o som depois de um gesto na página: o serviço ouve `pointerdown`, `touchend`, `click` e `keydown`
+  (iPhone) e "destrava" o áudio com um play mudo, como o `som-de-mensagem.js`; só para de ouvir quando o play mudo dá
+  certo. Áudio com erro é recriado. Sem som liberado ou com erro no `play()`, não faz nada.
 - Erro de rede: tenta na próxima leitura, sem aviso.
 
 ## 3. Testes

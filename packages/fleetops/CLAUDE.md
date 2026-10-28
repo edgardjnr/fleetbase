@@ -150,7 +150,10 @@ A com os lados invertidos, `.planning/sketches/005-tela-de-pedidos/`). As vistas
   - O painel **Motoboys** flutua à esquerda e o **Pedidos** à direita, os dois recolhíveis.
   - As contagens ficam no topo e filtram o mapa e a lista.
   - Clicar num pedido abre o **pedido aberto** (ver abaixo): a folha da comanda no lugar do painel Pedidos.
-  - O admin atribui ou troca o motoboy pela folha; o Atribuir da linha abre a folha já com os candidatos.
+  - O admin atribui ou troca o motoboy pela folha; o Atribuir da linha abre a folha já com os candidatos. Antes da
+    coleta, o escolhido precisa aceitar (o pedido volta a "oferta" na tela; aviso
+    `painel-inicial.atribuir.oferta-enviada`, ver o `POST painel-inicial/pedidos/{id}/motoboy` em
+    `api/app/Support/Entregas/Painel/CLAUDE.md`).
   - O enquadramento desconta os painéis (`@margens`, `paddingTopLeft`/`paddingBottomRight`), e o zoom fica embaixo à
     esquerda (o painel Motoboys para 110 px antes do fim).
   - No celular (< 768 px, `matchMedia`), uma folha de baixo com Pedidos e Motoboys (3 alturas).

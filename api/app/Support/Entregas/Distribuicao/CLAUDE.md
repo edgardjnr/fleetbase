@@ -29,7 +29,7 @@ Em `api/app/Support/Entregas/Distribuicao/`:
 - `Distribuicoes`: leitura e gravação das duas tabelas com `DB::table` (sem models), datas no fuso do app;
 - `Pontos`: `[lat, lng]` de um `Point` e a linha reta (Haversine);
 - `Candidatos`, `EstimadorDeTempo`, `Encaixe` (funções puras) e `FilaDeCandidatos`: a fila;
-- `Distribuidor`: o ciclo. `iniciar`, `avancar`, `vencer`, `recusar` e `abrirATodos` rodam sob a `TravaDoPedido`; `encerrar`, `encerrarDistribuicao` e `registrarAceite`, sem a trava;
+- `Distribuidor`: o ciclo. `iniciar`, `avancar`, `vencer`, `recusar` e `abrirATodos` rodam sob a `TravaDoPedido`; `encerrar`, `encerrarDistribuicao`, `registrarAceite` e `oferecerAoEscolhidoSemTrava`, sem a trava;
 - `TrocaDoListenerDoDespacho`: a troca do listener.
 
 Fora dessa pasta:
@@ -148,12 +148,56 @@ Ramos `distribuicao-de-pedidos` e `distribuicao-rodadas` do `entregas-navigator`
 - **Tela Sobre:** o parágrafo `ofertaDesempate` explica o desempate por corridas do dia (ramo `desempate-corridas` do app, 2026-10-19). Se a regra mudar, revise o texto.
 - Testes: `scripts/testes/oferta.teste.ts` e `lista-de-pedidos.teste.ts` (`node --experimental-strip-types --test ...`). O Kotlin só compila no GitHub Actions.
 
+## Oferta ao escolhido (troca e atribuição)
+
+Decisão do Edgard de 2026-10-28 (spec `docs/superpowers/specs/2026-10-28-troca-com-aceite-e-buzina-design.md`; plano
+`docs/superpowers/plans/2026-10-28-troca-com-aceite-e-buzina.md`, executado com ajustes: **o código é a referência**). A
+troca e a atribuição de motoboy pela central (Atribuir/Trocar do console) e pelo líder (aba Mapa) **antes da coleta**
+viram oferta:
+
+- A `TrocaDoMotoboy`, com a `TravaDoPedido`, devolve o pedido à fila (sem motoboy, `adhoc` ligado, `started` falso,
+  `started_at` nulo, status `dispatched`, num `save()` só) e, **dentro da mesma trava**, chama
+  `Distribuidor::oferecerAoEscolhidoSemTrava` (não toma a trava, como o `encerrar` e o `registrarAceite`). Fora da trava
+  haveria um instante com o pedido aberto e sem distribuição, com o aceite livre.
+- O `oferecerAoEscolhidoSemTrava` encerra a distribuição em curso (`redespachada`, a pendente de outro vira `cancelada`),
+  cria outra e grava a oferta ao escolhido: volta 1, rodada 1 (raio R em rodadas), lista fechada, 50 s (30 s sem rodadas),
+  push `OfertaDePedido` e job `AvancarOferta`. Vale **mesmo fora do raio, ocupado, com o GPS velho ou com o app abaixo da
+  versão mínima** (quem escolheu foi a central ou o líder). Log `oferta ao escolhido enviada`.
+- **Duplo clique no Atribuir** (ou o líder repetindo, ou a distribuição de sempre já oferecendo a ele): se o escolhido já
+  tem a oferta pendente do pedido, devolve essa mesma oferta, sem gravar nada nem mandar push (cancelar e criar outra
+  reiniciaria o prazo e tocaria o alarme de novo). Log `oferta ao escolhido já pendente`.
+- **Tempo da linha** (`linhaDoEscolhido`): com a posição dele e a coleta com coordenada, sai da `FilaDeCandidatos` (as
+  paradas dele e o encaixe do ciclo). Sem posição, ou se a estimativa falhar (paradas, corridas, fila), a oferta sai
+  assim mesmo, com tempo 0, `aproximado` e `livre` falso (sem a estimativa, o painel não diz "livre"). Log da falha:
+  `estimativa da oferta ao escolhido falhou; tempo aproximado`.
+- Recusou ou venceu: o ciclo de sempre. O escolhido fica fora da volta 1 (já tem linha nela). **O motoboy anterior é
+  candidato como qualquer um** (decisão do Edgard).
+- **Falha:** nunca lança; a troca responde 200 com `oferta: null`.
+  - Depois de criar a distribuição: abre a todos (`falha`) com o alarme geral (log
+    `falha na oferta ao escolhido; aberta a todos`).
+  - Antes de criar (o pedido já voltou à fila e não pode ficar aberto e mudo): log `falha na oferta ao escolhido`, o
+    `abrirAposFalha` (abre a que ficou em `ofertas`) e, sem distribuição em curso, o alarme geral (`alarmeGeral`, o
+    mesmo do `abrirSemTrava`). Se até ele falhar, log `alarme geral da oferta ao escolhido falhou`.
+- Depois da coleta (`SituacaoDoMotoboy::STATUS_EM_ENTREGA`) ou com a distribuição desligada: a troca direta de antes.
+- **Efeitos do reset** (pesquisa de 2026-10-28): nenhum `OrderDriverAssigned` com motoboy nulo; nada vai ao iFood no
+  intervalo (o iFood continua com o anterior); no aceite, o `assignDriver` do novo (o `goingToOrigin` não se repete; um 409
+  do iFood vira a recusa com aviso de sempre); o valor congelado limpa a atribuição e, no aceite, multiplicador e "entrega
+  junto" (inclusive da loja) passam a ser os do novo; a linha do tempo do pedido ganha um segundo "iniciado".
+- **Riscos aceitos:**
+  - o escolhido com oferta pendente de outro pedido recebe esta também (duas ofertas ao mesmo tempo);
+  - com o app abaixo da versão mínima, o aceite dele leva 426 (trava "Atualize o app");
+  - **sem rodadas**, o escolhido além de R não vê o pedido em "Novos pedidos" do app, só pelo push: o acréscimo da oferta
+    pendente fora do raio, no `FiltrarPedidosAbertosDoMotoboy`, só roda em rodadas;
+  - o anterior que toca "A caminho" no mesmo instante da troca (o `updateActivity` não toma a trava) pode deixar o pedido
+    `enroute` sem motoboy e com a oferta ao escolhido.
+- Testes: `scripts/teste-php/troca-com-aceite.php` e os casos "Troca com aceite" de `lider.php`.
+
 ## Logs
 
 Prefixo `[entregas] distribuição:`, só ids e números:
 
-- ciclo: `iniciada`, `oferta enviada`, `oferta recusada`, `oferta vencida`, `aberta a todos (<motivo>)`, `encerrada (<motivo>)`;
-- falhas: `falha ao iniciar a distribuição; alarme geral`, `falha no ciclo; aberta a todos`, `push da oferta falhou`, `job da oferta não entrou na fila`, `alarme geral falhou para um motoboy`, `falha ao registrar o aceite`, `falha ao encerrar a distribuição do pedido`, `varredura não conseguiu …`, `trava ocupada ao vencer a oferta; tentando de novo`, `filtro da lista: <classe>`, `não deu para contar as corridas de hoje; fila só por tempo`;
+- ciclo: `iniciada`, `oferta enviada`, `oferta ao escolhido enviada`, `oferta ao escolhido já pendente`, `oferta recusada`, `oferta vencida`, `aberta a todos (<motivo>)`, `encerrada (<motivo>)`;
+- falhas: `falha ao iniciar a distribuição; alarme geral`, `falha no ciclo; aberta a todos`, `push da oferta falhou`, `job da oferta não entrou na fila`, `alarme geral falhou para um motoboy`, `falha ao registrar o aceite`, `falha ao encerrar a distribuição do pedido`, `varredura não conseguiu …`, `trava ocupada ao vencer a oferta; tentando de novo`, `filtro da lista: <classe>`, `não deu para contar as corridas de hoje; fila só por tempo`, `falha na oferta ao escolhido`, `falha na oferta ao escolhido; aberta a todos`, `alarme geral da oferta ao escolhido falhou`, `estimativa da oferta ao escolhido falhou; tempo aproximado`;
 - OSRM: `OSRM indisponível; estimativa em linha reta` e `pontos demais para a matriz do OSRM; estimativa em linha reta`;
 - boot: `listener do Fleet-Ops não encontrado no OrderDispatched` (o fleetops-api mudou).
 
@@ -165,7 +209,7 @@ Onde ver:
 
 ## Armadilhas
 
-- **A `TravaDoPedido` não é reentrante.** Nada que rode dentro do aceite (middleware) ou da `TrocaDoMotoboy` pode chamar `iniciar`, `avancar`, `vencer`, `recusar` ou `abrirATodos`. Por isso o `encerrar` e o `registrarAceite` não tomam a trava.
+- **A `TravaDoPedido` não é reentrante.** Nada que rode dentro do aceite (middleware) ou da `TrocaDoMotoboy` pode chamar `iniciar`, `avancar`, `vencer`, `recusar` ou `abrirATodos`. Por isso o `encerrar`, o `registrarAceite` e o `oferecerAoEscolhidoSemTrava` não tomam a trava.
 - **Worker da fila `default`:** com a trava do pedido ocupada, o `AvancarOferta` espera até 10 s por tentativa no worker `queue`, o único da `default`, que também entrega os pushes das ofertas. Se isso atrasar as ofertas, crie um worker extra para a `default`.
 - **Trava presa da varredura** (`withoutOverlapping(5)`): `docker exec $(docker ps -q -f name=entregas_scheduler) php artisan schedule:clear-cache`.
 - **Lista "Novos pedidos" (`nearby`):** usa só o raio da empresa (`fleetops.adhoc_distance`). Com um `orders.adhoc_distance` maior (só pela API v1 ou pelo formulário da central), o motoboy recebe a oferta pelo alarme, mas ela não aparece na lista.
@@ -193,7 +237,7 @@ Onde ver:
 
 ## Testes
 
-- php-wasm: `scripts/teste-php/distribuicao-encaixe.php`, `distribuicao-fila.php`, `distribuicao-ciclo.php`, `distribuicao-rotas.php`, `filtrar-pedidos-abertos.php`, `barrar-aceite.php`, `avisos-push.php` e `reenvio.php`.
+- php-wasm: `scripts/teste-php/distribuicao-encaixe.php`, `distribuicao-fila.php`, `distribuicao-ciclo.php`, `distribuicao-rotas.php`, `filtrar-pedidos-abertos.php`, `barrar-aceite.php`, `avisos-push.php`, `reenvio.php` e `troca-com-aceite.php` (oferta ao escolhido).
 - `scripts/teste-php/imports-dos-providers.php` (estático): pega `use` faltando nos providers e nos arquivos novos. Um `use` faltando no `RouteServiceProvider` derruba a API v1 inteira, e o `php -l` não pega.
 - Console: `node --import ./scripts/teste-portal/resolver.mjs --test scripts/teste-portal/distribuicao.test.mjs`.
 - App: ver "APK".

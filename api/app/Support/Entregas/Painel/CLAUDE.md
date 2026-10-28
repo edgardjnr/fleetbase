@@ -57,12 +57,18 @@ Limite herdado do `PedidosNoMapa`: pedido sem coordenada no destino não aparece
 
 Só admin; para os outros, devolve 403.
 
-Usa o `TrocaDoMotoboy::trocar`, a mesma troca do líder:
-- trava o pedido;
-- grava `adhoc` falso;
-- manda um aviso só ao motoboy novo e o `assignDriver` ao iFood.
+Usa o `TrocaDoMotoboy::trocar`, a mesma troca do líder.
 
-A distribuição se encerra sozinha pelo `ObservadorDaDistribuicao`. O log sai como "líder trocou o motoboy".
+- **Antes da coleta, com a distribuição ligada** (2026-10-28): o pedido volta à fila e o escolhido recebe a oferta (ver
+  "Oferta ao escolhido" em `api/app/Support/Entregas/Distribuicao/CLAUDE.md`). A resposta traz
+  `oferta: {motoboy, nome, vence_em}`, e o console avisa "Oferta enviada a Fulano. Se recusar, o pedido volta para a
+  fila." (`avisoDaAtribuicao` em `packages/fleetops/addon/utils/painel-inicial.js`; sem nome, "Oferta enviada. Se o
+  motoboy recusar, …"). Duplo clique no Atribuir devolve a mesma oferta, sem outro push.
+- **Depois da coleta** (ou com a distribuição desligada): a troca direta (trava, `adhoc` falso, um aviso só ao motoboy
+  novo e o `assignDriver` ao iFood), e a distribuição se encerra sozinha pelo `ObservadorDaDistribuicao`. Sem `oferta`
+  na resposta, o aviso de sempre ("Motoboy atribuído.").
+- Logs: "troca do motoboy: oferta ao escolhido" ou "líder trocou o motoboy".
+- Testes: `scripts/teste-portal/painel-inicial.test.mjs` (`avisoDaAtribuicao`) e `scripts/teste-php/troca-com-aceite.php`.
 
 ## Comanda do pedido (folha do console)
 
