@@ -156,9 +156,14 @@ troca e a atribuição de motoboy pela central (Atribuir/Trocar do console) e pe
 viram oferta:
 
 - A `TrocaDoMotoboy`, com a `TravaDoPedido`, devolve o pedido à fila (sem motoboy, `adhoc` ligado, `started` falso,
-  `started_at` nulo, status `dispatched`, num `save()` só) e, **dentro da mesma trava**, chama
+  `started_at` nulo, status `dispatched` e `dispatched_at` = agora, num `save()` só) e, **dentro da mesma trava**, chama
   `Distribuidor::oferecerAoEscolhidoSemTrava` (não toma a trava, como o `encerrar` e o `registrarAceite`). Fora da trava
   haveria um instante com o pedido aberto e sem distribuição, com o aceite livre.
+  - **O `dispatched_at` passa a ser a hora da troca**, como num despacho novo: o `ReenviarPedidosAbertos` conta dele o
+    reenvio e o aviso "sem motoboy" à central (uma vez por despacho). Com o antigo, a central levaria logo um falso "sem
+    motoboy" (o aviso sai com 12 min desde o despacho e gastaria o único dele) ou, com o despacho de mais de 60 min,
+    nunca seria avisada. O `startOrder`
+    só exige que ele não seja nulo.
 - O `oferecerAoEscolhidoSemTrava` encerra a distribuição em curso (`redespachada`, a pendente de outro vira `cancelada`),
   cria outra e grava a oferta ao escolhido: volta 1, rodada 1 (raio R em rodadas), lista fechada, 50 s (30 s sem rodadas),
   push `OfertaDePedido` e job `AvancarOferta`. Vale **mesmo fora do raio, ocupado, com o GPS velho ou com o app abaixo da

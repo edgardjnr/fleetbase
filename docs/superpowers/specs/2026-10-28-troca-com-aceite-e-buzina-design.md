@@ -50,8 +50,9 @@ Dentro da `TravaDoPedido` (relê o pedido, como hoje):
 
 1. guarda o motoboy anterior (pode ser nenhum, no Atribuir);
 2. devolve o pedido ao estado "aberto, despachado, não iniciado": `driver_assigned_uuid` nulo, `adhoc` verdadeiro,
-   `started` falso, `started_at` nulo e status `dispatched`, sem disparar o `OrderDriverAssigned` ao anterior nem ao
-   novo (quem avisa o novo é o push da oferta);
+   `started` falso, `started_at` nulo, status `dispatched` e `dispatched_at` = agora (como num despacho novo: o reenvio e
+   o aviso "sem motoboy" à central contam dele), sem disparar o `OrderDriverAssigned` ao anterior nem ao novo (quem
+   avisa o novo é o push da oferta);
 3. limpa o `current_job_uuid` do anterior, se apontava para este pedido (como hoje);
 4. encerra a distribuição em curso do pedido, se houver, como `redespachada` (a oferta pendente de outro motoboy vira
    `cancelada`; o Aceitar atrasado dele leva o 409 de sempre).

@@ -200,12 +200,13 @@ namespace Fleetbase\FleetOps\Models {
         public array $atribuicoes = [];
         public $started = true;
         public $started_at = '2026-10-28 09:50:00';
+        public $dispatched_at = '2026-10-28 09:30:00';
         /** O que estava no pedido em cada save(): o reset da troca com aceite. */
         public array $salvos = [];
 
         public function save(): bool
         {
-            $this->salvos[] = ['motoboy' => $this->driver_assigned_uuid, 'adhoc' => $this->adhoc, 'started' => $this->started, 'started_at' => $this->started_at, 'status' => $this->status];
+            $this->salvos[] = ['motoboy' => $this->driver_assigned_uuid, 'adhoc' => $this->adhoc, 'started' => $this->started, 'started_at' => $this->started_at, 'status' => $this->status, 'dispatched_at' => $this->dispatched_at instanceof \DateTimeInterface ? $this->dispatched_at->format('Y-m-d H:i:s P') : $this->dispatched_at];
 
             return true;
         }
@@ -299,6 +300,8 @@ namespace {
     function response() { return new \Teste\Fabrica(); }
     date_default_timezone_set('America/Sao_Paulo');
     function app($classe) { return new $classe(); }
+    // a hora da troca nos testes (o now() do Laravel devolve o Carbon no fuso do app)
+    function now() { return new \DateTimeImmutable('2026-10-28 10:00:00', new \DateTimeZone('America/Sao_Paulo')); }
 
     $falhas = 0;
     function confere(bool $ok, string $caso): void
@@ -356,6 +359,7 @@ namespace {
         $p->trackingNumber       = isset($extra['rastreio']) ? (object) ['tracking_number' => $extra['rastreio']] : null;
         $p->started              = $extra['started'] ?? !in_array($status, ['created', 'dispatched'], true);
         $p->started_at           = $p->started ? '2026-10-28 09:50:00' : null;
+        $p->dispatched_at        = $p->dispatched ? '2026-10-28 09:30:00' : null;
 
         return $p;
     }
@@ -512,8 +516,8 @@ namespace {
     $resposta      = $troca('order_aceito', 'driver_novo');
     confere($resposta->status === 200 && $resposta->dados === ['pedido' => ['id' => 'order_aceito', 'motoboy_uuid' => null], 'oferta' => ['motoboy' => 'driver_novo', 'nome' => 'Novo', 'vence_em' => '2026-10-28T10:00:50-03:00']],
         'aceito e não coletado: 200 com o pedido sem motoboy e a oferta ao escolhido (' . json_encode($resposta->dados) . ')');
-    confere($aceito->salvos === [['motoboy' => null, 'adhoc' => true, 'started' => false, 'started_at' => null, 'status' => 'dispatched']] && $aceito->atribuicoes === [],
-        'devolvido à fila num save só (sem motoboy, aberto, não iniciado, dispatched), sem assignDriver');
+    confere($aceito->salvos === [['motoboy' => null, 'adhoc' => true, 'started' => false, 'started_at' => null, 'status' => 'dispatched', 'dispatched_at' => '2026-10-28 10:00:00 -03:00']] && $aceito->atribuicoes === [],
+        'devolvido à fila num save só (sem motoboy, aberto, não iniciado, dispatched e despachado de novo agora, em Brasília), sem assignDriver');
     confere(Distribuidor::$chamadas === [['pedido' => 'o-aceito', 'motoboy' => 'm-novo', 'dentro_da_trava' => true, 'motoboy_no_pedido' => null, 'adhoc' => true]],
         'a oferta ao escolhido sai dentro da trava, depois do reset');
     confere(Cache::$travas === ['entregas:pedido:o-aceito'] && Driver::$todos[1]->current_job_uuid === null, 'uma trava só; o pedido atual do anterior é limpo');
@@ -534,7 +538,7 @@ namespace {
     Distribuidor::$chamadas = [];
     Log::$linhas            = [];
     $resposta               = $troca('order_coletado', 'driver_novo');
-    confere($resposta->status === 200 && $resposta->dados['oferta'] === null && $coletado->driver_assigned_uuid === 'm-novo' && $coletado->salvos === [] && Distribuidor::$chamadas === [],
+    confere($resposta->status === 200 && $resposta->dados['oferta'] === null && $coletado->driver_assigned_uuid === 'm-novo' && $coletado->salvos === [] && $coletado->dispatched_at === '2026-10-28 09:30:00' && Distribuidor::$chamadas === [],
         'já coletado (enroute): troca direta, como antes');
     confere(Log::$linhas[0][1] === '[entregas] líder trocou o motoboy', 'já coletado: o log de sempre');
 

@@ -144,8 +144,11 @@ class TrocaDoMotoboy
 
     /**
      * O pedido volta a ser aberto, sem motoboy e não iniciado, num save só (com eventos: o socket, os caches e o valor
-     * congelado ficam sabendo; nenhum OrderDriverAssigned sai com motoboy nulo). O dispatched_at fica: o startOrder do
-     * próximo aceite exige o pedido despachado, e a linha do tempo ganha um segundo "iniciado".
+     * congelado ficam sabendo; nenhum OrderDriverAssigned sai com motoboy nulo). O dispatched_at passa a ser agora, como
+     * num despacho novo: o ReenviarPedidosAbertos conta do dispatched_at o reenvio aos motoboys e o aviso "sem motoboy"
+     * à central (12 min depois, uma vez por despacho); com o antigo, a central levaria logo um falso "sem motoboy" (e
+     * gastaria o único aviso) ou, com o despacho de mais de 60 min, nunca seria avisada. O startOrder do próximo aceite só exige o
+     * dispatched_at preenchido, e a linha do tempo ganha um segundo "iniciado".
      */
     protected static function devolverAFila($pedido): void
     {
@@ -154,6 +157,7 @@ class TrocaDoMotoboy
         $pedido->started              = false;
         $pedido->started_at           = null;
         $pedido->status               = 'dispatched';
+        $pedido->dispatched_at        = now();
         $pedido->save();
     }
 
