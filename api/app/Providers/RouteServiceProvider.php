@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Controllers\Entregas\CarteiraDaLojaController;
+use App\Http\Controllers\Entregas\ChamarMotoboyController;
 use App\Http\Controllers\Entregas\ComprovantesController;
 use App\Http\Controllers\Entregas\ConversasDaLojaController;
 use App\Http\Controllers\Entregas\CorridasDoSistemaController;
@@ -291,6 +292,9 @@ class RouteServiceProvider extends ServiceProvider
                         Route::get('loja/pedidos/{id}/itens', [PortalLojaController::class, 'itens'])->middleware('throttle:60,1');
                         Route::get('loja/motoboys', [PortalLojaController::class, 'motoboysNoMapa'])->middleware('throttle:entregas-loja-mapa');
                         Route::get('loja/aceites', [PortalLojaController::class, 'aceites'])->middleware('throttle:entregas-loja-aceites');
+                        // chamar motoboy (o painel de 3 passos do portal; spec 2026-10-28-chamar-motoboy-portal-design.md)
+                        Route::get('loja/clientes', [ChamarMotoboyController::class, 'clientes'])->middleware('throttle:60,1');
+                        Route::post('loja/chamar-motoboy', [ChamarMotoboyController::class, 'chamar'])->middleware('throttle:20,1');
                         // Financeiro da loja: ciclo em andamento e faturas emitidas e canceladas; o detalhe de uma fatura (uuid)
                         Route::get('loja/financeiro', [PortalLojaController::class, 'financeiro'])->middleware('throttle:60,1');
                         Route::get('loja/faturas/{id}', [PortalLojaController::class, 'fatura'])->middleware('throttle:60,1');

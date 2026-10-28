@@ -7,6 +7,7 @@
 
 require __DIR__ . '/stubs-integracao.php';
 
+use App\Http\Controllers\Entregas\ChamarMotoboyController;
 use App\Support\Entregas\Integracao\CobrancaDaIntegracao;
 use App\Support\Entregas\Integracao\DadosDaIntegracaoDoMotoboy;
 use App\Support\Entregas\PedidoRecusado;
@@ -18,7 +19,9 @@ use Fleetbase\FleetOps\Models\Payload;
 use Fleetbase\FleetOps\Models\Place;
 use Fleetbase\FleetOps\Models\Vendor;
 use Fleetbase\LaravelMysqlSpatial\Types\Point;
+use Illuminate\Http\Request;
 use Teste\Banco;
+use Teste\Sessao;
 use Teste\Trava;
 
 
@@ -79,6 +82,48 @@ function chamar(array $mudancas = [], ?Place $coleta = null)
     } catch (PedidoRecusado $e) {
         return $e;
     }
+}
+
+// a loja e a coleta da sessão vêm do LojaDoUsuario (Eloquent com whereHas); aqui são fixas. O crédito é contado e pode
+// ser recusado pelo teste (a regra dele tem os testes no prepago-loja.php)
+class ControllerDeTeste extends ChamarMotoboyController
+{
+    public ?Vendor $loja = null;
+    public int $creditos = 0;
+    public ?PedidoRecusado $recusa = null;
+
+    protected function lojaDaSessao(): ?Vendor { return $this->loja; }
+    protected function coletaDaLoja(Vendor $vendor): ?Place { return coletaA(); }
+    protected function comCredito(string $empresa, string $lojaUuid, \Closure $criar)
+    {
+        $this->creditos++;
+        if ($this->recusa) {
+            throw $this->recusa;
+        }
+
+        return $criar();
+    }
+}
+
+function controller(): ControllerDeTeste
+{
+    reiniciarIntegracao();
+    Sessao::$dados = ['company' => 'empresa-1', 'user' => 'usuario-da-loja'];
+    $c       = new ControllerDeTeste();
+    $c->loja = lojaA();
+
+    return $c;
+}
+
+function corpoDaTela(array $mudancas = []): array
+{
+    return array_replace_recursive([
+        'chave'      => '6f1c0e8a-2b1d-4c3e-9a7f-0d5b8c2e4f10',
+        'cliente'    => ['nome' => 'Mariana Souza', 'telefone' => '16999990000'],
+        'entrega'    => ['rua' => 'Rua Olinda, 45', 'bairro' => 'Centro', 'cidade' => 'Ribeirão Preto', 'uf' => 'SP', 'cep' => '14010-000', 'latitude' => -21.18, 'longitude' => -47.81, 'complemento' => 'Ap 12', 'referencia' => null],
+        'cobranca'   => ['forma' => 'pago'],
+        'observacao' => null,
+    ], $mudancas);
 }
 
 $raiz = dirname(__DIR__, 2);
@@ -198,5 +243,45 @@ Order::$falharDespacho = true;
 [$linha, $pedido, $novo] = chamar();
 confere($novo === true && count(Order::$criados) === 1 && $linha !== null && $pedido->status === 'created', 'o pedido existe (status created, o da criação) mesmo com o despacho falhando');
 confere(logou('[entregas] portal da loja: falha ao despachar o pedido aos motoboys', 'error') && Trava::$ocupadas === [], 'erro no log (a central despacha à mão) e a trava solta');
+
+echo '== ChamarMotoboyController@chamar' . PHP_EOL;
+$c = controller();
+$r = $c->chamar(new Request(corpoDaTela()), new CriadorDoChamado());
+confere($r->status === 201 && $r->dados['pedido']['id'] === Order::$criados[0]->public_id && $r->dados['pedido']['cliente'] === 'Mariana Souza' && $r->dados['pedido']['cobranca'] === null && $c->creditos === 1, '201 com o resumo; já pago = cobrança null; passou pelo crédito');
+$r = $c->chamar(new Request(corpoDaTela()), new CriadorDoChamado());
+confere($r->status === 200 && $r->dados['pedido']['id'] === Order::$criados[0]->public_id && count(Order::$criados) === 1 && $c->creditos === 1, 'mesma chave: 200 com o mesmo pedido, sem passar pelo crédito de novo');
+$r = $c->chamar(new Request(corpoDaTela(['chave' => 'x', 'cliente' => ['telefone' => '123']])), new CriadorDoChamado());
+confere($r->status === 422 && in_array('Atualize a página e tente de novo.', $r->dados['errors'], true) && in_array('Informe o telefone do cliente com DDD.', $r->dados['errors'], true), 'corpo inválido: 422 com as mensagens');
+$c->recusa = new PedidoRecusado(422, 'Crédito insuficiente. Recarregue a carteira.');
+$r         = $c->chamar(new Request(corpoDaTela(['chave' => 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'])), new CriadorDoChamado());
+confere($r->status === 422 && $r->dados === ['errors' => ['Crédito insuficiente. Recarregue a carteira.']] && count(Order::$criados) === 1, 'sem crédito: 422 com a mensagem, sem pedido');
+$c->recusa = null;
+$r         = $c->chamar(new Request(corpoDaTela(['chave' => 'ffffffff-ffff-4fff-8fff-ffffffffffff', 'entrega' => ['latitude' => -21.1776, 'longitude' => -47.8103]])), new CriadorDoChamado());
+confere($r->status === 422 && str_contains($r->dados['errors'][0], 'mesmo lugar da loja'), 'recusa do criador: 422 com a mensagem');
+$c->loja = null;
+$r       = $c->chamar(new Request(corpoDaTela()), new CriadorDoChamado());
+confere($r->status === 403 && str_contains($r->dados['errors'][0], 'não está ligado a nenhuma loja'), 'usuário sem loja: 403');
+
+echo '== ChamarMotoboyController@clientes' . PHP_EOL;
+$c = controller();
+localDoCliente();
+linhaDoPortal();
+$r = $c->clientes(new Request(['telefone' => '(16) 99999-0000']));
+confere($r->dados['cliente']['nome'] === 'Mariana Souza' && $r->dados['cliente']['pedidos'] === 1, 'telefone formatado acha o cliente da loja');
+confere($c->clientes(new Request(['telefone' => '9999']))->dados === ['cliente' => null], 'telefone incompleto: cliente null (sem 422)');
+$c->loja = new Vendor(['uuid' => 'vendor-b', 'public_id' => 'vendor_b', 'company_uuid' => 'empresa-1', 'name' => 'Outra']);
+confere($c->clientes(new Request(['telefone' => '16999990000']))->dados === ['cliente' => null], 'outra loja não vê o cliente');
+$c->loja = null;
+confere($c->clientes(new Request(['telefone' => '16999990000']))->status === 403, 'sem loja: 403');
+
+echo '== Rotas e liberação' . PHP_EOL;
+$rotas = file_get_contents($raiz . '/api/app/Providers/RouteServiceProvider.php');
+confere(str_contains($rotas, "Route::get('loja/clientes', [ChamarMotoboyController::class, 'clientes'])->middleware('throttle:60,1');"), 'GET loja/clientes, 60 por minuto');
+confere(str_contains($rotas, "Route::post('loja/chamar-motoboy', [ChamarMotoboyController::class, 'chamar'])->middleware('throttle:20,1');"), 'POST loja/chamar-motoboy, 20 por minuto');
+confere(str_contains($rotas, 'use App\Http\Controllers\Entregas\ChamarMotoboyController;'), 'import do controller');
+$proteger = file_get_contents($raiz . '/api/app/Http/Middleware/ProtegerPortalLoja.php');
+confere(str_contains($proteger, "'#^[A-Z]+ entregas/loja/.+$#'"), 'liberadas à loja pelo ProtegerPortalLoja (entregas/loja/*)');
+$ctl = file_get_contents($raiz . '/api/app/Http/Controllers/Entregas/ChamarMotoboyController.php');
+confere(str_contains($ctl, 'return CreditoNoPedido::criar($empresa, $lojaUuid, $criar);'), 'o crédito da loja pré-paga é o CreditoNoPedido');
 
 resumo();
