@@ -543,6 +543,13 @@ namespace {
     $resposta               = $troca('order_falhou', 'driver_novo');
     confere($resposta->status === 200 && $resposta->dados['oferta'] === null && $falhou->driver_assigned_uuid === null && $falhou->adhoc === true,
         'a oferta falhou (o Distribuidor abriu a todos): 200 sem oferta, o pedido continua na fila');
+
+    Order::$todos[]         = $naoDespachado = pedido('o-ligada-nao-despachado', 'created', null, ['dispatched' => false]);
+    Distribuidor::$chamadas = [];
+    Distribuidor::$oferta   = (object) ['id' => 8, 'vence_em' => '2026-10-28 10:00:50'];
+    $resposta               = $troca('order_ligada-nao-despachado', 'driver_novo');
+    confere($resposta->status === 409 && $resposta->dados === ['errors' => ['Este pedido ainda não foi despachado pela central.']] && $naoDespachado->salvos === [] && Distribuidor::$chamadas === [],
+        'distribuição ligada e pedido não despachado: 409, sem save e sem oferta');
     Distribuicao::$ligada = false;
 
     echo '== PedidoPassadoParaOutro' . PHP_EOL;

@@ -291,7 +291,9 @@ class Distribuidor
      * Recusou ou venceu: o ciclo de sempre (com ou sem rodadas); o escolhido fica fora da volta 1 por já ter linha nela.
      * Nunca lança: uma falha abre a todos (falha) com o alarme geral; antes de a distribuição nova existir, o alarme geral
      * sai mesmo sem distribuição (o pedido já voltou à fila). A falha só na estimativa não derruba a oferta: tempo 0,
-     * aproximado. Devolve a oferta, ou null (desligada ou falha).
+     * aproximado. Se o escolhido já tem a oferta pendente do pedido (duplo clique no Atribuir, o líder repetindo, ou a
+     * distribuição de sempre já oferecia a ele), devolve essa mesma oferta sem gravar nada nem mandar push: cancelar e
+     * criar outra reiniciaria o prazo e tocaria o alarme de novo. Devolve a oferta, ou null (desligada ou falha).
      */
     public function oferecerAoEscolhidoSemTrava(Order $pedido, Driver $motoboy): ?object
     {
@@ -301,6 +303,12 @@ class Distribuidor
         $distribuicao = null;
         try {
             $anterior = Distribuicoes::doPedido((string) $pedido->uuid);
+            $pendente = $anterior && $anterior->fase === Distribuicao::FASE_OFERTAS ? Distribuicoes::ofertaPendente((int) $anterior->id) : null;
+            if ($pendente && (string) $pendente->motoboy_uuid === (string) $motoboy->uuid) {
+                Log::info('[entregas] distribuição: oferta ao escolhido já pendente', ['pedido' => $pedido->public_id, 'oferta' => $pendente->id, 'motoboy' => $motoboy->public_id]);
+
+                return $pendente;
+            }
             if ($anterior) {
                 $this->encerrarSemTrava($anterior, Distribuicao::REDESPACHADA);
             }

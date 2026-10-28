@@ -172,4 +172,29 @@ $oferta = $dist->oferecerAoEscolhidoSemTrava(pedidoDoCenario(), $bruno['motoboy'
 confere($oferta === null && array_column(avisos(), 1) === [OrderPing::class, OrderPing::class], 'nem a leitura da distribuição sai: null e alarme geral, sem lançar');
 \Teste\Banco::$falharAoConsultar = [];
 
+echo '== Duplo clique no Atribuir (ou o líder repetindo): o escolhido já tem a oferta pendente' . PHP_EOL;
+$dist     = cenario([$ana, $bruno], [$ana, $bruno]);
+$primeira = $dist->oferecerAoEscolhidoSemTrava(pedidoDoCenario(), $bruno['motoboy']);
+Relogio::$agora = '2026-10-28 10:00:05';
+$segunda  = $dist->oferecerAoEscolhidoSemTrava(pedidoDoCenario(), $bruno['motoboy']);
+confere($segunda !== null && $segunda->id === $primeira->id && $segunda->vence_em === '2026-10-28 10:00:50', 'a mesma oferta, sem reiniciar os 50 s');
+confere(count(ofertas()) === 1 && ofertas()[0]->resposta === 'pendente' && count(distribuicoes()) === 1 && distribuicoes()[0]->fase === 'ofertas',
+    'uma oferta só e uma distribuição só (nada redespachado)');
+confere(avisos() === [['driver_bruno', OfertaDePedido::class]] && count(Fila::$jobs) === 1, 'um push só e um job só');
+confere(logou('oferta ao escolhido já pendente', 'info') && logsSem(['Bruno', 'Ana']), 'log "oferta ao escolhido já pendente" só com ids');
+
+$outra = $dist->oferecerAoEscolhidoSemTrava(pedidoDoCenario(), $ana['motoboy']);
+[$velha, $nova] = distribuicoes();
+confere($outra !== null && $outra->id !== $primeira->id && $velha->motivo === 'redespachada' && ofertas()[0]->resposta === 'cancelada' && ofertas()[1]->motoboy_uuid === 'd-ana' && $nova->fase === 'ofertas',
+    'para outro motoboy: continua redespachando (a de Bruno é cancelada, a nova oferece a Ana)');
+confere(avisos() === [['driver_bruno', OfertaDePedido::class], ['driver_ana', OfertaDePedido::class]], 'o push novo vai só a Ana');
+
+$dist = cenario([$ana, $bruno], [$ana, $bruno]);
+$dist->iniciar(pedidoDoCenario());
+$daRodada = ofertas()[0];
+Driver::$avisos = [];
+$mesma = $dist->oferecerAoEscolhidoSemTrava(pedidoDoCenario(), $ana['motoboy']);
+confere($mesma?->id === $daRodada->id && count(distribuicoes()) === 1 && count(ofertas()) === 1 && avisos() === [],
+    'a distribuição de sempre já oferecia ao escolhido (Ana): devolve essa oferta, sem gravar nem avisar');
+
 resumo(); // dos stubs: imprime "FALHAS: <n>"
