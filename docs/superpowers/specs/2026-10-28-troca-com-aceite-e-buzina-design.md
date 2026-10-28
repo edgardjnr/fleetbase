@@ -135,8 +135,8 @@ loja da sessão, como as outras `loja/*`):
 - **A primeira leitura não toca** (só guarda as chaves). Depois, cada chave nova toca a buzina **uma vez** (vários aceites
   na mesma leitura: um toque só).
 - Áudio: arquivo do Edgard em `console/public/sons/buzina.mp3` (fora do fingerprint), tocado com `HTMLAudioElement`. O
-  navegador só libera o som depois de um gesto na página: o serviço ouve `pointerdown`, `touchend`, `click` e `keydown`
-  (iPhone) e "destrava" o áudio com um play mudo, como o `som-de-mensagem.js`; só para de ouvir quando o play mudo dá
+  navegador só libera o som depois de um gesto na página: o serviço ouve `touchend`, `click` e `keydown`
+  (sem o `pointerdown`, que no iPhone não libera mídia) e "destrava" o áudio com um play mudo, como o `som-de-mensagem.js`; só para de ouvir quando o play mudo dá
   certo. Áudio com erro é recriado. Sem som liberado ou com erro no `play()`, não faz nada.
 - Erro de rede: tenta na próxima leitura, sem aviso.
 
