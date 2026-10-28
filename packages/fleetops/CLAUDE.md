@@ -192,6 +192,9 @@ A com os lados invertidos, `.planning/sketches/005-tela-de-pedidos/`). As vistas
       troca a transição e a promessa rejeita com `TransitionAborted`. Foi o que aconteceu no salvar do pedido novo
       (2026-10-26: o pedido era criado, mas aparecia "TransitionAborted" no lugar do aviso de sucesso). Por isso o
       `controllers/operations/orders/index/new.js` vai direto a `orders.index` com `?layout=map&pedido=<public_id>`.
+      Mesmo assim, a tela de pedidos pode trocar a transição ao abrir a folha (2026-10-28, o "TransitionAborted" voltou):
+      o aviso de sucesso sai antes, e a rejeição `TransitionAborted` dessa transição é ignorada (o pedido já foi criado
+      e a navegação seguinte vale).
     - A pílula "Voltar para a Tabela/o Quadro/o Início" (`voltarDoPedido`) volta à origem. O X fecha e fica no mapa.
       Trocar de vista fecha o pedido.
   - **Folha** (`tela-pedidos/pedido-aberto.*`, 440 px no lugar do painel Pedidos; no celular, dentro da folha de baixo,
