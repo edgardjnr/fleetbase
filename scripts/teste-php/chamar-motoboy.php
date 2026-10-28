@@ -277,7 +277,10 @@ confere($c->clientes(new Request(['telefone' => '16999990000']))->status === 403
 echo '== Rotas e liberação' . PHP_EOL;
 $rotas = file_get_contents($raiz . '/api/app/Providers/RouteServiceProvider.php');
 confere(str_contains($rotas, "Route::get('loja/clientes', [ChamarMotoboyController::class, 'clientes'])->middleware('throttle:60,1');"), 'GET loja/clientes, 60 por minuto');
-confere(str_contains($rotas, "Route::post('loja/chamar-motoboy', [ChamarMotoboyController::class, 'chamar'])->middleware('throttle:20,1');"), 'POST loja/chamar-motoboy, 20 por minuto');
+confere(str_contains($rotas, "Route::post('loja/chamar-motoboy', [ChamarMotoboyController::class, 'chamar'])->middleware('throttle:entregas-loja-chamar');"), 'POST loja/chamar-motoboy no limitador nomeado');
+// o throttle sem nome divide um contador por usuário entre todas as rotas que o usam (o 60,1 da loja esgotaria um 20,1)
+$limitador = 'RateLimiter::for(\'entregas-loja-chamar\', fn (Request $request) => Limit::perMinute(20)->by(\'entregas-loja-chamar:\' . (session(\'user\') ?: $request->ip())));';
+confere(str_contains($rotas, $limitador),'limitador entregas-loja-chamar: 20 por minuto por usuário, balde próprio');
 confere(str_contains($rotas, 'use App\Http\Controllers\Entregas\ChamarMotoboyController;'), 'import do controller');
 $proteger = file_get_contents($raiz . '/api/app/Http/Middleware/ProtegerPortalLoja.php');
 confere(str_contains($proteger, "'#^[A-Z]+ entregas/loja/.+$#'"), 'liberadas à loja pelo ProtegerPortalLoja (entregas/loja/*)');

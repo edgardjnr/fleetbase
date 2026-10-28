@@ -47,7 +47,7 @@ no app e à central na comanda do console.
 
 ### Uma rota que faz tudo: `POST int/v1/entregas/loja/chamar-motoboy`
 
-Controller próprio `App\Http\Controllers\Entregas\ChamarMotoboyController@chamar`, `throttle:20,1`. Já está liberada à
+Controller próprio `App\Http\Controllers\Entregas\ChamarMotoboyController@chamar`, limitador nomeado `entregas-loja-chamar` (20 por minuto por usuário, balde próprio; o `throttle:20,1` sem nome dividiria o contador com o `throttle:60,1` das outras rotas da loja). Já está liberada à
 loja pelo `ProtegerPortalLoja` (`#^[A-Z]+ entregas/loja/.+$#`); motoboy e central não são loja e não têm vínculo com
 Vendor (403 "Este usuário não está ligado a nenhuma loja. Fale com a central.").
 
