@@ -23,6 +23,8 @@ namespace Illuminate\Support\Facades {
     {
         public static bool $ocupada = false;
         public static array $travas = [];
+        /** True enquanto a função da trava roda (para conferir o que acontece dentro dela). */
+        public static bool $dentro = false;
 
         public static function lock(string $chave, int $validade)
         {
@@ -35,8 +37,12 @@ namespace Illuminate\Support\Facades {
                         throw new \Illuminate\Contracts\Cache\LockTimeoutException('ocupada');
                     }
                     Cache::$travas[] = $this->chave;
-
-                    return $fazer();
+                    Cache::$dentro   = true;
+                    try {
+                        return $fazer();
+                    } finally {
+                        Cache::$dentro = false;
+                    }
                 }
             };
         }
@@ -192,6 +198,17 @@ namespace Fleetbase\FleetOps\Models {
         public $internal_id = null;
         public $trackingNumber = null;
         public array $atribuicoes = [];
+        public $started = true;
+        public $started_at = '2026-10-28 09:50:00';
+        /** O que estava no pedido em cada save(): o reset da troca com aceite. */
+        public array $salvos = [];
+
+        public function save(): bool
+        {
+            $this->salvos[] = ['motoboy' => $this->driver_assigned_uuid, 'adhoc' => $this->adhoc, 'started' => $this->started, 'started_at' => $this->started_at, 'status' => $this->status];
+
+            return true;
+        }
 
         // como o assignDriver do Fleet-Ops: grava o motoboy e salva (o save dispara o OrderObserver)
         public function assignDriver($motoboy, $silencioso = false)
@@ -230,9 +247,33 @@ namespace App\Support\Entregas {
     }
 }
 
+namespace App\Support\Entregas\Distribuicao {
+    // dublês: o Distribuidor tem teste próprio (troca-com-aceite.php)
+    class Distribuicao
+    {
+        public static bool $ligada = false;
+        public static function ligada(): bool { return static::$ligada; }
+    }
+
+    class Distribuidor
+    {
+        public static array $chamadas = [];
+        public static ?object $oferta = null;
+
+        public function oferecerAoEscolhidoSemTrava($pedido, $motoboy): ?object
+        {
+            static::$chamadas[] = ['pedido' => $pedido->uuid, 'motoboy' => $motoboy->uuid, 'dentro_da_trava' => \Illuminate\Support\Facades\Cache::$dentro, 'motoboy_no_pedido' => $pedido->driver_assigned_uuid, 'adhoc' => $pedido->adhoc];
+
+            return static::$oferta;
+        }
+    }
+}
+
 namespace {
     use App\Http\Controllers\Entregas\LiderController;
     use App\Notifications\Entregas\PedidoPassadoParaOutro;
+    use App\Support\Entregas\Distribuicao\Distribuicao;
+    use App\Support\Entregas\Distribuicao\Distribuidor;
     use App\Support\Entregas\LiderDosMotoboys;
     use Fleetbase\FleetOps\Models\Driver;
     use Fleetbase\FleetOps\Models\Order;
@@ -246,6 +287,7 @@ namespace {
     require '/repo/api/app/Support/Entregas/TravaDoPedido.php';
     require '/repo/api/app/Support/Entregas/MotoboyDaSessao.php';
     require '/repo/api/app/Support/Entregas/LiderDosMotoboys.php';
+    require '/repo/api/app/Support/Entregas/SituacaoDoMotoboy.php';
     require '/repo/api/app/Support/Entregas/TrocaDoMotoboy.php';
     require '/repo/api/app/Notifications/Entregas/PedidoPassadoParaOutro.php';
     require '/repo/api/app/Http/Controllers/Entregas/LiderController.php';
@@ -255,6 +297,8 @@ namespace {
 
     function session($chave) { global $sessao; return $sessao[$chave] ?? null; }
     function response() { return new \Teste\Fabrica(); }
+    date_default_timezone_set('America/Sao_Paulo');
+    function app($classe) { return new $classe(); }
 
     $falhas = 0;
     function confere(bool $ok, string $caso): void
@@ -310,6 +354,8 @@ namespace {
         $p->dispatched           = $extra['dispatched'] ?? true;
         $p->internal_id          = $extra['internal_id'] ?? null;
         $p->trackingNumber       = isset($extra['rastreio']) ? (object) ['tracking_number' => $extra['rastreio']] : null;
+        $p->started              = $extra['started'] ?? !in_array($status, ['created', 'dispatched'], true);
+        $p->started_at           = $p->started ? '2026-10-28 09:50:00' : null;
 
         return $p;
     }
@@ -362,7 +408,7 @@ namespace {
     $negado = $controller->mapa($token);
     confere($negado->status === 403 && $negado->dados === ['errors' => ['Disponível só para o líder dos motoboys.']], 'mapa de quem não é líder: 403');
 
-    echo '== LiderController@trocarMotoboy (TrocaDoMotoboy)' . PHP_EOL;
+    echo '== LiderController@trocarMotoboy (TrocaDoMotoboy), com a distribuição desligada: troca direta' . PHP_EOL;
     $troca = fn (string $pedido, ?string $motoboy) => $controller->trocarMotoboy(new Request('12|token-do-motoboy', $motoboy === null ? [] : ['motoboy' => $motoboy]), $pedido);
     Order::$todos = [
         pedido('o-ifood', 'started', 'm-comum', ['internal_id' => '4821', 'rastreio' => 'RP1']),
@@ -399,13 +445,13 @@ namespace {
     Cache::$travas = [];
     Log::$linhas   = [];
     $resposta      = $troca('order_ifood', 'driver_comum');
-    confere($resposta->status === 200 && $resposta->dados === ['pedido' => ['id' => 'order_ifood', 'motoboy_uuid' => 'm-comum']], 'o mesmo motoboy de agora: 200 sem mudança, com o pedido');
+    confere($resposta->status === 200 && $resposta->dados === ['pedido' => ['id' => 'order_ifood', 'motoboy_uuid' => 'm-comum'], 'oferta' => null], 'o mesmo motoboy de agora: 200 sem mudança, com o pedido');
     confere(Order::$todos[0]->atribuicoes === [] && Log::$linhas === [] && Driver::$todos[1]->avisos === [], 'mesmo motoboy: sem atribuição, sem aviso e sem log');
 
     Cache::$travas = [];
     $resposta      = $troca('o-ifood', 'driver_novo');
     $pedido        = Order::$todos[0];
-    confere($resposta->status === 200 && $resposta->dados === ['pedido' => ['id' => 'order_ifood', 'motoboy_uuid' => 'm-novo']], 'troca: 200 com o pedido no formato do mapa (pelo uuid também)');
+    confere($resposta->status === 200 && $resposta->dados === ['pedido' => ['id' => 'order_ifood', 'motoboy_uuid' => 'm-novo'], 'oferta' => null], 'troca: 200 com o pedido no formato do mapa (pelo uuid também)');
     confere(Cache::$travas === ['entregas:pedido:o-ifood'], 'com a TravaDoPedido (a mesma do aceite e do cancelamento)');
     confere($pedido->atribuicoes === [['motoboy' => 'm-novo', 'silencioso' => true, 'adhoc_no_save' => false]],
         'assignDriver do Fleet-Ops em modo silencioso (o OrderObserver avisa o motoboy novo uma vez), já com o pedido aberto desligado');
@@ -452,6 +498,52 @@ namespace {
     Cache::$ocupada = false;
     confere($resposta->status === 409 && $resposta->dados === ['errors' => ['Outra pessoa está mexendo neste pedido. Tente de novo.']] && Order::$todos[0]->driver_assigned_uuid === 'm-novo',
         'trava ocupada (outro líder, aceite ou cancelamento): 409 e nada muda');
+
+    echo '== Troca com aceite (distribuição ligada, antes da coleta)' . PHP_EOL;
+    Distribuicao::$ligada        = true;
+    Distribuidor::$chamadas      = [];
+    Distribuidor::$oferta        = (object) ['id' => 7, 'vence_em' => '2026-10-28 10:00:50'];
+    Driver::$todos[1]->avisos    = [];
+    Driver::$todos[2]->avisos    = [];
+    Order::$todos[]              = $aceito = pedido('o-aceito', 'started', 'm-comum', ['internal_id' => '5001']);
+    Driver::$todos[1]->current_job_uuid = 'o-aceito';
+    Cache::$travas = [];
+    Log::$linhas   = [];
+    $resposta      = $troca('order_aceito', 'driver_novo');
+    confere($resposta->status === 200 && $resposta->dados === ['pedido' => ['id' => 'order_aceito', 'motoboy_uuid' => null], 'oferta' => ['motoboy' => 'driver_novo', 'nome' => 'Novo', 'vence_em' => '2026-10-28T10:00:50-03:00']],
+        'aceito e não coletado: 200 com o pedido sem motoboy e a oferta ao escolhido (' . json_encode($resposta->dados) . ')');
+    confere($aceito->salvos === [['motoboy' => null, 'adhoc' => true, 'started' => false, 'started_at' => null, 'status' => 'dispatched']] && $aceito->atribuicoes === [],
+        'devolvido à fila num save só (sem motoboy, aberto, não iniciado, dispatched), sem assignDriver');
+    confere(Distribuidor::$chamadas === [['pedido' => 'o-aceito', 'motoboy' => 'm-novo', 'dentro_da_trava' => true, 'motoboy_no_pedido' => null, 'adhoc' => true]],
+        'a oferta ao escolhido sai dentro da trava, depois do reset');
+    confere(Cache::$travas === ['entregas:pedido:o-aceito'] && Driver::$todos[1]->current_job_uuid === null, 'uma trava só; o pedido atual do anterior é limpo');
+    confere((Driver::$todos[1]->avisos[0]->message ?? null) === 'Pedido #5001 passou para outro motoboy.' && Driver::$todos[2]->avisos === [],
+        'o anterior é avisado; o escolhido não recebe este aviso (recebe a oferta do Distribuidor)');
+    confere(Log::$linhas === [['info', '[entregas] troca do motoboy: oferta ao escolhido', ['pedido' => 'order_aceito', 'anterior' => 'driver_comum', 'novo' => 'driver_novo', 'lider' => 'u-lider', 'oferta' => 7]]],
+        'log "troca do motoboy: oferta ao escolhido" só com ids');
+
+    Order::$todos[]         = $semMotoboy = pedido('o-sem', 'dispatched', null, ['adhoc' => true]);
+    Distribuidor::$chamadas = [];
+    Log::$linhas            = [];
+    $resposta               = $troca('order_sem', 'driver_comum');
+    confere($resposta->status === 200 && ($resposta->dados['oferta']['motoboy'] ?? null) === 'driver_comum' && $semMotoboy->driver_assigned_uuid === null && count(Distribuidor::$chamadas) === 1,
+        'Atribuir (pedido sem motoboy): oferta ao escolhido, o pedido segue sem motoboy');
+    confere(Driver::$todos[1]->avisos === [Driver::$todos[1]->avisos[0]] && Log::$linhas[0][2]['anterior'] === null, 'sem anterior: ninguém mais é avisado; log com anterior nulo');
+
+    Order::$todos[]         = $coletado = pedido('o-coletado', 'enroute', 'm-comum');
+    Distribuidor::$chamadas = [];
+    Log::$linhas            = [];
+    $resposta               = $troca('order_coletado', 'driver_novo');
+    confere($resposta->status === 200 && $resposta->dados['oferta'] === null && $coletado->driver_assigned_uuid === 'm-novo' && $coletado->salvos === [] && Distribuidor::$chamadas === [],
+        'já coletado (enroute): troca direta, como antes');
+    confere(Log::$linhas[0][1] === '[entregas] líder trocou o motoboy', 'já coletado: o log de sempre');
+
+    Order::$todos[]         = $falhou = pedido('o-falhou', 'started', 'm-comum');
+    Distribuidor::$oferta   = null;
+    $resposta               = $troca('order_falhou', 'driver_novo');
+    confere($resposta->status === 200 && $resposta->dados['oferta'] === null && $falhou->driver_assigned_uuid === null && $falhou->adhoc === true,
+        'a oferta falhou (o Distribuidor abriu a todos): 200 sem oferta, o pedido continua na fila');
+    Distribuicao::$ligada = false;
 
     echo '== PedidoPassadoParaOutro' . PHP_EOL;
     confere(PedidoPassadoParaOutro::rotulo('4821') === '#4821' && PedidoPassadoParaOutro::rotulo('RP-1') === 'RP-1', 'rótulo: "#" só no número do iFood');
