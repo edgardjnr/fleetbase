@@ -199,3 +199,72 @@
     html body .tp-quadro .tp-coluna { width: auto; max-height: none; }
     html body .tp-quadro .tp-coluna-corpo { overflow: visible; }
 }
+
+/* ---------- nada passa da largura da tela (2026-10-29) ----------
+   Medido em 390 px em todas as telas do console. Fica em "screen" para não mexer na impressão da fatura e do extrato. */
+@media screen and (max-width: 767px) {
+    /* subcabeçalho das telas (título + busca e botões): o ember-ui deixa tudo numa linha de 57 px e os botões passavam da
+       borda (Motoboys, tabela de Pedidos, IAM, Desenvolvedores, Admin, Financeiro). Aqui o título fica numa linha e as
+       ações quebram nas de baixo. O ".next-view-section-container >" vence o ".is-mobile" do next.css. */
+    html body .next-view-section-container > .next-view-section-subheader {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        flex: none;
+        height: auto;
+        min-height: 57px;
+        max-height: none;
+        padding: 8px 12px;
+        gap: 8px;
+    }
+    html body .next-view-section-container > .next-view-section-subheader > .next-view-section-subheader-left { flex: none; width: 100%; min-width: 0; padding: 0; }
+    html body .next-view-section-container > .next-view-section-subheader > .next-view-section-subheader-actions {
+        flex: none;
+        width: 100%;
+        min-width: 0;
+        padding: 0;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 6px;
+    }
+    /* o mobile.css do ember-ui põe flex-shrink: 0 nos filhos, e o grupo de botões não quebrava */
+    html body .next-view-section-subheader > .next-view-section-subheader-actions > div { flex-shrink: 1; min-width: 0; max-width: 100%; }
+    html body .next-view-section-subheader-actions div.flex { flex-wrap: wrap; gap: 6px; }
+    html body .next-view-section-subheader-actions > *,
+    html body .next-view-section-subheader-actions div.flex > *,
+    html body .next-view-section-subheader-actions span.btn-wrapper > button.btn { margin: 0 !important; }
+    html body .next-view-section-subheader-actions input.form-input { flex: 1 1 100%; width: auto; min-width: 0; }
+    html body .next-view-section-subheader-actions:empty { display: none; }
+
+    /* abas com ações ao lado (IAM → Usuários): abas numa linha, busca e botões embaixo */
+    html body .tab-navigation > .tab-list:has(> .tab-navigation-actions) {
+        flex-direction: column;
+        align-items: stretch;
+        height: auto !important;
+        min-height: 57px;
+        max-height: none;
+        padding: 0 8px 8px;
+        gap: 4px;
+    }
+    html body .tab-navigation > .tab-list > .tab-navigation-actions { flex: none; min-width: 0; max-width: 100%; height: auto; }
+    html body .tab-navigation-actions div.flex { flex-wrap: wrap; gap: 6px; padding-right: 8px; }
+    html body .tab-navigation-actions div.flex > * { margin: 0 !important; }
+    html body .tab-navigation-actions input.form-input { flex: 1 1 100%; width: auto; min-width: 0; }
+
+    /* título longo de painel (Configurações → App do motoboy): quebra em vez de empurrar a tela */
+    html body .next-content-panel-header > .next-content-panel-header-left { flex: 1 1 auto; min-width: 0; }
+    html body .next-content-panel-title-container,
+    html body .next-content-panel-title-container > .panel-title { flex-shrink: 1; min-width: 0; }
+
+    /* telas próprias (Financeiro, Lojas, Corridas do sistema): o "max-w-6xl mx-auto" dentro de um flex em coluna
+       ganhava a largura da tabela (até 870 px) e cortava colunas, filtros e botões */
+    html body .next-view-section-body > .mx-auto { width: 100%; min-width: 0; }
+    /* tabela que não está dentro de um "overflow-x-auto" rola de lado sozinha (as do Fleetbase têm o próprio contêiner) */
+    html body .next-view-section-body :not(.overflow-x-auto) > table.table:not(.table-fixed) { display: block; max-width: 100%; overflow-x: auto; }
+    html body .next-view-section-body table.table:not(.table-fixed) :is(th, td):not(:last-child) { padding-right: 12px; }
+
+    /* dicas (ember-attacher) escondidas ficam no body, na posição da última vez, e alargavam a página (até 570 px): no
+       iPhone o overflow hidden do body não segura e a tela inteira desliza de lado. Escondida, a dica vai para o canto;
+       ao aparecer, volta o transform que o floating-ui calcula. */
+    html body > .ember-attacher:has(> .ember-attacher-hide) { transform: none !important; left: 0 !important; top: 0 !important; max-width: 100vw; }
+}

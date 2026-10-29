@@ -90,6 +90,15 @@ Saiu do sketch 007, variante B "Doca flutuante" (`.planning/sketches/007-console
 - **Pedidos:** o Quadro vira uma lista de cartões empilhados por situação (Sem motoboy, Indo à loja, A caminho,
   Concluídos). O Mapa continua com a folha de baixo da tela de pedidos.
 - **Estilo:** `console/app/styles/celular.css`, com os tokens `--pi-*`. **Textos:** `console.ui.celular.*`.
+- **Nada passa da largura da tela** (2026-10-29, bloco "nada passa da largura" do `celular.css`, só `screen`):
+  - subcabeçalho das telas e abas com ações (IAM → Usuários): título numa linha, busca e botões quebrando embaixo;
+  - telas próprias com `max-w-6xl mx-auto` (Financeiro, Lojas, Corridas do sistema): o bloco ocupa 100% da tela, e
+    `table.table` fora de um `overflow-x-auto` rola de lado sozinha;
+  - títulos longos de painel quebram;
+  - dicas escondidas do `ember-attacher` vão para o canto (alargavam o documento até 570 px).
+  - **Para conferir:** iframe de 390 px na aba do console logado como admin, procurando elemento com `right` maior que
+    a largura (fora de contêiner que rola) e `documentElement.scrollWidth` maior que 390. Tela nova com tabela:
+    ponha a tabela num `<div class="overflow-x-auto">`.
 - **Não ficou do sketch:** o título grande que encolhe ao rolar, porque cada tela tem o próprio cabeçalho.
 - **Para voltar:** volte o `<Layout::MobileNavbar …>` no `console.hbs` e tire o `@import 'celular.css'` do `app.css`.
 
